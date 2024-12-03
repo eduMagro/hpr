@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,15 +13,24 @@ class Producto extends Model
     protected $fillable = [
         'nombre',
         'descripcion',
+        'ubicacion_id',  // Relación con la ubicación
     ];
 
-    public function movimientos()
+    /**
+     * Relación con la tabla 'entradas'
+     * Un producto pertenece a una única entrada (relación uno a uno)
+     */
+    public function entrada()
     {
-        return $this->belongsTo(Entrada::class, 'entrada_id');
+        return $this->belongsTo(Entrada::class, 'producto_id');  // Un producto pertenece a una entrada
     }
-      // Relación con el modelo Ubicacion
-      public function ubicacion()
-      {
-          return $this->belongsTo(Ubicacion::class, 'ubicacion_id');
-      }
+
+    /**
+     * Relación con la tabla 'ubicaciones'
+     * Un producto pertenece a una ubicación
+     */
+    public function ubicacion()
+    {
+        return $this->belongsTo(Ubicacion::class, 'ubicacion_id');
+    }
 }

@@ -19,4 +19,8 @@ class Ubicacion extends Model
     {
         return $this->hasMany(Entrada::class);
     }
+    public function productos()
+    {
+        return $this->hasMany(Producto::class);
+    }
 }

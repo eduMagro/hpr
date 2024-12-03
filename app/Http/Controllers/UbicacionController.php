@@ -7,11 +7,41 @@ use Illuminate\Http\Request;
 
 class UbicacionController extends Controller
 {
+
+    // private function aplicarFiltros($query, Request $request)
+    // {
+    //     // Obtener el valor y reemplazar %5F por _
+    //     $codigoBarras = str_replace('%5F', '_', $request->input('codigo_barras'));
+
+    //     // Aplicar el filtro con el valor ajustado
+    //     $query->where('codigo_barras', 'like', '%' . $codigoBarras . '%');
+
+    //     return $query;
+    // }
+
     // Mostrar todas las ubicaciones
-    public function index()
+    // Mostrar el índice de ubicaciones
+    public function index(Request $request)
     {
-        $ubicaciones = Ubicacion::all();  // Obtener todas las ubicaciones
-        return view('ubicaciones.index', compact('ubicaciones'));
+        // Obtener las ubicaciones con sus productos asociados
+        $ubicaciones = Ubicacion::with('productos');
+
+        $query = Ubicacion::query();
+        // $query = $this->aplicarFiltros($query, $request);
+
+        // Ordenar
+        $sortBy = $request->input('sort_by', 'created_at');  // Primer criterio de ordenación (nombre)
+        $order = $request->input('order', 'desc');        // Orden del primer criterio (asc o desc)
+
+        // Aplicar ordenamiento por múltiples columnas
+        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
+
+        // Paginación
+        $perPage = $request->input('per_page', 10);
+        $registrosUbicaciones = $query->paginate($perPage)->appends($request->except('page'));
+
+        // Pasar las ubicaciones y productos a la vista
+        return view('ubicaciones.index', compact('registrosUbicaciones'));
     }
 
     // Mostrar el formulario para crear una nueva ubicación

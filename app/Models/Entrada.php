@@ -9,23 +9,39 @@ class Entrada extends Model
 {
     use HasFactory;
 
+    // El nombre de la tabla asociada
     protected $table = "entradas";
 
+    // Los campos que son asignables masivamente
     protected $fillable = [
-        'nombre_material', 'descripcion_material', 'ubicacion_id', 'user_id'
+        'user_id',
+        'ubicacion_id',
+        'fecha',  // O la fecha que necesites
     ];
 
-    // Relación con la tabla 'ubicaciones'
-    public function ubicacion()
-    {
-        return $this->belongsTo(Ubicacion::class, 'ubicacion_id');
-    }
-    
+    /**
+     * Relación con la tabla 'ubicaciones'
+     * Una entrada pertenece a una ubicación
+     */
+// En el modelo Entrada
 
-    // Relación con la tabla 'users'
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
-    
+public function ubicacion()
+{
+    return $this->belongsTo(Ubicacion::class);  // Relación con Ubicacion
 }
+
+public function user()
+{
+    return $this->belongsTo(User::class);  // Relación con User
+}
+
+public function producto()
+{
+    return $this->belongsTo(Producto::class);  // Relación con Producto
+}
+
+}
+
+
+
+

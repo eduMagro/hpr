@@ -11,13 +11,13 @@
                 <div class="p-6 text-gray-900">
                     <div class="icon-container">
                         <div class="icon-card">
-                            <a href="{{ route('entradas.index') }}">
+                            <a href="{{ route('productos.index') }}">
                                 <img src="https://img.icons8.com/?size=100&id=nY1AjCB9y7SY&format=png&color=000000" alt="Materiales">
                                 <span>Materiales</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('entradas.index') }}">
+                            <a href="{{ route('ubicaciones.index') }}">
                                 <img src="https://img.icons8.com/?size=100&id=n4PINSDv4htA&format=png&color=000000" alt="Ubicaciones">
                                 <span>Ubicaciones</span>
                             </a>
