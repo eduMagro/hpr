@@ -1,1 +1,1 @@
-<img src="{{asset('imagenes/logoHPR.png')}}" alt="logo">
+<img src="{{asset('imagenes/logoHPR.png')}}" alt="logo" style="width: 100px">
