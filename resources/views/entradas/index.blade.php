@@ -4,6 +4,7 @@
             {{ __('Movimientos de Entrada') }}
         </h2>
     </x-slot>
+
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
@@ -25,6 +26,7 @@
             {{ session('success') }}
         </div>
     @endif
+
     <div class="container mx-auto px-4 py-6">
         <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
         <div class="mb-4">
@@ -38,18 +40,49 @@
             @forelse ($entradas as $entrada)
                 <div class="bg-white border p-4 shadow-md rounded-lg">
                     <h3 class="font-bold text-xl">{{ $entrada->albaran }}</h3>
-                    <p><strong>Productos:</strong> {{ $entrada->descripcion_material }}</p>
-                    <p><strong>Ubicación:</strong> {{ $entrada->ubicacion->codigo ?? 'Sin ubicación' }}</p>
-                    <p><strong>Usuario:</strong> {{ $entrada->user->name ?? 'Sin usuario' }}</p>
-                    <p><strong>Fecha:</strong> {{ $entrada->fecha }}</p>
 
-                    <div class="mt-2">
-                        <a href="{{ route('entradas.edit', $entrada->id) }}" class="text-blue-500">Editar</a> |
+                    <p><strong>Usuario:</strong> {{ $entrada->user->name ?? 'Sin usuario' }}</p>
+                    <p><strong>Fecha:</strong> {{ $entrada->created_at }}</p>
+
+                    <h4 class="mt-4 font-semibold">Productos Asociados: {{ $entrada->productos->count() }}</h4>
+                    <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                    <ul>
+                        @foreach ($entrada->productos as $producto)
+                            <li class="mt-2">
+                                <p><strong>Nombre del Producto:</strong> {{ $producto->nombre }}</p>
+                                <p><strong>Fabricante:</strong> {{ $producto->fabricante }}</p>
+                                <p><strong>Código:</strong> {{ $producto->qr }}</p>
+                                <p>
+
+                                    <button id="generateQR" onclick="generateAndPrintQR('{{ $producto->qr }}')"
+                                        class="btn btn-primary">QR</button>
+                                </p>
+                                <p><strong>Nº Colada:</strong> {{ $producto->n_colada }}</p>
+                                <p><strong>Nº Paquete:</strong> {{ $producto->n_paquete }}</p>
+                                <p><strong>Ubicación:</strong>
+                                    {{ $producto->ubicacion->descripcion ?? 'Sin ubicación' }}</p>
+                                <p><strong>Máquina:</strong>
+                                    {{ $producto->maquina->nombre ?? 'Sin ubicación' }}</p>
+                                <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
+                                <div id="qrCanvas" style="display:none;"></div>
+                        
+                            </li>
+                            <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                        @endforeach
+                        
+                    </ul>
+             
+                    <div class="mt-4 flex justify-between">
+                        <!-- Enlace para editar -->
+                        <a href="{{ route('entradas.edit', $entrada->id) }}"
+                            class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+
+                        <!-- Formulario para eliminar -->
                         <form action="{{ route('entradas.destroy', $entrada->id) }}" method="POST"
-                            style="display:inline;">
+                            style="display:inline;" onsubmit="return confirm('¿Estás seguro de querer eliminar esta entrada de material?');">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="text-red-500">Eliminar</button>
+                            <button type="submit" class="text-red-500 hover:text-red-700 text-sm">Eliminar</button>
                         </form>
                     </div>
                 </div>
@@ -59,8 +92,50 @@
         </div>
 
         <!-- Paginación -->
-        <div class="mt-6">
-            {{ $entradas->links() }} <!-- Esto agrega los enlaces de paginación -->
-        </div>
+        @if (isset($entradas) && $entradas instanceof \Illuminate\Pagination\LengthAwarePaginator)
+            {{ $entradas->appends(request()->except('page'))->links() }}
+        @endif
     </div>
+    <!-- SCRIPT PARA IMPRIMIR QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        function generateAndPrintQR(data) {
+            // Reemplazamos los caracteres problemáticos antes de generar el QR
+            const safeData = data.replace(/_/g, '%5F'); // Reemplazamos _ por %5F
+
+            // Elimina cualquier contenido previo del canvas
+            const qrContainer = document.getElementById('qrCanvas');
+            qrContainer.innerHTML = ""; // Limpia el canvas si ya existe un QR previo
+
+            // Generar el código QR con el texto seguro
+            const qrCode = new QRCode(qrContainer, {
+                text: safeData, // Usamos el texto transformado
+                width: 200,
+                height: 200,
+            });
+
+            // Esperar a que el QR esté listo para imprimir
+            setTimeout(() => {
+                const qrImg = qrContainer.querySelector('img'); // Obtiene la imagen del QR
+                if (!qrImg) {
+                    alert("Error al generar el QR. Intenta nuevamente.");
+                    return;
+                }
+
+                // Abrir ventana de impresión
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                 <html>
+                     <head><title>Imprimir QR</title></head>
+                     <body>
+                         <img src="${qrImg.src}" alt="Código QR" style="width:100px">
+                  
+                         <script>window.print();<\/script>
+                     </body>
+                 </html>
+             `);
+                printWindow.document.close();
+            }, 500); // Tiempo suficiente para generar el QR
+        }
+    </script>
 </x-app-layout>

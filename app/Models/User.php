@@ -16,7 +16,12 @@ class User extends Authenticatable
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
+     * 
+     * 
      */
+
+     protected $table = 'users';
+      
     protected $fillable = [
         'name',
         'email',
@@ -45,4 +50,18 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    // Relación: Un usuario tiene muchas entradas
+    public function entradas()
+    {
+        return $this->hasMany(Entrada::class, 'users_id'); // 'users_id' es la clave foránea en la tabla `entradas`
+    }
+
+    // Relación: Un usuario tiene muchos movimientos
+    public function movimientos()
+    {
+        return $this->hasMany(Movimiento::class, 'users_id'); // 'user_id' es la clave foránea en la tabla `movimientos`
+    }
+
+    
 }

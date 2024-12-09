@@ -70,6 +70,21 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Inicio') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('productos.index')" :active="request()->routeIs('productos.index')">
+                {{ __('Materiales') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('ubicaciones.index')" :active="request()->routeIs('ubicaciones.index')">
+                {{ __('Ubicaciones') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('entradas.index')" :active="request()->routeIs('entradas.index')">
+                {{ __('Entradas') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
+                {{ __('Salidas') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('movimientos.index')" :active="request()->routeIs('movimientos.index')">
+                {{ __('Movimientos') }}
+            </x-responsive-nav-link>
     
         </div>
 

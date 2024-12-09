@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Bienvenido. ¿Qué deseas hacer?') }}
+            {{ __('Bienvenido, :name. Elige una tarea', ['name' => strtok(auth()->user()->name, ' ')]) }}
         </h2>
     </x-slot>
 
@@ -12,56 +12,77 @@
                     <div class="icon-container">
                         <div class="icon-card">
                             <a href="{{ route('productos.index') }}">
-                                <img src="https://img.icons8.com/?size=100&id=nY1AjCB9y7SY&format=png&color=000000" alt="Materiales">
+                                <img src="https://img.icons8.com/?size=100&id=nY1AjCB9y7SY&format=png&color=000000"
+                                    alt="Materiales">
                                 <span>Materiales</span>
                             </a>
                         </div>
                         <div class="icon-card">
                             <a href="{{ route('ubicaciones.index') }}">
-                                <img src="https://img.icons8.com/?size=100&id=n4PINSDv4htA&format=png&color=000000" alt="Ubicaciones">
+                                <img src="https://img.icons8.com/?size=100&id=n4PINSDv4htA&format=png&color=000000"
+                                    alt="Ubicaciones">
                                 <span>Ubicaciones</span>
                             </a>
                         </div>
                         <div class="icon-card">
                             <a href="{{ route('entradas.index') }}">
-                                <img src="https://img.icons8.com/?size=100&id=45Nxpks5EYHE&format=png&color=000000" alt="Entradas">
+                                <img src="https://img.icons8.com/?size=100&id=45Nxpks5EYHE&format=png&color=000000"
+                                    alt="Entradas">
                                 <span>Entradas</span>
                             </a>
                         </div>
                         <div class="icon-card">
                             <a href="#">
-                                <img src="https://img.icons8.com/?size=100&id=rGLEtwiD51Dw&format=png&color=000000" alt="Salidas">
+                                <img src="https://img.icons8.com/?size=100&id=rGLEtwiD51Dw&format=png&color=000000"
+                                    alt="Salidas">
                                 <span>Salidas</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="#">
-                                <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000" alt="Usuarios">
-                                <span>Usuarios</span>
-                            </a>
+                            @if (Auth::user()->id === 1)
+                                <a href="{{ route('users.index') }}">
+                                    <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000"
+                                        alt="Usuarios">
+                                    <span>Usuarios</span>
+                                </a>
+                            @else
+                                <a href="#" class="disabled-link" onclick="return false;">
+                                    <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000"
+                                        alt="Usuarios">
+                                    <span>Usuarios</span>
+                                </a>
+                            @endif
                         </div>
+
                         <div class="icon-card">
-                            <a href="#">
+                            <a href="{{ route('movimientos.index') }}">
                                 <img src="https://img.icons8.com/color/96/swap.png" alt="Movimientos">
                                 <span>Movimientos</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="#">
-                                <img src="https://img.icons8.com/?size=100&id=xaInJjDQEige&format=png&color=000000" alt="Alertas">
-                                <span>Alertas</span>
+                            <a href="{{ route('maquinas.index') }}">
+                                <img src="https://img.icons8.com/arcade/100/cnc-machine.png" alt="Máquinas" />
+                                <span>Máquinas</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="#">
+                            <a href="{{ route('estadisticas.index') }}">
                                 <img src="https://img.icons8.com/color/96/graph.png" alt="Reportes">
-                                <span>Reportes</span>
+                                <span>Estadísticas</span>
                             </a>
                         </div>
                         <div class="icon-card">
                             <a href="#">
                                 <img src="https://img.icons8.com/color/96/settings.png" alt="Configuración">
                                 <span>Configuración</span>
+                            </a>
+                        </div>
+                        <div class="icon-card">
+                            <a href="#">
+                                <img src="https://img.icons8.com/?size=100&id=xaInJjDQEige&format=png&color=000000"
+                                    alt="Alertas">
+                                <span>Alertas</span>
                             </a>
                         </div>
                     </div>
@@ -74,7 +95,8 @@
     <style>
         .icon-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Ajusta el tamaño mínimo de los iconos */
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            /* Ajusta el tamaño mínimo de los iconos */
             gap: 20px;
             justify-items: center;
             padding: 20px;
@@ -105,6 +127,16 @@
             color: #333;
             display: block;
             margin-top: 5px;
+        }
+
+        /*------------------------- ELEMENTOS DISABLED -----------------------*/
+        .disabled-link {
+            pointer-events: none;
+            cursor: not-allowed;
+            opacity: 0.5;
+            /* Reduce opacidad para indicar que está deshabilitado */
+            text-decoration: none;
+            /* Opcional para evitar subrayado */
         }
 
         /* Responsive tweaks */

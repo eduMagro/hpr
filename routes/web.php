@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\UbicacionController;
+use App\Http\Controllers\EstadisticasController;
+use App\Http\Controllers\MaquinaController;
+use App\Http\Controllers\MovimientoController;
 
 
 
@@ -32,8 +35,15 @@ Route::middleware('auth')->group(function () {
         4. GET /entradas/{id}/edit --> EntradaController@edit   (Muestra el formulario para editar una entrada existente)
         5. PUT/PATCH /entradas/{id} --> EntradaController@update  (Actualiza una entrada existente)
         6. DELETE /entradas/{id}  --> EntradaController@destroy (Elimina una entrada) */
-        Route::resource('productos', ProductoController::class);
-        Route::resource('ubicaciones', UbicacionController::class);
+    Route::resource('productos', ProductoController::class);
+    Route::resource('ubicaciones', UbicacionController::class);
+    Route::resource('users', ProfileController::class);
+    Route::resource('maquinas', MaquinaController::class);
+    Route::resource('movimientos', MovimientoController::class);
+    
+    Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 });
+
+
 
 require __DIR__ . '/auth.php';

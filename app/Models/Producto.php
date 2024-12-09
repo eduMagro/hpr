@@ -11,9 +11,14 @@ class Producto extends Model
     protected $table = 'productos';
 
     protected $fillable = [
+        'fabricante',
         'nombre',
-        'descripcion',
+        'qr',
+        'n_colada',
+        'n_paquete',
         'ubicacion_id',  // Relación con la ubicación
+        'estado',
+        'otros',
     ];
 
     /**
@@ -22,7 +27,7 @@ class Producto extends Model
      */
     public function entrada()
     {
-        return $this->belongsTo(Entrada::class, 'producto_id');  // Un producto pertenece a una entrada
+        return $this->belongsTo(Entrada::class, 'entrada_producto');  // Un producto pertenece a una entrada
     }
 
     /**
@@ -33,4 +38,19 @@ class Producto extends Model
     {
         return $this->belongsTo(Ubicacion::class, 'ubicacion_id');
     }
+    public function maquina()
+    {
+        return $this->belongsTo(Maquina::class, 'maquina_id');
+    }
+    public function buscaAlmacenados($query)
+    {
+        return $query->where('estado', 'almacenado')->whereNull('maquina_id');
+    }
+
+    public function buscaConsumiendo($query)
+    {
+        return $query->where('estado', 'consumiendo')->whereNotNull('maquina_id');
+    }
+
+
 }
