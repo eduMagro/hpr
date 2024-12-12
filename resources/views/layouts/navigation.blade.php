@@ -85,7 +85,12 @@
             <x-responsive-nav-link :href="route('movimientos.index')" :active="request()->routeIs('movimientos.index')">
                 {{ __('Movimientos') }}
             </x-responsive-nav-link>
-    
+            <x-responsive-nav-link :href="route('maquinas.index')" :active="request()->routeIs('maquinas.index')">
+                {{ __('Máquinas') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('maquinas.index')" :active="request()->routeIs('maquinas.index')">
+                {{ __('Planillas') }}
+            </x-responsive-nav-link>    
         </div>
 
         <!-- Responsive Settings Options -->

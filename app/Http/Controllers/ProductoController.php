@@ -8,26 +8,25 @@ use Illuminate\Http\Request;
 class ProductoController extends Controller
 {
 
+    //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
     {
-        // Obtener el valor y reemplazar %5F por _
-        $qr = str_replace('%5F', '_', $request->input('qr'));
-    
-        // Aplicar el filtro con el valor ajustado
-        $query->where('qr', 'like', '%' . $qr . '%');
-    
+        $buscar = $request->input('id');
+        if (!empty($buscar)) {
+            $query->where('id', $buscar);
+        }
         return $query;
     }
-    
-    // Mostrar la lista de productos
+
+    //------------------------------------------------------------------------------------ INDEX
     public function index(Request $request)
     {
-             // Inicializa la consulta de productos
+        // Inicializa la consulta de productos
         $query = Producto::query();
-    
+
         // Aplica los filtros
         $query = $this->aplicarFiltros($query, $request);
-    
+
         // Establecer el criterio de ordenación basado en los parámetros de la solicitud
         // Si no se pasa un criterio de ordenación, se ordenará por la fecha de creación ('created_at') por defecto
         $sortBy = $request->input('sort_by', 'created_at');  // Obtener el valor del parámetro 'sort_by' o 'created_at' por defecto
@@ -47,16 +46,23 @@ class ProductoController extends Controller
 
         // Pasar los productos paginados a la vista para mostrar los datos
         return view('productos.index', compact(
-            'registrosProductos'));
+            'registrosProductos'
+        ));
+    }
+    //------------------------------------------------------------------------------------ SHOW
+    public function show($id)
+    {
+        $detalles_producto = Producto::findOrFail($id);
+        return view('productos.show', compact('detalles_producto'));
     }
 
-    // Mostrar el formulario de creación
+  //------------------------------------------------------------------------------------ CREATE
     public function create()
     {
         return view('productos.create');
     }
 
-    // Guardar un nuevo producto
+   //------------------------------------------------------------------------------------ STORE
     public function store(Request $request)
     {
         $request->validate([
@@ -71,13 +77,13 @@ class ProductoController extends Controller
         return redirect()->route('productos.index')->with('success', 'Producto creado exitosamente.');
     }
 
-    // Mostrar el formulario de edición
+   //------------------------------------------------------------------------------------ EDIT
     public function edit(Producto $producto)
     {
         return view('productos.edit', compact('producto'));
     }
 
-    // Actualizar un producto
+  //------------------------------------------------------------------------------------ UPDATE
     public function update(Request $request, Producto $producto)
     {
         $request->validate([
@@ -92,7 +98,7 @@ class ProductoController extends Controller
         return redirect()->route('productos.index')->with('success', 'Producto actualizado exitosamente.');
     }
 
-    // Eliminar un producto
+    //------------------------------------------------------------------------------------ DESTROY
     public function destroy(Producto $producto)
     {
         $producto->delete();

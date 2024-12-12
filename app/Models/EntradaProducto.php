@@ -9,14 +9,13 @@ class EntradaProducto extends Model
 {
     use HasFactory;
 
-    protected $table = 'entradas_productos';
+    protected $table = 'entrada_producto';
 
     protected $fillable = [
-        'albaran',
         'entrada_id',     // ID de la entrada asociada
         'producto_id',    // ID del producto asociado
-        'qr',             // Código QR generado
         'ubicacion_id',   // ID de la ubicación asociada
+        'users_id',
     ];
     // Definir las relaciones
     public function entry()

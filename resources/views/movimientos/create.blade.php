@@ -40,7 +40,13 @@
                             <!-- Seleccionar Producto -->
                             <div class="form-group mb-4">
                                 <label for="producto_id" class="form-label fw-bold">Producto</label>
-                                <select id="producto_id" name="producto_id" class="form-control form-control-lg" required>
+
+                                {{-- BUSCAR POR QR --}}
+                                <input type="text" name="producto_id" class="form-control mb-3" placeholder="Buscar por QR"
+                                value="{{ request('producto_id') }}">
+
+                                {{-- BUSCAR POR SELECT --}}
+                                {{-- <select id="producto_id" name="producto_id" class="form-control form-control-lg" required>
                                     <option value="">Seleccione un producto</option>
                                     @foreach ($productos as $producto)
                                     <option value="{{ $producto->id }}">
@@ -55,7 +61,7 @@
                                         @endif)
                                     </option>
                                 @endforeach
-                                </select>
+                                </select> --}}
                             </div>
     
                             <!-- Movimiento de una ubicación a otra -->

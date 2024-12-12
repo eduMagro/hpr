@@ -67,6 +67,12 @@
                             </a>
                         </div>
                         <div class="icon-card">
+                            <a href="#">
+                                <img width="100" height="100" src="https://img.icons8.com/arcade/64/terms-and-conditions.png" alt="terms-and-conditions"/>
+                                <span>Planillas</span>
+                            </a>
+                        </div>
+                        <div class="icon-card">
                             <a href="{{ route('estadisticas.index') }}">
                                 <img src="https://img.icons8.com/color/96/graph.png" alt="Reportes">
                                 <span>Estadísticas</span>

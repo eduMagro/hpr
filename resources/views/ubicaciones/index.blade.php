@@ -67,7 +67,8 @@
                         @else
                             <ul class="list-disc pl-6 break-words">
                                 @foreach ($ubicacion->productos as $producto)
-                                    <li>{{ $producto->qr }}</li>
+                                    <li>{{ 'ID' . $producto->id . ' - ' . $producto->tipo . ' - D' . $producto->diametro . ' - L' . $producto->longitud . ' - PI' . $producto->peso_inicial . ' - PS' . $producto->peso_stock}}</li>
+                                    <a href="{{ route('productos.show', $producto->id) }}" class="btn btn-sm btn-primary">Ver</a>
                                 @endforeach
                             </ul>
                         @endif

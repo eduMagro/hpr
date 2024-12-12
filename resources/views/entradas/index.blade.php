@@ -1,10 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Movimientos de Entrada') }}
+            {{ __('Entradas de Material') }}
         </h2>
     </x-slot>
-
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
@@ -14,19 +13,16 @@
             </ul>
         </div>
     @endif
-
     @if (session('error'))
         <div class="alert alert-danger">
             {{ session('error') }}
         </div>
     @endif
-
     @if (session('success'))
         <div class="alert alert-success">
             {{ session('success') }}
         </div>
     @endif
-
     <div class="container mx-auto px-4 py-6">
         <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
         <div class="mb-4">
@@ -34,7 +30,6 @@
                 Crear Nueva Entrada
             </a>
         </div>
-
         <!-- Usamos una estructura de tarjetas para dispositivos móviles -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             @forelse ($entradas as $entrada)
@@ -49,29 +44,36 @@
                     <ul>
                         @foreach ($entrada->productos as $producto)
                             <li class="mt-2">
-                                <p><strong>Nombre del Producto:</strong> {{ $producto->nombre }}</p>
-                                <p><strong>Fabricante:</strong> {{ $producto->fabricante }}</p>
-                                <p><strong>Código:</strong> {{ $producto->qr }}</p>
+                                <p><strong>ID:</strong> {{ $producto->id }}</p>
+                                <a href="{{ route('productos.show', $producto->id) }}" class="btn btn-sm btn-primary">Ver</a>
+                                <p><strong>Producto:</strong> {{ $producto->nombre }} / {{ $producto->tipo }}</p>
+                                <p><strong>Diámetro:</strong> {{ $producto->diametro }}</p>
+                                <p><strong>Longitud:</strong> {{ $producto->longitud }}</p>
+                                <!-- Lista desordenada con los detalles del producto -->
+                                @if (isset($producto->ubicacion->descripcion))
+                                    <p><strong>Ubicación:</strong>
+                                        {{ $producto->ubicacion->descripcion }}</p>
+                                @elseif (isset($producto->maquina->nombre))
+                                    <p><strong>Máquina:</strong>
+                                        {{ $producto->maquina->nombre }}
+                                    </p>
+                                @else
+                                    <p class="font-bold text-lg text-gray-800 break-words">No está ubicada</p>
+                                @endif
+                                <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
                                 <p>
 
-                                    <button id="generateQR" onclick="generateAndPrintQR('{{ $producto->qr }}')"
-                                        class="btn btn-primary">QR</button>
+                                    <button id="generateQR" onclick="generateAndPrintQR('{{ $producto->id }}')"
+                                        class="btn btn-primary">Imprimir QR</button>
                                 </p>
-                                <p><strong>Nº Colada:</strong> {{ $producto->n_colada }}</p>
-                                <p><strong>Nº Paquete:</strong> {{ $producto->n_paquete }}</p>
-                                <p><strong>Ubicación:</strong>
-                                    {{ $producto->ubicacion->descripcion ?? 'Sin ubicación' }}</p>
-                                <p><strong>Máquina:</strong>
-                                    {{ $producto->maquina->nombre ?? 'Sin ubicación' }}</p>
-                                <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
                                 <div id="qrCanvas" style="display:none;"></div>
-                        
+
                             </li>
                             <hr style="border: 1px solid #ccc; margin: 10px 0;">
                         @endforeach
-                        
+
                     </ul>
-             
+
                     <div class="mt-4 flex justify-between">
                         <!-- Enlace para editar -->
                         <a href="{{ route('entradas.edit', $entrada->id) }}"
@@ -79,7 +81,8 @@
 
                         <!-- Formulario para eliminar -->
                         <form action="{{ route('entradas.destroy', $entrada->id) }}" method="POST"
-                            style="display:inline;" onsubmit="return confirm('¿Estás seguro de querer eliminar esta entrada de material?');">
+                            style="display:inline;"
+                            onsubmit="return confirm('¿Estás seguro de querer eliminar esta entrada de material?');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="text-red-500 hover:text-red-700 text-sm">Eliminar</button>
@@ -138,4 +141,5 @@
             }, 500); // Tiempo suficiente para generar el QR
         }
     </script>
+
 </x-app-layout>

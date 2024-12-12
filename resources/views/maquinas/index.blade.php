@@ -59,6 +59,8 @@
                         </p>
                         <div id="qrCanvas" style="display:none;"></div>
 
+                        <p><strong>Diámetros aceptados: </strong>{{ $maquina->diametro_min . " - " . $maquina->diametro_max }}</p>
+                        <p><strong>Pesos bobinas: </strong>{{ ($maquina->peso_min && $maquina->peso_max) ? ($maquina->peso_min . ' - ' . $maquina->peso_max) : 'Barras' }}</p>
                         <!-- Mostrar los productos que contiene esta ubicación -->
                         <h4 class="mt-4 font-semibold">Productos en máquina:</h4>
                         @if ($maquina->productos->isEmpty())
@@ -66,10 +68,16 @@
                         @else
                             <ul class="list-disc pl-6 break-words">
                                 @foreach ($maquina->productos as $producto)
-                                    <li>{{ $producto->qr }}}</li>
+                                    <li class="mb-2 flex items-center justify-between">
+                                        <span>
+                                            ID: {{ $producto->id }} - Tipo: {{ $producto->tipo }} - D{{ $producto->diametro }} - L{{ $producto->longitud ?? '??' }}
+                                        </span>
+                                        <a href="{{ route('productos.show', $producto->id) }}" class="btn btn-sm btn-primary">Ver</a>
+                                    </li>
                                 @endforeach
                             </ul>
                         @endif
+                        
                         <hr style="border: 1px solid #ccc; margin: 10px 0;">
                         <div class="mt-4 flex justify-between">
                             <!-- Enlace para editar -->
@@ -78,7 +86,7 @@
                             <!-- Formulario para eliminar -->
                             <form action="{{ route('maquinas.destroy', $maquina->id) }}" method="POST"
                                 style="display:inline;"
-                                onsubmit="return confirm('¿Estás seguro de querer eliminar esta ubicación?');">
+                                onsubmit="return confirm('¿Estás seguro de querer eliminar esta máquina?');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-red-500 hover:text-red-700 text-sm">Eliminar</button>

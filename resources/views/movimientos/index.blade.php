@@ -36,8 +36,8 @@
         </div>
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('movimientos.index') }}" class="form-inline mt-3 mb-3">
-            <input type="text" name="nombre" class="form-control mb-3" placeholder="Buscar por código QR"
-                value="{{ request('nombre') }}">
+            <input type="text" name="id" class="form-control mb-3" placeholder="Buscar por código QR"
+                value="{{ request('id') }}">
             <button type="submit" class="btn btn-info ml-2">
                 <i class="fas fa-search"></i> Buscar
             </button>
@@ -84,8 +84,11 @@
                         <!-- Producto Asociado -->
                         <h4 class="font-semibold text-gray-600">Producto asociado:</h4>
                         @if ($movimiento->producto)
-                            <p>{{ $movimiento->producto->nombre }} (Código:
-                                {{ $movimiento->producto->qr ?? 'Sin código' }})</p>
+                            <p>{{ 'ID: ' . $movimiento->producto->id }}</p>
+                            <p>{{ 'Tipo de producto: ' . $movimiento->producto->tipo }}</p>
+                            <p>{{ 'Diámetro: ' . $movimiento->producto->diametro }}</p>
+                            <p>{{ 'Longitud: ' . $movimiento->producto->longitud }}</p>
+                            <a href="{{ route('productos.show', $movimiento->producto->id) }}" class="btn btn-sm btn-primary">Ver</a>
                         @else
                             <p class="text-sm text-gray-500">No hay producto asociado a este movimiento.</p>
                         @endif

@@ -16,10 +16,10 @@ class MovimientoController extends Controller
         $query = Movimiento::with(['producto', 'usuario', 'ubicacionOrigen', 'ubicacionDestino', 'maquina']);
 
         // Aplicar filtro por nombre si se pasa como parámetro en la solicitud
-        if ($request->has('nombre')) {
-            $nombre = $request->input('nombre');
-            $query->whereHas('producto', function ($q) use ($nombre) {
-                $q->where('nombre', 'like', '%' . $nombre . '%');
+        if ($request->has('id')) {
+            $id = $request->input('id');
+            $query->whereHas('producto', function ($q) use ($id) {
+                $q->where('id', 'like', '%' . $id . '%');
             });
         }
 
@@ -49,7 +49,7 @@ class MovimientoController extends Controller
     public function store(Request $request)
     {
         // Validar los datos del formulario
-        $validated = $request->validate([
+       $request->validate([
             'producto_id' => 'required|exists:productos,id',
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
             'maquina_id' => 'nullable|exists:maquinas,id',
@@ -92,7 +92,7 @@ class MovimientoController extends Controller
             // Actualizar la ubicación o máquina del producto
             $producto->ubicacion_id = $request->ubicacion_destino ?: null;
             $producto->maquina_id = $request->maquina_id ?: null;
-            $producto->estado = $request->ubicacion_destino ? 'almacenado' : 'elaborando';
+            $producto->estado = $request->ubicacion_destino ? 'almacenado' : 'consumido';
     
             // Guardar el producto
             $producto->save();
@@ -111,9 +111,8 @@ class MovimientoController extends Controller
                 'message' => $e->getMessage(),
                 'stack' => $e->getTraceAsString(),
             ]);
-    
             // Redirigir con un mensaje de error
-            return redirect()->back()->with('error', 'Ocurrió un error al registrar el movimiento. Inténtalo nuevamente.');
+            return redirect()->back()->with('error', 'Ocurrió un error al registrar el movimiento. Inténtalo nuevamente.' . $e);
         }
     }
     

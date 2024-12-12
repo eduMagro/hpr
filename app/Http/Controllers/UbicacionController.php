@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ubicacion;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\DB;
 class UbicacionController extends Controller
 {
 
@@ -58,49 +58,57 @@ class UbicacionController extends Controller
     // Método para guardar la ubicación en la base de datos
     public function store(Request $request)
     {
-        // Validación de los datos del formulario
-        $request->validate([
-            'almacen' => 'required|string|max:2',
-            'sector' => 'required|string|max:2',
-            'ubicacion' => 'required|string|max:2',
-
-        ], [
-            // Mensajes personalizados
-            'almacen.required' => 'El campo "almacen" es obligatorio.',
-            'almacen.string' => 'El campo "almacen" debe ser una cadena de texto.',
-            'almacen.max' => 'El campo "almacen" no puede tener más de 2 caracteres.',
-
-            'sector.required' => 'El campo "sector" es obligatorio.',
-            'sector.string' => 'El campo "sector" debe ser una cadena de texto.',
-            'sector.max' => 'El campo "sector" no puede tener más de 2 caracteres.',
-
-            'ubicacion.required' => 'El campo "ubicacion" es obligatorio.',
-            'ubicacion.string' => 'El campo "ubicacion" debe ser una cadena de texto.',
-            'ubicacion.max' => 'El campo "ubicacion" no puede tener más de 2 caracteres.',
-        ]);
-
-        // Concatenar los campos para formar el código
-        $codigo = $request->almacen . $request->sector . $request->ubicacion;
-
-        // Crear la descripción concatenando "Almacén", "Sector" y "Ubicación"
-        $descripcion = 'Almacén ' . $request->almacen . ', Sector ' . (int) $request->sector . ', Ubicación ' . (int) $request->ubicacion;
-
-
+        DB::beginTransaction(); // Iniciar la transacción
         try {
+            // Validación de los datos del formulario
+            $request->validate([
+                'almacen' => 'required|string|max:2',
+                'sector' => 'required|string|max:2',
+                'ubicacion' => 'required|string|max:2',
+            ], [
+                // Mensajes personalizados
+                'almacen.required' => 'El campo "almacen" es obligatorio.',
+                'almacen.string' => 'El campo "almacen" debe ser una cadena de texto.',
+                'almacen.max' => 'El campo "almacen" no puede tener más de 2 caracteres.',
+
+                'sector.required' => 'El campo "sector" es obligatorio.',
+                'sector.string' => 'El campo "sector" debe ser una cadena de texto.',
+                'sector.max' => 'El campo "sector" no puede tener más de 2 caracteres.',
+
+                'ubicacion.required' => 'El campo "ubicacion" es obligatorio.',
+                'ubicacion.string' => 'El campo "ubicacion" debe ser una cadena de texto.',
+                'ubicacion.max' => 'El campo "ubicacion" no puede tener más de 2 caracteres.',
+            ]);
+
+            // Concatenar los campos para formar el código
+            $codigo = $request->almacen . $request->sector . $request->ubicacion;
+
+            // Crear la descripción concatenando "Almacén", "Sector" y "Ubicación"
+            $descripcion = 'Almacén ' . $request->almacen . ', Sector ' . (int) $request->sector . ', Ubicación ' . (int) $request->ubicacion;
+
+            // Verificar si ya existe una ubicación con ese código
+            if (Ubicacion::where('codigo', $codigo)->exists()) {
+                DB::rollBack();  // Revertir la transacción si ocurre un error
+                return back()->withErrors(['error' => 'Esta ubicación ya existe.'])->withInput();
+            }
+
             // Intentar crear una nueva ubicación en la base de datos
             Ubicacion::create([
                 'codigo' => $codigo,  // Guardamos el código generado
                 'descripcion' => $descripcion,  // Guardamos la descripción generada
             ]);
 
+            DB::commit();  // Confirmar la transacción
             // Redirigir a la página de listado con un mensaje de éxito
             return redirect()->route('ubicaciones.index')->with('success', 'Ubicación creada con éxito.');
 
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Si ocurre una excepción (por ejemplo, código duplicado)
-            return back()->withErrors(['codigo' => 'Ya existe una ubicación con el mismo código.'])->withInput();
+        } catch (\Exception $e) {  // Captura de cualquier tipo de excepción
+            DB::rollBack();  // Revertir la transacción si ocurre un error
+            // Registrar el error o manejarlo de acuerdo a lo necesario
+            return back()->withErrors(['error' => 'Hubo un problema al guardar la ubicación.'])->withInput();
         }
     }
+
 
     // Mostrar el formulario para editar una ubicación existente
     public function edit($id)

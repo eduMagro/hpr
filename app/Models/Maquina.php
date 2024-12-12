@@ -11,7 +11,12 @@ class Maquina extends Model
 
     protected $table = 'maquinas';
     protected $fillable = [
-        'codigo', 'nombre'
+        'codigo',
+        'nombre',
+        'diametro_min',
+        'diametro_max',
+        'peso_min',
+        'peso_max',
     ];
     public function productos()
     {

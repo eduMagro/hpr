@@ -53,12 +53,12 @@ class ProfileController extends Controller
 
     /**
      * Display the user's profile form.
-     */
-    public function edit($id)
-    {
-        $user = User::findOrFail($id); // Busca el usuario por ID
-        return view('profile.edit', compact('user'));
-    }
+     */public function edit()
+{
+    $user = Auth::user();  // Obtiene al usuario autenticado
+
+    return view('profile.edit', compact('user'));  // Pasa el usuario a la vista
+}
     
     /**
      * Update the user's profile information.

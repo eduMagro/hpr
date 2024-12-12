@@ -43,38 +43,66 @@ class MaquinaController extends Controller
     public function store(Request $request)
     {
         DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
-        // Validación de los datos del formulario
-        $request->validate([
-            'codigo' => 'required|string|max:6',
-            'nombre' => 'required|string|max:40',
-
-        ], [
-            // Mensajes personalizados
-            'codigo.required' => 'El campo "código" es obligatorio.',
-            'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
-            'codigo.max' => 'El campo "código" no puede tener más de 6 caracteres.',
-
-            'nombre.required' => 'El campo "nombre" es obligatorio.',
-            'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
-            'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
-        ]);
-
         try {
-            // Intentar crear una nueva ubicación en la base de datos
-            Maquina::create([
-                'codigo' => $request->codigo,  // Guardamos el código generado
-                'nombre' => $request->nombre,  // Guardamos la descripción generada
+            // Validación de los datos del formulario
+            $request->validate([
+                'codigo' => 'required|string|max:6|unique:maquinas,codigo',
+                'nombre' => 'required|string|max:40|unique:maquinas,nombre',
+                'diametro_min' => 'required|integer',
+                'diametro_max' => 'required|integer',
+                'peso_min' => 'integer',
+                'peso_max' => 'integer',
+            ], [
+                // Mensajes personalizados
+                'codigo.required' => 'El campo "código" es obligatorio.',
+                'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
+                'codigo.max' => 'El campo "código" no puede tener más de 6 caracteres.',
+                'codigo.unique' => 'Ya existe una máquina con el mismo código',
+
+                'nombre.required' => 'El campo "nombre" es obligatorio.',
+                'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
+                'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
+                'nombre.unique' => 'Ya existe una máquina con el mismo nombre',
+
+                'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
+                'diametro_min.integer' => 'El campo "diámetro mínimo" debe ser un número entero.',
+
+                'diametro_max.required' => 'El campo "diámetro máximo" es obligatorio.',
+                'diametro_max.integer' => 'El campo "diámetro máximo" debe ser un número entero.',
+
+                // 'peso_min.required'     => 'El campo "peso mínimo" es obligatorio.',
+                'peso_min.integer' => 'El campo "peso mínimo" debe ser un número entero.',
+
+                //'peso_max.required'     => 'El campo "peso máximo" es obligatorio.',
+                'peso_max.integer' => 'El campo "peso máximo" debe ser un número entero.',
             ]);
+
+
+            // Crear la nueva máquina en la base de datos
+            Maquina::create([
+                'codigo' => $request->codigo,
+                'nombre' => $request->nombre,
+                'diametro_min' => $request->diametro_min,
+                'diametro_max' => $request->diametro_max,
+                'peso_min' => $request->peso_min,
+                'peso_max' => $request->peso_max,
+            ]);
+
             DB::commit();  // Confirmamos la transacción
             // Redirigir a la página de listado con un mensaje de éxito
             return redirect()->route('maquinas.index')->with('success', 'Máquina creada con éxito.');
 
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Mostrar todos los errores de validación
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            // Si ocurre una excepción (por ejemplo, código duplicado)
-            return back()->withErrors(['codigo' => 'Ya existe una máquina con el mismo código.'])->withInput();
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            // Mostrar errores generales
+            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
 
     public function edit($id)
     {
@@ -89,8 +117,30 @@ class MaquinaController extends Controller
     {
         // Validar los datos del formulario
         $validatedData = $request->validate([
-            'codigo' => 'required|string|max:255|unique:maquinas,codigo,' . $id,
-            'nombre' => 'required|string|max:255',
+            'codigo' => 'required|string|max:6|unique:maquinas,codigo,' . $id,
+            'nombre' => 'required|string|max:40',
+            'diametro_min' => 'required|integer',
+            'diametro_max' => 'required|integer',
+            'peso_min' => 'nullable|integer',
+            'peso_max' => 'nullable|integer',
+        ], [
+            'codigo.required' => 'El campo "código" es obligatorio.',
+            'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
+            'codigo.max' => 'El campo "código" no puede tener más de 6 caracteres.',
+            'codigo.unique' => 'El código ya existe, por favor ingrese otro diferente.',
+    
+            'nombre.required' => 'El campo "nombre" es obligatorio.',
+            'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
+            'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
+    
+            'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
+            'diametro_min.integer' => 'El "diámetro mínimo" debe ser un número entero.',
+    
+            'diametro_max.required' => 'El campo "diámetro máximo" es obligatorio.',
+            'diametro_max.integer' => 'El "diámetro máximo" debe ser un número entero.',
+    
+            'peso_min.integer' => 'El "peso mínimo" debe ser un número entero.',
+            'peso_max.integer' => 'El "peso máximo" debe ser un número entero.',
         ]);
     
         // Iniciar la transacción
@@ -111,9 +161,26 @@ class MaquinaController extends Controller
         } catch (\Exception $e) {
             // Revertir la transacción en caso de error
             DB::rollBack();
-    
             // Redirigir con un mensaje de error
-            return redirect()->back()->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente.');
+            return redirect()->back()->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente. Error: ' . $e->getMessage());
+        }
+    }
+    
+    public function destroy($id)
+    {
+        DB::beginTransaction();
+        try {
+            // Buscar la maquina a eliminar
+            $maquina = Maquina::findOrFail($id);
+
+            // Eliminar la entrada
+            $maquina->delete();
+
+            DB::commit();  // Confirmamos la transacción
+            return redirect()->route('maquinas.index')->with('success', 'Máquina eliminada correctamente.');
+        } catch (\Exception $e) {
+            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            return redirect()->back()->with('error', 'Ocurrió un error al eliminar la entrada: ' . $e->getMessage());
         }
     }
 }

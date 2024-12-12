@@ -13,10 +13,15 @@ class Producto extends Model
     protected $fillable = [
         'fabricante',
         'nombre',
-        'qr',
+        'tipo',
+        'diametro',
+        'longitud',
         'n_colada',
         'n_paquete',
+        'peso_inicial',
+        'peso_stock',
         'ubicacion_id',  // Relación con la ubicación
+        'maquina_id',
         'estado',
         'otros',
     ];

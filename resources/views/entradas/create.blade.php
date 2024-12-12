@@ -25,8 +25,6 @@
             {{ session('success') }}
         </div>
     @endif
-
-
     <style>
         .accordion-button {
             font-weight: bold;
@@ -51,8 +49,7 @@
         input[disabled] {
             background-color: #e9ecef;
         }
-    </style>
-    <style>
+
         /* Estilo para los títulos de los productos */
         .product-title {
             font-weight: bold;
@@ -66,7 +63,7 @@
             /* Espaciado entre las letras */
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
             /* Sombra sutil para dar profundidad */
-            margin-bottom: 12px;
+            margin: 12px 0;
             /* Espacio debajo del título */
             padding: 8px;
             /* Relleno alrededor del texto */
@@ -74,7 +71,6 @@
             /* Fondo de color claro */
         }
     </style>
-
 
     <div class="container my-5">
         <div class="accordion" id="fabricantesAccordion">
@@ -98,13 +94,19 @@
                                 <input type="text" name="albaran" id="albaran" class="form-control" required>
                             </div>
 
+                            <!-- Peso Total -->
+                            <div class="form-group">
+                                <label for="peso_total">Peso TOTAL</label>
+                                <input type="text" name="peso_total" id="peso_total" class="form-control" required>
+                            </div>
+
                             <!-- Número de productos -->
                             <div class="form-group">
                                 <label for="cantidad_productos">Cantidad de Productos</label>
                                 <input type="number" name="cantidad_productos" id="cantidad_productos"
                                     class="form-control" min="1" required>
                             </div>
-                            
+
                             <!-- Contenedor para productos -->
                             <div id="productos_container">
                                 <!-- Los productos se agregarán aquí dinámicamente -->
@@ -184,7 +186,7 @@
             let cantidad = this.value;
             let container = document.getElementById('productos_container');
             let currentProductForms = container.querySelectorAll(
-            '.product-form'); // Obtener los formularios existentes
+                '.product-form'); // Obtener los formularios existentes
 
             // Si la cantidad de productos es mayor, agregamos nuevos formularios
             if (cantidad > currentProductForms.length) {
@@ -194,21 +196,31 @@
                     div.classList.add('product-form');
 
                     div.innerHTML = `
+                    
                         <h4 class="product-title">Producto ${i + 1}</h4>
-                        <div class="form-group">
+                        <div class="form-group" style="position: absolute; left: -9999px;">
                             <label for="fabricante${i + 1}">Fabricante</label>
                             <input type="text" name="fabricante[]" id="fabricante${i + 1}" class="form-control"  value="MEGASA" readonly>
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="position: absolute; left: -9999px;">
                             <label for="producto_nombre_${i + 1}">Nombre del Producto</label>
                             <input type="text" name="producto_nombre[]" id="producto_nombre_${i + 1}" class="form-control" value="Corrugado" readonly>
+                        </div>
+                        <!-- Tipo de Producto -->
+                        <div class="form-group">
+                            <label for="tipo_producto_${i + 1}">Tipo de Producto</label><br>
+                            <select name="tipo_producto[]" id="tipo_producto_${i + 1}" required>
+                                <option value="" disabled selected>Seleccione el tipo de producto</option>
+                                <option value="encarretado">Encarretado</option>
+                                <option value="barra">Barra</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="producto_codigo_${i + 1}">Código del Producto</label>
                             <input type="text" name="producto_codigo[]" id="producto_codigo_${i + 1}" class="form-control" required>
                         </div>
                         <div class="form-group">
-                            <label for="producto_peso_${i + 1}">Peso del Producto</label>
+                            <label for="producto_peso_${i + 1}">Peso Inicial</label>
                             <input type="number" name="producto_peso[]" id="producto_peso_${i + 1}" class="form-control" step="0.01">
                         </div>
                         <div class="form-group">
@@ -216,8 +228,8 @@
                             <input type="text" name="producto_otros[]" id="producto_otros_${i + 1}" class="form-control">
                         </div>
                         <div class="form-group">
-                            <label for="ubicacion_id_${i + 1}">Ubicación</label>
-                            <select name="ubicacion_id[]" id="ubicacion_id_${i + 1}" class="form-control" required>
+                            <label for="ubicacion_id_${i + 1}">Ubicación</label><br>
+                            <select name="ubicacion_id[]" id="ubicacion_id_${i + 1}" required>
                                 <option value="">Seleccione una ubicación</option>
                                 @foreach ($ubicaciones as $ubicacion)
                                     <option value="{{ $ubicacion->id }}">{{ $ubicacion->descripcion }}</option>
