@@ -14,6 +14,13 @@ class Ubicacion extends Model
         'codigo', 'descripcion'
     ];
 
+    public $timestamps = true;
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+    
+
     // Relación con la tabla 'entradas'
     public function entradas()
     {

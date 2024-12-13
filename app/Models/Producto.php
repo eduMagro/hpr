@@ -26,6 +26,13 @@ class Producto extends Model
         'otros',
     ];
 
+    public $timestamps = true;
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+    
+
     /**
      * Relación con la tabla 'entradas'
      * Un producto pertenece a una única entrada (relación uno a uno)

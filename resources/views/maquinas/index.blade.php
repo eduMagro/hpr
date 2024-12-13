@@ -28,7 +28,7 @@
     @endif
 
     <div class="container mx-auto px-4 py-6">
-            <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
+            <!-- Botón para crear una nueva maquina con estilo Bootstrap -->
             <div class="mb-4">
                 <a href="{{ route('maquinas.create') }}" class="btn btn-primary">
                     Crear Nueva Máquina

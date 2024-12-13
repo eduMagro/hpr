@@ -19,8 +19,14 @@ class User extends Authenticatable
      * 
      * 
      */
+    public $timestamps = true;
 
      protected $table = 'users';
+     protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+    
       
     protected $fillable = [
         'name',

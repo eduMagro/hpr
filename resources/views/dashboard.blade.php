@@ -67,7 +67,7 @@
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="#">
+                            <a href="{{ route('planillas.index') }}">
                                 <img width="100" height="100" src="https://img.icons8.com/arcade/64/terms-and-conditions.png" alt="terms-and-conditions"/>
                                 <span>Planillas</span>
                             </a>

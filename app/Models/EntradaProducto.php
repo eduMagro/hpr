@@ -17,6 +17,14 @@ class EntradaProducto extends Model
         'ubicacion_id',   // ID de la ubicación asociada
         'users_id',
     ];
+
+    public $timestamps = true;
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+    
+
     // Definir las relaciones
     public function entry()
     {

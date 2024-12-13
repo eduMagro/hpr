@@ -18,6 +18,12 @@ class Movimiento extends Model
         'maquina_id',
         'users_id',
     ];
+    public $timestamps = true;
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+    
 
     // Relaciones
     public function producto()

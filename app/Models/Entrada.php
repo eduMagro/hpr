@@ -20,6 +20,13 @@ class Entrada extends Model
         'otros',
     ];
 
+    public $timestamps = true;
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+    
+
     /**
      * Relación con la tabla 'ubicaciones'
      * Una entrada pertenece a una ubicación

@@ -28,6 +28,8 @@ class Planilla extends Model
         'seccion',
         'descripcion',
         'poblacion',
+        'codigo', // Asegúrate de que este campo esté aquí
+        'peso_total',
     ];
 
     /**
