@@ -60,8 +60,8 @@
                             <p><strong>Origen:</strong>
                                 @if ($movimiento->ubicacionOrigen && $movimiento->ubicacionOrigen->descripcion)
                                     {{ $movimiento->ubicacionOrigen->descripcion }}
-                                @elseif ($movimiento->maquina && $movimiento->maquina->nombre)
-                                    {{ $movimiento->maquina->nombre }}
+                                @elseif ($movimiento->maquinaOrigen && $movimiento->maquinaOrigen->nombre)
+                                    {{ $movimiento->maquinaOrigen->nombre }}
                                 @else
                                     Sin origen
                                 @endif
@@ -88,7 +88,8 @@
                             <p>{{ 'Tipo de producto: ' . $movimiento->producto->tipo }}</p>
                             <p>{{ 'Diámetro: ' . $movimiento->producto->diametro }}</p>
                             <p>{{ 'Longitud: ' . $movimiento->producto->longitud }}</p>
-                            <a href="{{ route('productos.show', $movimiento->producto->id) }}" class="btn btn-sm btn-primary">Ver</a>
+                            <a href="{{ route('productos.show', $movimiento->producto->id) }}"
+                                class="btn btn-sm btn-primary">Ver</a>
                         @else
                             <p class="text-sm text-gray-500">No hay producto asociado a este movimiento.</p>
                         @endif
@@ -97,7 +98,6 @@
 
                         <!-- Botones de acción -->
                         <div class="flex justify-between mt-4">
-  
                             <form action="{{ route('movimientos.destroy', $movimiento->id) }}" method="POST"
                                 onsubmit="return confirm('¿Estás seguro de querer eliminar este movimiento?');">
                                 @csrf
@@ -111,6 +111,7 @@
                 <p class="text-gray-500">No hay movimientos registrados ahora mismo.</p>
             @endif
         </div>
+
 
         <!-- Paginación -->
         @if (isset($registrosMovimientos) && $registrosMovimientos instanceof \Illuminate\Pagination\LengthAwarePaginator)

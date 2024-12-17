@@ -36,8 +36,8 @@
             </div>
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('ubicaciones.index') }}" class="form-inline mt-3 mb-3">
-            <input type="text" name="codigo" class="form-control mb-3" placeholder="Buscar por código QR"
-                value="{{ request('codigo') }}">
+            <input type="text" name="id" class="form-control mb-3" placeholder="Buscar ubicación por QR"
+                value="{{ request('id') }}">
             <button type="submit" class="btn btn-info ml-2">
                 <i class="fas fa-search"></i> Buscar
             </button>
@@ -54,16 +54,16 @@
                         <p><strong>Descripción:</strong> {{ $ubicacion->descripcion }}</p>
                         <p>
 
-                            <button id="generateQR" onclick="generateAndPrintQR('{{ $ubicacion->codigo }}')"
+                            <button id="generateQR" onclick="generateAndPrintQR('{{ $ubicacion->id }}', '{{ $ubicacion->codigo }}')"
                                 class="btn btn-primary">QR</button>
                         </p>
                         <div id="qrCanvas" style="display:none;"></div>
 
 
                         <!-- Mostrar los productos que contiene esta ubicación -->
-                        <h4 class="mt-4 font-semibold">Productos en esta ubicación:</h4>
+                        <h4 class="mt-4 font-semibold">Materia prima en esta ubicación:</h4>
                         @if ($ubicacion->productos->isEmpty())
-                            <p>No hay productos en esta ubicación.</p>
+                            <p>No hay materia Prima en esta ubicación.</p>
                         @else
                             <ul class="list-disc pl-6 break-words">
                                 @foreach ($ubicacion->productos as $producto)
@@ -100,43 +100,49 @@
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
-        function generateAndPrintQR(data) {
-            // Reemplazamos los caracteres problemáticos antes de generar el QR
-            const safeData = data.replace(/_/g, '%5F'); // Reemplazamos _ por %5F
-
-            // Elimina cualquier contenido previo del canvas
+        function generateAndPrintQR(id, codigo) {
+            // Validamos que el ID sea válido
+            if (!id || isNaN(id)) {
+                alert("El ID proporcionado no es válido. Por favor, verifica.");
+                return;
+            }
+    
+            // Limpiamos el contenedor del QR
             const qrContainer = document.getElementById('qrCanvas');
-            qrContainer.innerHTML = ""; // Limpia el canvas si ya existe un QR previo
-
-            // Generar el código QR con el texto seguro
+            qrContainer.innerHTML = ""; // Elimina cualquier QR previo
+    
+            // Generamos el QR con el ID
             const qrCode = new QRCode(qrContainer, {
-                text: safeData, // Usamos el texto transformado
-                width: 200,
+                text: id.toString(), // Usamos el ID convertido a texto
+                width: 100,
                 height: 200,
             });
-
-            // Esperar a que el QR esté listo para imprimir
+    
+            // Esperamos a que el QR esté listo antes de imprimirlo
             setTimeout(() => {
-                const qrImg = qrContainer.querySelector('img'); // Obtiene la imagen del QR
+                const qrImg = qrContainer.querySelector('img'); // Obtenemos la imagen del QR
                 if (!qrImg) {
                     alert("Error al generar el QR. Intenta nuevamente.");
                     return;
                 }
-
-                // Abrir ventana de impresión
+    
+                // Creamos una ventana para la impresión
                 const printWindow = window.open('', '_blank');
                 printWindow.document.write(`
-                  <html>
-                      <head><title>Imprimir QR</title></head>
-                      <body>
-                          <img src="${qrImg.src}" alt="Código QR" style="width:100px">
-                   
-                          <script>window.print();<\/script>
-                      </body>
-                  </html>
-              `);
+                    <html>
+                        <body>
+                            <img src="${qrImg.src}" alt="Código QR" style="width:200px; height:200px;">
+                            <p>${codigo}</p>
+                            <script>
+                                window.print();
+                                setTimeout(() => window.close(), 1000); // Cierra la ventana después de imprimir
+                            <\/script>
+                        </body>
+                    </html>
+                `);
                 printWindow.document.close();
-            }, 500); // Tiempo suficiente para generar el QR
+            }, 500); // Tiempo de espera para que el QR se genere completamente
         }
     </script>
+    
 </x-app-layout>

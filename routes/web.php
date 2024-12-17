@@ -41,13 +41,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', ProfileController::class);
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);
+    Route::get('/productos/{id}/origen', [ProductoController::class, 'obtenerOrigen'])->name('productos.obtenerOrigen')->middleware('auth');
 
-    
-Route::resource('planillas', PlanillaController::class);
-Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');
-Route::resource('conjuntos', ConjuntoController::class);
-Route::resource('elementos', ElementoController::class);
-    
+
+    Route::resource('planillas', PlanillaController::class);
+    Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');
+    Route::resource('conjuntos', ConjuntoController::class);
+    Route::resource('elementos', ElementoController::class);
+
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 });
 

@@ -14,29 +14,46 @@ use Illuminate\Support\Facades\DB;
 use App\Services\Fabricantes\FabricanteServiceFactory;
 use Exception;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Validator;
 
 class EntradaController extends Controller
 {
 
+    //------------------------------------------------------------------------------------ FILTROS
+    private function aplicarFiltros($query, Request $request)
+    {
+        $buscar = $request->input('albaran');
+        if (!empty($buscar)) {
+            $query->where('albaran', $buscar);
+        }
+        return $query;
+    }
+
     // Mostrar todas las entradas
-    public function index()
+    public function index(Request $request)
     {
         try {
-            // Obtener las entradas paginadas con sus relaciones (ubicación, usuario y producto)
-            $entradas = Entrada::with(['ubicacion', 'user', 'productos'])  // Cargamos las relaciones necesarias
-                ->orderBy('created_at', 'desc')  // Opcional: ordenar por fecha de creación
-                ->paginate(10);  // 10 entradas por página
+            // Inicializa la consulta de productos con sus relaciones necesarias
+            $query = Entrada::with(['ubicacion', 'user', 'productos']);
+
+            // Aplica los filtros mediante un método separado
+            $query = $this->aplicarFiltros($query, $request);
+
+            // Obtener las entradas paginadas, ordenadas por fecha de creación
+            $entradas = $query->orderBy('created_at', 'desc')->paginate(10);
 
             // Devolver la vista con las entradas
             return view('entradas.index', compact('entradas'));
         } catch (ValidationException $e) {
-            // Mostrar todos los errores de validación
-            return redirect()->back()->withErrors($e->errors())->withInput();
+            // Manejo de excepciones de validación
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
         } catch (Exception $e) {
-            // Mostrar errores generales
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+            // Manejo de excepciones generales
+            return redirect()->back()
+                ->with('error', 'Ocurrió un error inesperado: ' . $e->getMessage());
         }
-
     }
 
 
@@ -58,14 +75,14 @@ class EntradaController extends Controller
     }
 
     public function store(Request $request)
-    {    
+    {
         try {
             // Obtener el servicio adecuado para el fabricante
             $fabricanteService = FabricanteServiceFactory::getService($request->fabricante);
-    
+
             // Delegar la lógica específica al servicio
             $fabricanteService->procesar($request);
-    
+
             return redirect()->route('entradas.index')->with('success', 'Entrada registrada correctamente.');
         } catch (ValidationException $e) {
             // Manejar errores de validación
@@ -88,7 +105,7 @@ class EntradaController extends Controller
         DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
         try {
             // Validar los datos enviados
-            $validatedData = $request->validate([
+           $request->validate([
                 'albaran' => 'nullable|string|max:255',
                 'fabricante' => 'nullable|array',
                 'fabricante.*' => 'nullable|string|max:255',
@@ -115,7 +132,7 @@ class EntradaController extends Controller
             // Actualizar los productos
             foreach ($request->producto_nombre as $index => $nombre) {
                 // Dividir el código de barras en segmentos
-                $segmentos = explode('?', $request->producto_codigo[$index]);
+                $segmentos = explode('_', $request->producto_codigo[$index]);
 
                 if (count($segmentos) !== 7) {
                     return redirect()->back()->with('error', 'El código de barras del fabricante no tiene el formato esperado.');
@@ -174,11 +191,11 @@ class EntradaController extends Controller
             }
             DB::commit();  // Confirmamos la transacción
             return redirect()->route('entradas.index')->with('success', 'Entrada actualizada correctamente con ' . count($request->producto_nombre) . ' productos.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             // Mostrar todos los errores de validación
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Mostrar errores generales
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
@@ -200,7 +217,7 @@ class EntradaController extends Controller
             $entrada->delete();
             DB::commit();  // Confirmamos la transacción
             return redirect()->route('entradas.index')->with('success', 'Entrada eliminada correctamente.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar la entrada: ' . $e->getMessage());
         }

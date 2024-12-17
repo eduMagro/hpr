@@ -4,7 +4,6 @@
             {{ __('Importar Planillas') }}
         </h2>
     </x-slot>
-
     <!-- Mostrar errores de validación -->
     @if ($errors->any())
         <div class="alert alert-danger">
@@ -15,7 +14,6 @@
             </ul>
         </div>
     @endif
-
     <!-- Mostrar mensajes de éxito o error -->
     @if (session('error'))
         <div class="alert alert-danger">

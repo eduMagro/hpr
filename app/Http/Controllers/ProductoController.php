@@ -84,19 +84,32 @@ class ProductoController extends Controller
     }
 
   //------------------------------------------------------------------------------------ UPDATE
-    public function update(Request $request, Producto $producto)
-    {
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'descripcion' => 'required|string',
-            'precio' => 'required|numeric',
-            'stock' => 'required|integer',
-        ]);
+  public function update(Request $request, Producto $producto)
+  {
+      // Definir las reglas de validación correspondientes a los campos del formulario de edición
+      $validatedData = $request->validate([
+          'fabricante'     => 'required|string|max:50',
+          'nombre'         => 'required|string|max:50',
+          'tipo'           => 'required|string|max:50',
+          'diametro'       => 'required|numeric',
+          'longitud'       => 'required|numeric',
+          'n_colada'       => 'required|string|max:50',
+          'n_paquete'      => 'required|string|max:50',
+          'peso_inicial'   => 'required|numeric',
+          'peso_stock'     => 'required|numeric',
+          'otros'          => 'nullable|string',
+      ]);
+  
+    // Asignar el valor de 'peso_stock' igual al de 'peso_inicial'
+    $validatedData['peso_stock'] = $validatedData['peso_inicial'];
 
-        $producto->update($request->all());
-
-        return redirect()->route('productos.index')->with('success', 'Producto actualizado exitosamente.');
-    }
+    // Actualizar el producto con los datos validados
+    $producto->update($validatedData);
+  
+      // Redireccionar con un mensaje de éxito
+      return redirect()->route('productos.index')->with('success', 'Producto actualizado con éxito.');
+  }
+  
 
     //------------------------------------------------------------------------------------ DESTROY
     public function destroy(Producto $producto)

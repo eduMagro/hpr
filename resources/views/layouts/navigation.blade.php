@@ -15,6 +15,27 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('INICIO') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('productos.index')" :active="request()->routeIs('productos.index')">
+                        {{ __('MATERIA PRIMA') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('ubicaciones.index')" :active="request()->routeIs('ubicaciones.index')">
+                        {{ __('UBICACIONES') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('entradas.index')" :active="request()->routeIs('entradas.index')">
+                        {{ __('ENTRADAS') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('entradas.index')" :active="request()->routeIs('entradas.index')">
+                        {{ __('SALIDAS') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('movimientos.index')" :active="request()->routeIs('movimientos.index')">
+                        {{ __('MOVIMIENTOS') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('maquinas.index')" :active="request()->routeIs('maquinas.index')">
+                        {{ __('MÁQUINAS') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('planillas.index')" :active="request()->routeIs('planillas.index')">
+                        {{ __('PLANILLAS') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -71,7 +92,7 @@
                 {{ __('Inicio') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('productos.index')" :active="request()->routeIs('productos.index')">
-                {{ __('Materiales') }}
+                {{ __('Materia Prima') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('ubicaciones.index')" :active="request()->routeIs('ubicaciones.index')">
                 {{ __('Ubicaciones') }}
@@ -88,7 +109,7 @@
             <x-responsive-nav-link :href="route('maquinas.index')" :active="request()->routeIs('maquinas.index')">
                 {{ __('Máquinas') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('maquinas.index')" :active="request()->routeIs('maquinas.index')">
+            <x-responsive-nav-link :href="route('planillas.index')" :active="request()->routeIs('planillas.index')">
                 {{ __('Planillas') }}
             </x-responsive-nav-link>    
         </div>

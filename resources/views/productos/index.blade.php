@@ -17,7 +17,6 @@
         <!-- Tarjetas de productos -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @forelse($registrosProductos as $producto)
-            
                 <div class="bg-white shadow-md rounded-lg p-4">
                     <h3 class="font-bold text-lg text-gray-700">ID Producto: {{ $producto->id }}</h3>
                     <p><strong>Fabricante:</strong> {{ $producto->fabricante }}</p>
@@ -52,14 +51,18 @@
                     <p class="text-gray-600 mt-2">{{ $producto->created_at->format('d/m/Y H:i') }}</p>
 
                     <hr class="my-2 border-gray-300">
-
                     <div class="mt-2 flex justify-between">
-                        <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
-                            onsubmit="return confirm('¿Estás seguro de querer eliminar este producto?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-red-500">Eliminar</button>
-                        </form>
+                        <!-- Enlace para editar -->
+                        <a href="{{ route('productos.edit', $producto->id) }}"
+                            class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+                        <div class="mt-2 flex justify-between">
+                            <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
+                                onsubmit="return confirm('¿Estás seguro de querer eliminar este producto?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-500">Eliminar</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             @empty

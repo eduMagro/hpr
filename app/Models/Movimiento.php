@@ -16,6 +16,7 @@ class Movimiento extends Model
         'ubicacion_origen',
         'ubicacion_destino',
         'maquina_id',
+        'maquina_origen',
         'users_id',
     ];
     public $timestamps = true;
@@ -23,7 +24,7 @@ class Movimiento extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    
+
 
     // Relaciones
     public function producto()
@@ -44,6 +45,11 @@ class Movimiento extends Model
     public function maquina()
     {
         return $this->belongsTo(Maquina::class, 'maquina_id');
+    }
+    // Nueva relación para maquina_origen
+    public function maquinaOrigen()
+    {
+        return $this->belongsTo(Maquina::class, 'maquina_origen');
     }
 
     public function usuario()

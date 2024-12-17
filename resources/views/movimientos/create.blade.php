@@ -68,7 +68,7 @@
                             <div class="form-group mb-4">
                                 <label for="ubicacion_destino" class="form-label fw-bold">Ubicación Destino</label>
                                 <select id="ubicacion_destino" name="ubicacion_destino" class="form-control form-control-lg">
-                                    <option value="">Seleccione una nueva ubicación</option>
+                                    <option selected value="">Seleccione una nueva ubicación</option>
                                     @foreach ($ubicaciones as $ubicacion)
                                         <option value="{{ $ubicacion->id }}">{{ $ubicacion->descripcion }}</option>
                                     @endforeach
@@ -79,7 +79,7 @@
                             <div class="form-group mb-4">
                                 <label for="maquina_id" class="form-label fw-bold">Máquina Destino</label>
                                 <select id="maquina_id" name="maquina_id" class="form-control form-control-lg">
-                                    <option value="">Seleccione una máquina</option>
+                                    <option selected value="">Seleccione una máquina</option>
                                     @foreach ($maquinas as $maquina)
                                         <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
                                     @endforeach

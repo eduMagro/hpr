@@ -46,6 +46,10 @@
                     <hr class="my-2 border-gray-300">
 
                     <div class="mt-2 flex justify-between">
+                         <!-- Enlace para editar -->
+                         <a href="{{ route('productos.edit', $detalles_producto->id) }}"
+                            class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+                            <!-- Formulario para eliminar -->
                         <form action="{{ route('productos.destroy', $detalles_producto->id) }}" method="POST"
                             onsubmit="return confirm('¿Estás seguro de querer eliminar este producto?');">
                             @csrf
