@@ -158,6 +158,10 @@
                         'producto_otros',
                         'ubicacion_id'
                     ],
+                    producto_codigo: {
+                        minlength: 80,
+                        maxlength: 85 // Define el maxlength específico para MEGASA
+                    },
                 },
 
                 GETAFE: {
@@ -166,21 +170,38 @@
                         'producto_peso', 'producto_otros',
                         'ubicacion_id'
                     ],
+                    producto_codigo: {
+                        minlength: 9,
+                        maxlength: 9 // Define el maxlength específico para GETAFE
+                    },
                 },
 
                 NERVADUCTIL: {
                     campos: ['producto_nombre', 'tipo_producto', 'producto_codigo', 'diametro', 'longitud',
-                        'n_colada', 'n_paquete', 
+                        'n_colada', 'n_paquete',
                         'producto_peso', 'producto_otros',
                         'ubicacion_id'
                     ],
+                    producto_codigo: {
+                        minlength: 10,
+                        maxlength: 10 // Define el maxlength específico para NERVADUCTIL
+                    },
                 },
                 "SIDERURGICA SEVILLANA": { // Debe estar entre comillas porque contiene un espacio
-                    campos: ['producto_nombre', 'tipo_producto', 'producto_codigo', 'diametro', 'longitud', 'n_colada', 'producto_peso', 'producto_otros', 'ubicacion_id'],
+                    campos: ['producto_nombre', 'tipo_producto', 'producto_codigo', 'diametro', 'longitud',
+                        'n_colada', 'producto_peso', 'producto_otros', 'ubicacion_id'
+                    ],
+                    producto_codigo: {
+                        minlength: 100,
+                        maxlength: 100 // Define el maxlength específico para SIDERURGICA SEVILLANA
+                    },
                 },
             };
 
             const fabricantesData = {}; // Para almacenar los datos de cada fabricante dinámicamente
+            // Opciones permitidas para diametro y longitud
+            const diametroOpciones = [8, 10, 12, 16, 20, 25, 32];
+            const longitudOpciones = [6, 12, 14, 15, 16];
 
             // Iterar sobre cada formulario basado en el índice del fabricante
             @foreach ($fabricantes as $index => $fabricante)
@@ -240,12 +261,18 @@
                                             </div>
                                         `;
                                     } else if (campo === 'producto_codigo') {
+                                        // Obtener las configuraciones específicas del fabricante
+                                        const codigoConfig = config.producto_codigo || {};
+                                        const minlength = codigoConfig.minlength ? codigoConfig
+                                            .minlength : 10; // Valor por defecto
+                                        const maxlength = codigoConfig.maxlength ? codigoConfig
+                                            .maxlength : 255;
                                         html += `
                                             <div class="form-group mb-3">
                                                 <label for="${campoId}">Código del Producto</label>
-                                                <input type="text" name="producto_codigo[]" id="${campoId}" class="form-control" required maxlength="255">
+                                                <input type="text" name="producto_codigo[]" id="${campoId}" class="form-control" required maxlength="${config.producto_codigo.maxlength}">
                                                 <div class="invalid-feedback">
-                                                    Por favor, ingresa el código del producto (máximo 255 caracteres).
+                                                    Mínimo ${config.producto_codigo.minlength} y máximo ${config.producto_codigo.maxlength} caracteres.
                                                 </div>
                                             </div>
                                         `;
@@ -253,9 +280,12 @@
                                         html += `
                                             <div class="form-group mb-3">
                                                 <label for="${campoId}">Diámetro</label>
-                                                <input type="text" name="diametro[]" id="${campoId}" class="form-control" required>
+                                                <select name="diametro[]" id="${campoId}" class="form-control" required>
+                                                    <option value="" disabled selected>Seleccione el diámetro</option>
+                                                    ${diametroOpciones.map(op => `<option value="${op}">${op}</option>`).join('')}
+                                                </select>
                                                 <div class="invalid-feedback">
-                                                    Por favor, ingresa el diámetro.
+                                                    Por favor, selecciona un diámetro válido.
                                                 </div>
                                             </div>
                                         `;
@@ -263,9 +293,12 @@
                                         html += `
                                             <div class="form-group mb-3">
                                                 <label for="${campoId}">Longitud</label>
-                                                <input type="text" name="longitud[]" id="${campoId}" placeholder="Obligatorio solo para barras" class="form-control">
+                                                <select name="longitud[]" id="${campoId}" class="form-control">
+                                                    <option value="" disabled selected>Seleccione la longitud</option>
+                                                    ${longitudOpciones.map(op => `<option value="${op}">${op}</option>`).join('')}
+                                                </select>
                                                 <div class="invalid-feedback">
-                                                    Por favor, ingresa la longitud.
+                                                    Por favor, selecciona una longitud válida.
                                                 </div>
                                             </div>
                                         `;
@@ -362,7 +395,8 @@
 
                             // Mostrar un mensaje de error
                             alert(
-                                `El peso total (${pesoTotal}) no coincide con la suma de los pesos de los productos (${sumaPesos}).`);
+                                `El peso total (${pesoTotal}) no coincide con la suma de los pesos de los productos (${sumaPesos}).`
+                            );
 
                             // Opcional: Resaltar el campo peso_total
                             pesoTotalInput.classList.add('is-invalid');
@@ -382,5 +416,4 @@
                 });
         });
     </script>
-
 </x-app-layout>

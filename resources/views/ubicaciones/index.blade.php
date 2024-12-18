@@ -27,7 +27,7 @@
         </div>
     @endif
 
-    <div class="container mx-auto px-4 py-6">
+    <div class="container mx-auto px-3 py-6">
             <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
             <div class="mb-4">
                 <a href="{{ route('ubicaciones.create') }}" class="btn btn-primary">
@@ -44,7 +44,7 @@
         </form>
 
         <!-- Usamos una estructura de tarjetas para mostrar las ubicaciones -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             @if (isset($registrosUbicaciones) &&
                     $registrosUbicaciones instanceof \Illuminate\Pagination\LengthAwarePaginator &&
                     $registrosUbicaciones->isNotEmpty())
