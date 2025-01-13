@@ -43,7 +43,7 @@
     <select 
         id="role" 
         name="role" 
-        class="block m-3 w-full border-gray-300 rounded-lg shadow-sm hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200"
+        class="block mt-3 mb-3 p-3 w-full border-gray-300 rounded-lg shadow-sm hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200"
         required
     >
         <option value="" disabled selected>Selecciona una categoría</option>
