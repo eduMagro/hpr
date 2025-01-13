@@ -20,8 +20,8 @@ class RegisteredUserController extends Controller
     public function create(): View
     {
         if (auth()->user()->role !== 'admin') {
-            
-            return back()->with('abort', 'No tienes los permisos necesarios.');
+            return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
+
         }
         return view('auth.register');
     }
