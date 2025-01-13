@@ -8,39 +8,8 @@
                     <a href="{{ route('dashboard') }}">
                         <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
                     </a>
-                </div>
+                </div>          
 
-<<<<<<< HEAD
-                <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('INICIO') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('productos.index')" :active="request()->routeIs('productos.index')">
-                        {{ __('MATERIA PRIMA') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('ubicaciones.index')" :active="request()->routeIs('ubicaciones.index')">
-                        {{ __('UBICACIONES') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('entradas.index')" :active="request()->routeIs('entradas.index')">
-                        {{ __('ENTRADAS') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('entradas.index')" :active="request()->routeIs('entradas.index')">
-                        {{ __('SALIDAS') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('movimientos.index')" :active="request()->routeIs('movimientos.index')">
-                        {{ __('MOVIMIENTOS') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('maquinas.index')" :active="request()->routeIs('maquinas.index')">
-                        {{ __('MÁQUINAS') }}
-                    </x-nav-link>
-                    <x-nav-link :href="route('planillas.index')" :active="request()->routeIs('planillas.index')">
-                        {{ __('PLANILLAS') }}
-                    </x-nav-link>
-                </div>
-=======
-               
->>>>>>> 6fea693 (primercommit)
             </div>
 
             <!-- Settings Dropdown -->

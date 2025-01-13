@@ -39,11 +39,9 @@
                             </a>
                         </div>
                         <div class="icon-card">
-<<<<<<< HEAD
-                            @if (Auth::user()->id === 1)
-=======
-                           @if (in_array(Auth::user()->id, [1, 2, 3, 4]))
->>>>>>> 6fea693 (primercommit)
+
+                           @if (in_array(Auth::user()->id, [1, 2, 3, 4, 5]))
+
                                 <a href="{{ route('users.index') }}">
                                     <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000"
                                         alt="Usuarios">

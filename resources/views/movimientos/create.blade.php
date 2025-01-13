@@ -4,8 +4,7 @@
             {{ __('Crear Movimientos') }}
         </h2>
     </x-slot>
-<<<<<<< HEAD
-=======
+
 
 <script>
     function handleConfirm(confirmed) {
@@ -151,7 +150,6 @@
     }
 </script>
 
->>>>>>> 6fea693 (primercommit)
     <!-- Mostrar errores de validación -->
     @if ($errors->any())
         <div class="alert alert-danger">
@@ -173,8 +171,7 @@
             {{ session('success') }}
         </div>
     @endif
-<<<<<<< HEAD
-=======
+
 @if (session('confirm'))
     <div id="customConfirm" class="overlay" style="display: flex;">
         <div class="dialog">
@@ -194,8 +191,6 @@
         </div>
     </div>
 @endif
-
->>>>>>> 6fea693 (primercommit)
 
     <div class="container mt-5">
         <div class="row justify-content-center">

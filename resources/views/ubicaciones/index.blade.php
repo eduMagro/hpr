@@ -34,16 +34,7 @@
                     Crear Nueva Ubicación
                 </a>
             </div>
-<<<<<<< HEAD
-        <!-- FORMULARIO DE BUSQUEDA -->
-        <form method="GET" action="{{ route('ubicaciones.index') }}" class="form-inline mt-3 mb-3">
-            <input type="text" name="id" class="form-control mb-3" placeholder="Buscar ubicación por QR"
-                value="{{ request('id') }}">
-            <button type="submit" class="btn btn-info ml-2">
-                <i class="fas fa-search"></i> Buscar
-            </button>
-        </form>
-=======
+
      <!-- FORMULARIO DE BUSQUEDA -->
 		<form method="GET" action="{{ route('ubicaciones.index') }}" class="form-inline mt-3 mb-3">
 			<!-- Campo para buscar por ID -->
@@ -58,7 +49,6 @@
 				<i class="fas fa-search"></i> Buscar
 			</button>
 		</form>
->>>>>>> 6fea693 (primercommit)
 
         <!-- Usamos una estructura de tarjetas para mostrar las ubicaciones -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

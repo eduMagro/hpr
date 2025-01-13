@@ -9,13 +9,6 @@
         </p>
     </header>
 
-<<<<<<< HEAD
-    <x-danger-button
-        x-data=""
-        x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')"
-    >{{ __('Eliminar cuenta') }}</x-danger-button>
-
-=======
     <!-- Botón principal de eliminar cuenta -->
     <x-danger-button
         x-data=""
@@ -26,7 +19,7 @@
     </x-danger-button>
 
     <!-- Modal de confirmación -->
->>>>>>> 6fea693 (primercommit)
+
     <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
         <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
             @csrf
@@ -40,10 +33,9 @@
                 {{ __('Una vez que tu cuenta sea eliminada, todos sus recursos y datos serán eliminados permanentemente. Por favor, ingresa tu contraseña para confirmar que deseas eliminar tu cuenta de forma permanente.') }}
             </p>
 
-<<<<<<< HEAD
-=======
+
             <!-- Campo de contraseña -->
->>>>>>> 6fea693 (primercommit)
+
             <div class="mt-6">
                 <x-input-label for="password" value="{{ __('Contraseña') }}" class="sr-only" />
 
@@ -51,21 +43,7 @@
                     id="password"
                     name="password"
                     type="password"
-<<<<<<< HEAD
-                    class="mt-1 block w-3/4"
-                    placeholder="{{ __('Contraseña') }}"
-                />
 
-                <x-input-error :messages="$errors->userDeletion->get('password')" class="mt-2" />
-            </div>
-
-            <div class="mt-6 flex justify-end">
-                <x-secondary-button x-on:click="$dispatch('close')">
-                    {{ __('Cancelar') }}
-                </x-secondary-button>
-
-                <x-danger-button class="ms-3">
-=======
                     class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 placeholder-gray-400 text-gray-700 focus:outline-none"
                     placeholder="{{ __('Contraseña') }}"
                 />
@@ -85,7 +63,7 @@
                 <x-danger-button 
                     class="ms-3 bg-red-600 hover:bg-red-700 focus:bg-red-800 active:bg-red-900 text-white rounded-lg shadow-md transition-all duration-200"
                 >
->>>>>>> 6fea693 (primercommit)
+
                     {{ __('Eliminar cuenta') }}
                 </x-danger-button>
             </div>
