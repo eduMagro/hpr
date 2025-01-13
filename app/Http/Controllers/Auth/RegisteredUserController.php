@@ -21,7 +21,7 @@ class RegisteredUserController extends Controller
     {
         if (auth()->user()->role !== 'admin') {
             
-            return view('users.index')->with('abort', 'No tienes los permisos necesarios.');
+            return view('User.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         return view('auth.register');
     }
