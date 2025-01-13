@@ -13,11 +13,9 @@ return [
     |
     */
 
-<<<<<<< HEAD
-    'name' => env('APP_NAME', 'Laravel'),
-=======
+
     'name' => env('APP_NAME', 'Manager'),
->>>>>>> 6fea693 (primercommit)
+
 
     /*
     |--------------------------------------------------------------------------
