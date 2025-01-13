@@ -21,11 +21,11 @@ class RegisteredUserController extends Controller
     {
         if (auth()->user()->role !== 'admin') {
             return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
-
         }
+    
         return view('auth.register');
     }
-
+    
     /**
      * Handle an incoming registration request.
      *
