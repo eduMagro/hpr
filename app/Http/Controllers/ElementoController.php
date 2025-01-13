@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Elemento;
 use App\Models\Planilla;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ElementoController extends Controller
 {
@@ -91,6 +92,9 @@ public function show($id)
 
 public function actualizarEstado(Request $request)
 {
+
+            // Iniciar una transacción para asegurar la integridad de los datos
+            DB::beginTransaction();
     // Validar los datos enviados por el formulario
     $validated = $request->validate([
         'elemento_id' => 'required|exists:elementos,id',
@@ -104,6 +108,7 @@ public function actualizarEstado(Request $request)
     $maquina = $elemento->maquina;
 
     if (!$maquina) {
+        DB::rollBack();
         return redirect()->route('elementos.show', $planilla->id)
             ->with('error', 'La máquina asociada al elemento no existe.');
     }
@@ -113,6 +118,8 @@ public function actualizarEstado(Request $request)
         $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get();
 
         if ($productos->isEmpty()) {
+            
+            DB::rollBack();
             return redirect()->route('elementos.show', $planilla->id)
                 ->with('error', 'No se encontraron productos asociados con ese diámetro en la máquina.');
         }
@@ -140,7 +147,7 @@ public function actualizarEstado(Request $request)
 
         // Si no se pudo cubrir todo el peso, devolver un error
         if ($pesoRequerido > 0) {
-			DB::rollback();
+			DB::rollBack();
             return redirect()->route('elementos.show', $planilla->id)
                 ->with('error', 'No hay suficientes kilos disponibles en los productos de la máquina.');
         }
