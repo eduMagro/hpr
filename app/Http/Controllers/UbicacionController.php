@@ -59,8 +59,6 @@ public function index(Request $request)
     }
 }
 
-
->>>>>>> 6fea693 (primercommit)
     // Mostrar el formulario para crear una nueva ubicación
     public function create()
     {
