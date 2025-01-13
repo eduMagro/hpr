@@ -24,11 +24,7 @@ class ElementoController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
-    {
-        $conjuntos = Conjunto::with('planilla')->get();
-        return view('elementos.create', compact('conjuntos'));
-    }
+
 
     /**
      * Almacena un nuevo elemento en la base de datos.
