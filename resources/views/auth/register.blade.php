@@ -36,7 +36,25 @@
             <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-500" />
 
         </div>
+ <!-- Role -->
+ <div class="mt-4">
+    <x-input-label for="role" :value="'Categoría'" />
 
+    <select 
+        id="role" 
+        name="role" 
+        class="block mt-1 w-full border-gray-300 rounded-lg shadow-sm hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200"
+        required
+    >
+        <option value="" disabled selected>Selecciona una categoría</option>
+        <option value="administracion">Administración</option>
+        <option value="operario">Operario</option>
+        <option value="mecanico">Mecánico</option>
+        <option value="visitante">Visitante</option>
+    </select>
+
+    <x-input-error :messages="$errors->get('role')" class="mt-2 text-red-500" />
+</div>
         <!-- Password -->
         <div class="mt-4">
             <x-input-label for="password" :value="'Contraseña'" />
