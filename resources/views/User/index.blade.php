@@ -4,6 +4,15 @@
             {{ __('Usuarios') }}
         </h2>
     </x-slot>
+    @if (session('abort'))
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Acceso denegado',
+            text: "{{ session('abort') }}",
+        });
+    </script>
+@endif
 
     <div class="container mx-auto px-4 py-6">
                 <!-- Botón para crear un nuevo movimiento con estilo Bootstrap -->

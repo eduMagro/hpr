@@ -19,9 +19,9 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        if (auth()->user()->name !== 'Eduardo Magro') {
+        if (auth()->user()->role !== 'admin') {
             
-            abort(403, 'No tienes permiso para realizar esta acción.');
+            return view('users.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         return view('auth.register');
     }
