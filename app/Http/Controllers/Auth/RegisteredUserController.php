@@ -17,7 +17,7 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): View
+    public function create()
     {
         if (auth()->user()->role !== 'admin') {
             return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
