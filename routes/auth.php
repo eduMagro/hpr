@@ -13,12 +13,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
 
-<<<<<<< HEAD
-=======
+
 	    Route::get('/', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
-	
->>>>>>> 6fea693 (primercommit)
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 

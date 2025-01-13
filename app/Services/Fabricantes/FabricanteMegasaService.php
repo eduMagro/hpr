@@ -29,13 +29,8 @@ class FabricanteMegasaService implements FabricanteServiceInterface
                 'fabricante.*' => 'nullable|string|max:255',
                 'producto_nombre' => 'required|array|min:1',
                 'producto_nombre.*' => 'required|string|max:255',
-<<<<<<< HEAD
-                'producto_codigo' => 'required|array|min:80',
-                'producto_codigo.*' => 'required|string|max:90',
-=======
                 'producto_codigo' => 'required|array|min:1',
                 'producto_codigo.*' => 'required|string|max:100',
->>>>>>> 6fea693 (primercommit)
                 'producto_peso' => 'required|array',
                 'producto_peso.*' => 'required|numeric|min:0',
                 'producto_otros' => 'nullable|array',
@@ -56,11 +51,8 @@ class FabricanteMegasaService implements FabricanteServiceInterface
                 'producto_nombre.array' => 'El campo "nombre del producto" debe ser un arreglo.',
                 'producto_codigo.required' => 'El campo "código del producto" es obligatorio.',
                 'producto_codigo.array' => 'El campo "código del producto" debe ser un arreglo.',
-<<<<<<< HEAD
-=======
 				'producto_codigo.min' => 'El campo "códig del producto" parece incorrecto.',
 				'producto_codigo.max' => 'El campo "códig del producto" parece incorrecto.',
->>>>>>> 6fea693 (primercommit)
                 'producto_peso.required' => 'El campo "peso del producto" es obligatorio.',
                 'producto_peso.array' => 'El campo "peso del producto" debe ser un arreglo.',
                 'ubicacion_id.required' => 'El campo "ubicación" es obligatorio.',

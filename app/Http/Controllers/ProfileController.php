@@ -42,14 +42,6 @@ class ProfileController extends Controller
         return view('User.index', compact('registrosUsuarios'));
     }
 
-<<<<<<< HEAD
-    public function show($id)
-    {
-        $registrosUsuarios = User::with(['entradas', 'movimientos'])->findOrFail($id);
-
-        return view('User.show', compact('registrosUsuarios'));
-    }
-=======
 // En tu UserController.php
 
 public function show($id)
@@ -60,8 +52,6 @@ public function show($id)
     // Pasa la variable a la vista
     return view('User.show', compact('user'));
 }
-
->>>>>>> 6fea693 (primercommit)
 
 
 

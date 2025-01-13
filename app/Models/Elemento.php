@@ -21,15 +21,6 @@ class Elemento extends Model
      *
      * @var array
      */
-<<<<<<< HEAD
-    protected $fillable = [
-        'conjunto_id',
-        'nombre',
-        'cantidad',
-        'diametro',
-        'longitud',
-        'peso',
-=======
      // Campos que se pueden asignar masivamente
     protected $fillable = [
         'planilla_id',
@@ -51,7 +42,7 @@ class Elemento extends Model
 		'fecha_finalizacion',
 		'tiempo_fabricacion',
 		'estado',
->>>>>>> 6fea693 (primercommit)
+
     ];
 
     /**
@@ -66,26 +57,7 @@ class Elemento extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
-<<<<<<< HEAD
-    public function conjunto()
-    {
-        return $this->belongsTo(Conjunto::class, 'conjunto_id', 'id');
-    }
 
-    /**
-     * Definir cualquier casting de atributos si es necesario.
-     *
-     * @var array
-     */
-    protected $casts = [
-        'cantidad' => 'integer',
-        'diametro' => 'decimal:2',
-        'longitud' => 'decimal:2',
-        'peso' => 'decimal:2',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-    ];
-=======
     // Relación con el modelo Planilla
     public function planilla()
     {
@@ -105,5 +77,5 @@ class Elemento extends Model
     {
         return $this->belongsTo(User::class, 'users_id');  // Relación con User
     }
->>>>>>> 6fea693 (primercommit)
+
 }

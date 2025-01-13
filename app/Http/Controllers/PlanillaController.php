@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Planilla;
-<<<<<<< HEAD
-=======
+
 use App\Models\Elemento;
 use App\Models\Maquina;
->>>>>>> 6fea693 (primercommit)
+
 use Illuminate\Support\Facades\DB;
 use App\Imports\PlanillaImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -17,9 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class PlanillaController extends Controller
 {
-<<<<<<< HEAD
 
-=======
 private function asignarMaquina($diametro, $longitud)
 {    
     // Lógica para determinar la máquina
@@ -54,28 +51,15 @@ private function asignarMaquina($diametro, $longitud)
     return $query;
     }
 	
->>>>>>> 6fea693 (primercommit)
+
     public function index(Request $request)
     {
         try {
 
-<<<<<<< HEAD
-            $planillas = Planilla::with('conjuntos.elementos')->get();
 
-            $query = Planilla::query();
-            // $query = $this->aplicarFiltros($query, $request);
-
-            // Aplicar filtro por código si se pasa como parámetro en la solicitud
-            if ($request->has('codigo')) {
-                $codigo = $request->input('codigo');
-                $query->where('codigo', 'like', '%' . $codigo . '%');
-            }
-=======
           $query = Planilla::with(['user', 'elementos']);
 
             $query = $this->aplicarFiltros($query, $request);
-
->>>>>>> 6fea693 (primercommit)
             // Ordenar
             $sortBy = $request->input('sort_by', 'created_at');  // Primer criterio de ordenación (nombre)
             $order = $request->input('order', 'desc');        // Orden del primer criterio (asc o desc)
@@ -85,11 +69,9 @@ private function asignarMaquina($diametro, $longitud)
 
             // Paginación
             $perPage = $request->input('per_page', 10);
-<<<<<<< HEAD
-            $registrosMaquina = $query->paginate($perPage)->appends($request->except('page'));
-=======
+
             $planillas = $query->paginate($perPage)->appends($request->except('page'));
->>>>>>> 6fea693 (primercommit)
+
 
             // Pasar las ubicaciones y productos a la vista
             return view('planillas.index', compact('planillas'));
@@ -104,25 +86,7 @@ private function asignarMaquina($diametro, $longitud)
         }
     }
 
-<<<<<<< HEAD
-    public function show($id)
-    {
-        try{
-        $planilla = Planilla::findOrFail($id);
 
-        return view('planillas.show', compact('planilla'));
-        } catch (ValidationException $e) {
-            // Mostrar todos los errores de validación
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (Exception $e) {
-            // Mostrar errores generales
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
-        }
-    }
-
-=======
 public function show($id)
 {
     // Encuentra la planilla por ID
@@ -134,73 +98,13 @@ public function show($id)
     // Retorna la vista con la planilla y sus elementos
     return view('planillas.elementos', compact('planilla', 'elementos'));
 }
->>>>>>> 6fea693 (primercommit)
+
 
     public function create()
     {
         return view('planillas.create');
     }
-<<<<<<< HEAD
 
-    public function import(Request $request)
-    {
-        // Validar el archivo
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv',
-        ]);
-
-        try {
-            $file = $request->file('file');
-
-            // Convertir el archivo a un arreglo
-            $importedData = Excel::toArray([], $file);
-
-            // Procesar la primera hoja del archivo
-            $firstSheet = $importedData[0]; // Primera hoja
-
-            if (empty($firstSheet)) {
-                return redirect()->route('planillas.index')->with('error', 'El archivo está vacío o no contiene datos válidos.');
-            }
-
-            // Tomar la primera línea de datos reales (después de las cabeceras)
-            $headers = $firstSheet[0]; // Encabezados
-            $data = array_slice($firstSheet, 1); // Todas las filas excepto la cabecera
-
-            // Filtrar filas vacías
-            $filteredData = array_filter($data, function ($row) {
-                return array_filter($row); // Ignorar filas completamente nulas
-            });
-
-            if (empty($filteredData)) {
-                return redirect()->route('planillas.index')->with('error', 'El archivo no contiene filas válidas después de las cabeceras.');
-            }
-
-            // Tomar la primera fila de datos como representativa
-            $firstRow = $filteredData[0];
-
-            // Sumar todos los pesos (columna índice 8)
-            $pesoTotal = array_reduce($filteredData, function ($carry, $row) {
-                return $carry + (float) $row[8];
-            }, 0);
-
-            // Guardar en la base de datos
-            Planilla::create([
-                'cod_obra' => $firstRow[0],
-                'cliente' => $firstRow[1],
-                'nom_obra' => $firstRow[2],
-                'seccion' => $firstRow[3],
-                'descripcion' => $firstRow[4] ?? null,
-                'poblacion' => $firstRow[6],
-                'codigo' => $firstRow[5] ?? null,
-                'peso_total' => $pesoTotal,
-            ]);
-
-            return redirect()->route('planillas.index')->with('success', 'Planillas importadas correctamente.');
-        } catch (Exception $e) {
-            return redirect()->route('planillas.index')->with('error', 'Hubo un problema al importar las planillas: ' . $e->getMessage());
-        }
-    }
-=======
 	
 public function import(Request $request)
 {
@@ -335,11 +239,6 @@ private function calcularTiemposElemento(array $row)
 }
 
 
-
-
->>>>>>> 6fea693 (primercommit)
-
-
     public function store(Request $request)
     {
         try {
@@ -420,33 +319,6 @@ private function calcularTiemposElemento(array $row)
     }
 
 
-<<<<<<< HEAD
-    // Eliminar una planilla y sus elementos asociados
-    public function destroy($id)
-    {
-        DB::beginTransaction();
-        try {
-            // Buscar la planilla a eliminar
-            $planilla = Planilla::findOrFail($id);
-
-            // Iterar sobre cada conjunto y eliminar sus elementos
-            foreach ($planilla->conjuntos as $conjunto) {
-                $conjunto->elementos()->delete(); // Eliminar elementos asociados
-            }
-            // Eliminar los productos asociados a la planilla
-            $planilla->conjuntos()->delete();
-
-            // Eliminar la planilla
-            $planilla->delete();
-
-            DB::commit();  // Confirmamos la transacción
-            return redirect()->route('planillas.index')->with('success', 'Planilla eliminada correctamente.');
-        } catch (Exception $e) {
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->with('error', 'Ocurrió un error al eliminar la planilla: ' . $e->getMessage());
-        }
-    }
-=======
    // Eliminar una planilla y sus elementos asociados
 public function destroy($id)
 {
@@ -471,6 +343,5 @@ public function destroy($id)
     }
 }
 
->>>>>>> 6fea693 (primercommit)
 
 }

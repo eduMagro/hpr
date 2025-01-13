@@ -10,59 +10,6 @@ use Illuminate\Validation\ValidationException;
 class UbicacionController extends Controller
 {
 
-<<<<<<< HEAD
-    // private function aplicarFiltros($query, Request $request)
-    // {
-    //     // Obtener el valor y reemplazar %5F por _
-    //     $codigoBarras = str_replace('%5F', '_', $request->input('codigo_barras'));
-
-    //     // Aplicar el filtro con el valor ajustado
-    //     $query->where('codigo_barras', 'like', '%' . $codigoBarras . '%');
-
-    //     return $query;
-    // }
-
-    // Mostrar todas las ubicaciones
-    // Mostrar el índice de ubicaciones
-    public function index(Request $request)
-    {
-        try {
-            // Obtener las ubicaciones con sus productos asociados
-            $ubicaciones = Ubicacion::with('productos');
-
-            $query = Ubicacion::query();
-            // $query = $this->aplicarFiltros($query, $request);
-
-            // Aplicar filtro por código si se pasa como parámetro en la solicitud
-            if ($request->has('id')) {
-                $id = $request->input('id');
-                $query->where('id', 'like', $id);
-            }
-            // Ordenar
-            $sortBy = $request->input('sort_by', 'created_at');  // Primer criterio de ordenación (nombre)
-            $order = $request->input('order', 'desc');        // Orden del primer criterio (asc o desc)
-
-            // Aplicar ordenamiento por múltiples columnas
-            $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
-
-            // Paginación
-            $perPage = $request->input('per_page', 10);
-            $registrosUbicaciones = $query->paginate($perPage)->appends($request->except('page'));
-
-            // Pasar las ubicaciones y productos a la vista
-            return view('ubicaciones.index', compact('registrosUbicaciones'));
-        } catch (ValidationException $e) {
-            // Mostrar todos los errores de validación
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (Exception $e) {
-            // Mostrar errores generales
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
-        }
-    }
-
-=======
 private function aplicarFiltros($query, Request $request)
 {
     // Filtro por 'id' si está presente

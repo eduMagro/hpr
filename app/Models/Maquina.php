@@ -30,13 +30,11 @@ class Maquina extends Model
     {
         return $this->hasMany(Producto::class, 'maquina_id');
     }
-<<<<<<< HEAD
-    
-=======
+
      public function elementos()
     {
         return $this->hasMany(Elemento::class);
     }
->>>>>>> 6fea693 (primercommit)
+
    
 }

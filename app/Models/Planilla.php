@@ -22,20 +22,15 @@ class Planilla extends Model
      * @var array
      */
     protected $fillable = [
-<<<<<<< HEAD
-=======
+
 		'users_id',
->>>>>>> 6fea693 (primercommit)
+
         'cod_obra',
         'cliente',
         'nom_obra',
         'seccion',
         'descripcion',
-<<<<<<< HEAD
-        'poblacion',
-        'codigo', // Asegúrate de que este campo esté aquí
-        'peso_total',
-=======
+
         'ensamblado',
         'codigo', // Asegúrate de que este campo esté aquí
         'peso_total',
@@ -43,7 +38,6 @@ class Planilla extends Model
 		'fecha_finalizacion',
 		'tiempo_fabricacion',
 		
->>>>>>> 6fea693 (primercommit)
     ];
 
     /**
@@ -58,11 +52,7 @@ class Planilla extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
-<<<<<<< HEAD
-    public function conjuntos()
-    {
-        return $this->hasMany(Conjunto::class, 'planilla_id', 'id');
-=======
+
 public function elementos()
 {
     return $this->hasMany(Elemento::class, 'planilla_id');
@@ -75,7 +65,7 @@ public function elementos()
     public function user()
     {
         return $this->belongsTo(User::class, 'users_id');  // Relación con User
->>>>>>> 6fea693 (primercommit)
+
     }
 
     /**

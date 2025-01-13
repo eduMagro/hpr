@@ -22,13 +22,6 @@ class EntradaController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
     {
-<<<<<<< HEAD
-        $buscar = $request->input('albaran');
-        if (!empty($buscar)) {
-            $query->where('albaran', $buscar);
-        }
-        return $query;
-=======
         //$buscar = $request->input('albaran');
         //if (!empty($buscar)) {
          //   $query->where('albaran', $buscar);
@@ -49,7 +42,7 @@ class EntradaController extends Controller
     }
 
     return $query;
->>>>>>> 6fea693 (primercommit)
+
     }
 
     // Mostrar todas las entradas

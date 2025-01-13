@@ -3,11 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Elemento;
-<<<<<<< HEAD
-use App\Models\Conjunto;
-=======
 use App\Models\Planilla;
->>>>>>> 6fea693 (primercommit)
 use Illuminate\Http\Request;
 
 class ElementoController extends Controller
@@ -62,13 +58,7 @@ class ElementoController extends Controller
      * @param  \App\Models\Elemento  $elemento
      * @return \Illuminate\Http\Response
      */
-<<<<<<< HEAD
-    public function show(Elemento $elemento)
-    {
-        $elemento->load('conjunto.planilla');
-        return view('elementos.show', compact('elemento'));
-    }
-=======
+
 public function show($id)
 {
     // Encuentra la planilla por ID y carga las relaciones necesarias (elementos y sus máquinas)
@@ -81,7 +71,7 @@ public function show($id)
     return view('elementos.show', compact('planilla', 'elementos'));
 }
 
->>>>>>> 6fea693 (primercommit)
+
 
     /**
      * Muestra el formulario para editar un elemento existente.
@@ -102,24 +92,7 @@ public function show($id)
      * @param  \App\Models\Elemento  $elemento
      * @return \Illuminate\Http\Response
      */
-<<<<<<< HEAD
-    public function update(Request $request, Elemento $elemento)
-    {
-        $validated = $request->validate([
-            'conjunto_id' => 'required|exists:conjuntos,id',
-            'nombre' => 'required|string|max:255',
-            'cantidad' => 'required|integer|min:1',
-            'diametro' => 'required|numeric|min:0',
-            'longitud' => 'required|numeric|min:0',
-            'peso' => 'required|numeric|min:0',
-        ]);
 
-        $elemento->update($validated);
-
-        return redirect()->route('elementos.index')->with('success', 'Elemento actualizado exitosamente.');
-    }
-
-=======
 public function actualizarEstado(Request $request)
 {
     // Validar los datos enviados por el formulario
@@ -209,8 +182,6 @@ public function actualizarEstado(Request $request)
         ->with('error', 'Acción no válida.');
 }
 
-
->>>>>>> 6fea693 (primercommit)
     /**
      * Elimina un elemento existente de la base de datos.
      *
