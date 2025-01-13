@@ -1,7 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+<<<<<<< HEAD
             {{ __('Editar Producto') }}
+=======
+            {{ __('Editar Detalles Materia Prima') }}
+>>>>>>> 6fea693 (primercommit)
         </h2>
     </x-slot>
 

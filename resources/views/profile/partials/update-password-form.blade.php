@@ -45,4 +45,8 @@
             @endif
         </div>
     </form>
+<<<<<<< HEAD
 </section>
+=======
+</section> 
+>>>>>>> 6fea693 (primercommit)

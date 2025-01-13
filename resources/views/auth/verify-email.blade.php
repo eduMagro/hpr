@@ -9,10 +9,17 @@
         </div>
     @endif
 
+<<<<<<< HEAD
     <div class="mt-4 flex items-center justify-between">
         <form method="POST" action="{{ route('verification.send') }}">
             @csrf
 
+=======
+    <div class="mt-6 flex items-center justify-between">
+        <!-- Resend Verification Email -->
+        <form method="POST" action="{{ route('verification.send') }}">
+            @csrf
+>>>>>>> 6fea693 (primercommit)
             <div>
                 <x-primary-button>
                     {{ __('Reenviar Email') }}
@@ -20,10 +27,20 @@
             </div>
         </form>
 
+<<<<<<< HEAD
         <form method="POST" action="{{ route('logout') }}">
             @csrf
 
             <button type="submit" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+=======
+        <!-- Logout Button -->
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button 
+                type="submit" 
+                
+            >
+>>>>>>> 6fea693 (primercommit)
                 {{ __('Cerrar Sesión') }}
             </button>
         </form>

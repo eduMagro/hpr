@@ -8,6 +8,7 @@
 
         <!-- Password -->
         <div>
+<<<<<<< HEAD
             <x-input-label for="password" :value="__('Password')" />
 
             <x-text-input id="password" class="block mt-1 w-full"
@@ -16,6 +17,18 @@
                             required autocomplete="current-password" />
 
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
+=======
+            <x-input-label for="password" :value="'Contraseña'" />
+            <x-text-input 
+                id="password" 
+                class="block mt-1 w-full border-gray-300 rounded-lg shadow-sm hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200"
+                type="password" 
+                name="password" 
+                required 
+                autocomplete="current-password" 
+            />
+            <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-500" />
+>>>>>>> 6fea693 (primercommit)
         </div>
 
         <div class="flex justify-end mt-4">
@@ -25,3 +38,7 @@
         </div>
     </form>
 </x-guest-layout>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6fea693 (primercommit)

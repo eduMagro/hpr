@@ -4,6 +4,154 @@
             {{ __('Crear Movimientos') }}
         </h2>
     </x-slot>
+<<<<<<< HEAD
+=======
+
+<script>
+    function handleConfirm(confirmed) {
+        document.getElementById('customConfirm').style.display = 'none';
+        if (confirmed) {
+            // Crear y enviar el formulario para confirmar la acción
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{{ route('movimientos.store') }}";
+
+            // CSRF Token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = "{{ csrf_token() }}";
+            form.appendChild(csrfInput);
+
+            // Campos necesarios
+            const confirmarInput = document.createElement('input');
+            confirmarInput.type = 'hidden';
+            confirmarInput.name = 'confirmar';
+            confirmarInput.value = true;
+            form.appendChild(confirmarInput);
+
+            const productoIdInput = document.createElement('input');
+            productoIdInput.type = 'hidden';
+            productoIdInput.name = 'producto_id';
+            productoIdInput.value = "{{ session('producto_id') }}";
+            form.appendChild(productoIdInput);
+
+            const ubicacionDestinoInput = document.createElement('input');
+            ubicacionDestinoInput.type = 'hidden';
+            ubicacionDestinoInput.name = 'ubicacion_destino';
+            ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
+            form.appendChild(ubicacionDestinoInput);
+
+            const maquinaIdInput = document.createElement('input');
+            maquinaIdInput.type = 'hidden';
+            maquinaIdInput.name = 'maquina_id';
+            maquinaIdInput.value = "{{ session('maquina_id') }}";
+            form.appendChild(maquinaIdInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    function handleConsumo(confirmed) {
+        document.getElementById('customConfirmConsumo').style.display = 'none';
+   if (confirmed) {
+            // Crear y enviar el formulario para confirmar el consumo
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{{ route('movimientos.store') }}";
+
+            // CSRF Token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = "{{ csrf_token() }}";
+            form.appendChild(csrfInput);
+
+            // Campos necesarios
+            const confirmarInput = document.createElement('input');
+            confirmarInput.type = 'hidden';
+            confirmarInput.name = 'confirmar';
+            confirmarInput.value = true;
+            form.appendChild(confirmarInput);
+
+            const confirmarConsumoInput = document.createElement('input');
+            confirmarConsumoInput.type = 'hidden';
+            confirmarConsumoInput.name = 'confirmar_consumo';
+            confirmarConsumoInput.value = 1;
+            form.appendChild(confirmarConsumoInput);
+
+            const productoIdInput = document.createElement('input');
+            productoIdInput.type = 'hidden';
+            productoIdInput.name = 'producto_id';
+            productoIdInput.value = "{{ session('producto_id') }}";
+            form.appendChild(productoIdInput);
+
+            const ubicacionDestinoInput = document.createElement('input');
+            ubicacionDestinoInput.type = 'hidden';
+            ubicacionDestinoInput.name = 'ubicacion_destino';
+            ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
+            form.appendChild(ubicacionDestinoInput);
+
+            const maquinaIdInput = document.createElement('input');
+            maquinaIdInput.type = 'hidden';
+            maquinaIdInput.name = 'maquina_id';
+            maquinaIdInput.value = "{{ session('maquina_id') }}";
+            form.appendChild(maquinaIdInput);
+
+            document.body.appendChild(form);
+            form.submit();
+   		}else{
+			  // Crear y enviar el formulario para confirmar el consumo
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{{ route('movimientos.store') }}";
+
+            // CSRF Token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = "{{ csrf_token() }}";
+            form.appendChild(csrfInput);
+
+            // Campos necesarios
+            const confirmarInput = document.createElement('input');
+            confirmarInput.type = 'hidden';
+            confirmarInput.name = 'confirmar';
+            confirmarInput.value = true;
+            form.appendChild(confirmarInput);
+
+            const confirmarConsumoInput = document.createElement('input');
+            confirmarConsumoInput.type = 'hidden';
+            confirmarConsumoInput.name = 'confirmar_mantenerlo';
+            confirmarConsumoInput.value = 1;
+            form.appendChild(confirmarConsumoInput);
+
+            const productoIdInput = document.createElement('input');
+            productoIdInput.type = 'hidden';
+            productoIdInput.name = 'producto_id';
+            productoIdInput.value = "{{ session('producto_id') }}";
+            form.appendChild(productoIdInput);
+
+            const ubicacionDestinoInput = document.createElement('input');
+            ubicacionDestinoInput.type = 'hidden';
+            ubicacionDestinoInput.name = 'ubicacion_destino';
+            ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
+            form.appendChild(ubicacionDestinoInput);
+
+            const maquinaIdInput = document.createElement('input');
+            maquinaIdInput.type = 'hidden';
+            maquinaIdInput.name = 'maquina_id';
+            maquinaIdInput.value = "{{ session('maquina_id') }}";
+            form.appendChild(maquinaIdInput);
+
+            document.body.appendChild(form);
+            form.submit();
+		}
+    }
+</script>
+
+>>>>>>> 6fea693 (primercommit)
     <!-- Mostrar errores de validación -->
     @if ($errors->any())
         <div class="alert alert-danger">
@@ -25,6 +173,29 @@
             {{ session('success') }}
         </div>
     @endif
+<<<<<<< HEAD
+=======
+@if (session('confirm'))
+    <div id="customConfirm" class="overlay" style="display: flex;">
+        <div class="dialog">
+            <p>{{ session('confirm') }}</p>
+            <button class="accept" onclick="handleConfirm(true)">Aceptar</button>
+            <button class="cancel" onclick="handleConfirm(false)">Cancelar</button>
+        </div>
+    </div>
+@endif
+
+@if (session('confirm_consumo'))
+    <div id="customConfirmConsumo" class="overlay" style="display: flex;">
+        <div class="dialog">
+            <p>{{ session('confirm_consumo') }}</p>
+            <button class="accept" onclick="handleConsumo(true)">Chatarra</button>
+            <button class="accept" onclick="handleConsumo(false)">Mantenerlo en la máquina</button>
+        </div>
+    </div>
+@endif
+
+>>>>>>> 6fea693 (primercommit)
 
     <div class="container mt-5">
         <div class="row justify-content-center">

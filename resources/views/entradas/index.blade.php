@@ -36,6 +36,11 @@
         <form method="GET" action="{{ route('entradas.index') }}" class="form-inline mt-3 mb-3">
             <input type="text" name="albaran" class="form-control mb-3" placeholder="Buscar por albarán"
                 value="{{ request('albaran') }}">
+<<<<<<< HEAD
+=======
+			 <input type="text" name="fecha" class="form-control mb-3" placeholder="Buscar por fecha"
+                value="{{ request('fecha') }}">
+>>>>>>> 6fea693 (primercommit)
             <button type="submit" class="btn btn-info ml-2">
                 <i class="fas fa-search"></i> Buscar
             </button>

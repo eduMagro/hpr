@@ -35,6 +35,16 @@ class MaquinaController extends Controller
         // Pasar las ubicaciones y productos a la vista
         return view('maquinas.index', compact('registrosMaquina'));
     }
+<<<<<<< HEAD
+=======
+	
+	    //------------------------------------------------------------------------------------ SHOW
+    public function show($id)
+    {
+        $maquina = Maquina::findOrFail($id);
+        return view('maquinas.show', compact('maquina'));
+    }
+>>>>>>> 6fea693 (primercommit)
     public function create()
     {
         return view('maquinas.create');

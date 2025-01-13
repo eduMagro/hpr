@@ -44,7 +44,11 @@
         </form>
 
         <!-- Usamos una estructura de tarjetas para mostrar las ubicaciones -->
+<<<<<<< HEAD
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+=======
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+>>>>>>> 6fea693 (primercommit)
             @if (isset($registrosMaquina) &&
                     $registrosMaquina instanceof \Illuminate\Pagination\LengthAwarePaginator &&
                     $registrosMaquina->isNotEmpty())
@@ -70,9 +74,31 @@
                                 @foreach ($maquina->productos as $producto)
                                     <li class="mb-2 flex items-center justify-between">
                                         <span>
+<<<<<<< HEAD
                                             ID: {{ $producto->id }} - Tipo: {{ $producto->tipo }} - D{{ $producto->diametro }} - L{{ $producto->longitud ?? '??' }}
                                         </span>
                                         <a href="{{ route('productos.show', $producto->id) }}" class="btn btn-sm btn-primary">Ver</a>
+=======
+                                            ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} - D{{ $producto->diametro }} - L{{ $producto->longitud ?? '??' }}
+                                        </span>
+                                        <a href="{{ route('productos.show', $producto->id) }}" class="btn btn-sm btn-primary">Ver</a>
+										 @if ($producto->tipo == 'encarretado')
+										 <div style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
+											<div class="cuadro verde" 
+												 style="width: 100%; 
+														height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+														background-color: green; 
+														position: absolute; 
+														bottom: 0;">
+											</div>
+											<span style="position: absolute; top: 10px; left: 10px; color: white;">
+												{{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
+											</span>
+										</div>
+
+
+										@endif
+>>>>>>> 6fea693 (primercommit)
                                     </li>
                                 @endforeach
                             </ul>
@@ -83,6 +109,12 @@
                             <!-- Enlace para editar -->
                             <a href="{{ route('maquinas.edit', $maquina->id) }}"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+<<<<<<< HEAD
+=======
+							                        <!-- Enlace para ver -->
+                        <a href="{{ route('maquinas.show', $maquina->id) }}"
+                            class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
+>>>>>>> 6fea693 (primercommit)
                             <!-- Formulario para eliminar -->
                             <form action="{{ route('maquinas.destroy', $maquina->id) }}" method="POST"
                                 style="display:inline;"

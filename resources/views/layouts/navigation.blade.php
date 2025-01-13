@@ -10,6 +10,7 @@
                     </a>
                 </div>
 
+<<<<<<< HEAD
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
@@ -37,6 +38,9 @@
                         {{ __('PLANILLAS') }}
                     </x-nav-link>
                 </div>
+=======
+               
+>>>>>>> 6fea693 (primercommit)
             </div>
 
             <!-- Settings Dropdown -->

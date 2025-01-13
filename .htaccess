@@ -1,0 +1,47 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Redirigir todas las solicitudes al archivo index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+
+    # Forzar HTTPS (descomentar para habilitar)
+    # RewriteCond %{HTTPS} !=on
+    # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# Proteger el archivo .env
+<Files .env>
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Proteger los archivos de configuración de Laravel
+<FilesMatch "\.(env|log|json|config)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Bloquear el acceso a carpetas sensibles
+RedirectMatch 403 ^/(storage|vendor|bootstrap|node_modules)/
+
+# Proteger el archivo de logs
+<FilesMatch "laravel.log">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Deshabilitar listado de directorios
+Options -Indexes
+
+# Mejorar la seguridad del navegador (opcional)
+<IfModule mod_headers.c>
+    # Evitar clickjacking
+    Header always append X-Frame-Options DENY
+    # Proteger contra ataques XSS
+    Header set X-XSS-Protection "1; mode=block"
+    # Controlar el contenido descargado
+    Header set X-Content-Type-Options nosniff
+</IfModule>
+

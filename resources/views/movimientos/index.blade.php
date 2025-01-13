@@ -5,6 +5,11 @@
         </h2>
     </x-slot>
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 6fea693 (primercommit)
     <!-- Mostrar errores de validación -->
     @if ($errors->any())
         <div class="alert alert-danger">
@@ -36,8 +41,15 @@
         </div>
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('movimientos.index') }}" class="form-inline mt-3 mb-3">
+<<<<<<< HEAD
             <input type="text" name="id" class="form-control mb-3" placeholder="Buscar por código QR"
                 value="{{ request('id') }}">
+=======
+            <input type="text" name="producto_id" class="form-control mb-3" placeholder="Buscar por QR de producto"
+                value="{{ request('producto_id') }}">
+			<input type="text" name="nombre_usuario" class="form-control mb-3" placeholder="Buscar por nombre de usuario"
+                value="{{ request('nombre_usuario') }}">
+>>>>>>> 6fea693 (primercommit)
             <button type="submit" class="btn btn-info ml-2">
                 <i class="fas fa-search"></i> Buscar
             </button>

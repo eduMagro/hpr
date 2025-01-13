@@ -2,6 +2,10 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+<<<<<<< HEAD
+=======
+use App\Http\Controllers\PageController;
+>>>>>>> 6fea693 (primercommit)
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\UbicacionController;
@@ -12,14 +16,25 @@ use App\Http\Controllers\PlanillaController;
 use App\Http\Controllers\ConjuntoController;
 use App\Http\Controllers\ElementoController;
 
+<<<<<<< HEAD
 
 Route::get('/', function () {
     return view('auth.login');
 });
+=======
+// Ruta principal
+>>>>>>> 6fea693 (primercommit)
 
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+<<<<<<< HEAD
+=======
+Route::get('/', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
+>>>>>>> 6fea693 (primercommit)
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -41,13 +56,21 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', ProfileController::class);
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);
+<<<<<<< HEAD
     Route::get('/productos/{id}/origen', [ProductoController::class, 'obtenerOrigen'])->name('productos.obtenerOrigen')->middleware('auth');
+=======
+    Route::get('/productos/{id}/origen', [ProductoController::class, 'obtenerOrigen'])->name('productos.obtenerOrigen');
+>>>>>>> 6fea693 (primercommit)
 
 
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');
     Route::resource('conjuntos', ConjuntoController::class);
     Route::resource('elementos', ElementoController::class);
+<<<<<<< HEAD
+=======
+Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
+>>>>>>> 6fea693 (primercommit)
 
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 });

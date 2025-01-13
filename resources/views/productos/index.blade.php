@@ -1,7 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+<<<<<<< HEAD
             {{ __('Productos Almacenados') }}
+=======
+            {{ __('Materia Prima Almacenada') }}
+>>>>>>> 6fea693 (primercommit)
         </h2>
     </x-slot>
     <div class="container mx-auto px-4 py-6">
@@ -18,7 +22,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @forelse($registrosProductos as $producto)
                 <div class="bg-white shadow-md rounded-lg p-4">
+<<<<<<< HEAD
                     <h3 class="font-bold text-lg text-gray-700">ID Producto: {{ $producto->id }}</h3>
+=======
+                    <h3 class="font-bold text-lg text-gray-700">ID Materia Prima: {{ $producto->id }}</h3>
+>>>>>>> 6fea693 (primercommit)
                     <p><strong>Fabricante:</strong> {{ $producto->fabricante }}</p>
                     <p><strong>Nombre:</strong> {{ $producto->nombre }}</p>
                     <p><strong>Tipo:</strong> {{ $producto->tipo }}</p>

@@ -22,11 +22,34 @@ class EntradaController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
     {
+<<<<<<< HEAD
         $buscar = $request->input('albaran');
         if (!empty($buscar)) {
             $query->where('albaran', $buscar);
         }
         return $query;
+=======
+        //$buscar = $request->input('albaran');
+        //if (!empty($buscar)) {
+         //   $query->where('albaran', $buscar);
+        //}
+        //return $query;
+		 // Filtro por 'id' si está presente
+    if ($request->has('albaran') && $request->albaran) {
+        $albaran = $request->input('albaran');
+        $query->where('albaran', '=', $albaran);  // Filtro exacto por ID
+    }
+
+      // Filtro por 'fecha' si está presente y busca en la columna 'created_at' usando LIKE
+    if ($request->has('fecha') && $request->fecha) {
+        $fecha = $request->input('fecha');  // Obtener el valor de la fecha proporcionada
+
+        // Buscar en la columna 'created_at' utilizando LIKE para buscar por año, mes o día
+        $query->whereRaw('DATE(created_at) LIKE ?', ['%' . $fecha . '%']);
+    }
+
+    return $query;
+>>>>>>> 6fea693 (primercommit)
     }
 
     // Mostrar todas las entradas

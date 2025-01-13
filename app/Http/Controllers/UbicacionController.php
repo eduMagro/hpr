@@ -10,6 +10,7 @@ use Illuminate\Validation\ValidationException;
 class UbicacionController extends Controller
 {
 
+<<<<<<< HEAD
     // private function aplicarFiltros($query, Request $request)
     // {
     //     // Obtener el valor y reemplazar %5F por _
@@ -61,6 +62,58 @@ class UbicacionController extends Controller
         }
     }
 
+=======
+private function aplicarFiltros($query, Request $request)
+{
+    // Filtro por 'id' si está presente
+    if ($request->has('id') && $request->id) {
+        $id = $request->input('id');
+        $query->where('id', '=', $id);  // Filtro exacto por ID
+    }
+
+    // Filtro por 'codigo' si está presente
+    if ($request->has('codigo') && $request->codigo) {
+        $codigo = trim($request->input('codigo'));  // Eliminar espacios adicionales
+        $codigo = strtoupper($codigo);  // Asegurarse de que el valor esté en mayúsculas
+
+        $query->whereRaw('UPPER(codigo) LIKE ?', ['%' . $codigo . '%']);  // Comparación sin importar mayúsculas/minúsculas
+    }
+
+    return $query;
+}
+
+
+
+
+public function index(Request $request)
+{
+    try {
+        // Inicializar la consulta
+        $query = Ubicacion::query();
+        
+        // Aplicar filtros usando el método aplicarFiltros
+        $query = $this->aplicarFiltros($query, $request);
+        
+        // Ordenar
+        $sortBy = $request->input('sort_by', 'created_at');  // Primer criterio de ordenación
+        $order = $request->input('order', 'desc');        // Orden (asc o desc)
+        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
+
+        // Paginación
+        $perPage = $request->input('per_page', 20);
+        $registrosUbicaciones = $query->paginate($perPage)->appends($request->except('page'));
+
+        // Pasar las ubicaciones a la vista
+        return view('ubicaciones.index', compact('registrosUbicaciones'));
+        
+    } catch (Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+    }
+}
+
+
+>>>>>>> 6fea693 (primercommit)
     // Mostrar el formulario para crear una nueva ubicación
     public function create()
     {
