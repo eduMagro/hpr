@@ -19,8 +19,10 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        dd(auth()->user());
-
+        if (auth()->user()->name !== 'Eduardo Magro') {
+            
+            abort(403, 'No tienes permiso para realizar esta acción.');
+        }
         return view('auth.register');
     }
 
