@@ -27,11 +27,11 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <!-- Estilos Personalizados -->
-    {{-- <link rel="stylesheet" href="{{ asset('css/styles.css') }}"> --}}
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
 	
 	<!-- JAVASCRIPT -->
 
-	{{-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> --}}
+	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <!-- Iconos y Configuración PWA -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imagenes/ico/favicon-32x32.png') }}">
