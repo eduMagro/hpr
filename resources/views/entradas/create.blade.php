@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="tw-font-semibold tw-text-xl tw-text-gray-800 tw-leading-tight">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Crear Entradas de Material') }}
         </h2>
     </x-slot>
