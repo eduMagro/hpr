@@ -29,7 +29,7 @@
     @endif
 
     <!-- Estilos Personalizados -->
-    {{-- <style>
+    <style>
         .accordion-button {
             font-weight: bold;
         }
@@ -66,7 +66,7 @@
             padding: 8px;
             background-color: #9fcfff;
         }
-    </style> --}}
+    </style>
 
     <!-- Contenedor Principal -->
     <div class="container my-5">
