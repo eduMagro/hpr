@@ -114,11 +114,12 @@ public function actualizarEstado(Request $request)
     }
 
     if ($validated['accion'] === 'completar') {
+
         // Obtener todos los productos con el diámetro especificado
         $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get();
 
         if ($productos->isEmpty()) {
-            
+
             DB::rollBack();
             return redirect()->route('elementos.show', $planilla->id)
                 ->with('error', 'No se encontraron productos asociados con ese diámetro en la máquina.');
@@ -149,11 +150,13 @@ public function actualizarEstado(Request $request)
         if ($pesoRequerido > 0) {
 			DB::rollBack();
             return redirect()->route('elementos.show', $planilla->id)
-                ->with('error', 'No hay suficientes kilos disponibles en los productos de la máquina.');
+                ->with('error', 'No hay materia prima suficiente en la máquina.');
         }
 
         // Actualizar el estado del elemento
         $elemento->estado = 'completado';
+        $elemento->users_id = auth()->id();
+        $elemento->producto_id = $producto->id;
         $elemento->save();
 
         return redirect()->route('elementos.show', $planilla->id)
@@ -175,6 +178,7 @@ public function actualizarEstado(Request $request)
 
         // Actualizar el estado del elemento
         $elemento->estado = 'pendiente';
+        $elemento->users_id = null;
         $elemento->save();
 
         return redirect()->route('elementos.show', $planilla->id)
