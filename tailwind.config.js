@@ -17,8 +17,5 @@ export default {
         },
     },
 
-    // Configurar un prefijo para evitar conflictos
-    prefix: 'tw-', // Esto añadirá el prefijo "tw-" a todas las clases de Tailwind
-    
     plugins: [forms],
 };
