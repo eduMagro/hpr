@@ -69,12 +69,13 @@ class Elemento extends Model
     {
         return $this->belongsTo(Maquina::class, 'maquina_id');
     }
+
     // Relación con el modelo Producto (si existe)
     public function producto()
     {
         return $this->belongsTo(Producto::class, 'producto_id');
     }
-	    /**
+	/**
      * Relación con la tabla 'users'
      * Una planilla pertenece a un usuario
      */
