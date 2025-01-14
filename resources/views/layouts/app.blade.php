@@ -14,11 +14,12 @@
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
-        <!-- Bootstrap (solo CSS si es necesario) -->
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-
-
-
+    <!-- Bootstrap (solo CSS si es necesario) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+ <!-- Tailwind CSS (solo si es necesario) -->
+ @if(isset($useTailwind) && $useTailwind)
+ <script src="https://cdn.tailwindcss.com"></script>
+@endif
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -31,8 +32,7 @@
 	<!-- JAVASCRIPT -->
 
 	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+
     <!-- Iconos y Configuración PWA -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imagenes/ico/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('imagenes/ico/favicon-16x16.png') }}">
@@ -45,7 +45,7 @@
 
 <body class="font-sans antialiased">
     <div class="min-h-screen bg-gray-100">
-        @include('layouts.navigation')
+        @include('layouts.navigation', ['useTailwind' => true])
 
         <!-- Page Heading -->
         @isset($header)
