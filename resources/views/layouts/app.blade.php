@@ -1,3 +1,4 @@
+</html>
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
@@ -8,62 +9,56 @@
 
     <title>{{ config('app.name', 'Página principal - HPR') }}</title>
 
-    {{-- <!-- Fonts -->
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-
-    <!-- Bootstrap (solo CSS si es necesario) -->
+	 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <!-- Agregar Bootstrap desde CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Chart.js -->
+    {{-- para graficos --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Alpine.js -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <!-- ESTILOS -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"
+        integrity="sha384-oBqDVmMz4fnFO9gybK3zs7hcm9Kmdt6Q5Ppp3HLzE5ptlTmz3Ovv9r3e2b9Kr5Tk" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"
+        integrity="sha384-pzjw8f+ua7Kw1TIq0lLvYdpP1fo/+/fo+2Vxwz3bce4C/qvkeBxjtvxDsw7fG5p5" crossorigin="anonymous">
+    </script>
+<script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Estilos Personalizados -->
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}"> --}}
-      
-      <!-- Agregar Bootstrap desde CDN -->
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-      {{-- para graficos --}}
-      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
-      <!-- ESTILOS -->
-      <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"
-          integrity="sha384-oBqDVmMz4fnFO9gybK3zs7hcm9Kmdt6Q5Ppp3HLzE5ptlTmz3Ovv9r3e2b9Kr5Tk" crossorigin="anonymous">
-      </script>
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"
-          integrity="sha384-pzjw8f+ua7Kw1TIq0lLvYdpP1fo/+/fo+2Vxwz3bce4C/qvkeBxjtvxDsw7fG5p5" crossorigin="anonymous">
-      </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-      <!-- Scripts -->
-      <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/library.js"></script>
-       <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
-	
-	<!-- JAVASCRIPT -->
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Iconos y Configuración PWA -->
+    <!-- Scripts -->
+	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/library.js"></script>
+	 <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
+    <!-- Icono para navegadores modernos -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('imagenes/ico/favicon-32x32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('imagenes/ico/favicon-16x16.png') }}">
+
+    <!-- Icono para navegadores antiguos -->
+    <link rel="shortcut icon" href="{{ asset('imagenes/ico/favicon.ico') }}">
+
+    <!-- Icono para iOS -->
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('imagenes/ico/apple-touch-icon.png') }}">
+
+    <!-- Iconos para Android -->
     <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('imagenes/ico/android-chrome-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('imagenes/ico/android-chrome-512x512.png') }}">
+
+    <!-- Manifest para PWA -->
     <link rel="manifest" href="{{ asset('imagenes/ico/site.webmanifest') }}">
+
+    <!-- Color de fondo para dispositivos móviles -->
     <meta name="theme-color" content="#ffffff">
 
 </head>
 
 <body class="font-sans antialiased">
     <div class="min-h-screen bg-gray-100">
-        @include('layouts.navigation', ['useTailwind' => true])
+        @include('layouts.navigation')
 
         <!-- Page Heading -->
         @isset($header)
