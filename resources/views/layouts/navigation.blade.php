@@ -1,94 +1,83 @@
-<nav class="bg-white border-bottom border-secondary">
-    <!-- Primary Navigation Menu -->
-    <div class="container px-4">
-        <div class="d-flex justify-content-between align-items-center h-100">
-            <div class="d-flex">
-                <!-- Logo -->
-                <div class="d-flex align-items-center">
-                    <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="h-9 w-auto text-dark" />
-                    </a>
-                </div>
-            </div>
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
+    <div class="container">
+        <!-- Logo -->
+        <a class="navbar-brand d-flex align-items-center" href="{{ route('dashboard') }}">
+            <x-application-logo class="h-9 w-auto text-dark me-2" />
+            <span class="fw-bold text-primary">Mi Aplicación</span>
+        </a>
 
-            <!-- Settings Dropdown -->
-            <div class="d-none d-sm-flex align-items-center ms-3">
-                <div class="dropdown">
-                    <button class="btn btn-light dropdown-toggle" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        {{ Auth::user()->name }}
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                        <li>
-                            <a href="{{ route('profile.edit') }}" class="dropdown-item">Mi Perfil</a>
-                        </li>
-                        <li>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="dropdown-item">Cerrar Sesión</button>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
-            </div>
+        <!-- Toggle Button for Mobile -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
 
-            <!-- Hamburger -->
-            <div class="d-sm-none">
-                <button class="btn btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-expanded="false" aria-controls="navbarResponsive">
-                    <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Responsive Navigation Menu -->
-    <div class="collapse" id="navbarResponsive">
-        <div class="py-2">
-            <ul class="list-unstyled">
-                <li>
-                    <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">Inicio</a>
+        <!-- Navigation Links -->
+        <div class="collapse navbar-collapse" id="navbarResponsive">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">Inicio</a>
                 </li>
-                <li>
-                    <a href="{{ route('productos.index') }}" class="nav-link {{ request()->routeIs('productos.index') ? 'active' : '' }}">Materia Prima</a>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('productos.index') ? 'active' : '' }}" href="{{ route('productos.index') }}">Materia Prima</a>
                 </li>
-                <li>
-                    <a href="{{ route('ubicaciones.index') }}" class="nav-link {{ request()->routeIs('ubicaciones.index') ? 'active' : '' }}">Ubicaciones</a>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('ubicaciones.index') ? 'active' : '' }}" href="{{ route('ubicaciones.index') }}">Ubicaciones</a>
                 </li>
-                <li>
-                    <a href="{{ route('entradas.index') }}" class="nav-link {{ request()->routeIs('entradas.index') ? 'active' : '' }}">Entradas</a>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('entradas.index') ? 'active' : '' }}" href="{{ route('entradas.index') }}">Entradas</a>
                 </li>
-                <li>
-                    <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.index') ? 'active' : '' }}">Salidas</a>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('users.index') ? 'active' : '' }}" href="{{ route('users.index') }}">Salidas</a>
                 </li>
-                <li>
-                    <a href="{{ route('movimientos.index') }}" class="nav-link {{ request()->routeIs('movimientos.index') ? 'active' : '' }}">Movimientos</a>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('movimientos.index') ? 'active' : '' }}" href="{{ route('movimientos.index') }}">Movimientos</a>
                 </li>
-                <li>
-                    <a href="{{ route('maquinas.index') }}" class="nav-link {{ request()->routeIs('maquinas.index') ? 'active' : '' }}">Máquinas</a>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('maquinas.index') ? 'active' : '' }}" href="{{ route('maquinas.index') }}">Máquinas</a>
                 </li>
-                <li>
-                    <a href="{{ route('planillas.index') }}" class="nav-link {{ request()->routeIs('planillas.index') ? 'active' : '' }}">Planillas</a>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('planillas.index') ? 'active' : '' }}" href="{{ route('planillas.index') }}">Planillas</a>
                 </li>
             </ul>
-        </div>
 
-        <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-top border-secondary">
-            <div class="px-4">
-                <div class="fw-medium text-dark">{{ Auth::user()->name }}</div>
-                <div class="fw-medium text-muted">{{ Auth::user()->email }}</div>
-            </div>
-
-            <div class="mt-3">
-                <a href="{{ route('profile.edit') }}" class="nav-link text-decoration-none">
-                    Mi Perfil
-                </a>
-                <form method="POST" action="{{ route('logout') }}" class="mt-2">
-                    @csrf
-                    <button type="submit" class="nav-link text-decoration-none">Cerrar Sesión</button>
-                </form>
+            <!-- User Dropdown -->
+            <div class="dropdown ms-3">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-person-circle me-1"></i>{{ Auth::user()->name }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                    <li>
+                        <a class="dropdown-item" href="{{ route('profile.edit') }}">
+                            <i class="bi bi-gear me-2"></i>Mi Perfil
+                        </a>
+                    </li>
+                    <li>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="dropdown-item">
+                                <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
+                            </button>
+                        </form>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
 </nav>
+
+<!-- Responsive Menu for Mobile -->
+<div class="d-lg-none border-top bg-light">
+    <div class="container py-2">
+        <div class="fw-bold text-dark">{{ Auth::user()->name }}</div>
+        <div class="text-muted mb-3">{{ Auth::user()->email }}</div>
+        <a href="{{ route('profile.edit') }}" class="btn btn-link btn-sm text-decoration-none">
+            <i class="bi bi-gear me-1"></i>Mi Perfil
+        </a>
+        <form method="POST" action="{{ route('logout') }}" class="d-inline">
+            @csrf
+            <button type="submit" class="btn btn-link btn-sm text-decoration-none">
+                <i class="bi bi-box-arrow-right me-1"></i>Cerrar Sesión
+            </button>
+        </form>
+    </div>
+</div>
