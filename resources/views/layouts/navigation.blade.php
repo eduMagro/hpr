@@ -87,29 +87,28 @@
             </x-responsive-nav-link>    
         </div>
 
-        <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
-            </div>
+      <!-- Responsive Settings Options -->
+<div class="pt-4 pb-1 border-top border-secondary">
+    <div class="px-4">
+        <div class="fw-medium text-dark">{{ Auth::user()->name }}</div>
+        <div class="fw-medium text-muted">{{ Auth::user()->email }}</div>
+    </div>
 
-            <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')">
-                    {{ __('Mi Perfil') }}
-                </x-responsive-nav-link>
+    <div class="mt-3">
+        <a href="{{ route('profile.edit') }}" class="nav-link text-decoration-none">
+            Mi Perfil
+        </a>
 
-                <!-- Authentication -->
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
+        <!-- Authentication -->
+        <form method="POST" action="{{ route('logout') }}" class="mt-2">
+            @csrf
+            <a href="{{ route('logout') }}" class="nav-link text-decoration-none"
+               onclick="event.preventDefault(); this.closest('form').submit();">
+                Cerrar Sesión
+            </a>
+        </form>
+    </div>
+</div>
 
-                    <x-responsive-nav-link :href="route('logout')"
-                            onclick="event.preventDefault();
-                                        this.closest('form').submit();">
-                        {{ __('Cerrar Sesión') }}
-                    </x-responsive-nav-link>
-                </form>
-            </div>
-        </div>
     </div>
 </nav>
