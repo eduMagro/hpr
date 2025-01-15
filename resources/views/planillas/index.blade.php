@@ -91,7 +91,7 @@
                 <!-- Enlace para editar -->
                 <a href="{{ route('planillas.edit', $planilla->id) }}" class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
                 <!-- Enlace para ver -->
-                <a href="{{ route('elementos.show', $planilla->id) }}" class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
+                <a href="{{ route('elementos.showByEtiquetas', $planilla->id) }}" class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
             </div>
         </div>
     @empty
