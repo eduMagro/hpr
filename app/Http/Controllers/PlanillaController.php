@@ -211,7 +211,6 @@ public function import(Request $request)
                   // Crear el registro de etiqueta
                   Etiqueta::create([
                     'planilla_id' => $planilla->id,
-                    'elemento_id' => $elemento->id,
                     'numero_etiqueta' => $row[30],
                     'nombre' => $row[22],
                 ]);
