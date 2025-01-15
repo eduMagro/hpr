@@ -113,8 +113,13 @@ public function import(Request $request)
     }
     // Validar el archivo
     $request->validate([
-        'file' => 'required|file|mimes:xlsx,xls,csv',
+        'file' => 'required|file|mimes:xlsx,xls',
+    ], [
+        'file.required' => 'Debes seleccionar un archivo.',
+        'file.file' => 'El archivo debe ser un archivo válido.',
+        'file.mimes' => 'El archivo debe tener uno de los siguientes formatos: xlsx o xls',
     ]);
+    
 
     DB::beginTransaction(); // Iniciar la transacción
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Elemento;
 use App\Models\Planilla;
+use App\Models\Etiqueta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -68,6 +69,20 @@ public function show($id)
     return view('elementos.show', compact('planilla', 'elementos'));
 }
 
+public function showByEtiquetas($planillaId)
+{
+    $planilla = Planilla::with(['elementos.etiquetas'])->findOrFail($planillaId);
+
+    // Obtener elementos clasificados por etiquetas
+    $elementosPorEtiquetas = Etiqueta::with('elemento')
+        ->whereHas('elemento', function ($query) use ($planillaId) {
+            $query->where('planilla_id', $planillaId);
+        })
+        ->get()
+        ->groupBy('nombre');
+
+    return view('elementos.show', compact('planilla', 'elementosPorEtiquetas'));
+}
 
 
     /**

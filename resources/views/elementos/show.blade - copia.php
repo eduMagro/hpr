@@ -43,34 +43,28 @@
         <div class="bg-white shadow-md rounded-lg p-6 flex flex-col items-center w-full">
             <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Índice de Elementos</h3>
             <ul class="list-none w-full">
-                @if ($elementosPorEtiquetas->isEmpty())
-                <div class="text-center text-gray-600">
-                    No hay elementos asociados a etiquetas para esta planilla.
-                </div>
-            @else
-                <div class="grid grid-cols-1 gap-6">
-                    @foreach ($elementosPorEtiquetas as $etiqueta => $etiquetas)
-                        <div class="bg-white p-4 rounded-lg shadow-md">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                                Etiqueta: {{ $etiqueta ?? 'Sin etiqueta' }}
-                            </h3>
-    
-                            <ul class="list-disc pl-6">
-                                @foreach ($etiquetas as $etiquetaItem)
-                                    <li>
-                                        <strong>{{ $etiquetaItem->elemento->nombre ?? 'Sin nombre' }}</strong>
-                                        <span class="text-gray-500 text-sm">
-                                            Peso: {{ $etiquetaItem->elemento->peso ?? 'No asignado' }},
-                                            Diámetro: {{ $etiquetaItem->elemento->diametro ?? 'No asignado' }},
-                                            Longitud: {{ $etiquetaItem->elemento->longitud ?? 'No asignado' }}
-                                        </span>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
+                @foreach ($elementos as $elemento)
+                    <li class="text-gray-700 mb-2">
+                        <span class="font-semibold">{{ $loop->iteration }}.</span>
+                        <a href="#elemento-{{ $elemento->id }}" class="text-blue-500 hover:underline">
+                            {{ $elemento->nombre ?? 'Sin nombre' }}
+                        </a>
+                        <p>
+                            <button id="generateQR" onclick="generateAndPrintQR('{{ $elemento->id }}, {{ $elemento->descripcion_fila }}')" 
+                                class="btn btn-primary mt-2">QR</button>
+                        </p>
+                        <div id="qrCanvas" style="display:none;"></div>
+                        <span class="text-black-500">
+                            <span>Máquina: {{ $elemento->maquina?->nombre ?? 'Sin máquina' }} / </span>
+                        </span>
+                        <span class="text-black-500">
+                            Dm: {{ ucfirst($elemento->diametro) }} -----> 
+                        </span>
+                        <span class="{{ $elemento->estado === 'pendiente' ? 'text-gray-500' : 'text-green-500' }}">
+                            {{ ucfirst($elemento->estado) }}
+                        </span>
+                    </li>
+                @endforeach
             </ul>
         </div>
 
