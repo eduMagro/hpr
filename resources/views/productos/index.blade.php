@@ -109,13 +109,8 @@
      <!-- SCRIPT PARA IMPRIMIR QR -->
      <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
      <script>
-         function generateAndPrintQR(id, codigo) {
-             // Validamos que el ID sea válido
-             if (!id || isNaN(id)) {
-                 alert("El ID proporcionado no es válido. Por favor, verifica.");
-                 return;
-             }
-     
+         function generateAndPrintQR(id) {
+
              // Limpiamos el contenedor del QR
              const qrContainer = document.getElementById('qrCanvas');
              qrContainer.innerHTML = ""; // Elimina cualquier QR previo
