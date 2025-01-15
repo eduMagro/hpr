@@ -80,9 +80,15 @@
             <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Máquinas Asociadas</h3>
             <div class="grid grid-cols-1 gap-6 w-full">
                 @php
-                    // Extraer máquinas únicas desde los elementos
-                    $maquinas = $elementos->pluck('maquina')->unique('id')->filter();
+                    // Extraer máquinas únicas desde las etiquetas y sus elementos
+                    $maquinas = $etiquetasConElementos
+                        ->flatMap(function ($etiqueta) {
+                            return $etiqueta->elementos->pluck('maquina');
+                        })
+                        ->unique('id')
+                        ->filter();
                 @endphp
+            
 
                 @forelse ($maquinas as $maquina)
                     <div class="bg-gray-100 border p-4 shadow-md rounded-lg flex flex-col items-center w-full">
