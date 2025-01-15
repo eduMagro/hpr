@@ -188,9 +188,21 @@ public function import(Request $request)
                 // Llamar al método asignarMaquina
                 $maquina_id = $this->asignarMaquina($diametro, $longitud);
 				$tiempos = $this->calcularTiemposElemento($row);
+
+                // Verificar si la etiqueta ya existe antes de crearla
+                $numeroEtiqueta = $row[30];
+                $etiquetaExistente = Etiqueta::where('numero_etiqueta', $numeroEtiqueta)->first();
+                $etiqueta = Etiqueta::firstOrCreate(
+                    ['numero_etiqueta' => $numeroEtiqueta],
+                    [
+                        'planilla_id' => $planilla->id,
+                        'nombre' => $row[22] ?? 'Sin nombre',
+                    ]
+                );
                 // Crear el registro de elemento
                 $elemento = Elemento::create([
                     'planilla_id' => $planilla->id,
+                    'etiqueta_id' => $etiqueta->id, // Relación con etiqueta
                     'nombre' => $row[22] ?? 'Sin nombre',
                     'maquina_id' => $maquina_id,
 					'figura' => $row[26],
@@ -208,10 +220,7 @@ public function import(Request $request)
 					'fecha_finalizacion' => $tiempos['fecha_finalizacion'],
 					'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
                 ]);
-                  // Verificar si la etiqueta ya existe antes de crearla
-                    $numeroEtiqueta = $row[30];
-                    $etiquetaExistente = Etiqueta::where('numero_etiqueta', $numeroEtiqueta)->first();
-
+                  
                     if (!$etiquetaExistente) {
                         // Crear el registro de etiqueta solo si no existe
                         Etiqueta::create([
