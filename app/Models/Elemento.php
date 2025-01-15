@@ -25,6 +25,7 @@ class Elemento extends Model
     protected $fillable = [
         'planilla_id',
 		'users_id',
+        'etiqueta_id',
         'nombre',
         'maquina_id',
 		'figura',
@@ -63,7 +64,7 @@ class Elemento extends Model
     {
         return $this->belongsTo(Planilla::class, 'planilla_id');
     }
-    
+
     public function etiqueta()
     {
         return $this->belongsTo(Etiqueta::class);
