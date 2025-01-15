@@ -16,6 +16,9 @@ class ProfileController extends Controller
 
     public function index(Request $request)
     {
+        if (auth()->user()->role !== 'administrador') {
+            return redirect()->route('dashboard')->with('abort', 'No tienes los permisos necesarios.');
+        }
         // Obtener las ubicaciones con sus productos asociados
         $usuarios = User::all();
 
