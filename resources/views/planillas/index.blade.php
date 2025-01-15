@@ -26,7 +26,15 @@
             {{ session('success') }}
         </div>
     @endif
-
+    @if (session('abort'))
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Acceso denegado',
+            text: "{{ session('abort') }}",
+        });
+    </script>
+    @endif
     <div class="container mx-auto px-3 py-6">
             <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
             <div class="mb-4">

@@ -108,6 +108,9 @@ public function show($id)
 	
 public function import(Request $request)
 {
+    if (auth()->user()->role !== 'administrador') {
+        return redirect()->route('planillas.index')->with('abort', 'No tienes los permisos necesarios.');
+    }
     // Validar el archivo
     $request->validate([
         'file' => 'required|file|mimes:xlsx,xls,csv',
@@ -276,6 +279,9 @@ private function calcularTiemposElemento(array $row)
     }
     public function edit($id)
     {
+        if (auth()->user()->role !== 'administrador') {
+            return redirect()->route('planillas.index')->with('abort', 'No tienes los permisos necesarios.');
+        }
         $planilla = Planilla::findOrFail($id);  // Encuentra la planilla por su ID
 
         return view('planillas.edit', compact('planilla'));
@@ -329,6 +335,9 @@ private function calcularTiemposElemento(array $row)
    // Eliminar una planilla y sus elementos asociados
 public function destroy($id)
 {
+    if (auth()->user()->role !== 'administrador') {
+        return redirect()->route('planillas.index')->with('abort', 'No tienes los permisos necesarios.');
+    }
     DB::beginTransaction();
     try {
         // Buscar la planilla a eliminar
