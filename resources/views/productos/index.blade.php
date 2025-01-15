@@ -142,7 +142,7 @@
                         </head>
                         <body>
                             <img src="${qrImg.src}" alt="Código QR" style="width:200px; height:200px;">
-                            <p>${id}</p>
+                            <p>ID ${id}</p>
                             <script>
                                 window.print();
                                 setTimeout(() => window.close(), 1000); // Cierra la ventana después de imprimir

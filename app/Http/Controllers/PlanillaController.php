@@ -7,7 +7,7 @@ use App\Models\Planilla;
 
 use App\Models\Elemento;
 use App\Models\Maquina;
-
+use App\Models\Etiqueta;
 use Illuminate\Support\Facades\DB;
 use App\Imports\PlanillaImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -199,6 +199,13 @@ public function import(Request $request)
                     'fecha_inicio' => $tiempos['fecha_inicio'],
 					'fecha_finalizacion' => $tiempos['fecha_finalizacion'],
 					'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
+                ]);
+                  // Crear el registro de etiqueta
+                  Etiqueta::create([
+                    'planilla_id' => $planilla->id,
+                    'elemento_id' => $elemento->id,
+                    'numero_etiqueta' => $row[30],
+                    'nombre' => $row[22],
                 ]);
             }
 
