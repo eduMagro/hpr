@@ -67,9 +67,11 @@
                     <p><strong>Estado:</strong> {{ $producto->estado }}</p>
                     <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
                     <p>
-                        <button id="generateQR" onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->id }}')" class="btn btn-primary">QR</button>
+
+                        <button id="generateQR" onclick="generateAndPrintQR('{{ $producto->id }}')"
+                            class="btn btn-primary">QR</button>
                     </p>
-                    <div id="qrCanvas{{ $producto->id }}" style="display:none;"></div>
+                    <div id="qrCanvas" style="display:none;"></div>
 
                     <hr class="m-2 border-gray-300">
 
@@ -109,7 +111,7 @@
      <!-- SCRIPT PARA IMPRIMIR QR -->
      <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-    function generateAndPrintQR(id, codigo) {
+    function generateAndPrintQR(id) {
         // Limpiamos el contenedor del QR
         const qrContainer = document.getElementById('qrCanvas');
         qrContainer.innerHTML = ""; // Elimina cualquier QR previo
@@ -140,7 +142,7 @@
                         </head>
                         <body>
                             <img src="${qrImg.src}" alt="Código QR" style="width:200px; height:200px;">
-                            <p>${codigo}</p>
+                            <p>${id}</p>
                             <script>
                                 window.print();
                                 setTimeout(() => window.close(), 1000); // Cierra la ventana después de imprimir
