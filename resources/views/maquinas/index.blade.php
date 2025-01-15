@@ -21,12 +21,22 @@
             {{ session('error') }}
         </div>
     @endif
+    {{-- mostrar mensaje de exito --}}
     @if (session('success'))
         <div class="alert alert-success">
             {{ session('success') }}
         </div>
     @endif
-
+    {{-- mision abortada --}}
+    @if (session('abort'))
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Acceso denegado',
+            text: "{{ session('abort') }}",
+        });
+    </script>
+    @endif
     <div class="container mx-auto px-4 py-6">
             <!-- Botón para crear una nueva maquina con estilo Bootstrap -->
             <div class="mb-4">
@@ -100,7 +110,7 @@
                         <hr style="border: 1px solid #ccc; margin: 10px 0;">
                         {{-- sweet alert para eliminar --}}
                         <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
-                        <div class="mt-4 flex justify-between">
+                     
                             <!-- Enlace para editar -->
                             <a href="{{ route('maquinas.edit', $maquina->id) }}"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
@@ -109,15 +119,7 @@
                         <a href="{{ route('maquinas.show', $maquina->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
 
-                            <!-- Formulario para eliminar -->
-                            <form action="{{ route('maquinas.destroy', $maquina->id) }}" method="POST"
-                                style="display:inline;"
-                                onsubmit="return confirm('¿Estás seguro de querer eliminar esta máquina?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-500 hover:text-red-700 text-sm">Eliminar</button>
-                            </form>
-                        </div>
+                   
                     </div>
                 @empty
                     <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->

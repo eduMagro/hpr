@@ -46,6 +46,9 @@ class MaquinaController extends Controller
 
     public function create()
     {
+        if (auth()->user()->role !== 'administrador') {
+            return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
+        }
         return view('maquinas.create');
     }
     // Método para guardar la ubicación en la base de datos
@@ -115,6 +118,9 @@ class MaquinaController extends Controller
 
     public function edit($id)
     {
+        if (auth()->user()->role !== 'administrador') {
+            return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
+        }
         // Buscar la máquina por su ID
         $maquina = Maquina::findOrFail($id);
 

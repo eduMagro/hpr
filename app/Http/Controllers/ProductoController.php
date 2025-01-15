@@ -80,6 +80,9 @@ class ProductoController extends Controller
    //------------------------------------------------------------------------------------ EDIT
     public function edit(Producto $producto)
     {
+        if (auth()->user()->role !== 'administrador') {
+            return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
+        }
         return view('productos.edit', compact('producto'));
     }
 

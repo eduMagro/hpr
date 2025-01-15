@@ -57,7 +57,8 @@ public function show($id)
 
     /**
      * Display the user's profile form.
-     */public function edit()
+     */
+public function edit()
 {
     $user = Auth::user();  // Obtiene al usuario autenticado
 

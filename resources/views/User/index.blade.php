@@ -12,9 +12,9 @@
             text: "{{ session('abort') }}",
         });
     </script>
-@endif
+    @endif
     <div class="container mx-auto px-4 py-6">
-                <!-- Botón para crear un nuevo movimiento con estilo Bootstrap -->
+                <!-- Botón para crear un nuevo usuario con estilo Bootstrap -->
                 <div class="mb-4">
                     <a href="{{ route('register') }}" class="btn btn-primary">
                         Registrar Usuario

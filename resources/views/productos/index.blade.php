@@ -6,6 +6,38 @@
 
         </h2>
     </x-slot>
+        <!-- Mostrar errores de validación -->
+        @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    <!-- Mostrar mensajes de éxito o error -->
+    @if (session('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+    {{-- mostrar mensaje de exito --}}
+    @if (session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
+    {{-- mision abortada --}}
+    @if (session('abort'))
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Acceso denegado',
+            text: "{{ session('abort') }}",
+        });
+    </script>
+    @endif
     <div class="container mx-auto px-4 py-6">
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('productos.index') }}" class="form-inline mt-3 mb-3">
@@ -56,6 +88,8 @@
 
                     <hr class="my-2 border-gray-300">
                     <div class="mt-2 flex justify-between">
+                           {{-- sweet alert para eliminar --}}
+                           <x-boton-eliminar :action="route('productos.destroy', $producto->id)" />
                         <!-- Enlace para editar -->
                         <a href="{{ route('productos.edit', $producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
