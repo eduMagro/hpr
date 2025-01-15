@@ -117,6 +117,9 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ DESTROY
     public function destroy(Producto $producto)
     {
+        if (auth()->user()->role !== 'administrador') {
+            return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
+        }
         $producto->delete();
 
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');
