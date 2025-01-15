@@ -93,14 +93,8 @@
                         <!-- Enlace para editar -->
                         <a href="{{ route('productos.edit', $producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                        <div class="mt-2 flex justify-between">
-                            <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
-                                onsubmit="return confirm('¿Estás seguro de querer eliminar este producto?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-500">Eliminar</button>
-                            </form>
-                        </div>
+                       <a href="{{ route('productos.show', $producto->id)}}"
+                            class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
                     </div>
                 </div>
             @empty

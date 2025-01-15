@@ -108,6 +108,9 @@
                         @endif
                         
                         <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                        <hr style="border: 1px solid #ccc; margin: 10px 0;">
+
+                        <div class="mt-4 flex justify-between items-center">
                         {{-- sweet alert para eliminar --}}
                         <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
                      
@@ -118,7 +121,7 @@
 							                        <!-- Enlace para ver -->
                         <a href="{{ route('maquinas.show', $maquina->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
-
+                        </div>
                    
                     </div>
                 @empty
