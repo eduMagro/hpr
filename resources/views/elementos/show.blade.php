@@ -141,94 +141,104 @@
 
     <div class="container mx-auto px-4 py-6">
         <!-- GRID PARA TARJETAS -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            @forelse ($elementos as $elemento)
-                <div id="elemento-{{ $elemento->id }}" class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-					{{ $loop->iteration }}.
-                    <!-- Nombre -->
-                    <p class="text-black-500 text-sm">
-                        <strong>{{ $elemento->nombre ?? 'Sin nombre' }}</strong>
-                    </p>
-                    <hr class="my-2">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+    @forelse ($etiquetasConElementos as $etiqueta)
+        <div class="bg-gray-100 p-4 rounded-lg shadow-md">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} 
+                (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
+            </h3>
+            <div class="grid grid-cols-1 gap-4">
+                @forelse ($etiqueta->elementos as $elemento)
+                    <div id="elemento-{{ $elemento->id }}" class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                        {{ $loop->iteration }}.
+                        <!-- Nombre -->
+                        <p class="text-black-500 text-sm">
+                            <strong>{{ $elemento->nombre ?? 'Sin nombre' }}</strong>
+                        </p>
+                        <hr class="my-2">
 
-                    <!-- Máquina -->
-                    <p class="text-gray-500 text-sm">
-                        <strong>Máquina asignada:</strong> {{ $elemento->maquina->nombre ?? 'No asignado' }}
-                    </p>
-                    <hr class="my-2">
+                        <!-- Máquina -->
+                        <p class="text-gray-500 text-sm">
+                            <strong>Máquina asignada:</strong> {{ $elemento->maquina->nombre ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                        <strong>Peso:</strong> {{ $elemento->peso ?? 'No asignado' }}
-                    </p>
-                    <hr class="my-2">
+                        <p class="text-gray-500 text-sm">
+                            <strong>Peso:</strong> {{ $elemento->peso ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                        <strong>Diámetro:</strong> {{ $elemento->diametro ?? 'No asignado' }}
-                    </p>
-                    <hr class="my-2">
+                        <p class="text-gray-500 text-sm">
+                            <strong>Diámetro:</strong> {{ $elemento->diametro ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                        <strong>Longitud:</strong> {{ $elemento->longitud ?? 'No asignado' }}
-                    </p>
-                    <hr class="my-2">
+                        <p class="text-gray-500 text-sm">
+                            <strong>Longitud:</strong> {{ $elemento->longitud ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                    <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
-                    </p>
-					                    <hr class="my-2">
+                        <p class="text-gray-500 text-sm">
+                            <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                    <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
-                    </p>
-					<hr class="my-2">
+                        <p class="text-gray-500 text-sm">
+                            <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                    <strong>Fila:</strong> {{ $elemento->fila ?? 'No asignado' }}
-                    </p>
-					<hr class="my-2">
+                        <p class="text-gray-500 text-sm">
+                            <strong>Fila:</strong> {{ $elemento->fila ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                    <strong>Descripción Fila:</strong> {{ $elemento->descripción_fila ?? 'No asignado' }}
-                    </p>
-					<hr class="my-2">
+                        <p class="text-gray-500 text-sm">
+                            <strong>Descripción Fila:</strong> {{ $elemento->descripcion_fila ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                    <strong>Marca:</strong> {{ $elemento->marca ?? 'No asignado' }}
-                    </p>
-					<hr class="my-2">
+                        <p class="text-gray-500 text-sm">
+                            <strong>Marca:</strong> {{ $elemento->marca ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <p class="text-gray-500 text-sm">
-                    <strong>Etiqueta:</strong> {{ $elemento->etiqueta ?? 'No asignado' }}
-                    </p>
+                        <p class="text-gray-500 text-sm">
+                            <strong>Etiqueta:</strong> {{ $etiqueta->nombre ?? 'No asignado' }}
+                        </p>
+                        <hr class="my-2">
 
-                    <hr class="my-2"> 
-					<p class="text-gray-500 text-sm">
-						<strong>Tiempo estimado de fabricación:</strong> 
-							@if(isset($elemento->tiempo_fabricacion))
-								@php
-									$horas = intdiv($elemento->tiempo_fabricacion, 3600); // Convierte los segundos a horas
-									$minutos = intdiv($elemento->tiempo_fabricacion % 3600, 60); // Calcula los minutos restantes
-									$segundos = $elemento->tiempo_fabricacion % 60; // Calcula los segundos restantes
-								@endphp
-								@if($horas > 0)
-									{{ $horas }} horas
-								@endif
-								@if($minutos > 0)
-									{{ $minutos }} minutos
-								@endif
-								{{ $segundos }} segundos.
-							@else
-								Sin tiempo definido.
-							@endif
+                        <p class="text-gray-500 text-sm">
+                            <strong>Tiempo estimado de fabricación:</strong>
+                            @if(isset($elemento->tiempo_fabricacion))
+                                @php
+                                    $horas = intdiv($elemento->tiempo_fabricacion, 3600); // Convierte los segundos a horas
+                                    $minutos = intdiv($elemento->tiempo_fabricacion % 3600, 60); // Calcula los minutos restantes
+                                    $segundos = $elemento->tiempo_fabricacion % 60; // Calcula los segundos restantes
+                                @endphp
+                                @if($horas > 0)
+                                    {{ $horas }} horas
+                                @endif
+                                @if($minutos > 0)
+                                    {{ $minutos }} minutos
+                                @endif
+                                {{ $segundos }} segundos.
+                            @else
+                                Sin tiempo definido.
+                            @endif
+                        </p>
+                        <hr class="my-2">
 
-					</p>
-                    <hr class="my-2"> 
-                    <p class="text-gray-500 text-sm">
-                        <strong>Dimensiones:</strong> {{ $elemento->dimensiones ?? 'Sin dimensiones' }}
-                    </p>
-
-                    <!-- Canvas para dibujo -->
+                        <p class="text-gray-500 text-sm">
+                            <strong>Dimensiones:</strong> {{ $elemento->dimensiones ?? 'Sin dimensiones' }}
+                        </p>
+                            <!-- Canvas para dibujo -->
                   <canvas id="canvas-{{ $elemento->id }}" data-loop="{{ $loop->iteration }}"></canvas>
+                    </div>
+             
+
+                
 
  				<form method="POST" action="{{ route('elementos.actualizarEstado') }}" class="mt-4">
     @csrf
@@ -261,12 +271,17 @@
     </div>
 					
                 </div>
-            @empty
-                <div class="col-span-4 text-center py-4 text-gray-600">
-                    No hay elementos disponibles.
-                </div>
+                @empty
+                <p class="text-gray-600">No hay elementos asociados a esta etiqueta.</p>
             @endforelse
         </div>
+    </div>
+@empty
+    <div class="col-span-4 text-center py-4 text-gray-600">
+        No hay etiquetas disponibles.
+    </div>
+@endforelse
+</div>
 
         <!-- PAGINACIÓN -->
         @if ($elementos instanceof \Illuminate\Pagination\LengthAwarePaginator)
