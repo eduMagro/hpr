@@ -283,12 +283,12 @@
 @endforelse
 </div>
 
-        <!-- PAGINACIÓN -->
-        @if ($elementos instanceof \Illuminate\Pagination\LengthAwarePaginator)
-            <div class="mt-6">
-                {{ $elementos->appends(request()->except('page'))->links() }}
-            </div>
-        @endif
+      <!-- PAGINACIÓN -->
+    @if ($etiquetasConElementos instanceof \Illuminate\Pagination\LengthAwarePaginator)
+    <div class="mt-6">
+        {{ $etiquetasConElementos->appends(request()->except('page'))->links() }}
+    </div>
+    @endif
 
         <a href="{{ route('planillas.index') }}" class="btn btn-primary mt-3">Volver a Planillas</a>
     </div>
