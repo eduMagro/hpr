@@ -49,6 +49,11 @@
                         <a href="#elemento-{{ $elemento->id }}" class="text-blue-500 hover:underline">
                             {{ $elemento->nombre ?? 'Sin nombre' }}
                         </a>
+                        <p>
+                            <button id="generateQR" onclick="generateAndPrintQR('{{ 'Elemento' . $elemento->id }}')" 
+                                class="btn btn-primary mt-2">QR</button>
+                        </p>
+                        <div id="qrCanvas" style="display:none;"></div>
                         <span class="text-black-500">
                             <span>Máquina: {{ $elemento->maquina?->nombre ?? 'Sin máquina' }} / </span>
                         </span>
@@ -76,11 +81,6 @@
                     <div class="bg-gray-100 border p-4 shadow-md rounded-lg flex flex-col items-center w-full">
                         <h3 class="font-bold text-xl break-words mb-2">{{ $maquina->codigo }}</h3>
                         <p><strong>Nombre Máquina:</strong> {{ $maquina->nombre }}</p>
-                        <p>
-                            <button id="generateQR" onclick="generateAndPrintQR('{{ $maquina->codigo }}')" 
-                                class="btn btn-primary mt-2">QR</button>
-                        </p>
-                        <div id="qrCanvas" style="display:none;"></div>
                         <p><strong>Diámetros aceptados:</strong> {{ $maquina->diametro_min . " - " . $maquina->diametro_max }}</p>
                         <p><strong>Pesos bobinas:</strong> 
                             {{ ($maquina->peso_min && $maquina->peso_max) ? ($maquina->peso_min . ' - ' . $maquina->peso_max) : 'Barras' }}
@@ -416,5 +416,51 @@ function dibujarFigura(canvas, instrucciones) {
         });
     });
 </script>
-
+ <!-- SCRIPT PARA IMPRIMIR QR -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+ <script>
+     function generateAndPrintQR(id, codigo) {
+         // Validamos que el ID sea válido
+         if (!id || isNaN(id)) {
+             alert("El ID proporcionado no es válido. Por favor, verifica.");
+             return;
+         }
+ 
+         // Limpiamos el contenedor del QR
+         const qrContainer = document.getElementById('qrCanvas');
+         qrContainer.innerHTML = ""; // Elimina cualquier QR previo
+ 
+         // Generamos el QR con el ID
+         const qrCode = new QRCode(qrContainer, {
+             text: id.toString(), // Usamos el ID convertido a texto
+             width: 100,
+             height: 200,
+         });
+ 
+         // Esperamos a que el QR esté listo antes de imprimirlo
+         setTimeout(() => {
+             const qrImg = qrContainer.querySelector('img'); // Obtenemos la imagen del QR
+             if (!qrImg) {
+                 alert("Error al generar el QR. Intenta nuevamente.");
+                 return;
+             }
+ 
+             // Creamos una ventana para la impresión
+             const printWindow = window.open('', '_blank');
+             printWindow.document.write(`
+                 <html>
+                     <body>
+                         <img src="${qrImg.src}" alt="Código QR" style="width:200px; height:200px;">
+                         <p>${codigo}</p>
+                         <script>
+                             window.print();
+                             setTimeout(() => window.close(), 1000); // Cierra la ventana después de imprimir
+                         <\/script>
+                     </body>
+                 </html>
+             `);
+             printWindow.document.close();
+         }, 500); // Tiempo de espera para que el QR se genere completamente
+     }
+ </script>
 </x-app-layout>

@@ -108,7 +108,6 @@
                         @endif
                         
                         <hr style="border: 1px solid #ccc; margin: 10px 0;">
-                        <hr style="border: 1px solid #ccc; margin: 10px 0;">
 
                         <div class="mt-4 flex justify-between items-center">
                         {{-- sweet alert para eliminar --}}
