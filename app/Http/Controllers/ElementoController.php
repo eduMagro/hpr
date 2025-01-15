@@ -79,7 +79,7 @@ public function showByEtiquetas($planillaId)
             $query->where('planilla_id', $planillaId);
         })
         ->paginate(10);
-
+dd($etiquetasConElementos);
     return view('elementos.show', compact('planilla', 'etiquetasConElementos'));
 }
 
