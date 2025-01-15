@@ -208,12 +208,18 @@ public function import(Request $request)
 					'fecha_finalizacion' => $tiempos['fecha_finalizacion'],
 					'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
                 ]);
-                  // Crear el registro de etiqueta
-                  Etiqueta::create([
-                    'planilla_id' => $planilla->id,
-                    'numero_etiqueta' => $row[30],
-                    'nombre' => $row[22],
-                ]);
+                  // Verificar si la etiqueta ya existe antes de crearla
+                    $numeroEtiqueta = $row[30];
+                    $etiquetaExistente = Etiqueta::where('numero_etiqueta', $numeroEtiqueta)->first();
+
+                    if (!$etiquetaExistente) {
+                        // Crear el registro de etiqueta solo si no existe
+                        Etiqueta::create([
+                            'planilla_id' => $planilla->id,
+                            'numero_etiqueta' => $numeroEtiqueta,
+                            'nombre' => $row[22],
+                        ]);
+                    }
             }
 
             // Actualizar el registro de planilla con el tiempo global
