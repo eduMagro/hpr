@@ -63,7 +63,13 @@ class Elemento extends Model
     {
         return $this->belongsTo(Planilla::class, 'planilla_id');
     }
-
+    
+    public function etiqueta()
+    {
+        return $this->belongsTo(Etiqueta::class);
+    }
+    
+    
     // Relación con el modelo Maquina (si existe)
     public function maquina()
     {

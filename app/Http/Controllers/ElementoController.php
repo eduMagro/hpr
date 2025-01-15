@@ -71,15 +71,14 @@ public function show($id)
 
 public function showByEtiquetas($planillaId)
 {
-    $planilla = Planilla::with(['elementos.etiquetas'])->findOrFail($planillaId);
+    $planilla = Planilla::with(['elementos'])->findOrFail($planillaId);
 
     // Obtener elementos clasificados por etiquetas
-    $elementosPorEtiquetas = Etiqueta::with('elemento')
-        ->whereHas('elemento', function ($query) use ($planillaId) {
+    $etiquetaConElementos = Etiqueta::with('elemento')
+        ->whereHas('elementos', function ($query) use ($planillaId) {
             $query->where('planilla_id', $planillaId);
         })
         ->get()
-        ->groupBy('nombre');
 
     return view('elementos.show', compact('planilla', 'elementosPorEtiquetas'));
 }

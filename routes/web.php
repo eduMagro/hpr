@@ -47,6 +47,8 @@ Route::middleware('auth')->group(function () {
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');
     Route::resource('conjuntos', ConjuntoController::class);
     Route::resource('elementos', ElementoController::class);
+    Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
+    ->name('elementosEtiquetas');
 
 Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
 
