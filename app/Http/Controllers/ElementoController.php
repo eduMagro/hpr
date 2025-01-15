@@ -78,7 +78,7 @@ public function showByEtiquetas($planillaId)
         ->whereHas('elementos', function ($query) use ($planillaId) {
             $query->where('planilla_id', $planillaId);
         })
-        ->get()
+        ->get();
 
     return view('elementos.show', compact('planilla', 'elementosPorEtiquetas'));
 }
