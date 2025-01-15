@@ -67,7 +67,7 @@
                     <p><strong>Estado:</strong> {{ $producto->estado }}</p>
                     <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
                     <p>
-                        <button onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->id }}')" class="btn btn-primary">QR</button>
+                        <button id="generateQR" onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->id }}')" class="btn btn-primary">QR</button>
                     </p>
                     <div id="qrCanvas{{ $producto->id }}" style="display:none;"></div>
 
