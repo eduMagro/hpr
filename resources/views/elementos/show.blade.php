@@ -293,22 +293,27 @@
         <a href="{{ route('planillas.index') }}" class="btn btn-primary mt-3">Volver a Planillas</a>
     </div>
 <script>
+
 document.addEventListener("DOMContentLoaded", function () {
-    const elementos = @json($elementos);
+    const etiquetasConElementos = @json($etiquetasConElementos);
 
-    elementos.forEach(elemento => {
-        const canvasId = `canvas-${elemento.id}`;
-        const canvas = document.getElementById(canvasId);
+    etiquetasConElementos.forEach((etiqueta) => {
+        etiqueta.elementos.forEach((elemento) => {
+            const canvasId = `canvas-${elemento.id}`;
+            const canvas = document.getElementById(canvasId);
 
-        if (canvas && elemento.dimensiones) {
-            const instrucciones = generarInstrucciones(elemento.dimensiones);
-            
-            // Obtener el número del loop desde el atributo data-loop
-            const loopNumber = canvas.dataset.loop;
+            if (canvas && elemento.dimensiones) {
+                const instrucciones = generarInstrucciones(elemento.dimensiones);
+                
+                // Obtener el número del loop desde el atributo data-loop
+                const loopNumber = canvas.dataset.loop;
+                // Ajustar tamaño del canvas a la figura
+                ajustarCanvasAlFigura(canvas, instrucciones, loopNumber);
 
-            ajustarCanvasAlFigura(canvas, instrucciones, loopNumber); // Ajustar tamaño del canvas a la figura
-            dibujarFigura(canvas, instrucciones); // Dibujar la figura específica
-        }
+                // Dibujar la figura específica
+                dibujarFigura(canvas, instrucciones);
+            }
+        });
     });
 });
 
