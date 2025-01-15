@@ -98,6 +98,8 @@
                         @endif
                         
                         <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                        {{-- sweet alert para eliminar --}}
+                        <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
                         <div class="mt-4 flex justify-between">
                             <!-- Enlace para editar -->
                             <a href="{{ route('maquinas.edit', $maquina->id) }}"
