@@ -36,8 +36,8 @@ class MaquinaController extends Controller
         return view('maquinas.index', compact('registrosMaquina'));
     }
 
-	
-	    //------------------------------------------------------------------------------------ SHOW
+
+    //------------------------------------------------------------------------------------ SHOW
     public function show($id)
     {
         $maquina = Maquina::findOrFail($id);
@@ -103,7 +103,6 @@ class MaquinaController extends Controller
             DB::commit();  // Confirmamos la transacción
             // Redirigir a la página de listado con un mensaje de éxito
             return redirect()->route('maquinas.index')->with('success', 'Máquina creada con éxito.');
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Mostrar todos los errores de validación
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
@@ -143,34 +142,34 @@ class MaquinaController extends Controller
             'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
             'codigo.max' => 'El campo "código" no puede tener más de 6 caracteres.',
             'codigo.unique' => 'El código ya existe, por favor ingrese otro diferente.',
-    
+
             'nombre.required' => 'El campo "nombre" es obligatorio.',
             'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
             'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
-    
+
             'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
             'diametro_min.integer' => 'El "diámetro mínimo" debe ser un número entero.',
-    
+
             'diametro_max.required' => 'El campo "diámetro máximo" es obligatorio.',
             'diametro_max.integer' => 'El "diámetro máximo" debe ser un número entero.',
-    
+
             'peso_min.integer' => 'El "peso mínimo" debe ser un número entero.',
             'peso_max.integer' => 'El "peso máximo" debe ser un número entero.',
         ]);
-    
+
         // Iniciar la transacción
         DB::beginTransaction();
-    
+
         try {
             // Buscar la máquina por su ID
             $maquina = Maquina::findOrFail($id);
-    
+
             // Actualizar los datos de la máquina
             $maquina->update($validatedData);
-    
+
             // Confirmar la transacción
             DB::commit();
-    
+
             // Redirigir con un mensaje de éxito
             return redirect()->route('maquinas.index')->with('success', 'La máquina se actualizó correctamente.');
         } catch (\Exception $e) {
@@ -180,9 +179,12 @@ class MaquinaController extends Controller
             return redirect()->back()->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente. Error: ' . $e->getMessage());
         }
     }
-    
+
     public function destroy($id)
     {
+        if (auth()->user()->role !== 'administrador') {
+            return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
+        }
         DB::beginTransaction();
         try {
             // Buscar la maquina a eliminar
