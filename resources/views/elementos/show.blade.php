@@ -73,7 +73,11 @@
                                                         Peso: {{ $elemento->peso ?? 'No asignado' }},
                                                         Diámetro: {{ $elemento->diametro ?? 'No asignado' }},
                                                         Longitud: {{ $elemento->longitud ?? 'No asignado' }},
-                                                        Estado: {{ $elemento->estado ?? 'Desconocido' }}
+                                                        @if ($elemento->estado === 'completo')
+                                                            ✅
+                                                        @else
+                                                            ❌
+                                                        @endif
                                                     </span>
                                                 </li>
                                             @endforeach
