@@ -156,15 +156,17 @@
     </div>
 
     <div class="container mx-auto px-4 py-6">
-        <!-- GRID PARA TARJETAS -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <!-- GRID PARA ETIQUETAS (Cada etiqueta inicia en una nueva fila) -->
+        <div class="grid grid-cols-1 gap-6">
             @forelse ($etiquetasConElementos as $etiqueta)
                 <div class="bg-yellow-100 p-6 rounded-lg shadow-md">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">
                         Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                     </h3>
-                    <div class="grid grid-cols-1 gap-4">
+
+                    <!-- GRID PARA ELEMENTOS (2 columnas dentro de cada etiqueta) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         @forelse ($etiqueta->elementos as $elemento)
                             <div id="elemento-{{ $elemento->id }}"
                                 class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
@@ -255,37 +257,6 @@
                                 <!-- Canvas para dibujo -->
                                 <canvas id="canvas-{{ $elemento->id }}" data-loop="{{ $loop->iteration }}"></canvas>
                             </div>
-
-                            <form method="POST" action="{{ route('elementos.actualizarEstado') }}" class="mt-4">
-                                @csrf
-                                <input type="hidden" name="elemento_id" value="{{ $elemento->id }}">
-                                <input type="hidden" name="planilla_id" value="{{ $planilla->id }}">
-
-                                @if ($elemento->estado === 'pendiente')
-                                    <input type="hidden" name="accion" value="completar">
-                                    <button type="submit"
-                                        class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition duration-300 flex items-center">
-                                        <i class="fb-check mr-2"></i> Marcar como Completado
-                                    </button>
-                                @elseif ($elemento->estado === 'completado')
-                                    <input type="hidden" name="accion" value="descompletar">
-                                    <button type="submit"
-                                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300 flex items-center">
-                                        <i class="fas fa-undo mr-2"></i> Marcar como Pendiente
-                                    </button>
-                                @endif
-                            </form>
-
-                            <!-- Checkbox para marcar como completado -->
-                            <div class="mt-2">
-                                <label class="flex items-center">
-                                    <input type="checkbox" class="form-checkbox h-5 w-5 text-green-600"
-                                        @if ($elemento->estado === 'pendiente') checked disabled @endif>
-                                    <span class="ml-2 text-gray-700">
-                                        Elegir para crear conjunto de elementos
-                                    </span>
-                                </label>
-                            </div>
                         @empty
                             <p class="text-gray-600">No hay elementos asociados a esta etiqueta.</p>
                         @endforelse
@@ -308,9 +279,10 @@
         <a href="{{ route('planillas.index') }}" class="btn btn-primary m-3">Volver a Planillas</a>
     </div>
 
+
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            const elementos = @json($etiquetasConElementos);
+            const elementos = @json($elemento);
 
             elementos.forEach(elemento => {
                 const canvasId = `canvas-${elemento.id}`;
