@@ -57,9 +57,9 @@
 
                                     <ul class="list-disc pl-6">
                                         @if ($etiqueta->elementos->isEmpty())
-                                            <div class="text-center text-gray-600">
+                                            <li>
                                                 No hay elementos asociados a esta etiqueta.
-                                            </div>
+                                            </li>
                                         @else
                                             @foreach ($etiqueta->elementos as $elemento)
                                                 <li>
