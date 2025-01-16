@@ -195,9 +195,12 @@ class PlanillaController extends Controller
                     // Verificar si ya registramos esta etiqueta en esta ejecución
                     if (!isset($etiquetasRegistradas[$numeroEtiqueta])) {
                         // Buscar en la base de datos si existe la etiqueta
-                        $etiqueta = Etiqueta::firstOrCreate(
-                            ['numero_etiqueta' => $numeroEtiqueta],
-                            ['planilla_id' => $planilla->id, 'nombre' => $row[22] ?? 'Sin nombre']
+                        $etiqueta = Etiqueta::create(
+                            [
+                                'numero_etiqueta' => $numeroEtiqueta,
+                                'planilla_id' => $planilla->id,
+                                'nombre' => $row[22] ?? 'Sin nombre'
+                            ]
                         );
 
                         // Marcar la etiqueta como registrada para evitar consultas repetidas
