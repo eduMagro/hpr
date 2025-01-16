@@ -63,7 +63,7 @@
                                         @else
                                             @foreach ($etiqueta->elementos as $elemento)
                                                 <li>
-                                                    <span class="font-semibold">{{ $loop->iteration }}.</span>
+
                                                     <a href="#elemento-{{ $elemento->id }}"
                                                         class="text-blue-500 hover:underline">
                                                         {{ $loop->iteration }}
