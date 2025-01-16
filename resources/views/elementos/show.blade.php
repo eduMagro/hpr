@@ -37,10 +37,9 @@
     @endif
 
     <div class="container mx-auto px-4 py-6">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Índice de Elementos -->
-            <!-- Índice de Elementos (Columna izquierda) -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="bg-white shadow-md rounded-lg p-6 flex flex-col items-center w-full">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Índice de Elementos</h3>
                 <ul class="list-none w-full">
                     @if ($etiquetasConElementos->isEmpty())
@@ -74,224 +73,221 @@
                         </div>
                     @endif
                 </ul>
+            </div>
+            <!-- Información de Máquinas Únicas -->
+            <div class="bg-white shadow-md rounded-lg p-6 flex flex-col items-center w-full">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Máquinas Asociadas</h3>
+                <div class="grid grid-cols-1 gap-6 w-full">
+                    @php
+                        // Extraer máquinas únicas desde las etiquetas y sus elementos
+                        $maquinas = $etiquetasConElementos
+                            ->flatMap(function ($etiqueta) {
+                                return $etiqueta->elementos->pluck('maquina');
+                            })
+                            ->unique('id')
+                            ->filter();
+                    @endphp
 
 
-                <!-- Información de Máquinas Únicas -->
-                <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Máquinas Asociadas</h3>
-                    <div class="grid grid-cols-1 gap-6 w-full">
-                        @php
-                            // Extraer máquinas únicas desde las etiquetas y sus elementos
-                            $maquinas = $etiquetasConElementos
-                                ->flatMap(function ($etiqueta) {
-                                    return $etiqueta->elementos->pluck('maquina');
-                                })
-                                ->unique('id')
-                                ->filter();
-                        @endphp
+                    @forelse ($maquinas as $maquina)
+                        <div class="bg-gray-100 border p-4 shadow-md rounded-lg flex flex-col items-center w-full">
+                            <h3 class="font-bold text-xl break-words mb-2">{{ $maquina->codigo }}</h3>
+                            <p><strong>Nombre Máquina:</strong> {{ $maquina->nombre }}</p>
+                            <p><strong>Diámetros aceptados:</strong>
+                                {{ $maquina->diametro_min . ' - ' . $maquina->diametro_max }}</p>
+                            <p><strong>Pesos bobinas:</strong>
+                                {{ $maquina->peso_min && $maquina->peso_max ? $maquina->peso_min . ' - ' . $maquina->peso_max : 'Barras' }}
+                            </p>
 
-
-                        @forelse ($maquinas as $maquina)
-                            <div class="bg-gray-100 border p-4 shadow-md rounded-lg flex flex-col items-center w-full">
-                                <h3 class="font-bold text-xl break-words mb-2">{{ $maquina->codigo }}</h3>
-                                <p><strong>Nombre Máquina:</strong> {{ $maquina->nombre }}</p>
-                                <p><strong>Diámetros aceptados:</strong>
-                                    {{ $maquina->diametro_min . ' - ' . $maquina->diametro_max }}</p>
-                                <p><strong>Pesos bobinas:</strong>
-                                    {{ $maquina->peso_min && $maquina->peso_max ? $maquina->peso_min . ' - ' . $maquina->peso_max : 'Barras' }}
-                                </p>
-
-                                <!-- Productos asociados con la máquina -->
-                                <h4 class="mt-4 font-semibold">Productos en máquina:</h4>
-                                @if ($maquina->productos->isEmpty())
-                                    <p>No hay productos en esta máquina.</p>
-                                @else
-                                    <ul class="list-disc pl-6 break-words w-full">
-                                        @foreach ($maquina->productos as $producto)
-                                            <li class="mb-2 flex items-center justify-between">
-                                                <span>
-                                                    ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} -
-                                                    D{{ $producto->diametro }}
-                                                    - L{{ $producto->longitud ?? '??' }}
-                                                </span>
-                                                <a href="{{ route('productos.show', $producto->id) }}"
-                                                    class="btn btn-sm btn-primary">Ver</a>
-                                                @if ($producto->tipo == 'encarretado')
-                                                    <div
-                                                        style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
-                                                        <div class="cuadro verde"
-                                                            style="width: 100%; 
+                            <!-- Productos asociados con la máquina -->
+                            <h4 class="mt-4 font-semibold">Productos en máquina:</h4>
+                            @if ($maquina->productos->isEmpty())
+                                <p>No hay productos en esta máquina.</p>
+                            @else
+                                <ul class="list-disc pl-6 break-words w-full">
+                                    @foreach ($maquina->productos as $producto)
+                                        <li class="mb-2 flex items-center justify-between">
+                                            <span>
+                                                ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} -
+                                                D{{ $producto->diametro }}
+                                                - L{{ $producto->longitud ?? '??' }}
+                                            </span>
+                                            <a href="{{ route('productos.show', $producto->id) }}"
+                                                class="btn btn-sm btn-primary">Ver</a>
+                                            @if ($producto->tipo == 'encarretado')
+                                                <div
+                                                    style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
+                                                    <div class="cuadro verde"
+                                                        style="width: 100%; 
                                                            height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
                                                            background-color: green; 
                                                            position: absolute; 
                                                            bottom: 0;">
-                                                        </div>
-                                                        <span
-                                                            style="position: absolute; top: 10px; left: 10px; color: white;">
-                                                            {{ $producto->peso_stock }} /
-                                                            {{ $producto->peso_inicial }} kg
-                                                        </span>
                                                     </div>
-                                                @endif
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                @endif
-                            </div>
-                        @empty
-                            <p>No hay máquinas asociadas a los elementos.</p>
-                        @endforelse
-                    </div>
+                                                    <span
+                                                        style="position: absolute; top: 10px; left: 10px; color: white;">
+                                                        {{ $producto->peso_stock }} /
+                                                        {{ $producto->peso_inicial }} kg
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    @empty
+                        <p>No hay máquinas asociadas a los elementos.</p>
+                    @endforelse
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="mt-6">
-            <!-- GRID PARA TARJETAS -->
-            <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Etiquetas y Elementos</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                @forelse ($etiquetasConElementos as $etiqueta)
-                    <div class="bg-gray-100 p-6 rounded-lg shadow-md">
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                            Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
-                            (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
-                        </h3>
-                        <div class="grid grid-cols-1 gap-4">
-                            @forelse ($etiqueta->elementos as $elemento)
-                                <div id="elemento-{{ $elemento->id }}"
-                                    class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-                                    {{ $loop->iteration }}.
-                                    <!-- Nombre -->
-                                    <p class="text-black-500 text-sm">
-                                        <strong>{{ $elemento->nombre ?? 'Sin nombre' }}</strong>
-                                    </p>
-                                    <hr class="my-2">
+    <div class="container mx-auto px-4 py-6">
+        <!-- GRID PARA TARJETAS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            @forelse ($etiquetasConElementos as $etiqueta)
+                <div class="bg-gray-100 p-6 rounded-lg shadow-md">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
+                        (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
+                    </h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        @forelse ($etiqueta->elementos as $elemento)
+                            <div id="elemento-{{ $elemento->id }}"
+                                class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                                {{ $loop->iteration }}.
+                                <!-- Nombre -->
+                                <p class="text-black-500 text-sm">
+                                    <strong>{{ $elemento->nombre ?? 'Sin nombre' }}</strong>
+                                </p>
+                                <hr class="my-2">
 
-                                    <!-- Máquina -->
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Máquina asignada:</strong>
-                                        {{ $elemento->maquina->nombre ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <!-- Máquina -->
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Máquina asignada:</strong>
+                                    {{ $elemento->maquina->nombre ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Peso:</strong> {{ $elemento->peso ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Peso:</strong> {{ $elemento->peso ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Diámetro:</strong> {{ $elemento->diametro ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Diámetro:</strong> {{ $elemento->diametro ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Longitud:</strong> {{ $elemento->longitud ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Longitud:</strong> {{ $elemento->longitud ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Fila:</strong> {{ $elemento->fila ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Fila:</strong> {{ $elemento->fila ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Descripción Fila:</strong>
-                                        {{ $elemento->descripcion_fila ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Descripción Fila:</strong>
+                                    {{ $elemento->descripcion_fila ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Marca:</strong> {{ $elemento->marca ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Marca:</strong> {{ $elemento->marca ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Etiqueta:</strong> {{ $etiqueta->nombre ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Etiqueta:</strong> {{ $etiqueta->nombre ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
 
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Tiempo estimado de fabricación:</strong>
-                                        @if (isset($elemento->tiempo_fabricacion))
-                                            @php
-                                                $horas = intdiv($elemento->tiempo_fabricacion, 3600); // Convierte los segundos a horas
-                                                $minutos = intdiv($elemento->tiempo_fabricacion % 3600, 60); // Calcula los minutos restantes
-                                                $segundos = $elemento->tiempo_fabricacion % 60; // Calcula los segundos restantes
-                                            @endphp
-                                            @if ($horas > 0)
-                                                {{ $horas }} horas
-                                            @endif
-                                            @if ($minutos > 0)
-                                                {{ $minutos }} minutos
-                                            @endif
-                                            {{ $segundos }} segundos.
-                                        @else
-                                            Sin tiempo definido.
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Tiempo estimado de fabricación:</strong>
+                                    @if (isset($elemento->tiempo_fabricacion))
+                                        @php
+                                            $horas = intdiv($elemento->tiempo_fabricacion, 3600); // Convierte los segundos a horas
+                                            $minutos = intdiv($elemento->tiempo_fabricacion % 3600, 60); // Calcula los minutos restantes
+                                            $segundos = $elemento->tiempo_fabricacion % 60; // Calcula los segundos restantes
+                                        @endphp
+                                        @if ($horas > 0)
+                                            {{ $horas }} horas
                                         @endif
-                                    </p>
-                                    <hr class="my-2">
-
-                                    <p class="text-gray-500 text-sm">
-                                        <strong>Dimensiones:</strong> {{ $elemento->dimensiones ?? 'Sin dimensiones' }}
-                                    </p>
-                                    <!-- Canvas para dibujo -->
-                                    <canvas id="canvas-{{ $elemento->id }}"
-                                        data-loop="{{ $loop->iteration }}"></canvas>
-                                </div>
-
-
-                                <form method="POST" action="{{ route('elementos.actualizarEstado') }}" class="mt-4">
-                                    @csrf
-                                    <input type="hidden" name="elemento_id" value="{{ $elemento->id }}">
-                                    <input type="hidden" name="planilla_id" value="{{ $planilla->id }}">
-
-                                    @if ($elemento->estado === 'pendiente')
-                                        <input type="hidden" name="accion" value="completar">
-                                        <button type="submit"
-                                            class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition duration-300 flex items-center">
-                                            <i class="fb-check mr-2"></i> Marcar como Completado
-                                        </button>
-                                    @elseif ($elemento->estado === 'completado')
-                                        <input type="hidden" name="accion" value="descompletar">
-                                        <button type="submit"
-                                            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300 flex items-center">
-                                            <i class="fas fa-undo mr-2"></i> Marcar como Pendiente
-                                        </button>
+                                        @if ($minutos > 0)
+                                            {{ $minutos }} minutos
+                                        @endif
+                                        {{ $segundos }} segundos.
+                                    @else
+                                        Sin tiempo definido.
                                     @endif
-                                </form>
+                                </p>
+                                <hr class="my-2">
 
-                                <!-- Checkbox para marcar como completado -->
-                                <div class="mt-2">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" class="form-checkbox h-5 w-5 text-green-600"
-                                            @if ($elemento->estado === 'pendiente') checked disabled @endif>
-                                        <span class="ml-2 text-gray-700">
-                                            Elegir para crear conjunto de elementos
-                                        </span>
-                                    </label>
-                                </div>
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Dimensiones:</strong> {{ $elemento->dimensiones ?? 'Sin dimensiones' }}
+                                </p>
+                                <!-- Canvas para dibujo -->
+                                <canvas id="canvas-{{ $elemento->id }}" data-loop="{{ $loop->iteration }}"></canvas>
+                            </div>
 
-                        </div>
-                    @empty
-                        <p class="text-gray-600">No hay elementos asociados a esta etiqueta.</p>
-                @endforelse
-            </div>
+
+                            <form method="POST" action="{{ route('elementos.actualizarEstado') }}" class="mt-4">
+                                @csrf
+                                <input type="hidden" name="elemento_id" value="{{ $elemento->id }}">
+                                <input type="hidden" name="planilla_id" value="{{ $planilla->id }}">
+
+                                @if ($elemento->estado === 'pendiente')
+                                    <input type="hidden" name="accion" value="completar">
+                                    <button type="submit"
+                                        class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition duration-300 flex items-center">
+                                        <i class="fb-check mr-2"></i> Marcar como Completado
+                                    </button>
+                                @elseif ($elemento->estado === 'completado')
+                                    <input type="hidden" name="accion" value="descompletar">
+                                    <button type="submit"
+                                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300 flex items-center">
+                                        <i class="fas fa-undo mr-2"></i> Marcar como Pendiente
+                                    </button>
+                                @endif
+                            </form>
+
+                            <!-- Checkbox para marcar como completado -->
+                            <div class="mt-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="form-checkbox h-5 w-5 text-green-600"
+                                        @if ($elemento->estado === 'pendiente') checked disabled @endif>
+                                    <span class="ml-2 text-gray-700">
+                                        Elegir para crear conjunto de elementos
+                                    </span>
+                                </label>
+                            </div>
+
+                    </div>
+                @empty
+                    <p class="text-gray-600">No hay elementos asociados a esta etiqueta.</p>
+            @endforelse
         </div>
-    @empty
-        <div class="col-span-4 text-center py-4 text-gray-600">
-            No hay etiquetas disponibles.
-        </div>
-        @endforelse
+    </div>
+@empty
+    <div class="col-span-4 text-center py-4 text-gray-600">
+        No hay etiquetas disponibles.
+    </div>
+    @endforelse
     </div>
 
     <!-- PAGINACIÓN -->
