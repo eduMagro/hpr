@@ -73,11 +73,7 @@
                                                         Peso: {{ $elemento->peso ?? 'No asignado' }},
                                                         Diámetro: {{ $elemento->diametro ?? 'No asignado' }},
                                                         Longitud: {{ $elemento->longitud ?? 'No asignado' }},
-                                                        @if ($elemento->estado === 'completo')
-                                                            ✅
-                                                        @else
-                                                            ❌
-                                                        @endif
+                                                        Estado: {{ $elemento->estado ?? 'Sin estado' }}
                                                     </span>
                                                 </li>
                                             @endforeach
@@ -175,14 +171,10 @@
                             <div id="elemento-{{ $elemento->id }}"
                                 class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                                 {{ $loop->iteration }}.
-                                <!-- Nombre -->
-                                <p class="text-black-500 text-sm">
-                                    <strong>{{ $elemento->nombre ?? 'Sin nombre' }}</strong>
-                                    @if ($elemento->estado === 'completo')
-                                        ✅
-                                    @else
-                                        ❌
-                                    @endif
+                                <!-- Estado -->
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Estado:</strong>
+                                    {{ $elemento->estado ?? 'Sin estado' }}
                                 </p>
                                 <hr class="my-2">
 
