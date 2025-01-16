@@ -224,18 +224,7 @@
                                 <hr class="my-2">
 
                                 <p class="text-gray-500 text-sm">
-                                    <strong>Descripción Fila:</strong>
-                                    {{ $elemento->descripcion_fila ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-
-                                <p class="text-gray-500 text-sm">
                                     <strong>Marca:</strong> {{ $elemento->marca ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-
-                                <p class="text-gray-500 text-sm">
-                                    <strong>Etiqueta:</strong> {{ $etiqueta->nombre ?? 'No asignado' }}
                                 </p>
                                 <hr class="my-2">
 
