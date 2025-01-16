@@ -282,7 +282,7 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            const elementos = @json($elemento);
+            const elementos = @json($etiquetasConElementos);
 
             elementos.forEach(elemento => {
                 const canvasId = `canvas-${elemento.id}`;
@@ -292,7 +292,7 @@
                     const instrucciones = generarInstrucciones(elemento.dimensiones);
 
                     // Obtener el número del loop desde el atributo data-loop
-                    const loopNumber = canvas.dataset.loop;
+                    const loopNumber = parseInt(canvas.dataset.loop, 10);
 
                     ajustarCanvasAlFigura(canvas, instrucciones,
                         loopNumber); // Ajustar tamaño del canvas a la figura
