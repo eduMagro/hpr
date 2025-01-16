@@ -73,7 +73,7 @@
                         </div>
                     @endif
                 </ul>
-            </div>
+            
 
             <!-- Información de Máquinas Únicas -->
             <div class="bg-white shadow-md rounded-lg p-6 flex flex-col items-center w-full">
@@ -303,7 +303,7 @@
     </div>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const elementos = @json($elementos);
+            const elementos = @json($etiquetasConElementos);
         
             elementos.forEach(elemento => {
                 const canvasId = `canvas-${elemento.id}`;
