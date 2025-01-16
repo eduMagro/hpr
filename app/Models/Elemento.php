@@ -21,28 +21,28 @@ class Elemento extends Model
      *
      * @var array
      */
-     // Campos que se pueden asignar masivamente
+    // Campos que se pueden asignar masivamente
     protected $fillable = [
         'planilla_id',
-		'users_id',
+        'users_id',
         'etiqueta_id',
         'nombre',
         'maquina_id',
-		'figura',
-		'fila',
-		'descripcion_fila',
-		'marca',
-		'etiqueta',
-		'barras',
+        'figura',
+        'fila',
+        'descripcion_fila',
+        'marca',
+        'etiqueta',
+        'barras',
         'dobles_barra',
-		'peso',
-		'dimensiones',
+        'peso',
+        'dimensiones',
         'diametro',
         'longitud',
-		'fecha_inicio',
-		'fecha_finalizacion',
-		'tiempo_fabricacion',
-		'estado',
+        'fecha_inicio',
+        'fecha_finalizacion',
+        'tiempo_fabricacion',
+        'estado',
 
     ];
 
@@ -66,10 +66,10 @@ class Elemento extends Model
     }
     public function etiqueta()
     {
-        return $this->belongsTo(Etiqueta::class);
+        return $this->belongsTo(Etiqueta::class, 'etiqueta_id');
     }
 
-    
+
     // Relación con el modelo Maquina (si existe)
     public function maquina()
     {
@@ -81,7 +81,7 @@ class Elemento extends Model
     {
         return $this->belongsTo(Producto::class, 'producto_id');
     }
-	/**
+    /**
      * Relación con la tabla 'users'
      * Una planilla pertenece a un usuario
      */
@@ -89,5 +89,4 @@ class Elemento extends Model
     {
         return $this->belongsTo(User::class, 'users_id');  // Relación con User
     }
-
 }
