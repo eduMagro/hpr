@@ -178,6 +178,11 @@
                                 <!-- Nombre -->
                                 <p class="text-black-500 text-sm">
                                     <strong>{{ $elemento->nombre ?? 'Sin nombre' }}</strong>
+                                    @if ($elemento->estado === 'completo')
+                                        ✅
+                                    @else
+                                        ❌
+                                    @endif
                                 </p>
                                 <hr class="my-2">
 
