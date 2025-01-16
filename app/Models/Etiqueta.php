@@ -24,7 +24,7 @@ class Etiqueta extends Model
 
     public function elementos()
     {
-        return $this->hasMany(Elemento::class);
+        return $this->hasMany(Elemento::class, 'etiqueta_id', 'id');
     }
 
 }
