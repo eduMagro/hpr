@@ -159,7 +159,7 @@
         <!-- GRID PARA TARJETAS -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
             @forelse ($etiquetasConElementos as $etiqueta)
-                <div class="bg-gray-100 p-6 rounded-lg shadow-md">
+                <div class="bg-yellow-100 p-6 rounded-lg shadow-md">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">
                         Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
@@ -232,9 +232,9 @@
                                     <strong>Tiempo estimado de fabricación:</strong>
                                     @if (isset($elemento->tiempo_fabricacion))
                                         @php
-                                            $horas = intdiv($elemento->tiempo_fabricacion, 3600); // Convierte los segundos a horas
-                                            $minutos = intdiv($elemento->tiempo_fabricacion % 3600, 60); // Calcula los minutos restantes
-                                            $segundos = $elemento->tiempo_fabricacion % 60; // Calcula los segundos restantes
+                                            $horas = intdiv($elemento->tiempo_fabricacion, 3600);
+                                            $minutos = intdiv($elemento->tiempo_fabricacion % 3600, 60);
+                                            $segundos = $elemento->tiempo_fabricacion % 60;
                                         @endphp
                                         @if ($horas > 0)
                                             {{ $horas }} horas
@@ -255,7 +255,6 @@
                                 <!-- Canvas para dibujo -->
                                 <canvas id="canvas-{{ $elemento->id }}" data-loop="{{ $loop->iteration }}"></canvas>
                             </div>
-
 
                             <form method="POST" action="{{ route('elementos.actualizarEstado') }}" class="mt-4">
                                 @csrf
@@ -287,29 +286,28 @@
                                     </span>
                                 </label>
                             </div>
-
+                        @empty
+                            <p class="text-gray-600">No hay elementos asociados a esta etiqueta.</p>
+                        @endforelse
                     </div>
-                @empty
-                    <p class="text-gray-600">No hay elementos asociados a esta etiqueta.</p>
+                </div>
+            @empty
+                <div class="col-span-4 text-center py-4 text-gray-600">
+                    No hay etiquetas disponibles.
+                </div>
             @endforelse
         </div>
-    </div>
-@empty
-    <div class="col-span-4 text-center py-4 text-gray-600">
-        No hay etiquetas disponibles.
-    </div>
-    @endforelse
+
+        <!-- PAGINACIÓN -->
+        @if ($etiquetasConElementos instanceof \Illuminate\Pagination\LengthAwarePaginator)
+            <div class="mt-6">
+                {{ $etiquetasConElementos->appends(request()->except('page'))->links() }}
+            </div>
+        @endif
+
+        <a href="{{ route('planillas.index') }}" class="btn btn-primary m-3">Volver a Planillas</a>
     </div>
 
-    <!-- PAGINACIÓN -->
-    @if ($etiquetasConElementos instanceof \Illuminate\Pagination\LengthAwarePaginator)
-        <div class="mt-6">
-            {{ $etiquetasConElementos->appends(request()->except('page'))->links() }}
-        </div>
-    @endif
-
-    <a href="{{ route('planillas.index') }}" class="btn btn-primary m-3">Volver a Planillas</a>
-    </div>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const elementos = @json($etiquetasConElementos);
