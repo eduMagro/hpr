@@ -51,6 +51,7 @@
                             @foreach ($etiquetasConElementos as $etiqueta)
                                 <div class="bg-white p-4 rounded-lg shadow-md">
                                     <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
                                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                                     </h3>
 
@@ -65,7 +66,7 @@
                                                     <span class="font-semibold">{{ $loop->iteration }}.</span>
                                                     <a href="#elemento-{{ $elemento->id }}"
                                                         class="text-blue-500 hover:underline">
-                                                        {{ $elemento->nombre ?? 'Sin nombre' }}
+                                                        {{ $lopp->iteration }}
                                                     </a>
 
                                                     <span class="text-gray-500 text-sm">
