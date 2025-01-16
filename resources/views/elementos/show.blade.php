@@ -282,22 +282,24 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            const elementos = @json($etiquetasConElementos);
+            const etiquetasConElementos = @json($etiquetasConElementos);
 
-            elementos.forEach(elemento => {
-                const canvasId = `canvas-${elemento.id}`;
-                const canvas = document.getElementById(canvasId);
+            etiquetasConElementos.forEach((etiqueta, etiquetaIndex) => {
+                etiqueta.elementos.forEach((elemento, elementoIndex) => {
+                    const canvasId = `canvas-${elemento.id}`;
+                    const canvas = document.getElementById(canvasId);
 
-                if (canvas && elemento.dimensiones) {
-                    const instrucciones = generarInstrucciones(elemento.dimensiones);
+                    if (canvas && elemento.dimensiones) {
+                        const instrucciones = generarInstrucciones(elemento.dimensiones);
 
-                    // Obtener el número del loop desde el atributo data-loop
-                    const loopNumber = parseInt(canvas.dataset.loop, 10);
+                        // Obtener el número de iteración del elemento dentro de su etiqueta
+                        const loopNumber = `${etiquetaIndex + 1}.${elementoIndex + 1}`;
 
-                    ajustarCanvasAlFigura(canvas, instrucciones,
-                        loopNumber); // Ajustar tamaño del canvas a la figura
-                    dibujarFigura(canvas, instrucciones); // Dibujar la figura específica
-                }
+                        ajustarCanvasAlFigura(canvas, instrucciones,
+                            loopNumber); // Ajustar tamaño del canvas a la figura
+                        dibujarFigura(canvas, instrucciones); // Dibujar la figura específica
+                    }
+                });
             });
         });
 
