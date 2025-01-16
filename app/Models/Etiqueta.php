@@ -26,6 +26,5 @@ class Etiqueta extends Model
     {
         return $this->hasMany(Elemento::class);
     }
-    
 
 }

@@ -56,22 +56,27 @@
                                     </h3>
 
                                     <ul class="list-disc pl-6">
-                                        @foreach ($etiqueta->elementos as $elemento)
-                                            <li>
-                                                <span class="font-semibold">{{ $loop->iteration }}.</span>
-                                                <a href="#elemento-{{ $elemento->id }}"
-                                                    class="text-blue-500 hover:underline">
-                                                    {{ $elemento->nombre ?? 'Sin nombre' }}
-                                                </a>
+                                        @if ($etiqueta->elementos->isEmpty())
+                                            <div class="text-center text-gray-600">
+                                                No hay elementos asociados a esta etiqueta.
+                                            </div>
+                                        @else
+                                            @foreach ($etiqueta->elementos as $elemento)
+                                                <li>
+                                                    <span class="font-semibold">{{ $loop->iteration }}.</span>
+                                                    <a href="#elemento-{{ $elemento->id }}"
+                                                        class="text-blue-500 hover:underline">
+                                                        {{ $elemento->nombre ?? 'Sin nombre' }}
+                                                    </a>
 
-                                                <span class="text-gray-500 text-sm">
-                                                    Peso: {{ $elemento->peso ?? 'No asignado' }},
-                                                    Diámetro: {{ $elemento->diametro ?? 'No asignado' }},
-                                                    Longitud: {{ $elemento->longitud ?? 'No asignado' }},
-                                                    Estado: {{ $elemento->estado ?? 'Desconocido' }}
-                                                </span>
-                                            </li>
-                                        @endforeach
+                                                    <span class="text-gray-500 text-sm">
+                                                        Peso: {{ $elemento->peso ?? 'No asignado' }},
+                                                        Diámetro: {{ $elemento->diametro ?? 'No asignado' }},
+                                                        Longitud: {{ $elemento->longitud ?? 'No asignado' }},
+                                                        Estado: {{ $elemento->estado ?? 'Desconocido' }}
+                                                    </span>
+                                                </li>
+                                            @endforeach
                                     </ul>
                                 </div>
                             @endforeach
