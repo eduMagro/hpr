@@ -211,11 +211,11 @@ class PlanillaController extends Controller
                     $elemento = Elemento::create([
                         'planilla_id' => $planilla->id,
                         'etiqueta_id' => $etiqueta->id, // Relación con etiqueta
-                        'nombre' => $row[22] ?? 'Sin nombre',
+
                         'maquina_id' => $maquina_id,
                         'figura' => $row[26],
                         'fila' => $row[21],
-                        'descripcion_fila' => $row[22],
+
                         'marca' => $row[23],
                         'etiqueta' => $row[30],
                         'diametro' => $diametro,
