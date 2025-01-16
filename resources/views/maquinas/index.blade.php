@@ -29,21 +29,21 @@
     @endif
     {{-- mision abortada --}}
     @if (session('abort'))
-    <script>
-        Swal.fire({
-            icon: 'error',
-            title: 'Acceso denegado',
-            text: "{{ session('abort') }}",
-        });
-    </script>
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Acceso denegado',
+                text: "{{ session('abort') }}",
+            });
+        </script>
     @endif
     <div class="container mx-auto px-4 py-6">
-            <!-- Botón para crear una nueva maquina con estilo Bootstrap -->
-            <div class="mb-4">
-                <a href="{{ route('maquinas.create') }}" class="btn btn-primary">
-                    Crear Nueva Máquina
-                </a>
-            </div>
+        <!-- Botón para crear una nueva maquina con estilo Bootstrap -->
+        <div class="mb-4">
+            <a href="{{ route('maquinas.create') }}" class="btn btn-primary">
+                Crear Nueva Máquina
+            </a>
+        </div>
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('maquinas.index') }}" class="form-inline mt-3 mb-3">
             <input type="text" name="nombre" class="form-control mb-3" placeholder="Buscar por código QR"
@@ -70,8 +70,11 @@
                         </p>
                         <div id="qrCanvas" style="display:none;"></div>
 
-                        <p><strong>Diámetros aceptados: </strong>{{ $maquina->diametro_min . " - " . $maquina->diametro_max }}</p>
-                        <p><strong>Pesos bobinas: </strong>{{ ($maquina->peso_min && $maquina->peso_max) ? ($maquina->peso_min . ' - ' . $maquina->peso_max) : 'Barras' }}</p>
+                        <p><strong>Diámetros aceptados:
+                            </strong>{{ $maquina->diametro_min . ' - ' . $maquina->diametro_max }}</p>
+                        <p><strong>Pesos bobinas:
+                            </strong>{{ $maquina->peso_min && $maquina->peso_max ? $maquina->peso_min . ' - ' . $maquina->peso_max : 'Barras' }}
+                        </p>
                         <!-- Mostrar los productos que contiene esta ubicación -->
                         <h4 class="mt-4 font-semibold">Productos en máquina:</h4>
                         @if ($maquina->productos->isEmpty())
@@ -82,46 +85,47 @@
                                     <li class="mb-2 flex items-center justify-between">
                                         <span>
 
-                                            ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} - D{{ $producto->diametro }} - L{{ $producto->longitud ?? '??' }}
+                                            ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} -
+                                            D{{ $producto->diametro }} - L{{ $producto->longitud ?? '??' }}
                                         </span>
-                                        <a href="{{ route('productos.show', $producto->id) }}" class="btn btn-sm btn-primary">Ver</a>
-										 @if ($producto->tipo == 'encarretado')
-										 <div style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
-											<div class="cuadro verde" 
-												 style="width: 100%; 
+                                        <a href="{{ route('productos.show', $producto->id) }}"
+                                            class="btn btn-sm btn-primary">Ver</a>
+                                        @if ($producto->tipo == 'encarretado')
+                                            <div
+                                                style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
+                                                <div class="cuadro verde"
+                                                    style="width: 100%; 
 														height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
 														background-color: green; 
 														position: absolute; 
 														bottom: 0;">
-											</div>
-											<span style="position: absolute; top: 10px; left: 10px; color: white;">
-												{{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
-											</span>
-										</div>
-
-
-										@endif
+                                                </div>
+                                                <span style="position: absolute; top: 10px; left: 10px; color: white;">
+                                                    {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
+                                                </span>
+                                            </div>
+                                        @endif
 
                                     </li>
                                 @endforeach
                             </ul>
                         @endif
-                        
+
                         <hr style="border: 1px solid #ccc; margin: 10px 0;">
 
                         <div class="mt-4 flex justify-between items-center">
-                        {{-- sweet alert para eliminar --}}
-                        <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
-                     
+                            {{-- sweet alert para eliminar --}}
+                            <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
+
                             <!-- Enlace para editar -->
                             <a href="{{ route('maquinas.edit', $maquina->id) }}"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
 
-							                        <!-- Enlace para ver -->
-                        <a href="{{ route('maquinas.show', $maquina->id) }}"
-                            class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
+                            <!-- Enlace para ver -->
+                            <a href="{{ route('maquinas.show', $maquina->id) }}"
+                                class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
                         </div>
-                   
+
                     </div>
                 @empty
                     <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->
@@ -166,7 +170,7 @@
                       <head><title>Imprimir QR</title></head>
                       <body>
                           <img src="${qrImg.src}" alt="Código QR" style="width:100px">
-                   
+                          <p>${safeData}</p>
                           <script>window.print();<\/script>
                       </body>
                   </html>
