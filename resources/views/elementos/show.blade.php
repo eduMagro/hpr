@@ -66,7 +66,7 @@
                                                     <span class="font-semibold">{{ $loop->iteration }}.</span>
                                                     <a href="#elemento-{{ $elemento->id }}"
                                                         class="text-blue-500 hover:underline">
-                                                        {{ $lopp->iteration }}
+                                                        {{ $loop->iteration }}
                                                     </a>
 
                                                     <span class="text-gray-500 text-sm">
