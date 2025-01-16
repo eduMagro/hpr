@@ -47,21 +47,11 @@
                             </a>
                         </div>
                         <div class="icon-card">
-
-                           @if (in_array(Auth::user()->id, [1, 2, 3, 4, 5]))
-
                                 <a href="{{ route('users.index') }}">
                                     <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000"
                                         alt="Usuarios">
                                     <span>Usuarios</span>
                                 </a>
-                            @else
-                                <a href="#" class="disabled-link" onclick="return false;">
-                                    <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000"
-                                        alt="Usuarios">
-                                    <span>Usuarios</span>
-                                </a>
-                            @endif
                         </div>
 
                         <div class="icon-card">
