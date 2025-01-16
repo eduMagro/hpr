@@ -39,7 +39,7 @@
     <div class="container mx-auto px-4 py-6">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Índice de Elementos -->
-            <div class="bg-white shadow-md rounded-lg p-6 flex flex-col items-center w-full">
+            <div class="p-6 flex flex-col items-center w-full">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 text-center">Índice de Elementos</h3>
                 <ul class="list-none w-full">
                     @if ($etiquetasConElementos->isEmpty())
