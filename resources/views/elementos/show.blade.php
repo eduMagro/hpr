@@ -51,7 +51,6 @@
                             @foreach ($etiquetasConElementos as $etiqueta)
                                 <div class="bg-white p-4 rounded-lg shadow-md">
                                     <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
                                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                                     </h3>
 
