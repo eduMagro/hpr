@@ -448,28 +448,6 @@
             });
         });
     </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const enlaces = document.querySelectorAll('a[href^="#elemento-"]');
-
-            enlaces.forEach(enlace => {
-                enlace.addEventListener("click", function(e) {
-                    e.preventDefault(); // Prevenir el comportamiento predeterminado
-
-                    const destinoId = this.getAttribute("href").substring(1); // Obtener el ID
-                    const destino = document.getElementById(destinoId);
-
-                    if (destino) {
-                        window.scrollTo({
-                            top: destino.offsetTop -
-                                100, // Ajustar posición para margen superior
-                            behavior: "smooth" // Desplazamiento suave
-                        });
-                    }
-                });
-            });
-        });
-    </script>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
