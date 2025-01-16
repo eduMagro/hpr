@@ -123,7 +123,7 @@
 
                             <!-- Enlace para ver -->
                             <a href="{{ route('maquinas.show', $maquina->id) }}"
-                                class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
+                                class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
                         </div>
 
                     </div>
