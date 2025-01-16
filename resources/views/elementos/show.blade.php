@@ -58,7 +58,12 @@
                                     <ul class="list-disc pl-6">
                                         @foreach ($etiqueta->elementos as $elemento)
                                             <li>
-                                                <strong>{{ $elemento->nombre ?? 'Sin nombre' }}</strong>
+                                                <span class="font-semibold">{{ $loop->iteration }}.</span>
+                                                <a href="#elemento-{{ $elemento->id }}"
+                                                    class="text-blue-500 hover:underline">
+                                                    {{ $elemento->nombre ?? 'Sin nombre' }}
+                                                </a>
+
                                                 <span class="text-gray-500 text-sm">
                                                     Peso: {{ $elemento->peso ?? 'No asignado' }},
                                                     Diámetro: {{ $elemento->diametro ?? 'No asignado' }},
