@@ -179,6 +179,8 @@
         }
     </script>
     <script>
+        const usuarios = @json($usuarios);
+
         function seleccionarCompañero(maquinaId) {
             Swal.fire({
                 title: 'Seleccionar Compañero',
