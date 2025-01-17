@@ -43,9 +43,23 @@
                             <!-- Fabricante -->
                             <div class="form-group mb-4">
                                 <label for="fabricante" class="form-label fw-bold text-uppercase">Fabricante</label>
-                                <input type="text" id="fabricante" name="fabricante"
-                                    class="form-control form-control-lg"
-                                    value="{{ old('fabricante', $producto->fabricante) }}" maxlength="255" required>
+                                <select id="fabricante" name="fabricante" class="form-control form-control-lg" required>
+                                    <option value="" disabled
+                                        {{ old('fabricante', $producto->fabricante) == null ? 'selected' : '' }}>
+                                        Seleccione un fabricante</option>
+                                    <option value="MEGASA"
+                                        {{ old('fabricante', $producto->fabricante) == 'MEGASA' ? 'selected' : '' }}>
+                                        MEGASA</option>
+                                    <option value="Getafe"
+                                        {{ old('fabricante', $producto->fabricante) == 'Getafe' ? 'selected' : '' }}>
+                                        Getafe</option>
+                                    <option value="Siderúrgica Sevillana"
+                                        {{ old('fabricante', $producto->fabricante) == 'Siderúrgica Sevillana' ? 'selected' : '' }}>
+                                        Siderúrgica Sevillana</option>
+                                    <option value="NERVADUCTIL"
+                                        {{ old('fabricante', $producto->fabricante) == 'NERVADUCTIL' ? 'selected' : '' }}>
+                                        NERVADUCTIL</option>
+                                </select>
                             </div>
 
                             <!-- Nombre -->
@@ -53,31 +67,80 @@
                                 <label for="nombre" class="form-label fw-bold text-uppercase">Nombre del
                                     Producto</label>
                                 <input type="text" id="nombre" name="nombre" class="form-control form-control-lg"
-                                    value="{{ old('nombre', $producto->nombre) }}" maxlength="255" required>
+                                    value="{{ old('nombre', $producto->nombre) }}" maxlength="255" disabled>
                             </div>
 
-                            <!-- Tipo (Opcional) -->
+                            <!-- Tipo -->
                             <div class="form-group mb-4">
                                 <label for="tipo" class="form-label fw-bold text-uppercase">Tipo</label>
-                                <input type="text" id="tipo" name="tipo" class="form-control form-control-lg"
-                                    value="{{ old('tipo', $producto->tipo) }}" maxlength="50" placeholder="(Opcional)">
+                                <select id="tipo" name="tipo" class="form-control form-control-lg">
+                                    <option value="" disabled
+                                        {{ old('tipo', $producto->tipo) == null ? 'selected' : '' }}>Seleccione un tipo
+                                    </option>
+                                    <option value="Encarretado"
+                                        {{ old('tipo', $producto->tipo) == 'encarretado' ? 'selected' : '' }}>
+                                        Encarretado</option>
+                                    <option value="Barras"
+                                        {{ old('tipo', $producto->tipo) == 'barras' ? 'selected' : '' }}>Barras
+                                    </option>
+                                </select>
                             </div>
 
                             <!-- Diámetro -->
                             <div class="form-group mb-4">
                                 <label for="diametro" class="form-label fw-bold text-uppercase">Diámetro</label>
-                                <input type="number" id="diametro" name="diametro"
-                                    class="form-control form-control-lg"
-                                    value="{{ old('diametro', $producto->diametro) }}" required>
+                                <select id="diametro" name="diametro" class="form-control form-control-lg" required>
+                                    <option value="" disabled
+                                        {{ old('diametro', $producto->diametro) == null ? 'selected' : '' }}>Seleccione
+                                        un diámetro</option>
+                                    <option value="8"
+                                        {{ old('diametro', $producto->diametro) == '8' ? 'selected' : '' }}>8</option>
+                                    <option value="10"
+                                        {{ old('diametro', $producto->diametro) == '10' ? 'selected' : '' }}>10
+                                    </option>
+                                    <option value="12"
+                                        {{ old('diametro', $producto->diametro) == '12' ? 'selected' : '' }}>12
+                                    </option>
+                                    <option value="16"
+                                        {{ old('diametro', $producto->diametro) == '16' ? 'selected' : '' }}>16
+                                    </option>
+                                    <option value="20"
+                                        {{ old('diametro', $producto->diametro) == '20' ? 'selected' : '' }}>20
+                                    </option>
+                                    <option value="25"
+                                        {{ old('diametro', $producto->diametro) == '25' ? 'selected' : '' }}>25
+                                    </option>
+                                    <option value="32"
+                                        {{ old('diametro', $producto->diametro) == '32' ? 'selected' : '' }}>32
+                                    </option>
+                                </select>
                             </div>
 
-                            <!-- Longitud (Opcional) -->
+
+                            <!-- Longitud -->
                             <div class="form-group mb-4">
                                 <label for="longitud" class="form-label fw-bold text-uppercase">Longitud</label>
-                                <input type="number" id="longitud" name="longitud"
-                                    class="form-control form-control-lg"
-                                    value="{{ old('longitud', $producto->longitud) }}" placeholder="(Opcional)">
+                                <select id="longitud" name="longitud" class="form-control form-control-lg">
+                                    <option value="" disabled
+                                        {{ old('longitud', $producto->longitud) == null ? 'selected' : '' }}>Seleccione
+                                        una longitud</option>
+                                    <option value="6"
+                                        {{ old('longitud', $producto->longitud) == '6' ? 'selected' : '' }}>6</option>
+                                    <option value="12"
+                                        {{ old('longitud', $producto->longitud) == '12' ? 'selected' : '' }}>12
+                                    </option>
+                                    <option value="14"
+                                        {{ old('longitud', $producto->longitud) == '14' ? 'selected' : '' }}>14
+                                    </option>
+                                    <option value="15"
+                                        {{ old('longitud', $producto->longitud) == '15' ? 'selected' : '' }}>15
+                                    </option>
+                                    <option value="16"
+                                        {{ old('longitud', $producto->longitud) == '16' ? 'selected' : '' }}>16
+                                    </option>
+                                </select>
                             </div>
+
 
                             <!-- Nº Colada (Opcional) -->
                             <div class="form-group mb-4">
@@ -132,13 +195,13 @@
                                     value="{{ old('maquina_id', $producto->maquina_id) }}" placeholder="(Opcional)">
                             </div>
 
-                            <!-- Estado (Opcional) -->
+                            <!-- Estado -->
                             <div class="form-group mb-4">
                                 <label for="estado" class="form-label fw-bold text-uppercase">Estado</label>
                                 <input type="text" id="estado" name="estado"
                                     class="form-control form-control-lg"
                                     value="{{ old('estado', $producto->estado) }}" maxlength="50"
-                                    placeholder="(Opcional)">
+                                    placeholder="Estado" disabled>
                             </div>
 
                             <!-- Otros (Opcional) -->

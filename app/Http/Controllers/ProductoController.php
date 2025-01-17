@@ -91,21 +91,17 @@ class ProductoController extends Controller
     {
         // Mensajes personalizados de validación
         $messages = [
-            'fabricante.required'    => 'El fabricante es obligatorio.',
-            'fabricante.string'      => 'El fabricante debe ser una cadena de texto.',
-            'fabricante.max'         => 'El fabricante no puede tener más de 255 caracteres.',
+            'fabricante.in' => 'El fabricante debe ser MEGASA, Getafe, Siderúrgica Sevillana o NERVADUCTIL.',
 
             'nombre.required'        => 'El nombre del producto es obligatorio.',
             'nombre.string'          => 'El nombre debe ser una cadena de texto.',
             'nombre.max'             => 'El nombre no puede tener más de 255 caracteres.',
 
-            'tipo.string'            => 'El tipo debe ser una cadena de texto.',
-            'tipo.max'               => 'El tipo no puede tener más de 50 caracteres.',
+            'tipo.in' => 'El tipo debe ser "encarretado" o "barras".',
 
-            'diametro.required'      => 'El diámetro es obligatorio.',
-            'diametro.integer'       => 'El diámetro debe ser un número entero.',
+            'diametro.in' => 'El diámetro debe ser 8, 10, 12, 16, 20, 25 o 32.',
 
-            'longitud.integer'       => 'La longitud debe ser un número entero.',
+            'longitud.in' => 'La longitud debe ser 6, 12, 14, 15 o 16.',
 
             'n_colada.string'        => 'El número de colada debe ser una cadena de texto.',
             'n_colada.max'           => 'El número de colada no puede tener más de 255 caracteres.',
@@ -133,18 +129,18 @@ class ProductoController extends Controller
 
         // Validación de datos con reglas ajustadas a la base de datos
         $validatedData = $request->validate([
-            'fabricante'     => 'required|string|max:255',
+            'fabricante' => 'required|in:MEGASA,Getafe,Siderúrgica Sevillana,NERVADUCTIL',
             'nombre'         => 'required|string|max:255',
-            'tipo'           => 'nullable|string|max:50',
-            'diametro'       => 'required|integer',
-            'longitud'       => 'nullable|integer',
-            'n_colada'       => 'nullable|string|max:255',
-            'n_paquete'      => 'nullable|string|max:255',
+            'tipo' => 'required|in:encarretado,barras',
+            'diametro' => 'required|in:8,10,12,16,20,25,32',
+            'longitud' => 'nullable|in:6,12,14,15,16',
+            'n_colada'       => 'required|string|max:255',
+            'n_paquete'      => 'required|string|max:255',
             'peso_inicial'   => 'required|numeric|between:0,9999999.99',
             'peso_stock'     => 'required|numeric|between:0,9999999.99',
             'ubicacion_id'   => 'nullable|integer|exists:ubicaciones,id',
             'maquina_id'     => 'nullable|integer|exists:maquinas,id',
-            'estado'         => 'nullable|string|max:50',
+            'estado'         => 'required|string|max:50',
             'otros'          => 'nullable|string',
         ], $messages);
 
