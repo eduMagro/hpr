@@ -144,8 +144,6 @@ class ProductoController extends Controller
             'otros'          => 'nullable|string',
         ], $messages);
 
-        // Asignar el valor de 'peso_stock' igual al de 'peso_inicial'
-        $validatedData['peso_stock'] = $validatedData['peso_inicial'];
 
         // Actualizar el producto con los datos validados
         $producto->update($validatedData);
