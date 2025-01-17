@@ -42,9 +42,14 @@ class MaquinaController extends Controller
     //------------------------------------------------------------------------------------ SHOW
     public function show($id)
     {
-        $maquina = Maquina::findOrFail($id);
+        $maquina = Maquina::with([
+            'elementos.etiqueta',  // Carga los elementos y sus etiquetas
+            'productos'            // Carga los productos en la máquina
+        ])->findOrFail($id);
+
         return view('maquinas.show', compact('maquina'));
     }
+
 
     public function create()
     {
