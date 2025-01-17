@@ -73,6 +73,8 @@
                         @endphp
 
                         <div class="bg-yellow-100 p-6 rounded-lg shadow-md mt-4">
+                            <h2 class="text-gray-700"><strong>Planilla:</strong>
+                                {{ $planilla ? $planilla->nombre : 'Sin planilla' }}</h2>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">
                                 Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
                                 (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
