@@ -209,6 +209,9 @@
                 showCancelButton: true,
                 confirmButtonText: 'Iniciar Sesión',
                 cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButtonText: 'btn-confirm',
+                },
                 didOpen: () => {
                     // Depuración para verificar que el HTML del select se inserta
                     const selectElement = document.getElementById('users_id_2');
