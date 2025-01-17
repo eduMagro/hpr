@@ -37,6 +37,7 @@
             });
         </script>
     @endif
+
     <div class="container mx-auto px-4 py-6">
         <!-- Botón para crear una nueva maquina con estilo Bootstrap -->
         <div class="mb-4">
@@ -46,7 +47,7 @@
         </div>
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('maquinas.index') }}" class="form-inline mt-3 mb-3">
-            <input type="text" name="nombre" class="form-control mb-3" placeholder="Buscar por código QR"
+            <input type="text" name="nombre" class="form-control mb-3" placeholder="Buscar por código de máquina"
                 value="{{ request('nombre') }}">
             <button type="submit" class="btn btn-info ml-2">
                 <i class="fas fa-search"></i> Buscar
@@ -182,21 +183,40 @@
         const usuarios = @json($usuarios);
 
         function seleccionarCompañero(maquinaId) {
-            // Generar las opciones del select con JavaScript
-            let opciones = usuarios.map(usuario => `<option value="${usuario.id}">${usuario.nombre}</option>`).join('');
+
+            // Verificar si `usuarios` está vacío o no es un array
+            if (!usuarios || !Array.isArray(usuarios) || usuarios.length === 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No hay usuarios disponibles para seleccionar.',
+                });
+                return;
+            }
+
+            // Construir las opciones correctamente
+            let opciones = usuarios.map(usuario =>
+                `<option value="${usuario.id}">${usuario.name}</option>`
+            ).join('');
 
             Swal.fire({
                 title: 'Seleccionar Compañero',
                 html: `
-                    <select id="users_id_2" class="swal2-input">
-                        ${opciones}  <!-- Insertamos las opciones aquí -->
-                    </select>
-                `,
+                <select id="users_id_2" style="width: 100%; padding: 10px; font-size: 16px;">
+                    ${opciones}
+                </select>
+            `,
                 showCancelButton: true,
                 confirmButtonText: 'Iniciar Sesión',
                 cancelButtonText: 'Cancelar',
+                didOpen: () => {
+                    // Depuración para verificar que el HTML del select se inserta
+                    const selectElement = document.getElementById('users_id_2');
+
+                },
                 preConfirm: () => {
-                    const users_id_2 = document.getElementById('users_id_2').value;
+                    const users_id_2 = document.getElementById('users_id_2') ? document.getElementById(
+                        'users_id_2').value : null;
                     if (!users_id_2) {
                         Swal.showValidationMessage('Debes seleccionar un compañero');
                         return false;
@@ -222,7 +242,7 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = `/maquinas/${maquinaId}`; // Redirige a la vista de la máquina
+                    window.location.href = `/maquinas/${maquinaId}`;
                 }
             });
         }
