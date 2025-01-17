@@ -182,13 +182,14 @@
         const usuarios = @json($usuarios);
 
         function seleccionarCompañero(maquinaId) {
+            // Generar las opciones del select con JavaScript
+            let opciones = usuarios.map(usuario => `<option value="${usuario.id}">${usuario.nombre}</option>`).join('');
+
             Swal.fire({
                 title: 'Seleccionar Compañero',
                 html: `
                     <select id="users_id_2" class="swal2-input">
-                        @foreach ($usuarios as $usuario)
-                            <option value="{{ $usuario->id }}">{{ $usuario->nombre }}</option>
-                        @endforeach
+                        ${opciones}  <!-- Insertamos las opciones aquí -->
                     </select>
                 `,
                 showCancelButton: true,
@@ -226,4 +227,5 @@
             });
         }
     </script>
+
 </x-app-layout>
