@@ -69,7 +69,8 @@
 
                     @forelse ($elementosAgrupados as $etiquetaId => $elementos)
                         @php
-                            $etiqueta = $elementos->first()->etiqueta; // Obtener la etiqueta del primer elemento
+                            $etiqueta = $elementos->first()->etiqueta; // Obtener la etiqueta del primer elemento para mostrarla
+                            dd($etiqueta);
                         @endphp
 
                         <div class="bg-yellow-100 p-6 rounded-lg shadow-md mt-4">

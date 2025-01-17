@@ -83,6 +83,8 @@ class Elemento extends Model
     {
         return $this->belongsTo(Producto::class, 'producto_id');
     }
+
+
     /**
      * Relación con la tabla 'users'
      * Un elemento pertenece a un usuario
