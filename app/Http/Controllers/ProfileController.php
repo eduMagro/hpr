@@ -19,6 +19,11 @@ class ProfileController extends Controller
         if (auth()->user()->role !== 'administrador') {
             return redirect()->route('dashboard')->with('abort', 'No tienes los permisos necesarios.');
         }
+
+        $usuariosConectados = null;
+
+        $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
+
         // Obtener las ubicaciones con sus productos asociados
         $usuarios = User::all();
 
@@ -42,32 +47,32 @@ class ProfileController extends Controller
         $registrosUsuarios = $query->paginate($perPage)->appends($request->except('page'));
 
         // Pasar las ubicaciones y productos a la vista
-        return view('User.index', compact('registrosUsuarios'));
+        return view('User.index', compact('registrosUsuarios', 'usuariosConectados'));
     }
 
-// En tu UserController.php
+    // En tu UserController.php
 
-public function show($id)
-{
-    // Obtén al usuario y sus relaciones
-    $user = User::with(['entradas', 'movimientos'])->findOrFail($id);
+    public function show($id)
+    {
+        // Obtén al usuario y sus relaciones
+        $user = User::with(['entradas', 'movimientos'])->findOrFail($id);
 
-    // Pasa la variable a la vista
-    return view('User.show', compact('user'));
-}
+        // Pasa la variable a la vista
+        return view('User.show', compact('user'));
+    }
 
 
 
     /**
      * Display the user's profile form.
      */
-public function edit()
-{
-    $user = Auth::user();  // Obtiene al usuario autenticado
+    public function edit()
+    {
+        $user = Auth::user();  // Obtiene al usuario autenticado
 
-    return view('profile.edit', compact('user'));  // Pasa el usuario a la vista
-}
-    
+        return view('profile.edit', compact('user'));  // Pasa el usuario a la vista
+    }
+
     /**
      * Update the user's profile information.
      */

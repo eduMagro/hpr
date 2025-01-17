@@ -3,23 +3,28 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Usuarios') }}
         </h2>
+        @if (Auth::check() && Auth::user()->role == 'administrador')
+            <p class="text-green-600 font-bold">Usuarios conectados:
+                <strong>{{ $usuariosConectados }}</strong>
+            </p>
+        @endif
     </x-slot>
     @if (session('abort'))
-    <script>
-        Swal.fire({
-            icon: 'error',
-            title: 'Acceso denegado',
-            text: "{{ session('abort') }}",
-        });
-    </script>
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Acceso denegado',
+                text: "{{ session('abort') }}",
+            });
+        </script>
     @endif
     <div class="container mx-auto px-4 py-6">
-                <!-- Botón para crear un nuevo usuario con estilo Bootstrap -->
-                <div class="mb-4">
-                    <a href="{{ route('register') }}" class="btn btn-primary">
-                        Registrar Usuario
-                    </a>
-                </div>
+        <!-- Botón para crear un nuevo usuario con estilo Bootstrap -->
+        <div class="mb-4">
+            <a href="{{ route('register') }}" class="btn btn-primary">
+                Registrar Usuario
+            </a>
+        </div>
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('users.index') }}" class="form-inline mt-3 mb-3">
             <input type="text" name="name" class="form-control mb-3" placeholder="Buscar por nombre"
@@ -43,7 +48,7 @@
                         <!-- Enlace para ver -->
                         <a href="{{ route('users.show', $user->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
-                       
+
                     </div>
                 </div>
             @empty

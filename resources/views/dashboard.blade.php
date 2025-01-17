@@ -13,29 +13,10 @@
             });
         </script>
     @endif
-    @php
-        use Illuminate\Support\Facades\DB;
-        use Illuminate\Support\Facades\Auth;
 
-        $usuariosConectados = null;
-
-        try {
-            if (Auth::check() && Auth::user()->role == 'administrador') {
-                $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-            }
-        } catch (\Exception $e) {
-            $usuariosConectados = 'Error al obtener datos';
-        }
-    @endphp
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            @if (Auth::check() && Auth::user()->role == 'administrador')
-                <p class="text-green-600 font-bold">Usuarios conectados:
-                    <strong>{{ $usuariosConectados }}</strong>
-                </p>
-            @endif
-
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="icon-container">
