@@ -79,9 +79,9 @@
                                     </option>
                                     <option value="Encarretado"
                                         {{ old('tipo', $producto->tipo) == 'encarretado' ? 'selected' : '' }}>
-                                        Encarretado</option>
+                                        encarretado</option>
                                     <option value="Barras"
-                                        {{ old('tipo', $producto->tipo) == 'barras' ? 'selected' : '' }}>Barras
+                                        {{ old('tipo', $producto->tipo) == 'barras' ? 'selected' : '' }}>barras
                                     </option>
                                 </select>
                             </div>

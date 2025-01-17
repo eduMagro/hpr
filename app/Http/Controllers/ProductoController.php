@@ -93,7 +93,6 @@ class ProductoController extends Controller
         $messages = [
             'fabricante.in' => 'El fabricante debe ser MEGASA, Getafe, Siderúrgica Sevillana o NERVADUCTIL.',
 
-            'nombre.required'        => 'El nombre del producto es obligatorio.',
             'nombre.string'          => 'El nombre debe ser una cadena de texto.',
             'nombre.max'             => 'El nombre no puede tener más de 255 caracteres.',
 
@@ -130,7 +129,7 @@ class ProductoController extends Controller
         // Validación de datos con reglas ajustadas a la base de datos
         $validatedData = $request->validate([
             'fabricante' => 'required|in:MEGASA,Getafe,Siderúrgica Sevillana,NERVADUCTIL',
-            'nombre'         => 'required|string|max:255',
+            'nombre'         => 'nullable|string|max:255',
             'tipo' => 'required|in:encarretado,barras',
             'diametro' => 'required|in:8,10,12,16,20,25,32',
             'longitud' => 'nullable|in:6,12,14,15,16',
@@ -140,7 +139,7 @@ class ProductoController extends Controller
             'peso_stock'     => 'required|numeric|between:0,9999999.99',
             'ubicacion_id'   => 'nullable|integer|exists:ubicaciones,id',
             'maquina_id'     => 'nullable|integer|exists:maquinas,id',
-            'estado'         => 'required|string|max:50',
+            'estado'         => 'nullable|string|max:50',
             'otros'          => 'nullable|string',
         ], $messages);
 
