@@ -5,16 +5,32 @@
         </h2>
     </x-slot>
     @if (session('abort'))
-    <script>
-        Swal.fire({
-            icon: 'error',
-            title: 'Acceso denegado',
-            text: "{{ session('abort') }}",
-        });
-    </script>
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Acceso denegado',
+                text: "{{ session('abort') }}",
+            });
+        </script>
     @endif
+    @php
+        use Illuminate\Support\Facades\DB;
+        use Illuminate\Support\Facades\Auth;
+
+        $usuariosConectados = null;
+
+        if (Auth::check() && Auth::user()->role == 'administrador') {
+            $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
+        }
+    @endphp
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @if (Auth::check() && Auth::user()->role == 'administrador')
+                <p class="text-green-600 font-bold">Usuarios conectados:
+                    <strong>{{ $usuariosConectados }}</strong>
+                </p>
+            @endif
+
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="icon-container">
@@ -47,11 +63,11 @@
                             </a>
                         </div>
                         <div class="icon-card">
-                                <a href="{{ route('users.index') }}">
-                                    <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000"
-                                        alt="Usuarios">
-                                    <span>Usuarios</span>
-                                </a>
+                            <a href="{{ route('users.index') }}">
+                                <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000"
+                                    alt="Usuarios">
+                                <span>Usuarios</span>
+                            </a>
                         </div>
 
                         <div class="icon-card">
@@ -68,7 +84,9 @@
                         </div>
                         <div class="icon-card">
                             <a href="{{ route('planillas.index') }}">
-                                <img width="100" height="100" src="https://img.icons8.com/arcade/64/terms-and-conditions.png" alt="terms-and-conditions"/>
+                                <img width="100" height="100"
+                                    src="https://img.icons8.com/arcade/64/terms-and-conditions.png"
+                                    alt="terms-and-conditions" />
                                 <span>Planillas</span>
                             </a>
                         </div>

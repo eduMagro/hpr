@@ -11,25 +11,11 @@
                 </div>
 
             </div>
-            @php
-                use Illuminate\Support\Facades\DB;
-                use Illuminate\Support\Facades\Auth;
 
-                $usuariosConectados = null;
-
-                if (Auth::check() && Auth::user()->role == 'administrador') {
-                    $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-                }
-            @endphp
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <x-dropdown align="right" width="48">
-                    @if (Auth::check() && Auth::user()->role == 'admininistrador')
-                        <p class="text-green-600 font-bold">Usuarios conectados:
-                            <strong>{{ $usuariosConectados }}</strong>
-                        </p>
-                    @endif
 
                     <x-slot name="trigger">
                         <button
