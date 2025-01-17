@@ -48,10 +48,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('conjuntos', ConjuntoController::class);
     Route::resource('elementos', ElementoController::class);
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
-    ->name('elementosEtiquetas');
+        ->name('elementosEtiquetas');
 
-Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
+    //Actualizar estado de elementos
+    Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
 
+    // Para elegir un peon en maquinas
+    Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])
+        ->name('maquinas.sesion.guardar');
 
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 });

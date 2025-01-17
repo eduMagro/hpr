@@ -120,15 +120,13 @@
                             <!-- Enlace para editar -->
                             <a href="{{ route('maquinas.edit', $maquina->id) }}"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-
-                            <!-- Enlace para ver -->
-                            <a href="{{ route('maquinas.show', $maquina->id) }}"
+                            {{-- Enlace para ver --}}
+                            <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
-                        </div>
 
-                    </div>
-                @empty
-                    <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->
+                        </div>
+                    @empty
+                        <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->
                 @endforelse
             @endif
         </div>
@@ -177,6 +175,52 @@
               `);
                 printWindow.document.close();
             }, 500); // Tiempo suficiente para generar el QR
+        }
+    </script>
+    <script>
+        function seleccionarCompañero(maquinaId) {
+            Swal.fire({
+                title: 'Seleccionar Compañero',
+                html: `
+                    <select id="users_id_2" class="swal2-input">
+                        @foreach ($usuarios as $usuario)
+                            <option value="{{ $usuario->id }}">{{ $usuario->nombre }}</option>
+                        @endforeach
+                    </select>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Iniciar Sesión',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const users_id_2 = document.getElementById('users_id_2').value;
+                    if (!users_id_2) {
+                        Swal.showValidationMessage('Debes seleccionar un compañero');
+                        return false;
+                    }
+                    return fetch('{{ route('maquinas.sesion.guardar') }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            maquina_id: maquinaId,
+                            users_id_2: users_id_2
+                        })
+                    }).then(response => {
+                        if (!response.ok) {
+                            throw new Error(response.statusText);
+                        }
+                        return response.json();
+                    }).catch(error => {
+                        Swal.showValidationMessage(`Error: ${error}`);
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `/maquinas/${maquinaId}`; // Redirige a la vista de la máquina
+                }
+            });
         }
     </script>
 </x-app-layout>
