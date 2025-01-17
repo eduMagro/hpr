@@ -19,10 +19,15 @@
 
         $usuariosConectados = null;
 
-        if (Auth::check() && Auth::user()->role == 'administrador') {
-            $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
+        try {
+            if (Auth::check() && Auth::user()->role == 'administrador') {
+                $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
+            }
+        } catch (\Exception $e) {
+            $usuariosConectados = 'Error al obtener datos';
         }
     @endphp
+
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @if (Auth::check() && Auth::user()->role == 'administrador')
