@@ -78,7 +78,7 @@
                                 {{ $planilla->codigo ?? 'Sin planilla' }}</h2>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">
                                 Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
-                                (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
+                                (Número: {{ $etiqueta->etiqueta ?? 'Sin número' }})
                             </h3>
 
                             <!-- GRID PARA ELEMENTOS (2 columnas dentro de cada etiqueta) -->
