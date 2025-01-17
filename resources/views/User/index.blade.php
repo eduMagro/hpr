@@ -4,7 +4,7 @@
             {{ __('Usuarios') }}
         </h2>
         @if (Auth::check() && Auth::user()->role == 'administrador')
-            <p class="text-green-600 font-bold">Usuarios conectados:
+            <p class="text-green-600">Usuarios conectados:
                 <strong>{{ $usuariosConectados }}</strong>
             </p>
         @endif
