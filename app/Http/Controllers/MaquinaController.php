@@ -12,6 +12,8 @@ class MaquinaController extends Controller
     {
         // Obtener las ubicaciones con sus productos asociados
         $maquinas = Maquina::with('productos');
+        // Obtener las ubicaciones con sus productos asociados
+        $usuarios = User::all();
 
         $query = Maquina::query();
         // $query = $this->aplicarFiltros($query, $request);
@@ -33,7 +35,7 @@ class MaquinaController extends Controller
         $registrosMaquina = $query->paginate($perPage)->appends($request->except('page'));
 
         // Pasar las ubicaciones y productos a la vista
-        return view('maquinas.index', compact('registrosMaquina'));
+        return view('maquinas.index', compact('registrosMaquina', 'usuarios'));
     }
 
 
