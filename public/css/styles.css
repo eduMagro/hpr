@@ -53,11 +53,6 @@
     transition: opacity 0.3s;
 }
 
-/* ESTILOS SWEET ALERT */
-.btn-confirm {
-    background-color: red !important;
-    color: white !important;
-}
 /* ESTILOS ALERT PERSONALIZADOS */
 .overlay {
     position: fixed;
