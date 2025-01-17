@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,7 +32,7 @@ class Producto extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    
+
 
     /**
      * Relación con la tabla 'entradas'
@@ -63,6 +64,9 @@ class Producto extends Model
     {
         return $query->where('estado', 'consumiendo')->whereNotNull('maquina_id');
     }
-
-
+    // Relación con los elementos que están asociados a este producto
+    public function elementos()
+    {
+        return $this->hasMany(Elemento::class, 'producto_id');
+    }
 }

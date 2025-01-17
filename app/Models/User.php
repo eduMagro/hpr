@@ -21,13 +21,13 @@ class User extends Authenticatable
      */
     public $timestamps = true;
 
-     protected $table = 'users';
-     protected $casts = [
+    protected $table = 'users';
+    protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    
-      
+
+
     protected $fillable = [
         'name',
         'email',
@@ -69,5 +69,15 @@ class User extends Authenticatable
         return $this->hasMany(Movimiento::class, 'users_id'); // 'user_id' es la clave foránea en la tabla `movimientos`
     }
 
-    
+    // Relación con los elementos en los que este usuario es el usuario principal
+    public function elementos1()
+    {
+        return $this->hasMany(Elemento::class, 'users_id');
+    }
+
+    // Relación con los elementos en los que este usuario es el usuario secundario
+    public function elementos2()
+    {
+        return $this->hasMany(Elemento::class, 'users_id_2');
+    }
 }

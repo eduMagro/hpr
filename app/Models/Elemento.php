@@ -25,9 +25,11 @@ class Elemento extends Model
     protected $fillable = [
         'planilla_id',
         'users_id',
+        'users_id_2',
         'etiqueta_id',
         'nombre',
         'maquina_id',
+        'producto_id',
         'figura',
         'fila',
         'descripcion_fila',
@@ -83,10 +85,15 @@ class Elemento extends Model
     }
     /**
      * Relación con la tabla 'users'
-     * Una planilla pertenece a un usuario
+     * Un elemento pertenece a un usuario
      */
     public function user()
     {
         return $this->belongsTo(User::class, 'users_id');  // Relación con User
+    }
+    // Relación con el segundo usuario
+    public function user2()
+    {
+        return $this->belongsTo(User::class, 'users_id_2');
     }
 }
