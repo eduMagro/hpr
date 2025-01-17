@@ -179,16 +179,18 @@
         }
     </script>
     <script>
-        function seleccionarCompañero(maquinaId) {
-            let opciones = usuarios.map(usuario => `<option value="${usuario.id}">${usuario.nombre}</option>`).join('');
+        const usuarios = @json($usuarios);
 
+        function seleccionarCompañero(maquinaId) {
             Swal.fire({
                 title: 'Seleccionar Compañero',
                 html: `
-                <select id="users_id_2" class="swal2-input">
-                    ${opciones}
-                </select>
-            `,
+                    <select id="users_id_2" class="swal2-input">
+                        @foreach ($usuarios as $usuario)
+                            <option value="{{ $usuario->id }}">{{ $usuario->nombre }}</option>
+                        @endforeach
+                    </select>
+                `,
                 showCancelButton: true,
                 confirmButtonText: 'Iniciar Sesión',
                 cancelButtonText: 'Cancelar',
