@@ -13,8 +13,7 @@ class MaquinaController extends Controller
     {
         // Obtener las ubicaciones con sus productos asociados
         $maquinas = Maquina::with('productos');
-        // Obtener las ubicaciones con sus productos asociados
-        $usuarios = User::all();
+        $usuarios = User::where('id', '!=', auth()->id())->get(); // Excluye al usuario autenticado
 
         $query = Maquina::query();
         // $query = $this->aplicarFiltros($query, $request);
