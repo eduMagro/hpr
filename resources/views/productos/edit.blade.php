@@ -77,10 +77,10 @@
                                     <option value="" disabled
                                         {{ old('tipo', $producto->tipo) == null ? 'selected' : '' }}>Seleccione un tipo
                                     </option>
-                                    <option value="Encarretado"
+                                    <option value="encarretado"
                                         {{ old('tipo', $producto->tipo) == 'encarretado' ? 'selected' : '' }}>
                                         encarretado</option>
-                                    <option value="Barras"
+                                    <option value="barras"
                                         {{ old('tipo', $producto->tipo) == 'barras' ? 'selected' : '' }}>barras
                                     </option>
                                 </select>
