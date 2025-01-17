@@ -66,7 +66,8 @@ class Elemento extends Model
     {
         return $this->belongsTo(Planilla::class, 'planilla_id');
     }
-    public function etiqueta()
+
+    public function etiquetaRelacion()
     {
         return $this->belongsTo(Etiqueta::class, 'etiqueta_id');
     }

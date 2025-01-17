@@ -44,7 +44,7 @@ class MaquinaController extends Controller
     {
         $maquina = Maquina::with([
             'elementos.planilla',
-            'elementos.etiqueta',  // Carga los elementos y sus etiquetas
+            'elementos.etiquetaRelacion',  // Carga los elementos y sus etiquetas
             'productos'            // Carga los productos en la máquina
         ])->findOrFail($id);
 

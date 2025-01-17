@@ -69,11 +69,12 @@
 
                     @forelse ($elementosAgrupados as $etiquetaId => $elementos)
                         @php
-                            $etiqueta = $elementos->first()->etiqueta; // Obtener la etiqueta del primer elemento para mostrarla
+                            $etiqueta = $elementos->first()->etiquetaRelacion ?? null; // Obtener la etiqueta del primer elemento para mostrarla. cambio el nombre de la relacion para que nocree conflicto con la columna etiquta
+                            $planilla = $elementos->first()->planilla ?? null; // Obtener la etiqueta del primer elemento para mostrarla
                         @endphp
 
                         <div class="bg-yellow-100 p-6 rounded-lg shadow-md mt-4">
-                            <h2 class="text-gray-700"><strong>Planilla:</strong>
+                            <h2 class="text-lg font-semibold text-gray-700"><strong>Planilla:</strong>
                                 {{ $planilla->codigo ?? 'Sin planilla' }}</h2>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">
                                 Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
