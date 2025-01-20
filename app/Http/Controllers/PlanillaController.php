@@ -35,6 +35,21 @@ class PlanillaController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
     {
+        // 🔍 Búsqueda global en múltiples campos
+        if ($request->has('buscar') && $request->buscar) {
+            $buscar = $request->input('buscar');
+            $query->where(function ($q) use ($buscar) {
+                $q->where('codigo', 'like', "%$buscar%")
+                    ->orWhere('cliente', 'like', "%$buscar%")
+                    ->orWhere('nom_obra', 'like', "%$buscar%")
+                    ->orWhere('cod_obra', 'like', "%$buscar%")
+                    ->orWhereHas('user', function ($q) use ($buscar) {
+                        $q->where('name', 'like', "%$buscar%");
+                    });
+            });
+        }
+
+        // 🔢 Filtros específicos
         $filters = [
             'codigo' => 'codigo',
             'cod_obra' => 'cod_obra',
@@ -45,17 +60,22 @@ class PlanillaController extends Controller
 
         foreach ($filters as $requestKey => $column) {
             if ($request->has($requestKey) && $request->$requestKey) {
-                $query->where($column, 'like', '%' . $request->$requestKey . '%');
+                $query->where($column, 'like', "%{$request->$requestKey}%");
             }
         }
 
-        if ($request->has('created_at') && $request->created_at) {
-            $query->whereDate('created_at', $request->created_at);
+        // 📅 Filtrado por rango de fechas
+        if ($request->has('fecha_inicio') && $request->fecha_inicio) {
+            $query->whereDate('created_at', '>=', $request->fecha_inicio);
+        }
+        if ($request->has('fecha_finalizacion') && $request->fecha_finalizacion) {
+            $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
         }
 
+        // 🏗️ Filtrar por usuario
         if ($request->has('name') && $request->name) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->name . '%');
+                $q->where('name', 'like', "%{$request->name}%");
             });
         }
 
@@ -63,35 +83,33 @@ class PlanillaController extends Controller
     }
 
 
+
     public function index(Request $request)
     {
         try {
-
-
             $query = Planilla::with(['user', 'elementos']);
 
+            // Aplicar filtros
             $query = $this->aplicarFiltros($query, $request);
-            $allowedSortColumns = ['created_at', 'codigo', 'name', 'cod_obra', 'cliente', 'nom_obra'];
+
+            // 📌 Ordenación segura
+            $allowedSortColumns = ['created_at', 'codigo', 'cliente', 'nom_obra'];
             $sortBy = in_array($request->input('sort_by'), $allowedSortColumns) ? $request->input('sort_by') : 'created_at';
             $order = in_array($request->input('order'), ['asc', 'desc']) ? $request->input('order') : 'desc';
 
             $query->orderBy($sortBy, $order);
 
-            // Aplicar ordenamiento por múltiples columnas
-            $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
-
-            // Paginación
+            // 📌 Paginación
             $perPage = $request->input('per_page', 10);
-
             $planillas = $query->paginate($perPage)->appends($request->except('page'));
-            // Pasar las ubicaciones y productos a la vista
+
+            // Retornar vista con los datos
             return view('planillas.index', compact('planillas'));
-        } catch (ValidationException $e) {
-            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (Exception $e) {
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
 
 
     public function show($id)

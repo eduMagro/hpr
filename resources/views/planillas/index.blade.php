@@ -4,7 +4,8 @@
             {{ __('Planillas') }}
         </h2>
     </x-slot>
-    <!-- Mostrar errores de validación -->
+
+    <!-- Mostrar mensajes de error y éxito -->
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
@@ -12,10 +13,8 @@
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
-
         </div>
     @endif
-    <!-- Mostrar mensajes de éxito o error -->
     @if (session('error'))
         <div class="alert alert-danger">
             {{ session('error') }}
@@ -35,56 +34,116 @@
             });
         </script>
     @endif
+
     <div class="container mx-auto px-3 py-6">
-        <!-- Botón para crear una nueva entrada -->
+        <!-- Botón para crear nueva planilla -->
         <div class="mb-4">
             <a href="{{ route('planillas.create') }}" class="btn btn-primary">
                 Importar Planilla
             </a>
         </div>
 
-        <!-- FORMULARIO DE BÚSQUEDA -->
-        <form method="GET" action="{{ route('planillas.index') }}" class="mt-3 mb-3">
-            <div class="row g-3">
-                <div class="col-md-3 col-sm-6 col-12">
-                    <input type="text" name="codigo" class="form-control" placeholder="Código de Planilla"
-                        value="{{ request('codigo') }}">
-                </div>
-                <div class="col-md-3 col-sm-6 col-12">
-                    <input type="text" name="name" class="form-control" placeholder="Nombre de Usuario"
-                        value="{{ request('name') }}">
-                </div>
-                <div class="col-md-3 col-sm-6 col-12">
-                    <input type="text" name="cliente" class="form-control" placeholder="Nombre de Cliente"
-                        value="{{ request('cliente') }}">
-                </div>
-                <div class="col-md-3 col-sm-6 col-12">
-                    <input type="text" name="cod_obra" class="form-control" placeholder="Código de Obra"
-                        value="{{ request('cod_obra') }}">
-                </div>
-                <div class="col-md-3 col-sm-6 col-12">
-                    <input type="text" name="nom_obra" class="form-control" placeholder="Nombre de Obra"
-                        value="{{ request('nom_obra') }}">
-                </div>
-                <div class="col-md-3 col-sm-6 col-12">
-                    <input type="text" name="ensamblado" class="form-control" placeholder="Estado de Ensamblado"
-                        value="{{ request('ensamblado') }}">
-                </div>
-                <div class="col-md-3 col-sm-6 col-12">
-                    <input type="date" name="created_at" class="form-control" placeholder="Fecha de Creación"
-                        value="{{ request('created_at') }}">
-                </div>
-                <div class="col-md-3 col-sm-6 col-12 d-flex align-items-center">
-                    <button type="submit" class="btn btn-info w-100">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
-                </div>
-            </div>
-        </form>
+        <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
+        <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse"
+            data-bs-target="#filtrosBusqueda">
+            🔍 Filtros Avanzados
+        </button>
 
+        <div id="filtrosBusqueda" class="collapse">
+            <form method="GET" action="{{ route('planillas.index') }}" class="card card-body shadow-sm">
+                <div class="row g-3">
+                    <!-- Búsqueda global -->
+                    <div class="col-md-6">
+                        <input type="text" name="buscar" class="form-control"
+                            placeholder="Buscar en código, cliente, obra..." value="{{ request('buscar') }}">
+                    </div>
+                    <!-- Código de Planilla -->
+                    <div class="col-md-3">
+                        <input type="text" name="codigo" class="form-control" placeholder="Código de Planilla"
+                            value="{{ request('codigo') }}">
+                    </div>
+                    <!-- Código de Obra -->
+                    <div class="col-md-3">
+                        <input type="text" name="cod_obra" class="form-control" placeholder="Código de Obra"
+                            value="{{ request('cod_obra') }}">
+                    </div>
+                    <!-- Nombre de Usuario -->
+                    <div class="col-md-4">
+                        <input type="text" name="name" class="form-control" placeholder="Nombre de Usuario"
+                            value="{{ request('name') }}">
+                    </div>
+                    <!-- Cliente -->
+                    <div class="col-md-4">
+                        <input type="text" name="cliente" class="form-control" placeholder="Nombre de Cliente"
+                            value="{{ request('cliente') }}">
+                    </div>
+                    <!-- Nombre de Obra -->
+                    <div class="col-md-4">
+                        <input type="text" name="nom_obra" class="form-control" placeholder="Nombre de Obra"
+                            value="{{ request('nom_obra') }}">
+                    </div>
+                    <!-- Estado Ensamblado -->
+                    <div class="col-md-4">
+                        <input type="text" name="ensamblado" class="form-control" placeholder="Estado de Ensamblado"
+                            value="{{ request('ensamblado') }}">
+                    </div>
+                    <!-- Rango de Fechas -->
+                    <div class="col-md-4">
+                        <label for="fecha_inicio">Desde:</label>
+                        <input type="date" name="fecha_inicio" class="form-control"
+                            value="{{ request('fecha_inicio') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="fecha_finalizacion">Hasta:</label>
+                        <input type="date" name="fecha_finalizacion" class="form-control"
+                            value="{{ request('fecha_finalizacion') }}">
+                    </div>
+                    <!-- Ordenar por -->
+                    <div class="col-md-4">
+                        <label for="sort_by">Ordenar por:</label>
+                        <select name="sort_by" class="form-control">
+                            <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Fecha
+                                Creación</option>
+                            <option value="codigo" {{ request('sort_by') == 'codigo' ? 'selected' : '' }}>Código
+                            </option>
+                            <option value="cliente" {{ request('sort_by') == 'cliente' ? 'selected' : '' }}>Cliente
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="order">Orden:</label>
+                        <select name="order" class="form-control">
+                            <option value="asc" {{ request('order') == 'asc' ? 'selected' : '' }}>Ascendente
+                            </option>
+                            <option value="desc" {{ request('order') == 'desc' ? 'selected' : '' }}>Descendente
+                            </option>
+                        </select>
+                    </div>
+                    <!-- Registros por página -->
+                    <div class="col-md-4">
+                        <label for="per_page">Mostrar:</label>
+                        <select name="per_page" class="form-control">
+                            <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
+                            <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25</option>
+                            <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+                        </select>
+                    </div>
 
-        <!-- Grid para tarjetas -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Botones -->
+                    <div class="col-12 d-flex justify-content-between">
+                        <button type="submit" class="btn btn-info">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                        <a href="{{ route('planillas.index') }}" class="btn btn-warning">
+                            <i class="fas fa-undo"></i> Resetear Filtros
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Mostrar planillas -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
             @forelse ($planillas as $planilla)
                 <div class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                     <h2 class="font-semibold text-lg mb-2 text-center">{{ $planilla->codigo_limpio }}</h2>
@@ -133,14 +192,14 @@
                     </div>
                 </div>
             @empty
-                <div class="col-span-3 text-center py-4">No hay planillas importadas.</div>
+                <div class="col-span-3 text-center py-4">No hay planillas disponibles.</div>
             @endforelse
         </div>
 
         <!-- Paginación -->
-        @if (isset($planillas) && $planillas instanceof \Illuminate\Pagination\LengthAwarePaginator)
-            {{ $planillas->appends(request()->except('page'))->links() }}
-        @endif
+        <div class="flex justify-center mt-4">
+            {{ $planillas->appends(request()->except('page'))->links('vendor.pagination.tailwind') }}
+        </div>
 
-
+    </div>
 </x-app-layout>
