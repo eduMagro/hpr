@@ -94,7 +94,7 @@
                 </div>
 
                 <!-- Planificación para la máquina agrupada por etiquetas -->
-                <div class="bg-white border p-4 shadow-md w-full">
+                <div class="bg-white border p-4 shadow-md w-full rounded-lg">
                     <h3 class="font-bold text-xl">Planificación prevista</h3>
 
                     @php
@@ -139,7 +139,7 @@
                             </h2>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">
                                 Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
-                                (Número: {{ $etiqueta->etiqueta ?? 'Sin número' }})
+                                (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                             </h3>
 
                             <!-- GRID PARA ELEMENTOS (2 columnas dentro de cada etiqueta) -->
