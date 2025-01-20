@@ -66,10 +66,13 @@
                             @foreach ($maquina->productos as $producto)
                                 <li class="mb-2 flex items-center justify-between">
                                     <span>
-                                        ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} -
-                                        <strong>Diámetro:</strong>{{ $producto->diametro_mm }}
-                                        - L{{ $producto->longitud ?? '??' }}
+                                        <strong>Diámetro: </strong>{{ $producto->diametro_mm }}
                                     </span>
+                                    @if ($producto->tipo === 'barras')
+                                        <span>
+                                            <strong>Longitud:</strong> {{ $producto->longitud_cm }}
+                                        </span>
+                                    @endif
                                     <a href="{{ route('productos.show', $producto->id) }}"
                                         class="btn btn-sm btn-primary">Ver</a>
                                     @if ($producto->tipo == 'encarretado')
