@@ -16,7 +16,7 @@
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->
         <div class="mb-4">
-            <h3 class="font-bold text-lg text-gray-700 mb-2">Compañeros de sesión:</h3>
+
             <div class="flex flex-col md:flex-row md:space-x-6">
                 <!-- Usuario principal -->
                 <div class="bg-white border p-3 rounded-lg shadow-md w-full md:w-1/2">
@@ -67,7 +67,7 @@
                                 <li class="mb-2 flex items-center justify-between">
                                     <span>
                                         ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} -
-                                        D{{ $producto->diametro }}
+                                        <strong>Diámetro:</strong>{{ $producto->diametro_mm }}
                                         - L{{ $producto->longitud ?? '??' }}
                                     </span>
                                     <a href="{{ route('productos.show', $producto->id) }}"
@@ -142,12 +142,18 @@
                                 (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                             </h3>
 
-                            <!-- GRID PARA ELEMENTOS (2 columnas dentro de cada etiqueta) -->
+                            <!-- GRID PARA ELEMENTOS -->
                             <div class="grid grid-cols-1 gap-4">
                                 @foreach ($elementos as $elemento)
                                     <div id="elemento-{{ $elemento->id }}"
                                         class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                                         {{ $loop->iteration }}.
+                                        <button
+                                            onclick="generateAndPrintQR('{{ $elemento->id }}', '{{ $elemento->descripcion_fila }}')"
+                                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">
+                                            <i class="fas fa-qrcode mr-2"></i> QR
+                                        </button>
+
                                         <p class="text-gray-500 text-sm">
                                             <strong>Estado:</strong> {{ $elemento->estado ?? 'Sin estado' }}
                                         </p>
@@ -194,8 +200,87 @@
                         </div>
                     @endforelse
                 </div>
-            @endif
+                <!-- GRID PARA OTROS -->
+                <div class="bg-white border p-4 shadow-md rounded-lg">
+                    <div class="flex flex-col gap-4">
+                        <!-- Botón Reportar Incidencia -->
+                        <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
+                            🚨 Reportar Incidencia
+                        </button>
+
+                        <!-- Botón Realizar Chequeo de Máquina -->
+                        <button onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
+                            🛠️ Realizar Chequeo de Máquina
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Reportar Incidencia (Oculto por defecto) -->
+                <div id="modalIncidencia"
+                    class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
+                    <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Reportar Incidencia</h2>
+                        <textarea class="w-full border rounded p-2" rows="3" placeholder="Describe el problema..."></textarea>
+                        <div class="flex justify-end mt-4">
+                            <button onclick="document.getElementById('modalIncidencia').classList.add('hidden')"
+                                class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
+                                Cancelar
+                            </button>
+                            <button class="px-4 py-2 bg-red-600 text-white rounded">Enviar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Chequeo de Máquina (Oculto por defecto) -->
+                <div id="modalCheckeo"
+                    class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
+                    <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">🛠️ Chequeo de Máquina</h2>
+
+                        <form id="formCheckeo">
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" name="limpieza">
+                                    🔹 Máquina limpia y sin residuos
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" name="herramientas">
+                                    🔹 Herramientas en su ubicación correcta
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" name="lubricacion">
+                                    🔹 Lubricación y mantenimiento básico realizado
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" name="seguridad">
+                                    🔹 Elementos de seguridad en buen estado
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="mr-2" name="registro">
+                                    🔹 Registro de incidencias actualizado
+                                </label>
+                            </div>
+
+                            <!-- Botones de acción -->
+                            <div class="flex justify-end mt-4">
+                                <button type="button"
+                                    onclick="document.getElementById('modalCheckeo').classList.add('hidden')"
+                                    class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
+                                    Cancelar
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">
+                                    Guardar Chequeo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
         </div>
+        @endif
+    </div>
     </div>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -353,6 +438,53 @@
 
             ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
             ctx.stroke();
+        }
+    </script>
+    <!-- SCRIPT PARA IMPRIMIR QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        function generateAndPrintQR(id, descripcion_fila) {
+            // Limpiamos el contenedor del QR
+            const qrContainer = document.getElementById('qrCanvas');
+            qrContainer.innerHTML = ""; // Elimina cualquier QR previo
+
+            // Generamos el QR con el ID
+            const qrCode = new QRCode(qrContainer, {
+                text: id.toString(),
+                width: 200,
+                height: 200,
+            });
+
+            // Esperamos hasta que el QR esté listo antes de imprimirlo
+            const interval = setInterval(() => {
+                const qrImg = qrContainer.querySelector('img');
+                if (qrImg) {
+                    clearInterval(interval); // Detenemos la espera
+
+                    // Creamos una ventana para la impresión
+                    const printWindow = window.open('', '_blank');
+                    printWindow.document.write(`
+                      <html>
+                          <head>
+                              <title>Imprimir QR</title>
+                              <style>
+                                  body { display: flex; justify-content: center; align-items: center; flex-direction: column; }
+                                  img { margin-bottom: 20px; }
+                              </style>
+                          </head>
+                          <body>
+                              <img src="${qrImg.src}" alt="Código QR" style="width:200px; height:200px;">
+                              <p>${descripcion_fila}</p>
+                              <script>
+                                  window.print();
+                                  setTimeout(() => window.close(), 1000); // Cierra la ventana después de imprimir
+                              <\/script>
+                          </body>
+                      </html>
+                  `);
+                    printWindow.document.close();
+                }
+            }, 100); // Revisamos cada 100ms si el QR está listo
         }
     </script>
 </x-app-layout>

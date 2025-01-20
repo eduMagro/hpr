@@ -69,4 +69,9 @@ class Producto extends Model
     {
         return $this->hasMany(Elemento::class, 'producto_id');
     }
+    // Diámetro (mm)
+    public function getDiametroMmAttribute()
+    {
+        return $this->diametro ? number_format($this->diametro, 2) . ' mm' : 'No asignado';
+    }
 }
