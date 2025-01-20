@@ -40,8 +40,9 @@
                     <!-- Indicador de estado en línea -->
                     @if ($user->isOnline())
                         <span
-                            class="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></span>
+                            class="relative inline-block w-4 h-4 bg-green-500 rounded-full border-2 border-white"></span>
                     @endif
+
                     <p class="text-gray-500 text-sm">ID: {{ $user->id }}</p>
                     <h2 class="font-semibold text-lg mb-2">{{ $user->name }}</h2>
                     <p class="text-gray-600 mb-2">Email: {{ $user->email }}</p>
