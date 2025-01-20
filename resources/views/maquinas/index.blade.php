@@ -85,10 +85,13 @@
                                 @foreach ($maquina->productos as $producto)
                                     <li class="mb-2 flex items-center justify-between">
                                         <span>
-
-                                            ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} -
-                                            D{{ $producto->diametro }} - L{{ $producto->longitud ?? '??' }}
+                                            <strong>Diámetro: </strong>{{ $producto->diametro_mm }}
                                         </span>
+                                        @if ($producto->tipo === 'barras')
+                                            <span>
+                                                <strong>Longitud:</strong> {{ $producto->longitud_cm }}
+                                            </span>
+                                        @endif
                                         <a href="{{ route('productos.show', $producto->id) }}"
                                             class="btn btn-sm btn-primary">Ver</a>
                                         @if ($producto->tipo == 'encarretado')
@@ -96,10 +99,10 @@
                                                 style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
                                                 <div class="cuadro verde"
                                                     style="width: 100%; 
-														height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-														background-color: green; 
-														position: absolute; 
-														bottom: 0;">
+                                                           height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+                                                           background-color: green; 
+                                                           position: absolute; 
+                                                           bottom: 0;">
                                                 </div>
                                                 <span style="position: absolute; top: 10px; left: 10px; color: white;">
                                                     {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
