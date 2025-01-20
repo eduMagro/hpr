@@ -113,9 +113,9 @@
                                                 'id' => $elemento->id,
                                                 'dimensiones' => $elemento->dimensiones,
                                                 'estado' => $elemento->estado,
-                                                'peso' => $elemento->peso,
-                                                'diametro' => $elemento->diametro,
-                                                'longitud' => $elemento->longitud,
+                                                'peso' => $elemento->peso_kg,
+                                                'diametro' => $elemento->diametro_mm,
+                                                'longitud' => $elemento->longitud_cm,
                                                 'barras' => $elemento->barras,
                                                 'figura' => $elemento->figura,
                                             ];
@@ -154,17 +154,17 @@
                                         <hr class="my-2">
 
                                         <p class="text-gray-500 text-sm">
-                                            <strong>Peso:</strong> {{ $elemento->peso ?? 'No asignado' }}
+                                            <strong>Peso:</strong> {{ $elemento->peso_kg ?? }}
                                         </p>
                                         <hr class="my-2">
 
                                         <p class="text-gray-500 text-sm">
-                                            <strong>Diámetro:</strong> {{ $elemento->diametro ?? 'No asignado' }}
+                                            <strong>Diámetro:</strong> {{ $elemento->diametro_mm }}
                                         </p>
                                         <hr class="my-2">
 
                                         <p class="text-gray-500 text-sm">
-                                            <strong>Longitud:</strong> {{ $elemento->longitud ?? 'No asignado' }}
+                                            <strong>Longitud:</strong> {{ $elemento->longitud_cm }}
                                         </p>
                                         <hr class="my-2">
 

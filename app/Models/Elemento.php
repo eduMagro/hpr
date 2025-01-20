@@ -99,4 +99,38 @@ class Elemento extends Model
     {
         return $this->belongsTo(User::class, 'users_id_2');
     }
+    // Longitudes
+    public function getLongitudCmAttribute()
+    {
+        return $this->longitud ? number_format($this->longitud, 2) . ' cm' : 'No asignado';
+    }
+    public function getLongitudMAttribute()
+    {
+        return $this->longitud ? number_format($this->longitud / 100, 2) . ' m' : 'No asignado';
+    }
+    // Peso
+    public function getPesoKgAttribute()
+    {
+        return $this->peso ? number_format($this->peso, 2) . ' kg' : 'No asignado';
+    }
+
+    // Diámetro (mm)
+    public function getDiametroMmAttribute()
+    {
+        return $this->diametro ? number_format($this->diametro, 2) . ' mm' : 'No asignado';
+    }
+
+    // Tiempos
+    public function getTiempoFabricacionFormatoAttribute()
+    {
+        if (!$this->tiempo_fabricacion || $this->tiempo_fabricacion <= 0) {
+            return 'No asignado';
+        }
+
+        $horas = floor($this->tiempo_fabricacion / 3600);
+        $minutos = floor(($this->tiempo_fabricacion % 3600) / 60);
+        $segundos = $this->tiempo_fabricacion % 60;
+
+        return sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
+    }
 }
