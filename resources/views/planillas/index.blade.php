@@ -75,7 +75,7 @@
 
                     <p class="text-gray-600 mb-2">
                         <strong>Tiempo Estimado Finalización:</strong>
-                        {{ $tiempo_estimado_finalizacion_formato }}
+                        {{ $planilla->tiempo_estimado_finalizacion_formato }}
                     </p>
 
                     <p class="text-gray-600 mb-2"><strong>Fecha Inicio:</strong>
