@@ -36,24 +36,52 @@
         </script>
     @endif
     <div class="container mx-auto px-3 py-6">
-        <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
+        <!-- Botón para crear una nueva entrada -->
         <div class="mb-4">
             <a href="{{ route('planillas.create') }}" class="btn btn-primary">
                 Importar Planilla
             </a>
         </div>
-        <!-- FORMULARIO DE BUSQUEDA -->
-        <form method="GET" action="{{ route('planillas.index') }}" class="form-inline mt-3 mb-3">
-            <input type="text" name="codigo" class="form-control mb-3" placeholder="Buscar por Código de Planilla"
-                value="{{ request('codigo') }}">
 
-            <input type="text" name="name" class="form-control mb-3" placeholder="Buscar por nombre de usuario"
-                value="{{ request('name') }}">
-
-            <button type="submit" class="btn btn-info ml-2">
-                <i class="fas fa-search"></i> Buscar
-            </button>
+        <!-- FORMULARIO DE BÚSQUEDA -->
+        <form method="GET" action="{{ route('planillas.index') }}" class="mt-3 mb-3">
+            <div class="row g-3">
+                <div class="col-md-4 col-sm-6 col-12">
+                    <input type="text" name="codigo" class="form-control" placeholder="Código de Planilla"
+                        value="{{ request('codigo') }}">
+                </div>
+                <div class="col-md-4 col-sm-6 col-12">
+                    <input type="text" name="name" class="form-control" placeholder="Nombre de Usuario"
+                        value="{{ request('name') }}">
+                </div>
+                <div class="col-md-4 col-sm-6 col-12">
+                    <input type="text" name="cliente" class="form-control" placeholder="Nombre de Cliente"
+                        value="{{ request('cliente') }}">
+                </div>
+                <div class="col-md-4 col-sm-6 col-12">
+                    <input type="text" name="cod_obra" class="form-control" placeholder="Código de Obra"
+                        value="{{ request('cod_obra') }}">
+                </div>
+                <div class="col-md-4 col-sm-6 col-12">
+                    <input type="text" name="nom_obra" class="form-control" placeholder="Nombre de Obra"
+                        value="{{ request('nom_obra') }}">
+                </div>
+                <div class="col-md-4 col-sm-6 col-12">
+                    <input type="text" name="ensamblado" class="form-control" placeholder="Estado de Ensamblado"
+                        value="{{ request('ensamblado') }}">
+                </div>
+                <div class="col-md-4 col-sm-6 col-12">
+                    <input type="date" name="created_at" class="form-control" placeholder="Fecha de Creación"
+                        value="{{ request('created_at') }}">
+                </div>
+                <div class="col-md-4 col-sm-6 col-12 d-flex align-items-center">
+                    <button type="submit" class="btn btn-info w-100">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </div>
         </form>
+
         <!-- Grid para tarjetas -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             @forelse ($planillas as $planilla)
