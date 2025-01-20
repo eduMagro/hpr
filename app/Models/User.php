@@ -86,9 +86,14 @@ class User extends Authenticatable
 
     public function isOnline()
     {
-        return DB::table('sessions')
+        $resultado = DB::table('sessions')
             ->where('user_id', $this->id)
-            ->where('last_activity', '>=', Carbon::now()->subMinutes(5)->timestamp) // Última actividad en 5 minutos
+            ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
             ->exists();
+
+        // Depuración
+        logger("User {$this->id} isOnline: " . ($resultado ? 'Sí' : 'No'));
+
+        return $resultado;
     }
 }
