@@ -35,36 +35,27 @@ class PlanillaController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
     {
-        if ($request->has('codigo') && $request->codigo) {
-            $codigoPlanilla = $request->input('codigo');
-            $query->where('codigo', 'like', '%' . $codigoPlanilla . '%'); // Filtro por codigo Planilla
+        $filters = [
+            'codigo' => 'codigo',
+            'cod_obra' => 'cod_obra',
+            'nom_obra' => 'nom_obra',
+            'cliente' => 'cliente',
+            'ensamblado' => 'ensamblado',
+        ];
+
+        foreach ($filters as $requestKey => $column) {
+            if ($request->has($requestKey) && $request->$requestKey) {
+                $query->where($column, 'like', '%' . $request->$requestKey . '%');
+            }
         }
-        if ($request->has('cod_obra') && $request->codigo) {
-            $cod_obra = $request->input('codigo');
-            $query->where('cod_obra', 'like', '%' . $cod_obra . '%'); // Filtro por codigo Planilla
-        }
-        if ($request->has('nom_obra') && $request->nom_obra) {
-            $nom_obra = $request->input('nom_obra');
-            $query->where('nom_obra', 'like', '%' . $nom_obra . '%'); // Filtro por codigo Planilla
-        }
-        if ($request->has('cliente') && $request->cliente) {
-            $cliente = $request->input('cliente');
-            $query->where('cliente', 'like', '%' . $cliente . '%'); // Filtro por codigo Planilla
-        }
-        if ($request->has('ensamblado') && $request->ensamblado) {
-            $ensamblado = $request->input('ensamblado');
-            $query->where('ensamblado', 'like', '%' . $ensamblado . '%'); // Filtro por codigo Planilla
-        }
+
         if ($request->has('created_at') && $request->created_at) {
-            $created_at = $request->input('created_at');
-            $query->where('created_at', 'like', '%' . $created_at . '%'); // Filtro por codigo Planilla
+            $query->whereDate('created_at', $request->created_at);
         }
 
         if ($request->has('name') && $request->name) {
-            $userName = $request->input('name');
-
-            $query->whereHas('user', function ($q) use ($userName) { // Asegúrate de usar el nombre correcto de la relación
-                $q->where('name', 'like', '%' . $userName . '%');  // Filtrar por el nombre de usuario en la tabla users
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->name . '%');
             });
         }
 
@@ -80,9 +71,11 @@ class PlanillaController extends Controller
             $query = Planilla::with(['user', 'elementos']);
 
             $query = $this->aplicarFiltros($query, $request);
-            // Ordenar
-            $sortBy = $request->input('sort_by', 'created_at');  // Primer criterio de ordenación (nombre)
-            $order = $request->input('order', 'desc');        // Orden del primer criterio (asc o desc)
+            $allowedSortColumns = ['created_at', 'codigo', 'name', 'cod_obra', 'cliente', 'nom_obra'];
+            $sortBy = in_array($request->input('sort_by'), $allowedSortColumns) ? $request->input('sort_by') : 'created_at';
+            $order = in_array($request->input('order'), ['asc', 'desc']) ? $request->input('order') : 'desc';
+
+            $query->orderBy($sortBy, $order);
 
             // Aplicar ordenamiento por múltiples columnas
             $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
@@ -91,17 +84,11 @@ class PlanillaController extends Controller
             $perPage = $request->input('per_page', 10);
 
             $planillas = $query->paginate($perPage)->appends($request->except('page'));
-
-
             // Pasar las ubicaciones y productos a la vista
             return view('planillas.index', compact('planillas'));
         } catch (ValidationException $e) {
-            // Mostrar todos los errores de validación
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (Exception $e) {
-            // Mostrar errores generales
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }

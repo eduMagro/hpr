@@ -46,41 +46,42 @@
         <!-- FORMULARIO DE BÚSQUEDA -->
         <form method="GET" action="{{ route('planillas.index') }}" class="mt-3 mb-3">
             <div class="row g-3">
-                <div class="col-md-4 col-sm-6 col-12">
+                <div class="col-md-3 col-sm-6 col-12">
                     <input type="text" name="codigo" class="form-control" placeholder="Código de Planilla"
                         value="{{ request('codigo') }}">
                 </div>
-                <div class="col-md-4 col-sm-6 col-12">
+                <div class="col-md-3 col-sm-6 col-12">
                     <input type="text" name="name" class="form-control" placeholder="Nombre de Usuario"
                         value="{{ request('name') }}">
                 </div>
-                <div class="col-md-4 col-sm-6 col-12">
+                <div class="col-md-3 col-sm-6 col-12">
                     <input type="text" name="cliente" class="form-control" placeholder="Nombre de Cliente"
                         value="{{ request('cliente') }}">
                 </div>
-                <div class="col-md-4 col-sm-6 col-12">
+                <div class="col-md-3 col-sm-6 col-12">
                     <input type="text" name="cod_obra" class="form-control" placeholder="Código de Obra"
                         value="{{ request('cod_obra') }}">
                 </div>
-                <div class="col-md-4 col-sm-6 col-12">
+                <div class="col-md-3 col-sm-6 col-12">
                     <input type="text" name="nom_obra" class="form-control" placeholder="Nombre de Obra"
                         value="{{ request('nom_obra') }}">
                 </div>
-                <div class="col-md-4 col-sm-6 col-12">
+                <div class="col-md-3 col-sm-6 col-12">
                     <input type="text" name="ensamblado" class="form-control" placeholder="Estado de Ensamblado"
                         value="{{ request('ensamblado') }}">
                 </div>
-                <div class="col-md-4 col-sm-6 col-12">
+                <div class="col-md-3 col-sm-6 col-12">
                     <input type="date" name="created_at" class="form-control" placeholder="Fecha de Creación"
                         value="{{ request('created_at') }}">
                 </div>
-                <div class="col-md-4 col-sm-6 col-12 d-flex align-items-center">
+                <div class="col-md-3 col-sm-6 col-12 d-flex align-items-center">
                     <button type="submit" class="btn btn-info w-100">
                         <i class="fas fa-search"></i> Buscar
                     </button>
                 </div>
             </div>
         </form>
+
 
         <!-- Grid para tarjetas -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
