@@ -135,7 +135,7 @@
 
                         <div class="bg-yellow-100 p-6 rounded-lg shadow-md mt-4">
                             <h2 class="text-lg font-semibold text-gray-700">Planilla:
-                                <strong> {{ $planilla->codigo ?? 'Sin planilla' }}</strong>
+                                <strong> {{ $planilla->codigo_limpio }}</strong>
                             </h2>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">
                                 Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}

@@ -23,7 +23,7 @@ class Planilla extends Model
      */
     protected $fillable = [
 
-		'users_id',
+        'users_id',
 
         'cod_obra',
         'cliente',
@@ -34,10 +34,10 @@ class Planilla extends Model
         'ensamblado',
         'codigo', // Asegúrate de que este campo esté aquí
         'peso_total',
-		'fecha_inicio',
-		'fecha_finalizacion',
-		'tiempo_fabricacion',
-		
+        'fecha_inicio',
+        'fecha_finalizacion',
+        'tiempo_fabricacion',
+
     ];
 
     /**
@@ -53,12 +53,12 @@ class Planilla extends Model
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
 
-public function elementos()
-{
-    return $this->hasMany(Elemento::class, 'planilla_id');
-}
+    public function elementos()
+    {
+        return $this->hasMany(Elemento::class, 'planilla_id');
+    }
 
-	    /**
+    /**
      * Relación con la tabla 'users'
      * Una planilla pertenece a un usuario
      */
@@ -77,4 +77,22 @@ public function elementos()
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    public function getCodigoLimpioAttribute()
+    {
+        if (!$this->codigo) {
+            return null;
+        }
+
+        // Dividir el código en dos partes usando "-"
+        $partes = explode('-', $this->codigo);
+
+        // Si hay al menos dos partes, eliminar los ceros de la segunda
+        if (count($partes) === 2) {
+            return $partes[0] . '-' . ltrim($partes[1], '0');
+        }
+
+        // Si el formato no es correcto, devolver el código original
+        return $this->codigo;
+    }
 }
