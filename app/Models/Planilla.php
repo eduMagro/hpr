@@ -95,4 +95,41 @@ class Planilla extends Model
         // Si el formato no es correcto, devolver el código original
         return $this->codigo;
     }
+    // Tiempos
+    public function getTiempoEstimadoFinalizacionFormatoAttribute()
+    {
+        if (!$this->tiempo_fabricacion || $this->tiempo_fabricacion <= 0) {
+            return 'No asignado';
+        }
+
+        $horas = floor($this->tiempo_fabricacion / 3600);
+        $minutos = floor(($this->tiempo_fabricacion % 3600) / 60);
+        $segundos = $this->tiempo_fabricacion % 60;
+
+        return sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
+    }
+    public function getFechaInicioFormatoAttribute()
+    {
+        if (!$this->fecha_inicio || $this->fecha_inicio <= 0) {
+            return 'No asignado';
+        }
+
+        $horas = floor($this->fecha_inicio / 3600);
+        $minutos = floor(($this->fecha_inicio % 3600) / 60);
+        $segundos = $this->fecha_inicio % 60;
+
+        return sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
+    }
+    public function getFechaFinalizacionFormatoAttribute()
+    {
+        if (!$this->fecha_finalizacion || $this->fecha_finalizacion <= 0) {
+            return 'No asignado';
+        }
+
+        $horas = floor($this->fecha_finalizacion / 3600);
+        $minutos = floor(($this->fecha_finalizacion % 3600) / 60);
+        $segundos = $this->fecha_finalizacion % 60;
+
+        return sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
+    }
 }
