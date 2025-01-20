@@ -6,6 +6,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+
 
 class User extends Authenticatable
 {
@@ -79,5 +82,13 @@ class User extends Authenticatable
     public function elementos2()
     {
         return $this->hasMany(Elemento::class, 'users_id_2');
+    }
+
+    public function isOnline()
+    {
+        return DB::table('sessions')
+            ->where('user_id', $this->id)
+            ->where('last_activity', '>=', Carbon::now()->subMinutes(5)->timestamp) // Última actividad en 5 minutos
+            ->exists();
     }
 }

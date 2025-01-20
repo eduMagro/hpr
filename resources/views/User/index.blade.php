@@ -37,6 +37,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             @forelse ($registrosUsuarios as $user)
                 <div class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                    <!-- Indicador de estado en línea -->
+                    @if ($user->isOnline())
+                        <span
+                            class="absolute top-2 right-2 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></span>
+                    @endif
                     <p class="text-gray-500 text-sm">ID: {{ $user->id }}</p>
                     <h2 class="font-semibold text-lg mb-2">{{ $user->name }}</h2>
                     <p class="text-gray-600 mb-2">Email: {{ $user->email }}</p>
