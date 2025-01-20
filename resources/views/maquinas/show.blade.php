@@ -154,7 +154,7 @@
                                         <hr class="my-2">
 
                                         <p class="text-gray-500 text-sm">
-                                            <strong>Peso:</strong> {{ $elemento->peso_kg ?? }}
+                                            <strong>Peso:</strong> {{ $elemento->peso_kg }}
                                         </p>
                                         <hr class="my-2">
 
