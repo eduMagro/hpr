@@ -39,6 +39,26 @@ class PlanillaController extends Controller
             $codigoPlanilla = $request->input('codigo');
             $query->where('codigo', 'like', '%' . $codigoPlanilla . '%'); // Filtro por codigo Planilla
         }
+        if ($request->has('cod_obra') && $request->codigo) {
+            $cod_obra = $request->input('codigo');
+            $query->where('cod_obra', 'like', '%' . $cod_obra . '%'); // Filtro por codigo Planilla
+        }
+        if ($request->has('nom_obra') && $request->nom_obra) {
+            $nom_obra = $request->input('nom_obra');
+            $query->where('nom_obra', 'like', '%' . $nom_obra . '%'); // Filtro por codigo Planilla
+        }
+        if ($request->has('cliente') && $request->cliente) {
+            $cliente = $request->input('cliente');
+            $query->where('cliente', 'like', '%' . $cliente . '%'); // Filtro por codigo Planilla
+        }
+        if ($request->has('ensamblado') && $request->ensamblado) {
+            $ensamblado = $request->input('ensamblado');
+            $query->where('ensamblado', 'like', '%' . $ensamblado . '%'); // Filtro por codigo Planilla
+        }
+        if ($request->has('fecha') && $request->fecha) {
+            $fecha = $request->input('fecha');
+            $query->where('fecha', 'like', '%' . $fecha . '%'); // Filtro por codigo Planilla
+        }
 
         if ($request->has('name') && $request->name) {
             $userName = $request->input('name');
