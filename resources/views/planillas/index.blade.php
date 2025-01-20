@@ -197,7 +197,7 @@
         </div>
 
         <!-- Paginación -->
-        <div class="flex justify-center mt-4">
+        <div class="flex justify-center mt-4 ml-4">
             {{ $planillas->appends(request()->except('page'))->links() }}
         </div>
 
