@@ -5,6 +5,8 @@
         </h2>
     </x-slot>
     <div class="container mx-auto px-4 py-6">
+        <p>$usuario1</p>
+        <p>$usuario2</p>
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @if (isset($maquina))
@@ -74,8 +76,9 @@
                         @endphp
 
                         <div class="bg-yellow-100 p-6 rounded-lg shadow-md mt-4">
-                            <h2 class="text-lg font-semibold text-gray-700"><strong>Planilla:</strong>
-                                {{ $planilla->codigo ?? 'Sin planilla' }}</h2>
+                            <h2 class="text-lg font-semibold text-gray-700">Planilla:
+                                <strong> {{ $planilla->codigo ?? 'Sin planilla' }}</strong>
+                            </h2>
                             <h3 class="text-lg font-semibold text-gray-800 mb-4">
                                 Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
                                 (Número: {{ $etiqueta->etiqueta ?? 'Sin número' }})

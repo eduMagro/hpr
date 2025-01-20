@@ -48,7 +48,9 @@ class MaquinaController extends Controller
             'productos'            // Carga los productos en la máquina
         ])->findOrFail($id);
 
-        return view('maquinas.show', compact('maquina'));
+        $usuario1 = auth()->user(); // Usuario autenticado
+        $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null; // Usuario guardado en sesión
+        return view('maquinas.show', compact('maquina', 'usuario1', 'usuario2'));
     }
 
 
