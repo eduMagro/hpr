@@ -198,7 +198,7 @@
 
         <!-- Paginación -->
         <div class="flex justify-center mt-4">
-            {{ $planillas->appends(request()->except('page'))->links('vendor.pagination.tailwind') }}
+            {{ $planillas->appends(request()->except('page'))->links() }}
         </div>
 
     </div>
