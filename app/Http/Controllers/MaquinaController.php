@@ -50,6 +50,12 @@ class MaquinaController extends Controller
 
         $usuario1 = auth()->user(); // Usuario autenticado
         $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null; // Usuario guardado en sesión
+
+        // Asegurar que los nombres se decodifican correctamente
+        $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
+        if ($usuario2) {
+            $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
+        }
         return view('maquinas.show', compact('maquina', 'usuario1', 'usuario2'));
     }
 

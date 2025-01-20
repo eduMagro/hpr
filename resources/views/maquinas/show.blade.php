@@ -1,12 +1,36 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Detalles Máquina') }}
+            {{ __('Trabajando en Máquina') }}
         </h2>
     </x-slot>
     <div class="container mx-auto px-4 py-6">
-        <p>$usuario1</p>
-        <p>$usuario2</p>
+
+        <!-- Mostrar los compañeros -->
+        <div class="mb-4">
+            <h3 class="font-bold text-lg text-gray-700 mb-2">Compañeros de sesión:</h3>
+            <div class="flex flex-col md:flex-row md:space-x-6">
+                <!-- Usuario principal -->
+                <div class="bg-white border p-3 rounded-lg shadow-md w-full md:w-1/2">
+                    <h4 class="text-gray-600 font-semibold">Operario</h4>
+                    <p class="text-gray-800 font-bold text-lg">{{ $usuario1->name }}</p>
+                </div>
+
+                <!-- Compañero seleccionado -->
+                @if ($usuario2)
+                    <div class="bg-white border p-3 rounded-lg shadow-md w-full md:w-1/2">
+                        <h4 class="text-gray-600 font-semibold">Compañero seleccionado</h4>
+                        <p class="text-gray-800 font-bold text-lg">{{ $usuario2->name }}</p>
+                    </div>
+                @else
+                    <div class="bg-white border p-3 rounded-lg shadow-md w-full md:w-1/2">
+                        <h4 class="text-gray-600 font-semibold">Compañero seleccionado</h4>
+                        <p class="text-red-500 font-bold text-lg">No se ha seleccionado un compañero.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @if (isset($maquina))
@@ -34,7 +58,8 @@
                             @foreach ($maquina->productos as $producto)
                                 <li class="mb-2 flex items-center justify-between">
                                     <span>
-                                        ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} - D{{ $producto->diametro }}
+                                        ID{{ $producto->id }} - Tipo: {{ $producto->tipo }} -
+                                        D{{ $producto->diametro }}
                                         - L{{ $producto->longitud ?? '??' }}
                                     </span>
                                     <a href="{{ route('productos.show', $producto->id) }}"
