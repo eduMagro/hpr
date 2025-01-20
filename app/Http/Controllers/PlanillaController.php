@@ -55,9 +55,9 @@ class PlanillaController extends Controller
             $ensamblado = $request->input('ensamblado');
             $query->where('ensamblado', 'like', '%' . $ensamblado . '%'); // Filtro por codigo Planilla
         }
-        if ($request->has('fecha') && $request->fecha) {
-            $fecha = $request->input('fecha');
-            $query->where('fecha', 'like', '%' . $fecha . '%'); // Filtro por codigo Planilla
+        if ($request->has('created_at') && $request->created_at) {
+            $created_at = $request->input('created_at');
+            $query->where('created_at', 'like', '%' . $created_at . '%'); // Filtro por codigo Planilla
         }
 
         if ($request->has('name') && $request->name) {
