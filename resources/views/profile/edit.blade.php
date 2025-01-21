@@ -17,53 +17,33 @@
                     <section>
                         <header>
                             <h2 class="text-lg font-medium text-gray-900">
-                                {{ __('Información del perfil') }}
+                                {{ __('Categoría del perfil') }}
                             </h2>
 
                             <p class="mt-1 text-sm text-gray-600">
-                                {{ __('Actualiza la información de tu cuenta y tu dirección de correo electrónico.') }}
+                                {{ __('Actualiza la categoría de tu perfil.') }}
                             </p>
                         </header>
-
-                        <form id="send-verification" method="post" action="{{ route('verification.send') }}">
-                            @csrf
-                        </form>
 
                         <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
                             @csrf
                             @method('patch')
 
                             <div>
-                                <x-input-label for="name" :value="__('Nombre')" />
-                                <x-text-input id="name" name="name" type="text" class="mt-1 block w-full"
-                                    :value="old('name', $user->name)" required autofocus autocomplete="name" />
-                                <x-input-error class="mt-2" :messages="$errors->get('name')" />
-                            </div>
-
-                            <div>
-                                <x-input-label for="email" :value="__('Correo electrónico')" />
-                                <x-text-input id="email" name="email" type="email" class="mt-1 block w-full"
-                                    :value="old('email', $user->email)" required autocomplete="username" />
-                                <x-input-error class="mt-2" :messages="$errors->get('email')" />
-
-                                @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
-                                    <div>
-                                        <p class="text-sm mt-2 text-gray-800">
-                                            {{ __('Tu dirección de correo electrónico no está verificada.') }}
-
-                                            <button form="send-verification"
-                                                class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                                {{ __('Haz clic aquí para reenviar el correo de verificación.') }}
-                                            </button>
-                                        </p>
-
-                                        @if (session('status') === 'verification-link-sent')
-                                            <p class="mt-2 font-medium text-sm text-green-600">
-                                                {{ __('Se ha enviado un nuevo enlace de verificación a tu dirección de correo electrónico.') }}
-                                            </p>
-                                        @endif
-                                    </div>
-                                @endif
+                                <x-input-label for="categoria" :value="__('Categoría')" />
+                                <x-select id="categoria" name="categoria" class="mt-1 block w-full" required>
+                                    <option value="">Seleccione una categoría</option>
+                                    <option value="admin"
+                                        {{ old('categoria', $user->categoria) == 'admin' ? 'selected' : '' }}>
+                                        Administrador</option>
+                                    <option value="operario"
+                                        {{ old('categoria', $user->categoria) == 'operario' ? 'selected' : '' }}>
+                                        Operario</option>
+                                    <option value="supervisor"
+                                        {{ old('categoria', $user->categoria) == 'supervisor' ? 'selected' : '' }}>
+                                        Supervisor</option>
+                                </x-select>
+                                <x-input-error class="mt-2" :messages="$errors->get('categoria')" />
                             </div>
 
                             <div class="flex items-center gap-4">
@@ -76,9 +56,9 @@
                             </div>
                         </form>
                     </section>
-
                 </div>
             </div>
+
             <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                 <div class="max-w-xl">
                     @include('profile.partials.update-password-form')

@@ -22,10 +22,10 @@ class RegisteredUserController extends Controller
         if (auth()->user()->role !== 'administrador') {
             return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
         }
-    
+
         return view('auth.register');
     }
-    
+
     /**
      * Handle an incoming registration request.
      *
@@ -35,9 +35,9 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
 
-			'role' => ['required', 'string', 'max:255', 'in:administracion,operario,mecanico,visitante'], // Añade los roles válidos aquí
+            'categoria' => ['required', 'string', 'max:255', 'in:administracion,operario,mecanico,visitante'], // Cambiado de role a categoria
 
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
@@ -46,7 +46,7 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
 
-			'role' => $request->role,
+            'categoria' => $request->categoria, // Cambiado de role a categoria
 
             'password' => Hash::make($request->password),
         ]);
