@@ -106,7 +106,8 @@
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit' ['id' => auth()->user()->id])">
+                <x-responsive-nav-link :href="route('profile.edit', ['id' => auth()->user()->id])">
+
                     {{ __('Mi Perfil') }}
                 </x-responsive-nav-link>
 
