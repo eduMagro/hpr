@@ -167,34 +167,39 @@
                                     </p>
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
-                                            id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span>
-                                    </p>
-                                    <p class="text-gray-500 text-sm"><strong>Fecha Finalización:</strong> <span
+                                            id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>Fecha
+                                            Finalización:</strong> <span
                                             id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
-                                        <span id="emoji-{{ $elemento->id }}"></span></p>
+                                        <span id="emoji-{{ $elemento->id }}"></span>
+                                    </p>
+                                    <p class="text-gray-500 text-sm"></p>
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm">
-                                        <strong>Peso:</strong> {{ $elemento->peso_kg }}
+                                        <strong>Peso:</strong> {{ $elemento->peso_kg }} <strong>Diámetro:</strong>
+                                        {{ $elemento->diametro_mm }} <strong>Longitud:</strong>
+                                        {{ $elemento->longitud_cm }}<strong>Número de piezas:</strong>
+                                        {{ $elemento->barras ?? 'No asignado' }} <strong>Tipo de Figura:</strong>
+                                        {{ $elemento->figura ?? 'No asignado' }}
                                     </p>
                                     <hr class="my-2">
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong>Diámetro:</strong> {{ $elemento->diametro_mm }}
+
                                     </p>
                                     <hr class="my-2">
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong>Longitud:</strong> {{ $elemento->longitud_cm }}
+
                                     </p>
                                     <hr class="my-2">
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
+
                                     </p>
                                     <hr class="my-2">
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
+
                                     </p>
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm">
