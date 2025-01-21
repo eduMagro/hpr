@@ -31,18 +31,25 @@
 
                             <div>
                                 <x-input-label for="categoria" :value="__('Categoría')" />
-                                <x-select id="categoria" name="categoria" class="mt-1 block w-full" required>
-                                    <option value="">Seleccione una categoría</option>
-                                    <option value="admin"
-                                        {{ old('categoria', $user->categoria) == 'admin' ? 'selected' : '' }}>
-                                        Administrador</option>
+                                <select id="categoria" name="categoria"
+                                    class="block mt-3 mb-3 p-3 w-full border-gray-300 rounded-lg shadow-sm hover:border-indigo-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200"
+                                    required>
+                                    <option value="" disabled>Selecciona una categoría</option>
+                                    <option value="administracion"
+                                        {{ old('categoria', $user->categoria) == 'administracion' ? 'selected' : '' }}>
+                                        Administración</option>
                                     <option value="operario"
                                         {{ old('categoria', $user->categoria) == 'operario' ? 'selected' : '' }}>
                                         Operario</option>
-                                    <option value="supervisor"
-                                        {{ old('categoria', $user->categoria) == 'supervisor' ? 'selected' : '' }}>
-                                        Supervisor</option>
-                                </x-select>
+                                    <option value="mecanico"
+                                        {{ old('categoria', $user->categoria) == 'mecanico' ? 'selected' : '' }}>
+                                        Mecánico</option>
+                                    <option value="visitante"
+                                        {{ old('categoria', $user->categoria) == 'visitante' ? 'selected' : '' }}>
+                                        Visitante</option>
+                                </select>
+                                <x-input-error class="mt-2" :messages="$errors->get('categoria')" />
+
                                 <x-input-error class="mt-2" :messages="$errors->get('categoria')" />
                             </div>
 
