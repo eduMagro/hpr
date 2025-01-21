@@ -230,10 +230,6 @@ class ElementoController extends Controller
             } elseif ($elemento->estado == "fabricando") {
                 $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get();
 
-                if ($productos->isEmpty()) {
-                    throw new \Exception('No se encontraron productos con ese diámetro en la máquina.');
-                }
-
                 $pesoRequerido = $elemento->peso;
 
                 foreach ($productos as $producto) {
