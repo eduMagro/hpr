@@ -91,7 +91,6 @@ class ProfileController extends Controller
     {
         // Obtener el usuario autenticado
         $authUser = auth()->user();
-        dd($request->all(), $id);
 
         // Verificar si el usuario autenticado es administrador
         if ($authUser->categoria !== 'administrador') {
