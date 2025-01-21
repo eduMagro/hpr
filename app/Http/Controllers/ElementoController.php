@@ -217,6 +217,8 @@ class ElementoController extends Controller
                 throw new \Exception('La máquina asociada al elemento no existe.');
             }
 
+            $producto = null; // Inicializamos la variable para evitar errores
+
             if ($elemento->estado == "pendiente") {
                 $elemento->estado = "fabricando";
                 $elemento->fecha_inicio = now();
@@ -228,23 +230,31 @@ class ElementoController extends Controller
                     $elemento->users_id_2 = null;
                 }
             } elseif ($elemento->estado == "fabricando") {
-                $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get();
+                $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get()); // Forzar que sea una colección
+
+                dd($productos); // Esto mostrará si es una colección o un solo objeto
+
+                if ($productos->isEmpty()) {
+                    throw new \Exception('No se encontraron productos con ese diámetro en la máquina.');
+                }
 
                 $pesoRequerido = $elemento->peso;
 
-                foreach ($productos as $producto) {
+                foreach ($productos as $prod) {
                     if ($pesoRequerido <= 0) {
                         break;
                     }
 
-                    $pesoDisponible = $producto->peso_stock;
+                    $pesoDisponible = $prod->peso_stock;
 
                     if ($pesoDisponible > 0) {
                         $resta = min($pesoDisponible, $pesoRequerido);
-                        $producto->peso_stock -= $resta;
-                        $producto->save();
+                        $prod->peso_stock -= $resta;
+                        $prod->save();
                         $pesoRequerido -= $resta;
                     }
+
+                    $producto = $prod; // Guardamos el último producto actualizado
                 }
 
                 if ($pesoRequerido > 0) {
@@ -253,13 +263,14 @@ class ElementoController extends Controller
 
                 $elemento->fecha_finalizacion = now();
                 $elemento->estado = 'completado';
-                $elemento->producto_id = $productos->first()->id;
+                $elemento->producto_id = $producto->id ?? null;
             } elseif ($elemento->estado == "completado") {
                 $producto = $maquina->productos()->where('diametro', $elemento->diametro)->first();
 
-                if ($producto->isEmpty()) {
-                    throw new \Exception('No se encontraron productos con ese diámetro en la máquina.');
+                if (!$producto) {
+                    throw new \Exception('No se encontró un producto asociado con ese diámetro en la máquina.');
                 }
+
                 $producto->peso_stock += $elemento->peso;
                 $producto->save();
 
@@ -291,8 +302,8 @@ class ElementoController extends Controller
                 'fecha_inicio' => $elemento->fecha_inicio ? $elemento->fecha_inicio->format('d/m/Y H:i:s') : 'No asignada',
                 'fecha_finalizacion' => $elemento->fecha_finalizacion ? $elemento->fecha_finalizacion->format('d/m/Y H:i:s') : 'No asignada',
                 'emoji' => $emoji,
-                'peso_stock' => $producto->peso_stock,
-                'producto_id' => $producto->id
+                'peso_stock' => $producto ? $producto->peso_stock : null,
+                'producto_id' => $producto ? $producto->id : null
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
