@@ -68,29 +68,49 @@ class ProfileController extends Controller
      */
     public function edit($id)
     {
-        $user = User::findOrFail($id); // Busca el usuario por ID o devuelve error 404
+        // Obtener el usuario autenticado
+        $authUser = auth()->user();
 
-        return view('profile.edit', compact('user')); // Pasa el usuario a la vista
+        // Verificar si el usuario autenticado es administrador
+        if ($authUser->role !== 'administrador') {
+            return redirect()->route('dashboard')->with('abort', 'No tienes permiso para editar perfiles.');
+        }
+
+        // Buscar el usuario que se quiere editar
+        $user = User::findOrFail($id);
+
+        return view('profile.edit', compact('user'));
     }
+
 
 
     /**
      * Update the user's profile information.
      */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
+    public function update(ProfileUpdateRequest $request, $id): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        // Obtener el usuario autenticado
+        $authUser = auth()->user();
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        // Verificar si el usuario autenticado es administrador
+        if ($authUser->role !== 'administrador') {
+            return redirect()->route('dashboard')->with('error', 'No tienes permiso para actualizar perfiles.');
         }
 
-        if ($request->has('categoria')) {
-            $request->user()->categoria = $request->input('categoria');
+        // Buscar el usuario que se quiere actualizar
+        $user = User::findOrFail($id);
+        $user->fill($request->validated());
+
+        if ($request->filled('email') && $user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
-        $request->user()->save();
+        if ($request->filled('categoria')) {
+            $user->categoria = $request->input('categoria');
+        }
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        $user->save();
+
+        return Redirect::route('profile.edit', ['id' => $id])->with('status', 'profile-updated');
     }
 }
