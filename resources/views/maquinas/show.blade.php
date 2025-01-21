@@ -58,7 +58,7 @@
         </div>
 
         <!-- Grid principal -->
-        <div class="grid grid-cols-1 sm:grid-cols-6 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-7 gap-6">
             <!-- Información de la máquina -->
             <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-20">
                 <h3 class="font-bold text-xl break-words">{{ $maquina->codigo }}</h3>
@@ -159,7 +159,7 @@
                             <strong> {{ $planilla->codigo_limpio }}</strong>
                         </h2>
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                            Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
+                            Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} ID: {{ $etiqueta->id }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
 
@@ -215,7 +215,7 @@
                 @endforelse
             </div>
             <!-- GRID PARA OTROS -->
-            <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-1 md:sticky md:top-20">
+            <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-20">
                 <div class="flex flex-col gap-4">
                     <!-- Botón Reportar Incidencia -->
                     <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
@@ -240,9 +240,9 @@
 
                         <!-- Input para leer etiquetas QR -->
                         <div class="mb-4">
-                            <label for="qrInput" class="block text-gray-700 font-semibold">Escanear
+                            <label for="qrEtiqueta" class="block text-gray-700 font-semibold">Escanear
                                 QR:</label>
-                            <input type="text" id="qrInput" class="w-full border p-2 rounded"
+                            <input type="text" id="qrEtiqueta" class="w-full border p-2 rounded"
                                 placeholder="Escanea un QR...">
                             <button onclick="agregarEtiqueta()"
                                 class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md mt-2 w-full">
@@ -635,5 +635,69 @@
                 }
             }
         }
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const etiquetas = [];
+
+            function agregarEtiqueta() {
+                const qrEtiqueta = document.getElementById('qrEtiqueta');
+                const etiqueta = qrEtiqueta.value.trim();
+
+                console.log("Valor escaneado:", qrEtiqueta.value); // Valor sin trim
+                console.log("Valor procesado:", etiqueta); // Valor con trim
+
+                if (!etiqueta) {
+                    alert('Por favor, escanee un QR válido.');
+                    return;
+                }
+
+                if (etiquetas.includes(etiqueta)) {
+                    alert('Esta etiqueta ya ha sido agregada.');
+                    qrEtiqueta.value = '';
+                    return;
+                }
+
+                etiquetas.push(etiqueta);
+
+                // Agregar la etiqueta al listado
+                const etiquetasList = document.getElementById('etiquetasList');
+                const listItem = document.createElement('li'); // Se estaba usando una variable no definida
+                listItem.textContent = etiqueta;
+
+                // Botón para eliminar la etiqueta
+                const removeButton = document.createElement('button');
+                removeButton.textContent = '❌';
+                removeButton.className = 'ml-2 text-red-600 hover:text-red-800';
+                removeButton.onclick = () => {
+                    etiquetas.splice(etiquetas.indexOf(etiqueta), 1); // Eliminar del array
+                    etiquetasList.removeChild(listItem); // Eliminar del DOM
+                };
+
+                listItem.appendChild(removeButton);
+                etiquetasList.appendChild(listItem);
+
+                qrEtiqueta.value = ''; // Limpiar el input
+            }
+
+            function crearPaquete() {
+                if (etiquetas.length === 0) {
+                    alert('No hay etiquetas para crear un paquete.');
+                    return;
+                }
+
+                // Simular envío de datos al servidor
+                console.log('Creando paquete con etiquetas:', etiquetas);
+                alert('Paquete creado con éxito.');
+
+                // Reiniciar el formulario
+                etiquetas.length = 0;
+                document.getElementById('etiquetasList').innerHTML = '';
+            }
+
+            // Asociar eventos a los botones
+            document.getElementById('agregarEtiquetaBtn').addEventListener('click', agregarEtiqueta);
+            document.getElementById('crearPaqueteBtn').addEventListener('click', crearPaquete);
+        });
     </script>
 </x-app-layout>
