@@ -93,17 +93,16 @@
                                 <a href="{{ route('productos.show', $producto->id) }}"
                                     class="btn btn-sm btn-primary">Ver</a>
                                 @if ($producto->tipo == 'encarretado')
-                                    <div
+                                    <div id="progreso-container-{{ $producto->id }}"
                                         style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
-                                        <div class="cuadro verde"
+                                        <div id="progreso-barra-{{ $producto->id }}" class="cuadro verde"
                                             style="width: 100%; 
-                                                       height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-                                                       background-color: green; 
-                                                       position: absolute; 
-                                                       bottom: 0;">
+                                               height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+                                               background-color: green; 
+                                               position: absolute; 
+                                               bottom: 0;">
                                         </div>
-
-                                        <span id="peso-stock-{{ $producto->id }}"
+                                        <span id="progreso-texto-{{ $producto->id }}"
                                             style="position: absolute; top: 10px; left: 10px; color: white;">
                                             {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
                                         </span>
