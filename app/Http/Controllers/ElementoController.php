@@ -275,6 +275,7 @@ class ElementoController extends Controller
                 $elemento->users_id_2 = null;
             }
 
+            // Convertir fechas a Carbon antes de formatear
             $fechaInicio = $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio) : null;
             $fechaFinalizacion = $elemento->fecha_finalizacion ? Carbon::parse($elemento->fecha_finalizacion) : null;
 
@@ -293,8 +294,8 @@ class ElementoController extends Controller
             return response()->json([
                 'success' => true,
                 'estado' => $elemento->estado,
-                'fecha_inicio' => $elemento->fecha_inicio ? $elemento->fecha_inicio->format('d/m/Y H:i:s') : 'No asignada',
-                'fecha_finalizacion' => $elemento->fecha_finalizacion ? $elemento->fecha_finalizacion->format('d/m/Y H:i:s') : 'No asignada',
+                'fecha_inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y H:i:s') : 'No asignada',
+                'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
                 'emoji' => $emoji,
                 'peso_stock' => $producto ? $producto->peso_stock : null,
                 'producto_id' => $producto ? $producto->id : null
@@ -309,6 +310,7 @@ class ElementoController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Elimina un elemento existente de la base de datos.
