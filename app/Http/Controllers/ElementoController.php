@@ -205,6 +205,7 @@ class ElementoController extends Controller
                 ->with('error', $e->getMessage());
         }
     }
+
     public function actualizarElemento(Request $request, $id)
     {
         DB::beginTransaction();
@@ -214,7 +215,7 @@ class ElementoController extends Controller
             $maquina = $elemento->maquina;
 
             if (!$maquina) {
-                throw new \Exception('La máquina asociada al elemento no existe.');
+                return redirect()->route('maquinas.show')->with('error', 'La máquina asociada al elemento no existe.');
             }
 
             $producto = null; // Inicializamos la variable para evitar errores
@@ -231,6 +232,10 @@ class ElementoController extends Controller
                 }
             } elseif ($elemento->estado == "fabricando") {
                 $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get()); // Forzar que sea una colección
+
+                if ($productos->isEmpty()) {
+                    return redirect()->route('maquinas.index')->with('error', 'La máquina no tiene materia prima con ese diámetro.');
+                }
 
                 $pesoRequerido = $elemento->peso;
 
@@ -262,8 +267,9 @@ class ElementoController extends Controller
                 $producto = $maquina->productos()->where('diametro', $elemento->diametro)->first();
 
                 if (!$producto) {
-                    throw new \Exception('No se encontró un producto asociado con ese diámetro en la máquina.');
+                    return redirect()->route('maquinas.show')->with('error', 'La máquina no tiene materia prima con ese diámetro.');
                 }
+
 
                 $producto->peso_stock += $elemento->peso;
                 $producto->save();
@@ -300,14 +306,14 @@ class ElementoController extends Controller
                 'peso_stock' => $producto ? $producto->peso_stock : null,
                 'producto_id' => $producto ? $producto->id : null
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Mostrar todos los errores de validación
+            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Error en actualizarElemento: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Error en el servidor. Revisa el log de Laravel.',
-            ], 500);
+            // Mostrar errores generales
+            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
 

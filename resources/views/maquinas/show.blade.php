@@ -13,6 +13,25 @@
             background-color: rgba(0, 123, 255, 0.1)
         }
     </style>
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+    @if (session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->
         <div class="mb-4">
@@ -75,7 +94,7 @@
                                     class="btn btn-sm btn-primary">Ver</a>
                                 @if ($producto->tipo == 'encarretado')
                                     <div
-                                        style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
+                                        style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
                                         <div class="cuadro verde"
                                             style="width: 100%; 
                                                        height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
