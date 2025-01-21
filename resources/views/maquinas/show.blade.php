@@ -524,8 +524,11 @@
                     }),
                 });
 
+                console.log("📩 Respuesta HTTP recibida:", response);
+
                 if (!response.ok) {
-                    throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
+                    const errorText = await response.text(); // Obtener error detallado
+                    throw new Error(`Error HTTP ${response.status}: ${response.statusText} - ${errorText}`);
                 }
 
                 let data = await response.json();
