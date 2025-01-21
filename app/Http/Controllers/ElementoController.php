@@ -261,10 +261,9 @@ class ElementoController extends Controller
             } elseif ($elemento->estado == "completado") {
                 $producto = $maquina->productos()->where('diametro', $elemento->diametro)->first();
 
-                if (!$producto) {
-                    throw new \Exception('No se encontró un producto asociado con ese diámetro en la máquina.');
+                if ($producto->isEmpty()) {
+                    throw new \Exception('No se encontraron productos con ese diámetro en la máquina.');
                 }
-
                 $producto->peso_stock += $elemento->peso;
                 $producto->save();
 
