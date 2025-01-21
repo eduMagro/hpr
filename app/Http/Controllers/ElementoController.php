@@ -237,10 +237,11 @@ class ElementoController extends Controller
                 $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get());
 
                 if ($productos->isEmpty()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'No hay materia prima disponible con el diámetro requerido.',
-                    ], 400);
+                    // return response()->json([
+                    //     'success' => false,
+                    //     'error' => 'No hay materia prima disponible con el diámetro requerido.',
+                    // ], 400);
+                    return redirect()->route('maquinas.show')->with('error', 'Error diametro en maquina');
                 }
 
                 $pesoRequerido = $elemento->peso;
