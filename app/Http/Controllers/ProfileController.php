@@ -16,7 +16,7 @@ class ProfileController extends Controller
 
     public function index(Request $request)
     {
-        if (auth()->user()->role !== 'administrador') {
+        if (auth()->user()->categoria !== 'administrador') {
             return redirect()->route('dashboard')->with('abort', 'No tienes los permisos necesarios.');
         }
 
@@ -72,7 +72,7 @@ class ProfileController extends Controller
         $authUser = auth()->user();
 
         // Verificar si el usuario autenticado es administrador
-        if ($authUser->role !== 'administrador') {
+        if ($authUser->categoria !== 'administrador') {
             return redirect()->route('dashboard')->with('abort', 'No tienes permiso para editar perfiles.');
         }
 
