@@ -46,6 +46,7 @@
                     <p class="text-gray-500 text-sm">ID: {{ $user->id }}</p>
                     <h2 class="font-semibold text-lg mb-2">{{ $user->name }}</h2>
                     <p class="text-gray-600 mb-2">Email: {{ $user->email }}</p>
+                    <p class="text-gray-600 mb-2">Categoría: {{ $user->categoria }}</p>
                     <hr style="border: 1px solid #ccc; margin: 10px 0;">
                     <div class="mt-4 flex justify-between">
                         <!-- Enlace para editar -->
