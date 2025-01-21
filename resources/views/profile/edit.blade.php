@@ -26,6 +26,8 @@
                         </header>
 
                         <form method="post" action="{{ url('/users/' . $user->id) }}" class="mt-6 space-y-6">
+                            @csrf
+                            @method('PATCH')
 
                             <div>
                                 <x-input-label for="categoria" :value="__('Categoría')" />
