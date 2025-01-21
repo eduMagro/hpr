@@ -93,7 +93,7 @@ class ProfileController extends Controller
         $authUser = auth()->user();
 
         // Verificar si el usuario autenticado es administrador
-        if ($authUser->role !== 'administrador') {
+        if ($authUser->categoria !== 'administrador') {
             return redirect()->route('dashboard')->with('error', 'No tienes permiso para actualizar perfiles.');
         }
 
