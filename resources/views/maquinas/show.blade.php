@@ -156,14 +156,14 @@
                                     </button>
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong>Estado: </strong><span
+                                        <strong>ID: </strong> {{ $elemento->id }} <strong> Estado: </strong><span
                                             id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
                                     </p>
 
                                     <hr class="my-2">
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong>ID: </strong> {{ $elemento->id }}
+
                                     </p>
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
@@ -176,30 +176,10 @@
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm">
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }} <strong>Diámetro:</strong>
-                                        {{ $elemento->diametro_mm }} <strong>Longitud:</strong>
-                                        {{ $elemento->longitud_cm }}<strong>Número de piezas:</strong>
-                                        {{ $elemento->barras ?? 'No asignado' }} <strong>Tipo de Figura:</strong>
+                                        {{ $elemento->diametro_mm }} <strong> Longitud:</strong>
+                                        {{ $elemento->longitud_cm }}<strong> Número de piezas:</strong>
+                                        {{ $elemento->barras ?? 'No asignado' }} <strong> Tipo de Figura:</strong>
                                         {{ $elemento->figura ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
-
-                                    <p class="text-gray-500 text-sm">
-
-                                    </p>
-                                    <hr class="my-2">
-
-                                    <p class="text-gray-500 text-sm">
-
-                                    </p>
-                                    <hr class="my-2">
-
-                                    <p class="text-gray-500 text-sm">
-
-                                    </p>
-                                    <hr class="my-2">
-
-                                    <p class="text-gray-500 text-sm">
-
                                     </p>
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm">
