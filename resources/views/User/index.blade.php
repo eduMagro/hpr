@@ -39,8 +39,8 @@
                 <div class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                     <!-- Indicador de estado en línea -->
                     @if ($user->isOnline())
-                        <span
-                            class="relative inline-block w-4 h-4 bg-green-500 rounded-full border-2 border-white"></span>
+                        <span class="relative inline-block w-4 h-4 bg-green-500 rounded-full border-2 border-white">
+                        </span>
                     @endif
 
                     <p class="text-gray-500 text-sm">ID: {{ $user->id }}</p>

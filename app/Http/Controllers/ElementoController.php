@@ -201,7 +201,63 @@ class ElementoController extends Controller
                 ->with('error', $e->getMessage());
         }
     }
+    public function actualizarElemento(Request $request, $id)
+    {
+        try {
+            $elemento = Elemento::findOrFail($id);
 
+            if ($elemento->estado == "pendiente") {
+                $elemento->estado = "fabricando";
+                $elemento->fecha_inicio = now();
+                $elemento->users_id = Auth::id();
+                // Verificar si hay un compañero en sesión antes de asignarlo
+                if (session()->has('compañero_id')) {
+                    $elemento->users_id_2 = session()->get('compañero_id');
+                } else {
+                    $elemento->users_id_2 = null; // Si no hay compañero, dejamos null
+                }
+            } elseif ($elemento->estado == "fabricando") {
+                $elemento->fecha_finalizacion = now();
+                $elemento->estado = 'completado';
+            } elseif ($elemento->estado == "completado") {
+                $elemento->fecha_inicio = null;
+                $elemento->fecha_finalizacion = null;
+                $elemento->estado = "pendiente";
+                $elemento->users_id = null;
+                $elemento->users_id_2 = null;
+            }
+            // Convertir fechas a objetos Carbon antes de hacer cálculos
+            $fechaInicio = $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio) : null;
+            $fechaFinalizacion = $elemento->fecha_finalizacion ? Carbon::parse($elemento->fecha_finalizacion) : null;
+
+            $tiempoReal = null;
+            $emoji = "❓";
+
+            if ($fechaInicio && $fechaFinalizacion) {
+                $tiempoReal = $fechaInicio->diffInSeconds($fechaFinalizacion); // En segundos
+                $tiempoEstimado = $elemento->tiempo_fabricacion ?? 0; // Asegurar que hay un valor
+
+                $emoji = ($tiempoReal <= $tiempoEstimado) ? "😊" : "😢";
+            }
+
+            $elemento->save();
+
+            return response()->json([
+                'success' => true,
+                'estado' => $elemento->estado,
+                'fecha_inicio' => $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
+                'fecha_finalizacion' => $elemento->fecha_finalizacion ? Carbon::parse($elemento->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
+                'emoji' => $emoji
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error en actualizarElemento: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Error en el servidor. Revisa el log de Laravel.',
+            ], 500);
+        }
+    }
     /**
      * Elimina un elemento existente de la base de datos.
      *

@@ -249,8 +249,8 @@ class PlanillaController extends Controller
                         'dobles_barra' => $row[33] ?? 0,
                         'peso' => $row[34],
                         'dimensiones' => $row[47] ?? null,
-                        'fecha_inicio' => $tiempos['fecha_inicio'],
-                        'fecha_finalizacion' => $tiempos['fecha_finalizacion'],
+                        'fecha_inicio' => null,
+                        'fecha_finalizacion' => null,
                         'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
                     ]);
                 }
@@ -280,13 +280,9 @@ class PlanillaController extends Controller
             ? ($barras * $doblesBarra * 1.5) // Cálculo para barras con dobles
             : ($barras * 2); // Cálculo para barras rectas
 
-        // Calcular las fechas de inicio y finalización del elemento
-        $fechaInicio = now(); // Puedes ajustar la lógica según tus necesidades
-        $fechaFinalizacion = $fechaInicio->copy()->addMinutes($tiempoFabricacion);
+
 
         return [
-            'fecha_inicio' => $fechaInicio,
-            'fecha_finalizacion' => $fechaFinalizacion,
             'tiempo_fabricacion' => $tiempoFabricacion,
         ];
     }
