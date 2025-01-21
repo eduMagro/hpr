@@ -74,12 +74,18 @@
                                 <a href="{{ route('productos.show', $producto->id) }}"
                                     class="btn btn-sm btn-primary">Ver</a>
                                 @if ($producto->tipo == 'encarretado')
-                                    <div class="relative w-24 h-8 bg-gray-300 rounded overflow-hidden">
-                                        <div class="absolute bottom-0 w-full bg-green-500"
-                                            style="height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%;">
+                                    <div
+                                        style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
+                                        <div class="cuadro verde"
+                                            style="width: 100%; 
+                                                       height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+                                                       background-color: green; 
+                                                       position: absolute; 
+                                                       bottom: 0;">
                                         </div>
+
                                         <span id="peso-stock-{{ $producto->id }}"
-                                            class="absolute top-1 left-1 text-xs text-white">
+                                            style="position: absolute; top: 10px; left: 10px; color: white;">
                                             {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
                                         </span>
                                     </div>
