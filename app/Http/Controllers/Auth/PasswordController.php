@@ -13,14 +13,25 @@ class PasswordController extends Controller
     /**
      * Update the user's password.
      */
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request, $id): RedirectResponse
     {
-        $validated = $request->validateWithBag('updatePassword', [
-            'current_password' => ['required', 'current_password'],
+        $authUser = auth()->user();
+
+        // Verificar que solo los administradores puedan cambiar contraseñas
+        if ($authUser->categoria !== 'administrador') {
+            return redirect()->route('dashboard')->with('error', 'No tienes permiso para actualizar contraseñas.');
+        }
+
+        // Validar la solicitud
+        $validated = $request->validate([
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $request->user()->update([
+        // Encontrar el usuario a actualizar
+        $user = User::findOrFail($id);
+
+        // Actualizar la contraseña
+        $user->update([
             'password' => Hash::make($validated['password']),
         ]);
 
