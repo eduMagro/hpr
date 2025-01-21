@@ -235,8 +235,6 @@ class ElementoController extends Controller
                 }
             } elseif ($elemento->estado == "fabricando") {
                 $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get());
-                \Log::info('Diametro requerido: ' . $elemento->diametro);
-                \Log::info('Productos disponibles: ', $maquina->productos()->get()->toArray());
 
                 if ($productos->isEmpty()) {
                     return response()->json([

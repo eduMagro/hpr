@@ -521,7 +521,11 @@
                     let elementoId = this.value.trim();
 
                     if (!elementoId || isNaN(elementoId) || elementoId <= 0) {
-                        alert("❌ ID inválido. Intenta de nuevo.");
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: '❌ ID inválido. Intenta de nuevo.',
+                        });
                         return;
                     }
 
@@ -532,8 +536,6 @@
         });
 
         async function actualizarElemento(id) {
-            console.log(`📡 Enviando solicitud para actualizar el elemento con ID: ${id}`);
-
             let url = `/actualizar-elemento/${id}`;
 
             try {
@@ -550,26 +552,22 @@
                     }),
                 });
 
-                console.log("📩 Respuesta HTTP recibida:", response);
-
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`Error HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+                    let errorData = await response.json();
+                    throw new Error(errorData.error || `Error HTTP ${response.status}: ${response.statusText}`);
                 }
 
                 let data = await response.json();
-                console.log("📊 Datos recibidos del servidor:", data);
-
                 if (data.success) {
                     actualizarDOM(id, data);
                 } else {
-                    console.error("❌ Error en la respuesta de la API:", data.error);
-                    alert(`Error: ${data.error}`);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.error || 'Ocurrió un error inesperado.',
+                    });
                 }
             } catch (error) {
-
-                // Manejar errores generales con SweetAlert2
-                console.error("🚨 Error en la petición:", error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -579,17 +577,11 @@
         }
 
         function actualizarDOM(id, data) {
-            console.log(`🔄 Actualizando el DOM para el elemento ID: ${id}`);
-
             let estadoElement = document.getElementById(`estado-${id}`);
             let inicioElement = document.getElementById(`inicio-${id}`);
             let finalElement = document.getElementById(`final-${id}`);
             let emojiElement = document.getElementById(`emoji-${id}`);
             let pesoStockElement = document.getElementById(`peso-stock-${data.producto_id}`);
-
-            if (!estadoElement) console.warn(`⚠️ No se encontró el elemento #estado-${id}`);
-            if (!inicioElement) console.warn(`⚠️ No se encontró el elemento #inicio-${id}`);
-            if (!finalElement) console.warn(`⚠️ No se encontró el elemento #final-${id}`);
 
             if (estadoElement) estadoElement.textContent = data.estado;
             if (inicioElement) inicioElement.textContent = data.fecha_inicio || "No asignada";
