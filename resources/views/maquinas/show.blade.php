@@ -587,18 +587,20 @@
             if (finalElement) finalElement.textContent = data.fecha_finalizacion || "No asignada";
             if (emojiElement) emojiElement.textContent = data.emoji || ""; // Insertar el emoji
 
-            // Actualizar peso y barra de progreso
+            // Actualizar el texto del progreso
             if (data.producto_id) {
-                let pesoInfoElement = document.getElementById(`peso-info-${data.producto_id}`);
-                let progresoElement = document.getElementById(`progreso-${data.producto_id}`);
+                let progresoTexto = document.getElementById(`progreso-texto-${data.producto_id}`);
+                let progresoBarra = document.getElementById(`progreso-barra-${data.producto_id}`);
 
-                if (pesoInfoElement) {
-                    pesoInfoElement.textContent = `${data.peso_stock} / ${data.peso_inicial} kg`;
+                // Actualizar el texto del peso (peso_stock / peso_inicial)
+                if (progresoTexto) {
+                    progresoTexto.textContent = `${data.peso_stock} / ${data.peso_inicial} kg`;
                 }
 
-                if (progresoElement) {
+                // Calcular el porcentaje de progreso y actualizar la altura de la barra
+                if (progresoBarra) {
                     let progresoPorcentaje = (data.peso_stock / data.peso_inicial) * 100;
-                    progresoElement.style.height = `${progresoPorcentaje}%`;
+                    progresoBarra.style.height = `${progresoPorcentaje}%`;
                 }
             }
         }
