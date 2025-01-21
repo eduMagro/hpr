@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Perfil') }}
+            {{ __('Administración de Perfil') }}
         </h2>
     </x-slot>
 
@@ -51,8 +51,6 @@
                                         {{ old('categoria', $user->categoria) == 'visitante' ? 'selected' : '' }}>
                                         Visitante</option>
                                 </select>
-                                <x-input-error class="mt-2" :messages="$errors->get('categoria')" />
-
                                 <x-input-error class="mt-2" :messages="$errors->get('categoria')" />
                             </div>
 
