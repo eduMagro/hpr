@@ -314,6 +314,7 @@ class ElementoController extends Controller
                 'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
                 'emoji' => $emoji,
                 'peso_stock' => $producto ? $producto->peso_stock : null,
+                'peso_inicial' => $producto ? $producto->peso_inicial : null,
                 'producto_id' => $producto ? $producto->id : null
             ]);
         } catch (\Exception $e) {

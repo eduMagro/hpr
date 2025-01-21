@@ -588,9 +588,19 @@
             if (finalElement) finalElement.textContent = data.fecha_finalizacion || "No asignada";
             if (emojiElement) emojiElement.textContent = data.emoji || ""; // Insertar el emoji
 
-            // Actualizar peso del producto
-            if (pesoStockElement) {
-                pesoStockElement.textContent = `${data.peso_stock} kg`;
+            // Actualizar peso y barra de progreso
+            if (data.producto_id) {
+                let pesoInfoElement = document.getElementById(`peso-info-${data.producto_id}`);
+                let progresoElement = document.getElementById(`progreso-${data.producto_id}`);
+
+                if (pesoInfoElement) {
+                    pesoInfoElement.textContent = `${data.peso_stock} / ${data.peso_inicial} kg`;
+                }
+
+                if (progresoElement) {
+                    let progresoPorcentaje = (data.peso_stock / data.peso_inicial) * 100;
+                    progresoElement.style.height = `${progresoPorcentaje}%`;
+                }
             }
         }
     </script>
