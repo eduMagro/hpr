@@ -207,30 +207,74 @@ class ElementoController extends Controller
     }
     public function actualizarElemento(Request $request, $id)
     {
+        DB::beginTransaction();
+
         try {
             $elemento = Elemento::findOrFail($id);
+            $maquina = $elemento->maquina;
+
+            if (!$maquina) {
+                throw new \Exception('La máquina asociada al elemento no existe.');
+            }
 
             if ($elemento->estado == "pendiente") {
                 $elemento->estado = "fabricando";
                 $elemento->fecha_inicio = now();
                 $elemento->users_id = Auth::id();
-                // Verificar si hay un compañero en sesión antes de asignarlo
+
                 if (session()->has('compañero_id')) {
                     $elemento->users_id_2 = session()->get('compañero_id');
                 } else {
-                    $elemento->users_id_2 = null; // Si no hay compañero, dejamos null
+                    $elemento->users_id_2 = null;
                 }
             } elseif ($elemento->estado == "fabricando") {
+                $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get();
+
+                if ($productos->isEmpty()) {
+                    throw new \Exception('No se encontraron productos con ese diámetro en la máquina.');
+                }
+
+                $pesoRequerido = $elemento->peso;
+
+                foreach ($productos as $producto) {
+                    if ($pesoRequerido <= 0) {
+                        break;
+                    }
+
+                    $pesoDisponible = $producto->peso_stock;
+
+                    if ($pesoDisponible > 0) {
+                        $resta = min($pesoDisponible, $pesoRequerido);
+                        $producto->peso_stock -= $resta;
+                        $producto->save();
+                        $pesoRequerido -= $resta;
+                    }
+                }
+
+                if ($pesoRequerido > 0) {
+                    throw new \Exception('No hay suficiente materia prima en la máquina.');
+                }
+
                 $elemento->fecha_finalizacion = now();
                 $elemento->estado = 'completado';
+                $elemento->producto_id = $productos->first()->id;
             } elseif ($elemento->estado == "completado") {
+                $producto = $maquina->productos()->where('diametro', $elemento->diametro)->first();
+
+                if (!$producto) {
+                    throw new \Exception('No se encontró un producto asociado con ese diámetro en la máquina.');
+                }
+
+                $producto->peso_stock += $elemento->peso;
+                $producto->save();
+
                 $elemento->fecha_inicio = null;
                 $elemento->fecha_finalizacion = null;
                 $elemento->estado = "pendiente";
                 $elemento->users_id = null;
                 $elemento->users_id_2 = null;
             }
-            // Convertir fechas a objetos Carbon antes de hacer cálculos
+
             $fechaInicio = $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio) : null;
             $fechaFinalizacion = $elemento->fecha_finalizacion ? Carbon::parse($elemento->fecha_finalizacion) : null;
 
@@ -238,22 +282,25 @@ class ElementoController extends Controller
             $emoji = "❓";
 
             if ($fechaInicio && $fechaFinalizacion) {
-                $tiempoReal = $fechaInicio->diffInSeconds($fechaFinalizacion); // En segundos
-                $tiempoEstimado = $elemento->tiempo_fabricacion ?? 0; // Asegurar que hay un valor
-
+                $tiempoReal = $fechaInicio->diffInSeconds($fechaFinalizacion);
+                $tiempoEstimado = $elemento->tiempo_fabricacion ?? 0;
                 $emoji = ($tiempoReal <= $tiempoEstimado) ? "😊" : "😢";
             }
 
             $elemento->save();
+            DB::commit();
 
             return response()->json([
                 'success' => true,
                 'estado' => $elemento->estado,
-                'fecha_inicio' => $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
-                'fecha_finalizacion' => $elemento->fecha_finalizacion ? Carbon::parse($elemento->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
-                'emoji' => $emoji
+                'fecha_inicio' => $elemento->fecha_inicio ? $elemento->fecha_inicio->format('d/m/Y H:i:s') : 'No asignada',
+                'fecha_finalizacion' => $elemento->fecha_finalizacion ? $elemento->fecha_finalizacion->format('d/m/Y H:i:s') : 'No asignada',
+                'emoji' => $emoji,
+                'peso_stock' => $producto->peso_stock,
+                'producto_id' => $producto->id
             ]);
         } catch (\Exception $e) {
+            DB::rollBack();
             \Log::error('Error en actualizarElemento: ' . $e->getMessage());
 
             return response()->json([
@@ -262,6 +309,7 @@ class ElementoController extends Controller
             ], 500);
         }
     }
+
     /**
      * Elimina un elemento existente de la base de datos.
      *

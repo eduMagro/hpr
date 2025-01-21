@@ -74,16 +74,12 @@
                                 <a href="{{ route('productos.show', $producto->id) }}"
                                     class="btn btn-sm btn-primary">Ver</a>
                                 @if ($producto->tipo == 'encarretado')
-                                    <div
-                                        style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
-                                        <div class="cuadro verde"
-                                            style="width: 100%; 
-                                                       height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-                                                       background-color: green; 
-                                                       position: absolute; 
-                                                       bottom: 0;">
+                                    <div class="relative w-24 h-8 bg-gray-300 rounded overflow-hidden">
+                                        <div class="absolute bottom-0 w-full bg-green-500"
+                                            style="height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%;">
                                         </div>
-                                        <span style="position: absolute; top: 10px; left: 10px; color: white;">
+                                        <span id="peso-stock-{{ $producto->id }}"
+                                            class="absolute top-1 left-1 text-xs text-white">
                                             {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
                                         </span>
                                     </div>
@@ -161,7 +157,8 @@
                                     </p>
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
-                                            id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>Fecha
+                                            id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>
+                                            Fecha
                                             Finalización:</strong> <span
                                             id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
                                         <span id="emoji-{{ $elemento->id }}"></span>
@@ -509,44 +506,41 @@
             });
         });
 
-        function actualizarElemento(id) {
+        async function actualizarElemento(id) {
             console.log(`📡 Enviando solicitud para actualizar el elemento con ID: ${id}`);
 
             let url = `/actualizar-elemento/${id}`;
 
-            fetch(url, {
+            try {
+                let response = await fetch(url, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            "content"),
                     },
                     body: JSON.stringify({
-                        id: id
+                        id
                     }),
-                })
-                .then(response => {
-                    console.log("📩 Respuesta HTTP recibida:", response);
-
-                    if (!response.ok) {
-                        throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
-                    }
-
-                    return response.json();
-                })
-                .then(data => {
-                    console.log("📊 Datos recibidos del servidor:", data);
-
-                    if (data.success) {
-                        actualizarDOM(id, data);
-                    } else {
-                        console.error("❌ Error en la respuesta de la API:", data.error);
-                        alert(`Error: ${data.error}`);
-                    }
-                })
-                .catch(error => {
-                    console.error("🚨 Error en la petición:", error);
-                    alert(`Hubo un error en la actualización: ${error.message}`);
                 });
+
+                if (!response.ok) {
+                    throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                let data = await response.json();
+                console.log("📊 Datos recibidos del servidor:", data);
+
+                if (data.success) {
+                    actualizarDOM(id, data);
+                } else {
+                    console.error("❌ Error en la respuesta de la API:", data.error);
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error("🚨 Error en la petición:", error);
+                alert(`Hubo un error en la actualización: ${error.message}`);
+            }
         }
 
         function actualizarDOM(id, data) {
@@ -556,6 +550,7 @@
             let inicioElement = document.getElementById(`inicio-${id}`);
             let finalElement = document.getElementById(`final-${id}`);
             let emojiElement = document.getElementById(`emoji-${id}`);
+            let pesoStockElement = document.getElementById(`peso-stock-${data.producto_id}`);
 
             if (!estadoElement) console.warn(`⚠️ No se encontró el elemento #estado-${id}`);
             if (!inicioElement) console.warn(`⚠️ No se encontró el elemento #inicio-${id}`);
@@ -565,6 +560,11 @@
             if (inicioElement) inicioElement.textContent = data.fecha_inicio || "No asignada";
             if (finalElement) finalElement.textContent = data.fecha_finalizacion || "No asignada";
             if (emojiElement) emojiElement.textContent = data.emoji || ""; // Insertar el emoji
+
+            // Actualizar peso del producto
+            if (pesoStockElement) {
+                pesoStockElement.textContent = `${data.peso_stock} kg`;
+            }
         }
     </script>
 </x-app-layout>
