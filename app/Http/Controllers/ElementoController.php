@@ -215,10 +215,13 @@ class ElementoController extends Controller
             $maquina = $elemento->maquina;
 
             if (!$maquina) {
-                return redirect()->route('maquinas.show')->with('error', 'La máquina asociada al elemento no existe.');
+                return response()->json([
+                    'success' => false,
+                    'error' => 'La máquina asociada al elemento no existe.',
+                ], 404);
             }
 
-            $producto = null; // Inicializamos la variable para evitar errores
+            $producto = null;
 
             if ($elemento->estado == "pendiente") {
                 $elemento->estado = "fabricando";
@@ -231,10 +234,13 @@ class ElementoController extends Controller
                     $elemento->users_id_2 = null;
                 }
             } elseif ($elemento->estado == "fabricando") {
-                $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get()); // Forzar que sea una colección
+                $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get());
 
                 if ($productos->isEmpty()) {
-                    return redirect()->route('maquinas.index')->with('error', 'La máquina no tiene materia prima con ese diámetro.');
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No hay materia prima disponible con el diámetro requerido.',
+                    ], 400);
                 }
 
                 $pesoRequerido = $elemento->peso;
@@ -253,7 +259,7 @@ class ElementoController extends Controller
                         $pesoRequerido -= $resta;
                     }
 
-                    $producto = $prod; // Guardamos el último producto actualizado
+                    $producto = $prod;
                 }
 
                 if ($pesoRequerido > 0) {
@@ -267,9 +273,11 @@ class ElementoController extends Controller
                 $producto = $maquina->productos()->where('diametro', $elemento->diametro)->first();
 
                 if (!$producto) {
-                    return redirect()->route('maquinas.show')->with('error', 'La máquina no tiene materia prima con ese diámetro.');
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No hay materia prima con el diámetro especificado.',
+                    ], 400);
                 }
-
 
                 $producto->peso_stock += $elemento->peso;
                 $producto->save();
@@ -281,7 +289,6 @@ class ElementoController extends Controller
                 $elemento->users_id_2 = null;
             }
 
-            // Convertir fechas a Carbon antes de formatear
             $fechaInicio = $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio) : null;
             $fechaFinalizacion = $elemento->fecha_finalizacion ? Carbon::parse($elemento->fecha_finalizacion) : null;
 
@@ -306,16 +313,15 @@ class ElementoController extends Controller
                 'peso_stock' => $producto ? $producto->peso_stock : null,
                 'producto_id' => $producto ? $producto->id : null
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Mostrar todos los errores de validación
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            // Mostrar errores generales
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
+
 
 
     /**

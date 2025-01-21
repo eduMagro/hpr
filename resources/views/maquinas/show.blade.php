@@ -541,6 +541,7 @@
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
+                        "Accept": "application/json", // Forzar JSON en la respuesta
                         "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute(
                             "content"),
                     },
@@ -552,7 +553,7 @@
                 console.log("📩 Respuesta HTTP recibida:", response);
 
                 if (!response.ok) {
-                    const errorText = await response.text(); // Obtener error detallado
+                    const errorText = await response.text();
                     throw new Error(`Error HTTP ${response.status}: ${response.statusText} - ${errorText}`);
                 }
 
