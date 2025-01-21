@@ -235,13 +235,14 @@ class ElementoController extends Controller
                 }
             } elseif ($elemento->estado == "fabricando") {
                 $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get());
+                \Log::info('Diametro requerido: ' . $elemento->diametro);
+                \Log::info('Productos disponibles: ', $maquina->productos()->get()->toArray());
 
                 if ($productos->isEmpty()) {
-                    // return response()->json([
-                    //     'success' => false,
-                    //     'error' => 'No hay materia prima disponible con el diámetro requerido.',
-                    // ], 400);
-                    return redirect()->route('maquinas.show')->with('error', 'Error diametro en maquina');
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No hay materia prima disponible con el diámetro requerido.',
+                    ], 400);
                 }
 
                 $pesoRequerido = $elemento->peso;
