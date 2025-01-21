@@ -85,7 +85,7 @@
                         <div class="icon-card">
                             <a href="#">
                                 <img src="https://img.icons8.com/color/96/settings.png" alt="Configuración">
-                                <span>Configuración</span>
+                                <span>Mantenimiento</span>
                             </a>
                         </div>
                         <div class="icon-card">

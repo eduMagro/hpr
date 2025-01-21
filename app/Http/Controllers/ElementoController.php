@@ -239,7 +239,7 @@ class ElementoController extends Controller
                 if ($productos->isEmpty()) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'No hay materia prima disponible con el diámetro requerido.',
+                        'error' => 'En esta máquina no hay materia prima con ese diámetro.',
                     ], 400);
                 }
 
@@ -263,7 +263,10 @@ class ElementoController extends Controller
                 }
 
                 if ($pesoRequerido > 0) {
-                    throw new \Exception('No hay suficiente materia prima en la máquina.');
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No hay suficiente materia prima.',
+                    ], 400);
                 }
 
                 $elemento->fecha_finalizacion = now();

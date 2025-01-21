@@ -96,7 +96,7 @@
                                             class="btn btn-sm btn-primary">Ver</a>
                                         @if ($producto->tipo == 'encarretado')
                                             <div
-                                                style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden;">
+                                                style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
                                                 <div class="cuadro verde"
                                                     style="width: 100%; 
                                                            height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
