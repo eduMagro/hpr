@@ -567,8 +567,14 @@
                     alert(`Error: ${data.error}`);
                 }
             } catch (error) {
+
+                // Manejar errores generales con SweetAlert2
                 console.error("🚨 Error en la petición:", error);
-                alert(`Hubo un error en la actualización: ${error.message}`);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: error.message || 'Ocurrió un error en la actualización.',
+                });
             }
         }
 
