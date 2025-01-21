@@ -37,7 +37,7 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
 
-            'categoria' => ['required', 'string', 'max:255', 'in:administracion,operario,mecanico,visitante'], // Cambiado de role a categoria
+            'categoria' => ['required', 'string', 'max:255', 'in:administracion,gruista,operario,mecanico,visitante'], // Cambiado de role a categoria
 
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);

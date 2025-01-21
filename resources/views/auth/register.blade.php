@@ -31,6 +31,7 @@
                 required>
                 <option value="" disabled selected>Selecciona una categoría</option>
                 <option value="administracion">Administración</option>
+                <option value="administracion">Gruista</option>
                 <option value="operario">Operario</option>
                 <option value="mecanico">Mecánico</option>
                 <option value="visitante">Visitante</option>

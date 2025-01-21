@@ -38,6 +38,9 @@
                                     <option value="administracion"
                                         {{ old('categoria', $user->categoria) == 'administracion' ? 'selected' : '' }}>
                                         Administración</option>
+                                    <option value="gruista"
+                                        {{ old('categoria', $user->categoria) == 'gruista' ? 'selected' : '' }}>
+                                        Gruista</option>
                                     <option value="operario"
                                         {{ old('categoria', $user->categoria) == 'operario' ? 'selected' : '' }}>
                                         Operario</option>
