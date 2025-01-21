@@ -19,7 +19,7 @@ class RegisteredUserController extends Controller
      */
     public function create()
     {
-        if (auth()->user()->role !== 'administrador') {
+        if (auth()->user()->categoria !== 'administrador') {
             return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
         }
 
