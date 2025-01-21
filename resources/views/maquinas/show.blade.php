@@ -159,12 +159,6 @@
                                         <strong>ID: </strong> {{ $elemento->id }} <strong> Estado: </strong><span
                                             id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
                                     </p>
-
-                                    <hr class="my-2">
-
-                                    <p class="text-gray-500 text-sm">
-
-                                    </p>
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
                                             id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>Fecha
