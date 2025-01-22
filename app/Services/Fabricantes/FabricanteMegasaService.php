@@ -99,7 +99,7 @@ class FabricanteMegasaService implements FabricanteServiceInterface
                     $diametro = isset($segmentos[4]) ? str_replace('D', '', $segmentos[4]) : null;
                     $longitud = isset($segmentos[5]) ? str_replace('L', '', $segmentos[5]) : null;
                 } elseif ($request->tipo_producto[$index] === 'encarretado') {
-                    $diametro = isset($segmentos[5]) ? str_replace('D', '', $segmentos[5]) : null;
+                    $diametro = isset($segmentos[count($segmentos) === 6 ? 4 : 5]) ? str_replace('D', '', $segmentos[count($segmentos) === 6 ? 4 : 5]) : null;
                 }
 
                 // Normalizar los valores numéricos
