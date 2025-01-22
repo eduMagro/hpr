@@ -80,7 +80,7 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ EDIT
     public function edit(Producto $producto)
     {
-        if (auth()->user()->role !== 'administrador') {
+        if (auth()->user()->categoria !== 'administrador') {
             return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         return view('productos.edit', compact('producto'));
@@ -155,7 +155,7 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ DESTROY
     public function destroy(Producto $producto)
     {
-        if (auth()->user()->role !== 'administrador') {
+        if (auth()->user()->categoria !== 'administrador') {
             return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         $producto->delete();

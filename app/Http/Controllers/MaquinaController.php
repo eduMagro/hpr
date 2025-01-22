@@ -62,7 +62,7 @@ class MaquinaController extends Controller
 
     public function create()
     {
-        if (auth()->user()->role !== 'administrador') {
+        if (auth()->user()->categoria !== 'administrador') {
             return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         return view('maquinas.create');
@@ -148,7 +148,7 @@ class MaquinaController extends Controller
 
     public function edit($id)
     {
-        if (auth()->user()->role !== 'administrador') {
+        if (auth()->user()->categoria !== 'administrador') {
             return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         // Buscar la máquina por su ID
@@ -213,7 +213,7 @@ class MaquinaController extends Controller
 
     public function destroy($id)
     {
-        if (auth()->user()->role !== 'administrador') {
+        if (auth()->user()->categoria !== 'administrador') {
             return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         DB::beginTransaction();
