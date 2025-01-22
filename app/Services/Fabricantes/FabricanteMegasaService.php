@@ -84,7 +84,7 @@ class FabricanteMegasaService implements FabricanteServiceInterface
                 $segmentos = explode('_', $codigo);
 
 
-                if (count($segmentos) !== 7) {
+                if (!in_array(count($segmentos), [6, 7])) {
                     throw new Exception('El código de barras del fabricante no tiene el formato esperado.');
                 }
 
