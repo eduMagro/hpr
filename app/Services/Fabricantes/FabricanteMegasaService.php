@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 class FabricanteMegasaService implements FabricanteServiceInterface
 {
 
-    
+
     public function procesar(Request $request): void
     {
         DB::beginTransaction();
@@ -51,8 +51,8 @@ class FabricanteMegasaService implements FabricanteServiceInterface
                 'producto_nombre.array' => 'El campo "nombre del producto" debe ser un arreglo.',
                 'producto_codigo.required' => 'El campo "código del producto" es obligatorio.',
                 'producto_codigo.array' => 'El campo "código del producto" debe ser un arreglo.',
-				'producto_codigo.min' => 'El campo "códig del producto" parece incorrecto.',
-				'producto_codigo.max' => 'El campo "códig del producto" parece incorrecto.',
+                'producto_codigo.min' => 'El campo "códig del producto" parece incorrecto.',
+                'producto_codigo.max' => 'El campo "códig del producto" parece incorrecto.',
                 'producto_peso.required' => 'El campo "peso del producto" es obligatorio.',
                 'producto_peso.array' => 'El campo "peso del producto" debe ser un arreglo.',
                 'ubicacion_id.required' => 'El campo "ubicación" es obligatorio.',
@@ -80,7 +80,9 @@ class FabricanteMegasaService implements FabricanteServiceInterface
             // Crear los productos y asociarlos a la entrada
             foreach ($request->producto_nombre as $index => $nombre) {
                 // Dividir el código de barras en segmentos
-                $segmentos = explode('_', $request->producto_codigo[$index]);
+                $codigo = str_replace('?', '_', $request->producto_codigo[$index]);
+                $segmentos = explode('_', $codigo);
+
 
                 if (count($segmentos) !== 7) {
                     throw new Exception('El código de barras del fabricante no tiene el formato esperado.');
