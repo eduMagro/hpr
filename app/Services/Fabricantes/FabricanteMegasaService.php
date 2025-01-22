@@ -95,16 +95,19 @@ class FabricanteMegasaService implements FabricanteServiceInterface
                 $diametro = null;
                 $longitud = null;
 
-                if ($request->tipo_producto[$index] === 'barra') {
-                    $diametro = isset($segmentos[4]) ? str_replace('D', '', $segmentos[4]) : null;
-                    $longitud = isset($segmentos[5]) ? str_replace('L', '', $segmentos[5]) : null;
-                } elseif ($request->tipo_producto[$index] === 'encarretado') {
-                    $diametro = isset($segmentos[count($segmentos) === 6 ? 4 : 5]) ? str_replace('D', '', $segmentos[count($segmentos) === 6 ? 4 : 5]) : null;
+                function obtenerDiametro($codigo)
+                {
+                    $valor = (int) str_replace('D', '', $codigo);
+                    return ($valor >= 1000) ? $valor / 100 : $valor;
                 }
 
-                // Normalizar los valores numéricos
-                $diametro = $diametro !== null ? (float) $diametro / 100 : null;
-                $longitud = $longitud !== null ? (float) $longitud / 100 : null;
+                if ($request->tipo_producto[$index] === 'barra') {
+                    $diametro = isset($segmentos[4]) ? obtenerDiametro($segmentos[4]) : null;
+                    $longitud = isset($segmentos[5]) ? str_replace('L', '', $segmentos[5]) : null;
+                } elseif ($request->tipo_producto[$index] === 'encarretado') {
+                    $segmento_diametro = $segmentos[count($segmentos) === 6 ? 4 : 5] ?? null;
+                    $diametro = $segmento_diametro ? obtenerDiametro($segmento_diametro) : null;
+                }
 
                 // Crear el producto
                 $producto = Producto::create([
