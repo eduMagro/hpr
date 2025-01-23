@@ -139,7 +139,7 @@ class ElementoController extends Controller
             $productosConsumidos = []; // Inicializa la lista de productos consumidos
             $producto1 = null;
             $producto2 = null; // ✅ Ahora están inicializados siempre
-    
+     
             if ($etiqueta->estado == "pendiente") {
                 $etiqueta->estado = "fabricando";
                 $etiqueta->fecha_inicio = now();
@@ -244,15 +244,6 @@ class ElementoController extends Controller
             $fechaInicio = $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio) : null;
             $fechaFinalizacion = $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion) : null;
     
-            $tiempoReal = null;
-            $emoji = "❓";
-    
-            if ($fechaInicio && $fechaFinalizacion) {
-                $tiempoReal = $fechaInicio->diffInSeconds($fechaFinalizacion);
-                $tiempoEstimado = $etiqueta->tiempo_fabricacion ?? 0;
-                $emoji = ($tiempoReal <= $tiempoEstimado) ? "😊" : "😢";
-            }
-    
             $etiqueta->save();
             DB::commit();
     
@@ -272,7 +263,6 @@ class ElementoController extends Controller
                 'estado' => $etiqueta->estado,
                 'fecha_inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y H:i:s') : 'No asignada',
                 'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
-                'emoji' => $emoji,
                 'productos_afectados' => $productosAfectados
             ]);
         } catch (\Exception $e) {

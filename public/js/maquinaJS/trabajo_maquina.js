@@ -75,7 +75,6 @@ function actualizarDOM(id, data) {
     let estadoEtiqueta = document.getElementById(`estado-${id}`);
     let inicioEtiqueta = document.getElementById(`inicio-${id}`);
     let finalEtiqueta = document.getElementById(`final-${id}`);
-    let emojiEtiqueta = document.getElementById(`emoji-${id}`);
     let pesoStockProducto = document.getElementById(
         `peso-stock-${data.producto_id}`
     );
@@ -85,7 +84,7 @@ function actualizarDOM(id, data) {
         inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
     if (finalEtiqueta)
         finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
-    if (emojiEtiqueta) emojiEtiqueta.textContent = data.emoji || ""; // Insertar el emoji
+   
     // Si no hay productos afectados, forzar recarga completa
     if (!data.productos_afectados || data.productos_afectados.length === 0) {
         setTimeout(() => location.reload(), 250); // Retraso para evitar bloqueos
