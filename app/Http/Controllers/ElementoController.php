@@ -232,7 +232,7 @@ class ElementoController extends Controller
                 $elemento->users_id_2 = session()->get('compañero_id', null);
             } elseif ($elemento->estado == "fabricando") {
                 $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock')->get());
-                $productosAfectados = collect(); // Inicializa colección vacía
+
                 if ($productos->isEmpty()) {
                     return response()->json([
                         'success' => false,
@@ -259,12 +259,6 @@ class ElementoController extends Controller
 
                         $prod->save();
                         $pesoRequerido -= $resta;
-                        // Guardamos el producto modificado
-                        $productosAfectados->push([
-                            'id' => $prod->id,
-                            'peso_stock' => $prod->peso_stock,
-                            'peso_inicial' => $prod->peso_inicial
-                        ]);
                     }
                 }
 
@@ -299,12 +293,6 @@ class ElementoController extends Controller
                     $pesoRestante -= $incremento;
                     $prod->estado = "fabricando";
                     $prod->save();
-                    // Guardamos manualmente el producto modificado
-                    $productosAfectados->push([
-                        'id' => $prod->id,
-                        'peso_stock' => $prod->peso_stock,
-                        'peso_inicial' => $prod->peso_inicial
-                    ]);
                 }
                 $elemento->fecha_inicio = null;
                 $elemento->fecha_finalizacion = null;
@@ -328,13 +316,23 @@ class ElementoController extends Controller
             $elemento->save();
             DB::commit();
 
+            $productosAfectados = $productos
+                ? $productos->filter(fn($p) => $p->peso_stock != $p->peso_inicial)->map(function ($p) {
+                    return [
+                        'id' => $p->id,
+                        'peso_stock' => $p->peso_stock,
+                        'peso_inicial' => $p->peso_inicial
+                    ];
+                })->values()->all() // Esto devuelve un array en lugar de una colección
+                : [];
+
             return response()->json([
                 'success' => true,
                 'estado' => $elemento->estado,
                 'fecha_inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y H:i:s') : 'No asignada',
                 'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
                 'emoji' => $emoji,
-                'productos_afectados' => $productosAfectados->values()->all()
+                'productos_afectados' => $productosAfectados
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
