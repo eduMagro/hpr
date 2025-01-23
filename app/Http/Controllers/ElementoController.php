@@ -108,132 +108,28 @@ class ElementoController extends Controller
      * @param  \App\Models\Elemento  $elemento
      * @return \Illuminate\Http\Response
      */
+    public function crearConjunto(Request $request) {}
 
-    public function actualizarEstado(Request $request)
-    {
-        // Iniciar una transacción para asegurar la integridad de los datos
-        DB::beginTransaction();
 
-        try {
-            // Validar los datos enviados por el formulario
-            $validated = $request->validate([
-                'elemento_id' => 'required|exists:elementos,id',
-                'planilla_id' => 'required|exists:planillas,id',
-                'accion' => 'required|in:completar,descompletar',
-            ]);
-
-            // Buscar el elemento, la planilla y la máquina asociados
-            $elemento = Elemento::findOrFail($validated['elemento_id']);
-            $planilla = Planilla::findOrFail($validated['planilla_id']);
-            $maquina = $elemento->maquina;
-
-            if (!$maquina) {
-                return redirect()->route('elementos.show', $planilla->id)
-                    ->with('error', 'La máquina asociada al elemento no existe.');
-            }
-
-            if ($validated['accion'] === 'completar') {
-                // Obtener todos los productos con el diámetro especificado
-                $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get();
-
-                if ($productos->isEmpty()) {
-                    return redirect()->route('elementos.show', $planilla->id)
-                        ->with('error', 'No se encontraron productos asociados con ese diámetro en la máquina.');
-                }
-
-                $pesoRequerido = $elemento->peso;
-
-                foreach ($productos as $producto) {
-                    if ($pesoRequerido <= 0) {
-                        break;
-                    }
-
-                    // Verificar cuánto peso se puede restar de este producto
-                    $pesoDisponible = $producto->peso_stock;
-
-                    if ($pesoDisponible > 0) {
-                        $resta = min($pesoDisponible, $pesoRequerido);
-                        $producto->peso_stock -= $resta;
-                        $producto->save();
-
-                        $pesoRequerido -= $resta;
-                    }
-                }
-
-                if ($pesoRequerido > 0) {
-                    throw new \Exception('No hay materia prima suficiente en la máquina.');
-                }
-
-                // Actualizar el estado del elemento
-                $elemento->estado = 'completado';
-                $elemento->users_id = auth()->id();
-                $elemento->producto_id = $productos->first()->id; // Asociar el primer producto usado
-                $elemento->save();
-
-                DB::commit();
-
-                return redirect()->route('elementos.show', $planilla->id)
-                    ->with('success', 'Elemento completado y kilos actualizados en los productos.');
-            }
-
-            if ($validated['accion'] === 'descompletar') {
-                $producto = $maquina->productos()->where('diametro', $elemento->diametro)->first();
-
-                if (!$producto) {
-                    throw new \Exception('No se encontró un producto asociado con ese diámetro en la máquina.');
-                }
-
-                // Revertir los kilos al producto
-                $producto->peso_stock += $elemento->peso;
-                $producto->save();
-
-                // Actualizar el estado del elemento
-                $elemento->estado = 'pendiente';
-                $elemento->users_id = null;
-                $elemento->save();
-
-                DB::commit();
-
-                return redirect()->route('elementos.show', $planilla->id)
-                    ->with('success', 'Elemento descompletado y kilos revertidos al producto.');
-            }
-
-            throw new \Exception('Acción no válida.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->route('elementos.show', $planilla->id)
-                ->with('error', $e->getMessage());
-        }
-    }
-
-    public function actualizarElemento(Request $request, $id)
+    public function actualizarEtiqueta(Request $request, $id)
     {
         DB::beginTransaction();
 
         try {
-            $elemento = Elemento::findOrFail($id);
-            $maquina = $elemento->maquina;
-
-            if (!$maquina) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'La máquina asociada al elemento no existe.',
-                ], 404);
-            }
+            $etiqueta = Etiqueta::with('elementos'->findOrFail($id);
 
             $productos = collect(); // Inicializa la colección vacía para evitar el error
 
 
-            if ($elemento->estado == "pendiente") {
-                $elemento->estado = "fabricando";
-                $elemento->fecha_inicio = now();
-                $elemento->users_id = Auth::id();
-
-                $elemento->users_id_2 = session()->get('compañero_id', null);
+            if ($etiqueta->estado == "pendiente") {
+                $etiqueta->estado = "fabricando";
+                $etiqueta->fecha_inicio = now();
+                $etiqueta->users_id = Auth::id();
+                $etiqueta->users_id_2 = session()->get('compañero_id', null);
                 $primerProducto = null;
                 $segundoProducto = null;
-            } elseif ($elemento->estado == "fabricando") {
-                $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock')->get());
+            } elseif ($etiqueta->estado == "fabricando") {
+                $productos = collect($maquina->productos()->where('diametro', $etiqueta->elemento->diametro)->orderBy('peso_stock')->get());
 
                 if ($productos->isEmpty()) {
                     return response()->json([
@@ -242,7 +138,7 @@ class ElementoController extends Controller
                     ], 400);
                 }
 
-                $pesoRequerido = $elemento->peso;
+                $pesoRequerido = $etiqueta->peso;
                 $primerProducto = null;
                 $segundoProducto = null;
                 foreach ($productos as $prod) {
@@ -278,12 +174,12 @@ class ElementoController extends Controller
                     ], 400);
                 }
 
-                $elemento->fecha_finalizacion = now();
-                $elemento->estado = 'completado';
-                $elemento->producto_id = $primerProducto ? $primerProducto->id : null;
-                $elemento->producto_id_2 = $segundoProducto ? $segundoProducto->id : null;
-            } elseif ($elemento->estado == "completado") {
-                $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock', 'desc')->get());
+                $etiqueta->fecha_finalizacion = now();
+                $etiqueta->estado = 'completado';
+                $etiqueta->producto_id = $primerProducto ? $primerProducto->id : null;
+                $etiqueta->producto_id_2 = $segundoProducto ? $segundoProducto->id : null;
+            } elseif ($etiqueta->estado == "completado") {
+                $productos = collect($maquina->productos()->where('diametro', $etiqueta->elemento->diametro)->orderBy('peso_stock', 'desc')->get());
 
                 if ($productos->isEmpty()) {
                     return response()->json([
@@ -292,7 +188,7 @@ class ElementoController extends Controller
                     ], 400);
                 }
 
-                $pesoRestante = $elemento->peso;
+                $pesoRestante = $etiqueta->peso;
 
                 foreach ($productos as $prod) {
                     if ($pesoRestante <= 0) {
@@ -304,28 +200,28 @@ class ElementoController extends Controller
                     $prod->estado = "fabricando";
                     $prod->save();
                 }
-                $elemento->fecha_inicio = null;
-                $elemento->fecha_finalizacion = null;
-                $elemento->estado = "pendiente";
-                $elemento->users_id = null;
-                $elemento->users_id_2 = null;
-                $elemento->producto_id = null;
-                $elemento->producto_id_2 = null;
+                $etiqueta->fecha_inicio = null;
+                $etiqueta->fecha_finalizacion = null;
+                $etiqueta->estado = "pendiente";
+                $etiqueta->users_id = null;
+                $etiqueta->users_id_2 = null;
+                $etiqueta->producto_id = null;
+                $etiqueta->producto_id_2 = null;
             }
 
-            $fechaInicio = $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio) : null;
-            $fechaFinalizacion = $elemento->fecha_finalizacion ? Carbon::parse($elemento->fecha_finalizacion) : null;
+            $fechaInicio = $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio) : null;
+            $fechaFinalizacion = $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion) : null;
 
             $tiempoReal = null;
             $emoji = "❓";
 
             if ($fechaInicio && $fechaFinalizacion) {
                 $tiempoReal = $fechaInicio->diffInSeconds($fechaFinalizacion);
-                $tiempoEstimado = $elemento->tiempo_fabricacion ?? 0;
+                $tiempoEstimado = $etiqueta->tiempo_fabricacion ?? 0;
                 $emoji = ($tiempoReal <= $tiempoEstimado) ? "😊" : "😢";
             }
 
-            $elemento->save();
+            $etiqueta->save();
             DB::commit();
 
             $productosAfectados = $productos
@@ -340,7 +236,7 @@ class ElementoController extends Controller
 
             return response()->json([
                 'success' => true,
-                'estado' => $elemento->estado,
+                'estado' => $etiqueta->estado,
                 'fecha_inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y H:i:s') : 'No asignada',
                 'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
                 'emoji' => $emoji,

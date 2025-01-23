@@ -1,4 +1,4 @@
-function generateAndPrintQR(id, descripcion_fila) {
+function generateAndPrintQR(id, nombre) {
     const qrContainer = document.getElementById("qrContainer");
     qrContainer.innerHTML = ""; // Limpia cualquier QR anterior
 
@@ -27,7 +27,7 @@ function generateAndPrintQR(id, descripcion_fila) {
                 </head>
                 <body>
                     <img src="${qrImg.src}" alt="Código QR">
-                    <p>${descripcion_fila}</p>
+                    <p>${nombre}</p>
                     <script>
                         window.print();
                         setTimeout(() => window.close(), 500);

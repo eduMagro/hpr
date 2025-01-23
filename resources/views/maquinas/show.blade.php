@@ -152,32 +152,32 @@
                             Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} ID: {{ $etiqueta->id }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
-
+                        <button onclick="generateAndPrintQR('{{ $etiqueta->id }}', '{{ $etiqueta->nombre }}')"
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md mb-4">
+                            <i class="fas fa-qrcode mr-2"></i> QR
+                        </button>
+                        <!-- Contenedor oculto para generar el QR -->
+                        <div id="qrContainer" style="display: none;"></div>
+                        <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
+                                id="inicio-{{ $etiqueta->id }}">{{ $etiqueta->fecha_inicio ?? 'No asignada' }}</span><strong>
+                                Fecha
+                                Finalización:</strong> <span
+                                id="final-{{ $etiqueta->id }}">{{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}</span>
+                            <span id="emoji-{{ $etiqueta->id }}"></span>
+                        </p>
                         <!-- GRID PARA ELEMENTOS -->
                         <div class="grid grid-cols-1 gap-4">
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
                                     class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                                     {{ $loop->iteration }}.
-                                    <button
-                                        onclick="generateAndPrintQR('{{ $elemento->id }}', '{{ $elemento->descripcion_fila }}')"
-                                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md mb-4">
-                                        <i class="fas fa-qrcode mr-2"></i> QR
-                                    </button>
-                                    <!-- Contenedor oculto para generar el QR -->
-                                    <div id="qrContainer" style="display: none;"></div>
+
                                     <p class="text-gray-500 text-sm">
                                         <strong>ID: </strong> {{ $elemento->id }} <strong> Estado: </strong><span
                                             id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
                                     </p>
-                                    <hr class="my-2">
-                                    <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
-                                            id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>
-                                            Fecha
-                                            Finalización:</strong> <span
-                                            id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
-                                        <span id="emoji-{{ $elemento->id }}"></span>
-                                    </p>
+
+
                                     <p class="text-gray-500 text-sm"></p>
                                     <hr class="my-2">
                                     <p class="text-gray-500 text-sm">
