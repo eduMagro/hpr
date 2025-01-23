@@ -246,15 +246,15 @@ class ElementoController extends Controller
     
             // ✅ **Aquí colocamos el código para enviar `productos_afectados` correctamente**
             $productosAfectados = collect([$producto1, $producto2])
-                ->filter() // ✅ Elimina valores nulos
-                ->map(fn($p) => [
-                    'id' => $p->id,
-                    'peso_stock' => $p->peso_stock,
-                    'peso_inicial' => $p->peso_inicial
-                ])
-                ->values()
-                ->all();
-    
+            ->filter(fn($p) => !is_null($p)) // ✅ Filtra valores null antes de acceder a sus propiedades
+            ->map(fn($p) => [
+                'id' => $p->id,
+                'peso_stock' => $p->peso_stock,
+                'peso_inicial' => $p->peso_inicial
+            ])
+            ->values()
+            ->all();
+        
                 return response()->json([
                     'success' => true,
                     'estado' => $etiqueta->estado,
