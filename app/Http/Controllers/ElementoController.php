@@ -119,7 +119,7 @@ class ElementoController extends Controller
             $etiqueta = Etiqueta::with('elementos')->findOrFail($id);
             $maquina = $etiqueta->elemento->maquina;
 
-            if (!$maquina) {
+            if ($maquina->isEmpty()) {
                 return response()->json([
                     'success' => false,
                     'error' => 'La máquina asociada al elemento no existe.',
