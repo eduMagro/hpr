@@ -156,8 +156,6 @@ class MovimientoController extends Controller
                         }
                     }
 
-
-
                     // Si no hay errores, proceder a marcar los productos como consumidos
 
                     foreach ($materialesEnMaquina as $material) {
