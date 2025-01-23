@@ -79,46 +79,48 @@
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            let form = document.getElementById('miFormulario'); // Asegúrate de poner el ID correcto del formulario
+            const form = document.getElementById("form-movimiento");
 
-            form.addEventListener("submit", function(event) {
-                event.preventDefault(); // Evita el envío inmediato
+            if (form) {
+                form.addEventListener("submit", function(event) {
+                    event.preventDefault(); // Evita el envío inmediato del formulario
 
-                let formData = new FormData(form);
-
-                fetch(form.action, {
-                        method: form.method,
-                        body: formData,
-                        headers: {
-                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.confirm) {
-                            Swal.fire({
-                                title: 'Material en fabricación',
-                                text: data.message,
-                                icon: 'warning',
-                                showCancelButton: true,
-                                confirmButtonText: 'Sí, continuar',
-                                cancelButtonText: 'Cancelar'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    form
-                                .submit(); // Si el usuario confirma, enviar el formulario
-                                }
-                            });
-                        } else {
-                            form.submit();
-                        }
-                    })
-                    .catch(error => console.error('Error:', error));
-            });
+                    let formData = new FormData(form);
+                    fetch(form.action, {
+                            method: "POST",
+                            body: formData,
+                            headers: {
+                                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
+                                    .getAttribute("content")
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.confirm) {
+                                Swal.fire({
+                                    title: "Máquina Ocupada",
+                                    text: data.message,
+                                    icon: "warning",
+                                    showCancelButton: true,
+                                    confirmButtonText: "Sí, continuar",
+                                    cancelButtonText: "No, cancelar"
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        form
+                                    .submit(); // Enviar el formulario nuevamente si confirma
+                                    }
+                                });
+                            } else {
+                                window.location.href = "{{ route('movimientos.index') }}";
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error:", error);
+                        });
+                });
+            }
         });
     </script>
 
