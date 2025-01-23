@@ -247,24 +247,24 @@ class ElementoController extends Controller
             $etiqueta->save();
             DB::commit();
     
-            // ✅ Evitar error si $producto1 o $producto2 son null
             $productosAfectados = collect([$producto1, $producto2])
-                ->filter() // Elimina valores nulos
-                ->map(fn($p) => [
-                    'id' => $p->id,
-                    'peso_stock' => $p->peso_stock,
-                    'peso_inicial' => $p->peso_inicial
-                ])
-                ->values()
-                ->all();
+    ->filter() // ✅ Elimina valores nulos
+    ->map(fn($p) => [
+        'id' => $p->id,
+        'peso_stock' => $p->peso_stock,
+        'peso_inicial' => $p->peso_inicial
+    ])
+    ->values()
+    ->all();
+
+    return response()->json([
+        'success' => true,
+        'estado' => $etiqueta->estado,
+        'fecha_inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y H:i:s') : 'No asignada',
+        'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
+        'productos_afectados' => $productosAfectados
+    ]);
     
-            return response()->json([
-                'success' => true,
-                'estado' => $etiqueta->estado,
-                'fecha_inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y H:i:s') : 'No asignada',
-                'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
-                'productos_afectados' => $productosAfectados
-            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
