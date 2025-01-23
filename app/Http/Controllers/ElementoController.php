@@ -135,16 +135,17 @@ class ElementoController extends Controller
                 ], 404);
             }
     
-            $productos = collect(); // Inicializa la colección vacía
-            $productosConsumidos = []; // Inicializa la lista de productos consumidos
+            $productosConsumidos = [];
             $producto1 = null;
-            $producto2 = null; // ✅ Ahora están inicializados siempre
-     
+            $producto2 = null;
+    
             if ($etiqueta->estado == "pendiente") {
                 $etiqueta->estado = "fabricando";
                 $etiqueta->fecha_inicio = now();
                 $etiqueta->users_id_1 = Auth::id();
                 $etiqueta->users_id_2 = session()->get('compañero_id', null);
+                $etiqueta->save(); // ✅ Guardamos cambios
+    
             } elseif ($etiqueta->estado == "fabricando") {
                 $productos = $maquina->productos()
                     ->where('diametro', $primerElemento->diametro)
@@ -182,7 +183,7 @@ class ElementoController extends Controller
                         }
     
                         $prod->save();
-                        $productosConsumidos[] = $prod; // Guardar producto consumido
+                        $productosConsumidos[] = $prod;
                         $pesoRequerido -= $restar;
                     }
                 }
@@ -197,11 +198,11 @@ class ElementoController extends Controller
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->estado = 'completado';
     
-                // Asignar producto_id y producto_id_2 solo si existen productos consumidos
                 $etiqueta->producto_id = $productosConsumidos[0]->id ?? null;
                 $etiqueta->producto_id_2 = $productosConsumidos[1]->id ?? null;
+                $etiqueta->save(); // ✅ Guardamos cambios
+    
             } elseif ($etiqueta->estado == "completado") {
-                // Recuperar los productos que fueron consumidos en la fabricación
                 $producto1 = $etiqueta->producto_id ? $maquina->productos()->find($etiqueta->producto_id) : null;
                 $producto2 = $etiqueta->producto_id_2 ? $maquina->productos()->find($etiqueta->producto_id_2) : null;
     
@@ -214,7 +215,6 @@ class ElementoController extends Controller
     
                 $pesoRestaurar = $etiqueta->peso;
     
-                // Devolver el peso gastado a los productos originales
                 if ($producto1) {
                     $pesoIncremento = min($pesoRestaurar, $producto1->peso_inicial - $producto1->peso_stock);
                     $producto1->peso_stock += $pesoIncremento;
@@ -239,32 +239,29 @@ class ElementoController extends Controller
                 $etiqueta->users_id_2 = null;
                 $etiqueta->producto_id = null;
                 $etiqueta->producto_id_2 = null;
+                $etiqueta->save(); // ✅ Guardamos cambios
             }
     
-            $fechaInicio = $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio) : null;
-            $fechaFinalizacion = $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion) : null;
-    
-            $etiqueta->save();
             DB::commit();
     
+            // ✅ **Aquí colocamos el código para enviar `productos_afectados` correctamente**
             $productosAfectados = collect([$producto1, $producto2])
-    ->filter() // ✅ Elimina valores nulos
-    ->map(fn($p) => [
-        'id' => $p->id,
-        'peso_stock' => $p->peso_stock,
-        'peso_inicial' => $p->peso_inicial
-    ])
-    ->values()
-    ->all();
-
-    return response()->json([
-        'success' => true,
-        'estado' => $etiqueta->estado,
-        'fecha_inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y H:i:s') : 'No asignada',
-        'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
-        'productos_afectados' => $productosAfectados
-    ]);
+                ->filter() // ✅ Elimina valores nulos
+                ->map(fn($p) => [
+                    'id' => $p->id,
+                    'peso_stock' => $p->peso_stock,
+                    'peso_inicial' => $p->peso_inicial
+                ])
+                ->values()
+                ->all();
     
+            return response()->json([
+                'success' => true,
+                'estado' => $etiqueta->estado,
+                'fecha_inicio' => $etiqueta->fecha_inicio ? $etiqueta->fecha_inicio->format('d/m/Y H:i:s') : 'No asignada',
+                'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? $etiqueta->fecha_finalizacion->format('d/m/Y H:i:s') : 'No asignada',
+                'productos_afectados' => $productosAfectados
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -273,6 +270,7 @@ class ElementoController extends Controller
             ], 500);
         }
     }
+    
     
 
 

@@ -80,46 +80,38 @@ function actualizarDOM(id, data) {
     if (inicioEtiqueta) inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
     if (finalEtiqueta) finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
 
-    // ✅ Asegurar que hay productos afectados antes de actualizar el DOM
-    if (!data.productos_afectados || data.productos_afectados.length === 0) {
+    // ✅ Solo mostrar SweetAlert si pasa de "completado" a "pendiente"
+    if (data.estado === "pendiente") {
         Swal.fire({
             icon: "info",
-            title: "Estado actualizado",
-            text: "No hubo cambios en los productos. Recargando página...",
+            title: "Etiqueta reiniciada",
+            text: "Se ha restaurado la etiqueta a estado pendiente.",
             timer: 2000,
             showConfirmButton: false,
-            didClose: () => location.reload() // 🔴 Recargar tras la alerta
         });
-        return;
     }
 
-    // ✅ Actualizar todos los productos afectados en el DOM
-    data.productos_afectados.forEach((producto) => {
-        let progresoTexto = document.getElementById(`progreso-texto-${producto.id}`);
-        let progresoBarra = document.getElementById(`progreso-barra-${producto.id}`);
-        let pesoStockElemento = document.getElementById(`peso-stock-${producto.id}`);
+    // ✅ Verificar si hay productos afectados antes de intentar actualizarlos
+    if (data.productos_afectados && data.productos_afectados.length > 0) {
+        data.productos_afectados.forEach((producto) => {
+            let progresoTexto = document.getElementById(`progreso-texto-${producto.id}`);
+            let progresoBarra = document.getElementById(`progreso-barra-${producto.id}`);
+            let pesoStockElemento = document.getElementById(`peso-stock-${producto.id}`);
 
-        if (pesoStockElemento) {
-            pesoStockElemento.textContent = `${producto.peso_stock} kg`; // ✅ Actualiza visualmente el peso
-        }
+            if (pesoStockElemento) {
+                pesoStockElemento.textContent = `${producto.peso_stock} kg`; // ✅ Actualiza visualmente el peso
+            }
 
-        if (progresoTexto) {
-            progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
-        }
+            if (progresoTexto) {
+                progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
+            }
 
-        if (progresoBarra) {
-            let progresoPorcentaje = (producto.peso_stock / producto.peso_inicial) * 100;
-            progresoBarra.style.height = `${progresoPorcentaje}%`;
-        }
-    });
-
-    // ✅ Confirmación visual de que se ha actualizado el estado
-    Swal.fire({
-        icon: "success",
-        title: "Actualización exitosa",
-        text: "Los productos han sido actualizados.",
-        timer: 1500,
-        showConfirmButton: false,
-    });
+            if (progresoBarra) {
+                let progresoPorcentaje = (producto.peso_stock / producto.peso_inicial) * 100;
+                progresoBarra.style.height = `${progresoPorcentaje}%`;
+            }
+        });
+    }
 }
+
 
