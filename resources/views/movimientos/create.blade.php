@@ -197,7 +197,7 @@
             <div class="col-md-8">
                 <div class="card shadow-lg border-0">
                     <div class="card-header bg-primary text-white text-center">
-                        <h2>Crear Movimiento de Producto</h2>
+                        <h2>Crear Movimiento de Material</h2>
                     </div>
                     <div class="card-body">
                         <form action="{{ route('movimientos.store') }}" method="POST">
@@ -205,7 +205,7 @@
 
                             <!-- Seleccionar Producto -->
                             <div class="form-group mb-4">
-                                <label for="producto_id" class="form-label fw-bold">Producto</label>
+                                <label for="producto_id" class="form-label fw-bold">Materia Prima</label>
 
                                 {{-- BUSCAR POR QR --}}
                                 <input type="text" name="producto_id" class="form-control mb-3"
@@ -268,22 +268,25 @@
     </div>
     <script>
         document.getElementById("form-material").addEventListener("submit", function(e) {
-            e.preventDefault(); // Evita el envío automático del formulario
+            e.preventDefault(); // Evita el envío tradicional del formulario
 
             let form = this;
             let formData = new FormData(form);
 
             fetch(form.action, {
                     method: form.method,
-                    body: formData
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest" // Indica que es una petición AJAX
+                    }
                 })
-                .then(response => response.json())
+                .then(response => response.json()) // Asegura que la respuesta se procese como JSON
                 .then(data => {
                     if (data.status === "error") {
                         Swal.fire({
                             icon: "error",
                             title: "Error",
-                            text: data.message,
+                            text: data.message
                         });
                     } else if (data.status === "confirm") {
                         Swal.fire({
@@ -292,24 +295,17 @@
                             icon: "warning",
                             showCancelButton: true,
                             confirmButtonText: "Sí, continuar",
-                            cancelButtonText: "Cancelar",
+                            cancelButtonText: "Cancelar"
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                form.submit(); // Ahora sí se envía el formulario
+                                form.submit(); // Enviar el formulario si confirma
                             }
                         });
                     } else {
-                        form.submit(); // Si no hay problema, el formulario se envía normalmente
+                        location.reload(); // Si todo está bien, recargar la página
                     }
                 })
-                .catch(error => {
-                    console.error("Error en la petición:", error);
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error",
-                        text: "Hubo un problema al procesar la solicitud.",
-                    });
-                });
+                .catch(error => console.error("Error en la petición:", error));
         });
     </script>
 
