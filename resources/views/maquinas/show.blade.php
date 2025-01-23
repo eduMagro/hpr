@@ -59,15 +59,12 @@
 
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-7 gap-6">
-            <!-- Información de la máquina -->
+            <!-- --------------------------------------------------------------- Información de la máquina --------------------------------------------------------------- -->
             <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
                     {{ $maquina->codigo }}
                 </h3>
-
-
                 <!-- Mostrar los productos en la máquina -->
-
                 @if ($maquina->productos->isEmpty())
                     <p>No hay productos en esta máquina.</p>
                 @else
@@ -107,7 +104,7 @@
 
             </div>
 
-            <!-- Planificación para la máquina agrupada por etiquetas -->
+            <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
             <div class="bg-white border p-4 shadow-md w-full rounded-lg sm:col-span-3">
                 <h3 class="font-bold text-xl">Planificación prevista</h3>
 
@@ -208,7 +205,7 @@
                     </div>
                 @endforelse
             </div>
-            <!-- GRID PARA OTROS -->
+            <!-- --------------------------------------------------------------- GRID PARA OTROS --------------------------------------------------------------- -->
             <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <div class="flex flex-col gap-4">
                     <!-- Botón Reportar Incidencia -->
@@ -334,67 +331,65 @@
     <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const etiquetas = [];
+        const etiquetas = [];
 
-            function agregarEtiqueta() {
-                const qrEtiqueta = document.getElementById('qrEtiqueta');
-                const etiqueta = qrEtiqueta.value.trim();
+        function agregarEtiqueta() {
+            const qrEtiqueta = document.getElementById('qrEtiqueta');
+            const etiqueta = qrEtiqueta.value.trim();
 
-                console.log("Valor escaneado:", qrEtiqueta.value); // Valor sin trim
-                console.log("Valor procesado:", etiqueta); // Valor con trim
+            console.log("Valor escaneado:", qrEtiqueta.value); // Valor sin trim
+            console.log("Valor procesado:", etiqueta); // Valor con trim
 
-                if (!etiqueta) {
-                    alert('Por favor, escanee un QR válido.');
-                    return;
-                }
-
-                if (etiquetas.includes(etiqueta)) {
-                    alert('Esta etiqueta ya ha sido agregada.');
-                    qrEtiqueta.value = '';
-                    return;
-                }
-
-                etiquetas.push(etiqueta);
-
-                // Agregar la etiqueta al listado
-                const etiquetasList = document.getElementById('etiquetasList');
-                const listItem = document.createElement('li'); // Se estaba usando una variable no definida
-                listItem.textContent = etiqueta;
-
-                // Botón para eliminar la etiqueta
-                const removeButton = document.createElement('button');
-                removeButton.textContent = '❌';
-                removeButton.className = 'ml-2 text-red-600 hover:text-red-800';
-                removeButton.onclick = () => {
-                    etiquetas.splice(etiquetas.indexOf(etiqueta), 1); // Eliminar del array
-                    etiquetasList.removeChild(listItem); // Eliminar del DOM
-                };
-
-                listItem.appendChild(removeButton);
-                etiquetasList.appendChild(listItem);
-
-                qrEtiqueta.value = ''; // Limpiar el input
+            if (!etiqueta) {
+                alert('Por favor, escanee un QR válido.');
+                return;
             }
 
-            function crearPaquete() {
-                if (etiquetas.length === 0) {
-                    alert('No hay etiquetas para crear un paquete.');
-                    return;
-                }
-
-                // Simular envío de datos al servidor
-                console.log('Creando paquete con etiquetas:', etiquetas);
-                alert('Paquete creado con éxito.');
-
-                // Reiniciar el formulario
-                etiquetas.length = 0;
-                document.getElementById('etiquetasList').innerHTML = '';
+            if (etiquetas.includes(etiqueta)) {
+                alert('Esta etiqueta ya ha sido agregada.');
+                qrEtiqueta.value = '';
+                return;
             }
 
-            // Asociar eventos a los botones
-            document.getElementById('agregarEtiquetaBtn').addEventListener('click', agregarEtiqueta);
-            document.getElementById('crearPaqueteBtn').addEventListener('click', crearPaquete);
-        });
+            etiquetas.push(etiqueta);
+
+            // Agregar la etiqueta al listado
+            const etiquetasList = document.getElementById('etiquetasList');
+            const listItem = document.createElement('li'); // Se estaba usando una variable no definida
+            listItem.textContent = etiqueta;
+
+            // Botón para eliminar la etiqueta
+            const removeButton = document.createElement('button');
+            removeButton.textContent = '❌';
+            removeButton.className = 'ml-2 text-red-600 hover:text-red-800';
+            removeButton.onclick = () => {
+                etiquetas.splice(etiquetas.indexOf(etiqueta), 1); // Eliminar del array
+                etiquetasList.removeChild(listItem); // Eliminar del DOM
+            };
+
+            listItem.appendChild(removeButton);
+            etiquetasList.appendChild(listItem);
+
+            qrEtiqueta.value = ''; // Limpiar el input
+        }
+
+        function crearPaquete() {
+            if (etiquetas.length === 0) {
+                alert('No hay etiquetas para crear un paquete.');
+                return;
+            }
+
+            // Simular envío de datos al servidor
+            console.log('Creando paquete con etiquetas:', etiquetas);
+            alert('Paquete creado con éxito.');
+
+            // Reiniciar el formulario
+            etiquetas.length = 0;
+            document.getElementById('etiquetasList').innerHTML = '';
+        }
+
+        // Asociar eventos a los botones
+        document.getElementById('agregarEtiquetaBtn').addEventListener('click', agregarEtiqueta);
+        document.getElementById('crearPaqueteBtn').addEventListener('click', crearPaquete);
     </script>
 </x-app-layout>
