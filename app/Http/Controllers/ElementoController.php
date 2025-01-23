@@ -230,6 +230,8 @@ class ElementoController extends Controller
                 $elemento->users_id = Auth::id();
 
                 $elemento->users_id_2 = session()->get('compañero_id', null);
+                $primerProducto = null;
+                $segundoProducto = null;
             } elseif ($elemento->estado == "fabricando") {
                 $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock')->get());
 
@@ -241,7 +243,8 @@ class ElementoController extends Controller
                 }
 
                 $pesoRequerido = $elemento->peso;
-
+                $primerProducto = null;
+                $segundoProducto = null;
                 foreach ($productos as $prod) {
                     if ($pesoRequerido <= 0) {
                         break;
@@ -250,15 +253,21 @@ class ElementoController extends Controller
                     $pesoDisponible = $prod->peso_stock;
 
                     if ($pesoDisponible > 0) {
-                        $resta = min($pesoDisponible, $pesoRequerido);
-                        $prod->peso_stock -= $resta;
+                        $restar = min($pesoDisponible, $pesoRequerido);
+                        $prod->peso_stock -= $restar;
 
                         if ($prod->peso_stock == 0) {
                             $prod->estado = "consumido";
                         }
 
                         $prod->save();
-                        $pesoRequerido -= $resta;
+                        // Asignar el primer y segundo producto consumido
+                        if (!$primerProducto) {
+                            $primerProducto = $prod;
+                        } elseif (!$segundoProducto) {
+                            $segundoProducto = $prod;
+                        }
+                        $pesoRequerido -= $restar;
                     }
                 }
 
@@ -271,10 +280,11 @@ class ElementoController extends Controller
 
                 $elemento->fecha_finalizacion = now();
                 $elemento->estado = 'completado';
-                $elemento->producto_id = $producto->id ?? null;
+                $elemento->producto_id = $primerProducto ? $primerProducto->id : null;
+                $elemento->producto_id_2 = $segundoProducto ? $segundoProducto->id : null;
             } elseif ($elemento->estado == "completado") {
                 $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock', 'desc')->get());
-                $productosAfectados = collect(); // Inicializa colección vacía
+
                 if ($productos->isEmpty()) {
                     return response()->json([
                         'success' => false,
@@ -299,6 +309,8 @@ class ElementoController extends Controller
                 $elemento->estado = "pendiente";
                 $elemento->users_id = null;
                 $elemento->users_id_2 = null;
+                $elemento->producto_id = null;
+                $elemento->producto_id_2 = null;
             }
 
             $fechaInicio = $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio) : null;

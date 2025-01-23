@@ -617,7 +617,11 @@
             if (inicioElement) inicioElement.textContent = data.fecha_inicio || "No asignada";
             if (finalElement) finalElement.textContent = data.fecha_finalizacion || "No asignada";
             if (emojiElement) emojiElement.textContent = data.emoji || ""; // Insertar el emoji
-
+            // Si no hay productos afectados, forzar recarga completa
+            if (!data.productos_afectados || data.productos_afectados.length === 0) {
+                setTimeout(() => location.reload(), 500); // Retraso para evitar bloqueos
+                return;
+            }
             // Actualizar todos los productos afectados
             if (data.productos_afectados) {
                 data.productos_afectados.forEach(producto => {
