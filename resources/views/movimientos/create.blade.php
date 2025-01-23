@@ -7,147 +7,63 @@
 
 
     <script>
-        function handleConfirm(confirmed) {
-            document.getElementById('customConfirm').style.display = 'none';
-            if (confirmed) {
-                // Crear y enviar el formulario para confirmar la acción
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = "{{ route('movimientos.store') }}";
+        $(document).on("submit", "#form-material", function(e) {
+            e.preventDefault(); // Evita el envío normal del formulario
 
-                // CSRF Token
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = "{{ csrf_token() }}";
-                form.appendChild(csrfInput);
+            let form = $(this);
+            let formData = form.serialize();
 
-                // Campos necesarios
-                const confirmarInput = document.createElement('input');
-                confirmarInput.type = 'hidden';
-                confirmarInput.name = 'confirmar';
-                confirmarInput.value = true;
-                form.appendChild(confirmarInput);
-
-                const productoIdInput = document.createElement('input');
-                productoIdInput.type = 'hidden';
-                productoIdInput.name = 'producto_id';
-                productoIdInput.value = "{{ session('producto_id') }}";
-                form.appendChild(productoIdInput);
-
-                const ubicacionDestinoInput = document.createElement('input');
-                ubicacionDestinoInput.type = 'hidden';
-                ubicacionDestinoInput.name = 'ubicacion_destino';
-                ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
-                form.appendChild(ubicacionDestinoInput);
-
-                const maquinaIdInput = document.createElement('input');
-                maquinaIdInput.type = 'hidden';
-                maquinaIdInput.name = 'maquina_id';
-                maquinaIdInput.value = "{{ session('maquina_id') }}";
-                form.appendChild(maquinaIdInput);
-
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        function handleConsumo(confirmed) {
-            document.getElementById('customConfirmConsumo').style.display = 'none';
-            if (confirmed) {
-                // Crear y enviar el formulario para confirmar el consumo
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = "{{ route('movimientos.store') }}";
-
-                // CSRF Token
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = "{{ csrf_token() }}";
-                form.appendChild(csrfInput);
-
-                // Campos necesarios
-                const confirmarInput = document.createElement('input');
-                confirmarInput.type = 'hidden';
-                confirmarInput.name = 'confirmar';
-                confirmarInput.value = true;
-                form.appendChild(confirmarInput);
-
-                const confirmarConsumoInput = document.createElement('input');
-                confirmarConsumoInput.type = 'hidden';
-                confirmarConsumoInput.name = 'confirmar_consumo';
-                confirmarConsumoInput.value = 1;
-                form.appendChild(confirmarConsumoInput);
-
-                const productoIdInput = document.createElement('input');
-                productoIdInput.type = 'hidden';
-                productoIdInput.name = 'producto_id';
-                productoIdInput.value = "{{ session('producto_id') }}";
-                form.appendChild(productoIdInput);
-
-                const ubicacionDestinoInput = document.createElement('input');
-                ubicacionDestinoInput.type = 'hidden';
-                ubicacionDestinoInput.name = 'ubicacion_destino';
-                ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
-                form.appendChild(ubicacionDestinoInput);
-
-                const maquinaIdInput = document.createElement('input');
-                maquinaIdInput.type = 'hidden';
-                maquinaIdInput.name = 'maquina_id';
-                maquinaIdInput.value = "{{ session('maquina_id') }}";
-                form.appendChild(maquinaIdInput);
-
-                document.body.appendChild(form);
-                form.submit();
-            } else {
-                // Crear y enviar el formulario para confirmar el consumo
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = "{{ route('movimientos.store') }}";
-
-                // CSRF Token
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = '_token';
-                csrfInput.value = "{{ csrf_token() }}";
-                form.appendChild(csrfInput);
-
-                // Campos necesarios
-                const confirmarInput = document.createElement('input');
-                confirmarInput.type = 'hidden';
-                confirmarInput.name = 'confirmar';
-                confirmarInput.value = true;
-                form.appendChild(confirmarInput);
-
-                const confirmarConsumoInput = document.createElement('input');
-                confirmarConsumoInput.type = 'hidden';
-                confirmarConsumoInput.name = 'confirmar_mantenerlo';
-                confirmarConsumoInput.value = 1;
-                form.appendChild(confirmarConsumoInput);
-
-                const productoIdInput = document.createElement('input');
-                productoIdInput.type = 'hidden';
-                productoIdInput.name = 'producto_id';
-                productoIdInput.value = "{{ session('producto_id') }}";
-                form.appendChild(productoIdInput);
-
-                const ubicacionDestinoInput = document.createElement('input');
-                ubicacionDestinoInput.type = 'hidden';
-                ubicacionDestinoInput.name = 'ubicacion_destino';
-                ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
-                form.appendChild(ubicacionDestinoInput);
-
-                const maquinaIdInput = document.createElement('input');
-                maquinaIdInput.type = 'hidden';
-                maquinaIdInput.name = 'maquina_id';
-                maquinaIdInput.value = "{{ session('maquina_id') }}";
-                form.appendChild(maquinaIdInput);
-
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
+            $.ajax({
+                url: form.attr("action"),
+                type: form.attr("method"),
+                data: formData,
+                success: function(response) {
+                    if (response.status === "error") {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error",
+                            text: response.message,
+                        });
+                    } else if (response.status === "confirm") {
+                        Swal.fire({
+                            title: "¿Está seguro?",
+                            text: response.message,
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonText: "Sí, continuar",
+                            cancelButtonText: "Cancelar",
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                // Si confirma, vuelve a enviar el formulario sin preguntar
+                                $.ajax({
+                                    url: form.attr("action"),
+                                    type: form.attr("method"),
+                                    data: formData +
+                                        "&confirm=true", // Agrega un indicador de confirmación
+                                    success: function(response) {
+                                        Swal.fire({
+                                            icon: "success",
+                                            title: "Éxito",
+                                            text: "El proceso se completó correctamente.",
+                                        }).then(() => {
+                                            location
+                                                .reload(); // Recargar la página si es necesario
+                                        });
+                                    },
+                                });
+                            }
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Ocurrió un problema en el servidor.",
+                    });
+                },
+            });
+        });
     </script>
 
     <!-- Mostrar errores de validación -->
@@ -266,64 +182,6 @@
             </div>
         </div>
     </div>
-    <script>
-        $(document).on("submit", "#form-material", function(e) {
-            e.preventDefault(); // Evita el envío normal del formulario
 
-            let form = $(this);
-            let formData = form.serialize();
-
-            $.ajax({
-                url: form.attr("action"),
-                type: form.attr("method"),
-                data: formData,
-                success: function(response) {
-                    if (response.status === "error") {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error",
-                            text: response.message,
-                        });
-                    } else if (response.status === "confirm") {
-                        Swal.fire({
-                            title: "¿Está seguro?",
-                            text: response.message,
-                            icon: "warning",
-                            showCancelButton: true,
-                            confirmButtonText: "Sí, continuar",
-                            cancelButtonText: "Cancelar",
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                // Si confirma, vuelve a enviar el formulario sin preguntar
-                                $.ajax({
-                                    url: form.attr("action"),
-                                    type: form.attr("method"),
-                                    data: formData +
-                                    "&confirm=true", // Agrega un indicador de confirmación
-                                    success: function(response) {
-                                        Swal.fire({
-                                            icon: "success",
-                                            title: "Éxito",
-                                            text: "El proceso se completó correctamente.",
-                                        }).then(() => {
-                                            location
-                                        .reload(); // Recargar la página si es necesario
-                                        });
-                                    },
-                                });
-                            }
-                        });
-                    }
-                },
-                error: function() {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error",
-                        text: "Ocurrió un problema en el servidor.",
-                    });
-                },
-            });
-        });
-    </script>
 
 </x-app-layout>
