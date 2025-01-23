@@ -275,7 +275,7 @@ class ElementoController extends Controller
             } elseif ($elemento->estado == "completado") {
                 $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock', 'desc')->get();
 
-                if (!$producto) {
+                if (!$productos) {
                     return response()->json([
                         'success' => false,
                         'error' => 'No hay materia prima con el diámetro especificado.',
@@ -291,6 +291,7 @@ class ElementoController extends Controller
                     $incremento = min($pesoRestante, $prod->peso_inicial - $prod->peso_stock);
                     $prod->peso_stock += $incremento;
                     $pesoRestante -= $incremento;
+                    $prod->estado = "fabricando";
                     $prod->save();
                 }
                 $elemento->fecha_inicio = null;
@@ -314,16 +315,23 @@ class ElementoController extends Controller
 
             $elemento->save();
             DB::commit();
-
+            $productosAfectados = $productos->filter(fn($p) => $p->peso_stock != $p->peso_inicial)->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'peso_stock' => $p->peso_stock,
+                    'peso_inicial' => $p->peso_inicial
+                ];
+            });
             return response()->json([
                 'success' => true,
                 'estado' => $elemento->estado,
                 'fecha_inicio' => $fechaInicio ? $fechaInicio->format('d/m/Y H:i:s') : 'No asignada',
                 'fecha_finalizacion' => $fechaFinalizacion ? $fechaFinalizacion->format('d/m/Y H:i:s') : 'No asignada',
                 'emoji' => $emoji,
-                'peso_stock' => $producto ? $producto->peso_stock : null,
-                'peso_inicial' => $producto ? $producto->peso_inicial : null,
-                'producto_id' => $producto ? $producto->id : null
+                // ''peso_stock' => $producto ? $producto->peso_stock : null,
+                // 'peso_inicial' => $producto ? $producto->peso_inicial : null,
+                // 'producto_id' => $producto ? $producto->id : null'
+                'productos_afectados' => $productosAfectados
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

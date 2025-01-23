@@ -618,21 +618,21 @@
             if (finalElement) finalElement.textContent = data.fecha_finalizacion || "No asignada";
             if (emojiElement) emojiElement.textContent = data.emoji || ""; // Insertar el emoji
 
-            // Actualizar el texto del progreso
-            if (data.producto_id) {
-                let progresoTexto = document.getElementById(`progreso-texto-${data.producto_id}`);
-                let progresoBarra = document.getElementById(`progreso-barra-${data.producto_id}`);
+            // Actualizar todos los productos afectados
+            if (data.productos_afectados) {
+                data.productos_afectados.forEach(producto => {
+                    let progresoTexto = document.getElementById(`progreso-texto-${producto.id}`);
+                    let progresoBarra = document.getElementById(`progreso-barra-${producto.id}`);
 
-                // Actualizar el texto del peso (peso_stock / peso_inicial)
-                if (progresoTexto) {
-                    progresoTexto.textContent = `${data.peso_stock} / ${data.peso_inicial} kg`;
-                }
+                    if (progresoTexto) {
+                        progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
+                    }
 
-                // Calcular el porcentaje de progreso y actualizar la altura de la barra
-                if (progresoBarra) {
-                    let progresoPorcentaje = (data.peso_stock / data.peso_inicial) * 100;
-                    progresoBarra.style.height = `${progresoPorcentaje}%`;
-                }
+                    if (progresoBarra) {
+                        let progresoPorcentaje = (producto.peso_stock / producto.peso_inicial) * 100;
+                        progresoBarra.style.height = `${progresoPorcentaje}%`;
+                    }
+                });
             }
         }
     </script>
