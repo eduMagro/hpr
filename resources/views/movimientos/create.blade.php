@@ -34,22 +34,22 @@
                             cancelButtonText: "Cancelar",
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                // Si confirma, vuelve a enviar el formulario sin preguntar
                                 $.ajax({
                                     url: form.attr("action"),
                                     type: form.attr("method"),
-                                    data: formData +
-                                        "&confirm=true", // Agrega un indicador de confirmación
+                                    data: formData + "&confirm=true",
                                     success: function(response) {
-                                        Swal.fire({
-                                            icon: "success",
-                                            title: "Éxito",
-                                            text: "El proceso se completó correctamente.",
-                                        }).then(() => {
-                                            location
-                                                .reload(); // Recargar la página si es necesario
-                                        });
-                                    },
+                                        if (response.status === "success") {
+                                            Swal.fire({
+                                                icon: "success",
+                                                title: "Éxito",
+                                                text: response.message,
+                                            }).then(() => {
+                                                window.location.href =
+                                                    "/movimientos"; // Redirige manualmente
+                                            });
+                                        }
+                                    }
                                 });
                             }
                         });
@@ -63,6 +63,7 @@
                     });
                 },
             });
+
         });
     </script>
 
