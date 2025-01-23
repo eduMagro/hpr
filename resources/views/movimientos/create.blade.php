@@ -5,16 +5,7 @@
         </h2>
     </x-slot>
 
-    @if (session('error'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: '¡Error!',
-                text: "{{ session('error') }}",
-                confirmButtonText: 'Aceptar'
-            });
-        </script>
-    @endif
+
     <script>
         $(document).on("submit", "#form-material", function(e) {
             e.preventDefault(); // Evita el envío normal del formulario
@@ -75,45 +66,19 @@
         });
     </script>
 
-    <!-- Mostrar errores de validación -->
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    <!-- Mostrar mensajes de éxito o error -->
     @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: '¡Error!',
+                text: "{{ session('error') }}",
+                confirmButtonText: 'Aceptar'
+            });
+        </script>
     @endif
     @if (session('success'))
         <div class="alert alert-success">
             {{ session('success') }}
-        </div>
-    @endif
-
-    @if (session('confirm'))
-        <div id="customConfirm" class="overlay" style="display: flex;">
-            <div class="dialog">
-                <p>{{ session('confirm') }}</p>
-                <button class="accept" onclick="handleConfirm(true)">Aceptar</button>
-                <button class="cancel" onclick="handleConfirm(false)">Cancelar</button>
-            </div>
-        </div>
-    @endif
-
-    @if (session('confirm_consumo'))
-        <div id="customConfirmConsumo" class="overlay" style="display: flex;">
-            <div class="dialog">
-                <p>{{ session('confirm_consumo') }}</p>
-                <button class="accept" onclick="handleConsumo(true)">Chatarra</button>
-                <button class="accept" onclick="handleConsumo(false)">Mantenerlo en la máquina</button>
-            </div>
         </div>
     @endif
 
