@@ -54,7 +54,7 @@ Route::middleware('auth')->group(function () {
 
     //Actualizar estado de elementos
     //Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
-    Route::post('/actualizar-etiqueta/{id}', [ElementoController::class, 'actualizarElemento']);
+    Route::post('/actualizar-etiqueta/{id}', [ElementoController::class, 'actualizarEtiqueta']);
     // Para elegir un peon en maquinas
 
     // Para elegir un peon en maquinas
