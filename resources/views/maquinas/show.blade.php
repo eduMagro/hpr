@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Trabajando en Máquina') }}
+            {{ __('Trabajando en Máquina') }}: <strong>{{ $maquina->nombre }}</strong>
         </h2>
     </x-slot>
     <style>
@@ -60,58 +60,51 @@
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-7 gap-6">
             <!-- Información de la máquina -->
-            <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-20">
-                <h3 class="font-bold text-xl break-words">{{ $maquina->codigo }}</h3>
-                <p><strong>Nombre Máquina:</strong> {{ $maquina->nombre }}</p>
-                <p>
-                    <button id="generateQR" onclick="generateAndPrintQR('{{ $maquina->codigo }}')"
-                        class="btn btn-primary">QR</button>
-                </p>
-                <div id="qrCanvas" style="display:none;"></div>
-                <p><strong>Diámetros aceptados:</strong>
-                    {{ $maquina->diametro_min . ' - ' . $maquina->diametro_max }}</p>
-                <p><strong>Pesos bobinas:</strong>
-                    {{ $maquina->peso_min && $maquina->peso_max ? $maquina->peso_min . ' - ' . $maquina->peso_max : 'Barras' }}
-                </p>
+            <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
+                <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
+                    {{ $maquina->codigo }}
+                </h3>
+
 
                 <!-- Mostrar los productos en la máquina -->
-                <h4 class="mt-4 font-semibold">Productos en máquina:</h4>
+
                 @if ($maquina->productos->isEmpty())
                     <p>No hay productos en esta máquina.</p>
                 @else
-                    <ul class="list-disc pl-6 break-words">
+                    <ul class="list-none p-6 break-words">
                         @foreach ($maquina->productos as $producto)
-                            <li class="mb-2 flex items-center justify-between">
-                                <span>
-                                    <strong>Diámetro: </strong>{{ $producto->diametro_mm }}
-                                </span>
-                                @if ($producto->tipo === 'barras')
-                                    <span>
-                                        <strong>Longitud:</strong> {{ $producto->longitud_cm }}
-                                    </span>
-                                @endif
-                                <a href="{{ route('productos.show', $producto->id) }}"
-                                    class="btn btn-sm btn-primary">Ver</a>
-                                @if ($producto->tipo == 'encarretado')
-                                    <div id="progreso-container-{{ $producto->id }}"
-                                        style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
-                                        <div id="progreso-barra-{{ $producto->id }}" class="cuadro verde"
-                                            style="width: 100%; 
-                                               height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-                                               background-color: green; 
-                                               position: absolute; 
-                                               bottom: 0;">
-                                        </div>
-                                        <span id="progreso-texto-{{ $producto->id }}"
-                                            style="position: absolute; top: 10px; left: 10px; color: white;">
-                                            {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
-                                        </span>
+                            <li class="mb-1">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex flex-col">
+
+                                        <span><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</span>
+                                        @if ($producto->tipo === 'barras')
+                                            <span><strong>Longitud:</strong> {{ $producto->longitud_cm }}</span>
+                                        @endif
+                                        <a href="{{ route('productos.show', $producto->id) }}"
+                                            class="btn btn-sm btn-primary mb-2">Ver</a>
                                     </div>
-                                @endif
+
+                                    @if ($producto->tipo == 'encarretado')
+                                        <div id="progreso-container-{{ $producto->id }}"
+                                            class="ml-4 relative w-20 h-20 bg-gray-300 overflow-hidden rounded-lg">
+                                            <div id="progreso-barra-{{ $producto->id }}"
+                                                class="absolute bottom-0 w-full bg-green-500"
+                                                style="height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%;">
+                                            </div>
+                                            <span id="progreso-texto-{{ $producto->id }}"
+                                                class="absolute top-2 left-2 text-white text-xs font-semibold">
+                                                {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
+                                            </span>
+                                        </div>
+                                    @endif
+                                </div>
                             </li>
+                            <hr>
                         @endforeach
                     </ul>
                 @endif
+
             </div>
 
             <!-- Planificación para la máquina agrupada por etiquetas -->
@@ -174,7 +167,8 @@
                                         class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md mb-4">
                                         <i class="fas fa-qrcode mr-2"></i> QR
                                     </button>
-
+                                    <!-- Contenedor oculto para generar el QR -->
+                                    <div id="qrContainer" style="display: none;"></div>
                                     <p class="text-gray-500 text-sm">
                                         <strong>ID: </strong> {{ $elemento->id }} <strong> Estado: </strong><span
                                             id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
@@ -215,7 +209,7 @@
                 @endforelse
             </div>
             <!-- GRID PARA OTROS -->
-            <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-20">
+            <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <div class="flex flex-col gap-4">
                     <!-- Botón Reportar Incidencia -->
                     <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
@@ -226,17 +220,17 @@
                     <!-- Botón Realizar Chequeo de Máquina -->
                     <button onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
                         class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
-                        🛠️ Realizar Chequeo de Máquina
+                        🛠️ Chequeo de Máquina
                     </button>
                     <!-- Input de lectura de QR -->
-                    <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-1 md:sticky md:top-20">
-                        <h3 class="font-bold text-xl mb-2">PROCESO</h3>
+                    <div class="bg-white border p-2 shadow-md rounded-lg self-start sm:col-span-1 md:sticky">
+                        <h3 class="font-bold text-xl">PROCESO</h3>
                         <input type="text" id="qrInput" class="w-full border p-2 rounded"
                             placeholder="Escanea un QR..." autofocus>
                     </div>
                     <!-- Sistema de inputs para crear paquetes -->
-                    <div class="bg-gray-100 border p-4 shadow-md rounded-lg">
-                        <h3 class="font-bold text-xl mb-4">Crear Paquete</h3>
+                    <div class="bg-gray-100 border p-2 shadow-md rounded-lg">
+                        <h3 class="font-bold text-xl">Crear Paquete</h3>
 
                         <!-- Input para leer etiquetas QR -->
                         <div class="mb-4">
@@ -331,54 +325,8 @@
         </div>
     </div>
 
-    <script></script>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script>
-        function generateAndPrintQR(id, descripcion_fila) {
-            // Limpiamos el contenedor del QR
-            const qrContainer = document.getElementById('qrCanvas');
-            qrContainer.innerHTML = ""; // Elimina cualquier QR previo
-
-            // Generamos el QR con el ID
-            const qrCode = new QRCode(qrContainer, {
-                text: id.toString(),
-                width: 200,
-                height: 200,
-            });
-
-            // Esperamos hasta que el QR esté listo antes de imprimirlo
-            const interval = setInterval(() => {
-                const qrImg = qrContainer.querySelector('img');
-                if (qrImg) {
-                    clearInterval(interval); // Detenemos la espera
-
-                    // Creamos una ventana para la impresión
-                    const printWindow = window.open('', '_blank');
-                    printWindow.document.write(`
-                      <html>
-                          <head>
-                              <title>Imprimir QR</title>
-                              <style>
-                                  body { display: flex; justify-content: center; align-items: center; flex-direction: column; }
-                                  img { margin-bottom: 20px; }
-                              </style>
-                          </head>
-                          <body>
-                              <img src="${qrImg.src}" alt="Código QR" style="width:200px; height:200px;">
-                              <p>${descripcion_fila}</p>
-                              <script>
-                                  window.print();
-                                  setTimeout(() => window.close(), 1000); // Cierra la ventana después de imprimir
-                              <\/script>
-                          </body>
-                      </html>
-                  `);
-                    printWindow.document.close();
-                }
-            }, 100); // Revisamos cada 100ms si el QR está listo
-        }
-    </script>
     <script src="{{ asset('js/maquinaJS/trabajo_maquina.js') }}"></script>
     <script>
         window.etiquetasConElementos = @json($elementosAgrupadosScript);
