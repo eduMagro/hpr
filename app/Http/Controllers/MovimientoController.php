@@ -146,16 +146,11 @@ class MovimientoController extends Controller
                             DB::rollback();
                             return redirect()->route('movimientos.create')->with('error', 'El material ya esta en la máquina elegida.');
                         } elseif ($material->estado == 'fabricando') {
-                            // Si la petición es AJAX, devolver JSON para mostrar SweetAlert2
-                            if (request()->ajax()) {
-                                return response()->json([
-                                    'status' => 'confirm',
-                                    'message' => 'Aún queda material en esta máquina con ese diámetro. ¿Desea continuar?'
-                                ]);
-                            }
-
-                            // Si no es AJAX, redirigir normalmente
-                            return redirect()->route('movimientos.create')->with('error', 'Aún queda material en esta máquina.');
+                            return response()->json([
+                                'confirm' => true,
+                                'message' => 'El material está en fabricación. ¿Quieres continuar?',
+                                'producto_id' => $producto->id
+                            ]);
                         }
                     }
                 }

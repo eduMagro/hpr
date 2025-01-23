@@ -41,23 +41,6 @@
                                 <input type="text" name="producto_id" class="form-control mb-3"
                                     placeholder="Buscar por QR" value="{{ request('producto_id') }}">
 
-                                {{-- BUSCAR POR SELECT --}}
-                                {{-- <select id="producto_id" name="producto_id" class="form-control form-control-lg" required>
-                                    <option value="">Seleccione un producto</option>
-                                    @foreach ($productos as $producto)
-                                    <option value="{{ $producto->id }}">
-                                        {{ $producto->qr }} - 
-                                        (Origen: 
-                                        @if ($producto->ubicacion)
-                                            {{ $producto->ubicacion->descripcion }}
-                                        @elseif ($producto->maquina)
-                                            Máquina: {{ $producto->maquina->nombre }}
-                                        @else
-                                            Sin origen
-                                        @endif)
-                                    </option>
-                                @endforeach
-                                </select> --}}
                             </div>
 
                             <!-- Movimiento de una ubicación a otra -->
@@ -96,52 +79,47 @@
             </div>
         </div>
     </div>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
-        $(document).ready(function() {
-            $('#movimientoForm').submit(function(event) {
-                event.preventDefault(); // Evitar el envío normal del formulario
+        document.addEventListener("DOMContentLoaded", function() {
+            let form = document.getElementById('miFormulario'); // Asegúrate de poner el ID correcto del formulario
 
-                let formData = $(this).serialize(); // Serializar los datos del formulario
+            form.addEventListener("submit", function(event) {
+                event.preventDefault(); // Evita el envío inmediato
 
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: formData,
-                    success: function(response) {
-                        if (response.status === 'confirm') {
+                let formData = new FormData(form);
+
+                fetch(form.action, {
+                        method: form.method,
+                        body: formData,
+                        headers: {
+                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.confirm) {
                             Swal.fire({
-                                title: "¡Atención!",
-                                text: response.message,
-                                icon: "warning",
+                                title: 'Material en fabricación',
+                                text: data.message,
+                                icon: 'warning',
                                 showCancelButton: true,
-                                confirmButtonText: "Sí, continuar",
-                                cancelButtonText: "No, cancelar",
+                                confirmButtonText: 'Sí, continuar',
+                                cancelButtonText: 'Cancelar'
                             }).then((result) => {
                                 if (result.isConfirmed) {
-                                    // Si el usuario confirma, enviamos el formulario con un campo oculto
-                                    $('<input>').attr({
-                                        type: 'hidden',
-                                        name: 'confirmado',
-                                        value: '1'
-                                    }).appendTo('#movimientoForm');
-
-                                    $('#movimientoForm').off('submit')
-                                .submit(); // Enviar formulario sin AJAX
+                                    form
+                                .submit(); // Si el usuario confirma, enviar el formulario
                                 }
                             });
                         } else {
-                            // Redireccionar en caso de éxito normal
-                            window.location.href = "{{ route('movimientos.index') }}";
+                            form.submit();
                         }
-                    },
-                    error: function(xhr) {
-                        Swal.fire("Error", "Ocurrió un error. Intenta de nuevo.", "error");
-                    }
-                });
+                    })
+                    .catch(error => console.error('Error:', error));
             });
         });
     </script>
+
 </x-app-layout>
