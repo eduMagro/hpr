@@ -102,9 +102,9 @@
     <script>
         $(document).ready(function() {
             $('#movimientoForm').submit(function(event) {
-                event.preventDefault(); // Prevenir envío normal del formulario
+                event.preventDefault(); // Evitar el envío normal del formulario
 
-                let formData = $(this).serialize(); // Serializar datos del formulario
+                let formData = $(this).serialize(); // Serializar los datos del formulario
 
                 $.ajax({
                     url: $(this).attr('action'),
@@ -121,7 +121,7 @@
                                 cancelButtonText: "No, cancelar",
                             }).then((result) => {
                                 if (result.isConfirmed) {
-                                    // Si el usuario confirma, enviamos el formulario de nuevo pero con una marca
+                                    // Si el usuario confirma, enviamos el formulario con un campo oculto
                                     $('<input>').attr({
                                         type: 'hidden',
                                         name: 'confirmado',
@@ -144,5 +144,4 @@
             });
         });
     </script>
-
 </x-app-layout>
