@@ -9,9 +9,9 @@ document.addEventListener("DOMContentLoaded", function () {
     qrInput.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
-            let elementoId = this.value.trim();
+            let etiquetaId = this.value.trim();
 
-            if (!elementoId || isNaN(elementoId) || elementoId <= 0) {
+            if (!etiquetaId || isNaN(etiquetaId) || etiquetaId <= 0) {
                 Swal.fire({
                     icon: "error",
                     title: "Error",
@@ -20,14 +20,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            actualizarElemento(elementoId);
+            actualizarElemento(etiquetaId);
             this.value = ""; // Limpiar input tras lectura
         }
     });
 });
 
 async function actualizarElemento(id) {
-    let url = `/actualizar-elemento/${id}`;
+    let url = `/actualizar-etiqueta/${id}`;
 
     try {
         let response = await fetch(url, {
@@ -72,20 +72,20 @@ async function actualizarElemento(id) {
 }
 
 function actualizarDOM(id, data) {
-    let estadoElement = document.getElementById(`estado-${id}`);
-    let inicioElement = document.getElementById(`inicio-${id}`);
-    let finalElement = document.getElementById(`final-${id}`);
-    let emojiElement = document.getElementById(`emoji-${id}`);
-    let pesoStockElement = document.getElementById(
+    let estadoEtiqueta = document.getElementById(`estado-${id}`);
+    let inicioEtiqueta = document.getElementById(`inicio-${id}`);
+    let finalEtiqueta = document.getElementById(`final-${id}`);
+    let emojiEtiqueta = document.getElementById(`emoji-${id}`);
+    let pesoStockProducto = document.getElementById(
         `peso-stock-${data.producto_id}`
     );
 
-    if (estadoElement) estadoElement.textContent = data.estado;
-    if (inicioElement)
-        inicioElement.textContent = data.fecha_inicio || "No asignada";
-    if (finalElement)
-        finalElement.textContent = data.fecha_finalizacion || "No asignada";
-    if (emojiElement) emojiElement.textContent = data.emoji || ""; // Insertar el emoji
+    if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
+    if (inicioEtiqueta)
+        inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
+    if (finalEtiqueta)
+        finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
+    if (emojiEtiqueta) emojiEtiqueta.textContent = data.emoji || ""; // Insertar el emoji
     // Si no hay productos afectados, forzar recarga completa
     if (!data.productos_afectados || data.productos_afectados.length === 0) {
         setTimeout(() => location.reload(), 250); // Retraso para evitar bloqueos
