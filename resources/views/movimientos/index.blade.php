@@ -39,8 +39,8 @@
 
             <input type="text" name="producto_id" class="form-control mb-3" placeholder="Buscar por QR de producto"
                 value="{{ request('producto_id') }}">
-			<input type="text" name="nombre_usuario" class="form-control mb-3" placeholder="Buscar por nombre de usuario"
-                value="{{ request('nombre_usuario') }}">
+            <input type="text" name="nombre_usuario" class="form-control mb-3"
+                placeholder="Buscar por nombre de usuario" value="{{ request('nombre_usuario') }}">
 
             <button type="submit" class="btn btn-info ml-2">
                 <i class="fas fa-search"></i> Buscar
@@ -164,4 +164,47 @@
             }, 500); // Tiempo suficiente para generar el QR
         }
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let form = document.getElementById('miFormulario'); // Asegúrate de poner el ID correcto del formulario
+
+            form.addEventListener("submit", function(event) {
+                event.preventDefault(); // Evita el envío inmediato
+
+                let formData = new FormData(form);
+
+                fetch(form.action, {
+                        method: form.method,
+                        body: formData,
+                        headers: {
+                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.confirm) {
+                            Swal.fire({
+                                title: 'Material en fabricación',
+                                text: data.message,
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: 'Sí, continuar',
+                                cancelButtonText: 'Cancelar'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    form
+                                        .submit(); // Si el usuario confirma, enviar el formulario
+                                }
+                            });
+                        } else {
+                            form.submit();
+                        }
+                    })
+                    .catch(error => console.error('Error:', error));
+            });
+        });
+    </script>
+
 </x-app-layout>
