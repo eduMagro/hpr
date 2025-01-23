@@ -165,6 +165,7 @@
                                 id="final-{{ $etiqueta->id }}">{{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}</span>
                             <span id="emoji-{{ $etiqueta->id }}"></span>
                         </p>
+                        <strong> Estado: </strong><span id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
                         <!-- GRID PARA ELEMENTOS -->
                         <div class="grid grid-cols-1 gap-4">
                             @foreach ($elementos as $elemento)
@@ -173,8 +174,7 @@
                                     {{ $loop->iteration }}.
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong>ID: </strong> {{ $elemento->id }} <strong> Estado: </strong><span
-                                            id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
+                                        <strong>ID: </strong> {{ $elemento->id }}
                                     </p>
 
 
