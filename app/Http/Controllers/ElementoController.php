@@ -117,6 +117,14 @@ class ElementoController extends Controller
 
         try {
             $etiqueta = Etiqueta::with('elementos')->findOrFail($id);
+            $maquina = $etiqueta->elemento->maquina;
+
+            if (!$maquina) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'La máquina asociada al elemento no existe.',
+                ], 404);
+            }
 
             $productos = collect(); // Inicializa la colección vacía para evitar el error
 
@@ -124,7 +132,7 @@ class ElementoController extends Controller
             if ($etiqueta->estado == "pendiente") {
                 $etiqueta->estado = "fabricando";
                 $etiqueta->fecha_inicio = now();
-                $etiqueta->users_id = Auth::id();
+                $etiqueta->users_id_1 = Auth::id();
                 $etiqueta->users_id_2 = session()->get('compañero_id', null);
                 $primerProducto = null;
                 $segundoProducto = null;
@@ -203,7 +211,7 @@ class ElementoController extends Controller
                 $etiqueta->fecha_inicio = null;
                 $etiqueta->fecha_finalizacion = null;
                 $etiqueta->estado = "pendiente";
-                $etiqueta->users_id = null;
+                $etiqueta->users_id_1 = null;
                 $etiqueta->users_id_2 = null;
                 $etiqueta->producto_id = null;
                 $etiqueta->producto_id_2 = null;
