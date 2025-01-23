@@ -198,8 +198,9 @@ class ElementoController extends Controller
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->estado = 'completado';
     
-                $etiqueta->producto_id = $productosConsumidos[0]->id ?? null;
-                $etiqueta->producto_id_2 = $productosConsumidos[1]->id ?? null;
+                $etiqueta->producto_id = isset($productosConsumidos[0]) ? $productosConsumidos[0]->id : null;
+                $etiqueta->producto_id_2 = isset($productosConsumidos[1]) ? $productosConsumidos[1]->id : null;
+                
                 $etiqueta->save(); // ✅ Guardamos cambios
     
             } elseif ($etiqueta->estado == "completado") {
@@ -243,19 +244,25 @@ class ElementoController extends Controller
             }
     
             DB::commit();
-    // ✅ Verificar que los productos existen antes de agregarlos a la lista de productos afectados
+            $productosAfectados = [];
 
-            // ✅ **Aquí colocamos el código para enviar `productos_afectados` correctamente**
-            $productosAfectados = collect([$producto1, $producto2])
-            ->filter(fn($p) => !is_null($p)) // ✅ Filtra valores null antes de acceder a sus propiedades
-            ->map(fn($p) => [
-                'id' => $p->id,
-                'peso_stock' => $p->peso_stock,
-                'peso_inicial' => $p->peso_inicial
-            ])
-            ->values()
-            ->all();
-        
+            if ($producto1) {
+                $productosAfectados[] = [
+                    'id' => $producto1->id,
+                    'peso_stock' => $producto1->peso_stock,
+                    'peso_inicial' => $producto1->peso_inicial
+                ];
+            }
+            
+            if ($producto2) {
+                $productosAfectados[] = [
+                    'id' => $producto2->id,
+                    'peso_stock' => $producto2->peso_stock,
+                    'peso_inicial' => $producto2->peso_inicial
+                ];
+            }
+            
+            
                 return response()->json([
                     'success' => true,
                     'estado' => $etiqueta->estado,
@@ -263,24 +270,7 @@ class ElementoController extends Controller
                     'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
                     'productos_afectados' => $productosAfectados
                 ]);
-                $productosAfectados = [];
-
-if ($producto1 && $producto1->id) {
-    $productosAfectados[] = [
-        'id' => $producto1->id,
-        'peso_stock' => $producto1->peso_stock,
-        'peso_inicial' => $producto1->peso_inicial
-    ];
-}
-
-if ($producto2 && $producto2->id) {
-    $productosAfectados[] = [
-        'id' => $producto2->id,
-        'peso_stock' => $producto2->peso_stock,
-        'peso_inicial' => $producto2->peso_inicial
-    ];
-}
-
+                
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
