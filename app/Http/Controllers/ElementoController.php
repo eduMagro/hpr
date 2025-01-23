@@ -137,6 +137,8 @@ class ElementoController extends Controller
     
             $productos = collect(); // Inicializa la colección vacía
             $productosConsumidos = []; // Inicializa la lista de productos consumidos
+            $producto1 = null;
+            $producto2 = null; // ✅ Ahora están inicializados siempre
     
             if ($etiqueta->estado == "pendiente") {
                 $etiqueta->estado = "fabricando";
@@ -254,8 +256,9 @@ class ElementoController extends Controller
             $etiqueta->save();
             DB::commit();
     
+            // ✅ Evitar error si $producto1 o $producto2 son null
             $productosAfectados = collect([$producto1, $producto2])
-                ->filter()
+                ->filter() // Elimina valores nulos
                 ->map(fn($p) => [
                     'id' => $p->id,
                     'peso_stock' => $p->peso_stock,
