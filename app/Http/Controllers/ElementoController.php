@@ -228,13 +228,9 @@ class ElementoController extends Controller
                 $elemento->fecha_inicio = now();
                 $elemento->users_id = Auth::id();
 
-                if (session()->has('compañero_id')) {
-                    $elemento->users_id_2 = session()->get('compañero_id');
-                } else {
-                    $elemento->users_id_2 = null;
-                }
+                $elemento->users_id_2 = session()->get('compañero_id', null);
             } elseif ($elemento->estado == "fabricando") {
-                $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get());
+                $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock')->get());
 
                 if ($productos->isEmpty()) {
                     return response()->json([
@@ -255,17 +251,21 @@ class ElementoController extends Controller
                     if ($pesoDisponible > 0) {
                         $resta = min($pesoDisponible, $pesoRequerido);
                         $prod->peso_stock -= $resta;
+
+                        if ($prod->peso_stock == 0) {
+                            $prod->estado = "consumido";
+                        }
+
                         $prod->save();
                         $pesoRequerido -= $resta;
+                        $producto = $prod; // Último producto del que se tomó material
                     }
-
-                    $producto = $prod;
                 }
 
                 if ($pesoRequerido > 0) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'No hay suficiente materia prima.',
+                        'error' => 'No hay suficiente materia prima. Avisa al gruista',
                     ], 400);
                 }
 
@@ -273,7 +273,7 @@ class ElementoController extends Controller
                 $elemento->estado = 'completado';
                 $elemento->producto_id = $producto->id ?? null;
             } elseif ($elemento->estado == "completado") {
-                $producto = $maquina->productos()->where('diametro', $elemento->diametro)->first();
+                $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock', 'desc')->get();
 
                 if (!$producto) {
                     return response()->json([
@@ -282,9 +282,17 @@ class ElementoController extends Controller
                     ], 400);
                 }
 
-                $producto->peso_stock += $elemento->peso;
-                $producto->save();
+                $pesoRestante = $elemento->peso;
 
+                foreach ($productos as $prod) {
+                    if ($pesoRestante <= 0) {
+                        break;
+                    }
+                    $incremento = min($pesoRestante, $prod->peso_inicial - $prod->peso_stock);
+                    $prod->peso_stock += $incremento;
+                    $pesoRestante -= $incremento;
+                    $prod->save();
+                }
                 $elemento->fecha_inicio = null;
                 $elemento->fecha_finalizacion = null;
                 $elemento->estado = "pendiente";
