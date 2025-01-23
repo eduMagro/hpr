@@ -5,7 +5,16 @@
         </h2>
     </x-slot>
 
-
+    @if (session('error'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: '¡Error!',
+                text: "{{ session('error') }}",
+                confirmButtonText: 'Aceptar'
+            });
+        </script>
+    @endif
     <script>
         $(document).on("submit", "#form-material", function(e) {
             e.preventDefault(); // Evita el envío normal del formulario

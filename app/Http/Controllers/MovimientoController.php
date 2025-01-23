@@ -144,10 +144,7 @@ class MovimientoController extends Controller
                     foreach ($materialesEnMaquina as $material) {
                         if ($material->id == $producto->id) {
                             DB::rollback();
-                            return response()->json([
-                                'status' => 'error',
-                                'message' => 'El material ya está en la máquina.'
-                            ]);
+                            return redirect()->route('movimientos.create')->with('error', 'El material ya esta en la máquina elegida.');
                         } elseif ($material->estado == 'fabricando') {
                             return response()->json([
                                 'status' => 'confirm',
