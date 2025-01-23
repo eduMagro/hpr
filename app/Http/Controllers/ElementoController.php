@@ -116,7 +116,7 @@ class ElementoController extends Controller
         DB::beginTransaction();
 
         try {
-            $etiqueta = Etiqueta::with('elementos'->findOrFail($id);
+            $etiqueta = Etiqueta::with('elementos')->findOrFail($id);
 
             $productos = collect(); // Inicializa la colección vacía para evitar el error
 
