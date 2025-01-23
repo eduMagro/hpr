@@ -6,67 +6,6 @@
     </x-slot>
 
 
-    <script>
-        $(document).on("submit", "#form-material", function(e) {
-            e.preventDefault(); // Evita el envío normal del formulario
-
-            let form = $(this);
-            let formData = form.serialize();
-
-            $.ajax({
-                url: form.attr("action"),
-                type: form.attr("method"),
-                data: formData,
-                success: function(response) {
-                    if (response.status === "error") {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error",
-                            text: response.message,
-                        });
-                    } else if (response.status === "confirm") {
-                        Swal.fire({
-                            title: "¿Está seguro?",
-                            text: response.message,
-                            icon: "warning",
-                            showCancelButton: true,
-                            confirmButtonText: "Sí, continuar",
-                            cancelButtonText: "Cancelar",
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                $.ajax({
-                                    url: form.attr("action"),
-                                    type: form.attr("method"),
-                                    data: formData + "&confirm=true",
-                                    success: function(response) {
-                                        if (response.status === "success") {
-                                            Swal.fire({
-                                                icon: "success",
-                                                title: "Éxito",
-                                                text: response.message,
-                                            }).then(() => {
-                                                window.location.href =
-                                                    "/movimientos"; // Redirige manualmente
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    }
-                },
-                error: function() {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error",
-                        text: "Ocurrió un problema en el servidor.",
-                    });
-                },
-            });
-
-        });
-    </script>
-
     @if (session('error'))
         <script>
             Swal.fire({
@@ -158,5 +97,52 @@
         </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#movimientoForm').submit(function(event) {
+                event.preventDefault(); // Prevenir envío normal del formulario
+
+                let formData = $(this).serialize(); // Serializar datos del formulario
+
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.status === 'confirm') {
+                            Swal.fire({
+                                title: "¡Atención!",
+                                text: response.message,
+                                icon: "warning",
+                                showCancelButton: true,
+                                confirmButtonText: "Sí, continuar",
+                                cancelButtonText: "No, cancelar",
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Si el usuario confirma, enviamos el formulario de nuevo pero con una marca
+                                    $('<input>').attr({
+                                        type: 'hidden',
+                                        name: 'confirmado',
+                                        value: '1'
+                                    }).appendTo('#movimientoForm');
+
+                                    $('#movimientoForm').off('submit')
+                                .submit(); // Enviar formulario sin AJAX
+                                }
+                            });
+                        } else {
+                            // Redireccionar en caso de éxito normal
+                            window.location.href = "{{ route('movimientos.index') }}";
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.fire("Error", "Ocurrió un error. Intenta de nuevo.", "error");
+                    }
+                });
+            });
+        });
+    </script>
 
 </x-app-layout>
