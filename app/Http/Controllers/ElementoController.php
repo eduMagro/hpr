@@ -221,7 +221,8 @@ class ElementoController extends Controller
                 ], 404);
             }
 
-            $producto = null;
+            $productos = collect(); // Inicializa la colección vacía para evitar el error
+
 
             if ($elemento->estado == "pendiente") {
                 $elemento->estado = "fabricando";
@@ -273,9 +274,9 @@ class ElementoController extends Controller
                 $elemento->estado = 'completado';
                 $elemento->producto_id = $producto->id ?? null;
             } elseif ($elemento->estado == "completado") {
-                $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock', 'desc')->get();
+                $productos = collect($maquina->productos()->where('diametro', $elemento->diametro)->orderBy('peso_stock', 'desc')->get());
 
-                if (!$productos) {
+                if ($productos->isEmpty()) {
                     return response()->json([
                         'success' => false,
                         'error' => 'No hay materia prima con el diámetro especificado.',
@@ -315,13 +316,17 @@ class ElementoController extends Controller
 
             $elemento->save();
             DB::commit();
-            $productosAfectados = $productos->filter(fn($p) => $p->peso_stock != $p->peso_inicial)->map(function ($p) {
-                return [
-                    'id' => $p->id,
-                    'peso_stock' => $p->peso_stock,
-                    'peso_inicial' => $p->peso_inicial
-                ];
-            });
+
+            $productosAfectados = $productos
+                ? $productos->filter(fn($p) => $p->peso_stock != $p->peso_inicial)->map(function ($p) {
+                    return [
+                        'id' => $p->id,
+                        'peso_stock' => $p->peso_stock,
+                        'peso_inicial' => $p->peso_inicial
+                    ];
+                })->values()->all() // Esto devuelve un array en lugar de una colección
+                : [];
+
             return response()->json([
                 'success' => true,
                 'estado' => $elemento->estado,
