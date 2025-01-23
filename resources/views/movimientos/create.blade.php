@@ -6,149 +6,149 @@
     </x-slot>
 
 
-<script>
-    function handleConfirm(confirmed) {
-        document.getElementById('customConfirm').style.display = 'none';
-        if (confirmed) {
-            // Crear y enviar el formulario para confirmar la acción
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = "{{ route('movimientos.store') }}";
+    <script>
+        function handleConfirm(confirmed) {
+            document.getElementById('customConfirm').style.display = 'none';
+            if (confirmed) {
+                // Crear y enviar el formulario para confirmar la acción
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ route('movimientos.store') }}";
 
-            // CSRF Token
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = "{{ csrf_token() }}";
-            form.appendChild(csrfInput);
+                // CSRF Token
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = "{{ csrf_token() }}";
+                form.appendChild(csrfInput);
 
-            // Campos necesarios
-            const confirmarInput = document.createElement('input');
-            confirmarInput.type = 'hidden';
-            confirmarInput.name = 'confirmar';
-            confirmarInput.value = true;
-            form.appendChild(confirmarInput);
+                // Campos necesarios
+                const confirmarInput = document.createElement('input');
+                confirmarInput.type = 'hidden';
+                confirmarInput.name = 'confirmar';
+                confirmarInput.value = true;
+                form.appendChild(confirmarInput);
 
-            const productoIdInput = document.createElement('input');
-            productoIdInput.type = 'hidden';
-            productoIdInput.name = 'producto_id';
-            productoIdInput.value = "{{ session('producto_id') }}";
-            form.appendChild(productoIdInput);
+                const productoIdInput = document.createElement('input');
+                productoIdInput.type = 'hidden';
+                productoIdInput.name = 'producto_id';
+                productoIdInput.value = "{{ session('producto_id') }}";
+                form.appendChild(productoIdInput);
 
-            const ubicacionDestinoInput = document.createElement('input');
-            ubicacionDestinoInput.type = 'hidden';
-            ubicacionDestinoInput.name = 'ubicacion_destino';
-            ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
-            form.appendChild(ubicacionDestinoInput);
+                const ubicacionDestinoInput = document.createElement('input');
+                ubicacionDestinoInput.type = 'hidden';
+                ubicacionDestinoInput.name = 'ubicacion_destino';
+                ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
+                form.appendChild(ubicacionDestinoInput);
 
-            const maquinaIdInput = document.createElement('input');
-            maquinaIdInput.type = 'hidden';
-            maquinaIdInput.name = 'maquina_id';
-            maquinaIdInput.value = "{{ session('maquina_id') }}";
-            form.appendChild(maquinaIdInput);
+                const maquinaIdInput = document.createElement('input');
+                maquinaIdInput.type = 'hidden';
+                maquinaIdInput.name = 'maquina_id';
+                maquinaIdInput.value = "{{ session('maquina_id') }}";
+                form.appendChild(maquinaIdInput);
 
-            document.body.appendChild(form);
-            form.submit();
+                document.body.appendChild(form);
+                form.submit();
+            }
         }
-    }
 
-    function handleConsumo(confirmed) {
-        document.getElementById('customConfirmConsumo').style.display = 'none';
-   if (confirmed) {
-            // Crear y enviar el formulario para confirmar el consumo
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = "{{ route('movimientos.store') }}";
+        function handleConsumo(confirmed) {
+            document.getElementById('customConfirmConsumo').style.display = 'none';
+            if (confirmed) {
+                // Crear y enviar el formulario para confirmar el consumo
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ route('movimientos.store') }}";
 
-            // CSRF Token
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = "{{ csrf_token() }}";
-            form.appendChild(csrfInput);
+                // CSRF Token
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = "{{ csrf_token() }}";
+                form.appendChild(csrfInput);
 
-            // Campos necesarios
-            const confirmarInput = document.createElement('input');
-            confirmarInput.type = 'hidden';
-            confirmarInput.name = 'confirmar';
-            confirmarInput.value = true;
-            form.appendChild(confirmarInput);
+                // Campos necesarios
+                const confirmarInput = document.createElement('input');
+                confirmarInput.type = 'hidden';
+                confirmarInput.name = 'confirmar';
+                confirmarInput.value = true;
+                form.appendChild(confirmarInput);
 
-            const confirmarConsumoInput = document.createElement('input');
-            confirmarConsumoInput.type = 'hidden';
-            confirmarConsumoInput.name = 'confirmar_consumo';
-            confirmarConsumoInput.value = 1;
-            form.appendChild(confirmarConsumoInput);
+                const confirmarConsumoInput = document.createElement('input');
+                confirmarConsumoInput.type = 'hidden';
+                confirmarConsumoInput.name = 'confirmar_consumo';
+                confirmarConsumoInput.value = 1;
+                form.appendChild(confirmarConsumoInput);
 
-            const productoIdInput = document.createElement('input');
-            productoIdInput.type = 'hidden';
-            productoIdInput.name = 'producto_id';
-            productoIdInput.value = "{{ session('producto_id') }}";
-            form.appendChild(productoIdInput);
+                const productoIdInput = document.createElement('input');
+                productoIdInput.type = 'hidden';
+                productoIdInput.name = 'producto_id';
+                productoIdInput.value = "{{ session('producto_id') }}";
+                form.appendChild(productoIdInput);
 
-            const ubicacionDestinoInput = document.createElement('input');
-            ubicacionDestinoInput.type = 'hidden';
-            ubicacionDestinoInput.name = 'ubicacion_destino';
-            ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
-            form.appendChild(ubicacionDestinoInput);
+                const ubicacionDestinoInput = document.createElement('input');
+                ubicacionDestinoInput.type = 'hidden';
+                ubicacionDestinoInput.name = 'ubicacion_destino';
+                ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
+                form.appendChild(ubicacionDestinoInput);
 
-            const maquinaIdInput = document.createElement('input');
-            maquinaIdInput.type = 'hidden';
-            maquinaIdInput.name = 'maquina_id';
-            maquinaIdInput.value = "{{ session('maquina_id') }}";
-            form.appendChild(maquinaIdInput);
+                const maquinaIdInput = document.createElement('input');
+                maquinaIdInput.type = 'hidden';
+                maquinaIdInput.name = 'maquina_id';
+                maquinaIdInput.value = "{{ session('maquina_id') }}";
+                form.appendChild(maquinaIdInput);
 
-            document.body.appendChild(form);
-            form.submit();
-   		}else{
-			  // Crear y enviar el formulario para confirmar el consumo
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = "{{ route('movimientos.store') }}";
+                document.body.appendChild(form);
+                form.submit();
+            } else {
+                // Crear y enviar el formulario para confirmar el consumo
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{{ route('movimientos.store') }}";
 
-            // CSRF Token
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = "{{ csrf_token() }}";
-            form.appendChild(csrfInput);
+                // CSRF Token
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = "{{ csrf_token() }}";
+                form.appendChild(csrfInput);
 
-            // Campos necesarios
-            const confirmarInput = document.createElement('input');
-            confirmarInput.type = 'hidden';
-            confirmarInput.name = 'confirmar';
-            confirmarInput.value = true;
-            form.appendChild(confirmarInput);
+                // Campos necesarios
+                const confirmarInput = document.createElement('input');
+                confirmarInput.type = 'hidden';
+                confirmarInput.name = 'confirmar';
+                confirmarInput.value = true;
+                form.appendChild(confirmarInput);
 
-            const confirmarConsumoInput = document.createElement('input');
-            confirmarConsumoInput.type = 'hidden';
-            confirmarConsumoInput.name = 'confirmar_mantenerlo';
-            confirmarConsumoInput.value = 1;
-            form.appendChild(confirmarConsumoInput);
+                const confirmarConsumoInput = document.createElement('input');
+                confirmarConsumoInput.type = 'hidden';
+                confirmarConsumoInput.name = 'confirmar_mantenerlo';
+                confirmarConsumoInput.value = 1;
+                form.appendChild(confirmarConsumoInput);
 
-            const productoIdInput = document.createElement('input');
-            productoIdInput.type = 'hidden';
-            productoIdInput.name = 'producto_id';
-            productoIdInput.value = "{{ session('producto_id') }}";
-            form.appendChild(productoIdInput);
+                const productoIdInput = document.createElement('input');
+                productoIdInput.type = 'hidden';
+                productoIdInput.name = 'producto_id';
+                productoIdInput.value = "{{ session('producto_id') }}";
+                form.appendChild(productoIdInput);
 
-            const ubicacionDestinoInput = document.createElement('input');
-            ubicacionDestinoInput.type = 'hidden';
-            ubicacionDestinoInput.name = 'ubicacion_destino';
-            ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
-            form.appendChild(ubicacionDestinoInput);
+                const ubicacionDestinoInput = document.createElement('input');
+                ubicacionDestinoInput.type = 'hidden';
+                ubicacionDestinoInput.name = 'ubicacion_destino';
+                ubicacionDestinoInput.value = "{{ session('ubicacion_destino') }}";
+                form.appendChild(ubicacionDestinoInput);
 
-            const maquinaIdInput = document.createElement('input');
-            maquinaIdInput.type = 'hidden';
-            maquinaIdInput.name = 'maquina_id';
-            maquinaIdInput.value = "{{ session('maquina_id') }}";
-            form.appendChild(maquinaIdInput);
+                const maquinaIdInput = document.createElement('input');
+                maquinaIdInput.type = 'hidden';
+                maquinaIdInput.name = 'maquina_id';
+                maquinaIdInput.value = "{{ session('maquina_id') }}";
+                form.appendChild(maquinaIdInput);
 
-            document.body.appendChild(form);
-            form.submit();
-		}
-    }
-</script>
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    </script>
 
     <!-- Mostrar errores de validación -->
     @if ($errors->any())
@@ -172,25 +172,25 @@
         </div>
     @endif
 
-@if (session('confirm'))
-    <div id="customConfirm" class="overlay" style="display: flex;">
-        <div class="dialog">
-            <p>{{ session('confirm') }}</p>
-            <button class="accept" onclick="handleConfirm(true)">Aceptar</button>
-            <button class="cancel" onclick="handleConfirm(false)">Cancelar</button>
+    @if (session('confirm'))
+        <div id="customConfirm" class="overlay" style="display: flex;">
+            <div class="dialog">
+                <p>{{ session('confirm') }}</p>
+                <button class="accept" onclick="handleConfirm(true)">Aceptar</button>
+                <button class="cancel" onclick="handleConfirm(false)">Cancelar</button>
+            </div>
         </div>
-    </div>
-@endif
+    @endif
 
-@if (session('confirm_consumo'))
-    <div id="customConfirmConsumo" class="overlay" style="display: flex;">
-        <div class="dialog">
-            <p>{{ session('confirm_consumo') }}</p>
-            <button class="accept" onclick="handleConsumo(true)">Chatarra</button>
-            <button class="accept" onclick="handleConsumo(false)">Mantenerlo en la máquina</button>
+    @if (session('confirm_consumo'))
+        <div id="customConfirmConsumo" class="overlay" style="display: flex;">
+            <div class="dialog">
+                <p>{{ session('confirm_consumo') }}</p>
+                <button class="accept" onclick="handleConsumo(true)">Chatarra</button>
+                <button class="accept" onclick="handleConsumo(false)">Mantenerlo en la máquina</button>
+            </div>
         </div>
-    </div>
-@endif
+    @endif
 
     <div class="container mt-5">
         <div class="row justify-content-center">
@@ -202,14 +202,14 @@
                     <div class="card-body">
                         <form action="{{ route('movimientos.store') }}" method="POST">
                             @csrf
-    
+
                             <!-- Seleccionar Producto -->
                             <div class="form-group mb-4">
                                 <label for="producto_id" class="form-label fw-bold">Producto</label>
 
                                 {{-- BUSCAR POR QR --}}
-                                <input type="text" name="producto_id" class="form-control mb-3" placeholder="Buscar por QR"
-                                value="{{ request('producto_id') }}">
+                                <input type="text" name="producto_id" class="form-control mb-3"
+                                    placeholder="Buscar por QR" value="{{ request('producto_id') }}">
 
                                 {{-- BUSCAR POR SELECT --}}
                                 {{-- <select id="producto_id" name="producto_id" class="form-control form-control-lg" required>
@@ -229,18 +229,19 @@
                                 @endforeach
                                 </select> --}}
                             </div>
-    
+
                             <!-- Movimiento de una ubicación a otra -->
                             <div class="form-group mb-4">
                                 <label for="ubicacion_destino" class="form-label fw-bold">Ubicación Destino</label>
-                                <select id="ubicacion_destino" name="ubicacion_destino" class="form-control form-control-lg">
+                                <select id="ubicacion_destino" name="ubicacion_destino"
+                                    class="form-control form-control-lg">
                                     <option selected value="">Seleccione una nueva ubicación</option>
                                     @foreach ($ubicaciones as $ubicacion)
                                         <option value="{{ $ubicacion->id }}">{{ $ubicacion->descripcion }}</option>
                                     @endforeach
                                 </select>
                             </div>
-    
+
                             <!-- Movimiento hacia una máquina -->
                             <div class="form-group mb-4">
                                 <label for="maquina_id" class="form-label fw-bold">Máquina Destino</label>
@@ -251,7 +252,7 @@
                                     @endforeach
                                 </select>
                             </div>
-    
+
                             <!-- Botón para enviar -->
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-success btn-lg">Registrar Movimiento</button>
@@ -265,6 +266,51 @@
             </div>
         </div>
     </div>
-    
-    
+    <script>
+        document.getElementById("form-material").addEventListener("submit", function(e) {
+            e.preventDefault(); // Evita el envío automático del formulario
+
+            let form = this;
+            let formData = new FormData(form);
+
+            fetch(form.action, {
+                    method: form.method,
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "error") {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error",
+                            text: data.message,
+                        });
+                    } else if (data.status === "confirm") {
+                        Swal.fire({
+                            title: "¿Está seguro?",
+                            text: data.message,
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonText: "Sí, continuar",
+                            cancelButtonText: "Cancelar",
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                form.submit(); // Ahora sí se envía el formulario
+                            }
+                        });
+                    } else {
+                        form.submit(); // Si no hay problema, el formulario se envía normalmente
+                    }
+                })
+                .catch(error => {
+                    console.error("Error en la petición:", error);
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Hubo un problema al procesar la solicitud.",
+                    });
+                });
+        });
+    </script>
+
 </x-app-layout>

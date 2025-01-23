@@ -143,16 +143,21 @@ public function store(Request $request)
 				
                 if (!$materialesEnMaquina->isEmpty()) {
                     foreach ($materialesEnMaquina as $material) {
-						if($material->id == $producto->id){
-							DB::rollback();
-						 return back()->with('error', 'El material ya está en la máquina.');
-						}elseif($material->estado == 'fabricando'){
-							DB::rollback();
-						 return back()->with('error', 'Aun queda material en esta máquina con ese diámetro.');
-						}
-                      
-                      
+                        if ($material->id == $producto->id) {
+                            DB::rollback();
+                            return response()->json([
+                                'status' => 'error',
+                                'message' => 'El material ya está en la máquina.'
+                            ]);
+                        } elseif ($material->estado == 'fabricando') {
+                            return response()->json([
+                                'status' => 'confirm',
+                                'message' => 'Aún queda material en esta máquina con ese diámetro. ¿Desea continuar?'
+                            ]);
+                        }
                     }
+                }
+                
 
                     // Si no hay errores, proceder a marcar los productos como consumidos
                 
