@@ -108,6 +108,11 @@
                                     cancelButtonText: "No, cancelar"
                                 }).then((result) => {
                                     if (result.isConfirmed) {
+                                        let confirmInput = document.createElement("input");
+                                        confirmInput.type = "hidden";
+                                        confirmInput.name = "confirmado";
+                                        confirmInput.value = "1";
+                                        form.appendChild(confirmInput);
                                         form
                                             .submit(); // Enviar el formulario nuevamente si confirma
                                     }
