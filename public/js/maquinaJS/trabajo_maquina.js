@@ -75,40 +75,51 @@ function actualizarDOM(id, data) {
     let estadoEtiqueta = document.getElementById(`estado-${id}`);
     let inicioEtiqueta = document.getElementById(`inicio-${id}`);
     let finalEtiqueta = document.getElementById(`final-${id}`);
-    let pesoStockProducto = document.getElementById(
-        `peso-stock-${data.producto_id}`
-    );
 
     if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
-    if (inicioEtiqueta)
-        inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
-    if (finalEtiqueta)
-        finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
-   
-    // Si no hay productos afectados, forzar recarga completa
+    if (inicioEtiqueta) inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
+    if (finalEtiqueta) finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
+
+    // ✅ Asegurar que hay productos afectados antes de actualizar el DOM
     if (!data.productos_afectados || data.productos_afectados.length === 0) {
-        setTimeout(() => location.reload(), 250); // Retraso para evitar bloqueos
+        Swal.fire({
+            icon: "info",
+            title: "Estado actualizado",
+            text: "No hubo cambios en los productos. Recargando página...",
+            timer: 2000,
+            showConfirmButton: false,
+            didClose: () => location.reload() // 🔴 Recargar tras la alerta
+        });
         return;
     }
-    // Actualizar todos los productos afectados
-    if (data.productos_afectados) {
-        data.productos_afectados.forEach((producto) => {
-            let progresoTexto = document.getElementById(
-                `progreso-texto-${producto.id}`
-            );
-            let progresoBarra = document.getElementById(
-                `progreso-barra-${producto.id}`
-            );
 
-            if (progresoTexto) {
-                progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
-            }
+    // ✅ Actualizar todos los productos afectados en el DOM
+    data.productos_afectados.forEach((producto) => {
+        let progresoTexto = document.getElementById(`progreso-texto-${producto.id}`);
+        let progresoBarra = document.getElementById(`progreso-barra-${producto.id}`);
+        let pesoStockElemento = document.getElementById(`peso-stock-${producto.id}`);
 
-            if (progresoBarra) {
-                let progresoPorcentaje =
-                    (producto.peso_stock / producto.peso_inicial) * 100;
-                progresoBarra.style.height = `${progresoPorcentaje}%`;
-            }
-        });
-    }
+        if (pesoStockElemento) {
+            pesoStockElemento.textContent = `${producto.peso_stock} kg`; // ✅ Actualiza visualmente el peso
+        }
+
+        if (progresoTexto) {
+            progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
+        }
+
+        if (progresoBarra) {
+            let progresoPorcentaje = (producto.peso_stock / producto.peso_inicial) * 100;
+            progresoBarra.style.height = `${progresoPorcentaje}%`;
+        }
+    });
+
+    // ✅ Confirmación visual de que se ha actualizado el estado
+    Swal.fire({
+        icon: "success",
+        title: "Actualización exitosa",
+        text: "Los productos han sido actualizados.",
+        timer: 1500,
+        showConfirmButton: false,
+    });
 }
+
