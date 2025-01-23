@@ -94,24 +94,30 @@ function actualizarDOM(id, data) {
     // ✅ Verificar si hay productos afectados antes de intentar actualizarlos
     if (data.productos_afectados && data.productos_afectados.length > 0) {
         data.productos_afectados.forEach((producto) => {
+            let pesoStockElemento = document.getElementById(`peso-stock-${producto.id}`);
             let progresoTexto = document.getElementById(`progreso-texto-${producto.id}`);
             let progresoBarra = document.getElementById(`progreso-barra-${producto.id}`);
-            let pesoStockElemento = document.getElementById(`peso-stock-${producto.id}`);
 
+            // ✅ Actualiza visualmente el peso en el DOM
             if (pesoStockElemento) {
-                pesoStockElemento.textContent = `${producto.peso_stock} kg`; // ✅ Actualiza visualmente el peso
+                pesoStockElemento.textContent = `${producto.peso_stock} kg`;
             }
 
+            // ✅ Actualiza el texto de progreso
             if (progresoTexto) {
                 progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
             }
 
+            // ✅ Actualiza la barra de progreso
             if (progresoBarra) {
                 let progresoPorcentaje = (producto.peso_stock / producto.peso_inicial) * 100;
                 progresoBarra.style.height = `${progresoPorcentaje}%`;
             }
         });
+    } else {
+        console.warn("No se encontraron productos afectados en la respuesta.");
     }
 }
+
 
 
