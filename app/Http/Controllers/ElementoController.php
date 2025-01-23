@@ -117,9 +117,10 @@ class ElementoController extends Controller
 
         try {
             $etiqueta = Etiqueta::with('elementos')->findOrFail($id);
-            $maquina = $etiqueta->elemento->maquina;
+            $maquina = $etiqueta->elementos->first()->maquina;
 
-            if ($maquina->isEmpty()) {
+            if (!$maquina) {
+
                 return response()->json([
                     'success' => false,
                     'error' => 'La máquina asociada al elemento no existe.',
@@ -137,7 +138,8 @@ class ElementoController extends Controller
                 $primerProducto = null;
                 $segundoProducto = null;
             } elseif ($etiqueta->estado == "fabricando") {
-                $productos = collect($maquina->productos()->where('diametro', $etiqueta->elemento->diametro)->orderBy('peso_stock')->get());
+                $productos = $maquina->productos()->where('diametro', $etiqueta->elementos->first()->diametro)->orderBy('peso_stock')->get();
+
 
                 if ($productos->isEmpty()) {
                     return response()->json([
@@ -147,6 +149,16 @@ class ElementoController extends Controller
                 }
 
                 $pesoRequerido = $etiqueta->peso;
+
+                    // ✅ Si no se requiere peso, no es necesario continuar
+                    if ($pesoRequerido <= 0) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => 'El peso requerido es 0, no es necesario consumir materia prima.',
+                        ], 400);
+                    }
+
+
                 $primerProducto = null;
                 $segundoProducto = null;
                 foreach ($productos as $prod) {
@@ -165,12 +177,7 @@ class ElementoController extends Controller
                         }
 
                         $prod->save();
-                        // Asignar el primer y segundo producto consumido
-                        if (!$primerProducto) {
-                            $primerProducto = $prod;
-                        } elseif (!$segundoProducto) {
-                            $segundoProducto = $prod;
-                        }
+                        $productosConsumidos[] = $prod; // Guardar producto consumido
                         $pesoRequerido -= $restar;
                     }
                 }
@@ -184,8 +191,9 @@ class ElementoController extends Controller
 
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->estado = 'completado';
-                $etiqueta->producto_id = $primerProducto ? $primerProducto->id : null;
-                $etiqueta->producto_id_2 = $segundoProducto ? $segundoProducto->id : null;
+                 // Asignar producto_id y producto_id_2 solo si existen productos consumidos
+    $etiqueta->producto_id = isset($productosConsumidos[0]) ? $productosConsumidos[0]->id : null;
+    $etiqueta->producto_id_2 = isset($productosConsumidos[1]) ? $productosConsumidos[1]->id : null;
             } elseif ($etiqueta->estado == "completado") {
                 $productos = collect($maquina->productos()->where('diametro', $etiqueta->elemento->diametro)->orderBy('peso_stock', 'desc')->get());
 

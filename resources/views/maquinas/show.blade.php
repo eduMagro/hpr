@@ -152,7 +152,7 @@
                             Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} ID: {{ $etiqueta->id }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
-                        <button onclick="generateAndPrintQR('{{ $etiqueta->id }}', '{{ $etiqueta->nombre }}')"
+                        <button onclick="generateAndPrintQR('{{ $etiqueta->id }}', {!! json_encode($etiqueta->nombre) !!}'"
                             class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md mb-4">
                             <i class="fas fa-qrcode mr-2"></i> QR
                         </button>
