@@ -619,7 +619,7 @@
             if (emojiElement) emojiElement.textContent = data.emoji || ""; // Insertar el emoji
             // Si no hay productos afectados, forzar recarga completa
             if (!data.productos_afectados || data.productos_afectados.length === 0) {
-                setTimeout(() => location.reload(), 500); // Retraso para evitar bloqueos
+                setTimeout(() => location.reload(), 250); // Retraso para evitar bloqueos
                 return;
             }
             // Actualizar todos los productos afectados
