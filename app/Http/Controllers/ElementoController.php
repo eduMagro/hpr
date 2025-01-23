@@ -255,13 +255,14 @@ class ElementoController extends Controller
                 ->values()
                 ->all();
     
-            return response()->json([
-                'success' => true,
-                'estado' => $etiqueta->estado,
-                'fecha_inicio' => $etiqueta->fecha_inicio ? $etiqueta->fecha_inicio->format('d/m/Y H:i:s') : 'No asignada',
-                'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? $etiqueta->fecha_finalizacion->format('d/m/Y H:i:s') : 'No asignada',
-                'productos_afectados' => $productosAfectados
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'estado' => $etiqueta->estado,
+                    'fecha_inicio' => $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
+                    'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
+                    'productos_afectados' => $productosAfectados
+                ]);
+                
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
