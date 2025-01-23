@@ -154,7 +154,7 @@ class ElementoController extends Controller
                     if ($pesoRequerido <= 0) {
                         return response()->json([
                             'success' => false,
-                            'error' => 'El peso requerido es 0, no es necesario consumir materia prima.',
+                            'error' => 'El peso de la etiqueta es 0, no es necesario consumir materia prima.',
                         ], 400);
                     }
 
@@ -196,7 +196,13 @@ class ElementoController extends Controller
     $etiqueta->producto_id_2 = isset($productosConsumidos[1]) ? $productosConsumidos[1]->id : null;
             } elseif ($etiqueta->estado == "completado") {
                 $productos = collect($maquina->productos()->where('diametro', $etiqueta->elemento->diametro)->orderBy('peso_stock', 'desc')->get());
-
+ // ✅ Verificar si hay elementos antes de acceder a `diametro`
+ $primerElemento = $etiqueta->elementos->first();
+    // Obtener productos con el mismo diámetro
+    $productos = $maquina->productos()
+        ->where('diametro', $primerElemento->diametro)
+        ->orderBy('peso_stock', 'desc')
+        ->get();
                 if ($productos->isEmpty()) {
                     return response()->json([
                         'success' => false,
