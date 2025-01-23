@@ -126,36 +126,37 @@ class MovimientoController extends Controller
             ]);
 
             $materialesEnMaquina = collect();
+            // Verificar si el usuario ya confirmó el movimiento
+            if (!$request->has('confirmado')) {  // Si no hay confirmación, verificar materiales
+                // Si el destino es una máquina, verificar materiales existentes del mismo diámetro
+                if ($request->maquina_id) {
+                    // Obtener el diámetro del producto actual
+                    $diametro = $producto->diametro;
 
-            // Si el destino es una máquina, verificar materiales existentes del mismo diámetro
-            if ($request->maquina_id) {
-                // Obtener el diámetro del producto actual
-                $diametro = $producto->diametro;
+                    // Buscar materiales en la misma máquina con el mismo diámetro
+                    $materialesEnMaquina = Producto::where('maquina_id', $request->maquina_id)
+                        ->where('diametro', $diametro)
+                        ->where('estado', '!=', 'consumido')
+                        ->get();
 
-                // Buscar materiales en la misma máquina con el mismo diámetro
-                $materialesEnMaquina = Producto::where('maquina_id', $request->maquina_id)
-                    ->where('diametro', $diametro)
-                    ->where('estado', '!=', 'consumido')
-                    ->get();
+                    //(((SOLO SI HABIA ALGO EN LA MAQUINA, ACTIVAMOS ALERTA DE PESO SI LA HAY)))
 
-                //(((SOLO SI HABIA ALGO EN LA MAQUINA, ACTIVAMOS ALERTA DE PESO SI LA HAY)))
-
-                if (!$materialesEnMaquina->isEmpty()) {
-                    foreach ($materialesEnMaquina as $material) {
-                        if ($material->id == $producto->id) {
-                            DB::rollback();
-                            return redirect()->route('movimientos.create')->with('error', 'El material ya esta en la máquina elegida.');
-                        } elseif ($material->estado == 'fabricando') {
-                            return response()->json([
-                                'confirm' => true,
-                                'message' => 'El material está en fabricación. ¿Quieres continuar?',
-                                'producto_id' => $producto->id
-                            ]);
+                    if (!$materialesEnMaquina->isEmpty()) {
+                        foreach ($materialesEnMaquina as $material) {
+                            if ($material->id == $producto->id) {
+                                DB::rollback();
+                                return redirect()->route('movimientos.create')->with('error', 'El material ya esta en la máquina elegida.');
+                            } elseif ($material->estado == 'fabricando') {
+                                return response()->json([
+                                    'confirm' => true,
+                                    'message' => 'El material está en fabricación. ¿Quieres continuar?',
+                                    'producto_id' => $producto->id
+                                ]);
+                            }
                         }
                     }
                 }
             }
-
             //(((SI NO HABIA NADA EN LA MAQUINA, EJECUTAMOS)))
 
             // Asignar ubicacion_id y maquina_id, o establecer en null si no están presentes
