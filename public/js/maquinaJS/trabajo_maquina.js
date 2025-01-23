@@ -79,29 +79,14 @@ function actualizarDOM(id, data) {
     let pesoStockProducto = document.getElementById(
         `peso-stock-${data.producto_id}`
     );
-// ✅ Mostrar alerta antes de recargar la página si no hay productos afectados
-if (!data.productos_afectados || data.productos_afectados.length === 0) {
-    Swal.fire({
-        icon: "info",
-        title: "Estado actualizado",
-        text: "No hubo cambios en los productos. Recargando la página...",
-        timer: 2000, // Tiempo antes de recargar
-        showConfirmButton: false,
-        didClose: () => location.reload() // Recargar después de la alerta
-    });
-    return;
-}
+
     if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
     if (inicioEtiqueta)
         inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
     if (finalEtiqueta)
         finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
     if (emojiEtiqueta) emojiEtiqueta.textContent = data.emoji || ""; // Insertar el emoji
-    // Si no hay productos afectados, forzar recarga completa
-    if (!data.productos_afectados || data.productos_afectados.length === 0) {
-        setTimeout(() => location.reload(), 250); // Retraso para evitar bloqueos
-        return;
-    }
+ 
     // Actualizar todos los productos afectados
     if (data.productos_afectados) {
         data.productos_afectados.forEach((producto) => {
