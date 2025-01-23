@@ -30,7 +30,7 @@
                         <h2>Crear Movimiento de Material</h2>
                     </div>
                     <div class="card-body">
-                        <form action="{{ route('movimientos.store') }}" method="POST">
+                        <form action="{{ route('movimientos.store') }}" method="POST" id="form-movimiento">
                             @csrf
 
                             <!-- Seleccionar Producto -->
@@ -109,7 +109,7 @@
                                 }).then((result) => {
                                     if (result.isConfirmed) {
                                         form
-                                    .submit(); // Enviar el formulario nuevamente si confirma
+                                            .submit(); // Enviar el formulario nuevamente si confirma
                                     }
                                 });
                             } else {
