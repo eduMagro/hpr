@@ -267,45 +267,62 @@
         </div>
     </div>
     <script>
-        document.getElementById("form-material").addEventListener("submit", function(e) {
-            e.preventDefault(); // Evita el envío tradicional del formulario
+        $(document).on("submit", "#form-material", function(e) {
+            e.preventDefault(); // Evita el envío normal del formulario
 
-            let form = this;
-            let formData = new FormData(form);
+            let form = $(this);
+            let formData = form.serialize();
 
-            fetch(form.action, {
-                    method: form.method,
-                    body: formData,
-                    headers: {
-                        "X-Requested-With": "XMLHttpRequest" // Indica que es una petición AJAX
-                    }
-                })
-                .then(response => response.json()) // Asegura que la respuesta se procese como JSON
-                .then(data => {
-                    if (data.status === "error") {
+            $.ajax({
+                url: form.attr("action"),
+                type: form.attr("method"),
+                data: formData,
+                success: function(response) {
+                    if (response.status === "error") {
                         Swal.fire({
                             icon: "error",
                             title: "Error",
-                            text: data.message
+                            text: response.message,
                         });
-                    } else if (data.status === "confirm") {
+                    } else if (response.status === "confirm") {
                         Swal.fire({
                             title: "¿Está seguro?",
-                            text: data.message,
+                            text: response.message,
                             icon: "warning",
                             showCancelButton: true,
                             confirmButtonText: "Sí, continuar",
-                            cancelButtonText: "Cancelar"
+                            cancelButtonText: "Cancelar",
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                form.submit(); // Enviar el formulario si confirma
+                                // Si confirma, vuelve a enviar el formulario sin preguntar
+                                $.ajax({
+                                    url: form.attr("action"),
+                                    type: form.attr("method"),
+                                    data: formData +
+                                    "&confirm=true", // Agrega un indicador de confirmación
+                                    success: function(response) {
+                                        Swal.fire({
+                                            icon: "success",
+                                            title: "Éxito",
+                                            text: "El proceso se completó correctamente.",
+                                        }).then(() => {
+                                            location
+                                        .reload(); // Recargar la página si es necesario
+                                        });
+                                    },
+                                });
                             }
                         });
-                    } else {
-                        location.reload(); // Si todo está bien, recargar la página
                     }
-                })
-                .catch(error => console.error("Error en la petición:", error));
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Ocurrió un problema en el servidor.",
+                    });
+                },
+            });
         });
     </script>
 

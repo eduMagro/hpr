@@ -157,6 +157,13 @@ class MovimientoController extends Controller
                     }
                 }
             }
+            if (request()->has('confirm') && request()->confirm == "true") {
+                // Lógica para continuar con el proceso
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'El material se ha agregado con éxito.'
+                ]);
+            }
 
             //(((SI NO HABIA NADA EN LA MAQUINA, EJECUTAMOS)))
 
