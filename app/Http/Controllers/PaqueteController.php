@@ -37,15 +37,15 @@ class PaqueteController extends Controller
                     'etiquetas_ocupadas' => $etiquetasOcupadas->toArray()
                 ], 400);
             }
-
-            // Obtener los elementos asociados a las etiquetas
-            $elementos = Elemento::whereIn('etiqueta_id', $request->etiquetas)->get();
+            $elementos = Elemento::whereIn('etiqueta_id', $request->etiquetas)
+                ->where('estado', 'completado')
+                ->get();
 
             if ($elementos->isEmpty()) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se encontraron elementos asociados a estas etiquetas.',
+                    'message' => 'No se encontraron elementos completados para estas etiquetas.',
                 ], 400);
             }
 
