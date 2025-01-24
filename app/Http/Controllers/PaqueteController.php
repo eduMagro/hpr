@@ -28,7 +28,7 @@ class PaqueteController extends Controller
             ]);
 
             // Buscar etiquetas existentes y asignarlas al paquete
-            $etiquetasActualizadas = Etiqueta::whereIn('nombre', $request->etiquetas)->update(['paquete_id' => $paquete->id]);
+            $etiquetasActualizadas = Etiqueta::whereIn('id', $request->etiquetas)->update(['paquete_id' => $paquete->id]);
 
             if ($etiquetasActualizadas === 0) {
                 throw new \Exception("Ninguna etiqueta encontrada. Verifique que las etiquetas existen en la base de datos.");
@@ -46,6 +46,35 @@ class PaqueteController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Buscar el paquete
+            $paquete = Paquete::findOrFail($id);
+
+            // Desasociar las etiquetas (poner `paquete_id` en NULL en lugar de eliminarlas)
+            Etiqueta::where('paquete_id', $paquete->id)->update(['paquete_id' => null]);
+
+            // Eliminar el paquete
+            $paquete->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Paquete eliminado correctamente.'
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar el paquete: ' . $e->getMessage()
             ], 500);
         }
     }

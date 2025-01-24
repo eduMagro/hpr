@@ -259,6 +259,21 @@
                         </button>
                     </div>
                 </div>
+                <form action="{{ route('paquetes.destroy') }}" method="POST" class="mb-4">
+                    @csrf
+                    @method('DELETE')
+
+                    <label for="paquete_id" class="block text-gray-700 font-semibold mb-2">ID del Paquete a
+                        Eliminar:</label>
+                    <input type="number" name="paquete_id" id="paquete_id" required
+                        class="w-full border p-2 rounded mb-2" placeholder="Ingrese ID del paquete">
+
+                    <button type="submit"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md">
+                        🗑️ Eliminar Paquete
+                    </button>
+                </form>
+
             </div>
 
             <!-- Modal Reportar Incidencia (Oculto por defecto) -->
@@ -336,9 +351,13 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+
+            document.getElementById('crearPaqueteBtn').disabled = etiquetas.length === 0;
+
+
+            // Asociar eventos a los botones
+            document.getElementById('agregarEtiquetaBtn').addEventListener('click', agregarEtiqueta);
             document.getElementById('crearPaqueteBtn').addEventListener('click', crearPaquete);
-
-
             const etiquetas = [];
 
             function agregarEtiqueta() {
@@ -408,12 +427,12 @@
                     .then(response => response.json())
                     .then(data => {
                         console.log("Respuesta del servidor:",
-                        data); // <-- Verifica si esto aparece en la consola
+                            data); // <-- Verifica si esto aparece en la consola
                         if (data.success) {
                             alert('Paquete creado con éxito. ID: ' + data.paquete_id);
                             etiquetas.length = 0;
                             document.getElementById('etiquetasList').innerHTML =
-                            ''; // Limpiar lista en el frontend
+                                ''; // Limpiar lista en el frontend
                         } else {
                             alert('Error: ' + data.message);
                         }
@@ -423,9 +442,6 @@
 
 
 
-            // Asociar eventos a los botones
-            document.getElementById('agregarEtiquetaBtn').addEventListener('click', agregarEtiqueta);
-            document.getElementById('crearPaqueteBtn').addEventListener('click', crearPaquete);
         });
     </script>
 </x-app-layout>
