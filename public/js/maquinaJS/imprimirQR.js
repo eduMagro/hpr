@@ -1,5 +1,14 @@
 function generateAndPrintQR(id, nombre) {
-    const qrContainer = document.getElementById("qrContainer");
+    const qrContainerId = `qrContainer-${id}`;
+    let qrContainer = document.getElementById(qrContainerId);
+
+    if (!qrContainer) {
+        qrContainer = document.createElement("div");
+        qrContainer.id = qrContainerId;
+        qrContainer.style.display = "none";
+        document.body.appendChild(qrContainer);
+    }
+
     qrContainer.innerHTML = ""; // Limpia cualquier QR anterior
 
     // Generamos el código QR solo con el ID

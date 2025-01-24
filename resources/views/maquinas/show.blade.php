@@ -152,21 +152,22 @@
                             Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} ID: {{ $etiqueta->id }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
-                        <button onclick="generateAndPrintQR('{{ $etiqueta->id }}', {!! json_encode($etiqueta->nombre) !!}'"
+                        <button onclick="generateAndPrintQR('{{ $etiqueta->id }}', {!! json_encode($etiqueta->nombre) !!})"
                             class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md mb-4">
                             <i class="fas fa-qrcode mr-2"></i> QR
                         </button>
                         <!-- Contenedor oculto para generar el QR -->
-                        <div id="qrContainer" style="display: none;"></div>
+                        <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
                         <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
                                 id="inicio-{{ $etiqueta->id }}">{{ $etiqueta->fecha_inicio ?? 'No asignada' }}</span><strong>
                                 Fecha
                                 Finalización:</strong> <span
                                 id="final-{{ $etiqueta->id }}">{{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}</span>
                             <span id="emoji-{{ $etiqueta->id }}"></span><br>
-                            <strong> Estado: </strong><span id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
+                            <strong> Estado: </strong><span
+                                id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
                         </p>
-                       
+
                         <!-- GRID PARA ELEMENTOS -->
                         <div class="grid grid-cols-1 gap-4">
                             @foreach ($elementos as $elemento)
