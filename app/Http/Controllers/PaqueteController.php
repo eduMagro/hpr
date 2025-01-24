@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Paquete;
 use App\Models\Etiqueta;
+use App\Models\Ubicacion;
+use App\Models\Elemento;
 use Illuminate\Support\Facades\DB;
 
 class PaqueteController extends Controller
@@ -24,22 +26,54 @@ class PaqueteController extends Controller
 
             // Verificar si alguna etiqueta ya tiene un paquete asignado
             $etiquetasOcupadas = Etiqueta::whereIn('id', $request->etiquetas)
-                ->whereNotNull('paquete_id') // Filtrar etiquetas que YA tienen un paquete
-                ->get();
+                ->whereNotNull('paquete_id')
+                ->pluck('id');
 
             if ($etiquetasOcupadas->isNotEmpty()) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Al menos una de las etiquetas ya está asignada a un paquete. Verifique los IDs.',
-                    'etiquetas_ocupadas' => $etiquetasOcupadas->pluck('id')->toArray() // Asegurar que devuelva un array real
+                    'etiquetas_ocupadas' => $etiquetasOcupadas->toArray()
                 ], 400);
             }
 
+            // Obtener los elementos asociados a las etiquetas
+            $elementos = Elemento::whereIn('etiqueta_id', $request->etiquetas)->get();
 
-            // Crear el paquete sin código, solo con timestamps y ubicación_id opcional
+            if ($elementos->isEmpty()) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron elementos asociados a estas etiquetas.',
+                ], 400);
+            }
+
+            // Obtener la máquina_id del primer elemento
+            $maquinaId = $elementos->first()->maquina_id ?? null;
+
+            if (!$maquinaId) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo determinar la máquina asociada.',
+                ], 400);
+            }
+
+            // Buscar ubicación con LIKE en la descripción usando la máquina_id
+            $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%$maquinaId%")->first();
+
+            if (!$ubicacion) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró una ubicación adecuada para la máquina.',
+                ], 400);
+            }
+
+            // Crear el paquete con la ubicación encontrada
             $paquete = Paquete::create([
-                'ubicacion_id' => $request->ubicacion_id ?? null, // Si tiene una ubicación, se asigna
+                'ubicacion_id' => $ubicacion->id,
             ]);
 
             // Asignar las etiquetas al nuevo paquete
@@ -60,6 +94,7 @@ class PaqueteController extends Controller
             ], 500);
         }
     }
+
 
     public function destroy($id)
     {
