@@ -13,8 +13,17 @@ class Etiqueta extends Model
 
     protected $fillable = [
         'planilla_id',
+        'users_id_1',
+        'users_id_2',
+        'producto_id',
+        'producto_id_2',
         'nombre',
+        'paquete_id',
         'numero_etiqueta',
+        'peso',
+        'fecha_inicio',
+        'fecha_finalizacion',
+        'estado',
     ];
 
     public function planilla()
@@ -27,4 +36,8 @@ class Etiqueta extends Model
         return $this->hasMany(Elemento::class, 'etiqueta_id', 'id');
     }
 
+    public function paquete()
+    {
+        return $this->belongsTo(Paquete::class, 'paquete_id');
+    }
 }

@@ -383,14 +383,33 @@
                 return;
             }
 
-            // Simular envío de datos al servidor
-            console.log('Creando paquete con etiquetas:', etiquetas);
-            alert('Paquete creado con éxito.');
+            const ubicacionId = document.getElementById('ubicacionInput')?.value || null; // Opcional
 
-            // Reiniciar el formulario
-            etiquetas.length = 0;
-            document.getElementById('etiquetasList').innerHTML = '';
+            fetch('/paquetes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                            'content') // Token CSRF de Laravel
+                    },
+                    body: JSON.stringify({
+                        etiquetas,
+                        ubicacion_id: ubicacionId
+                    }) // Enviamos etiquetas y ubicación opcionalmente
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Paquete creado con éxito. ID: ' + data.paquete_id);
+                        etiquetas.length = 0;
+                        document.getElementById('etiquetasList').innerHTML = ''; // Limpiar lista en el frontend
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => console.error('Error al crear el paquete:', error));
         }
+
 
         // Asociar eventos a los botones
         document.getElementById('agregarEtiquetaBtn').addEventListener('click', agregarEtiqueta);

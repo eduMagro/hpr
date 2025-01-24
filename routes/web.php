@@ -12,6 +12,7 @@ use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\PlanillaController;
 use App\Http\Controllers\ConjuntoController;
 use App\Http\Controllers\ElementoController;
+use App\Http\Controllers\PaqueteController;
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -40,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', ProfileController::class);
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);
+    Route::resource('paquetes', PaqueteController::class);
 
     Route::get('/productos/{id}/origen', [ProductoController::class, 'obtenerOrigen'])->name('productos.obtenerOrigen');
 
