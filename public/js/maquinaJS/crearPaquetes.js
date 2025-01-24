@@ -106,7 +106,7 @@ function crearPaquete() {
             } else {
                 // Si el backend envió una lista de etiquetas ocupadas, agregarlas al mensaje
                 if (data.etiquetas_ocupadas) {
-                    errorMessage += `\nEtiquetas ocupadas: ${data.etiquetas_ocupadas.join(
+                    message += `\nEtiquetas ocupadas: ${data.etiquetas_ocupadas.join(
                         ", "
                     )}`;
                 }
