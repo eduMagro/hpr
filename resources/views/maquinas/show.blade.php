@@ -259,7 +259,7 @@
                         </button>
                     </div>
                 </div>
-                <form action="{{ route('paquetes.destroy') }}" method="POST" class="mb-4">
+                <form id="deleteForm" method="POST">
                     @csrf
                     @method('DELETE')
 
@@ -269,10 +269,26 @@
                         class="w-full border p-2 rounded mb-2" placeholder="Ingrese ID del paquete">
 
                     <button type="submit"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md">
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md mt-2">
                         🗑️ Eliminar Paquete
                     </button>
                 </form>
+
+                <script>
+                    document.getElementById('deleteForm').addEventListener('submit', function(event) {
+                        event.preventDefault(); // Evita que el formulario se envíe de inmediato
+
+                        const paqueteId = document.getElementById('paquete_id').value;
+                        if (!paqueteId) {
+                            alert("Por favor, ingrese un ID válido.");
+                            return;
+                        }
+
+                        this.action = "/paquetes/" + paqueteId; // Modifica la acción con el ID
+                        this.submit(); // Envía el formulario
+                    });
+                </script>
+
 
             </div>
 
