@@ -335,84 +335,97 @@
     <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
 
     <script>
-        const etiquetas = [];
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById('crearPaqueteBtn').addEventListener('click', crearPaquete);
 
-        function agregarEtiqueta() {
-            const qrEtiqueta = document.getElementById('qrEtiqueta');
-            const etiqueta = qrEtiqueta.value.trim();
 
-            console.log("Valor escaneado:", qrEtiqueta.value); // Valor sin trim
-            console.log("Valor procesado:", etiqueta); // Valor con trim
+            const etiquetas = [];
 
-            if (!etiqueta) {
-                alert('Por favor, escanee un QR válido.');
-                return;
+            function agregarEtiqueta() {
+                const qrEtiqueta = document.getElementById('qrEtiqueta');
+                const etiqueta = qrEtiqueta.value.trim();
+
+                console.log("Valor escaneado:", qrEtiqueta.value); // Valor sin trim
+                console.log("Valor procesado:", etiqueta); // Valor con trim
+
+                if (!etiqueta) {
+                    alert('Por favor, escanee un QR válido.');
+                    return;
+                }
+
+                if (etiquetas.includes(etiqueta)) {
+                    alert('Esta etiqueta ya ha sido agregada.');
+                    qrEtiqueta.value = '';
+                    return;
+                }
+
+                etiquetas.push(etiqueta);
+
+                // Agregar la etiqueta al listado
+                const etiquetasList = document.getElementById('etiquetasList');
+                const listItem = document.createElement('li'); // Se estaba usando una variable no definida
+                listItem.textContent = etiqueta;
+
+                // Botón para eliminar la etiqueta
+                const removeButton = document.createElement('button');
+                removeButton.textContent = '❌';
+                removeButton.className = 'ml-2 text-red-600 hover:text-red-800';
+                removeButton.onclick = () => {
+                    etiquetas.splice(etiquetas.indexOf(etiqueta), 1); // Eliminar del array
+                    etiquetasList.removeChild(listItem); // Eliminar del DOM
+                };
+
+                listItem.appendChild(removeButton);
+                etiquetasList.appendChild(listItem);
+
+                qrEtiqueta.value = ''; // Limpiar el input
             }
 
-            if (etiquetas.includes(etiqueta)) {
-                alert('Esta etiqueta ya ha sido agregada.');
-                qrEtiqueta.value = '';
-                return;
+            function crearPaquete() {
+                if (etiquetas.length === 0) {
+                    alert('No hay etiquetas para crear un paquete.');
+                    return;
+                }
+
+                const ubicacionId = document.getElementById('ubicacionInput')?.value || null;
+
+                console.log("Enviando datos al servidor..."); // <-- Verifica si esta línea aparece en la consola
+                console.log("Etiquetas:", etiquetas);
+                console.log("Ubicación ID:", ubicacionId);
+
+                fetch('/paquetes', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
+                                'content')
+                        },
+                        body: JSON.stringify({
+                            etiquetas,
+                            ubicacion_id: ubicacionId
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log("Respuesta del servidor:",
+                        data); // <-- Verifica si esto aparece en la consola
+                        if (data.success) {
+                            alert('Paquete creado con éxito. ID: ' + data.paquete_id);
+                            etiquetas.length = 0;
+                            document.getElementById('etiquetasList').innerHTML =
+                            ''; // Limpiar lista en el frontend
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    })
+                    .catch(error => console.error('Error en fetch:', error));
             }
 
-            etiquetas.push(etiqueta);
-
-            // Agregar la etiqueta al listado
-            const etiquetasList = document.getElementById('etiquetasList');
-            const listItem = document.createElement('li'); // Se estaba usando una variable no definida
-            listItem.textContent = etiqueta;
-
-            // Botón para eliminar la etiqueta
-            const removeButton = document.createElement('button');
-            removeButton.textContent = '❌';
-            removeButton.className = 'ml-2 text-red-600 hover:text-red-800';
-            removeButton.onclick = () => {
-                etiquetas.splice(etiquetas.indexOf(etiqueta), 1); // Eliminar del array
-                etiquetasList.removeChild(listItem); // Eliminar del DOM
-            };
-
-            listItem.appendChild(removeButton);
-            etiquetasList.appendChild(listItem);
-
-            qrEtiqueta.value = ''; // Limpiar el input
-        }
-
-        function crearPaquete() {
-            if (etiquetas.length === 0) {
-                alert('No hay etiquetas para crear un paquete.');
-                return;
-            }
-
-            const ubicacionId = document.getElementById('ubicacionInput')?.value || null; // Opcional
-
-            fetch('/paquetes', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute(
-                            'content') // Token CSRF de Laravel
-                    },
-                    body: JSON.stringify({
-                        etiquetas,
-                        ubicacion_id: ubicacionId
-                    }) // Enviamos etiquetas y ubicación opcionalmente
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Paquete creado con éxito. ID: ' + data.paquete_id);
-                        etiquetas.length = 0;
-                        document.getElementById('etiquetasList').innerHTML = ''; // Limpiar lista en el frontend
-                    } else {
-                        alert('Error: ' + data.message);
-                    }
-                })
-                .catch(error => console.error('Error al crear el paquete:', error));
-        }
 
 
-        // Asociar eventos a los botones
-        document.getElementById('agregarEtiquetaBtn').addEventListener('click', agregarEtiqueta);
-        document.getElementById('crearPaqueteBtn').addEventListener('click', crearPaquete);
+            // Asociar eventos a los botones
+            document.getElementById('agregarEtiquetaBtn').addEventListener('click', agregarEtiqueta);
+            document.getElementById('crearPaqueteBtn').addEventListener('click', crearPaquete);
+        });
     </script>
 </x-app-layout>
