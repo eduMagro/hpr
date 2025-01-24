@@ -105,7 +105,7 @@ function crearPaquete() {
                 document.getElementById("etiquetasList").innerHTML = "";
             } else {
                 let errorMessage = data.message; // Definir la variable antes de modificarla
-
+                // 🔹 Mostrar etiquetas con paquete_id asignado
                 if (
                     data.etiquetas_ocupadas &&
                     data.etiquetas_ocupadas.length > 0
@@ -114,7 +114,18 @@ function crearPaquete() {
                         ", "
                     )}`;
                 }
-
+                // 🔹 Mostrar elementos incompletos
+                if (
+                    data.elementos_incompletos &&
+                    data.elementos_incompletos.length > 0
+                ) {
+                    errorMessage += `\n\nElementos incompletos:\n${data.elementos_incompletos
+                        .map(
+                            (el) =>
+                                `ID: ${el.id} | Etiqueta: ${el.etiqueta_id} | Estado: ${el.estado}`
+                        )
+                        .join("\n")}`;
+                }
                 Swal.fire({
                     icon: "error",
                     title: "Error",

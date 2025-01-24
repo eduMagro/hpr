@@ -37,8 +37,14 @@ class PaqueteController extends Controller
                     'etiquetas_ocupadas' => $etiquetasOcupadas->toArray()
                 ], 400);
             }
+
             $elementos = Elemento::whereIn('etiqueta_id', $request->etiquetas)
                 ->where('estado', 'completado')
+                ->get();
+
+            $elementos_incompletos = Elemento::whereIn('etiqueta_id', $request->etiquetas)
+                ->where('estado', '!=', 'completado') // Filtrar los elementos que no están completados
+                ->select('id', 'etiqueta_id', 'estado') // Seleccionar solo los campos relevantes
                 ->get();
 
             if ($elementos->isEmpty()) {
@@ -46,6 +52,7 @@ class PaqueteController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'No se encontraron elementos completados para estas etiquetas.',
+                    'elementos_incompletos' => $elementos_incompletos->toArray()
                 ], 400);
             }
 
