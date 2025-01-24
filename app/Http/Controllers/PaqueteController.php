@@ -16,23 +16,33 @@ class PaqueteController extends Controller
     {
         $request->validate([
             'etiquetas' => 'required|array|min:1', // Debe recibir un array con al menos una etiqueta
-            'etiquetas.*' => 'string|distinct' // Las etiquetas deben ser únicas dentro del array
+            'etiquetas.*' => 'integer|exists:etiquetas,id|distinct' // Asegurar que los IDs existen y son únicos
         ]);
 
         try {
             DB::beginTransaction(); // Iniciar transacción
+
+            // Verificar si alguna etiqueta ya tiene un paquete asignado
+            $etiquetasOcupadas = Etiqueta::whereIn('id', $request->etiquetas)
+                ->whereNotNull('paquete_id') // Filtrar etiquetas que YA tienen un paquete
+                ->get();
+
+            if ($etiquetasOcupadas->isNotEmpty()) {
+                DB::rollBack(); // Revertir transacción para asegurarnos de que no se crea el paquete
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Al menos una de las etiquetas ya está asignada a un paquete. Verifique los IDs.',
+                    'etiquetas_ocupadas' => $etiquetasOcupadas->pluck('id') // Enviar qué etiquetas están ocupadas
+                ], 400);
+            }
 
             // Crear el paquete sin código, solo con timestamps y ubicación_id opcional
             $paquete = Paquete::create([
                 'ubicacion_id' => $request->ubicacion_id ?? null, // Si tiene una ubicación, se asigna
             ]);
 
-            // Buscar etiquetas existentes y asignarlas al paquete
-            $etiquetasActualizadas = Etiqueta::whereIn('id', $request->etiquetas)->update(['paquete_id' => $paquete->id]);
-
-            if ($etiquetasActualizadas === 0) {
-                throw new \Exception("Ninguna etiqueta encontrada. Verifique que las etiquetas existen en la base de datos.");
-            }
+            // Asignar las etiquetas al nuevo paquete
+            Etiqueta::whereIn('id', $request->etiquetas)->update(['paquete_id' => $paquete->id]);
 
             DB::commit(); // Confirmar transacción
 
@@ -45,7 +55,7 @@ class PaqueteController extends Controller
             DB::rollBack(); // Revertir transacción en caso de error
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Error en el servidor: ' . $e->getMessage()
             ], 500);
         }
     }
