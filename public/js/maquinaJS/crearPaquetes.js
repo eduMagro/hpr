@@ -121,19 +121,6 @@ function crearPaquete() {
                     text: errorMessage,
                     confirmButtonColor: "#d33",
                 });
-
-                // Si el backend envió una lista de etiquetas ocupadas, agregarlas al mensaje
-                if (data.etiquetas_ocupadas) {
-                    message += `\nEtiquetas ocupadas: ${data.etiquetas_ocupadas.join(
-                        ", "
-                    )}`;
-                }
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: data.message,
-                    confirmButtonColor: "#d33",
-                });
             }
         })
         .catch((error) => {
@@ -148,7 +135,10 @@ function crearPaquete() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    document
-        .getElementById("crearPaqueteBtn")
-        .addEventListener("click", crearPaquete);
+    const crearPaqueteBtn = document.getElementById("crearPaqueteBtn");
+    if (crearPaqueteBtn) {
+        crearPaqueteBtn.addEventListener("click", crearPaquete);
+    } else {
+        console.error("El botón #crearPaqueteBtn no existe en el DOM.");
+    }
 });

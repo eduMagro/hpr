@@ -251,10 +251,11 @@
                         </div>
 
                         <!-- Botón para crear el paquete -->
-                        <button onclick="crearPaquete()"
+                        <button id="crearPaqueteBtn"
                             class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full">
                             📦 Crear Paquete
                         </button>
+
                     </div>
                 </div>
                 <form id="deleteForm" method="POST">
@@ -362,5 +363,5 @@
         window.etiquetasConElementos = @json($elementosAgrupadosScript);
     </script>
     <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
-    <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}"></script>
+    <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
 </x-app-layout>
