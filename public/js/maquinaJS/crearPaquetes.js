@@ -104,6 +104,24 @@ function crearPaquete() {
                 etiquetas.length = 0;
                 document.getElementById("etiquetasList").innerHTML = "";
             } else {
+                let errorMessage = data.message; // Definir la variable antes de modificarla
+
+                if (
+                    data.etiquetas_ocupadas &&
+                    data.etiquetas_ocupadas.length > 0
+                ) {
+                    errorMessage += `\nEtiquetas ocupadas: ${data.etiquetas_ocupadas.join(
+                        ", "
+                    )}`;
+                }
+
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: errorMessage,
+                    confirmButtonColor: "#d33",
+                });
+
                 // Si el backend envió una lista de etiquetas ocupadas, agregarlas al mensaje
                 if (data.etiquetas_ocupadas) {
                     message += `\nEtiquetas ocupadas: ${data.etiquetas_ocupadas.join(
@@ -130,9 +148,6 @@ function crearPaquete() {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    document
-        .getElementById("agregarEtiquetaBtn")
-        .addEventListener("click", agregarEtiqueta);
     document
         .getElementById("crearPaqueteBtn")
         .addEventListener("click", crearPaquete);

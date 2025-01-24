@@ -28,13 +28,14 @@ class PaqueteController extends Controller
                 ->get();
 
             if ($etiquetasOcupadas->isNotEmpty()) {
-                DB::rollBack(); // Revertir transacción para asegurarnos de que no se crea el paquete
+                DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'Al menos una de las etiquetas ya está asignada a un paquete. Verifique los IDs.',
-                    'etiquetas_ocupadas' => $etiquetasOcupadas->pluck('id') // Enviar qué etiquetas están ocupadas
+                    'etiquetas_ocupadas' => $etiquetasOcupadas->pluck('id')->toArray() // Asegurar que devuelva un array real
                 ], 400);
             }
+
 
             // Crear el paquete sin código, solo con timestamps y ubicación_id opcional
             $paquete = Paquete::create([
