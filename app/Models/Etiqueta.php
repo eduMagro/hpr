@@ -40,4 +40,12 @@ class Etiqueta extends Model
     {
         return $this->belongsTo(Paquete::class, 'paquete_id');
     }
+    public function getPesoKgAttribute()
+    {
+        if (!$this->peso_total) {
+            return 'No asignado';
+        }
+
+        return number_format($this->peso_total, 2, ',', '.') . ' kg';
+    }
 }
