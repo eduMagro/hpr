@@ -30,7 +30,6 @@ class Planilla extends Model
         'nom_obra',
         'seccion',
         'descripcion',
-
         'ensamblado',
         'codigo', // Asegúrate de que este campo esté aquí
         'peso_total',
@@ -131,5 +130,14 @@ class Planilla extends Model
         $segundos = $this->fecha_finalizacion % 60;
 
         return sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
+    }
+
+    public function getPesoTotalKgAttribute()
+    {
+        if (!$this->peso_total) {
+            return 'No asignado';
+        }
+
+        return number_format($this->peso_total, 2, ',', '.') . ' kg';
     }
 }
