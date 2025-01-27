@@ -191,6 +191,7 @@ class PlanillaController extends Controller
                 $planilla = Planilla::create([
                     'users_id' => auth()->id(),
                     'cod_obra' => $rows[0][2] ?? null,
+                    'cod_cliente' => $rows[0][0] ?? null,
                     'cliente' => $rows[0][1] ?? null,
                     'nom_obra' => $rows[0][3] ?? null,
                     'seccion' => $rows[0][7] ?? null,
@@ -257,7 +258,7 @@ class PlanillaController extends Controller
 
                 // Actualizar el registro de planilla con el tiempo global
                 $planilla->update([
-                    'tiempo_fabricacion' => $tiempoEstimadoGlobalMinutos ?? 'No calculado',
+                    'tiempo_fabricacion' => $planilla->elementos->sum('tiempo_fabricacion'),
                 ]);
             }
 
@@ -294,11 +295,12 @@ class PlanillaController extends Controller
 
             $validated = $request->validate([
                 'cod_obra' => 'required|string|max:255',
+                'cod_cliente' => 'required|string|max:255',
                 'cliente' => 'required|string|max:255',
                 'nom_obra' => 'required|string|max:255',
                 'seccion' => 'required|string|max:255',
                 'descripcion' => 'required|string|max:255',
-                'poblacion' => 'required|string|max:255',
+                'ensamblado' => 'required|string|max:255',
                 'codigo' => 'required|string|max:255',
                 'peso_total' => 'required|numeric|min:0',
             ]);
@@ -336,23 +338,25 @@ class PlanillaController extends Controller
 
             $request->validate([
                 'cod_obra' => 'required|string|max:255',
+                'cod_cliente' => 'required|string|max:255',
                 'cliente' => 'required|string|max:255',
                 'nom_obra' => 'required|string|max:255',
                 'seccion' => 'required|string|max:255',
                 'descripcion' => 'required|string|max:255',
-                'poblacion' => 'required|string|max:255',
+                'ensamblado' => 'required|string|max:255',
                 'codigo' => 'required|string|max:255',
                 // 'peso_total' => 'required|numeric|min:0',
             ]);
 
             // Actualizar la ubicación
             $planilla->update([
-                'cod_obra' => $request->codigo,
-                'cliente' => $request->descripcion,
+                'cod_obra' => $request->cod_obra,
+                'cod_cliente' => $request->cod_cliente,
+                'cliente' => $request->cliente,
                 'nom_obra' => $request->nom_obra,
                 'seccion' => $request->seccion,
                 'descripcion' => $request->descripcion,
-                'poblacion' => $request->poblacion,
+                'ensamblado' => $request->ensamblado,
                 'codigo' => $request->codigo,
                 // 'peso_total' => $request->peso_total,
             ]);

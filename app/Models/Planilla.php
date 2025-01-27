@@ -26,6 +26,7 @@ class Planilla extends Model
         'users_id',
 
         'cod_obra',
+        'cod_cliente',
         'cliente',
         'nom_obra',
         'seccion',
