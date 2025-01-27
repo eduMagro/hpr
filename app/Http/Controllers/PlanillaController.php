@@ -217,20 +217,24 @@ class PlanillaController extends Controller
 
                     // Verificar si la etiqueta ya existe antes de crearla
                     $numeroEtiqueta = $row[30] ?? null;
-                    // Verificar si ya registramos esta etiqueta en esta ejecución
+
                     if (!isset($etiquetasRegistradas[$numeroEtiqueta])) {
-                        // Buscar en la base de datos si existe la etiqueta
-                        $etiqueta = Etiqueta::create(
-                            [
+                        $etiqueta = Etiqueta::where('numero_etiqueta', $numeroEtiqueta)
+                            ->where('planilla_id', $planilla->id)
+                            ->first();
+
+                        if (!$etiqueta) {
+                            $etiqueta = Etiqueta::create([
                                 'numero_etiqueta' => $numeroEtiqueta,
                                 'planilla_id' => $planilla->id,
-                                'nombre' => $row[22] ?? 'Sin nombre'
-                            ]
-                        );
+                                'nombre' => $row[22] ?? 'Sin nombre',
+                                'peso' => 0 // Inicialmente en 0, lo actualizamos después
+                            ]);
+                        }
 
-                        // Marcar la etiqueta como registrada para evitar consultas repetidas
-                        $etiquetasRegistradas[$numeroEtiqueta] = $etiqueta->id;
+                        $etiquetasRegistradas[$numeroEtiqueta] = $etiqueta;
                     }
+
 
                     // Crear el registro de elemento
                     $elemento = Elemento::create([
@@ -252,12 +256,14 @@ class PlanillaController extends Controller
                         'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
                     ]);
                 }
-
-                // Actualizar el registro de planilla con el tiempo global
-                $planilla->update([
-                    'tiempo_fabricacion' => $planilla->elementos->sum('tiempo_fabricacion'),
-                ]);
+                foreach ($etiquetasRegistradas as $etiqueta) {
+                    $etiqueta->peso = $etiqueta->elementos()->sum('peso');
+                    $etiqueta->save();
+                }
             }
+            $planilla->update([
+                'tiempo_fabricacion' => $planilla->elementos->sum('tiempo_fabricacion'),
+            ]);
 
             DB::commit(); // Confirmar la transacción
             return redirect()->route('planillas.index')->with('success', 'Planillas y elementos importados correctamente por código.');
