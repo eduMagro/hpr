@@ -204,7 +204,6 @@ class PlanillaController extends Controller
                     'tiempo_fabricacion' => 0, // Inicialmente en 0, lo actualizamos después
                 ]);
 
-                $tiempoEstimadoGlobalMinutos = 0;
                 // Array para almacenar etiquetas ya registradas en esta ejecución
                 $etiquetasRegistradas = [];
                 foreach ($rows as $row) {
@@ -237,11 +236,9 @@ class PlanillaController extends Controller
                     $elemento = Elemento::create([
                         'planilla_id' => $planilla->id,
                         'etiqueta_id' => $etiqueta->id, // Relación con etiqueta
-
                         'maquina_id' => $maquina_id,
                         'figura' => $row[26],
                         'fila' => $row[21],
-
                         'marca' => $row[23],
                         'etiqueta' => $row[30],
                         'diametro' => $diametro,
@@ -256,6 +253,7 @@ class PlanillaController extends Controller
                     ]);
                 }
 
+                dd($planilla);
                 // Actualizar el registro de planilla con el tiempo global
                 $planilla->update([
                     'tiempo_fabricacion' => $planilla->elementos->sum('tiempo_fabricacion'),
@@ -263,7 +261,6 @@ class PlanillaController extends Controller
             }
 
             DB::commit(); // Confirmar la transacción
-
             return redirect()->route('planillas.index')->with('success', 'Planillas y elementos importados correctamente por código.');
         } catch (Exception $e) {
             DB::rollBack(); // Revertir cambios en caso de error
