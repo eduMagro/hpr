@@ -253,7 +253,6 @@ class PlanillaController extends Controller
                     ]);
                 }
 
-                dd($planilla);
                 // Actualizar el registro de planilla con el tiempo global
                 $planilla->update([
                     'tiempo_fabricacion' => $planilla->elementos->sum('tiempo_fabricacion'),
