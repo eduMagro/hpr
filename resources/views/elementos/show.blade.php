@@ -163,7 +163,8 @@
             @forelse ($etiquetasConElementos as $etiqueta)
                 <div class="bg-yellow-100 p-6 rounded-lg shadow-md">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
+                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} <br>
+                        ID: {{ $etiqueta->id }}
                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                     </h3>
 
@@ -173,6 +174,12 @@
                             <div id="elemento-{{ $elemento->id }}"
                                 class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                                 {{ $loop->iteration }}.
+                                <!-- ID -->
+                                <p class="text-gray-500 text-sm">
+                                    <strong>ID:</strong>
+                                    {{ $elemento->id }}
+                                </p>
+                                <hr class="my-2">
                                 <!-- Estado -->
                                 <p class="text-gray-500 text-sm">
                                     <strong>Estado:</strong>
