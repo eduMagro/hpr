@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Maquina;
+use App\Models\Elemento;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -56,6 +57,18 @@ class MaquinaController extends Controller
         if ($usuario2) {
             $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
         }
+        // Obtener los elementos de esta máquina
+        $elementosMaquina = $maquina->elementos;
+
+        // Obtener las etiquetas de estos elementos
+        $etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
+        // Buscar otros elementos de estas etiquetas que estén en otras máquinas
+        $otrosElementos = Elemento::with('maquina')
+            ->whereIn('etiqueta_id', $etiquetasIds)
+            ->where('maquina_id', '!=', $maquina->id)
+            ->get()
+            ->groupBy('etiqueta_id'); // Agrupar por etiqueta para mejor visualización
+
         return view('maquinas.show', compact('maquina', 'usuario1', 'usuario2'));
     }
 

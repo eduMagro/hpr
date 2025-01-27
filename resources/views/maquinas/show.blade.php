@@ -168,6 +168,22 @@
                             <strong> Estado: </strong><span
                                 id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
                         </p>
+                        <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
+                        @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
+                            <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en
+                                otras máquinas:</h4>
+                            <div class="bg-red-100 p-4 rounded-lg shadow-md">
+                                @foreach ($otrosElementos[$etiqueta->id] as $elementoOtro)
+                                    <p class="text-gray-600">
+                                        <strong>ID:</strong> {{ $elementoOtro->id }} |
+                                        <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
+                                        <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
+                                        <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
+                                    </p>
+                                    <hr class="my-2">
+                                @endforeach
+                            </div>
+                        @endif
 
                         <!-- GRID PARA ELEMENTOS -->
                         <div class="grid grid-cols-1 gap-4">
