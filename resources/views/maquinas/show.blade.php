@@ -177,7 +177,7 @@
                                     <p class="text-gray-600">
                                         <strong>ID:</strong> {{ $elementoOtro->id }} |
                                         <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
-                                        <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
+                                        <strong>Peso:</strong> {{ $elementoOtro->peso_total_kg }} kg |
                                         <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
                                     </p>
                                     <hr class="my-2">
