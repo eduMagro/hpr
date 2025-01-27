@@ -51,7 +51,8 @@
                             @foreach ($etiquetasConElementos as $etiqueta)
                                 <div class="bg-white p-4 rounded-lg shadow-md">
                                     <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
+                                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} <br>
+                                        ID: {{ $etiqueta->id }}
                                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                                     </h3>
 
@@ -70,6 +71,7 @@
                                                     </a>
 
                                                     <span class="text-gray-500 text-sm">
+                                                        ID: {{ $elemento->id }},
                                                         Peso: {{ $elemento->peso ?? 'No asignado' }},
                                                         Diámetro: {{ $elemento->diametro ?? 'No asignado' }},
                                                         Longitud: {{ $elemento->longitud ?? 'No asignado' }},
