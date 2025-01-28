@@ -55,26 +55,26 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-            $elementos = Elemento::whereIn('etiqueta_id', $request->etiquetas)
+            $etiquetas = Etiqueta::whereIn('etiqueta_id', $request->etiquetas)
                 ->where('estado', 'completado')
                 ->get();
 
-            $elementos_incompletos = Elemento::whereIn('etiqueta_id', $request->etiquetas)
+            $etiquetas_incompletas = Etiqueta::whereIn('id', $request->etiquetas)
                 ->where('estado', '!=', 'completado') // Filtrar los elementos que no están completados
-                ->select('id', 'etiqueta_id', 'estado') // Seleccionar solo los campos relevantes
+                ->select('id', 'id', 'estado') // Seleccionar solo los campos relevantes
                 ->get();
 
-            if ($elementos->isEmpty()) {
+            if ($etiquetas->isEmpty()) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
                     'message' => 'No se encontraron elementos completados para estas etiquetas.',
-                    'elementos_incompletos' => $elementos_incompletos->toArray()
+                    'elementos_incompletos' => $etiquetas_incompletas->toArray()
                 ], 400);
             }
 
             // Obtener la máquina_id del primer elemento
-            $maquinaId = $elementos->first()->maquina_id ?? null;
+            $maquinaId = $etiquetas->first()->maquina_id ?? null;
 
             if (!$maquinaId) {
                 DB::rollBack();
