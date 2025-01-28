@@ -40,14 +40,14 @@
             <a href="{{ route('planillas.create') }}" class="btn btn-primary">
                 Importar Planilla
             </a>
-            <a href="{{ route('elementos.index') }}" class="btn btn-primary">
+			 <a href="{{ route('paquetes.index') }}" class="btn btn-primary">
+                Ver Paquetes
+            </a>
+            <a href="{{ route('etiquetas.index') }}" class="btn btn-primary">
                 Ver Etiquetas
             </a>
             <a href="{{ route('elementos.index') }}" class="btn btn-primary">
                 Ver Elementos
-            </a>
-            <a href="{{ route('planillas.create') }}" class="btn btn-primary">
-                Ver Paquetes
             </a>
         </div>
 

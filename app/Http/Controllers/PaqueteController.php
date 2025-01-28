@@ -11,6 +11,23 @@ use Illuminate\Support\Facades\DB;
 
 class PaqueteController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = Paquete::with([
+            'etiquetas',
+            'ubicacion'
+        ])
+            ->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
+
+        // Aplicar filtro por ID si se proporciona
+        if ($request->filled('id')) {
+            $query->where('id', $request->input('id'));
+        }
+
+        $paquetes = $query->paginate(10);
+
+        return view('paquetes.index', compact('paquetes'));
+    }
     /**
      * Crear un nuevo paquete y asociar etiquetas existentes.
      */
