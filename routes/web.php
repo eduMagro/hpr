@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);
     Route::resource('paquetes', PaqueteController::class);
+    Route::resource('etiquetas', PaqueteController::class);
 
     Route::get('/productos/{id}/origen', [ProductoController::class, 'obtenerOrigen'])->name('productos.obtenerOrigen');
 

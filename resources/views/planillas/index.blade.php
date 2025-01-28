@@ -256,7 +256,7 @@
             <a href="{{ route('paquetes.index') }}" class="btn btn-primary">
                 Ver Paquetes
             </a>
-            <a href="{{ route('etiquetas.index') }}" class="btn btn-primary">
+            <a href="{{ route('elementos.index') }}" class="btn btn-primary">
                 Ver Etiquetas
             </a>
             <a href="{{ route('elementos.index') }}" class="btn btn-primary">
