@@ -43,7 +43,8 @@
                 <label for="sector" class="form-label">Sector</label>
                 <select id="sector" name="sector" class="form-select">
                     <?php for ($i = 1; $i <= 20; $i++): ?>
-                        <option value="<?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?></option>
+                    <option value="<?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>
+                    </option>
                     <?php endfor; ?>
                 </select>
             </div>
@@ -53,9 +54,16 @@
                 <label for="ubicacion" class="form-label">Ubicación</label>
                 <select id="ubicacion" name="ubicacion" class="form-select">
                     <?php for ($i = 1; $i <= 100; $i++): ?>
-                        <option value="<?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?></option>
+                    <option value="<?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>
+                    </option>
                     <?php endfor; ?>
                 </select>
+            </div>
+            <!-- Descripción -->
+            <div class="mb-3">
+                <label for="descripcion" class="form-label">Descripción</label>
+                <input type="text" id="descripcion" name="descripcion" class="form-control"
+                    placeholder="Ingrese la descripción">
             </div>
 
             <!-- Botón de Enviar -->
@@ -65,5 +73,5 @@
         </form>
     </div>
 
-   
+
 </x-app-layout>
