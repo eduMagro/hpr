@@ -5,7 +5,6 @@
         </h2>
     </x-slot>
 
-
     @if (session('error'))
         <script>
             Swal.fire({
@@ -17,9 +16,14 @@
         </script>
     @endif
     @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
+        <script>
+            Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: "{{ session('success') }}",
+                confirmButtonText: 'Aceptar'
+            });
+        </script>
     @endif
 
     <div class="container mt-5">
@@ -36,29 +40,25 @@
                             <!-- Seleccionar Producto -->
                             <div class="form-group mb-4">
                                 <label for="producto_id" class="form-label fw-bold">Materia Prima</label>
-
-                                {{-- BUSCAR POR QR --}}
-                                <input type="text" name="producto_id" class="form-control mb-3"
-                                    placeholder="Buscar por QR" value="{{ request('producto_id') }}">
-
+                                <input type="text" name="producto_id" id="producto_id" class="form-control mb-3"
+                                    placeholder="Buscar por QR" value="{{ old('producto_id') }}">
                             </div>
 
-                            <!-- Movimiento de una ubicación a otra -->
+                            <!-- Movimiento a Ubicación -->
                             <div class="form-group mb-4">
                                 <label for="ubicacion_destino" class="form-label fw-bold">Ubicación Destino</label>
-                                <select id="ubicacion_destino" name="ubicacion_destino"
-                                    class="form-control form-control-lg">
+                                <select id="ubicacion_destino" name="ubicacion_destino" class="form-control">
                                     <option selected value="">Seleccione una nueva ubicación</option>
                                     @foreach ($ubicaciones as $ubicacion)
-                                        <option value="{{ $ubicacion->id }}">{{ $ubicacion->descripcion }}</option>
+                                        <option value="{{ $ubicacion->id }}">{{ $ubicacion->nombre }}</option>
                                     @endforeach
                                 </select>
                             </div>
 
-                            <!-- Movimiento hacia una máquina -->
+                            <!-- Movimiento a Máquina -->
                             <div class="form-group mb-4">
                                 <label for="maquina_id" class="form-label fw-bold">Máquina Destino</label>
-                                <select id="maquina_id" name="maquina_id" class="form-control form-control-lg">
+                                <select id="maquina_id" name="maquina_id" class="form-control">
                                     <option selected value="">Seleccione una máquina</option>
                                     @foreach ($maquinas as $maquina)
                                         <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
@@ -66,9 +66,10 @@
                                 </select>
                             </div>
 
-                            <!-- Botón para enviar -->
+                            <!-- Botón de Envío -->
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-success btn-lg">Registrar Movimiento</button>
+                                <button type="submit" id="submit-btn" class="btn btn-success btn-lg">Registrar
+                                    Movimiento</button>
                             </div>
                         </form>
                     </div>
@@ -79,15 +80,19 @@
             </div>
         </div>
     </div>
+
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const form = document.getElementById("form-movimiento");
+            const submitBtn = document.getElementById("submit-btn");
 
             if (form) {
                 form.addEventListener("submit", function(event) {
-                    event.preventDefault(); // Evita el envío inmediato del formulario
+                    event.preventDefault();
+                    submitBtn.disabled = true; // Deshabilitar botón
 
                     let formData = new FormData(form);
+
                     fetch(form.action, {
                             method: "POST",
                             body: formData,
@@ -98,7 +103,16 @@
                         })
                         .then(response => response.json())
                         .then(data => {
-                            if (data.confirm) {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: "¡Éxito!",
+                                    text: data.message,
+                                    icon: "success",
+                                    confirmButtonText: "Aceptar"
+                                }).then(() => {
+                                    window.location.href = "{{ route('movimientos.index') }}";
+                                });
+                            } else if (data.confirm) {
                                 Swal.fire({
                                     title: "Máquina Ocupada",
                                     text: data.message,
@@ -113,20 +127,33 @@
                                         confirmInput.name = "confirmado";
                                         confirmInput.value = "1";
                                         form.appendChild(confirmInput);
-                                        form
-                                            .submit(); // Enviar el formulario nuevamente si confirma
+                                        form.submit();
+                                    } else {
+                                        submitBtn.disabled = false;
                                     }
                                 });
                             } else {
-                                window.location.href = "{{ route('movimientos.index') }}";
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Error",
+                                    text: data.error || "Ocurrió un error inesperado.",
+                                    confirmButtonText: "Aceptar"
+                                });
+                                submitBtn.disabled = false;
                             }
                         })
                         .catch(error => {
                             console.error("Error:", error);
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error",
+                                text: "Hubo un problema con la solicitud. Inténtelo otra vez.",
+                                confirmButtonText: "Aceptar"
+                            });
+                            submitBtn.disabled = false;
                         });
                 });
             }
         });
     </script>
-
 </x-app-layout>

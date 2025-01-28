@@ -11,7 +11,12 @@ class Ubicacion extends Model
 
     protected $table = 'ubicaciones';
     protected $fillable = [
-        'codigo', 'descripcion'
+        'codigo',
+        'nombre',
+        'almacen',
+        'sector',
+        'ubicacion',
+        'descripcion'
     ];
 
     public $timestamps = true;
@@ -19,7 +24,7 @@ class Ubicacion extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    
+
 
     // Relación con la tabla 'entradas'
     public function entradas()

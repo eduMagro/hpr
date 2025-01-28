@@ -71,10 +71,8 @@ class MovimientoController extends Controller
         return view('movimientos.create', compact('productos', 'ubicaciones', 'maquinas'));
     }
 
-    //------------------------------------------------ STORE() --------------------------------------------------------
     public function store(Request $request)
     {
-        // Validar los datos del formulario
         $request->validate([
             'producto_id' => 'required|exists:productos,id',
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
@@ -82,126 +80,43 @@ class MovimientoController extends Controller
         ], [
             'producto_id.required' => 'El producto es obligatorio.',
             'producto_id.exists' => 'El producto seleccionado no existe.',
-            'ubicacion_destino.exists' => 'La ubicación seleccionada no es válida.',
-            'maquina_id.exists' => 'La máquina seleccionada no es válida.',
+            'ubicacion_destino.exists' => 'Ubicación no válida.',
+            'maquina_id.exists' => 'Máquina no válida.',
         ]);
 
-        // Validar que no se seleccionen ubicación y máquina al mismo tiempo
         if ($request->ubicacion_destino && $request->maquina_id) {
-            return back()->with('error', 'El producto no puede moverse a una ubicación y a una máquina al mismo tiempo.');
+            return response()->json(['error' => 'No puedes elegir una una ubicación y una máquina a la vez como destino']);
         }
 
-        // Validar que al menos uno de los destinos esté seleccionado
         if (!$request->ubicacion_destino && !$request->maquina_id) {
-            return back()->with('error', 'Tienes que elegir un destino.');
+            return response()->json(['error' => 'No has elegido destino']);
         }
 
         try {
-            DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
-            // Obtener el producto que será movido
-            $producto = Producto::findOrFail($request->producto_id);
+            DB::transaction(function () use ($request) {
+                $producto = Producto::find($request->producto_id);
 
-            // Determinar el origen del movimiento
-            $ubicacion_origen = $producto->ubicacion_id ?: null;
-            $maquina_origen = $producto->maquina_id ?: null;
+                Movimiento::create([
+                    'producto_id' => $producto->id,
+                    'ubicacion_origen' => $producto->ubicacion_id,
+                    'maquina_origen' => $producto->maquina_id,
+                    'ubicacion_destino' => $request->ubicacion_destino,
+                    'maquina_id' => $request->maquina_id,
+                    'users_id' => auth()->id(),
+                ]);
 
-            // Registrar en los logs los valores de origen
-            Log::info('Registro de Movimiento:', [
-                'producto_id' => $producto->id,
-                'ubicacion_origen' => $ubicacion_origen,
-                'maquina_origen' => $maquina_origen,
-                'ubicacion_destino' => $request->ubicacion_destino,
-                'maquina_id' => $request->maquina_id,
-                'user_id' => auth()->id(),
-            ]);
+                $producto->ubicacion_id = $request->ubicacion_destino ?: null;
+                $producto->maquina_id = $request->maquina_id ?: null;
+                $producto->estado = $request->ubicacion_destino ? 'almacenado' : 'fabricando';
+                $producto->save();
+            });
 
-            // Crear el registro del movimiento
-            Movimiento::create([
-                'producto_id' => $producto->id,
-                'ubicacion_origen' => $ubicacion_origen,
-                'maquina_origen' => $maquina_origen,
-                'ubicacion_destino' => $request->ubicacion_destino,
-                'maquina_id' => $request->maquina_id,
-                'users_id' => auth()->id(),
-            ]);
-
-            $materialesEnMaquina = collect();
-            // Verificar si el usuario ya confirmó el movimiento
-            if (!$request->has('confirmado')) {  // Si no hay confirmación, verificar materiales
-                // Si el destino es una máquina, verificar materiales existentes del mismo diámetro
-                if ($request->maquina_id) {
-                    // Obtener el diámetro del producto actual
-                    $diametro = $producto->diametro;
-
-                    // Buscar materiales en la misma máquina con el mismo diámetro
-                    $materialesEnMaquina = Producto::where('maquina_id', $request->maquina_id)
-                        ->where('diametro', $diametro)
-                        ->where('estado', '!=', 'consumido')
-                        ->get();
-
-                    //(((SOLO SI HABIA ALGO EN LA MAQUINA, ACTIVAMOS ALERTA DE PESO SI LA HAY)))
-
-                    if (!$materialesEnMaquina->isEmpty()) {
-                        foreach ($materialesEnMaquina as $material) {
-                            if ($material->id == $producto->id) {
-                                DB::rollback();
-                                return redirect()->route('movimientos.create')->with('error', 'El material ya esta en la máquina elegida.');
-                            } elseif ($material->estado == 'fabricando') {
-                                return response()->json([
-                                    'confirm' => true,
-                                    'message' => 'El material está en fabricación. ¿Quieres continuar?',
-                                    'producto_id' => $producto->id
-                                ]);
-                            }
-                        }
-                    }
-                }
-            }
-            //(((SI NO HABIA NADA EN LA MAQUINA, EJECUTAMOS)))
-
-            // Asignar ubicacion_id y maquina_id, o establecer en null si no están presentes
-            $producto->ubicacion_id = $request->ubicacion_destino ?: null;
-            $producto->maquina_id = $request->maquina_id ?: null;
-
-            // Actualizar el estado basado en el destino
-            if ($request->ubicacion_destino) {
-                // Obtener la ubicación destino desde la base de datos
-                $ubicacion = Ubicacion::find($request->ubicacion_destino);
-
-                if ($ubicacion) {
-                    // Verificar si la descripción contiene 'sold' (ignorando mayúsculas/minúsculas)
-                    if (stripos($ubicacion->descripcion, 'sold') !== false) {
-                        $producto->estado = 'ensamblando';
-                    } else {
-                        $producto->estado = 'almacenado';
-                    }
-                } else {
-                    $producto->estado = 'almacenado';
-                }
-            } elseif ($request->maquina_id) {
-                // Si se mueve a una máquina, establecer el estado en 'fabricando'
-                $producto->estado = 'fabricando';
-            }
-
-            // Guardar los cambios en el producto
-            $producto->save();
-
-            DB::commit();  // Confirmamos la transacción
-            // Redirigir con un mensaje de éxito
-            return redirect()->route('movimientos.index')->with('success', 'Movimiento registrado correctamente.');
-        } catch (\Throwable $e) {
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            // Registrar el error en los logs
-            Log::error('Error al registrar el movimiento', [
-                'message' => $e->getMessage(),
-                'stack' => $e->getTraceAsString(),
-            ]);
-
-            // Redirigir con un mensaje de error genérico
-            return redirect()->back()->with('error', 'Ocurrió un error al registrar el movimiento. Inténtalo nuevamente.');
+            return response()->json(['success' => true, 'message' => 'Movimiento registrado correctamente.']);
+        } catch (\Exception $e) {
+            Log::error('Error en movimiento: ' . $e->getMessage());
+            return response()->json(['error' => 'Hubo un problema al registrar el movimiento.'], 500);
         }
     }
-
 
     public function destroy($id)
     {

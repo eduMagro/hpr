@@ -7,57 +7,52 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Validation\ValidationException;
+
 class UbicacionController extends Controller
 {
 
-private function aplicarFiltros($query, Request $request)
-{
-    // Filtro por 'id' si está presente
-    if ($request->has('id') && $request->id) {
-        $id = $request->input('id');
-        $query->where('id', '=', $id);  // Filtro exacto por ID
+    private function aplicarFiltros($query, Request $request)
+    {
+        // Filtro por 'id' si está presente
+        if ($request->has('id') && $request->id) {
+            $id = $request->input('id');
+            $query->where('id', '=', $id);  // Filtro exacto por ID
+        }
+
+        // Filtro por 'codigo' si está presente
+        if ($request->has('codigo') && $request->codigo) {
+            $codigo = trim($request->input('codigo'));  // Eliminar espacios adicionales
+            $codigo = strtoupper($codigo);  // Asegurarse de que el valor esté en mayúsculas
+
+            $query->whereRaw('UPPER(codigo) LIKE ?', ['%' . $codigo . '%']);  // Comparación sin importar mayúsculas/minúsculas
+        }
+        // Filtro por 'descripcion' si está presente
+        if ($request->has('descripcion') && $request->descripcion) {
+            $descripcion = trim($request->input('descripcion'));  // Eliminar espacios adicionales
+
+
+            $query->whereRaw('descripcion LIKE ?', ['%' . $descripcion . '%']);  // Comparación sin importar mayúsculas/minúsculas
+        }
+        return $query;
     }
 
-    // Filtro por 'codigo' si está presente
-    if ($request->has('codigo') && $request->codigo) {
-        $codigo = trim($request->input('codigo'));  // Eliminar espacios adicionales
-        $codigo = strtoupper($codigo);  // Asegurarse de que el valor esté en mayúsculas
 
-        $query->whereRaw('UPPER(codigo) LIKE ?', ['%' . $codigo . '%']);  // Comparación sin importar mayúsculas/minúsculas
+
+
+    public function index(Request $request)
+    {
+        try {
+            // Obtener todas las ubicaciones y ordenarlas por sector (descendente) y por ubicación (ascendente)
+            $ubicacionesPorSector = Ubicacion::orderBy('sector', 'desc') // Sectores en orden descendente
+                ->orderBy('ubicacion', 'asc') // Ubicaciones dentro del sector en orden ascendente (izquierda a derecha)
+                ->get()
+                ->groupBy('sector'); // Agrupar por sector
+
+            return view('ubicaciones.index', compact('ubicacionesPorSector'));
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+        }
     }
-
-    return $query;
-}
-
-
-
-
-public function index(Request $request)
-{
-    try {
-        // Inicializar la consulta
-        $query = Ubicacion::query();
-        
-        // Aplicar filtros usando el método aplicarFiltros
-        $query = $this->aplicarFiltros($query, $request);
-        
-        // Ordenar
-        $sortBy = $request->input('sort_by', 'created_at');  // Primer criterio de ordenación
-        $order = $request->input('order', 'desc');        // Orden (asc o desc)
-        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
-
-        // Paginación
-        $perPage = $request->input('per_page', 20);
-        $registrosUbicaciones = $query->paginate($perPage)->appends($request->except('page'));
-
-        // Pasar las ubicaciones a la vista
-        return view('ubicaciones.index', compact('registrosUbicaciones'));
-        
-    } catch (Exception $e) {
-        DB::rollBack();
-        return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
-    }
-}
 
     // Mostrar el formulario para crear una nueva ubicación
     public function create()
@@ -65,7 +60,6 @@ public function index(Request $request)
         return view('ubicaciones.create');
     }
 
-    // Método para guardar la ubicación en la base de datos
     public function store(Request $request)
     {
         DB::beginTransaction(); // Iniciar la transacción
@@ -75,49 +69,60 @@ public function index(Request $request)
                 'almacen' => 'required|string|max:2',
                 'sector' => 'required|string|max:2',
                 'ubicacion' => 'required|string|max:2',
+                'descripcion' => 'nullable|string|max:255',
             ], [
                 // Mensajes personalizados
-                'almacen.required' => 'El campo "almacen" es obligatorio.',
-                'almacen.string' => 'El campo "almacen" debe ser una cadena de texto.',
-                'almacen.max' => 'El campo "almacen" no puede tener más de 2 caracteres.',
+                'almacen.required' => 'El campo "almacén" es obligatorio.',
+                'almacen.string' => 'El campo "almacén" debe ser una cadena de texto.',
+                'almacen.max' => 'El campo "almacén" no puede tener más de 2 caracteres.',
 
                 'sector.required' => 'El campo "sector" es obligatorio.',
                 'sector.string' => 'El campo "sector" debe ser una cadena de texto.',
                 'sector.max' => 'El campo "sector" no puede tener más de 2 caracteres.',
 
-                'ubicacion.required' => 'El campo "ubicacion" es obligatorio.',
-                'ubicacion.string' => 'El campo "ubicacion" debe ser una cadena de texto.',
-                'ubicacion.max' => 'El campo "ubicacion" no puede tener más de 2 caracteres.',
+                'ubicacion.required' => 'El campo "ubicación" es obligatorio.',
+                'ubicacion.string' => 'El campo "ubicación" debe ser una cadena de texto.',
+                'ubicacion.max' => 'El campo "ubicación" no puede tener más de 2 caracteres.',
+
+                'descripcion.string' => 'El campo "descripción" debe ser una cadena de texto.',
+                'descripcion.max' => 'El campo "descripción" no puede tener más de 255 caracteres.',
             ]);
 
-            // Concatenar los campos para formar el código
+            // Concatenar los campos para formar el código único
             $codigo = $request->almacen . $request->sector . $request->ubicacion;
 
-            // Crear la descripción concatenando "Almacén", "Sector" y "Ubicación"
-            $descripcion = 'Almacén ' . $request->almacen . ', Sector ' . (int) $request->sector . ', Ubicación ' . (int) $request->ubicacion;
+            // Crear el nombre concatenando "Almacén", "Sector" y "Ubicación"
+            $nombre = 'Almacén ' . $request->almacen . ', Sector ' . (int) $request->sector . ', Ubicación ' . (int) $request->ubicacion;
+
+            // Si hay una descripción, añadirla al nombre
+            if (!empty($request->descripcion)) {
+                $nombre .= ', ' . $request->descripcion;
+            }
 
             // Verificar si ya existe una ubicación con ese código
             if (Ubicacion::where('codigo', $codigo)->exists()) {
-                DB::rollBack();  // Revertir la transacción si ocurre un error
+                DB::rollBack();  // Revertir la transacción si ya existe
                 return back()->withErrors(['error' => 'Esta ubicación ya existe.'])->withInput();
             }
 
             // Intentar crear una nueva ubicación en la base de datos
             Ubicacion::create([
-                'codigo' => $codigo,  // Guardamos el código generado
-                'descripcion' => $descripcion,  // Guardamos la descripción generada
+                'codigo' => $codigo,        // Guardamos el código generado
+                'nombre' => $nombre,        // Guardamos el nombre correctamente
+                'almacen' => $request->almacen,
+                'sector' => $request->sector,
+                'ubicacion' => $request->ubicacion,
+                'descripcion' => $request->descripcion, // Guardamos la descripción original
             ]);
 
             DB::commit();  // Confirmar la transacción
-            // Redirigir a la página de listado con un mensaje de éxito
             return redirect()->route('ubicaciones.index')->with('success', 'Ubicación creada con éxito.');
-
-        } catch (Exception $e) {  // Captura de cualquier tipo de excepción
+        } catch (Exception $e) {
             DB::rollBack();  // Revertir la transacción si ocurre un error
-            // Registrar el error o manejarlo de acuerdo a lo necesario
             return back()->withErrors(['error' => 'Hubo un problema al guardar la ubicación.'])->withInput();
         }
     }
+
 
 
     // Mostrar el formulario para editar una ubicación existente
@@ -186,5 +191,4 @@ public function index(Request $request)
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-
 }
