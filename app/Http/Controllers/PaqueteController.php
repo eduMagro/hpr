@@ -55,7 +55,7 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-            $etiquetas = Etiqueta::whereIn('etiqueta_id', $request->etiquetas)
+            $etiquetas = Etiqueta::whereIn('id', $request->etiquetas)
                 ->where('estado', 'completado')
                 ->get();
 
