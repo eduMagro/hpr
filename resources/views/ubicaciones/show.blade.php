@@ -8,8 +8,8 @@
         </x-slot>
     
         <div class="container mx-auto mt-5">
-            <h2 class="text-2xl font-bold text-center mb-4">Ubicación: {{ $ubicacion->nombre }}</h2>
-            <p class="text-gray-700 text-center mb-6">{{ $ubicacion->nombre }}</p>
+            <h2 class="text-2xl font-bold text-center mb-4">{{ $ubicacion->nombre }}</h2>
+            <p class="text-gray-700 text-center mb-6">{{ $ubicacion->codigo }}</p>
             
             <div class="bg-white shadow-md rounded-lg p-6">
                  <p class="mb-4">
