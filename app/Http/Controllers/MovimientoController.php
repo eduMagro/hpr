@@ -70,7 +70,7 @@ class MovimientoController extends Controller
 
         return view('movimientos.create', compact('productos', 'ubicaciones', 'maquinas'));
     }
-
+    //------------------------------------------------ STORE() --------------------------------------------------------
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -84,13 +84,12 @@ class MovimientoController extends Controller
             'maquina_id.exists' => 'Máquina no válida.',
         ]);
 
-        // Si la validación falla, devolver JSON con los errores
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         if ($request->ubicacion_destino && $request->maquina_id) {
-            return response()->json(['error' => 'No puedes elegir una una ubicación y una máquina a la vez como destino']);
+            return response()->json(['error' => 'No puedes elegir una ubicación y una máquina a la vez como destino']);
         }
 
         if (!$request->ubicacion_destino && !$request->maquina_id) {
@@ -100,6 +99,19 @@ class MovimientoController extends Controller
         try {
             DB::transaction(function () use ($request) {
                 $producto = Producto::find($request->producto_id);
+
+                if ($request->maquina_id) {
+                    $maquina = Maquina::find($request->maquina_id);
+                    $maquinas_encarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
+
+                    if (in_array($maquina->codigo, $maquinas_encarretado) && !$producto->es_encarretado) {
+                        throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
+                    }
+
+                    if ($producto->diametro < $maquina->diametro_min || $producto->diametro > $maquina->diametro_max) {
+                        throw new \Exception('El diámetro del producto no está dentro del rango aceptado por la máquina.');
+                    }
+                }
 
                 Movimiento::create([
                     'producto_id' => $producto->id,
@@ -119,7 +131,7 @@ class MovimientoController extends Controller
             return response()->json(['success' => true, 'message' => 'Movimiento registrado correctamente.']);
         } catch (\Exception $e) {
             Log::error('Error en movimiento: ' . $e->getMessage());
-            return response()->json(['error' => 'Hubo un problema al registrar el movimiento.'], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -143,13 +155,7 @@ class MovimientoController extends Controller
             if ($movimiento->ubicacion_origen) {
                 $ubicacion = Ubicacion::find($movimiento->ubicacion_origen);
                 if ($ubicacion) {
-                    if (stripos($ubicacion->descripcion, 'sold') !== false) {
-                        $producto->estado = 'ensamblando';
-                    } else {
-                        $producto->estado = 'almacenado';
-                    }
-                } else {
-                    // Si la ubicación de origen no se encuentra, asignar un estado predeterminado
+
                     $producto->estado = 'almacenado';
                 }
             } elseif ($movimiento->maquina_origen) {

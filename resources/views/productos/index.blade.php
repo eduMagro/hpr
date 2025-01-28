@@ -6,8 +6,8 @@
 
         </h2>
     </x-slot>
-        <!-- Mostrar errores de validación -->
-        @if ($errors->any())
+    <!-- Mostrar errores de validación -->
+    @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
                 @foreach ($errors->all() as $error)
@@ -30,13 +30,13 @@
     @endif
     {{-- mision abortada --}}
     @if (session('abort'))
-    <script>
-        Swal.fire({
-            icon: 'error',
-            title: 'Acceso denegado',
-            text: "{{ session('abort') }}",
-        });
-    </script>
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Acceso denegado',
+                text: "{{ session('abort') }}",
+            });
+        </script>
     @endif
     <div class="container mx-auto px-4 py-6">
         <!-- FORMULARIO DE BUSQUEDA -->
@@ -76,9 +76,9 @@
                     <hr class="m-2 border-gray-300">
 
                     <!-- Detalles de Ubicación o Máquina -->
-                    @if (isset($producto->ubicacion->descripcion))
+                    @if (isset($producto->ubicacion->nombre))
                         <p class="font-bold text-lg text-gray-800 break-words">
-                            {{ $producto->ubicacion->descripcion }}</p>
+                            {{ $producto->ubicacion->nombre }}</p>
                     @elseif (isset($producto->maquina->nombre))
                         <p class="font-bold text-lg text-gray-800 break-words">{{ $producto->maquina->nombre }}
                         </p>
@@ -89,12 +89,12 @@
 
                     <hr class="my-2 border-gray-300">
                     <div class="mt-2 flex justify-between">
-                           {{-- sweet alert para eliminar --}}
-                           <x-boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                        {{-- sweet alert para eliminar --}}
+                        <x-boton-eliminar :action="route('productos.destroy', $producto->id)" />
                         <!-- Enlace para editar -->
                         <a href="{{ route('productos.edit', $producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                       <a href="{{ route('productos.show', $producto->id)}}"
+                        <a href="{{ route('productos.show', $producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
                     </div>
                 </div>
@@ -108,30 +108,30 @@
             {{ $registrosProductos->appends(request()->except('page'))->links() }}
         @endif
     </div>
-     <!-- SCRIPT PARA IMPRIMIR QR -->
-     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script>
-    function generateAndPrintQR(id) {
-        // Limpiamos el contenedor del QR
-        const qrContainer = document.getElementById('qrCanvas');
-        qrContainer.innerHTML = ""; // Elimina cualquier QR previo
+    <!-- SCRIPT PARA IMPRIMIR QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        function generateAndPrintQR(id) {
+            // Limpiamos el contenedor del QR
+            const qrContainer = document.getElementById('qrCanvas');
+            qrContainer.innerHTML = ""; // Elimina cualquier QR previo
 
-        // Generamos el QR con el ID
-        const qrCode = new QRCode(qrContainer, {
-            text: id.toString(),
-            width: 200,
-            height: 200,
-        });
+            // Generamos el QR con el ID
+            const qrCode = new QRCode(qrContainer, {
+                text: id.toString(),
+                width: 200,
+                height: 200,
+            });
 
-        // Esperamos hasta que el QR esté listo antes de imprimirlo
-        const interval = setInterval(() => {
-            const qrImg = qrContainer.querySelector('img');
-            if (qrImg) {
-                clearInterval(interval); // Detenemos la espera
+            // Esperamos hasta que el QR esté listo antes de imprimirlo
+            const interval = setInterval(() => {
+                const qrImg = qrContainer.querySelector('img');
+                if (qrImg) {
+                    clearInterval(interval); // Detenemos la espera
 
-                // Creamos una ventana para la impresión
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
+                    // Creamos una ventana para la impresión
+                    const printWindow = window.open('', '_blank');
+                    printWindow.document.write(`
                     <html>
                         <head>
                             <title>Imprimir QR</title>
@@ -150,9 +150,9 @@
                         </body>
                     </html>
                 `);
-                printWindow.document.close();
-            }
-        }, 100); // Revisamos cada 100ms si el QR está listo
-    }
-</script>
+                    printWindow.document.close();
+                }
+            }, 100); // Revisamos cada 100ms si el QR está listo
+        }
+    </script>
 </x-app-layout>

@@ -62,8 +62,8 @@
 
                             <!-- Origen -->
                             <p><strong>Origen:</strong>
-                                @if ($movimiento->ubicacionOrigen && $movimiento->ubicacionOrigen->descripcion)
-                                    {{ $movimiento->ubicacionOrigen->descripcion }}
+                                @if ($movimiento->ubicacionOrigen && $movimiento->ubicacionOrigen->nombre)
+                                    {{ $movimiento->ubicacionOrigen->nombre }}
                                 @elseif ($movimiento->maquinaOrigen && $movimiento->maquinaOrigen->nombre)
                                     {{ $movimiento->maquinaOrigen->nombre }}
                                 @else
@@ -73,8 +73,8 @@
 
                             <!-- Destino -->
                             <p><strong>Destino:</strong>
-                                @if ($movimiento->ubicacionDestino && $movimiento->ubicacionDestino->descripcion)
-                                    {{ $movimiento->ubicacionDestino->descripcion }}
+                                @if ($movimiento->ubicacionDestino && $movimiento->ubicacionDestino->nombre)
+                                    {{ $movimiento->ubicacionDestino->nombre }}
                                 @elseif ($movimiento->maquina && $movimiento->maquina->nombre)
                                     {{ $movimiento->maquina->nombre }}
                                 @else

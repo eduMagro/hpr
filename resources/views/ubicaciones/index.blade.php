@@ -39,19 +39,26 @@
                             <span>{{ $ubicacion->ubicacion }}</span>
                             <small>{{ $ubicacion->descripcion }}</small>
                             <!-- Mostrar los productos que contiene esta ubicación -->
-
                             @if ($ubicacion->productos->isEmpty())
-                                <small>No hay materia Prima en esta ubicación.</small>
+                                <p class="text-gray-500 italic text-xs">No hay material en esta ubicación.</p>
                             @else
-                                <ul class="list-disc pl-6 break-words">
+                                <div class="space-y-2">
                                     @foreach ($ubicacion->productos as $producto)
-                                        <li>{{ 'ID' . $producto->id . ' - ' . $producto->tipo . ' - D' . $producto->diametro . ' - L' . $producto->longitud . ' - PI' . $producto->peso_inicial . ' - PS' . $producto->peso_stock }}
-                                        </li>
-                                        <a href="{{ route('productos.show', $producto->id) }}"
-                                            class="btn btn-sm btn-primary">Ver</a>
+                                        <div class="bg-gray-100 rounded-lg p-1 shadow-md text-center">
+                                            <p class="text-xs text-gray-700 font-semibold">
+                                                ID: {{ $producto->id }} | Ø {{ $producto->diametro }} mm
+                                            </p>
+                                            <a href="{{ route('productos.show', $producto->id) }}"
+                                                class="mt-2 inline-block bg-blue-500 text-white text-xs px-3 py-1 rounded-md hover:bg-blue-600 transition">
+                                                Ver
+                                            </a>
+                                        </div>
                                     @endforeach
-                                </ul>
+                                </div>
                             @endif
+
+
+
                         </div>
                     @endforeach
                 </div>
