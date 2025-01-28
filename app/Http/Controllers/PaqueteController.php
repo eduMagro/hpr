@@ -73,31 +73,10 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-            // Obtener la máquina_id del primer elemento
-            $maquinaId = $etiquetas->first()->maquina_id ?? null;
-
-            if (!$maquinaId) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se pudo determinar la máquina asociada.',
-                ], 400);
-            }
-
-            // Buscar ubicación con LIKE en la descripción usando la máquina_id
-            $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%$maquinaId%")->first();
-
-            if (!$ubicacion) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se encontró una ubicación adecuada para la máquina.',
-                ], 400);
-            }
-
+          
             // Crear el paquete con la ubicación encontrada
             $paquete = Paquete::create([
-                'ubicacion_id' => $ubicacion->id,
+                'ubicacion_id' => 1,
             ]);
 
             // Asignar las etiquetas al nuevo paquete
