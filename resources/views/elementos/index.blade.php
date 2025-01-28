@@ -1,9 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Entradas de Material') }}
+            {{ __('Lista de Elementos') }}
         </h2>
     </x-slot>
+
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
@@ -13,84 +14,70 @@
             </ul>
         </div>
     @endif
+
     @if (session('error'))
         <div class="alert alert-danger">
             {{ session('error') }}
         </div>
     @endif
+
     @if (session('success'))
         <div class="alert alert-success">
             {{ session('success') }}
         </div>
     @endif
-     <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
     <div class="container mx-auto px-4 py-6">
 
-        <form class="needs-validation" novalidate>
-            <div class="mb-3">
-              <label for="nombre" class="form-label">Nombre</label>
-              <input type="text" class="form-control" id="nombre" required>
-              <div class="invalid-feedback">
-                Por favor, ingresa tu nombre.
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <label for="email" class="form-label">Correo Electrónico</label>
-              <input type="email" class="form-control" id="email" required>
-              <div class="invalid-feedback">
-                Por favor, ingresa un correo electrónico válido.
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              <label for="password" class="form-label">Contraseña</label>
-              <input type="password" class="form-control" id="password" required minlength="6">
-              <div class="invalid-feedback">
-                La contraseña debe tener al menos 6 caracteres.
-              </div>
-            </div>
-      
-            <div class="mb-3">
-              <label for="confirmarPassword" class="form-label">Confirmar Contraseña</label>
-              <input type="password" class="form-control" id="confirmarPassword" required>
-              <div class="invalid-feedback">
-                Las contraseñas no coinciden.
-              </div>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">Registrar</button>
-          </form>
+
+        <table class="table table-striped table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Etiqueta</th>
+                    <th>Máquina</th>
+                    <th>Producto</th>
+                    <th>Peso (kg)</th>
+                    <th>Fecha Inicio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($elementos as $elemento)
+                    <tr>
+                        <td>{{ $elemento->id }}</td>
+                        <td>{{ $elemento->nombre }}</td>
+                        <td>{{ $elemento->etiquetaRelacion->nombre ?? 'N/A' }}</td>
+                        <td>{{ $elemento->maquina->nombre ?? 'N/A' }}</td>
+                        <td>{{ $elemento->producto->nombre ?? 'N/A' }}</td>
+                        <td>{{ $elemento->peso_kg }}</td>
+                        <td>{{ $elemento->fecha_inicio ?? 'No asignado' }}</td>
+                        <td>
+                            <a href="{{ route('elementos.show', $elemento->id) }}" class="btn btn-info btn-sm">Ver</a>
+                            <a href="{{ route('elementos.edit', $elemento->id) }}"
+                                class="btn btn-warning btn-sm">Editar</a>
+                            <form action="{{ route('elementos.destroy', $elemento->id) }}" method="POST"
+                                class="d-inline-block"
+                                onsubmit="return confirm('¿Seguro que deseas eliminar este elemento?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="8" class="text-center">No hay elementos registrados</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <!-- Paginación -->
+        <div class="d-flex justify-content-center">
+            {{ $elementos->links() }}
         </div>
-      
-        <!-- Bootstrap JS y dependencias -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        
-        <script>
-          document.addEventListener('DOMContentLoaded', function () {
-            var forms = document.querySelectorAll('.needs-validation');
-      
-            Array.prototype.slice.call(forms)
-              .forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                  var password = document.getElementById('password');
-                  var confirmarPassword = document.getElementById('confirmarPassword');
-      
-                  if (password.value !== confirmarPassword.value) {
-                    confirmarPassword.setCustomValidity("Las contraseñas no coinciden.");
-                  } else {
-                    confirmarPassword.setCustomValidity("");
-                  }
-      
-                  if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }
-      
-                  form.classList.add('was-validated');
-                }, false);
-              });
-          });
-        </script>
+    </div>
 </x-app-layout>

@@ -19,11 +19,24 @@ class ElementoController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+
     public function index()
     {
-        $elementos = Elemento::with('planilla.etiqueta')->paginate(10);
+        $elementos = Elemento::with([
+            'planilla',
+            'etiquetaRelacion',
+            'maquina',
+            'producto',
+            'user',
+            'user2'
+        ])
+            ->orderBy('created_at', 'desc') // Ordenar por fecha de creación descendente
+            ->paginate(10);
+
         return view('elementos.index', compact('elementos'));
     }
+
+
 
     /**
      * Muestra el formulario para crear un nuevo elemento.
