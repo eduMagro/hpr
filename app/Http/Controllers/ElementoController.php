@@ -22,7 +22,7 @@ class ElementoController extends Controller
 
     public function index(Request $request)
     {
-        $elementos = Elemento::with([
+        $query = Elemento::with([
             'planilla',
             'etiquetaRelacion',
             'maquina',
@@ -30,14 +30,15 @@ class ElementoController extends Controller
             'user',
             'user2'
         ])
-            ->orderBy('created_at', 'desc') // Ordenar por fecha de creación descendente
-            ->paginate(10);
+            ->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
 
-        // Aplicar filtro por id si se pasa como parámetro en la solicitud
-        if ($request->has('id')) {
-            $idElemento = $request->input('id');
-            $elementos->where('nombre' = $idElemento);
+        // Aplicar filtro por ID si se proporciona
+        if ($request->filled('id')) {
+            $query->where('id', $request->input('id'));
         }
+
+        $elementos = $query->paginate(10);
+
         return view('elementos.index', compact('elementos'));
     }
 
