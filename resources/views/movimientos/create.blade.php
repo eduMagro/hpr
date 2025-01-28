@@ -80,7 +80,6 @@
             </div>
         </div>
     </div>
-
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const form = document.getElementById("form-movimiento");
@@ -112,35 +111,23 @@
                                 }).then(() => {
                                     window.location.href = "{{ route('movimientos.index') }}";
                                 });
-                            } else if (data.confirm) {
+                            } else if (data.errors) {
+                                let errorMessages = Object.values(data.errors).flat().join("\n");
                                 Swal.fire({
-                                    title: "Máquina Ocupada",
-                                    text: data.message,
-                                    icon: "warning",
-                                    showCancelButton: true,
-                                    confirmButtonText: "Sí, continuar",
-                                    cancelButtonText: "No, cancelar"
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        let confirmInput = document.createElement("input");
-                                        confirmInput.type = "hidden";
-                                        confirmInput.name = "confirmado";
-                                        confirmInput.value = "1";
-                                        form.appendChild(confirmInput);
-                                        form.submit();
-                                    } else {
-                                        submitBtn.disabled = false;
-                                    }
+                                    icon: "error",
+                                    title: "Errores de validación",
+                                    text: errorMessages,
+                                    confirmButtonText: "Aceptar"
                                 });
-                            } else {
+                            } else if (data.error) {
                                 Swal.fire({
                                     icon: "error",
                                     title: "Error",
-                                    text: data.error || "Ocurrió un error inesperado.",
+                                    text: data.error,
                                     confirmButtonText: "Aceptar"
                                 });
-                                submitBtn.disabled = false;
                             }
+                            submitBtn.disabled = false; // Rehabilitar el botón si hay errores
                         })
                         .catch(error => {
                             console.error("Error:", error);
@@ -156,4 +143,5 @@
             }
         });
     </script>
+
 </x-app-layout>

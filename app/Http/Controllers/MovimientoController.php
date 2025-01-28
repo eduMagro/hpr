@@ -7,7 +7,7 @@ use App\Models\Movimiento;
 use App\Models\Producto;
 use App\Models\Ubicacion;
 use App\Models\Maquina;
-
+use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -73,7 +73,7 @@ class MovimientoController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'producto_id' => 'required|exists:productos,id',
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
             'maquina_id' => 'nullable|exists:maquinas,id',
@@ -83,6 +83,11 @@ class MovimientoController extends Controller
             'ubicacion_destino.exists' => 'Ubicación no válida.',
             'maquina_id.exists' => 'Máquina no válida.',
         ]);
+
+        // Si la validación falla, devolver JSON con los errores
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
         if ($request->ubicacion_destino && $request->maquina_id) {
             return response()->json(['error' => 'No puedes elegir una una ubicación y una máquina a la vez como destino']);
