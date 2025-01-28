@@ -13,6 +13,7 @@ use App\Http\Controllers\PlanillaController;
 use App\Http\Controllers\ConjuntoController;
 use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\PaqueteController;
+use App\Http\Controllers\EtiquetaController;
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -55,9 +56,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
         ->name('elementosEtiquetas');
 
-    //Actualizar estado de elementos
+    //Actualizar estado de etiquetas
     //Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
-    Route::post('/actualizar-etiqueta/{id}', [ElementoController::class, 'actualizarEtiqueta']);
+    Route::post('/actualizar-etiqueta/{id}', [EtiquetaController::class, 'actualizarEtiqueta']);
+    Route::post('/verificar-etiquetas', [EtiquetaController::class, 'verificarEtiquetas']);
     // Para elegir un peon en maquinas
 
     // Para elegir un peon en maquinas

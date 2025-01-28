@@ -20,13 +20,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            actualizarElemento(etiquetaId);
+            actualizarEtiqueta(etiquetaId);
             this.value = ""; // Limpiar input tras lectura
         }
     });
 });
 
-async function actualizarElemento(id) {
+async function actualizarEtiqueta(id) {
     let url = `/actualizar-etiqueta/${id}`;
 
     try {
