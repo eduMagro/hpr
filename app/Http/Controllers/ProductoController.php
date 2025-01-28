@@ -9,14 +9,39 @@ class ProductoController extends Controller
 {
 
     //------------------------------------------------------------------------------------ FILTROS
-    private function aplicarFiltros($query, Request $request)
-    {
-        $buscar = $request->input('id');
-        if (!empty($buscar)) {
-            $query->where('id', $buscar);
-        }
-        return $query;
-    }
+   public function aplicarFiltros(Request $request)
+   {
+       $query = Producto::query();
+   
+       // Aplicar filtros si están presentes en la solicitud
+       if ($request->filled('id')) {
+           $query->where('id', $request->id);
+       }
+       if ($request->filled('fabricante')) {
+           $query->where('fabricante', $request->fabricante);
+       }
+       if ($request->filled('tipo')) {
+           $query->where('tipo', $request->tipo);
+       }
+       if ($request->filled('diametro')) {
+           $query->where('diametro', $request->diametro);
+       }
+       if ($request->filled('longitud')) {
+           $query->where('longitud', $request->longitud);
+       }
+       if ($request->filled('n_colada')) {
+           $query->where('n_colada', $request->n_colada);
+       }
+       if ($request->filled('n_paquete')) {
+           $query->where('n_paquete', $request->n_paquete);
+       }
+       if ($request->filled('estado')) {
+           $query->where('estado', 'LIKE', '%' . $request->estado . '%');
+       }
+   
+      return $query;
+   }
+   
 
     //------------------------------------------------------------------------------------ INDEX
     public function index(Request $request)

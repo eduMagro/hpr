@@ -62,7 +62,8 @@
                         <th class="px-4 py-2">Etiqueta</th>
                         <th class="px-4 py-2">Nombre</th>
                         <th class="px-4 py-2">Máquina</th>
-                        <th class="px-4 py-2">Producto</th>
+                        <th class="px-4 py-2">M. Prima 1</th>
+						<th class="px-4 py-2">M. Prima 2</th>
                         <th class="px-4 py-2">Figura</th>
                         <th class="px-4 py-2">Fila</th>
                         <th class="px-4 py-2">Descripción Fila</th>
@@ -89,13 +90,14 @@
                             <td class="px-4 py-2">{{ $elemento->planilla->codigo_limpio ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->user->name ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->user2->name ?? 'N/A' }}</td>
-                            <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->nombre ?? 'N/A' }}</td>
+                            <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->id ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->nombre }}</td>
                             <td class="px-4 py-2">{{ $elemento->maquina->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->producto->nombre ?? 'N/A' }}</td>
+							  <td class="px-4 py-2">{{ $elemento->producto2->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->figura }}</td>
                             <td class="px-4 py-2">{{ $elemento->fila }}</td>
-                            <td class="px-4 py-2">{{ $elemento->descripcion_fila }}</td>
+                            <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->nombre }}</td>
                             <td class="px-4 py-2">{{ $elemento->marca }}</td>
                             <td class="px-4 py-2">{{ $elemento->etiqueta }}</td>
                             <td class="px-4 py-2">{{ $elemento->barras }}</td>

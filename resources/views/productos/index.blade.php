@@ -39,14 +39,70 @@
         </script>
     @endif
     <div class="container mx-auto px-4 py-6">
-        <!-- FORMULARIO DE BUSQUEDA -->
-        <form method="GET" action="{{ route('productos.index') }}" class="form-inline mt-3 mb-3">
-            <input type="text" name="id" class="form-control mb-3" placeholder="Buscar por QR"
-                value="{{ request('id') }}">
-            <button type="submit" class="btn btn-info ml-2">
-                <i class="fas fa-search"></i> Buscar
-            </button>
-        </form>
+         <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
+        <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse"
+            data-bs-target="#filtrosBusqueda">
+            🔍 Filtros Avanzados
+        </button>
+
+        <div id="filtrosBusqueda" class="collapse">
+            <form method="GET" action="{{ route('productos.index') }}" class="card card-body shadow-sm">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <input type="text" name="id" class="form-control" placeholder="ID" value="{{ request('id') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="fabricante" class="form-control">
+                            <option value="">Seleccione Fabricante</option>
+                            <option value="MEGASA" {{ request('fabricante') == 'MEGASA' ? 'selected' : '' }}>MEGASA</option>
+                            <option value="GETAFE" {{ request('fabricante') == 'GETAFE' ? 'selected' : '' }}>GETAFE</option>
+                            <option value="NERVADUCTIL" {{ request('fabricante') == 'NERVADUCTIL' ? 'selected' : '' }}>NERVADUCTIL</option>
+							<option value="Siderurgica Sevillana" {{ request('fabricante') == 'Siderurgica Sevillana' ? 'selected' : '' }}>Siderúrgica Sevillana</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="tipo" class="form-control">
+                            <option value="">Seleccione Tipo</option>
+                            <option value="barras" {{ request('tipo') == 'barras' ? 'selected' : '' }}>Barras</option>
+                            <option value="encarretado" {{ request('tipo') == 'encarretado' ? 'selected' : '' }}>Encarretado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="diametro" class="form-control">
+                            <option value="">Seleccione Diámetro</option>
+                            <option value="5" {{ request('diametro') == '5' ? 'selected' : '' }}>5 mm</option>
+                            <option value="8" {{ request('diametro') == '8' ? 'selected' : '' }}>8 mm</option>
+                            <option value="10" {{ request('diametro') == '10' ? 'selected' : '' }}>10 mm</option>
+                            <option value="12" {{ request('diametro') == '12' ? 'selected' : '' }}>12 mm</option>
+                            <option value="16" {{ request('diametro') == '16' ? 'selected' : '' }}>16 mm</option>
+                            <option value="20" {{ request('diametro') == '20' ? 'selected' : '' }}>20 mm</option>
+                            <option value="25" {{ request('diametro') == '25' ? 'selected' : '' }}>25 mm</option>
+                            <option value="32" {{ request('diametro') == '32' ? 'selected' : '' }}>32 mm</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="longitud" class="form-control" placeholder="Longitud" value="{{ request('longitud') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="n_colada" class="form-control" placeholder="Número de Colada" value="{{ request('n_colada') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="n_paquete" class="form-control" placeholder="Número de Paquete" value="{{ request('n_paquete') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="estado" class="form-control" placeholder="Estado" value="{{ request('estado') }}">
+                    </div>
+                    <div class="col-12 d-flex justify-content-between">
+                        <button type="submit" class="btn btn-info">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                        <a href="{{ route('productos.index') }}" class="btn btn-warning">
+                            <i class="fas fa-undo"></i> Resetear Filtros
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
 
         <!-- Tarjetas de productos -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

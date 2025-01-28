@@ -104,7 +104,8 @@ class MovimientoController extends Controller
                     $maquina = Maquina::find($request->maquina_id);
                     $maquinas_encarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
 
-                    if (in_array($maquina->codigo, $maquinas_encarretado) && !$producto->es_encarretado) {
+                    if (in_array($maquina->codigo, $maquinas_encarretado) && $producto->tipo == 'barras') {
+						
                         throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
                     }
 
