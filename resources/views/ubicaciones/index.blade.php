@@ -54,10 +54,7 @@
                                             <p class="text-xs text-gray-700 font-semibold">
                                                 ID: {{ $producto->id }} | Ø {{ $producto->diametro }} mm
                                             </p>
-                                            <a href="{{ route('productos.show', $producto->id) }}"
-                                                class="mt-2 inline-block bg-blue-500 text-white text-xs px-3 py-1 rounded-md hover:bg-blue-600 transition">
-                                                Ver
-                                            </a>
+                                            
                                         </div>
                                     @endforeach
                                 </div>
