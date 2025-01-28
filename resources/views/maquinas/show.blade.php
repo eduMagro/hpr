@@ -148,14 +148,14 @@
                         <h2 class="text-lg font-semibold text-gray-700">Planilla:
                             <strong> {{ $planilla->codigo_limpio }}</strong>
                         </h2>
-                        <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                            Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} ID: {{ $etiqueta->id }}
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} {{ $etiqueta->marca }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
                         <button
                             onclick="generateAndPrintQR('{{ $etiqueta->id }}', '{{ addslashes($etiqueta->nombre) }}')"
-                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md mb-4">
-                            <i class="fas fa-qrcode mr-2"></i> QR
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">
+                            <i class="fas fa-qrcode mr-2"></i> QR {{ $etiqueta->id }}
                         </button>
                         <!-- Contenedor oculto para generar el QR -->
                         <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
@@ -177,7 +177,7 @@
                                     <p class="text-gray-600">
                                         <strong>ID:</strong> {{ $elementoOtro->id }} |
                                         <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
-                                        <strong>Peso:</strong> {{ $elementoOtro->peso_total_kg }} kg |
+                                        <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
                                         <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
                                     </p>
                                     <hr class="my-2">
