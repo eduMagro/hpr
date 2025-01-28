@@ -20,7 +20,7 @@ class ElementoController extends Controller
      * @return \Illuminate\Http\Response
      */
 
-    public function index()
+    public function index(Request $request)
     {
         $elementos = Elemento::with([
             'planilla',
@@ -33,6 +33,11 @@ class ElementoController extends Controller
             ->orderBy('created_at', 'desc') // Ordenar por fecha de creación descendente
             ->paginate(10);
 
+        // Aplicar filtro por id si se pasa como parámetro en la solicitud
+        if ($request->has('id')) {
+            $idElemento = $request->input('id');
+            $elementos->where('nombre' = $idElemento);
+        }
         return view('elementos.index', compact('elementos'));
     }
 
