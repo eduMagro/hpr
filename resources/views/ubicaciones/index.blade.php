@@ -1,9 +1,14 @@
 <x-app-layout>
+
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Ubicaciones') }}
+            <a href="{{ route('ubicaciones.index') }}" class="text-gray-600">
+                {{ __('Ubicaciones') }}
+            </a>
         </h2>
     </x-slot>
+
+
 
     <!-- Mostrar errores de validación -->
     @if ($errors->any())
@@ -35,8 +40,9 @@
                 <h3 class="sector-header">Sector {{ $sector }}</h3>
                 <div class="mapa-sector">
                     @foreach ($ubicaciones as $ubicacion)
+					
                         <div class="ubicacion">
-                            <span>{{ $ubicacion->ubicacion }}</span>
+                            <span><a href="{{ route('ubicaciones.show', $ubicacion->id) }}">{{ $ubicacion->ubicacion }} </a></span>
                             <small>{{ $ubicacion->descripcion }}</small>
                             <!-- Mostrar los productos que contiene esta ubicación -->
                             @if ($ubicacion->productos->isEmpty())
@@ -56,10 +62,9 @@
                                     @endforeach
                                 </div>
                             @endif
-
-
-
+                           
                         </div>
+						 
                     @endforeach
                 </div>
             </div>

@@ -123,7 +123,14 @@ class UbicacionController extends Controller
         }
     }
 
+    public function show($id)
+    {
+        // Encuentra la planilla por ID y carga las relaciones necesarias (elementos y sus máquinas)
+        $ubicacion = Ubicacion::findOrFail($id);
 
+        // Retorna la vista con la planilla y sus elementos
+        return view('ubicaciones.show', compact('ubicacion'));
+    }
 
     // Mostrar el formulario para editar una ubicación existente
     public function edit($id)
