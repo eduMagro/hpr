@@ -14,6 +14,7 @@ class PaqueteController extends Controller
     public function index(Request $request)
     {
         $query = Paquete::with([
+            'planilla',
             'etiquetas',
             'ubicacion'
         ])
@@ -73,7 +74,7 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-          
+
             // Crear el paquete con la ubicación encontrada
             $paquete = Paquete::create([
                 'ubicacion_id' => 1,

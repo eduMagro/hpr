@@ -10,56 +10,60 @@ use Illuminate\Validation\ValidationException;
 
 class UbicacionController extends Controller
 {
-
-    private function aplicarFiltros($query, Request $request)
-    {
-        // Filtro por 'id' si está presente
-        if ($request->has('id') && $request->id) {
-            $id = $request->input('id');
-            $query->where('id', '=', $id);  // Filtro exacto por ID
-        }
-
-        // Filtro por 'codigo' si está presente
-        if ($request->has('codigo') && $request->codigo) {
-            $codigo = trim($request->input('codigo'));  // Eliminar espacios adicionales
-            $codigo = strtoupper($codigo);  // Asegurarse de que el valor esté en mayúsculas
-
-            $query->whereRaw('UPPER(codigo) LIKE ?', ['%' . $codigo . '%']);  // Comparación sin importar mayúsculas/minúsculas
-        }
-        // Filtro por 'descripcion' si está presente
-        if ($request->has('descripcion') && $request->descripcion) {
-            $descripcion = trim($request->input('descripcion'));  // Eliminar espacios adicionales
-
-
-            $query->whereRaw('descripcion LIKE ?', ['%' . $descripcion . '%']);  // Comparación sin importar mayúsculas/minúsculas
-        }
-        return $query;
-    }
-
-
-
-
+    //------------------------------------------------------------------------------------ INDEX()
     public function index(Request $request)
     {
         try {
             // Obtener todas las ubicaciones y ordenarlas por sector (descendente) y por ubicación (ascendente)
-            $ubicacionesPorSector = Ubicacion::orderBy('sector', 'desc') // Sectores en orden descendente
-                ->orderBy('ubicacion', 'asc') // Ubicaciones dentro del sector en orden ascendente (izquierda a derecha)
-                ->get()
-                ->groupBy('sector'); // Agrupar por sector
+            $ubicaciones = Ubicacion::with('productos')
+                ->orderBy('sector', 'desc') // Sectores en orden descendente
+                ->orderBy('ubicacion', 'asc') // Ubicaciones dentro del sector en orden ascendente
+                ->get();
 
-            return view('ubicaciones.index', compact('ubicacionesPorSector'));
+            // Agrupar por sector
+            $ubicacionesPorSector = $ubicaciones->groupBy('sector');
+
+            // Inicializar arrays para los totales
+            $pesoEncarretadoPorDiametro = [];
+            $pesoBarrasPorLongitud = [];
+
+            // Calcular los pesos totales por tipo de producto
+            foreach ($ubicaciones as $ubicacion) {
+                foreach ($ubicacion->productos as $producto) {
+                    if ($producto->tipo === 'encarretado') {
+                        // Acumular peso por diámetro
+                        if (!isset($pesoEncarretadoPorDiametro[$producto->diametro])) {
+                            $pesoEncarretadoPorDiametro[$producto->diametro] = 0;
+                        }
+                        $pesoEncarretadoPorDiametro[$producto->diametro] += $producto->peso_inicial;
+                    } elseif ($producto->tipo === 'barras') {
+                        // Acumular peso por longitud
+                        if (!isset($pesoBarrasPorLongitud[$producto->longitud])) {
+                            $pesoBarrasPorLongitud[$producto->longitud] = 0;
+                        }
+                        $pesoBarrasPorLongitud[$producto->longitud] += $producto->peso_inicial;
+                    }
+                }
+            }
+            // Ordenar los arrays por clave (menor a mayor)
+            ksort($pesoEncarretadoPorDiametro);
+            ksort($pesoBarrasPorLongitud);
+            // Pasar datos a la vista
+            return view('ubicaciones.index', [
+                'ubicacionesPorSector' => $ubicacionesPorSector,
+                'pesoEncarretadoPorDiametro' => $pesoEncarretadoPorDiametro,
+                'pesoBarrasPorLongitud' => $pesoBarrasPorLongitud,
+            ]);
         } catch (Exception $e) {
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-
-    // Mostrar el formulario para crear una nueva ubicación
+    //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
         return view('ubicaciones.create');
     }
-
+    //------------------------------------------------------------------------------------ STORE()
     public function store(Request $request)
     {
         DB::beginTransaction(); // Iniciar la transacción
@@ -122,7 +126,7 @@ class UbicacionController extends Controller
             return back()->withErrors(['error' => 'Hubo un problema al guardar la ubicación.'])->withInput();
         }
     }
-
+    //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
     {
         // Encuentra la planilla por ID y carga las relaciones necesarias (elementos y sus máquinas)
@@ -139,7 +143,7 @@ class UbicacionController extends Controller
         return view('ubicaciones.edit', compact('ubicacion'));
     }
 
-    // Actualizar la ubicación
+    //------------------------------------------------------------------------------------ UPDATE()
     public function update(Request $request, $id)
     {
         try {
@@ -171,7 +175,7 @@ class UbicacionController extends Controller
         }
     }
 
-    // Eliminar una ubicación
+    //------------------------------------------------------------------------------------ DESTROY()
     public function destroy($id)
     {
         try {

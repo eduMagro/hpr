@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class PlanillaController extends Controller
 {
-
+    //------------------------------------------------------------------------------------ ASIGNAR MAQUINA()
     private function asignarMaquina($diametro, $longitud)
     {
         // Lógica para determinar la máquina
@@ -83,7 +83,7 @@ class PlanillaController extends Controller
     }
 
 
-
+    //------------------------------------------------------------------------------------ INDEX()
     public function index(Request $request)
     {
         try {
@@ -110,7 +110,7 @@ class PlanillaController extends Controller
         }
     }
 
-
+    //------------------------------------------------------------------------------------ SHOW()
 
     public function show($id)
     {
@@ -124,13 +124,13 @@ class PlanillaController extends Controller
         return view('planillas.elementos', compact('planilla', 'elementos'));
     }
 
-
+    //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
         return view('planillas.create');
     }
 
-
+    //------------------------------------------------------------------------------------ IMPORT()
     public function import(Request $request)
     {
         if (auth()->user()->categoria !== 'administrador') {
@@ -272,7 +272,7 @@ class PlanillaController extends Controller
             return redirect()->route('planillas.index')->with('error', 'Hubo un problema al importar las planillas: ' . $e->getMessage());
         }
     }
-
+    //------------------------------------------------------------------------------------ CALCULARTIEMPOSELEMENTO()
     private function calcularTiemposElemento(array $row)
     {
         $barras = $row[32] ?? 0;
@@ -290,7 +290,7 @@ class PlanillaController extends Controller
         ];
     }
 
-
+    //------------------------------------------------------------------------------------ STORE()
     public function store(Request $request)
     {
         try {
@@ -320,6 +320,7 @@ class PlanillaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+    //------------------------------------------------------------------------------------ EDIT()
     public function edit($id)
     {
         if (auth()->user()->categoria !== 'administrador') {
@@ -329,7 +330,7 @@ class PlanillaController extends Controller
 
         return view('planillas.edit', compact('planilla'));
     }
-
+    //------------------------------------------------------------------------------------ UPDATE()
     public function update(Request $request, $id)
     {
         DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
@@ -375,7 +376,7 @@ class PlanillaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-
+    //------------------------------------------------------------------------------------ DESTROY()
 
     // Eliminar una planilla y sus elementos asociados
     public function destroy($id)
