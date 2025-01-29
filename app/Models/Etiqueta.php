@@ -26,6 +26,8 @@ class Etiqueta extends Model
         'estado',
     ];
 
+
+    // Relaciones
     public function planilla()
     {
         return $this->belongsTo(Planilla::class);
@@ -40,12 +42,34 @@ class Etiqueta extends Model
     {
         return $this->belongsTo(Paquete::class, 'paquete_id');
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'users_id_1');
+    }
+
+    public function user2()
+    {
+        return $this->belongsTo(User::class, 'users_id_2');
+    }
+
+    // Accessors
     public function getPesoKgAttribute()
     {
-        if (!$this->peso_total) {
+        if (is_null($this->peso)) {
             return 'No asignado';
         }
 
-        return number_format($this->peso_total, 2, ',', '.') . ' kg';
+        return number_format((float) $this->peso, 2, ',', '.') . ' kg';
+    }
+
+    public function getUserNameAttribute()
+    {
+        return optional($this->user)->name ?? 'N/A';
+    }
+
+    public function getUser2NameAttribute()
+    {
+        return optional($this->user2)->name ?? 'N/A';
     }
 }

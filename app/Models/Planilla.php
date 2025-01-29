@@ -47,11 +47,15 @@ class Planilla extends Model
      */
     public $timestamps = true;
 
-    /**
-     * Obtiene los conjuntos asociados a la planilla.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
+    public function paquetes()
+    {
+        return $this->hasMany(Paquete::class, 'planilla_id');
+    }
+    public function etiquetas()
+    {
+        return $this->hasMany(Paquete::class, 'planilla_id');
+    }
+
 
     public function elementos()
     {

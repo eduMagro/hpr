@@ -9,8 +9,31 @@ use App\Models\Etiqueta;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+
 class etiquetaController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = Etiqueta::query();
+
+        // Filtrar por ID si está presente
+        if ($request->filled('id')) {
+            $query->where('id', $request->id);
+        }
+
+        // Filtrar por Estado si está presente
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        // Obtener los resultados con paginación
+        $etiquetas = $query->paginate(10);
+
+        return view('etiquetas.index', compact('etiquetas'));
+    }
+
+
+
     public function actualizarEtiqueta(Request $request, $id)
     {
         DB::beginTransaction();
@@ -185,7 +208,7 @@ class etiquetaController extends Controller
     public function verificarEtiquetas(Request $request)
     {
         $etiquetas = $request->input('etiquetas', []);
-        
+
         // Buscar etiquetas que no estén en estado "completado"
         $etiquetasIncompletas = Etiqueta::whereIn('id', $etiquetas)
             ->where('estado', '!=', 'completado')
@@ -205,6 +228,4 @@ class etiquetaController extends Controller
             'message' => 'Todas las etiquetas están completas.'
         ]);
     }
-
-
 }

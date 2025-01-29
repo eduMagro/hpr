@@ -12,8 +12,14 @@ class Paquete extends Model
     protected $table = 'paquetes'; // Nombre de la tabla en la BD
 
     protected $fillable = [
-        'ubicacion_id'
+        'ubicacion_id',
+        'planilla_id'
     ];
+
+    public function planilla()
+    {
+        return $this->belongsTo(Planilla::class, 'planilla_id');
+    }
 
     /**
      * Relación uno a muchos con Etiqueta (Un paquete puede tener muchas etiquetas)

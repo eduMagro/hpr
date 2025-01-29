@@ -1,6 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
+            <a href="{{ route('planillas.index') }}" class="text-gray-600">
+                {{ __('Planillas') }}
+            </a>
+            <span class="mx-2">/</span>
             {{ __('Lista de Elementos') }}
         </h2>
     </x-slot>
@@ -29,14 +33,7 @@
             </div>
         @endif
 
-        <!-- Encabezado y Botón Nuevo Elemento -->
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-700">Listado de Elementos</h3>
-            <a href="{{ route('elementos.create') }}"
-                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
-                Nuevo Elemento
-            </a>
-        </div>
+
 
         <!-- Contenedor de la tabla con ancho completo y scroll horizontal -->
         <div class="w-full overflow-x-auto bg-white shadow-md rounded-lg">
@@ -63,7 +60,7 @@
                         <th class="px-4 py-2">Nombre</th>
                         <th class="px-4 py-2">Máquina</th>
                         <th class="px-4 py-2">M. Prima 1</th>
-						<th class="px-4 py-2">M. Prima 2</th>
+                        <th class="px-4 py-2">M. Prima 2</th>
                         <th class="px-4 py-2">Figura</th>
                         <th class="px-4 py-2">Fila</th>
                         <th class="px-4 py-2">Descripción Fila</th>
@@ -94,7 +91,7 @@
                             <td class="px-4 py-2">{{ $elemento->nombre }}</td>
                             <td class="px-4 py-2">{{ $elemento->maquina->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->producto->nombre ?? 'N/A' }}</td>
-							  <td class="px-4 py-2">{{ $elemento->producto2->nombre ?? 'N/A' }}</td>
+                            <td class="px-4 py-2">{{ $elemento->producto2->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->figura }}</td>
                             <td class="px-4 py-2">{{ $elemento->fila }}</td>
                             <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->nombre }}</td>
