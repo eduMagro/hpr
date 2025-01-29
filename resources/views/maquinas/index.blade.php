@@ -83,7 +83,6 @@
                         @else
                             <ul class="list-disc pl-6 break-words">
                                 @foreach ($maquina->productos as $producto)
-
                                     <li class="mb-2 flex items-center justify-between">
                                         <div>
                                             @if ($producto->tipo == 'barras')
@@ -135,34 +134,33 @@
                                             class="btn btn-sm btn-primary">Ver</a>
                                     </li>
                                 @endforeach
-                        @endforeach
-                        </ul>
-                @endif
+                            </ul>
+                        @endif
 
-                <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                        <hr style="border: 1px solid #ccc; margin: 10px 0;">
 
-                <div class="mt-4 flex justify-between items-center">
-                    {{-- sweet alert para eliminar --}}
-                    <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
+                        <div class="mt-4 flex justify-between items-center">
+                            {{-- sweet alert para eliminar --}}
+                            <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
 
-                    <!-- Enlace para editar -->
-                    <a href="{{ route('maquinas.edit', $maquina->id) }}"
-                        class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                    {{-- Enlace para ver --}}
-                    <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
-                        class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
+                            <!-- Enlace para editar -->
+                            <a href="{{ route('maquinas.edit', $maquina->id) }}"
+                                class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+                            {{-- Enlace para ver --}}
+                            <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
+                                class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
 
-                </div>
+                        </div>
+                    </div>
+                @empty
+                    <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->
+                @endforelse
+            @endif
         </div>
-    @empty
-        <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->
-        @endforelse
+        <!-- Paginación -->
+        @if (isset($registrosMaquina) && $registrosMaquina instanceof \Illuminate\Pagination\LengthAwarePaginator)
+            {{ $registrosMaquina->appends(request()->except('page'))->links() }}
         @endif
-    </div>
-    <!-- Paginación -->
-    @if (isset($registrosMaquina) && $registrosMaquina instanceof \Illuminate\Pagination\LengthAwarePaginator)
-        {{ $registrosMaquina->appends(request()->except('page'))->links() }}
-    @endif
     </div>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
