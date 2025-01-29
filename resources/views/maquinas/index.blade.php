@@ -83,86 +83,86 @@
                         @else
                             <ul class="list-disc pl-6 break-words">
                                 @foreach ($maquina->productos as $producto)
-                                    @foreach ($maquina->productos as $producto)
-                                        <li class="mb-2 flex items-center justify-between">
-                                            <div>
-                                                @if ($producto->tipo == 'barras')
-                                                    <div>
-                                                        <p><strong>ID:</strong> {{ $producto->id }}</p>
-                                                        <p><strong>Longitud:</strong> {{ $producto->longitud_metros }}
-                                                        </p>
-                                                        <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
-                                                        <div
-                                                            style="width: 200px; height: 30px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px; margin-top: 5px;">
-                                                            <div class="barra verde"
-                                                                style="width: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+
+                                    <li class="mb-2 flex items-center justify-between">
+                                        <div>
+                                            @if ($producto->tipo == 'barras')
+                                                <div>
+                                                    <p><strong>ID:</strong> {{ $producto->id }}</p>
+                                                    <p><strong>Longitud:</strong> {{ $producto->longitud_metros }}
+                                                    </p>
+                                                    <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
+                                                    <div
+                                                        style="width: 200px; height: 30px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px; margin-top: 5px;">
+                                                        <div class="barra verde"
+                                                            style="width: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
                                                                height: 100%; 
                                                                background-color: green; 
                                                                position: absolute; 
                                                                right: 0;">
-                                                            </div>
-                                                            <span
-                                                                style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: white;">
-                                                                {{ $producto->peso_stock }} /
-                                                                {{ $producto->peso_inicial }} kg
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                @endif
-
-                                                @if ($producto->tipo == 'encarretado')
-                                                    <div
-                                                        style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
-                                                        <p><strong>ID:</strong> {{ $producto->id }}</p>
-                                                        <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
-                                                        <div class="cuadro verde"
-                                                            style="width: 100%; 
-                                                           height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-                                                           background-color: green; 
-                                                           position: absolute; 
-                                                           bottom: 0;">
                                                         </div>
                                                         <span
-                                                            style="position: absolute; top: 10px; left: 10px; color: white;">
+                                                            style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: white;">
                                                             {{ $producto->peso_stock }} /
                                                             {{ $producto->peso_inicial }} kg
                                                         </span>
                                                     </div>
-                                                @endif
-                                            </div>
+                                                </div>
+                                            @endif
 
-                                            <a href="{{ route('productos.show', $producto->id) }}"
-                                                class="btn btn-sm btn-primary">Ver</a>
-                                        </li>
-                                    @endforeach
+                                            @if ($producto->tipo == 'encarretado')
+                                                <div
+                                                    style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
+                                                    <p><strong>ID:</strong> {{ $producto->id }}</p>
+                                                    <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
+                                                    <div class="cuadro verde"
+                                                        style="width: 100%; 
+                                                           height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+                                                           background-color: green; 
+                                                           position: absolute; 
+                                                           bottom: 0;">
+                                                    </div>
+                                                    <span
+                                                        style="position: absolute; top: 10px; left: 10px; color: white;">
+                                                        {{ $producto->peso_stock }} /
+                                                        {{ $producto->peso_inicial }} kg
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                        <a href="{{ route('productos.show', $producto->id) }}"
+                                            class="btn btn-sm btn-primary">Ver</a>
+                                    </li>
                                 @endforeach
-                            </ul>
-                        @endif
+                        @endforeach
+                        </ul>
+                @endif
 
-                        <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                <hr style="border: 1px solid #ccc; margin: 10px 0;">
 
-                        <div class="mt-4 flex justify-between items-center">
-                            {{-- sweet alert para eliminar --}}
-                            <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
+                <div class="mt-4 flex justify-between items-center">
+                    {{-- sweet alert para eliminar --}}
+                    <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
 
-                            <!-- Enlace para editar -->
-                            <a href="{{ route('maquinas.edit', $maquina->id) }}"
-                                class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                            {{-- Enlace para ver --}}
-                            <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
-                                class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
+                    <!-- Enlace para editar -->
+                    <a href="{{ route('maquinas.edit', $maquina->id) }}"
+                        class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+                    {{-- Enlace para ver --}}
+                    <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
+                        class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
 
-                        </div>
-                    </div>
-                @empty
-                    <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->
-                @endforelse
-            @endif
+                </div>
         </div>
-        <!-- Paginación -->
-        @if (isset($registrosMaquina) && $registrosMaquina instanceof \Illuminate\Pagination\LengthAwarePaginator)
-            {{ $registrosMaquina->appends(request()->except('page'))->links() }}
+    @empty
+        <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->
+        @endforelse
         @endif
+    </div>
+    <!-- Paginación -->
+    @if (isset($registrosMaquina) && $registrosMaquina instanceof \Illuminate\Pagination\LengthAwarePaginator)
+        {{ $registrosMaquina->appends(request()->except('page'))->links() }}
+    @endif
     </div>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
