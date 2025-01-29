@@ -26,7 +26,10 @@ class Etiqueta extends Model
         'estado',
     ];
 
-
+    public function getIdEtAttribute()
+    {
+        return 'ET' . $this->id;
+    }
     // Relaciones
     public function planilla()
     {

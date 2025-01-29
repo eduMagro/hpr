@@ -47,7 +47,10 @@ class Elemento extends Model
         'estado',
 
     ];
-
+    public function getIdElAttribute()
+    {
+        return 'EL' . $this->id;
+    }
     /**
      * Indica si el modelo debe gestionar las marcas de tiempo.
      *

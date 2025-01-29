@@ -26,7 +26,10 @@ class Producto extends Model
         'estado',
         'otros',
     ];
-
+    public function getIdMpAttribute()
+    {
+        return 'MP' . $this->id;
+    }
     public $timestamps = true;
     protected $casts = [
         'created_at' => 'datetime',

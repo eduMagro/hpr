@@ -15,7 +15,10 @@ class Paquete extends Model
         'ubicacion_id',
         'planilla_id'
     ];
-
+    public function getIdPqAttribute()
+    {
+        return 'PQ' . $this->id;
+    }
     public function planilla()
     {
         return $this->belongsTo(Planilla::class, 'planilla_id');

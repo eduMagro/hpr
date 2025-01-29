@@ -155,7 +155,7 @@
                         <button
                             onclick="generateAndPrintQR('{{ $etiqueta->id }}', '{{ addslashes($etiqueta->nombre) }}')"
                             class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">
-                            <i class="fas fa-qrcode mr-2"></i> QR {{ $etiqueta->id }}
+                            <i class="fas fa-qrcode mr-2"></i> QR {{ $etiqueta->id_et }}
                         </button>
                         <!-- Contenedor oculto para generar el QR -->
                         <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
@@ -178,7 +178,7 @@
                             <div class="bg-red-100 p-4 rounded-lg shadow-md">
                                 @foreach ($otrosElementos[$etiqueta->id] as $elementoOtro)
                                     <p class="text-gray-600">
-                                        <strong>ID:</strong> {{ $elementoOtro->id }} |
+                                        <strong>ID:</strong> {{ $elementoOtro->id_el }} |
                                         <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
                                         <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
                                         <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
@@ -196,7 +196,7 @@
                                     {{ $loop->iteration }}.
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong>ID: </strong> {{ $elemento->id }}
+                                        <strong></strong> {{ $elemento->id_el }}
                                     </p>
 
 
