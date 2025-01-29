@@ -92,6 +92,7 @@
                             <a href="#">
                                 <img src="https://img.icons8.com/?size=100&id=xaInJjDQEige&format=png&color=000000"
                                     alt="Alertas">
+                                <span id="notificacion-alertas" class="text-red-500 font-semibold" style="display: none;">❗</span>
                                 <span>Alertas</span>
                             </a>
                         </div>
@@ -192,4 +193,15 @@
             }
         }
     </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch("{{ route('alertas.sinLeer') }}")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.cantidad > 0) {
+                        document.getElementById("notificacion-alertas").style.display = "inline";
+                    }
+                });
+        });
+        </script>
 </x-app-layout>

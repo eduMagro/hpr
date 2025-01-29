@@ -14,6 +14,7 @@ use App\Http\Controllers\ConjuntoController;
 use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\EtiquetaController;
+use App\Http\Controllers\AlertaController;
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -66,6 +67,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])
         ->name('maquinas.sesion.guardar');
 
+
+    Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
+    Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
+        
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 });
 
