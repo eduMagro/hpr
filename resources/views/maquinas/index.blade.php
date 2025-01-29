@@ -83,34 +83,54 @@
                         @else
                             <ul class="list-disc pl-6 break-words">
                                 @foreach ($maquina->productos as $producto)
-                                    <li class="mb-2 flex items-center justify-between">
-                                        <span>
-                                            <strong>Diámetro: </strong>{{ $producto->diametro_mm }}
-                                        </span>
-                                        @if ($producto->tipo === 'barras')
-                                            <span>
-                                                <strong>Longitud:</strong> {{ $producto->longitud_cm }}
-                                            </span>
-                                        @endif
-                                        <a href="{{ route('productos.show', $producto->id) }}"
-                                            class="btn btn-sm btn-primary">Ver</a>
-                                        @if ($producto->tipo == 'encarretado')
-                                            <div
-                                                style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
-                                                <div class="cuadro verde"
-                                                    style="width: 100%; 
+                                    @foreach ($maquina->productos as $producto)
+                                        <li class="mb-2 flex items-center justify-between">
+                                            <div>
+                                                @if ($producto->tipo == 'barras')
+                                                    <div>
+                                                        <p><strong>Longitud:</strong> {{ $producto->longitud }} mm</p>
+                                                        <p><strong>Diámetro:</strong> {{ $producto->diametro }} mm</p>
+                                                        <div
+                                                            style="width: 200px; height: 30px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px; margin-top: 5px;">
+                                                            <div class="barra verde"
+                                                                style="width: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+                                                               height: 100%; 
+                                                               background-color: green; 
+                                                               position: absolute; 
+                                                               right: 0;">
+                                                            </div>
+                                                            <span
+                                                                style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: white;">
+                                                                {{ $producto->peso_stock }} /
+                                                                {{ $producto->peso_inicial }} kg
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                @endif
+
+                                                @if ($producto->tipo == 'encarretado')
+                                                    <div
+                                                        style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
+                                                        <div class="cuadro verde"
+                                                            style="width: 100%; 
                                                            height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
                                                            background-color: green; 
                                                            position: absolute; 
                                                            bottom: 0;">
-                                                </div>
-                                                <span style="position: absolute; top: 10px; left: 10px; color: white;">
-                                                    {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
-                                                </span>
+                                                        </div>
+                                                        <span
+                                                            style="position: absolute; top: 10px; left: 10px; color: white;">
+                                                            {{ $producto->peso_stock }} /
+                                                            {{ $producto->peso_inicial }} kg
+                                                        </span>
+                                                    </div>
+                                                @endif
                                             </div>
-                                        @endif
 
-                                    </li>
+                                            <a href="{{ route('productos.show', $producto->id) }}"
+                                                class="btn btn-sm btn-primary">Ver</a>
+                                        </li>
+                                    @endforeach
                                 @endforeach
                             </ul>
                         @endif

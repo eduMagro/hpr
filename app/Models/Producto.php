@@ -72,6 +72,10 @@ class Producto extends Model
     // Diámetro (mm)
     public function getDiametroMmAttribute()
     {
-        return $this->diametro ? number_format($this->diametro, 2) . ' mm' : 'No asignado';
+        return $this->diametro ? number_format($this->diametro) . ' mm' : 'No asignado';
+    }
+    public function getLongitudMetrosAttribute()
+    {
+        return $this->longitud ? number_format($this->longitud) . ' m' : 'No asignado';
     }
 }

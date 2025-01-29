@@ -84,7 +84,13 @@
                     @forelse ($elementos as $elemento)
                         <tr class="border-b hover:bg-gray-100">
                             <td class="px-4 py-2">{{ $elemento->id }}</td>
-                            <td class="px-4 py-2">{{ $elemento->planilla->codigo_limpio ?? 'N/A' }}</td>
+                            <td class="px-4 py-2">
+                                <a href="{{ route('planillas.index', ['id' => $elemento->planilla->id]) }}"
+                                    class="text-blue-500 hover:underline">
+                                    {{ $elemento->planilla->codigo_limpio }}
+                                </a>
+                            </td>
+
                             <td class="px-4 py-2">{{ $elemento->user->name ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->user2->name ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->id ?? 'N/A' }}</td>

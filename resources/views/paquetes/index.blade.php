@@ -57,19 +57,34 @@
                     @forelse ($paquetes as $paquete)
                         <tr class="border-b hover:bg-gray-100">
                             <td class="px-4 py-2">{{ $paquete->id }}</td>
-                            <td class="px-4 py-2">{{ $paquete->planilla->codigo_limpio }}</td>
+                            <td class="px-4 py-2">
+                                <a href="{{ route('planillas.index', ['id' => $paquete->planilla->id]) }}"
+                                    class="text-blue-500 hover:underline">
+                                    {{ $paquete->planilla->codigo_limpio }}
+                                </a>
+                            </td>
+
                             <td class="px-4 py-2">{{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}</td>
                             <td class="px-4 py-2">{{ $paquete->etiquetas->count() }}</td>
                             <td class="px-4 py-2">
                                 @if ($paquete->etiquetas->isNotEmpty())
                                     <ul class="list-disc pl-4">
                                         @foreach ($paquete->etiquetas as $etiqueta)
-                                            <li class="font-semibold">{{ $etiqueta->nombre }} (ID:
-                                                {{ $etiqueta->id }})</li>
+                                            <li class="font-semibold">
+                                                <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
+                                                    class="text-blue-500 hover:underline">
+                                                    {{ $etiqueta->nombre }} (ID: {{ $etiqueta->id }})
+                                                </a>
+                                            </li>
                                             @if ($etiqueta->elementos->isNotEmpty())
                                                 <ul class="list-disc pl-6 text-gray-600 text-sm">
                                                     @foreach ($etiqueta->elementos as $elemento)
-                                                        <li>ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
+                                                        <li>
+                                                            <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                                                                class="text-green-500 hover:underline">
+                                                                ID {{ $elemento->id }} - FIGURA
+                                                                {{ $elemento->figura }}
+                                                            </a>
                                                         </li>
                                                     @endforeach
                                                 </ul>

@@ -78,6 +78,9 @@ class PlanillaController extends Controller
                 $q->where('name', 'like', "%{$request->name}%");
             });
         }
+        if ($request->filled('id')) {
+            $query->where('id', $request->id);
+        }
 
         return $query;
     }
