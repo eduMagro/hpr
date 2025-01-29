@@ -160,6 +160,9 @@
                         <!-- Enlace para editar -->
                         <a href="{{ route('productos.edit', $producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+						<a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
+    class="text-green-500 hover:text-green-700 text-sm">Mover</a>
+
                         <a href="{{ route('productos.show', $producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
                     </div>

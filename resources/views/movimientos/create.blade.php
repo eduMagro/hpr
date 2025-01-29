@@ -40,8 +40,14 @@
                             <!-- Seleccionar Producto -->
                             <div class="form-group mb-4">
                                 <label for="producto_id" class="form-label fw-bold">Materia Prima</label>
-                                <input type="text" name="producto_id" id="producto_id" class="form-control mb-3"
+								@if(request('producto_id'))
+								<input type="text" name="producto_id" class="form-control" value="{{ request('producto_id') }}" readonly>
+@elseif(!request('producto_id'))
+    <input type="text" name="producto_id" id="producto_id" class="form-control mb-3"
                                     placeholder="Buscar por QR" value="{{ old('producto_id') }}">
+@endif
+
+                                
                             </div>
 
                             <!-- Movimiento a Ubicación -->
