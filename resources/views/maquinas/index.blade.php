@@ -84,54 +84,63 @@
                             <ul class="list-disc pl-6 break-words">
                                 @foreach ($maquina->productos as $producto)
                                     <li class="mb-2 flex items-center justify-between">
-                                        <div>
-                                            @if ($producto->tipo == 'barras')
-                                                <div>
-                                                    <p><strong>ID:</strong> {{ $producto->id }}</p>
-                                                    <p><strong>Longitud:</strong> {{ $producto->longitud_metros }}
-                                                    </p>
-                                                    <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
-                                                    <div
-                                                        style="width: 200px; height: 30px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px; margin-top: 5px;">
-                                                        <div class="barra verde"
-                                                            style="width: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-                                                               height: 100%; 
-                                                               background-color: green; 
-                                                               position: absolute; 
-                                                               right: 0;">
-                                                        </div>
-                                                        <span
-                                                            style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: white;">
-                                                            {{ $producto->peso_stock }} /
-                                                            {{ $producto->peso_inicial }} kg
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            @endif
+                                        <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
 
+
+                                            <!-- Cuadro de progreso -->
                                             @if ($producto->tipo == 'encarretado')
                                                 <div
                                                     style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
-                                                    <p><strong>ID:</strong> {{ $producto->id }}</p>
-                                                    <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
                                                     <div class="cuadro verde"
                                                         style="width: 100%; 
-                                                           height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-                                                           background-color: green; 
-                                                           position: absolute; 
-                                                           bottom: 0;">
+                               height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+                               background-color: green; 
+                               position: absolute; 
+                               bottom: 0;">
                                                     </div>
                                                     <span
                                                         style="position: absolute; top: 10px; left: 10px; color: white;">
-                                                        {{ $producto->peso_stock }} /
-                                                        {{ $producto->peso_inicial }} kg
+                                                        {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
                                                     </span>
                                                 </div>
-                                            @endif
-                                        </div>
+                                                <!-- Información del producto -->
+                                                <div>
+                                                    <p><strong>ID:</strong> {{ $producto->id }}</p>
+                                                    <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
 
-                                        <a href="{{ route('productos.show', $producto->id) }}"
-                                            class="btn btn-sm btn-primary">Ver</a>
+                                                </div>
+                                            @elseif ($producto->tipo == 'barras')
+                                                <!-- Información del producto -->
+
+                                                <div
+                                                    style="width: 200px; height: 30px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
+                                                    <div class="barra verde"
+                                                        style="width: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
+                               height: 100%; 
+                               background-color: green; 
+                               position: absolute; 
+                               right: 0;">
+                                                    </div>
+                                                    <span
+                                                        style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: white;">
+                                                        {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p><strong>ID:</strong> {{ $producto->id }}</p>
+                                                    <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
+                                                    @if ($producto->tipo == 'barras')
+                                                        <p><strong>Longitud:</strong> {{ $producto->longitud_metros }}
+                                                        </p>
+                                                    @endif
+                                                </div>
+                                            @endif
+
+
+                                            <!-- Botón "Ver" alineado a la derecha -->
+                                            <a href="{{ route('productos.show', $producto->id) }}"
+                                                class="btn btn-sm btn-primary" style="margin-left: auto;">Ver</a>
+                                        </div>
                                     </li>
                                 @endforeach
                             </ul>
