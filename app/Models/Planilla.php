@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
 
 class Planilla extends Model
 {
@@ -15,7 +16,7 @@ class Planilla extends Model
      * @var string
      */
     protected $table = 'planillas';
-
+    protected $dates = ['created_at', 'updated_at']; // Asegura que las fechas sean tratadas correctamente
     /**
      * Los atributos que son asignables masivamente.
      *
@@ -144,5 +145,14 @@ class Planilla extends Model
         }
 
         return number_format($this->peso_total, 2, ',', '.') . ' kg';
+    }
+    public function getFechaEstimadaRepartoAttribute()
+    {
+        if (!$this->created_at) {
+            return null;
+        }
+
+        // Asegurar que created_at es un objeto Carbon y sumarle 6 días
+        return Carbon::parse($this->created_at)->addDays(6);
     }
 }

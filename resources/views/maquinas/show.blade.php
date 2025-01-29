@@ -168,6 +168,9 @@
                             <strong> Estado: </strong><span
                                 id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
                         </p>
+                        <p class="text-gray-500 text-sm">
+                            {{ $etiqueta->paquete_id ? '✅ ' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
+                        </p>
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                         @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
                             <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en

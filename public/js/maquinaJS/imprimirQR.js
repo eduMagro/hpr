@@ -36,7 +36,7 @@ function generateAndPrintQR(id, nombre) {
                 </head>
                 <body>
                     <img src="${qrImg.src}" alt="Código QR">
-                    <p>${nombre}</p>
+                    <p>ID${id} - ${nombre}</p>
                     <script>
                         window.print();
                         setTimeout(() => window.close(), 500);

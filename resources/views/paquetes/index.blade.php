@@ -48,6 +48,8 @@
                         <th class="px-4 py-2">Ubicación</th>
                         <th class="px-4 py-2">Cantidad de Etiquetas</th>
                         <th class="px-4 py-2">Etiquetas</th>
+                        <th class="px-4 py-2">Creación Paquete</th>
+                        <th class="px-4 py-2">Fecha Estimada Reparto</th>
                         <th class="px-4 py-2">Acciones</th>
                     </tr>
                 </thead>
@@ -62,13 +64,34 @@
                                 @if ($paquete->etiquetas->isNotEmpty())
                                     <ul class="list-disc pl-4">
                                         @foreach ($paquete->etiquetas as $etiqueta)
-                                            <li>{{ $etiqueta->nombre }} (ID: {{ $etiqueta->id }})</li>
+                                            <li class="font-semibold">{{ $etiqueta->nombre }} (ID:
+                                                {{ $etiqueta->id }})</li>
+                                            @if ($etiqueta->elementos->isNotEmpty())
+                                                <ul class="list-disc pl-6 text-gray-600 text-sm">
+                                                    @foreach ($etiqueta->elementos as $elemento)
+                                                        <li>ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                <ul class="pl-6 text-gray-500 text-sm">
+                                                    <li>Sin elementos</li>
+                                                </ul>
+                                            @endif
                                         @endforeach
                                     </ul>
                                 @else
                                     <span class="text-gray-500">Sin etiquetas</span>
                                 @endif
                             </td>
+                            <td class="px-4 py-2">{{ $paquete->created_at->format('d/m/Y H:i') }}</td>
+
+
+                            <td class="px-4 py-2">
+                                {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
+                            </td>
+
+
                             <td class="px-4 py-2 flex space-x-2">
                                 <a href="{{ route('paquetes.show', $paquete->id) }}"
                                     class="text-blue-500 hover:underline">Ver</a>
