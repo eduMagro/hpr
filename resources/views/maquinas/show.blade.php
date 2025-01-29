@@ -169,7 +169,7 @@
                                 id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
                         </p>
                         <p class="text-gray-500 text-sm">
-                            {{ $etiqueta->paquete_id ? '✅ ' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
+                            {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
                         </p>
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                         @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
@@ -193,10 +193,10 @@
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
                                     class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-                                    {{ $loop->iteration }}.
+                                   
 
                                     <p class="text-gray-500 text-sm">
-                                        <strong></strong> {{ $elemento->id_el }}
+                                        <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }}
                                     </p>
 
 
