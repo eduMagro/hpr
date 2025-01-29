@@ -88,8 +88,10 @@
                                             <div>
                                                 @if ($producto->tipo == 'barras')
                                                     <div>
-                                                        <p><strong>Longitud:</strong> {{ $producto->longitud }} mm</p>
-                                                        <p><strong>Diámetro:</strong> {{ $producto->diametro }} mm</p>
+                                                        <p><strong>ID:</strong> {{ $producto->id }}</p>
+                                                        <p><strong>Longitud:</strong> {{ $producto->longitud_metros }}
+                                                        </p>
+                                                        <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
                                                         <div
                                                             style="width: 200px; height: 30px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px; margin-top: 5px;">
                                                             <div class="barra verde"
@@ -111,6 +113,8 @@
                                                 @if ($producto->tipo == 'encarretado')
                                                     <div
                                                         style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
+                                                        <p><strong>ID:</strong> {{ $producto->id }}</p>
+                                                        <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
                                                         <div class="cuadro verde"
                                                             style="width: 100%; 
                                                            height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
