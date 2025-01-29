@@ -1,9 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('alertas.index') }}" class="text-gray-600">
-                {{ __('Alertas') }}
-            </a>
             <span class="mx-2">/</span>
             {{ __('Lista de Alertas') }}
         </h2>
@@ -39,11 +36,10 @@
                 <thead class="bg-gray-800 text-white">
                     <tr class="text-left text-sm uppercase">
                         <th class="px-4 py-2">ID</th>
-                        <th class="px-4 py-2">Usuario Generador</th>
-                        <th class="px-4 py-2">Usuario Receptor</th>
+                        <th class="px-4 py-2">Usuario 1</th>
+                        <th class="px-4 py-2">Usuario 2</th>
                         <th class="px-4 py-2">Destinatario</th>
                         <th class="px-4 py-2">Mensaje</th>
-                        <th class="px-4 py-2">Estado</th>
                         <th class="px-4 py-2">Fecha</th>
                     </tr>
                 </thead>
@@ -51,17 +47,10 @@
                     @forelse ($alertas as $alerta)
                         <tr class="border-b hover:bg-gray-100">
                             <td class="px-4 py-2">{{ $alerta->id }}</td>
-                            <td class="px-4 py-2">{{ $alerta->usuarioGenerador->name ?? 'N/A' }}</td>
-                            <td class="px-4 py-2">{{ $alerta->usuarioReceptor->name ?? 'N/A' }}</td>
+                            <td class="px-4 py-2">{{ $alerta->usuario1->name ?? 'N/A' }}</td>
+                            <td class="px-4 py-2">{{ $alerta->usuario2->name ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ ucfirst($alerta->destinatario) }}</td>
                             <td class="px-4 py-2">{{ $alerta->mensaje }}</td>
-                            <td class="px-4 py-2">
-                                @if ($alerta->leida)
-                                    <span class="text-green-500 font-semibold">Leída</span>
-                                @else
-                                    <span class="text-red-500 font-semibold">No Leída</span>
-                                @endif
-                            </td>
                             <td class="px-4 py-2">{{ $alerta->created_at->format('d/m/Y H:i') }}</td>
                         </tr>
                     @empty

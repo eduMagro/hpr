@@ -23,7 +23,7 @@ class AlertaController extends Controller
      */
     public function alertasSinLeer()
     {
-        $alertasSinLeer = Alerta::where('leida', false)->count();
+        $alertasSinLeer = Alerta::where('leida', 0)->count();
         return response()->json(['cantidad' => $alertasSinLeer]);
     }
 }
