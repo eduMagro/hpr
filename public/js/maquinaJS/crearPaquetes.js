@@ -111,7 +111,14 @@ function crearPaquete() {
                         Swal.fire({
                             icon: "success",
                             title: "Éxito",
-                            text: `Paquete creado con éxito. ID: ${data.paquete_id}`,
+                            html: `Paquete creado con éxito. ID: <strong>${data.paquete_id}</strong> <br>
+                                
+                       <button
+    onclick="generateAndPrintQR('${data.paquete_id}', '${codigo_planilla}', 'PAQUETE')"
+    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+    QR
+</button>
+`,
                             confirmButtonColor: "#28a745",
                         });
                         etiquetas.length = 0;

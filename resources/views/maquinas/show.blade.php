@@ -296,8 +296,10 @@
                     @csrf
                     @method('DELETE')
 
-                    <label for="paquete_id" class="block text-gray-700 font-semibold mb-2">ID del Paquete a
-                        Eliminar:</label>
+                    <label for="paquete_id" class="block text-gray-700 font-semibold mb-2">
+                        ID del Paquete a Eliminar:
+                    </label>
+
                     <input type="number" name="paquete_id" id="paquete_id" required
                         class="w-full border p-2 rounded mb-2" placeholder="Ingrese ID del paquete">
 
@@ -309,18 +311,38 @@
 
                 <script>
                     document.getElementById('deleteForm').addEventListener('submit', function(event) {
-                        event.preventDefault(); // Evita que el formulario se envíe de inmediato
+                        event.preventDefault(); // Evita el envío inmediato
 
                         const paqueteId = document.getElementById('paquete_id').value;
+
                         if (!paqueteId) {
-                            alert("Por favor, ingrese un ID válido.");
+                            Swal.fire({
+                                icon: "warning",
+                                title: "Campo vacío",
+                                text: "Por favor, ingrese un ID válido.",
+                                confirmButtonColor: "#3085d6",
+                            });
                             return;
                         }
 
-                        this.action = "/paquetes/" + paqueteId; // Modifica la acción con el ID
-                        this.submit(); // Envía el formulario
+                        Swal.fire({
+                            title: "¿Estás seguro?",
+                            text: "Esta acción no se puede deshacer.",
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonColor: "#d33",
+                            cancelButtonColor: "#3085d6",
+                            confirmButtonText: "Sí, eliminar",
+                            cancelButtonText: "Cancelar"
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                this.action = "/paquetes/" + paqueteId; // Modifica la acción con el ID
+                                this.submit(); // Envía el formulario
+                            }
+                        });
                     });
                 </script>
+
 
 
             </div>

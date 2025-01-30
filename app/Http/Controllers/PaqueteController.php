@@ -177,10 +177,9 @@ class PaqueteController extends Controller
         try {
             DB::beginTransaction();
 
-            // Buscar el paquete
             $paquete = Paquete::findOrFail($id);
 
-            // Desasociar las etiquetas (poner `paquete_id` en NULL en lugar de eliminarlas)
+            // Desasociar las etiquetas (poner paquete_id en NULL)
             Etiqueta::where('paquete_id', $paquete->id)->update(['paquete_id' => null]);
 
             // Eliminar el paquete
@@ -188,16 +187,10 @@ class PaqueteController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Paquete eliminado correctamente.'
-            ], 200);
+            return redirect()->back()->with('success', 'Paquete eliminado correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al eliminar el paquete: ' . $e->getMessage()
-            ], 500);
+            return redirect()->back()->with('error', 'Error al eliminar el paquete: ' . $e->getMessage());
         }
     }
 }
