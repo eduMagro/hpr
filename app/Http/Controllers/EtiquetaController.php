@@ -9,6 +9,8 @@ use App\Models\Etiqueta;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Maquina;
+
 
 class etiquetaController extends Controller
 {
@@ -34,13 +36,18 @@ class etiquetaController extends Controller
 
 
 
-    public function actualizarEtiqueta(Request $request, $id)
+    public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
         DB::beginTransaction();
 
         try {
             $etiqueta = Etiqueta::with('elementos')->findOrFail($id);
-            $primerElemento = $etiqueta->elementos->first();
+          	// Buscar el primer elemento destinado a la máquina específica
+        	$primerElemento = $etiqueta->elementos()
+            ->where('maquina_id', $maquina_id)
+            ->first();
+ 		// Obtener la máquina desde el ID pasado
+        $maquina = Maquina::findOrFail($maquina_id);
 
             if (!$primerElemento) {
                 return response()->json([
@@ -49,7 +56,7 @@ class etiquetaController extends Controller
                 ], 400);
             }
 
-            $maquina = $primerElemento->maquina;
+     
 
             if (!$maquina) {
                 return response()->json([
@@ -63,13 +70,19 @@ class etiquetaController extends Controller
             $producto2 = null;
 
             if ($etiqueta->estado == "pendiente") {
-                $etiqueta->estado = "fabricando";
-                $etiqueta->fecha_inicio = now();
-                $etiqueta->users_id_1 = Auth::id();
-                $etiqueta->users_id_2 = session()->get('compañero_id', null);
-                $etiqueta->save();
-            } elseif ($etiqueta->estado == "fabricando") {
-                $productos = $maquina->productos()
+				
+				  // ✅ Comprobación de elementos en otras máquinas
+            $otrasMaquinas = $etiqueta->elementos()
+                ->where('maquina_id', '!=', $maquina->id)
+                ->exists();
+
+            if ($otrasMaquinas) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'La etiqueta está repartida en diferentes máquinas. Trabaja con el elemento que si está en la máquina.',
+                ], 400);
+            }
+				 $productos = $maquina->productos()
                     ->where('diametro', $primerElemento->diametro)
                     ->orderBy('peso_stock')
                     ->get();
@@ -80,7 +93,17 @@ class etiquetaController extends Controller
                         'error' => 'En esta máquina no hay materia prima con ese diámetro.',
                     ], 400);
                 }
-
+                $etiqueta->estado = "fabricando";
+                $etiqueta->fecha_inicio = now();
+                $etiqueta->users_id_1 = Auth::id();
+                $etiqueta->users_id_2 = session()->get('compañero_id', null);
+                $etiqueta->save();
+            } elseif ($etiqueta->estado == "fabricando") {
+               
+ $productos = $maquina->productos()
+        ->where('diametro', $primerElemento->diametro)
+        ->orderBy('peso_stock')
+        ->get();
                 $pesoRequerido = $etiqueta->peso;
 
                 if ($pesoRequerido <= 0) {

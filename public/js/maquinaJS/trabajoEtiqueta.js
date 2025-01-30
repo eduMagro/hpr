@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     const procesoEtiqueta = document.getElementById("procesoEtiqueta");
-   
+   let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
 
     if (!procesoEtiqueta) {
         console.error("Error: No se encontró el input de etiqueta en el DOM.");
@@ -21,19 +21,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            actualizarEtiqueta(etiquetaId);
+            actualizarEtiqueta(etiquetaId, maquina_id);
             this.value = ""; // Limpiar input tras lectura
         }
     });
    
 });
 
-async function actualizarEtiqueta(id) {
-    let url = `/actualizar-etiqueta/${id}`;
+async function actualizarEtiqueta(id, maquina_id) {
+    let url = `/actualizar-etiqueta/${id}/maquina/${maquina_id}`;
 
     try {
         let response = await fetch(url, {
-            method: "POST",
+            method: "PUT",
             headers: {
                 "Content-Type": "application/json",
                 Accept: "application/json", // Forzar JSON en la respuesta

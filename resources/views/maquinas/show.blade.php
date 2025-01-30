@@ -259,6 +259,8 @@
                         <h3 class="font-bold text-xl">PROCESO</h3>
                         <input type="text" id="procesoEtiqueta" class="w-full border p-2 rounded"
                             placeholder="Escanea un QR..." autofocus>
+						<div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
+
                     </div>
                     <!-- Sistema de inputs para crear paquetes -->
                     <div class="bg-gray-100 border p-2 shadow-md rounded-lg">
@@ -432,6 +434,8 @@
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/maquinaJS/trabajo_maquina.js') }}"></script>
+	 <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
+	 <script src="{{ asset('js/maquinaJS/trabajoElemento.js') }}"></script>
     <script src="{{ asset('js/imprimirQr.js') }}"></script>
     <script>
         window.etiquetasConElementos = @json($elementosAgrupadosScript);

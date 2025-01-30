@@ -1,10 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const qrElemento = document.getElementById("qrElemento");
-    if (!qrElemento) {
+    const procesoElemento = document.getElementById("procesoElemento");
+    if (!procesoElemento) {
         console.error("Error: No se encontró el input de elemento en el DOM.");
         return;
     }
-    qrElemento.addEventListener("keypress", function (e) {
+    procesoElemento.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
             let etiquetaId = this.value.trim();
