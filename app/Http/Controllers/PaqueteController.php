@@ -51,8 +51,11 @@ class PaqueteController extends Controller
             // Obtener etiquetas completadas
             $etiquetas = Etiqueta::whereIn('id', $request->etiquetas)
                 ->where('estado', 'completado')
-                ->with('elementos')
+                ->with(['elementos', 'planilla'])
                 ->get();
+
+            $planilla = $etiquetas->first()?->planilla; // Obtiene la primera planilla asociada
+            $codigo_planilla = $planilla ? $planilla->codigo_limpio : null; // Si hay planilla, obtiene su código
 
             if ($etiquetas->isEmpty()) {
                 DB::rollBack();
@@ -91,7 +94,7 @@ class PaqueteController extends Controller
                 'success' => true,
                 'message' => 'Paquete creado y etiquetas asociadas correctamente.',
                 'paquete_id' => $paquete->id,
-                'codigo_planilla' => $planilla_id->codigo_limpio
+                'codigo_planilla' => $codigo_planilla
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();

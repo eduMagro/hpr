@@ -1,11 +1,13 @@
 const etiquetas = [];
 
-document.getElementById("qrEtiqueta").addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-        event.preventDefault();
-        agregarEtiqueta();
-    }
-});
+document
+    .getElementById("qrEtiqueta")
+    .addEventListener("keypress", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            agregarEtiqueta();
+        }
+    });
 
 function agregarEtiqueta() {
     const qrEtiqueta = document.getElementById("qrEtiqueta");
@@ -57,17 +59,19 @@ function crearPaquete() {
         Swal.fire({
             icon: "warning",
             title: "Sin Etiquetas",
-            text: "No hay etiquetas para crear un paquete.",
+            text: "No has metido etiquetas en la lista.",
             confirmButtonColor: "#3085d6",
         });
         return;
     }
-
+    // ------------------------------------ VERIFICAR ETIQUETAS
     fetch("/verificar-etiquetas", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+            "X-CSRF-TOKEN": document
+                .querySelector('meta[name="csrf-token"]')
+                .getAttribute("content"),
         },
         body: JSON.stringify({ etiquetas }),
     })
@@ -77,19 +81,24 @@ function crearPaquete() {
                 Swal.fire({
                     icon: "error",
                     title: "Error",
-                    text: `Las siguientes etiquetas no están completas: ${data.etiquetas_incompletas.join(", ")}`,
+                    text: `Las siguientes etiquetas no están completas: ${data.etiquetas_incompletas.join(
+                        ", "
+                    )}`,
                     confirmButtonColor: "#d33",
                 });
                 return;
             }
 
-            const ubicacionId = document.getElementById("ubicacionInput")?.value || null;
-
+            const ubicacionId =
+                document.getElementById("ubicacionInput")?.value || null;
+            // ------------------------------------ PAQUETES
             fetch("/paquetes", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+                    "X-CSRF-TOKEN": document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute("content"),
                 },
                 body: JSON.stringify({
                     etiquetas,
