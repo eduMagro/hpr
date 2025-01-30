@@ -90,7 +90,8 @@ class PaqueteController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Paquete creado y etiquetas asociadas correctamente.',
-                'paquete_id' => $paquete->id
+                'paquete_id' => $paquete->id,
+                'codigo_planilla' => $planilla_id->codigo_limpio
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();

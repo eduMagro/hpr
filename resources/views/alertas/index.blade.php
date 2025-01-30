@@ -1,7 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <span class="mx-2">/</span>
             {{ __('Lista de Alertas') }}
         </h2>
     </x-slot>

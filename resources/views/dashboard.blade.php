@@ -88,17 +88,16 @@
                                 <span>Mantenimiento</span>
                             </a>
                         </div>
-                     <div class="icon-card relative">
-    <a href="{{ route('alertas.index') }}" class="relative">
-        <img src="https://img.icons8.com/?size=100&id=xaInJjDQEige&format=png&color=000000"
-            alt="Alertas">
-        <img id="notificacion-alertas"
-            src="https://img.icons8.com/color/48/high-priority.png"
-            alt="Alerta"
-            class="absolute top-0 right-0 w-6 h-6 hidden animate-alerta">
-        <span>Alertas</span>
-    </a>
-</div>
+                        <div class="icon-card relative">
+                            <a href="{{ route('alertas.index') }}" class="relative">
+                                <img src="https://img.icons8.com/?size=100&id=xaInJjDQEige&format=png&color=000000"
+                                    alt="Alertas">
+                                <img id="notificacion-alertas" src="https://img.icons8.com/color/48/high-priority.png"
+                                    alt="Alerta" class="absolute top-0 right-0 w-6 h-6 animate-alerta">
+
+                                <span>Alertas</span>
+                            </a>
+                        </div>
 
 
 
@@ -155,16 +154,27 @@
             text-decoration: none;
             /* Opcional para evitar subrayado */
         }
-		/*----------- EXCLAMACION ------------*/
-@keyframes expandirContraer {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.3); }
-    100% { transform: scale(1); }
-}
 
-.animate-alerta {
-    animation: expandirContraer 1s infinite ease-in-out;
-}
+        /*----------- EXCLAMACION ------------*/
+        @keyframes expandirContraer {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.3);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        #notificacion-alertas {
+            animation: expandirContraer 1s infinite ease-in-out;
+            display: none;
+        }
+
         /* Responsive tweaks */
         @media (max-width: 1024px) {
             .icon-container {
@@ -208,16 +218,16 @@
             }
         }
     </style>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        fetch("{{ route('alertas.sinLeer') }}")
-            .then(response => response.json())
-            .then(data => {
-                if (data.cantidad > 0) {
-                    document.getElementById("notificacion-alertas").style.display = "block";
-                }
-            });
-    });
-</script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch("{{ route('alertas.sinLeer') }}")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.cantidad > 0) {
+                        document.getElementById("notificacion-alertas").style.display = "block";
+                    }
+                });
+        });
+    </script>
 
 </x-app-layout>
