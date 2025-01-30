@@ -164,14 +164,9 @@
                             <strong> {{ $planilla->codigo_limpio }}</strong>
                         </h2>
                         <h3 class="text-lg font-semibold text-gray-800">
-                            Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} {{ $etiqueta->marca }}
+                            {{ $etiqueta->id_et }} {{ $etiqueta->nombre ?? 'Sin nombre' }} {{ $etiqueta->marca }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
-                        <button
-                            onclick="generateAndPrintQR('{{ $etiqueta->id }}', '{{ addslashes($etiqueta->nombre) }}', 'ETIQUETA')"
-                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">
-                            <i class="fas fa-qrcode mr-2"></i> QR {{ $etiqueta->id_et }}
-                        </button>
                         <!-- Contenedor oculto para generar el QR -->
                         <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
                         <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span

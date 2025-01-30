@@ -114,12 +114,14 @@ function crearPaquete() {
                             html: `Paquete creado con éxito. ID: <strong>${data.paquete_id}</strong> <br>
                                 
                        <button
-    onclick="generateAndPrintQR('${data.paquete_id}', '${codigo_planilla}', 'PAQUETE')"
+    onclick="generateAndPrintQR('${data.paquete_id}', '${data.codigo_planilla}', 'PAQUETE')"
     class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
     QR
 </button>
 `,
                             confirmButtonColor: "#28a745",
+                        }).then(() => {
+                            window.location.reload(); // Recargar la página
                         });
                         etiquetas.length = 0;
                         document.getElementById("etiquetasList").innerHTML = "";

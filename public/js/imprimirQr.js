@@ -11,11 +11,17 @@ function generateAndPrintQR(id, nombre, tipo) {
 
     qrContainer.innerHTML = ""; // Limpia cualquier QR anterior
 
-    // Generamos el código QR solo con el ID
+    // Definir tamaño del QR en función del tipo
+    let qrSize =
+        tipo.toLowerCase() === "ubicacion" || tipo.toLowerCase() === "maquina"
+            ? 240
+            : 120;
+
+    // Generamos el código QR
     const qrCode = new QRCode(qrContainer, {
         text: id.toString(),
-        width: 120, // Ajustado para mejor visibilidad
-        height: 120,
+        width: qrSize,
+        height: qrSize,
     });
 
     // Esperar a que la imagen del QR se genere
@@ -49,7 +55,9 @@ function generateAndPrintQR(id, nombre, tipo) {
                             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
                             background-color: #ffffff;
                             text-align: center;
-                            width: 180px;
+                            width: ${
+                                qrSize + 60
+                            }px; /* Ajusta el ancho en función del QR */
                         }
                         .tipo, .id, .nombre {
                             width: 100%;
@@ -71,8 +79,8 @@ function generateAndPrintQR(id, nombre, tipo) {
                             font-weight: 500;
                         }
                         img {
-                            width: 120px;
-                            height: 120px;
+                            width: ${qrSize}px;
+                            height: ${qrSize}px;
                             border: 1px solid #000; /* Borde alrededor del QR */
                             padding: 5px;
                             margin-bottom: 10px;
