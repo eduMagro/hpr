@@ -23,15 +23,30 @@
         </div>
     @endif
     @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
+                    confirmButtonColor: '#d33'
+                });
+            });
+        </script>
     @endif
+
     @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'success',
+                    text: '{{ session('success') }}',
+                    confirmButtonColor: '#28a745'
+                });
+            });
+        </script>
     @endif
+
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->
         <div class="mb-4">
@@ -311,35 +326,37 @@
             </div>
 
             <!-- Modal Reportar Incidencia (Oculto por defecto) -->
+            <div id="modalIncidencia"
+                class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
+                <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                    <form method="POST" action="{{ route('alertas.store') }}">
+                        @csrf
 
-            <div x-data="{ open: false, alertaId: null }">
-                <!-- Modal -->
-                <div x-show="open" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center"
-                    x-cloak>
-                    <div class="bg-white p-6 rounded-lg shadow-lg w-96">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Reportar Incidencia</h2>
+                        <!-- Destinatario (Opcional: puedes ocultarlo o asignarlo dinámicamente) -->
+                        <label for="destinatario"
+                            class="block text-sm font-medium text-gray-700 mb-1">Destinatario</label>
+                        <select name="destinatario" id="destinatario" class="w-full border rounded p-2 mb-4"
+                            required>
+                            <option value="administracion">Administración</option>
+                            <option value="mecanico">Mecánico</option>
+                            <option value="desarrollador">Desarrollador</option>
+                        </select>
 
-                        <!-- Mostrar ID de la alerta -->
-                        <p class="text-sm text-gray-600 mb-2">Alerta ID: <span x-text="alertaId"></span></p>
+                        <!-- Mensaje de incidencia -->
+                        <label for="mensaje" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                        <textarea name="mensaje" id="mensaje" class="w-full border rounded p-2 mb-4" rows="3"
+                            placeholder="Describe el problema..." required></textarea>
 
-                        <!-- Formulario de reporte -->
-                        <form method="POST" action="{{ route('alertas.store') }}">
-                            @csrf
-                            <input type="hidden" name="alerta_id" x-model="alertaId">
-                            <textarea name="descripcion" class="w-full border rounded p-2" rows="3" placeholder="Describe el problema..."
-                                required></textarea>
 
-                            <div class="flex justify-end mt-4">
-                                <button type="button" @click="open = false"
-                                    class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
-                                    Cancelar
-                                </button>
-                                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded">
-                                    Enviar
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+
+                        <div class="flex justify-end mt-4">
+                            <button onclick="document.getElementById('modalIncidencia').classList.add('hidden')"
+                                class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
+                                Cancelar
+                            </button>
+                            <button class="px-4 py-2 bg-red-600 text-white rounded">Enviar</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
