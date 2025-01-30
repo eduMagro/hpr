@@ -14,25 +14,37 @@ use App\Models\Maquina;
 
 class etiquetaController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Etiqueta::query();
+public function index(Request $request)
+{
+    $query = Etiqueta::query();
 
-        // Filtrar por ID si está presente
-        if ($request->filled('id')) {
-            $query->where('id', $request->id);
+    // Filtrar por ID si está presente
+    $query->when($request->filled('id'), function ($q) use ($request) {
+        $q->where('id', $request->id);
+    });
+
+    // Filtrar por Estado si está presente
+    $query->when($request->filled('estado'), function ($q) use ($request) {
+        $q->where('estado', $request->estado);
+    });
+
+    // Filtrar por Código de Planilla con búsqueda parcial (LIKE)
+    if ($request->filled('codigo_planilla')) {
+        $planillas = Planilla::where('codigo', 'LIKE', '%' . $request->codigo_planilla . '%')->pluck('id');
+
+        if ($planillas->isNotEmpty()) {
+            $query->whereIn('planilla_id', $planillas);
+        } else {
+            return redirect()->back()->with('error', 'No se encontraron planillas con ese código.');
         }
-
-        // Filtrar por Estado si está presente
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        }
-
-        // Obtener los resultados con paginación
-        $etiquetas = $query->paginate(10);
-
-        return view('etiquetas.index', compact('etiquetas'));
     }
+
+    // Obtener los resultados con paginación
+    $etiquetas = $query->paginate(10);
+
+    return view('etiquetas.index', compact('etiquetas'));
+}
+
 
 
 
@@ -41,7 +53,7 @@ class etiquetaController extends Controller
         DB::beginTransaction();
 
         try {
-            $etiqueta = Etiqueta::with('elementos')->findOrFail($id);
+            $etiqueta = Etiqueta::with('elementos.planilla')->findOrFail($id);
           	// Buscar el primer elemento destinado a la máquina específica
         	$primerElemento = $etiqueta->elementos()
             ->where('maquina_id', $maquina_id)
@@ -65,6 +77,11 @@ class etiquetaController extends Controller
                 ], 404);
             }
 
+			  // ✅ Verificar si la planilla tiene fecha_inicio NULL y actualizarla
+            if ($primerElemento->planilla && is_null($primerElemento->planilla->fecha_inicio)) {
+                $primerElemento->planilla->fecha_inicio = now();
+                $primerElemento->planilla->save();
+            }
             $productosConsumidos = [];
             $producto1 = null;
             $producto2 = null;
@@ -139,10 +156,17 @@ class etiquetaController extends Controller
                         'error' => 'No hay suficiente materia prima. Avisa al gruista.',
                     ], 400);
                 }
-
-                $etiqueta->fecha_finalizacion = now();
+				 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->estado = 'completado';
-
+  $etiqueta->save();
+ // ✅ Verificar si todas las etiquetas tienen fecha_finalizacion no nula
+            $todasFinalizadas = $primerElemento->planilla->elementos()->whereNull('fecha_finalizacion')->doesntExist();
+            
+            if ($todasFinalizadas) {
+                $primerElemento->planilla->fecha_finalizacion = now();
+                $primerElemento->planilla->save();
+            }
+               
                 // ✅ Se asignan solo si existen productos consumidos
                 $producto1 = isset($productosConsumidos[0]) ? $productosConsumidos[0] : null;
                 $producto2 = isset($productosConsumidos[1]) ? $productosConsumidos[1] : null;

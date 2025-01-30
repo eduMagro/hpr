@@ -72,7 +72,18 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-2">Planilla</th>
+                        <th class="px-4 py-2">Planilla
+						<!-- Formulario de búsqueda por ID -->
+                            <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2 flex space-x-2">
+                                <input type="text" name="codigo_planilla"
+                                    class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
+                                <button type="submit"
+                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
+                                    Filtrar
+                                </button>
+								 </form>
+								</th>
                         <th class="px-4 py-2">Usuario 1</th>
                         <th class="px-4 py-2">Usuario 2</th>
                         <th class="px-4 py-2">Paquete</th>
