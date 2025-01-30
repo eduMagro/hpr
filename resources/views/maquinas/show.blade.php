@@ -257,7 +257,7 @@
                     <!-- Input de lectura de QR -->
                     <div class="bg-white border p-2 shadow-md rounded-lg self-start sm:col-span-1 md:sticky">
                         <h3 class="font-bold text-xl">PROCESO</h3>
-                        <input type="text" id="qrInput" class="w-full border p-2 rounded"
+                        <input type="text" id="procesoEtiqueta" class="w-full border p-2 rounded"
                             placeholder="Escanea un QR..." autofocus>
                     </div>
                     <!-- Sistema de inputs para crear paquetes -->

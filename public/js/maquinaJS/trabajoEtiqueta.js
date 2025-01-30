@@ -1,13 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const qrEtiqueta = document.getElementById("qrEtiqueta");
+    const procesoEtiqueta = document.getElementById("procesoEtiqueta");
    
 
-    if (!qrEtiqueta) {
+    if (!procesoEtiqueta) {
         console.error("Error: No se encontró el input de etiqueta en el DOM.");
         return;
     }
  
-    qrEtiqueta.addEventListener("keypress", function (e) {
+    procesoEtiqueta.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
             let etiquetaId = this.value.trim();
