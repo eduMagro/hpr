@@ -193,7 +193,7 @@
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
                                     class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-                                   
+
 
                                     <p class="text-gray-500 text-sm">
                                         <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }}
@@ -311,17 +311,34 @@
             </div>
 
             <!-- Modal Reportar Incidencia (Oculto por defecto) -->
-            <div id="modalIncidencia"
-                class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
-                <div class="bg-white p-6 rounded-lg shadow-lg w-96">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Reportar Incidencia</h2>
-                    <textarea class="w-full border rounded p-2" rows="3" placeholder="Describe el problema..."></textarea>
-                    <div class="flex justify-end mt-4">
-                        <button onclick="document.getElementById('modalIncidencia').classList.add('hidden')"
-                            class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
-                            Cancelar
-                        </button>
-                        <button class="px-4 py-2 bg-red-600 text-white rounded">Enviar</button>
+
+            <div x-data="{ open: false, alertaId: null }">
+                <!-- Modal -->
+                <div x-show="open" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center"
+                    x-cloak>
+                    <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Reportar Incidencia</h2>
+
+                        <!-- Mostrar ID de la alerta -->
+                        <p class="text-sm text-gray-600 mb-2">Alerta ID: <span x-text="alertaId"></span></p>
+
+                        <!-- Formulario de reporte -->
+                        <form method="POST" action="{{ route('alertas.store') }}">
+                            @csrf
+                            <input type="hidden" name="alerta_id" x-model="alertaId">
+                            <textarea name="descripcion" class="w-full border rounded p-2" rows="3" placeholder="Describe el problema..."
+                                required></textarea>
+
+                            <div class="flex justify-end mt-4">
+                                <button type="button" @click="open = false"
+                                    class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
+                                    Cancelar
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded">
+                                    Enviar
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

@@ -28,7 +28,20 @@
                 {{ session('success') }}
             </div>
         @endif
-
+        <!-- Alertas no leídas -->
+        @if ($alertasNoLeidas->isNotEmpty())
+            <div class="mb-6 bg-yellow-100 border border-yellow-400 text-yellow-800 p-4 rounded-lg shadow">
+                <h3 class="text-md font-semibold">📢 Alertas No Leídas</h3>
+                <ul class="mt-2">
+                    @foreach ($alertasNoLeidas as $alerta)
+                        <li class="py-1 border-b last:border-b-0">
+                            <span class="font-bold">{{ $alerta->created_at->format('d/m/Y H:i') }}:</span>
+                            {{ $alerta->mensaje }}
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         <!-- Contenedor de la tabla -->
         <div class="w-full overflow-x-auto bg-white shadow-md rounded-lg">
             <table class="w-full min-w-[800px] border-collapse">

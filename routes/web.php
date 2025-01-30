@@ -68,9 +68,9 @@ Route::middleware('auth')->group(function () {
         ->name('maquinas.sesion.guardar');
 
 
-    Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
+    Route::resource('alertas', AlertaController::class);
     Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
-        
+
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 });
 
