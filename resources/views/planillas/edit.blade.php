@@ -4,27 +4,6 @@
             {{ __('Editar Planilla') }}
         </h2>
     </x-slot>
-    <!-- Mostrar errores de validación -->
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    <!-- Mostrar mensajes de éxito o error -->
-    @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
-    @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
 
     <div class="container mt-5">
         <div class="row justify-content-center">
@@ -37,69 +16,65 @@
                         <form action="{{ route('planillas.update', $planilla->id) }}" method="POST">
                             @csrf
                             @method('PUT')
-                        
-                            <!-- Código de la obra -->
-                            <div class="form-group mb-4">
-                                <label for="cod_obra" class="form-label fw-bold text-uppercase">Código de Obra</label>
-                                <input type="text" id="cod_obra" name="cod_obra" class="form-control form-control-lg"
-                                    value="{{ old('cod_obra', $planilla->cod_obra) }}" placeholder="Introduce el código de la obra" required>
-                            </div>
-                        
-                            <!-- Cliente -->
-                            <div class="form-group mb-4">
-                                <label for="cliente" class="form-label fw-bold text-uppercase">Cliente</label>
-                                <input type="text" id="cliente" name="cliente" class="form-control form-control-lg"
-                                    value="{{ old('cliente', $planilla->cliente) }}" placeholder="Introduce el cliente" required>
-                            </div>
-                        
-                            <!-- Nombre de la obra -->
-                            <div class="form-group mb-4">
-                                <label for="nom_obra" class="form-label fw-bold text-uppercase">Nombre Obra</label>
-                                <input type="text" id="nom_obra" name="nom_obra" class="form-control form-control-lg"
-                                    value="{{ old('nom_obra', $planilla->nom_obra) }}" placeholder="Introduce el nombre de obra" required>
-                            </div>                        
-                            <!-- Sección -->
-                            <div class="form-group mb-4">
-                                <label for="seccion" class="form-label fw-bold text-uppercase">Sección</label>
-                                <input type="text" id="seccion" name="seccion" class="form-control form-control-lg"
-                                    value="{{ old('seccion', $planilla->seccion) }}" placeholder="Introduce la sección" required>
-                            </div>
-                            <!-- Descripción -->
-                            <div class="form-group mb-4">
-                                <label for="descripcion" class="form-label fw-bold text-uppercase">Descripción</label>
-                                <input type="text" id="descripcion" name="descripcion" class="form-control form-control-lg"
-                                    value="{{ old('descripcion', $planilla->descripcion) }}" placeholder="Introduce una descripción">
-                            </div>                       
-                            <!-- Población -->
-                            <div class="form-group mb-4">
-                                <label for="poblacion" class="form-label fw-bold text-uppercase">Población</label>
-                                <input type="text" id="poblacion" name="poblacion" class="form-control form-control-lg"
-                                    value="{{ old('poblacion', $planilla->poblacion) }}" placeholder="Introduce la población">
-                            </div>
-                            <!-- Código -->
-                            <div class="form-group mb-4">
-                                <label for="codigo" class="form-label fw-bold text-uppercase">Código Planilla</label>
-                                <input type="text" id="codigo" name="codigo" class="form-control form-control-lg"
-                                    value="{{ old('codigo', $planilla->codigo) }}" placeholder="Introduce el código de Planilla">
-                            </div>
+
+                            @foreach (['cod_obra' => 'Código de Obra', 'cliente' => 'Cliente', 'nom_obra' => 'Nombre de la Obra', 'seccion' => 'Sección', 'descripcion' => 'Descripción', 'codigo' => 'Código Planilla', 'ensamblado' => 'Ensamblado'] as $field => $label)
+                                <div class="form-group mb-4">
+                                    <label for="{{ $field }}" class="form-label fw-bold text-uppercase">{{ $label }}</label>
+                                    <input type="text" id="{{ $field }}" name="{{ $field }}" class="form-control form-control-lg" value="{{ old($field, $planilla->$field) }}" placeholder="Introduce {{ strtolower($label) }}" required>
+                                    @error($field)
+                                        <div class="text-danger">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endforeach
+
                             <!-- Peso total -->
-                            {{-- <div class="form-group mb-4">
-                                <label for="peso_total" class="form-label fw-bold text-uppercase">Peso Total</label>
-                                <input type="number" id="peso_total" name="peso_total" class="form-control form-control-lg"
-                                    value="{{ old('peso_total', $planilla->peso_total) }}" placeholder="Introduce el peso total">
+                            <div class="form-group mb-4">
+                                <label for="peso_total" class="form-label fw-bold text-uppercase">Peso Total (kg)</label>
+                                <input type="number" step="0.01" id="peso_total" name="peso_total" class="form-control form-control-lg" value="{{ old('peso_total', $planilla->peso_total) }}" placeholder="Introduce el peso total">
+                                @error('peso_total')
+                                    <div class="text-danger">{{ $message }}</div>
+                                @enderror
                             </div>
-                         --}}
+
+                          <!-- Fecha de Inicio -->
+<div class="form-group mb-4">
+    <label for="fecha_inicio" class="form-label fw-bold text-uppercase">Fecha de Inicio</label>
+    <input type="datetime-local" id="fecha_inicio" name="fecha_inicio" class="form-control form-control-lg"
+        value="{{ old('fecha_inicio', $planilla->fecha_inicio ? $planilla->fecha_inicio->format('Y-m-d\TH:i') : '') }}">
+    @error('fecha_inicio')
+        <div class="text-danger">{{ $message }}</div>
+    @enderror
+</div>
+
+<!-- Fecha de Finalización -->
+<div class="form-group mb-4">
+    <label for="fecha_finalizacion" class="form-label fw-bold text-uppercase">Fecha de Finalización</label>
+    <input type="datetime-local" id="fecha_finalizacion" name="fecha_finalizacion" class="form-control form-control-lg"
+        value="{{ old('fecha_finalizacion', $planilla->fecha_finalizacion ? $planilla->fecha_finalizacion->format('Y-m-d\TH:i') : '') }}">
+    @error('fecha_finalizacion')
+        <div class="text-danger">{{ $message }}</div>
+    @enderror
+</div>
+
+<!-- Tiempo de Fabricación -->
+<div class="form-group mb-4">
+    <label for="tiempo_fabricacion" class="form-label fw-bold text-uppercase">Tiempo de Fabricación (segundos)</label>
+    <input type="number" id="tiempo_fabricacion" name="tiempo_fabricacion" class="form-control form-control-lg"
+        value="{{ old('tiempo_fabricacion', $planilla->tiempo_fabricacion) }}">
+    @error('tiempo_fabricacion')
+        <div class="text-danger">{{ $message }}</div>
+    @enderror
+</div>
+
+
                             <!-- Botón para actualizar -->
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary btn-lg">Actualizar Planilla</button>
                             </div>
                         </form>
-                        
                     </div>
-
                 </div>
             </div>
         </div>
     </div>
-       
 </x-app-layout>

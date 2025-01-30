@@ -159,7 +159,8 @@
                         $planilla = $elementos->first()->planilla ?? null; // Obtener la etiqueta del primer elemento para mostrarla
                     @endphp
 
-                    <div class="bg-yellow-100 p-6 rounded-lg shadow-md mt-4">
+                  <div class="{{ str_contains($planilla->ensamblado, 'TALLER') ? 'bg-red-100 text-white' : 'bg-yellow-100' }} p-6 rounded-lg shadow-md mt-4">
+
                         <h2 class="text-lg font-semibold text-gray-700">Planilla:
                             <strong> {{ $planilla->codigo_limpio }}</strong>
                         </h2>
@@ -181,6 +182,7 @@
                         <p class="text-gray-500 text-sm">
                             {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
                         </p>
+					     <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                         @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
                             <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en
@@ -199,6 +201,7 @@
                         @endif
 
                         <!-- GRID PARA ELEMENTOS -->
+					   
                         <div class="grid grid-cols-1 gap-4">
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"

@@ -333,52 +333,40 @@ class PlanillaController extends Controller
 
         return view('planillas.edit', compact('planilla'));
     }
-    //------------------------------------------------------------------------------------ UPDATE()
-    public function update(Request $request, $id)
-    {
-        DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
-        try {
-            $planilla = Planilla::findOrFail($id);
+  public function update(Request $request, $id)
+{
+	  
+    DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
+    try {
+        $planilla = Planilla::findOrFail($id);
 
-            // Validar los datos
+        // Actualizar la planilla con datos limpios
+        $planilla->update([
+            'cod_obra' => $request->cod_obra,
+            'cod_cliente' => $request->cod_cliente,
+            'cliente' => $request->cliente,
+            'nom_obra' => $request->nom_obra,
+            'seccion' => $request->seccion,
+            'descripcion' => $request->descripcion,
+            'ensamblado' => $request->ensamblado,
+            'codigo' => $request->codigo,
+            'peso_total' => $request->peso_total,
+            'fecha_inicio' => NULL,
+            'fecha_finalizacion' => NULL,
+            'tiempo_fabricacion' => 0,
+        ]);
 
-            $request->validate([
-                'cod_obra' => 'required|string|max:255',
-                'cod_cliente' => 'required|string|max:255',
-                'cliente' => 'required|string|max:255',
-                'nom_obra' => 'required|string|max:255',
-                'seccion' => 'required|string|max:255',
-                'descripcion' => 'required|string|max:255',
-                'ensamblado' => 'required|string|max:255',
-                'codigo' => 'required|string|max:255',
-                // 'peso_total' => 'required|numeric|min:0',
-            ]);
-
-            // Actualizar la ubicación
-            $planilla->update([
-                'cod_obra' => $request->cod_obra,
-                'cod_cliente' => $request->cod_cliente,
-                'cliente' => $request->cliente,
-                'nom_obra' => $request->nom_obra,
-                'seccion' => $request->seccion,
-                'descripcion' => $request->descripcion,
-                'ensamblado' => $request->ensamblado,
-                'codigo' => $request->codigo,
-                // 'peso_total' => $request->peso_total,
-            ]);
-
-            DB::commit();  // Confirmamos la transacción
-            return redirect()->route('planillas.index')->with('success', 'Planilla actualizada');
-        } catch (ValidationException $e) {
-            // Mostrar todos los errores de validación
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (Exception $e) {
-            // Mostrar errores generales
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
-        }
+        DB::commit();  // Confirmamos la transacción
+        return redirect()->route('planillas.index')->with('success', 'Planilla actualizada');
+    } catch (ValidationException $e) {
+        DB::rollBack();  // Si ocurre un error, revertimos la transacción
+        return redirect()->back()->withErrors($e->errors())->withInput();
+    } catch (Exception $e) {
+        DB::rollBack();  // Si ocurre un error, revertimos la transacción
+        return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
     }
+}
+
     //------------------------------------------------------------------------------------ DESTROY()
 
     // Eliminar una planilla y sus elementos asociados

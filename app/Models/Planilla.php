@@ -25,7 +25,6 @@ class Planilla extends Model
     protected $fillable = [
 
         'users_id',
-
         'cod_obra',
         'cod_cliente',
         'cliente',

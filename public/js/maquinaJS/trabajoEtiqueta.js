@@ -1,12 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const qrInput = document.getElementById("qrInput");
+    const qrEtiqueta = document.getElementById("qrEtiqueta");
+   
 
-    if (!qrInput) {
-        console.error("Error: No se encontró el input #qrInput en el DOM.");
+    if (!qrEtiqueta) {
+        console.error("Error: No se encontró el input de etiqueta en el DOM.");
         return;
     }
-
-    qrInput.addEventListener("keypress", function (e) {
+ 
+    qrEtiqueta.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
             let etiquetaId = this.value.trim();
@@ -24,6 +25,7 @@ document.addEventListener("DOMContentLoaded", function () {
             this.value = ""; // Limpiar input tras lectura
         }
     });
+   
 });
 
 async function actualizarEtiqueta(id) {
