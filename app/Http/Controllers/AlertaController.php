@@ -84,7 +84,11 @@ class AlertaController extends Controller
         $request->validate([
             'mensaje' => 'required|string|max:255',
             'destinatario' => 'required|in:desarrollador,administracion,mecanico', // Ajusta según los destinatarios válidos
+            'user_id_2' => 'nullable|exists:users,id' // Validación para asegurar que es un usuario válido
         ]);
+        // Verificar si la sesión tiene el valor esperado
+        $companeroId = session()->get('companero_id', null);
+        \Log::info("Valor de companero_id en la sesión: " . json_encode($companeroId));
 
         try {
             // Crear una nueva alerta
@@ -92,7 +96,7 @@ class AlertaController extends Controller
                 'mensaje' => $request->mensaje,
                 'destinatario' => $request->destinatario,
                 'user_id_1' => Auth::id(), // Usuario que crea la alerta
-                'user_id_2' => session()->get('companero_id', null), // Sin tilde en 'compañero'
+                'user_id_2' => session()->get('compañero_id', null), // Sin tilde en 'compañero'
                 'leida' => false, // Se marca como no leída por defecto
             ]);
 

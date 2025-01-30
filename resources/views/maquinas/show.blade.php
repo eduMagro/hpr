@@ -346,6 +346,7 @@
                         <label for="mensaje" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
                         <textarea name="mensaje" id="mensaje" class="w-full border rounded p-2 mb-4" rows="3"
                             placeholder="Describe el problema..." required></textarea>
+                        <input type="hidden" name="user_id_2" value="{{ session('compañero_id') }}">
 
 
 
