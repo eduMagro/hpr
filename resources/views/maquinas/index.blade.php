@@ -66,8 +66,12 @@
                         <p><strong>Nombre Máquina:</strong> {{ $maquina->nombre }}</p>
                         <p>
 
-                            <button id="generateQR" onclick="generateAndPrintQR('{{ $maquina->codigo }}')"
-                                class="btn btn-primary">QR</button>
+                            <button
+                                onclick="generateAndPrintQR('{{ $maquina->id }}', '{{ $maquina->nombre }}', 'MÁQUINA')"
+                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                QR
+                            </button>
+
                         </p>
                         <div id="qrCanvas" style="display:none;"></div>
 
@@ -173,46 +177,7 @@
     </div>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script>
-        function generateAndPrintQR(data) {
-            // Reemplazamos los caracteres problemáticos antes de generar el QR
-            const safeData = data.replace(/_/g, '%5F'); // Reemplazamos _ por %5F
-
-            // Elimina cualquier contenido previo del canvas
-            const qrContainer = document.getElementById('qrCanvas');
-            qrContainer.innerHTML = ""; // Limpia el canvas si ya existe un QR previo
-
-            // Generar el código QR con el texto seguro
-            const qrCode = new QRCode(qrContainer, {
-                text: safeData, // Usamos el texto transformado
-                width: 200,
-                height: 200,
-            });
-
-            // Esperar a que el QR esté listo para imprimir
-            setTimeout(() => {
-                const qrImg = qrContainer.querySelector('img'); // Obtiene la imagen del QR
-                if (!qrImg) {
-                    alert("Error al generar el QR. Intenta nuevamente.");
-                    return;
-                }
-
-                // Abrir ventana de impresión
-                const printWindow = window.open('', '_blank');
-                printWindow.document.write(`
-                  <html>
-                      <head><title>Imprimir QR</title></head>
-                      <body>
-                          <img src="${qrImg.src}" alt="Código QR" style="width:100px">
-                          <p>${safeData}</p>
-                          <script>window.print();<\/script>
-                      </body>
-                  </html>
-              `);
-                printWindow.document.close();
-            }, 500); // Tiempo suficiente para generar el QR
-        }
-    </script>
+    <script src="{{ asset('js/imprimirQr.js') }}"></script>
     <script>
         const usuarios = @json($usuarios);
 

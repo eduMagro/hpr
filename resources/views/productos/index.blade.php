@@ -134,8 +134,12 @@
                     <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
                     <p>
 
-                        <button id="generateQR" onclick="generateAndPrintQR('{{ $producto->id }}')"
-                            class="btn btn-primary">QR</button>
+                        <button
+                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->fabricante }}', 'MATERIA PRIMA')"
+                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            QR
+                        </button>
+
                     </p>
                     <div id="qrCanvas" style="display:none;"></div>
 
@@ -160,8 +164,8 @@
                         <!-- Enlace para editar -->
                         <a href="{{ route('productos.edit', $producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-						<a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
-    class="text-green-500 hover:text-green-700 text-sm">Mover</a>
+                        <a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
+                            class="text-green-500 hover:text-green-700 text-sm">Mover</a>
 
                         <a href="{{ route('productos.show', $producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
@@ -179,49 +183,5 @@
     </div>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script>
-        function generateAndPrintQR(id) {
-            // Limpiamos el contenedor del QR
-            const qrContainer = document.getElementById('qrCanvas');
-            qrContainer.innerHTML = ""; // Elimina cualquier QR previo
-
-            // Generamos el QR con el ID
-            const qrCode = new QRCode(qrContainer, {
-                text: id.toString(),
-                width: 200,
-                height: 200,
-            });
-
-            // Esperamos hasta que el QR esté listo antes de imprimirlo
-            const interval = setInterval(() => {
-                const qrImg = qrContainer.querySelector('img');
-                if (qrImg) {
-                    clearInterval(interval); // Detenemos la espera
-
-                    // Creamos una ventana para la impresión
-                    const printWindow = window.open('', '_blank');
-                    printWindow.document.write(`
-                    <html>
-                        <head>
-                            <title>Imprimir QR</title>
-                            <style>
-                                body { display: flex; justify-content: center; align-items: center; flex-direction: column; }
-                                img { margin-bottom: 20px; }
-                            </style>
-                        </head>
-                        <body>
-                            <img src="${qrImg.src}" alt="Código QR" style="width:200px; height:200px;">
-                            <p>ID ${id}</p>
-                            <script>
-                                window.print();
-                                setTimeout(() => window.close(), 1000); // Cierra la ventana después de imprimir
-                            <\/script>
-                        </body>
-                    </html>
-                `);
-                    printWindow.document.close();
-                }
-            }, 100); // Revisamos cada 100ms si el QR está listo
-        }
-    </script>
+    <script src="{{ asset('js/imprimirQr.js') }}"></script>
 </x-app-layout>

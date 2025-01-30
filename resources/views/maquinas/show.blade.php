@@ -168,7 +168,7 @@
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
                         <button
-                            onclick="generateAndPrintQR('{{ $etiqueta->id }}', '{{ addslashes($etiqueta->nombre) }}')"
+                            onclick="generateAndPrintQR('{{ $etiqueta->id }}', '{{ addslashes($etiqueta->nombre) }}', 'ETIQUETA')"
                             class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-md">
                             <i class="fas fa-qrcode mr-2"></i> QR {{ $etiqueta->id_et }}
                         </button>
@@ -412,7 +412,7 @@
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/maquinaJS/trabajo_maquina.js') }}"></script>
-    <script src="{{ asset('js/maquinaJS/imprimirQR.js') }}"></script>
+    <script src="{{ asset('js/imprimirQr.js') }}"></script>
     <script>
         window.etiquetasConElementos = @json($elementosAgrupadosScript);
     </script>
