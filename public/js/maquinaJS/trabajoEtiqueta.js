@@ -20,7 +20,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 return;
             }
-
+            // Si la etiqueta tiene elementos en otras máquinas, no permitir su actualización
+            if (
+                etiquetasConElementosEnOtrasMaquinas.includes(
+                    parseInt(etiquetaId)
+                )
+            ) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Acción no permitida",
+                    text: "Esta etiqueta tiene elementos en otras máquinas. No puedes procesarla.",
+                });
+                this.value = ""; // Limpiar input tras intento fallido
+                return;
+            }
             actualizarEtiqueta(etiquetaId, maquina_id);
             this.value = ""; // Limpiar input tras lectura
         }

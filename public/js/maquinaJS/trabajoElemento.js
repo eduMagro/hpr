@@ -1,11 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
     const procesoElemento = document.getElementById("procesoElemento");
+    const maquinaInfo = document.getElementById("maquina-info");
     let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
 
-    if (!procesoElemento) {
-        console.error("Error: No se encontró el input de elemento en el DOM.");
-        return;
-    }
     procesoElemento.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -21,10 +18,11 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             actualizarElemento(elementoId, maquina_id);
-            this.value = ""; // Limpiar input tras lectura
+            this.value = ""; // Limpiar input tras lectura exitosa
         }
     });
 });
+
 async function actualizarElemento(id, maquina_id) {
     let url = `/actualizar-elemento/${id}/maquina/${maquina_id}`;
     try {
@@ -32,7 +30,7 @@ async function actualizarElemento(id, maquina_id) {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
-                Accept: "application/json", // Forzar JSON en la respuesta
+                Accept: "application/json",
                 "X-CSRF-TOKEN": document
                     .querySelector('meta[name="csrf-token"]')
                     .getAttribute("content"),
