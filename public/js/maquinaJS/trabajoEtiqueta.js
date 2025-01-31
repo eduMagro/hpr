@@ -1,17 +1,18 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const procesoElemento = document.getElementById("procesoElemento");
+    const procesoEtiqueta = document.getElementById("procesoEtiqueta");
     let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
 
-    if (!procesoElemento) {
-        console.error("Error: No se encontró el input de elemento en el DOM.");
+    if (!procesoEtiqueta) {
+        console.error("Error: No se encontró el input de etiqueta en el DOM.");
         return;
     }
-    procesoElemento.addEventListener("keypress", function (e) {
+
+    procesoEtiqueta.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
-            let elementoId = this.value.trim();
+            let etiquetaId = this.value.trim();
 
-            if (!elementoId || isNaN(elementoId) || elementoId <= 0) {
+            if (!etiquetaId || isNaN(etiquetaId) || etiquetaId <= 0) {
                 Swal.fire({
                     icon: "error",
                     title: "Error",
@@ -20,13 +21,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            actualizarElemento(elementoId, maquina_id);
+            actualizarEtiqueta(etiquetaId, maquina_id);
             this.value = ""; // Limpiar input tras lectura
         }
     });
 });
-async function actualizarElemento(id, maquina_id) {
-    let url = `/actualizar-elemento/${id}/maquina/${maquina_id}`;
+
+async function actualizarEtiqueta(id, maquina_id) {
+    let url = `/actualizar-etiqueta/${id}/maquina/${maquina_id}`;
+
     try {
         let response = await fetch(url, {
             method: "PUT",
@@ -37,7 +40,9 @@ async function actualizarElemento(id, maquina_id) {
                     .querySelector('meta[name="csrf-token"]')
                     .getAttribute("content"),
             },
-            body: JSON.stringify({ id }),
+            body: JSON.stringify({
+                id,
+            }),
         });
 
         if (!response.ok) {
@@ -68,43 +73,31 @@ async function actualizarElemento(id, maquina_id) {
 }
 
 function actualizarDOM(id, data) {
-    let estadoElemento = document.getElementById(`estado-${id}`);
-    let inicioElemento = document.getElementById(`inicio-${id}`);
-    let finalElemento = document.getElementById(`final-${id}`);
-    let contenedorEstado = document.getElementById(`contenedor-estado-${id}`);
+    let estadoEtiqueta = document.getElementById(`estado-${id}`);
+    let inicioEtiqueta = document.getElementById(`inicio-${id}`);
+    let finalEtiqueta = document.getElementById(`final-${id}`);
+    let contenedorEstadoEt = document.getElementById(
+        `contenedor-estado-et-${id}`
+    ); // Contenedor donde agregar el sticker
 
-    if (estadoElemento) estadoElemento.textContent = data.estado;
-    if (inicioElemento)
-        inicioElemento.textContent = data.fecha_inicio || "No asignada";
-    if (finalElemento)
-        finalElemento.textContent = data.fecha_finalizacion || "No asignada";
+    if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
+    if (inicioEtiqueta)
+        inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
+    if (finalEtiqueta)
+        finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
 
+    // ✅ Quitar stickers previos antes de actualizar el estado
     let stickerExistente = document.querySelector(`#sticker-${id}`);
     if (stickerExistente) {
         stickerExistente.remove();
     }
 
-    if (data.estado === "pendiente") {
-        Swal.fire({
-            icon: "info",
-            title: "Elemento reiniciado",
-            text: "Se ha restaurado el elemento a estado pendiente.",
-            timer: 2000,
-            showConfirmButton: false,
-        });
-    } else if (data.estado === "fabricando") {
-        Swal.fire({
-            icon: "info",
-            title: "Elemento comenzado",
-            text: "Empezamos a fabricar el elemento.",
-            timer: 2000,
-            showConfirmButton: false,
-        });
-    } else if (data.estado === "completado") {
+    // ✅ Si el estado es "completado", agregar un sticker verde
+    if (data.estado === "completado") {
         let sticker = document.createElement("span");
         sticker.id = `sticker-${id}`;
-        sticker.innerHTML = "✅";
-        sticker.style.marginLeft = "10px";
+        sticker.innerHTML = "✅"; // Puedes cambiarlo por un icono SVG
+        sticker.style.marginLeft = "10px"; // Espaciado del sticker
         sticker.style.fontSize = "20px";
 
         if (contenedorEstado) {
@@ -112,15 +105,34 @@ function actualizarDOM(id, data) {
         } else {
             estadoElemento?.parentNode?.appendChild(sticker);
         }
+
+        Swal.fire({
+            icon: "info",
+            title: "Etiqueta reiniciada",
+            text: "Se ha restaurado la etiqueta a estado pendiente.",
+            timer: 2000,
+            showConfirmButton: false,
+        });
+    } else if (data.estado === "fabricando") {
+        Swal.fire({
+            icon: "info",
+            title: "Etiqueta comenzada",
+            text: "Empezamos a fabricar la etiqueta.",
+            timer: 2000,
+            showConfirmButton: false,
+        });
+    }
+    if (data.estado === "completado") {
         Swal.fire({
             icon: "success",
-            title: "Elemento completado",
-            text: "Hemos terminado de fabricar el elemento.",
+            title: "Etiqueta completada",
+            text: "Hemos terminado de fabricar la etiqueta.",
             timer: 2000,
             showConfirmButton: false,
         });
     }
 
+    // ✅ Verificar si hay productos afectados antes de intentar actualizarlos
     if (data.productos_afectados && data.productos_afectados.length > 0) {
         data.productos_afectados.forEach((producto) => {
             let pesoStockElemento = document.getElementById(
@@ -133,14 +145,17 @@ function actualizarDOM(id, data) {
                 `progreso-barra-${producto.id}`
             );
 
+            // ✅ Actualiza visualmente el peso en el DOM
             if (pesoStockElemento) {
                 pesoStockElemento.textContent = `${producto.peso_stock} kg`;
             }
 
+            // ✅ Actualiza el texto de progreso
             if (progresoTexto) {
                 progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
             }
 
+            // ✅ Actualiza la barra de progreso
             if (progresoBarra) {
                 let progresoPorcentaje =
                     (producto.peso_stock / producto.peso_inicial) * 100;
