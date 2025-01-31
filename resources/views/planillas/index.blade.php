@@ -189,10 +189,10 @@
                     </p>
 
                     <p class="text-gray-600 mb-2"><strong>Fecha Inicio:</strong>
-                        {{ $planilla->fecha_inicio_formato }}
+                        {{ $planilla->fecha_inicio }}
                     </p>
                     <p class="text-gray-600 mb-2"><strong>Fecha Finalización:</strong>
-                        {{ $planilla->fecha_finalizacion_formato }}
+                        {{ $planilla->fecha_finalizacion }}
                     </p>
                     <p class="text-gray-600 mb-2"><strong>Fecha Importación:</strong>
                         {{ $planilla->created_at->format('d/m/Y H:i') }}</p>

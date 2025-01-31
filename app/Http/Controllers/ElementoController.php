@@ -120,31 +120,21 @@ class ElementoController extends Controller
         return view('elementos.edit', compact('elemento', 'conjuntos'));
     }
 
-    /**
-     * Actualiza un elemento existente en la base de datos.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Elemento  $elemento
-     * @return \Illuminate\Http\Response
-     */
-    public function crearConjunto(Request $request) {}
 
-    public function actualizarEstado(Request $request)
+
+    public function actualizarElemento(Request $request, $id, $maquina_id)
     {
         // Iniciar una transacción para asegurar la integridad de los datos
         DB::beginTransaction();
 
         try {
-            // Validar los datos enviados por el formulario
-            $validated = $request->validate([
-                'elemento_id' => 'required|exists:elementos,id',
-                'planilla_id' => 'required|exists:planillas,id',
-                'accion' => 'required|in:completar,descompletar',
-            ]);
+            //Obtener elemento
+            $elemento = Elemento::with(['maquina', 'planilla'])->findOrFail($id);
 
-            // Buscar el elemento, la planilla y la máquina asociados
-            $elemento = Elemento::findOrFail($validated['elemento_id']);
-            $planilla = Planilla::findOrFail($validated['planilla_id']);
+
+            // Obtener la planilla directamente desde la relación
+            $planilla = $elemento->planilla; // ✅ Usar la relación en lugar de buscarlo en la DB
+
             $maquina = $elemento->maquina;
 
             if (!$maquina) {
@@ -152,80 +142,157 @@ class ElementoController extends Controller
                     ->with('error', 'La máquina asociada al elemento no existe.');
             }
 
-            if ($validated['accion'] === 'completar') {
-                // Obtener todos los productos con el diámetro especificado
-                $productos = $maquina->productos()->where('diametro', $elemento->diametro)->orderBy('id')->get();
+            $productosConsumidos = [];
+            $producto1 = null;
+            $producto2 = null;
+
+            if ($elemento->estado == "pendiente") {
+
+
+                $productos = $maquina->productos()
+                    ->where('diametro', $elemento->diametro)
+                    ->orderBy('peso_stock')
+                    ->get();
 
                 if ($productos->isEmpty()) {
-                    return redirect()->route('elementos.show', $planilla->id)
-                        ->with('error', 'No se encontraron productos asociados con ese diámetro en la máquina.');
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'En esta máquina no hay materia prima con ese diámetro.',
+                    ], 400);
                 }
+                $elemento->estado = "fabricando";
+                $elemento->fecha_inicio = now();
+                $elemento->users_id = Auth::id();
+                $elemento->users_id_2 = session()->get('compañero_id', null);
+                $elemento->save();
+            } elseif ($elemento->estado == "fabricando") {
 
+                $productos = $maquina->productos()
+                    ->where('diametro', $elemento->diametro)
+                    ->orderBy('peso_stock')
+                    ->get();
                 $pesoRequerido = $elemento->peso;
 
-                foreach ($productos as $producto) {
+                if ($pesoRequerido <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'El peso de la etiqueta es 0, no es necesario consumir materia prima.',
+                    ], 400);
+                }
+
+                foreach ($productos as $prod) {
                     if ($pesoRequerido <= 0) {
                         break;
                     }
 
-                    // Verificar cuánto peso se puede restar de este producto
-                    $pesoDisponible = $producto->peso_stock;
-
+                    $pesoDisponible = $prod->peso_stock;
                     if ($pesoDisponible > 0) {
-                        $resta = min($pesoDisponible, $pesoRequerido);
-                        $producto->peso_stock -= $resta;
-                        $producto->save();
+                        $restar = min($pesoDisponible, $pesoRequerido);
+                        $prod->peso_stock -= $restar;
 
-                        $pesoRequerido -= $resta;
+                        if ($prod->peso_stock == 0) {
+                            $prod->estado = "consumido";
+                        }
+
+                        $prod->save();
+                        $productosConsumidos[] = $prod;
+                        $pesoRequerido -= $restar;
                     }
                 }
 
                 if ($pesoRequerido > 0) {
-                    throw new \Exception('No hay materia prima suficiente en la máquina.');
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No hay suficiente materia prima. Avisa al gruista.',
+                    ], 400);
                 }
 
-                // Actualizar el estado del elemento
+                $elemento->fecha_finalizacion = now();
                 $elemento->estado = 'completado';
-                $elemento->users_id = auth()->id();
-                $elemento->producto_id = $productos->first()->id; // Asociar el primer producto usado
+
+                // ✅ Se asignan solo si existen productos consumidos
+                $producto1 = isset($productosConsumidos[0]) ? $productosConsumidos[0] : null;
+                $producto2 = isset($productosConsumidos[1]) ? $productosConsumidos[1] : null;
+
+                $elemento->producto_id = $producto1 ? $producto1->id : null;
+                $elemento->producto_id_2 = $producto2 ? $producto2->id : null;
                 $elemento->save();
+            } elseif ($elemento->estado == "completado") {
+                $producto1 = $elemento->producto_id ? $maquina->productos()->find($elemento->producto_id) : null;
+                $producto2 = $elemento->producto_id_2 ? $maquina->productos()->find($elemento->producto_id_2) : null;
 
-                DB::commit();
-
-                return redirect()->route('elementos.show', $planilla->id)
-                    ->with('success', 'Elemento completado y kilos actualizados en los productos.');
-            }
-
-            if ($validated['accion'] === 'descompletar') {
-                $producto = $maquina->productos()->where('diametro', $elemento->diametro)->first();
-
-                if (!$producto) {
-                    throw new \Exception('No se encontró un producto asociado con ese diámetro en la máquina.');
+                if (!$producto1 && !$producto2) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No se encontraron los productos consumidos para restaurar.',
+                    ], 400);
                 }
 
-                // Revertir los kilos al producto
-                $producto->peso_stock += $elemento->peso;
-                $producto->save();
+                $pesoRestaurar = $elemento->peso;
 
-                // Actualizar el estado del elemento
-                $elemento->estado = 'pendiente';
+                if ($producto1) {
+                    $pesoIncremento = min($pesoRestaurar, $producto1->peso_inicial - $producto1->peso_stock);
+                    $producto1->peso_stock += $pesoIncremento;
+                    $pesoRestaurar -= $pesoIncremento;
+                    $producto1->estado = "fabricando";
+                    $producto1->save();
+                }
+
+                if ($pesoRestaurar > 0 && $producto2) {
+                    $pesoIncremento = min($pesoRestaurar, $producto2->peso_inicial - $producto2->peso_stock);
+                    $producto2->peso_stock += $pesoIncremento;
+                    $pesoRestaurar -= $pesoIncremento;
+                    $producto2->estado = "fabricando";
+                    $producto2->save();
+                }
+
+                // Resetear la etiqueta a estado "pendiente"
+                $elemento->fecha_inicio = null;
+                $elemento->fecha_finalizacion = null;
+                $elemento->estado = "pendiente";
                 $elemento->users_id = null;
+                $elemento->users_id_2 = null;
+                $elemento->producto_id = null;
+                $elemento->producto_id_2 = null;
                 $elemento->save();
-
-                DB::commit();
-
-                return redirect()->route('elementos.show', $planilla->id)
-                    ->with('success', 'Elemento descompletado y kilos revertidos al producto.');
             }
 
-            throw new \Exception('Acción no válida.');
+            DB::commit();
+
+            // ✅ Se asegura de llenar `productosAfectados` en TODAS las transiciones
+            $productosAfectados = [];
+
+            if ($producto1 && isset($producto1->id)) {
+                $productosAfectados[] = [
+                    'id' => $producto1->id,
+                    'peso_stock' => $producto1->peso_stock,
+                    'peso_inicial' => $producto1->peso_inicial
+                ];
+            }
+
+            if ($producto2 && isset($producto2->id)) {
+                $productosAfectados[] = [
+                    'id' => $producto2->id,
+                    'peso_stock' => $producto2->peso_stock,
+                    'peso_inicial' => $producto2->peso_inicial
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'estado' => $elemento->estado,
+                'fecha_inicio' => $elemento->fecha_inicio ? Carbon::parse($elemento->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
+                'fecha_finalizacion' => $elemento->fecha_finalizacion ? Carbon::parse($elemento->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
+                'productos_afectados' => $productosAfectados
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('elementos.show', $planilla->id)
-                ->with('error', $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
-
     public function actualizarEtiqueta(Request $request, $id)
     {
         DB::beginTransaction();
@@ -257,7 +324,7 @@ class ElementoController extends Controller
             if ($etiqueta->estado == "pendiente") {
                 $etiqueta->estado = "fabricando";
                 $etiqueta->fecha_inicio = now();
-                $etiqueta->users_id_1 = Auth::id();
+                $etiqueta->users_id = Auth::id();
                 $etiqueta->users_id_2 = session()->get('compañero_id', null);
                 $etiqueta->save();
             } elseif ($etiqueta->estado == "fabricando") {
@@ -352,7 +419,7 @@ class ElementoController extends Controller
                 $etiqueta->fecha_inicio = null;
                 $etiqueta->fecha_finalizacion = null;
                 $etiqueta->estado = "pendiente";
-                $etiqueta->users_id_1 = null;
+                $etiqueta->users_id = null;
                 $etiqueta->users_id_2 = null;
                 $etiqueta->producto_id = null;
                 $etiqueta->producto_id_2 = null;

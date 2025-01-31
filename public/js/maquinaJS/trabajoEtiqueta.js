@@ -1,18 +1,17 @@
 document.addEventListener("DOMContentLoaded", function () {
-    const procesoEtiqueta = document.getElementById("procesoEtiqueta");
-   let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
+    const procesoElemento = document.getElementById("procesoElemento");
+    let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
 
-    if (!procesoEtiqueta) {
-        console.error("Error: No se encontró el input de etiqueta en el DOM.");
+    if (!procesoElemento) {
+        console.error("Error: No se encontró el input de elemento en el DOM.");
         return;
     }
- 
-    procesoEtiqueta.addEventListener("keypress", function (e) {
+    procesoElemento.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
-            let etiquetaId = this.value.trim();
+            let elementoId = this.value.trim();
 
-            if (!etiquetaId || isNaN(etiquetaId) || etiquetaId <= 0) {
+            if (!elementoId || isNaN(elementoId) || elementoId <= 0) {
                 Swal.fire({
                     icon: "error",
                     title: "Error",
@@ -21,16 +20,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            actualizarEtiqueta(etiquetaId, maquina_id);
+            actualizarElemento(elementoId, maquina_id);
             this.value = ""; // Limpiar input tras lectura
         }
     });
-   
 });
-
-async function actualizarEtiqueta(id, maquina_id) {
-    let url = `/actualizar-etiqueta/${id}/maquina/${maquina_id}`;
-
+async function actualizarElemento(id, maquina_id) {
+    let url = `/actualizar-elemento/${id}/maquina/${maquina_id}`;
     try {
         let response = await fetch(url, {
             method: "PUT",
@@ -41,9 +37,7 @@ async function actualizarEtiqueta(id, maquina_id) {
                     .querySelector('meta[name="csrf-token"]')
                     .getAttribute("content"),
             },
-            body: JSON.stringify({
-                id,
-            }),
+            body: JSON.stringify({ id }),
         });
 
         if (!response.ok) {
@@ -74,45 +68,59 @@ async function actualizarEtiqueta(id, maquina_id) {
 }
 
 function actualizarDOM(id, data) {
-    let estadoEtiqueta = document.getElementById(`estado-${id}`);
-    let inicioEtiqueta = document.getElementById(`inicio-${id}`);
-    let finalEtiqueta = document.getElementById(`final-${id}`);
+    let estadoElemento = document.getElementById(`estado-${id}`);
+    let inicioElemento = document.getElementById(`inicio-${id}`);
+    let finalElemento = document.getElementById(`final-${id}`);
+    let contenedorEstado = document.getElementById(`contenedor-estado-${id}`);
 
-    if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
-    if (inicioEtiqueta)
-        inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
-    if (finalEtiqueta)
-        finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
+    if (estadoElemento) estadoElemento.textContent = data.estado;
+    if (inicioElemento)
+        inicioElemento.textContent = data.fecha_inicio || "No asignada";
+    if (finalElemento)
+        finalElemento.textContent = data.fecha_finalizacion || "No asignada";
 
-    // ✅ Solo mostrar SweetAlert si pasa de "completado" a "pendiente"
+    let stickerExistente = document.querySelector(`#sticker-${id}`);
+    if (stickerExistente) {
+        stickerExistente.remove();
+    }
+
     if (data.estado === "pendiente") {
         Swal.fire({
             icon: "info",
-            title: "Etiqueta reiniciada",
-            text: "Se ha restaurado la etiqueta a estado pendiente.",
+            title: "Elemento reiniciado",
+            text: "Se ha restaurado el elemento a estado pendiente.",
             timer: 2000,
             showConfirmButton: false,
         });
     } else if (data.estado === "fabricando") {
         Swal.fire({
             icon: "info",
-            title: "Etiqueta comenzada",
-            text: "Empezamos a fabricar la etiqueta.",
+            title: "Elemento comenzado",
+            text: "Empezamos a fabricar el elemento.",
             timer: 2000,
             showConfirmButton: false,
         });
-    }
-    if (data.estado === "completado") {
+    } else if (data.estado === "completado") {
+        let sticker = document.createElement("span");
+        sticker.id = `sticker-${id}`;
+        sticker.innerHTML = "✅";
+        sticker.style.marginLeft = "10px";
+        sticker.style.fontSize = "20px";
+
+        if (contenedorEstado) {
+            contenedorEstado.appendChild(sticker);
+        } else {
+            estadoElemento?.parentNode?.appendChild(sticker);
+        }
         Swal.fire({
             icon: "success",
-            title: "Etiqueta completada",
-            text: "Hemos terminado de fabricar la etiqueta.",
+            title: "Elemento completado",
+            text: "Hemos terminado de fabricar el elemento.",
             timer: 2000,
             showConfirmButton: false,
         });
     }
 
-    // ✅ Verificar si hay productos afectados antes de intentar actualizarlos
     if (data.productos_afectados && data.productos_afectados.length > 0) {
         data.productos_afectados.forEach((producto) => {
             let pesoStockElemento = document.getElementById(
@@ -125,17 +133,14 @@ function actualizarDOM(id, data) {
                 `progreso-barra-${producto.id}`
             );
 
-            // ✅ Actualiza visualmente el peso en el DOM
             if (pesoStockElemento) {
                 pesoStockElemento.textContent = `${producto.peso_stock} kg`;
             }
 
-            // ✅ Actualiza el texto de progreso
             if (progresoTexto) {
                 progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
             }
 
-            // ✅ Actualiza la barra de progreso
             if (progresoBarra) {
                 let progresoPorcentaje =
                     (producto.peso_stock / producto.peso_inicial) * 100;

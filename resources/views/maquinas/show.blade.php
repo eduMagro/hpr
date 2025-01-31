@@ -159,7 +159,8 @@
                         $planilla = $elementos->first()->planilla ?? null; // Obtener la etiqueta del primer elemento para mostrarla
                     @endphp
 
-                  <div class="{{ str_contains($planilla->ensamblado, 'TALLER') ? 'bg-red-100 text-white' : 'bg-yellow-100' }} p-6 rounded-lg shadow-md mt-4">
+                    <div
+                        class="{{ str_contains($planilla->ensamblado, 'TALLER') ? 'bg-red-100 text-white' : 'bg-yellow-100' }} p-6 rounded-lg shadow-md mt-4">
 
                         <h2 class="text-lg font-semibold text-gray-700">Planilla:
                             <strong> {{ $planilla->codigo_limpio }}</strong>
@@ -182,7 +183,7 @@
                         <p class="text-gray-500 text-sm">
                             {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
                         </p>
-					     <hr style="border: 1px solid black; margin: 10px 0;">
+                        <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                         @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
                             <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en
@@ -201,7 +202,7 @@
                         @endif
 
                         <!-- GRID PARA ELEMENTOS -->
-					   
+
                         <div class="grid grid-cols-1 gap-4">
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
@@ -213,8 +214,21 @@
                                     </p>
 
 
-                                    <p class="text-gray-500 text-sm"></p>
-                                    <hr class="my-2">
+                                    <!-- Contenedor oculto para generar el QR -->
+                                    <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
+                                    <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
+                                            id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>
+                                            Fecha
+                                            Finalización:</strong> <span
+                                            id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
+                                        <span id="emoji-{{ $elemento->id }}"></span><br>
+                                        <strong> Estado: </strong><span
+                                            id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
+                                    </p>
+                                    <p class="text-gray-500 text-sm">
+                                        {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
+                                    </p>
+                                    <hr style="border: 1px solid black; margin: 10px 0;">
                                     <p class="text-gray-500 text-sm">
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }} <strong>Diámetro:</strong>
                                         {{ $elemento->diametro_mm }} <strong> Longitud:</strong>
@@ -256,10 +270,14 @@
                     </button>
                     <!-- Input de lectura de QR -->
                     <div class="bg-white border p-2 shadow-md rounded-lg self-start sm:col-span-1 md:sticky">
-                        <h3 class="font-bold text-xl">PROCESO</h3>
+                        <h3 class="font-bold text-xl">PROCESO ETIQUETA</h3>
                         <input type="text" id="procesoEtiqueta" class="w-full border p-2 rounded"
                             placeholder="Escanea un QR..." autofocus>
-						<div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
+                        <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
+                        <h3 class="font-bold text-xl">PROCESO ELEMENTO</h3>
+                        <input type="text" id="procesoElemento" class="w-full border p-2 rounded"
+                            placeholder="Escanea un QR..." autofocus>
+                        <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
 
                     </div>
                     <!-- Sistema de inputs para crear paquetes -->
@@ -434,8 +452,8 @@
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/maquinaJS/trabajo_maquina.js') }}"></script>
-	 <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
-	 <script src="{{ asset('js/maquinaJS/trabajoElemento.js') }}"></script>
+    <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
+    <script src="{{ asset('js/maquinaJS/trabajoElemento.js') }}"></script>
     <script src="{{ asset('js/imprimirQr.js') }}"></script>
     <script>
         window.etiquetasConElementos = @json($elementosAgrupadosScript);
