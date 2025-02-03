@@ -237,6 +237,12 @@
                                     <p class="text-gray-500 text-sm">
                                         {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
                                     </p>
+									  <button
+                                onclick="generateAndPrintQR('{{ $elemento->id }}', '{{ $elemento->planilla->codigo_limpio }}', 'ELEMENTO')"
+                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                QR
+                            </button>
+
                                     @endif
                                     <hr style="border: 1px solid black; margin: 10px 0;">
                                     <p class="text-gray-500 text-sm">
