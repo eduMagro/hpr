@@ -13,7 +13,6 @@
             background-color: rgba(0, 123, 255, 0.1)
         }
     </style>
-
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
@@ -47,7 +46,6 @@
             });
         </script>
     @endif
-
 
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->
@@ -160,12 +158,6 @@
                         $etiqueta = $elementos->first()->etiquetaRelacion ?? null; // Obtener la etiqueta del primer elemento para mostrarla. cambio el nombre de la relacion para que nocree conflicto con la columna etiquta
                         $planilla = $elementos->first()->planilla ?? null; // Obtener la etiqueta del primer elemento para mostrarla
                     @endphp
-                    @php
-                        $etiqueta = $elementos->first()->etiquetaRelacion ?? null;
-                        $planilla = $elementos->first()->planilla ?? null;
-                        $tieneElementosEnOtrasMaquinas =
-                            isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
-                    @endphp
 
                     <div
                         class="{{ str_contains($planilla->ensamblado, 'TALLER') ? 'bg-red-100 text-white' : 'bg-yellow-100' }} p-6 rounded-lg shadow-md mt-4">
@@ -179,21 +171,18 @@
                         </h3>
                         <!-- Contenedor oculto para generar el QR -->
                         <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
-                        @if (!$tieneElementosEnOtrasMaquinas)
-                            <p class="text-gray-500 text-sm">
-                                <strong>Fecha Inicio:</strong> <span
-                                    id="inicio-{{ $etiqueta->id }}">{{ $etiqueta->fecha_inicio ?? 'No asignada' }}</span>
-                                <strong>Fecha Finalización:</strong> <span
-                                    id="final-{{ $etiqueta->id }}">{{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}</span>
-                                <span id="emoji-{{ $etiqueta->id }}"></span><br>
-                                <strong> Estado: </strong><span
-                                    id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
-                            </p>
-                            <p class="text-gray-500 text-sm">
-                                {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
-                            </p>
-                        @endif
-
+                        <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
+                                id="inicio-{{ $etiqueta->id }}">{{ $etiqueta->fecha_inicio ?? 'No asignada' }}</span><strong>
+                                Fecha
+                                Finalización:</strong> <span
+                                id="final-{{ $etiqueta->id }}">{{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}</span>
+                            <span id="emoji-{{ $etiqueta->id }}"></span><br>
+                            <strong> Estado: </strong><span
+                                id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
+                        </p>
+                        <p class="text-gray-500 text-sm">
+                            {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
+                        </p>
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                         @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
@@ -218,6 +207,8 @@
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
                                     class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+
+
                                     <p class="text-gray-500 text-sm">
                                         <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }}
                                     </p>
@@ -225,20 +216,18 @@
 
                                     <!-- Contenedor oculto para generar el QR -->
                                     <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
-                                    @if ($tieneElementosEnOtrasMaquinas)
-                                        <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
-                                                id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>
-                                                Fecha
-                                                Finalización:</strong> <span
-                                                id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
-                                            <span id="emoji-{{ $elemento->id }}"></span><br>
-                                            <strong> Estado: </strong><span
-                                                id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
-                                        </p>
-                                        <p class="text-gray-500 text-sm">
-                                            {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
-                                        </p>
-                                    @endif
+                                    <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
+                                            id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>
+                                            Fecha
+                                            Finalización:</strong> <span
+                                            id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
+                                        <span id="emoji-{{ $elemento->id }}"></span><br>
+                                        <strong> Estado: </strong><span
+                                            id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
+                                    </p>
+                                    <p class="text-gray-500 text-sm">
+                                        {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
+                                    </p>
                                     <hr style="border: 1px solid black; margin: 10px 0;">
                                     <p class="text-gray-500 text-sm">
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }} <strong>Diámetro:</strong>
@@ -284,17 +273,11 @@
                         <h3 class="font-bold text-xl">PROCESO ETIQUETA</h3>
                         <input type="text" id="procesoEtiqueta" class="w-full border p-2 rounded"
                             placeholder="Escanea un QR..." autofocus>
-
                         <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
                         <h3 class="font-bold text-xl">PROCESO ELEMENTO</h3>
                         <input type="text" id="procesoElemento" class="w-full border p-2 rounded"
                             placeholder="Escanea un QR..." autofocus>
-                        <div id="maquina-info" data-maquina-id="{{ $maquina->id }}">
-                        </div>
-
-
-
-
+                        <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
 
                     </div>
                     <!-- Sistema de inputs para crear paquetes -->
@@ -465,9 +448,7 @@
             </div>
         </div>
     </div>
-    <script>
-        let etiquetasConElementosEnOtrasMaquinas = @json($etiquetasConElementosEnOtrasMaquinas);
-    </script>
+
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/maquinaJS/trabajo_maquina.js') }}"></script>

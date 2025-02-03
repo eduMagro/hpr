@@ -69,13 +69,7 @@ class MaquinaController extends Controller
             ->get()
             ->groupBy('etiqueta_id'); // Agrupar por etiqueta para mejor visualización
 
-        return view('maquinas.show', [
-            'maquina' => $maquina,
-            'usuario1' => $usuario1,
-            'usuario2' => $usuario2,
-            'otrosElementos' => $otrosElementos,
-            'etiquetasConElementosEnOtrasMaquinas' => $otrosElementos->keys(),
-        ]);
+        return view('maquinas.show', compact('maquina', 'usuario1', 'usuario2', 'otrosElementos'));
     }
 
 
