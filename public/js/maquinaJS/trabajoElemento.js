@@ -1,11 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
     const procesoElemento = document.getElementById("procesoElemento");
+    const maquinaInfo = document.getElementById("maquina-info");
     let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
 
-    if (!procesoElemento) {
-        console.error("Error: No se encontró el input de elemento en el DOM.");
-        return;
-    }
     procesoElemento.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();

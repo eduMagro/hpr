@@ -158,6 +158,12 @@
                         $etiqueta = $elementos->first()->etiquetaRelacion ?? null; // Obtener la etiqueta del primer elemento para mostrarla. cambio el nombre de la relacion para que nocree conflicto con la columna etiquta
                         $planilla = $elementos->first()->planilla ?? null; // Obtener la etiqueta del primer elemento para mostrarla
                     @endphp
+ @php
+ $etiqueta = $elementos->first()->etiquetaRelacion ?? null;
+ $planilla = $elementos->first()->planilla ?? null;
+ $tieneElementosEnOtrasMaquinas =
+     isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
+@endphp
 
                     <div
                         class="{{ str_contains($planilla->ensamblado, 'TALLER') ? 'bg-red-100 text-white' : 'bg-yellow-100' }} p-6 rounded-lg shadow-md mt-4">
@@ -171,6 +177,7 @@
                         </h3>
                         <!-- Contenedor oculto para generar el QR -->
                         <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
+                        @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
                         <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
                                 id="inicio-{{ $etiqueta->id }}">{{ $etiqueta->fecha_inicio ?? 'No asignada' }}</span><strong>
                                 Fecha
@@ -183,9 +190,10 @@
                         <p class="text-gray-500 text-sm">
                             {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
                         </p>
+                        @endif
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
-                        @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
+                        @if (!$tieneElementosEnOtrasMaquinas)
                             <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en
                                 otras máquinas:</h4>
                             <div class="bg-red-100 p-4 rounded-lg shadow-md">
@@ -216,6 +224,7 @@
 
                                     <!-- Contenedor oculto para generar el QR -->
                                     <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
+                                    @if ($tieneElementosEnOtrasMaquinas)
                                     <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
                                             id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>
                                             Fecha
@@ -228,6 +237,7 @@
                                     <p class="text-gray-500 text-sm">
                                         {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
                                     </p>
+                                    @endif
                                     <hr style="border: 1px solid black; margin: 10px 0;">
                                     <p class="text-gray-500 text-sm">
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }} <strong>Diámetro:</strong>
@@ -448,7 +458,9 @@
             </div>
         </div>
     </div>
-
+    <script>
+        let etiquetasConElementosEnOtrasMaquinas = @json($etiquetasConElementosEnOtrasMaquinas);
+    </script>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/maquinaJS/trabajo_maquina.js') }}"></script>
