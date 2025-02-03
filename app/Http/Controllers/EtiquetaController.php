@@ -16,7 +16,15 @@ class etiquetaController extends Controller
 {
 public function index(Request $request)
 {
-    $query = Etiqueta::query();
+    $query = Etiqueta::with([
+        'planilla',
+        'elementos',
+        'paquete',
+        'producto',
+        'producto2',
+        'user',
+        'user2'
+    ]) ->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
 
     // Filtrar por ID si está presente
     $query->when($request->filled('id'), function ($q) use ($request) {

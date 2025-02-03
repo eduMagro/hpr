@@ -36,6 +36,10 @@ class ElementoController extends Controller
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));
         }
+    // Filtrar por Estado si está presente
+    $query->when($request->filled('estado'), function ($q) use ($request) {
+        $q->where('estado', $request->estado);
+    });
 
         $elementos = $query->paginate(10);
 

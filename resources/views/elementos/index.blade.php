@@ -33,7 +33,27 @@
             </div>
         @endif
 
+   <!-- Formulario de Filtros -->
+   <form method="GET" action="{{ route('elementos.index') }}" class="mb-4 flex space-x-4">
+    <div>
+        <label for="estado" class="block text-sm font-medium text-gray-700">Estado</label>
+        <select name="estado" id="estado"
+            class="w-40 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500">
+            <option value="">Todos</option>
+            <option value="Completado" {{ request('estado') == 'Completado' ? 'selected' : '' }}>Completado
+            </option>
+            <option value="Fabricando" {{ request('estado') == 'Fabricando' ? 'selected' : '' }}>Fabricando
+            </option>
+            <option value="Montaje" {{ request('estado') == 'Montaje' ? 'selected' : '' }}>Montaje</option>
+        </select>
+    </div>
 
+    <div class="flex items-end">
+        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+            Filtrar
+        </button>
+    </div>
+</form>
 
         <!-- Contenedor de la tabla con ancho completo y scroll horizontal -->
         <div class="w-full overflow-x-auto bg-white shadow-md rounded-lg">
