@@ -193,22 +193,21 @@
                         @endif
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
-                   
-                            <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en
-                                otras máquinas:</h4>
-                            <div class="bg-red-100 p-4 rounded-lg shadow-md">
-                                @foreach ($otrosElementos[$etiqueta->id] as $elementoOtro)
-                                    <p class="text-gray-600">
-                                        <strong>ID:</strong> {{ $elementoOtro->id_el }} |
-                                        <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
-                                        <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
-                                        <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
-                                    </p>
-                                    <hr class="my-2">
-                                @endforeach
-                            </div>
-                     
-
+                        @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
+                        <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en
+                            otras máquinas:</h4>
+                        <div class="bg-red-100 p-4 rounded-lg shadow-md">
+                            @foreach ($otrosElementos[$etiqueta->id] as $elementoOtro)
+                                <p class="text-gray-600">
+                                    <strong>ID:</strong> {{ $elementoOtro->id_el }} |
+                                    <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
+                                    <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
+                                    <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
+                            @endforeach
+                        </div>
+                    @endif
                         <!-- GRID PARA ELEMENTOS -->
 
                         <div class="grid grid-cols-1 gap-4">
