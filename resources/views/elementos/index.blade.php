@@ -113,12 +113,39 @@
 
                             <td class="px-4 py-2">{{ $elemento->user->name ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->user2->name ?? 'N/A' }}</td>
-                            <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->id ?? 'N/A' }}</td>
+							 <td class="px-4 py-2">
+                                @if ($elemento->etiquetaRelacion)
+                                    <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->etiquetaRelacion->id }}
+                                    </a>
+                                @else
+                                    N/A
+                                @endif
+                            </td>
+                          
                             <td class="px-4 py-2">{{ $elemento->nombre }}</td>
                             <td class="px-4 py-2">{{ $elemento->maquina->nombre ?? 'N/A' }}</td>
-                            <a href="{{ route('elementos.show', $elemento->producto->id) }}"
-                                class="text-blue-500 hover:underline">Ver</a>
-                            <td class="px-4 py-2">{{ $elemento->producto2->id ?? 'N/A' }}</td>
+                             <td class="px-4 py-2">
+                                @if ($elemento->producto)
+                                    <a href="{{ route('productos.show', $elemento->producto_id) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->producto->id }}
+                                    </a>
+                                @else
+                                    N/A
+                                @endif
+                            </td>
+                              <td class="px-4 py-2">
+                                @if ($elemento->producto2)
+                                    <a href="{{ route('productos.show', $elemento->producto2->id) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->producto2->id }}
+                                    </a>
+                                @else
+                                    N/A
+                                @endif
+                            </td>
                             <td class="px-4 py-2">{{ $elemento->figura }}</td>
                             <td class="px-4 py-2">{{ $elemento->fila }}</td>
                             <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->nombre }}</td>

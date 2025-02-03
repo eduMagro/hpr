@@ -81,7 +81,10 @@ class PlanillaController extends Controller
         if ($request->filled('id')) {
             $query->where('id', $request->id);
         }
-
+ // 📌 Filtrar por planilla_id si está presente
+        if ($request->has('planilla_id')) {
+            $query->where('id', $request->planilla_id);
+        }
         return $query;
     }
 
