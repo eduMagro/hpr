@@ -32,78 +32,88 @@ class PaqueteController extends Controller
     /**
      * Crear un nuevo paquete y asociar etiquetas existentes.
      */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'etiquetas' => 'required|array|min:1', // Debe recibir un array con al menos una etiqueta
-            'etiquetas.*' => 'integer|exists:etiquetas,id|distinct' // Asegurar que los IDs existen y son únicos
-        ]);
+  public function store(Request $request)
+{
+    $request->validate([
+        'etiquetas' => 'required|array|min:1', // Debe recibir un array con al menos una etiqueta
+        'etiquetas.*' => 'integer|exists:etiquetas,id|distinct' // Asegurar que los IDs existen y son únicos
+    ]);
 
-        try {
-            DB::beginTransaction();
+    try {
+        DB::beginTransaction();
 
-            // Verificar si las etiquetas están disponibles
-            if ($mensajeError = $this->verificarEtiquetasDisponibles($request->etiquetas)) {
-                DB::rollBack();
-                return response()->json(['success' => false] + $mensajeError, 400);
-            }
+        // Verificar si las etiquetas están disponibles
+        if ($mensajeError = $this->verificarEtiquetasDisponibles($request->etiquetas)) {
+            DB::rollBack();
+            return response()->json(['success' => false] + $mensajeError, 400);
+        }
 
-            // Obtener etiquetas completadas
-            $etiquetas = Etiqueta::whereIn('id', $request->etiquetas)
-                ->where('estado', 'completado')
-                ->with(['elementos', 'planilla'])
-                ->get();
+        // Obtener etiquetas completadas
+        $etiquetas = Etiqueta::whereIn('id', $request->etiquetas)
+            ->where('estado', 'completado')
+            ->with(['elementos', 'planilla'])
+            ->get();
 
-            $planilla = $etiquetas->first()?->planilla; // Obtiene la primera planilla asociada
-            $codigo_planilla = $planilla ? $planilla->codigo_limpio : null; // Si hay planilla, obtiene su código
-
-            if ($etiquetas->isEmpty()) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se encontraron elementos completados para estas etiquetas.'
-                ], 400);
-            }
-
-            // Obtener elementos y validar código de máquina
-            $elementos = $etiquetas->flatMap->elementos;
-            if ($mensajeError = $this->verificarElementos($elementos)) {
-                DB::rollBack();
-                return response()->json(['success' => false] + $mensajeError, 400);
-            }
-
-            // Obtener ubicación basada en el código de máquina
-            $codigoMaquina = $elementos->pluck('codigo_maquina')->unique()->first();
-            $ubicacion = $this->obtenerUbicacionPorCodigoMaquina($codigoMaquina);
-
-            if (!$ubicacion) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'message' => "No se encontró una ubicación para la máquina con código $codigoMaquina"
-                ], 400);
-            }
-
-            // Crear el paquete y asignar etiquetas
-            $paquete = $this->crearPaquete($etiquetas->first()->planilla_id, $ubicacion->id);
-            $this->asignarEtiquetasAPaquete($request->etiquetas, $paquete->id);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Paquete creado y etiquetas asociadas correctamente.',
-                'paquete_id' => $paquete->id,
-                'codigo_planilla' => $codigo_planilla
-            ], 201);
-        } catch (\Exception $e) {
+        if ($etiquetas->isEmpty()) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Error en el servidor: ' . $e->getMessage()
-            ], 500);
+                'message' => 'No se encontraron elementos completados para estas etiquetas.'
+            ], 400);
         }
+
+        // Verificar que todas las etiquetas pertenezcan a la misma planilla
+        $planillaIds = $etiquetas->pluck('planilla_id')->unique();
+        if ($planillaIds->count() > 1) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Deben pertenecer a la misma planilla.'
+            ], 400);
+        }
+
+        $planilla = $etiquetas->first()->planilla;
+        $codigo_planilla = $planilla ? $planilla->codigo_limpio : null;
+
+        // Obtener elementos y validar código de máquina
+        $elementos = $etiquetas->flatMap->elementos;
+        if ($mensajeError = $this->verificarElementos($elementos)) {
+            DB::rollBack();
+            return response()->json(['success' => false] + $mensajeError, 400);
+        }
+
+        // Obtener ubicación basada en el código de máquina
+        $codigoMaquina = $elementos->pluck('codigo_maquina')->unique()->first();
+        $ubicacion = $this->obtenerUbicacionPorCodigoMaquina($codigoMaquina);
+
+        if (!$ubicacion) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => "No se encontró una ubicación para la máquina con código $codigoMaquina"
+            ], 400);
+        }
+
+        // Crear el paquete y asignar etiquetas
+        $paquete = $this->crearPaquete($planilla->id, $ubicacion->id);
+        $this->asignarEtiquetasAPaquete($request->etiquetas, $paquete->id);
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Paquete creado y etiquetas asociadas correctamente.',
+            'paquete_id' => $paquete->id,
+            'codigo_planilla' => $codigo_planilla
+        ], 201);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Error en el servidor: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Verifica si alguna etiqueta ya tiene un paquete asignado.
