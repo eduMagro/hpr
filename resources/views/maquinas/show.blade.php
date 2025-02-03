@@ -81,42 +81,58 @@
                     {{ $maquina->codigo }}
                 </h3>
                 <!-- Mostrar los productos en la máquina -->
-                @if ($maquina->productos->isEmpty())
-                    <p>No hay productos en esta máquina.</p>
-                @else
-                    <ul class="list-none p-6 break-words">
-                        @foreach ($maquina->productos as $producto)
-                            <li class="mb-1">
-                                <div class="flex items-start justify-between">
-                                    <div class="flex flex-col">
+               <!-- Mostrar los productos en la máquina -->
+@if ($maquina->productos->isEmpty())
+    <p>No hay productos en esta máquina.</p>
+@else
+    <ul class="list-none p-6 break-words">
+        @foreach ($maquina->productos as $producto)
+            <li class="mb-1">
+                <div class="flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <span><strong>Ø</strong> {{ $producto->diametro_mm }}</span>
+                        @if ($producto->tipo === 'barras')
+                            <span><strong>L:</strong> {{ $producto->longitud_metros }}</span>
+                        @endif
+                        <a href="{{ route('productos.show', $producto->id) }}"
+                            class="btn btn-sm btn-primary mb-2">Ver</a>
+                    </div>
 
-                                        <span><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</span>
-                                        @if ($producto->tipo === 'barras')
-                                            <span><strong>Longitud:</strong> {{ $producto->longitud_cm }}</span>
-                                        @endif
-                                        <a href="{{ route('productos.show', $producto->id) }}"
-                                            class="btn btn-sm btn-primary mb-2">Ver</a>
-                                    </div>
-
-                                    @if ($producto->tipo == 'encarretado')
-                                        <div id="progreso-container-{{ $producto->id }}"
-                                            class="ml-4 relative w-20 h-20 bg-gray-300 overflow-hidden rounded-lg">
-                                            <div id="progreso-barra-{{ $producto->id }}"
-                                                class="absolute bottom-0 w-full bg-green-500"
-                                                style="height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%;">
-                                            </div>
-                                            <span id="progreso-texto-{{ $producto->id }}"
-                                                class="absolute top-2 left-2 text-white text-xs font-semibold">
-                                                {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
-                                            </span>
-                                        </div>
-                                    @endif
-                                </div>
-                            </li>
-                            <hr>
-                        @endforeach
-                    </ul>
-                @endif
+                    @if ($producto->tipo == 'encarretado')
+                        <div id="progreso-container-{{ $producto->id }}"
+                            class="ml-4 relative w-20 h-20 bg-gray-300 overflow-hidden rounded-lg">
+                            <div id="progreso-barra-{{ $producto->id }}"
+                                class="absolute bottom-0 w-full bg-green-500"
+                                style="height: {{ ($producto->peso_stock / max($producto->peso_inicial, 1)) * 100 }}%;">
+                            </div>
+                            <span id="progreso-texto-{{ $producto->id }}"
+                                class="absolute top-2 left-2 text-white text-xs font-semibold">
+                                {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
+                            </span>
+                        </div>
+                    @elseif($producto->tipo == 'barras')
+                           <div id="progreso-container-{{ $producto->id }}"
+                            class="ml-4 relative w-60 h-10 bg-gray-300 overflow-hidden rounded-lg">
+                            <div class="barra verde"
+                                style="width: {{ ($producto->peso_stock / max($producto->peso_inicial, 1)) * 100 }}%;
+                                    height: 100%; 
+                                    background-color: green; 
+                                    position: absolute; 
+                                    right: 0;">
+                            </div>
+                               <span id="progreso-texto-{{ $producto->id }}"
+                                class="absolute top-2 left-2 text-white text-xs font-semibold">
+                                {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
+                            </span>
+                        </div>
+                       
+                    @endif
+                </div>
+            </li>
+            <hr>
+        @endforeach
+    </ul>
+@endif
 
             </div>
 

@@ -13,7 +13,8 @@ class Paquete extends Model
 
     protected $fillable = [
         'ubicacion_id',
-        'planilla_id'
+        'planilla_id',
+		'peso'
     ];
     public function getIdPqAttribute()
     {

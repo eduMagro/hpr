@@ -89,6 +89,9 @@ if (!$planilla) {
 }
             $codigo_planilla = $planilla->codigo_limpio;
 
+			$pesoTotal = $etiquetas->sum(function($etiqueta) {
+                return $etiqueta->elementos->sum('peso');
+            }) + $elementos->sum('peso') + $subpaquetes->sum('peso');
             // Verificar código de máquina y ubicación
             $codigoMaquina = $elementos->pluck('codigo_maquina')->unique()->first();
             $ubicacion = $this->obtenerUbicacionPorCodigoMaquina($codigoMaquina);
@@ -102,7 +105,7 @@ if (!$planilla) {
             }
 
             // Crear el paquete
-            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id);
+            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal);
 
             // Asociar elementos al paquete
             $this->asignarItemsAPaquete($etiquetasIds, $elementosIds, $subpaquetesIds, $paquete->id);
@@ -170,22 +173,20 @@ if (!$planilla) {
     /**
      * Crea un nuevo paquete.
      */
-    private function crearPaquete($planillaId, $ubicacionId)
-    {
-		 try {
+    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal)
+{
+    try {
         return Paquete::create([
             'planilla_id' => $planillaId,
             'ubicacion_id' => $ubicacionId,
+            'peso' => $pesoTotal ?? 0, // ✅ Usa el peso correcto pasado como parámetro
         ]);
-		   
-
     } catch (\Exception $e) {
-               return response()->json([
-            'success' => false,
-            'message' => 'Error al crear paquete: ' . $e->getMessage()
-        ], 500);
+        \Log::error('Error al crear paquete: ' . $e->getMessage()); // ✅ Guarda el error en logs
+        throw new \Exception('No se pudo crear el paquete: ' . $e->getMessage()); // ✅ Lanza la excepción para que `store()` la maneje
     }
-    }
+}
+
 
     /**
      * Asigna etiquetas, elementos y subpaquetes al paquete.

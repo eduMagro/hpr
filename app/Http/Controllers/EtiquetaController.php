@@ -114,23 +114,8 @@ public function index(Request $request)
                     'error' => 'En esta máquina no hay materia prima con ese diámetro.',
                 ], 400);
             }
- // ✅ Verificar si esta es la primera etiqueta completada de la planilla
-            $otrasEtiquetasFinalizadas = $primerElemento->planilla->elementos()
-                ->whereNotNull('fecha_finalizacion')
-                ->exists();
-
-            if (!$otrasEtiquetasFinalizadas) {
-                $primerElemento->planilla->fecha_inicio = now();
-                $primerElemento->planilla->save();
-            }
-
-            $etiqueta->estado = "fabricando";
-            $etiqueta->fecha_inicio = now();
-            $etiqueta->users_id_1 = Auth::id();
-            $etiqueta->users_id_2 = session()->get('compañero_id', null);
-            $etiqueta->save();
-        } elseif ($etiqueta->estado == "fabricando") {
-            $productos = $maquina->productos()
+			//Verificar si hay suficiente peso, para ir avisando al gruista
+			 $productos = $maquina->productos()
                 ->where('diametro', $primerElemento->diametro)
                 ->orderBy('peso_stock')
                 ->get();
@@ -170,6 +155,23 @@ public function index(Request $request)
                 ], 400);
             }
 
+ // ✅ Verificar si esta es la primera etiqueta completada de la planilla
+            $otrasEtiquetasFinalizadas = $primerElemento->planilla->elementos()
+                ->whereNotNull('fecha_finalizacion')
+                ->exists();
+
+            if (!$otrasEtiquetasFinalizadas) {
+                $primerElemento->planilla->fecha_inicio = now();
+                $primerElemento->planilla->save();
+            }
+
+            $etiqueta->estado = "fabricando";
+            $etiqueta->fecha_inicio = now();
+            $etiqueta->users_id_1 = Auth::id();
+            $etiqueta->users_id_2 = session()->get('compañero_id', null);
+            $etiqueta->save();
+        } elseif ($etiqueta->estado == "fabricando") {
+           
             $etiqueta->fecha_finalizacion = now();
             $etiqueta->estado = 'completado';
             $etiqueta->save();
