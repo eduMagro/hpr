@@ -177,7 +177,7 @@
                         </h3>
                         <!-- Contenedor oculto para generar el QR -->
                         <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
-                        @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
+                        @if (!$tieneElementosEnOtrasMaquinas)
                         <p class="text-gray-500 text-sm"><strong>Fecha Inicio:</strong> <span
                                 id="inicio-{{ $etiqueta->id }}">{{ $etiqueta->fecha_inicio ?? 'No asignada' }}</span><strong>
                                 Fecha
@@ -193,7 +193,7 @@
                         @endif
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
-                        @if (!$tieneElementosEnOtrasMaquinas)
+                   
                             <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en
                                 otras máquinas:</h4>
                             <div class="bg-red-100 p-4 rounded-lg shadow-md">
@@ -207,7 +207,7 @@
                                     <hr class="my-2">
                                 @endforeach
                             </div>
-                        @endif
+                     
 
                         <!-- GRID PARA ELEMENTOS -->
 
