@@ -117,8 +117,10 @@
                             </td>
                             <td class="px-4 py-2">{{ $etiqueta->numero_etiqueta }}</td>
                             <td class="px-4 py-2">{{ $etiqueta->nombre }}</td>
-                            <td class="px-4 py-2">{{ $etiqueta->producto_id }}</td>
-                            <td class="px-4 py-2">{{ $etiqueta->producto_id_2 }}</td>
+                            <a href="{{ route('elementos.show', $etiqueta->producto->id) }}"
+                                class="text-blue-500 hover:underline">Ver</a>
+                                <a href="{{ route('elementos.show', $etiqueta->producto2->id) }}"
+                                    class="text-blue-500 hover:underline">Ver</a>
                             <td class="px-4 py-2">{{ $etiqueta->peso_kg }}</td>
                             <td class="px-4 py-2">{{ $etiqueta->fecha_inicio ?? 'No asignado' }}</td>
                             <td class="px-4 py-2">{{ $etiqueta->fecha_finalizacion ?? 'No asignado' }}</td>

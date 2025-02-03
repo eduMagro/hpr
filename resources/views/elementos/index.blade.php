@@ -116,8 +116,9 @@
                             <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->id ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->nombre }}</td>
                             <td class="px-4 py-2">{{ $elemento->maquina->nombre ?? 'N/A' }}</td>
-                            <td class="px-4 py-2">{{ $elemento->producto->nombre ?? 'N/A' }}</td>
-                            <td class="px-4 py-2">{{ $elemento->producto2->nombre ?? 'N/A' }}</td>
+                            <a href="{{ route('elementos.show', $elemento->producto->id) }}"
+                                class="text-blue-500 hover:underline">Ver</a>
+                            <td class="px-4 py-2">{{ $elemento->producto2->id ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->figura }}</td>
                             <td class="px-4 py-2">{{ $elemento->fila }}</td>
                             <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->nombre }}</td>
