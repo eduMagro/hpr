@@ -47,6 +47,7 @@
         </script>
     @endif
 
+
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->
         <div class="mb-4">
@@ -457,8 +458,10 @@
             </div>
         </div>
     </div>
+
     <script>
-        let etiquetasConElementosEnOtrasMaquinas = @json($etiquetasConElementosEnOtrasMaquinas);
+         let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
+		let etiquetasEnUnaSolaMaquina = @json($etiquetasEnUnaSolaMaquina);
     </script>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

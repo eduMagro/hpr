@@ -68,13 +68,26 @@ class MaquinaController extends Controller
             ->where('maquina_id', '!=', $maquina->id)
             ->get()
             ->groupBy('etiqueta_id'); // Agrupar por etiqueta para mejor visualización
+// Obtener los etiqueta_id de los elementos de la máquina actual:
+		$etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
+//Buscar etiquetas cuyos elementos estén todos en una misma máquina:
+		$etiquetasEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasIds)
+    ->selectRaw('etiqueta_id, COUNT(DISTINCT maquina_id) as total_maquinas')
+    ->groupBy('etiqueta_id')
+    ->having('total_maquinas', 1)
+    ->pluck('etiqueta_id');
+//Obtener los elementos de esas etiquetas:
+		$elementosEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasEnUnaSolaMaquina)
+    ->with('maquina') // Cargar relación con máquina
+    ->get();
 
             return view('maquinas.show', [
                 'maquina' => $maquina,
                 'usuario1' => $usuario1,
                 'usuario2' => $usuario2,
                 'otrosElementos' => $otrosElementos,
-                'etiquetasConElementosEnOtrasMaquinas' => $otrosElementos->keys(),
+                'etiquetasEnUnaSolaMaquina' => $etiquetasEnUnaSolaMaquina,
+				 'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
             ]);
     }
 

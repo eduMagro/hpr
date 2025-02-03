@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
  // Si la etiqueta tiene elementos en otras máquinas, no permitir su actualización
  if (
-    etiquetasConElementosEnOtrasMaquinas.includes(
+    !etiquetasEnUnaSolaMaquina.includes(
         parseInt(etiquetaId)
     )
 ) {

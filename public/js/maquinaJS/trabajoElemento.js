@@ -1,12 +1,19 @@
 document.addEventListener("DOMContentLoaded", function () {
     const procesoElemento = document.getElementById("procesoElemento");
     const maquinaInfo = document.getElementById("maquina-info");
-    let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
+    let maquina_id = maquinaInfo ? maquinaInfo.dataset.maquinaId : null;
 
-    procesoElemento.addEventListener("keypress", function (e) {
+    if (!procesoElemento) {
+        console.error("Elemento #procesoElemento no encontrado en el DOM.");
+        return;
+    }
+
+
+
+    procesoElemento.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
-            e.preventDefault();
-            let elementoId = this.value.trim();
+            e.preventDefault(); // Evita que el formulario se envíe
+            let elementoId = parseInt(this.value.trim()); // Convertir a número
 
             if (!elementoId || isNaN(elementoId) || elementoId <= 0) {
                 Swal.fire({
@@ -17,11 +24,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+
+            // 🛑 Verificar si el elemento no se puede procesar
+            if (elementosEnUnaSolaMaquina.includes(elementoId)) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Acción no permitida",
+                    text: "Este etiqueta tiene todos los elementos en la misma Máquina. Procesa la etiqueta.",
+                });
+                this.value = ""; // Limpiar input tras intento fallido
+                return;
+            }
+
             actualizarElemento(elementoId, maquina_id);
             this.value = ""; // Limpiar input tras lectura
         }
     });
 });
+
+
 async function actualizarElemento(id, maquina_id) {
     let url = `/actualizar-elemento/${id}/maquina/${maquina_id}`;
     try {
