@@ -23,6 +23,7 @@ class Subpaquete extends Model
      */
     protected $fillable = [
         'elemento_id',
+		'planilla_id',
         'nombre',
         'peso',
         'dimensiones',

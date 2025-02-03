@@ -192,6 +192,7 @@
                             {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
                         </p>
                         @endif
+						         
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                         @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
@@ -237,18 +238,43 @@
                                     <p class="text-gray-500 text-sm">
                                         {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
                                     </p>
-									  <button
-                                onclick="generateAndPrintQR('{{ $elemento->id }}', '{{ $elemento->planilla->codigo_limpio }}', 'ELEMENTO')"
-                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                                QR
-                            </button>
-<!-- Botón para Subpaquetar -->
+									 <!-- Si el elemento NO tiene subpaquetes, mostrar botón QR del elemento -->
+@if ($elemento->subpaquetes->isEmpty())
+    <button
+        onclick="generateAndPrintQR('{{ $elemento->id }}', '{{ $elemento->planilla->codigo_limpio }}', 'ELEMENTO')"
+        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+        QR Elemento
+    </button>
+@endif
+
+                                    @endif
+									   <!-- SUBPAQUETES RELACIONADOS -->
+            @if ($elemento->subpaquetes->isNotEmpty())
+                <div class="bg-gray-100 p-3 rounded-lg mt-3 shadow-md">
+                    <h4 class="font-bold text-gray-700">🔹 Subpaquetes:</h4>
+                    <ul class="list-none">
+                        @foreach ($elemento->subpaquetes as $subpaquete)
+                            <li class="bg-white p-2 rounded-lg shadow-sm mt-2">
+								  <button
+                        onclick="generateAndPrintQR('{{ $subpaquete->id }}', '{{ $elemento->planilla->codigo_limpio }}', 'SUBPAQUETE')"
+                        class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
+                        QR Subpaquete #{{ $subpaquete->id }}
+                    </button>
+                                <p><strong>#</strong>{{ $subpaquete->id }}</p>
+                                <p><strong>Peso:</strong> {{ $subpaquete->peso }} kg</p>
+                                <p><strong>Cantidad:</strong> {{ $subpaquete->cantidad }}</p>
+                               
+                                <p><strong>Descripción:</strong> {{ $subpaquete->descripcion ?? 'Sin descripción' }}</p>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+									<!-- Botón para Subpaquetar -->
 <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
     class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-700 mt-2">
     ➕ Subpaquetar
 </button>
-
-                                    @endif
                                     <hr style="border: 1px solid black; margin: 10px 0;">
                                     <p class="text-gray-500 text-sm">
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }} <strong>Diámetro:</strong>

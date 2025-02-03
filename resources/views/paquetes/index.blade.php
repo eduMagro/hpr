@@ -68,7 +68,7 @@
                             <td class="px-4 py-2">{{ $paquete->etiquetas->count() }}</td>
                             <td class="px-4 py-2">
                                 @if ($paquete->etiquetas->isNotEmpty())
-                                    <ul class="list-disc pl-4">
+                                    <ul class="list-disc pl-4 text-blue-600 text-sm">
                                         @foreach ($paquete->etiquetas as $etiqueta)
                                             <li class="font-semibold">
                                                 <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
@@ -77,7 +77,7 @@
                                                 </a>
                                             </li>
                                             @if ($etiqueta->elementos->isNotEmpty())
-                                                <ul class="list-disc pl-6 text-gray-600 text-sm">
+                                                <ul class="list-disc pl-6 text-green-600 text-sm">
                                                     @foreach ($etiqueta->elementos as $elemento)
                                                         <li>
                                                             <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
@@ -85,6 +85,18 @@
                                                                 ID {{ $elemento->id }} - FIGURA
                                                                 {{ $elemento->figura }}
                                                             </a>
+															<!-- Subpaquetes dentro de los elementos -->
+                                @if ($elemento->subpaquetes->isNotEmpty())
+                                    <ul class="list-disc pl-8 text-red-500 text-sm">
+                                        @foreach ($elemento->subpaquetes as $subpaquete)
+                                            <li>
+                                                <a href="#" class="text-red-500 hover:underline">
+                                                     Subpaquete #{{ $subpaquete->id }} - Peso: {{ $subpaquete->peso }} kg
+                                                </a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
                                                         </li>
                                                     @endforeach
                                                 </ul>
