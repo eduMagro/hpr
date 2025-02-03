@@ -60,7 +60,8 @@ Route::middleware('auth')->group(function () {
     //Actualizar estado de etiquetas
     //Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
     //Route::post('/actualizar-etiqueta/{id}', [EtiquetaController::class, 'actualizarEtiqueta']);
-	Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta']);
+    Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta']);
+    Route::put('/actualizar-elemento/{id}/maquina/{maquina_id}', [ElementoController::class, 'actualizarElemento']);
 
     Route::post('/verificar-etiquetas', [EtiquetaController::class, 'verificarEtiquetas']);
     // Para elegir un peon en maquinas

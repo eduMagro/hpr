@@ -1,12 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
     const procesoEtiqueta = document.getElementById("procesoEtiqueta");
-   let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
+    let maquina_id = document.getElementById("maquina-info").dataset.maquinaId;
 
     if (!procesoEtiqueta) {
         console.error("Error: No se encontró el input de etiqueta en el DOM.");
         return;
     }
- 
+
     procesoEtiqueta.addEventListener("keypress", function (e) {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -20,12 +20,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 return;
             }
-
+            // Si la etiqueta tiene elementos en otras máquinas, no permitir su actualización
+            if (
+                etiquetasConElementosEnOtrasMaquinas.includes(
+                    parseInt(etiquetaId)
+                )
+            ) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Acción no permitida",
+                    text: "Esta etiqueta tiene elementos en otras máquinas. No puedes procesarla.",
+                });
+                this.value = ""; // Limpiar input tras intento fallido
+                return;
+            }
             actualizarEtiqueta(etiquetaId, maquina_id);
             this.value = ""; // Limpiar input tras lectura
         }
     });
-   
 });
 
 async function actualizarEtiqueta(id, maquina_id) {
@@ -77,6 +89,9 @@ function actualizarDOM(id, data) {
     let estadoEtiqueta = document.getElementById(`estado-${id}`);
     let inicioEtiqueta = document.getElementById(`inicio-${id}`);
     let finalEtiqueta = document.getElementById(`final-${id}`);
+    let contenedorEstadoEt = document.getElementById(
+        `contenedor-estado-et-${id}`
+    ); // Contenedor donde agregar el sticker
 
     if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
     if (inicioEtiqueta)
@@ -84,8 +99,26 @@ function actualizarDOM(id, data) {
     if (finalEtiqueta)
         finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
 
-    // ✅ Solo mostrar SweetAlert si pasa de "completado" a "pendiente"
-    if (data.estado === "pendiente") {
+    // ✅ Quitar stickers previos antes de actualizar el estado
+    let stickerExistente = document.querySelector(`#sticker-${id}`);
+    if (stickerExistente) {
+        stickerExistente.remove();
+    }
+
+    // ✅ Si el estado es "completado", agregar un sticker verde
+    if (data.estado === "completado") {
+        let sticker = document.createElement("span");
+        sticker.id = `sticker-${id}`;
+        sticker.innerHTML = "✅"; // Puedes cambiarlo por un icono SVG
+        sticker.style.marginLeft = "10px"; // Espaciado del sticker
+        sticker.style.fontSize = "20px";
+
+        if (contenedorEstado) {
+            contenedorEstado.appendChild(sticker);
+        } else {
+            estadoElemento?.parentNode?.appendChild(sticker);
+        }
+
         Swal.fire({
             icon: "info",
             title: "Etiqueta reiniciada",

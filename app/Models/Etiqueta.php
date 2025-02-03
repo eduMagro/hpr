@@ -40,7 +40,16 @@ class Etiqueta extends Model
     {
         return $this->hasMany(Elemento::class, 'etiqueta_id', 'id');
     }
-
+    // Relación con el modelo Producto (si existe)
+    public function producto()
+    {
+        return $this->belongsTo(Producto::class, 'producto_id');
+    }
+    // Relación con el modelo Producto (si existe)
+    public function producto2()
+    {
+        return $this->belongsTo(Producto::class, 'producto_id_2');
+    }
     public function paquete()
     {
         return $this->belongsTo(Paquete::class, 'paquete_id');
