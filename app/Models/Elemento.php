@@ -72,6 +72,11 @@ class Elemento extends Model
         return $this->belongsTo(Planilla::class, 'planilla_id');
     }
 
+    public function subpaquetes()
+{
+    return $this->hasMany(Subpaquete::class, 'elemento_id');
+}
+
     public function etiquetaRelacion()
     {
         return $this->belongsTo(Etiqueta::class, 'etiqueta_id');

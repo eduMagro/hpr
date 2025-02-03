@@ -15,6 +15,7 @@ use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\AlertaController;
+use App\Http\Controllers\SubpaqueteController;
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -56,7 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('elementos', ElementoController::class);
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
         ->name('elementosEtiquetas');
-
+        Route::resource('subpaquetes',SubpaqueteController::class);
     //Actualizar estado de etiquetas
     //Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
     //Route::post('/actualizar-etiqueta/{id}', [EtiquetaController::class, 'actualizarEtiqueta']);

@@ -61,7 +61,11 @@ class Planilla extends Model
     {
         return $this->hasMany(Elemento::class, 'planilla_id');
     }
-
+    public function subpaquetes()
+    {
+        return $this->hasMany(Subpaquete::class, 'planilla_id');
+    }
+    
     /**
      * Relación con la tabla 'users'
      * Una planilla pertenece a un usuario

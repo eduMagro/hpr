@@ -242,6 +242,11 @@
                                 class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                                 QR
                             </button>
+<!-- Botón para Subpaquetar -->
+<button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
+    class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-700 mt-2">
+    ➕ Subpaquetar
+</button>
 
                                     @endif
                                     <hr style="border: 1px solid black; margin: 10px 0;">
@@ -270,6 +275,43 @@
                     </div>
                 @endforelse
             </div>
+            <!-- Modal para Crear Subpaquete -->
+<div id="modalSubpaquete"
+class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
+<div class="bg-white p-6 rounded-lg shadow-lg w-96">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">➕ Crear Subpaquete</h2>
+
+    <form id="formSubpaquete" method="POST" action="{{ route('subpaquetes.store') }}">
+        @csrf
+        <input type="hidden" name="elemento_id" id="subpaquete_elemento_id">
+
+        <label for="peso" class="block text-sm font-medium text-gray-700 mb-1">Peso</label>
+        <input type="number" step="0.01" name="peso" id="peso"
+            class="w-full border rounded p-2 mb-4" placeholder="Peso en kg">
+
+        <label for="cantidad" class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+        <input type="number" name="cantidad" id="cantidad"
+            class="w-full border rounded p-2 mb-4" value="1">
+
+        <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+        <textarea name="descripcion" id="descripcion"
+            class="w-full border rounded p-2 mb-4" rows="3"
+            placeholder="Detalles del subpaquete"></textarea>
+
+        <div class="flex justify-end mt-4">
+            <button type="button"
+                onclick="document.getElementById('modalSubpaquete').classList.add('hidden')"
+                class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
+                Cancelar
+            </button>
+            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded">
+                Guardar
+            </button>
+        </div>
+    </form>
+</div>
+</div>
+
             <!-- --------------------------------------------------------------- GRID PARA OTROS --------------------------------------------------------------- -->
             <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <div class="flex flex-col gap-4">
@@ -464,7 +506,13 @@
             </div>
         </div>
     </div>
-
+    <script>
+        function mostrarModalSubpaquete(elementoId) {
+            document.getElementById('subpaquete_elemento_id').value = elementoId;
+            document.getElementById('modalSubpaquete').classList.remove('hidden');
+        }
+    </script>
+    
     <script>
          let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
 		let etiquetasEnUnaSolaMaquina = @json($etiquetasEnUnaSolaMaquina);
