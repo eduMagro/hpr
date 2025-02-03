@@ -1,19 +1,18 @@
-const etiquetas = [];
+const items = [];
 
-document
-    .getElementById("qrEtiqueta")
-    .addEventListener("keypress", function (event) {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            agregarEtiqueta();
-        }
-    });
+document.getElementById("qrItem").addEventListener("keypress", function (event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        agregarItem();
+    }
+});
 
-function agregarEtiqueta() {
-    const qrEtiqueta = document.getElementById("qrEtiqueta");
-    const etiqueta = qrEtiqueta.value.trim();
+function agregarItem() {
+    const qrItem = document.getElementById("qrItem");
+    const itemCode = qrItem.value.trim();
+    const itemType = document.getElementById("itemType").value.trim().toLowerCase();
 
-    if (!etiqueta) {
+    if (!itemCode) {
         Swal.fire({
             icon: "warning",
             title: "QR Inválido",
@@ -23,136 +22,127 @@ function agregarEtiqueta() {
         return;
     }
 
-    if (etiquetas.includes(etiqueta)) {
+    if (items.some(i => i.code === itemCode)) {
         Swal.fire({
             icon: "error",
-            title: "Etiqueta Duplicada",
-            text: "Esta etiqueta ya ha sido agregada.",
+            title: "Item Duplicado",
+            text: "Este item ya ha sido agregado.",
             confirmButtonColor: "#d33",
         });
-        qrEtiqueta.value = "";
+        qrItem.value = "";
         return;
     }
 
-    etiquetas.push(etiqueta);
+    const newItem = { id: itemCode, type: itemType };
+    items.push(newItem);
 
-    const etiquetasList = document.getElementById("etiquetasList");
+    const itemsList = document.getElementById("itemsList");
     const listItem = document.createElement("li");
-    listItem.textContent = etiqueta;
+    listItem.textContent = `${itemType}: ${itemCode}`;
+    listItem.dataset.code = itemCode;
 
     const removeButton = document.createElement("button");
     removeButton.textContent = "❌";
     removeButton.className = "ml-2 text-red-600 hover:text-red-800";
     removeButton.onclick = () => {
-        etiquetas.splice(etiquetas.indexOf(etiqueta), 1);
-        etiquetasList.removeChild(listItem);
+        const index = items.findIndex(i => i.code === itemCode);
+        if (index > -1) {
+            items.splice(index, 1);
+        }
+        itemsList.removeChild(listItem);
     };
 
     listItem.appendChild(removeButton);
-    etiquetasList.appendChild(listItem);
+    itemsList.appendChild(listItem);
 
-    qrEtiqueta.value = "";
+    qrItem.value = "";
 }
 
 function crearPaquete() {
-    if (etiquetas.length === 0) {
+    if (items.length === 0) {
         Swal.fire({
             icon: "warning",
-            title: "Sin Etiquetas",
-            text: "No has metido etiquetas en la lista.",
+            title: "Sin Items",
+            text: "No has agregado ningún item a la lista.",
             confirmButtonColor: "#3085d6",
         });
         return;
     }
-    // ------------------------------------ VERIFICAR ETIQUETAS
-    fetch("/verificar-etiquetas", {
+
+    fetch("/verificar-items", {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "X-CSRF-TOKEN": document
-                .querySelector('meta[name="csrf-token"]')
-                .getAttribute("content"),
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+            "X-Requested-With": "XMLHttpRequest"
         },
-        body: JSON.stringify({ etiquetas }),
+        body: JSON.stringify({ items }),
     })
-        .then((response) => response.json())
-        .then((data) => {
-            if (!data.success) {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: `Las siguientes etiquetas no están completas: ${data.etiquetas_incompletas.join(
-                        ", "
-                    )}`,
-                    confirmButtonColor: "#d33",
-                });
-                return;
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            let mensajeError = "Los siguientes ítems no están completos:\n";
+
+            if (data.etiquetas_incompletas?.length) {
+                mensajeError += `- Etiquetas: ${data.etiquetas_incompletas.join(", ")}\n`;
+            }
+            if (data.elementos_incompletos?.length) {
+                mensajeError += `- Elementos: ${data.elementos_incompletos.join(", ")}\n`;
+            }
+            if (data.subpaquetes_incompletos?.length) {
+                mensajeError += `- Subpaquetes: ${data.subpaquetes_incompletos.join(", ")}\n`;
             }
 
-            const ubicacionId =
-                document.getElementById("ubicacionInput")?.value || null;
-            // ------------------------------------ PAQUETES
-            fetch("/paquetes", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document
-                        .querySelector('meta[name="csrf-token"]')
-                        .getAttribute("content"),
-                },
-                body: JSON.stringify({
-                    etiquetas,
-                    ubicacion_id: ubicacionId,
-                }),
-            })
-                .then((response) => response.json())
-                .then((data) => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Éxito",
-                            html: `Paquete creado con éxito. ID: <strong>${data.paquete_id}</strong> <br>
-                                
-                       <button
-    onclick="generateAndPrintQR('${data.paquete_id}', '${data.codigo_planilla}', 'PAQUETE')"
-    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-    QR
-</button>
-`,
-                            confirmButtonColor: "#28a745",
-                        }).then(() => {
-                            window.location.reload(); // Recargar la página
-                        });
-                        etiquetas.length = 0;
-                        document.getElementById("etiquetasList").innerHTML = "";
-                    } else {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error",
-                            text: data.message,
-                            confirmButtonColor: "#d33",
-                        });
-                    }
-                })
-                .catch((error) => {
-                    console.error("Error en fetch:", error);
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error en conexión",
-                        text: "Hubo un problema con el servidor. Inténtalo más tarde.",
-                        confirmButtonColor: "#d33",
-                    });
-                });
-        })
-        .catch((error) => {
-            console.error("Error en fetch:", error);
             Swal.fire({
                 icon: "error",
-                title: "Error en conexión",
-                text: "No se pudo verificar el estado de las etiquetas.",
+                title: "Error",
+                text: mensajeError.trim() || "Error desconocido.",
                 confirmButtonColor: "#d33",
             });
+            return;
+        }
+
+        const ubicacionId = document.getElementById("ubicacionInput")?.value || null;
+
+        return fetch("/paquetes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: JSON.stringify({
+                items,
+                ubicacion_id: ubicacionId,
+            }),
         });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data?.success) {
+            Swal.fire({
+                icon: "success",
+                title: "Éxito",
+                html: `Paquete creado con éxito. ID: <strong>${data.paquete_id}</strong> <br>
+                        <button onclick="generateAndPrintQR('${data.paquete_id}', '${data.codigo_planilla}', 'PAQUETE')"
+                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">QR</button>`
+            }).then(() => {
+                items.length = 0;
+                document.getElementById("itemsList").innerHTML = "";
+            });
+        } else {
+            throw new Error(data.message || "Error desconocido al crear el paquete.");
+        }
+    })
+    .catch(error => {
+        console.error("Error en fetch:", error);
+        Swal.fire({
+            icon: "error",
+            title: "Error en conexión",
+            text: `No se pudo conectar con el servidor. Detalles: ${error.message}`,
+            confirmButtonColor: "#d33",
+        });
+    });
 }
 
 document.addEventListener("DOMContentLoaded", function () {

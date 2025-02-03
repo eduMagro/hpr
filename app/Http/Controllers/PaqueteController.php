@@ -7,6 +7,8 @@ use App\Models\Paquete;
 use App\Models\Etiqueta;
 use App\Models\Ubicacion;
 use App\Models\Elemento;
+use App\Models\Subpaquete;
+
 use Illuminate\Support\Facades\DB;
 
 class PaqueteController extends Controller
@@ -32,154 +34,233 @@ class PaqueteController extends Controller
     /**
      * Crear un nuevo paquete y asociar etiquetas existentes.
      */
-  public function store(Request $request)
-{
-    $request->validate([
-        'etiquetas' => 'required|array|min:1', // Debe recibir un array con al menos una etiqueta
-        'etiquetas.*' => 'integer|exists:etiquetas,id|distinct' // Asegurar que los IDs existen y son únicos
-    ]);
 
-    try {
-        DB::beginTransaction();
+    public function store(Request $request)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1', // Debe recibir un array con al menos un item
+            'items.*.id' => 'integer|required', // Asegurar que los IDs existen
+            'items.*.type' => 'required|in:etiqueta,elemento,subpaquete' // Tipos permitidos
+        ]);
 
-        // Verificar si las etiquetas están disponibles
-        if ($mensajeError = $this->verificarEtiquetasDisponibles($request->etiquetas)) {
-            DB::rollBack();
-            return response()->json(['success' => false] + $mensajeError, 400);
-        }
+        try {
+            DB::beginTransaction();
 
-        // Obtener etiquetas completadas
-        $etiquetas = Etiqueta::whereIn('id', $request->etiquetas)
-            ->where('estado', 'completado')
-            ->with(['elementos', 'planilla'])
-            ->get();
+            // Separar los elementos por tipo
+            $etiquetasIds = collect($request->items)->where('type', 'etiqueta')->pluck('id')->toArray();
+            $elementosIds = collect($request->items)->where('type', 'elemento')->pluck('id')->toArray();
+            $subpaquetesIds = collect($request->items)->where('type', 'subpaquete')->pluck('id')->toArray();
 
-        if ($etiquetas->isEmpty()) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'No se encontraron elementos completados para estas etiquetas.'
-            ], 400);
-        }
-
-        // Verificar que todas las etiquetas pertenezcan a la misma planilla
-        $planillaIds = $etiquetas->pluck('planilla_id')->unique();
-        if ($planillaIds->count() > 1) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Deben pertenecer a la misma planilla.'
-            ], 400);
-        }
-
-        $planilla = $etiquetas->first()->planilla;
-        $codigo_planilla = $planilla ? $planilla->codigo_limpio : null;
-
-        // Obtener elementos y validar código de máquina
-        $elementos = $etiquetas->flatMap->elementos;
-        if ($mensajeError = $this->verificarElementos($elementos)) {
-            DB::rollBack();
-            return response()->json(['success' => false] + $mensajeError, 400);
-        }
-
-        // Obtener ubicación basada en el código de máquina
-        $codigoMaquina = $elementos->pluck('codigo_maquina')->unique()->first();
-        $ubicacion = $this->obtenerUbicacionPorCodigoMaquina($codigoMaquina);
-
-        if (!$ubicacion) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => "No se encontró una ubicación para la máquina con código $codigoMaquina"
-            ], 400);
-        }
-
-        // Crear el paquete y asignar etiquetas
-        $paquete = $this->crearPaquete($planilla->id, $ubicacion->id);
-        $this->asignarEtiquetasAPaquete($request->etiquetas, $paquete->id);
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Paquete creado y etiquetas asociadas correctamente.',
-            'paquete_id' => $paquete->id,
-            'codigo_planilla' => $codigo_planilla
-        ], 201);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json([
-            'success' => false,
-            'message' => 'Error en el servidor: ' . $e->getMessage()
-        ], 500);
-    }
+            // Verificar disponibilidad de etiquetas, elementos y subpaquetes
+         if ($mensajeError = $this->verificarDisponibilidad($etiquetasIds, $elementosIds, $subpaquetesIds)) {
+    DB::rollBack();
+    return response()->json(array_merge(['success' => false], $mensajeError), 400);
 }
 
-    /**
-     * Verifica si alguna etiqueta ya tiene un paquete asignado.
-     */
-    private function verificarEtiquetasDisponibles(array $etiquetas)
-    {
-        $etiquetasOcupadas = Etiqueta::whereIn('id', $etiquetas)
-            ->whereNotNull('paquete_id')
-            ->pluck('id');
 
-        if ($etiquetasOcupadas->isNotEmpty()) {
-            return [
-                'message' => 'Al menos una de las etiquetas ya está asignada a un paquete.',
-                'etiquetas_ocupadas' => $etiquetasOcupadas->toArray()
-            ];
+            // Obtener los elementos y subpaquetes asociados
+            $etiquetas = Etiqueta::whereIn('id', $etiquetasIds)->with(['elementos', 'planilla'])->get();
+            $elementos = Elemento::whereIn('id', $elementosIds)->get();
+            $subpaquetes = Subpaquete::whereIn('id', $subpaquetesIds)->get();
+
+            if ($etiquetas->isEmpty() && $elementos->isEmpty() && $subpaquetes->isEmpty()) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron datos válidos para crear el paquete.'
+                ], 400);
+            }
+
+           // Obtener la planilla desde las etiquetas (si existen)
+$planilla = $etiquetas->first()->planilla ?? null;
+
+// Si no hay planilla y hay elementos, buscar la planilla desde los elementos
+if (!$planilla && $elementos->isNotEmpty()) {
+    $planilla = $elementos->first()->planilla ?? null;
+}
+
+// Si no se encontró una planilla en etiquetas ni en elementos, error
+if (!$planilla) {
+    DB::rollBack();
+    return response()->json([
+        'success' => false,
+        'message' => 'No se encontró una planilla válida para las etiquetas o los elementos.'
+    ], 400);
+}
+            $codigo_planilla = $planilla->codigo_limpio;
+
+            // Verificar código de máquina y ubicación
+            $codigoMaquina = $elementos->pluck('codigo_maquina')->unique()->first();
+            $ubicacion = $this->obtenerUbicacionPorCodigoMaquina($codigoMaquina);
+
+            if (!$ubicacion) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "No se encontró una ubicación para la máquina con código $codigoMaquina"
+                ], 400);
+            }
+
+            // Crear el paquete
+            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id);
+
+            // Asociar elementos al paquete
+            $this->asignarItemsAPaquete($etiquetasIds, $elementosIds, $subpaquetesIds, $paquete->id);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Paquete creado correctamente.',
+                'paquete_id' => $paquete->id,
+                'codigo_planilla' => $codigo_planilla
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error en el servidor: ' . $e->getMessage()
+            ], 500);
         }
-
-        return null;
     }
 
     /**
-     * Verifica si los elementos de las etiquetas son válidos y pertenecen a la misma máquina.
+     * Verifica si los elementos están disponibles para ser empaquetados.
      */
-    private function verificarElementos($elementos)
-    {
-        if ($elementos->isEmpty()) {
-            return ['message' => 'No se encontraron elementos asociados con código de máquina.'];
-        }
+    private function verificarDisponibilidad($etiquetas, $elementos, $subpaquetes)
+	{
+		try{
+        $ocupados = Etiqueta::whereIn('id', $etiquetas)->whereNotNull('paquete_id')->pluck('id');
+        $elementosOcupados = Elemento::whereIn('id', $elementos)->whereNotNull('paquete_id')->pluck('id');
+        $subpaquetesOcupados = Subpaquete::whereIn('id', $subpaquetes)->whereNotNull('paquete_id')->pluck('id');
 
-        $codigosMaquina = $elementos->pluck('codigo_maquina')->unique();
-        if ($codigosMaquina->count() > 1) {
+        if ($ocupados->isNotEmpty() || $elementosOcupados->isNotEmpty() || $subpaquetesOcupados->isNotEmpty()) {
             return [
-                'message' => 'Los elementos pertenecen a diferentes máquinas. No pueden asignarse al mismo paquete.',
-                'codigos_maquina_detectados' => $codigosMaquina
+                'message' => 'Algunos elementos ya están asignados a otro paquete.',
+                'etiquetas_ocupadas' => $ocupados->toArray(),
+                'elementos_ocupados' => $elementosOcupados->toArray(),
+                'subpaquetes_ocupados' => $subpaquetesOcupados->toArray()
             ];
         }
 
-        return null;
+         return null; // <- Importante: Devuelve NULL si no hay problemas
+    } catch (\Exception $e) {
+        // No devolvemos response()->json(), solo un array de error
+        return [
+            'message' => 'Error al verificar disponibilidad: ' . $e->getMessage()
+        ];
+    }
     }
 
     /**
-     * Obtiene la ubicación a partir del código de máquina.
+     * Obtiene la ubicación según el código de máquina.
      */
     private function obtenerUbicacionPorCodigoMaquina($codigoMaquina)
     {
+		try{
         return Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
+		 } catch (\Exception $e) {
+               return response()->json([
+            'success' => false,
+            'message' => 'Error al obtener ubicación de la máquina: ' . $e->getMessage()
+        ], 500);
+    }
     }
 
     /**
-     * Crea un nuevo paquete con la planilla y la ubicación.
+     * Crea un nuevo paquete.
      */
     private function crearPaquete($planillaId, $ubicacionId)
     {
+		 try {
         return Paquete::create([
             'planilla_id' => $planillaId,
             'ubicacion_id' => $ubicacionId,
         ]);
+		   
+
+    } catch (\Exception $e) {
+               return response()->json([
+            'success' => false,
+            'message' => 'Error al crear paquete: ' . $e->getMessage()
+        ], 500);
+    }
     }
 
     /**
-     * Asigna las etiquetas al paquete creado.
+     * Asigna etiquetas, elementos y subpaquetes al paquete.
      */
-    private function asignarEtiquetasAPaquete(array $etiquetas, $paqueteId)
+    private function asignarItemsAPaquete($etiquetas, $elementos, $subpaquetes, $paqueteId)
     {
+		try{
         Etiqueta::whereIn('id', $etiquetas)->update(['paquete_id' => $paqueteId]);
+        Elemento::whereIn('id', $elementos)->update(['paquete_id' => $paqueteId]);
+        Subpaquete::whereIn('id', $subpaquetes)->update(['paquete_id' => $paqueteId]);
+		 } catch (\Exception $e) {
+               return response()->json([
+            'success' => false,
+            'message' => 'Error al asignar items a paquete: ' . $e->getMessage()
+        ], 500);
     }
+    }
+
+public function verificarItems(Request $request)
+{
+    try {
+        $items = $request->input('items', []);
+
+        if (empty($items)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se recibieron ítems para verificar.',
+                'etiquetas_incompletas' => [],
+                'elementos_incompletos' => [],
+                'subpaquetes_incompletos' => []
+            ], 400);
+        }
+
+        // Separar por tipo
+        $etiquetasIds = collect($items)->where('type', 'etiqueta')->pluck('id')->toArray();
+        $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
+        $subpaquetesIds = collect($items)->where('type', 'subpaquete')->pluck('id')->toArray();
+
+        // Buscar etiquetas incompletas
+        $etiquetasIncompletas = Etiqueta::whereIn('id', $etiquetasIds)
+            ->where('estado', '!=', 'completado')
+            ->pluck('id')
+            ->toArray();
+
+        // Buscar elementos incompletos
+        $elementosIncompletos = Elemento::whereIn('id', $elementosIds)
+            ->where('estado', '!=', 'completado')
+            ->pluck('id')
+            ->toArray();
+
+     $subpaquetesIncompletos = []; // No es necesario filtrar, si existe, está completo.
+
+
+        return response()->json([
+            'success' => empty($etiquetasIncompletas) && empty($elementosIncompletos) && empty($subpaquetesIncompletos),
+            'message' => empty($etiquetasIncompletas) && empty($elementosIncompletos) && empty($subpaquetesIncompletos) ? 
+                'Todos los ítems están completos.' : 'Algunos ítems no están completos.',
+            'etiquetas_incompletas' => $etiquetasIncompletas,
+            'elementos_incompletos' => $elementosIncompletos,
+            'subpaquetes_incompletos' => $subpaquetesIncompletos
+        ], 200);
+        
+    } catch (\Exception $e) {
+        \Log::error('Error en verificarItems(): ' . $e->getMessage());
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al verificar los ítems.',
+            'error' => $e->getMessage(),
+            'etiquetas_incompletas' => [],
+            'elementos_incompletos' => [],
+            'subpaquetes_incompletos' => []
+        ], 500);
+    }
+}
 
 
     public function destroy($id)

@@ -368,30 +368,34 @@ class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-
                     <div class="bg-gray-100 border p-2 shadow-md rounded-lg">
                         <h3 class="font-bold text-xl">Crear Paquete</h3>
 
-                        <!-- Input para leer etiquetas QR -->
-                        <div class="mb-4">
-                            <!-- Input para leer etiquetas QR -->
-                            <div class="mb-4">
-                                <label for="qrEtiqueta" class="block text-gray-700 font-semibold">Escanear QR:</label>
-                                <input type="text" id="qrEtiqueta" class="w-full border p-2 rounded"
-                                    placeholder="Escanea un QR..." autofocus>
-                            </div>
-                        </div>
+                       <div class="mb-4">
+    <label for="itemType" class="block text-gray-700 font-semibold">Selecciona el tipo:</label>
+    <select id="itemType" class="border rounded p-2 w-full">
+        <option value="Etiqueta">Etiqueta</option>
+        <option value="Elemento">Elemento</option>
+        <option value="Subpaquete">Subpaquete</option>
+    </select>
+</div>
 
-                        <!-- Listado dinámico de etiquetas -->
-                        <div class="mb-4">
-                            <h4 class="font-semibold text-gray-700 mb-2">Etiquetas agregadas:</h4>
-                            <ul id="etiquetasList" class="list-disc pl-6 space-y-2">
-                                <!-- Las etiquetas se agregarán aquí dinámicamente -->
-                            </ul>
-                        </div>
+<div class="mb-4">
+    <label for="qrItem" class="block text-gray-700 font-semibold">Escanear QR:</label>
+    <input type="text" id="qrItem" class="border rounded p-2 w-full" placeholder="Escanea o ingresa un código QR">
+</div>
 
-                        <!-- Botón para crear el paquete -->
-                        <button id="crearPaqueteBtn"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full">
-                            📦 Crear Paquete
-                        </button>
+<!-- Listado dinámico de items -->
+<div class="mb-4">
+    <h4 class="font-semibold text-gray-700 mb-2">Items agregados:</h4>
+    <ul id="itemsList" class="list-disc pl-6 space-y-2">
+        <!-- Los items se agregarán aquí dinámicamente -->
+    </ul>
+</div>
 
+<!-- Botón para crear el paquete -->
+<button id="crearPaqueteBtn"
+    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full">
+    📦 Crear Paquete
+</button>
+				
                     </div>
                 </div>
                 <form id="deleteForm" method="POST">

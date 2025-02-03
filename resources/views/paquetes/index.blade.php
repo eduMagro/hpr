@@ -67,50 +67,81 @@
                             <td class="px-4 py-2">{{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}</td>
                             <td class="px-4 py-2">{{ $paquete->etiquetas->count() }}</td>
                             <td class="px-4 py-2">
-                                @if ($paquete->etiquetas->isNotEmpty())
-                                    <ul class="list-disc pl-4 text-blue-600 text-sm">
-                                        @foreach ($paquete->etiquetas as $etiqueta)
-                                            <li class="font-semibold">
-                                                <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
-                                                    class="text-blue-500 hover:underline">
-                                                    {{ $etiqueta->nombre }} (ID: {{ $etiqueta->id }})
-                                                </a>
-                                            </li>
-                                            @if ($etiqueta->elementos->isNotEmpty())
-                                                <ul class="list-disc pl-6 text-green-600 text-sm">
-                                                    @foreach ($etiqueta->elementos as $elemento)
-                                                        <li>
-                                                            <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
-                                                                class="text-green-500 hover:underline">
-                                                                ID {{ $elemento->id }} - FIGURA
-                                                                {{ $elemento->figura }}
-                                                            </a>
-															<!-- Subpaquetes dentro de los elementos -->
+    @if ($paquete->etiquetas->isNotEmpty())
+        <ul class="list-disc pl-4 text-blue-600 text-sm">
+            @foreach ($paquete->etiquetas as $etiqueta)
+                <li class="font-semibold">
+                    <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
+                        class="text-blue-500 hover:underline">
+                        {{ $etiqueta->nombre }} (ID: {{ $etiqueta->id }})
+                    </a>
+                </li>
+                @if ($etiqueta->elementos->isNotEmpty())
+                    <ul class="list-disc pl-6 text-green-600 text-sm">
+                        @foreach ($etiqueta->elementos as $elemento)
+                            <li>
+                                <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                                    class="text-green-500 hover:underline">
+                                    ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
+                                </a>
+
+                                <!-- Subpaquetes dentro de los elementos -->
                                 @if ($elemento->subpaquetes->isNotEmpty())
                                     <ul class="list-disc pl-8 text-red-500 text-sm">
                                         @foreach ($elemento->subpaquetes as $subpaquete)
                                             <li>
                                                 <a href="#" class="text-red-500 hover:underline">
-                                                     Subpaquete #{{ $subpaquete->id }} - Peso: {{ $subpaquete->peso }} kg
+                                                    Subpaquete #{{ $subpaquete->id }} - Peso: {{ $subpaquete->peso }} kg
                                                 </a>
                                             </li>
                                         @endforeach
                                     </ul>
                                 @endif
-                                                        </li>
-                                                    @endforeach
-                                                </ul>
-                                            @else
-                                                <ul class="pl-6 text-gray-500 text-sm">
-                                                    <li>Sin elementos</li>
-                                                </ul>
-                                            @endif
-                                        @endforeach
-                                    </ul>
-                                @else
-                                    <span class="text-gray-500">Sin etiquetas</span>
-                                @endif
-                            </td>
+                            </li>
+                        @endforeach
+                    </ul>
+                @else
+                    <ul class="pl-6 text-gray-500 text-sm">
+                        <li>Sin elementos</li>
+                    </ul>
+                @endif
+            @endforeach
+        </ul>
+    @endif
+
+    <!-- Mostrar elementos sin etiquetas -->
+    @if ($paquete->elementos->isNotEmpty())
+        <ul class="list-disc pl-4 text-green-600 text-sm">
+            @foreach ($paquete->elementos as $elemento)
+                <li>
+                    <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                        class="text-green-500 hover:underline">
+                        ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
+                    </a>
+
+                    <!-- Subpaquetes dentro de los elementos sin etiquetas -->
+                    @if ($elemento->subpaquetes->isNotEmpty())
+                        <ul class="list-disc pl-8 text-red-500 text-sm">
+                            @foreach ($elemento->subpaquetes as $subpaquete)
+                                <li>
+                                    <a href="#" class="text-red-500 hover:underline">
+                                        Subpaquete #{{ $subpaquete->id }} - Peso: {{ $subpaquete->peso }} kg
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
+    <!-- Mensaje si no hay etiquetas ni elementos -->
+    @if ($paquete->etiquetas->isEmpty() && $paquete->elementos->isEmpty())
+        <span class="text-gray-500">Sin etiquetas ni elementos</span>
+    @endif
+</td>
+
                             <td class="px-4 py-2">{{ $paquete->created_at->format('d/m/Y H:i') }}</td>
 
 

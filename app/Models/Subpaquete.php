@@ -24,6 +24,7 @@ class Subpaquete extends Model
     protected $fillable = [
         'elemento_id',
 		'planilla_id',
+		'paquete_id',
         'nombre',
         'peso',
         'dimensiones',
@@ -56,5 +57,9 @@ class Subpaquete extends Model
     public function planilla()
     {
         return $this->belongsTo(Planilla::class, 'planilla_id');
+    }
+	 public function paquete()
+    {
+        return $this->belongsTo(Paquete::class, 'paquete_id');
     }
 }

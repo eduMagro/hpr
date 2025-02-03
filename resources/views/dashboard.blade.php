@@ -42,7 +42,7 @@
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="#">
+                            <a href="{{ route('salidas.index') }}">
                                 <img src="https://img.icons8.com/?size=100&id=rGLEtwiD51Dw&format=png&color=000000"
                                     alt="Salidas">
                                 <span>Salidas</span>

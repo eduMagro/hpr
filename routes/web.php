@@ -16,6 +16,7 @@ use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\SubpaqueteController;
+use App\Http\Controllers\SalidaController;
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -64,14 +65,14 @@ Route::middleware('auth')->group(function () {
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta']);
     Route::put('/actualizar-elemento/{id}/maquina/{maquina_id}', [ElementoController::class, 'actualizarElemento']);
 
-    Route::post('/verificar-etiquetas', [EtiquetaController::class, 'verificarEtiquetas']);
+ 	Route::post('/verificar-items', [PaqueteController::class, 'verificarItems']);
     // Para elegir un peon en maquinas
 
     // Para elegir un peon en maquinas
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])
         ->name('maquinas.sesion.guardar');
 
-
+        Route::resource('salidas', SalidaController::class);
     Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
     Route::post('/alertas/store', [AlertaController::class, 'store'])->name('alertas.store');
