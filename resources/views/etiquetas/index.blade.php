@@ -119,8 +119,10 @@
                             <td class="px-4 py-2">{{ $etiqueta->nombre }}</td>
                             <a href="{{ route('productos.show', $etiqueta->producto->id) }}"
                                 class="text-blue-500 hover:underline">Ver</a>
-                                <a href="{{ route('productos.show', $etiqueta->producto2->id ?? NULL) }}"
-                                    class="text-blue-500 hover:underline">Ver</a>
+                                @if (!is_null($etiqueta->producto2))
+                                <a href="{{ route('productos.show', $etiqueta->producto2->id) }}" class="text-blue-500 hover:underline">Ver</a>
+                            @endif
+                            
                             <td class="px-4 py-2">{{ $etiqueta->peso_kg }}</td>
                             <td class="px-4 py-2">{{ $etiqueta->fecha_inicio ?? 'No asignado' }}</td>
                             <td class="px-4 py-2">{{ $etiqueta->fecha_finalizacion ?? 'No asignado' }}</td>
