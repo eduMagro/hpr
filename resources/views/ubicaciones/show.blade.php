@@ -1,9 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            <a href="{{ route('ubicaciones.index') }}" class="text-gray-600">
+            <a href="{{ route('ubicaciones.index') }}" class="text-blue-500">
                 {{ __('Ubicaciones') }}
-            </a>
+            </a><span> / </span>Detalles de Ubicación
         </h2>
     </x-slot>
 

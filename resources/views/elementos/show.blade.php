@@ -1,7 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Elementos de Planilla <strong>{{ $planilla->codigo_limpio }}</strong>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight"> <a href="{{ route('planillas.index') }}"
+                class="text-blue-500">
+                {{ __('Planillas') }}
+            </a><span> / </span>Elementos de Planilla <strong>{{ $planilla->codigo_limpio }}</strong>
         </h2>
     </x-slot>
     <style>
@@ -26,14 +28,28 @@
     @endif
     <!-- Mostrar mensajes de éxito o error -->
     @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
+                    confirmButtonColor: '#d33'
+                });
+            });
+        </script>
     @endif
+
     @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'success',
+                    text: '{{ session('success') }}',
+                    confirmButtonColor: '#28a745'
+                });
+            });
+        </script>
     @endif
 
     <div class="container mx-auto px-4 py-6">
@@ -49,14 +65,14 @@
                     @else
                         <div class="grid grid-cols-1 gap-6">
                             @foreach ($etiquetasConElementos as $etiqueta)
-                                <div class="bg-white p-4 rounded-lg shadow-md">
-                                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} <br>
+                                <div class="bg-white p-2 rounded-lg shadow-md">
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-2">
+                                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }}
                                         ID: {{ $etiqueta->id }}
                                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                                     </h3>
 
-                                    <ul class="list-disc pl-6">
+                                    <ul class="list-disc pl-10">
                                         @if ($etiqueta->elementos->isEmpty())
                                             <li>
                                                 No hay elementos asociados a esta etiqueta.
@@ -218,7 +234,10 @@
                                     <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
                                 </p>
                                 <hr class="my-2">
-
+                                <p class="text-gray-500 text-sm">
+                                    <strong>Dobles por Barra:</strong> {{ $elemento->dobles_barra ?? 'No asignado' }}
+                                </p>
+                                <hr class="my-2">
                                 <p class="text-gray-500 text-sm">
                                     <strong>Fila:</strong> {{ $elemento->fila ?? 'No asignado' }}
                                 </p>

@@ -1,7 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Importar Planillas') }}
+            <a href="{{ route('planillas.index') }}" class="text-blue-500">
+                {{ __('Planillas') }}
+            </a><span> / </span>{{ __('Importar Planillas') }}
         </h2>
     </x-slot>
     <!-- Mostrar errores de validación -->
@@ -16,20 +18,35 @@
     @endif
     <!-- Mostrar mensajes de éxito o error -->
     @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
+                    confirmButtonColor: '#d33'
+                });
+            });
+        </script>
     @endif
+
     @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'success',
+                    text: '{{ session('success') }}',
+                    confirmButtonColor: '#28a745'
+                });
+            });
+        </script>
     @endif
 
     <div class="container mx-auto px-4 py-6">
         <!-- Formulario de importación -->
         <div class="mb-4">
-            <form method="post" action="{{ route('planillas.import') }}" enctype="multipart/form-data" class="bg-light border p-4 rounded">
+            <form method="post" action="{{ route('planillas.import') }}" enctype="multipart/form-data"
+                class="bg-light border p-4 rounded">
                 @csrf
                 <div class="form-group mb-3">
                     <label for="file" class="form-label fw-bold">
@@ -37,12 +54,12 @@
                     </label>
                     <input type="file" name="file" id="file" class="form-control">
                 </div>
-            
+
                 <div class="d-flex justify-content-end">
                     <input type="submit" class="btn btn-primary" name="proceso" value="IMPORTAR">
                 </div>
             </form>
-        </form>
+            </form>
         </div>
 
         <!-- Información adicional -->
