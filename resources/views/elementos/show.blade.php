@@ -87,10 +87,11 @@
                                                     </a>
 
                                                     <span class="text-gray-500 text-sm">
-                                                        ID: {{ $elemento->id }},
-                                                        Peso: {{ $elemento->peso ?? 'No asignado' }},
-                                                        Diámetro: {{ $elemento->diametro ?? 'No asignado' }},
-                                                        Longitud: {{ $elemento->longitud ?? 'No asignado' }},
+                                                        #{{ $elemento->id }},
+                                                        Máquina: {{ $elemento->maquina->codigo }},
+                                                        {{ $elemento->peso_kg }},
+                                                        {{ $elemento->diametro_mm }},
+                                                        {{ $elemento->longitud_cm }},
                                                         Estado: {{ $elemento->estado ?? 'Sin estado' }}
                                                     </span>
                                                 </li>
@@ -177,12 +178,19 @@
         <!-- GRID PARA ETIQUETAS (Cada etiqueta inicia en una nueva fila) -->
         <div class="grid grid-cols-1 gap-6">
             @forelse ($etiquetasConElementos as $etiqueta)
-                <div class="bg-yellow-100 p-6 rounded-lg shadow-md">
-                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
-                        Etiqueta: {{ $etiqueta->nombre ?? 'Sin nombre' }} <br>
-                        ID: {{ $etiqueta->id }}
+                <div class="bg-yellow-200 p-6 rounded-lg shadow-md">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-2">
+                        {{ $etiqueta->nombre ?? 'Sin nombre' }}
+                        #{{ $etiqueta->id }}
                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
-                    </h3>
+                    </h2>
+                    <!-- Datos adicionales de la etiqueta -->
+                    <div class="mb-4 bg-yellow-100 p-4 rounded-lg">
+                        <p><strong>Peso:</strong> {{ $etiqueta->peso ?? 'Desconocido' }} kg</p>
+                        <p><strong>Estado:</strong> {{ $etiqueta->estado ?? 'Sin estado' }}</p>
+                        <p><strong>Inicio:</strong> {{ $etiqueta->fecha_inicio ?? 'No iniciado' }}</p>
+                        <p><strong>Finalización:</strong> {{ $etiqueta->fecha_finalizacion ?? 'No finalizado' }}</p>
+                    </div>
 
                     <!-- GRID PARA ELEMENTOS (2 columnas dentro de cada etiqueta) -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -198,53 +206,20 @@
                                 <hr class="my-2">
                                 <!-- Estado -->
                                 <p class="text-gray-500 text-sm">
-                                    <strong>Estado:</strong>
-                                    {{ $elemento->estado ?? 'Sin estado' }}
-                                </p>
-                                <hr class="my-2">
-
-                                <!-- Máquina -->
-                                <p class="text-gray-500 text-sm">
                                     <strong>Máquina asignada:</strong>
-                                    {{ $elemento->maquina->nombre ?? 'No asignado' }}
+                                    {{ $elemento->maquina->nombre ?? 'No asignado' }} <strong>Estado:</strong>
+                                    {{ $elemento->estado ?? 'Sin estado' }} <strong>Tipo de Figura:</strong>
+                                    {{ $elemento->figura ?? 'No asignado' }} <strong>Marca:</strong>
+                                    {{ $elemento->marca ?? 'No asignado' }}
                                 </p>
                                 <hr class="my-2">
-
                                 <p class="text-gray-500 text-sm">
                                     <strong>Peso:</strong> {{ $elemento->peso ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-
-                                <p class="text-gray-500 text-sm">
                                     <strong>Diámetro:</strong> {{ $elemento->diametro ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-
-                                <p class="text-gray-500 text-sm">
                                     <strong>Longitud:</strong> {{ $elemento->longitud ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-
-                                <p class="text-gray-500 text-sm">
-                                    <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-
-                                <p class="text-gray-500 text-sm">
-                                    <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-                                <p class="text-gray-500 text-sm">
                                     <strong>Dobles por Barra:</strong> {{ $elemento->dobles_barra ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-                                <p class="text-gray-500 text-sm">
+                                    <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
                                     <strong>Fila:</strong> {{ $elemento->fila ?? 'No asignado' }}
-                                </p>
-                                <hr class="my-2">
-
-                                <p class="text-gray-500 text-sm">
-                                    <strong>Marca:</strong> {{ $elemento->marca ?? 'No asignado' }}
                                 </p>
                                 <hr class="my-2">
 
