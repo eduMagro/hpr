@@ -53,7 +53,7 @@ class Planilla extends Model
     }
     public function etiquetas()
     {
-        return $this->hasMany(Paquete::class, 'planilla_id');
+        return $this->hasMany(Etiqueta::class, 'planilla_id');
     }
 
 

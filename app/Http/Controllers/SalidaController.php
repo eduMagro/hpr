@@ -4,42 +4,54 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Planilla;
+use Illuminate\Support\Facades\Log;
 
 class SalidaController extends Controller
 {
     /**
      * Muestra la lista de planillas con sus paquetes y el progreso de peso.
      */
-   public function index()
-{
-    try {
-        // Construir la consulta pero NO ejecutarla todavía
-        $query = Planilla::with([
-            'paquetes:id,planilla_id,peso',
-            'etiquetas' => function ($query) {
-                $query->whereNull('paquete_id')
-                      ->where('estado', 'completado')
-                      ->select('id', 'planilla_id', 'estado');
-            },
-            'elementos' => function ($query) {
-                $query->whereNull('paquete_id')
-                      ->where('estado', 'completado')
-                      ->select('id', 'planilla_id', 'estado', 'peso');
-            }
-        ]);
+    public function index()
+    {
 
-        // 🔍 Mostrar la consulta exacta antes de ejecutarla
-        \Log::info('Consulta generada: ' . $query->toSql());
+            // Cargar las relaciones necesarias
+            $planillas = Planilla::with([
+                'paquetes:id,planilla_id,peso,ubicacion_id',
+                'etiquetas' => function ($query) {
+                    $query->whereNull('paquete_id')
+                          ->where('estado', 'completado')
+                          ->select('id', 'planilla_id', 'estado', 'peso');
+                },
+                'elementos' => function ($query) {
+                    $query->whereNull('paquete_id')
+                          ->where('estado', 'completado')
+                          ->select('id', 'planilla_id', 'estado', 'peso');
+                }
+            ])->get();
 
-        $planillas = $query->get();
+            // Procesar los cálculos en el servidor
+            $planillasCalculadas = $planillas->map(function ($planilla) {
+                $pesoTotalPaquetes = $planilla->paquetes->sum('peso');
+                $pesoElementosNoEmpaquetados = $planilla->elementos->sum('peso');
+                $pesoEtiquetasNoEmpaquetadas = $planilla->etiquetas->sum('peso');
 
-        return view('salidas.index', compact('planillas'));
+                $pesoAcumulado = $pesoTotalPaquetes + $pesoElementosNoEmpaquetados + $pesoEtiquetasNoEmpaquetadas;
+                $pesoRestante = max(0, $planilla->peso_total - $pesoAcumulado);
+                $progreso = ($planilla->peso_total > 0) ? ($pesoAcumulado / $planilla->peso_total) * 100 : 0;
 
-    } catch (\Exception $e) {
-      
-            return redirect()->route('dashboard')->with('error', 'Ocurrió un error al cargar las salidas.');
+                return [
+                    'planilla' => $planilla,
+                    'pesoTotalPaquetes' => $pesoTotalPaquetes,
+                    'pesoElementosNoEmpaquetados' => $pesoElementosNoEmpaquetados,
+                    'pesoEtiquetasNoEmpaquetadas' => $pesoEtiquetasNoEmpaquetadas,
+                    'pesoAcumulado' => $pesoAcumulado,
+                    'pesoRestante' => $pesoRestante,
+                    'progreso' => $progreso
+                ];
+            });
+
+            return view('salidas.index', compact('planillasCalculadas'));
+
+        
     }
-}
-
-
 }
