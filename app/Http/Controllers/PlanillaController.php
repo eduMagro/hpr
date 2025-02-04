@@ -17,18 +17,77 @@ use Illuminate\Validation\ValidationException;
 class PlanillaController extends Controller
 {
     //------------------------------------------------------------------------------------ ASIGNAR MAQUINA()
-    private function asignarMaquina($diametro, $longitud)
+    public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
+
     {
-        // Lógica para determinar la máquina
-        if ($diametro >= 8 && $diametro <= 12) {
-            $maquina = Maquina::where('codigo', 'MSR20')->first();
-            return $maquina->id ?? null;
-        } elseif ($diametro > 12 && $diametro <= 25 && $longitud <= 12000) {
-            $maquina = Maquina::where('codigo', 'SL28')->first();
-            return $maquina->id ?? null;
+        // Verificar si es un estribo (tipo de figura empieza con 'V')
+        $estribo = isset($tipo_figura) && strtoupper(substr($tipo_figura, 0, 1)) === 'V';
+
+        // Obtener todos los diámetros de la misma planilla
+        $diametrosPlanilla = Etiqueta::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
+
+        // Determinar la máquina adecuada si hay múltiples diámetros en la misma planilla
+        $maquinaForzada = null;
+        if (count($diametrosPlanilla) > 1) {
+            if (max($diametrosPlanilla) <= 12) {
+                $maquinaForzada = ['PS12', 'F12'];
+            } elseif (max($diametrosPlanilla) <= 20) {
+                $maquinaForzada = ['MSR20'];
+            } elseif (max($diametrosPlanilla) <= 25) {
+                $maquinaForzada = ['SL28'];
+            } else {
+                $maquinaForzada = ['MANUAL'];
+            }
         }
 
-        return null; // Retornar null si no hay máquina asignada
+        if ($estribo) {
+            // Los estribos solo se pueden hacer en PS12 o F12 y con diámetro entre 8 y 12
+            if ($diametro >= 8 && $diametro <= 12) {
+                $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
+            } else {
+                return null; // No hay máquina disponible para estribos fuera de este rango
+            }
+        } elseif ($maquinaForzada) {
+            // Si la pieza es parte de una planilla con diferentes diámetros, forzar la máquina
+            $maquinas = Maquina::whereIn('codigo', $maquinaForzada)->get();
+        } elseif ($diametro >= 8 && $diametro <= 12) {
+            $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
+        } elseif ($diametro >= 10 && $diametro <= 16) {
+            $maquinas = Maquina::where('codigo', 'MSR20')->get();
+        } elseif ($diametro >= 8 && $diametro <= 20) {
+            $maquinas = Maquina::where('codigo', 'MSR20')->get();
+        } elseif ($diametro >= 12 && $diametro <= 25) {
+            $maquinas = Maquina::where('codigo', 'SL28')->get();
+        } else {
+            $maquinas = Maquina::where('codigo', 'MANUAL')->get();
+        }
+
+        // Verificar si hay máquinas disponibles
+        if ($maquinas->isEmpty()) {
+            return null;
+        }
+
+        // Obtener el peso total ya asignado a cada máquina y su límite máximo
+        $maquinaSeleccionada = null;
+        $pesoMinimo = PHP_INT_MAX;
+
+        foreach ($maquinas as $maquina) {
+            $pesoActual = Etiqueta::where('maquina_id', $maquina->id)->sum('peso');
+            $limiteProduccion = match ($maquina->codigo) {
+                'PS12', 'F12' => 10000,
+                'MSR20' => 12000,
+                'SL28' => 30000,
+                default => PHP_INT_MAX // La máquina manual no tiene límite
+            };
+
+            if ($pesoActual < $limiteProduccion && $pesoActual < $pesoMinimo) {
+                $pesoMinimo = $pesoActual;
+                $maquinaSeleccionada = $maquina;
+            }
+        }
+
+        // Retornar la máquina seleccionada o null si ninguna está disponible
+        return $maquinaSeleccionada?->id ?? null;
     }
 
 
@@ -81,7 +140,7 @@ class PlanillaController extends Controller
         if ($request->filled('id')) {
             $query->where('id', $request->id);
         }
- // 📌 Filtrar por planilla_id si está presente
+        // 📌 Filtrar por planilla_id si está presente
         if ($request->has('planilla_id')) {
             $query->where('id', $request->planilla_id);
         }
@@ -213,12 +272,16 @@ class PlanillaController extends Controller
                 // Array para almacenar etiquetas ya registradas en esta ejecución
                 $etiquetasRegistradas = [];
                 foreach ($rows as $row) {
-                    // Obtener diámetro y longitud
                     $diametro = $row[25] ?? 0;
                     $longitud = $row[27] ?? 0;
+                    $figura = $row[26] ?? null;
+                    $doblesPorBarra = $row[33] ?? 0;
+                    $barras = $row[32] ?? 0;
+                    $ensamblado = $row[4] ?? null;
+                    $planillaId = $planilla->id; // Asegúrate de definirlo antes de la llamada
 
-                    // Llamar al método asignarMaquina
-                    $maquina_id = $this->asignarMaquina($diametro, $longitud);
+                    // Llamar a asignarMaquina con los nuevos parámetros
+                    $maquina_id = $this->asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId);
                     $tiempos = $this->calcularTiemposElemento($row);
 
                     // Verificar si la etiqueta ya existe antes de crearla
@@ -336,39 +399,39 @@ class PlanillaController extends Controller
 
         return view('planillas.edit', compact('planilla'));
     }
-  public function update(Request $request, $id)
-{
-	  
-    DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
-    try {
-        $planilla = Planilla::findOrFail($id);
+    public function update(Request $request, $id)
+    {
 
-        // Actualizar la planilla con datos limpios
-        $planilla->update([
-            'cod_obra' => $request->cod_obra,
-            'cod_cliente' => $request->cod_cliente,
-            'cliente' => $request->cliente,
-            'nom_obra' => $request->nom_obra,
-            'seccion' => $request->seccion,
-            'descripcion' => $request->descripcion,
-            'ensamblado' => $request->ensamblado,
-            'codigo' => $request->codigo,
-            'peso_total' => $request->peso_total,
-            'fecha_inicio' => NULL,
-            'fecha_finalizacion' => NULL,
-            'tiempo_fabricacion' => 0,
-        ]);
+        DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
+        try {
+            $planilla = Planilla::findOrFail($id);
 
-        DB::commit();  // Confirmamos la transacción
-        return redirect()->route('planillas.index')->with('success', 'Planilla actualizada');
-    } catch (ValidationException $e) {
-        DB::rollBack();  // Si ocurre un error, revertimos la transacción
-        return redirect()->back()->withErrors($e->errors())->withInput();
-    } catch (Exception $e) {
-        DB::rollBack();  // Si ocurre un error, revertimos la transacción
-        return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+            // Actualizar la planilla con datos limpios
+            $planilla->update([
+                'cod_obra' => $request->cod_obra,
+                'cod_cliente' => $request->cod_cliente,
+                'cliente' => $request->cliente,
+                'nom_obra' => $request->nom_obra,
+                'seccion' => $request->seccion,
+                'descripcion' => $request->descripcion,
+                'ensamblado' => $request->ensamblado,
+                'codigo' => $request->codigo,
+                'peso_total' => $request->peso_total,
+                'fecha_inicio' => NULL,
+                'fecha_finalizacion' => NULL,
+                'tiempo_fabricacion' => 0,
+            ]);
+
+            DB::commit();  // Confirmamos la transacción
+            return redirect()->route('planillas.index')->with('success', 'Planilla actualizada');
+        } catch (ValidationException $e) {
+            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (Exception $e) {
+            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+        }
     }
-}
 
     //------------------------------------------------------------------------------------ DESTROY()
 
