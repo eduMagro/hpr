@@ -15,7 +15,7 @@ class Elemento extends Model
      * @var string
      */
     protected $table = 'elementos';
-
+    protected $appends = ['estado_icon']; // Agregamos el atributo calculado
     /**
      * Los atributos que son asignables masivamente.
      *
@@ -73,9 +73,9 @@ class Elemento extends Model
     }
 
     public function subpaquetes()
-{
-    return $this->hasMany(Subpaquete::class, 'elemento_id');
-}
+    {
+        return $this->hasMany(Subpaquete::class, 'elemento_id');
+    }
 
     public function etiquetaRelacion()
     {
@@ -136,7 +136,15 @@ class Elemento extends Model
     {
         return $this->diametro ? number_format($this->diametro, 2) . ' mm' : 'No asignado';
     }
-
+    // Estado Icono
+    public function getEstadoIconAttribute()
+    {
+        return match ($this->estado) {
+            'completado' => 'Completado ✔', // Check verde ✅
+            'fabricando' => 'Fabricando 🕒', // Engranaje amarillo ⚙
+            'pendiente' => 'Pendiente 🔜', // X roja ❌ para pendientes o desconocidos
+        };
+    }
     // Tiempos
     public function getTiempoFabricacionFormatoAttribute()
     {
@@ -149,5 +157,9 @@ class Elemento extends Model
         $segundos = $this->tiempo_fabricacion % 60;
 
         return sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
+    }
+    public function getSueltaAttribute($value)
+    {
+        return $value ? 'Si' : 'No';
     }
 }

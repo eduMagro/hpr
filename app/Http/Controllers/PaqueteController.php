@@ -52,10 +52,10 @@ class PaqueteController extends Controller
             $subpaquetesIds = collect($request->items)->where('type', 'subpaquete')->pluck('id')->toArray();
 
             // Verificar disponibilidad de etiquetas, elementos y subpaquetes
-         if ($mensajeError = $this->verificarDisponibilidad($etiquetasIds, $elementosIds, $subpaquetesIds)) {
-    DB::rollBack();
-    return response()->json(array_merge(['success' => false], $mensajeError), 400);
-}
+            if ($mensajeError = $this->verificarDisponibilidad($etiquetasIds, $elementosIds, $subpaquetesIds)) {
+                DB::rollBack();
+                return response()->json(array_merge(['success' => false], $mensajeError), 400);
+            }
 
 
             // Obtener los elementos y subpaquetes asociados
@@ -71,25 +71,25 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-           // Obtener la planilla desde las etiquetas (si existen)
-$planilla = $etiquetas->first()->planilla ?? null;
+            // Obtener la planilla desde las etiquetas (si existen)
+            $planilla = $etiquetas->first()->planilla ?? null;
 
-// Si no hay planilla y hay elementos, buscar la planilla desde los elementos
-if (!$planilla && $elementos->isNotEmpty()) {
-    $planilla = $elementos->first()->planilla ?? null;
-}
+            // Si no hay planilla y hay elementos, buscar la planilla desde los elementos
+            if (!$planilla && $elementos->isNotEmpty()) {
+                $planilla = $elementos->first()->planilla ?? null;
+            }
 
-// Si no se encontró una planilla en etiquetas ni en elementos, error
-if (!$planilla) {
-    DB::rollBack();
-    return response()->json([
-        'success' => false,
-        'message' => 'No se encontró una planilla válida para las etiquetas o los elementos.'
-    ], 400);
-}
+            // Si no se encontró una planilla en etiquetas ni en elementos, error
+            if (!$planilla) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró una planilla válida para las etiquetas o los elementos.'
+                ], 400);
+            }
             $codigo_planilla = $planilla->codigo_limpio;
 
-			$pesoTotal = $etiquetas->sum(function($etiqueta) {
+            $pesoTotal = $etiquetas->sum(function ($etiqueta) {
                 return $etiqueta->elementos->sum('peso');
             }) + $elementos->sum('peso') + $subpaquetes->sum('peso');
             // Verificar código de máquina y ubicación
@@ -131,28 +131,28 @@ if (!$planilla) {
      * Verifica si los elementos están disponibles para ser empaquetados.
      */
     private function verificarDisponibilidad($etiquetas, $elementos, $subpaquetes)
-	{
-		try{
-        $ocupados = Etiqueta::whereIn('id', $etiquetas)->whereNotNull('paquete_id')->pluck('id');
-        $elementosOcupados = Elemento::whereIn('id', $elementos)->whereNotNull('paquete_id')->pluck('id');
-        $subpaquetesOcupados = Subpaquete::whereIn('id', $subpaquetes)->whereNotNull('paquete_id')->pluck('id');
+    {
+        try {
+            $ocupados = Etiqueta::whereIn('id', $etiquetas)->whereNotNull('paquete_id')->pluck('id');
+            $elementosOcupados = Elemento::whereIn('id', $elementos)->whereNotNull('paquete_id')->pluck('id');
+            $subpaquetesOcupados = Subpaquete::whereIn('id', $subpaquetes)->whereNotNull('paquete_id')->pluck('id');
 
-        if ($ocupados->isNotEmpty() || $elementosOcupados->isNotEmpty() || $subpaquetesOcupados->isNotEmpty()) {
+            if ($ocupados->isNotEmpty() || $elementosOcupados->isNotEmpty() || $subpaquetesOcupados->isNotEmpty()) {
+                return [
+                    'message' => 'Algunos elementos ya están asignados a otro paquete.',
+                    'etiquetas_ocupadas' => $ocupados->toArray(),
+                    'elementos_ocupados' => $elementosOcupados->toArray(),
+                    'subpaquetes_ocupados' => $subpaquetesOcupados->toArray()
+                ];
+            }
+
+            return null; // <- Importante: Devuelve NULL si no hay problemas
+        } catch (\Exception $e) {
+            // No devolvemos response()->json(), solo un array de error
             return [
-                'message' => 'Algunos elementos ya están asignados a otro paquete.',
-                'etiquetas_ocupadas' => $ocupados->toArray(),
-                'elementos_ocupados' => $elementosOcupados->toArray(),
-                'subpaquetes_ocupados' => $subpaquetesOcupados->toArray()
+                'message' => 'Error al verificar disponibilidad: ' . $e->getMessage()
             ];
         }
-
-         return null; // <- Importante: Devuelve NULL si no hay problemas
-    } catch (\Exception $e) {
-        // No devolvemos response()->json(), solo un array de error
-        return [
-            'message' => 'Error al verificar disponibilidad: ' . $e->getMessage()
-        ];
-    }
     }
 
     /**
@@ -160,32 +160,32 @@ if (!$planilla) {
      */
     private function obtenerUbicacionPorCodigoMaquina($codigoMaquina)
     {
-		try{
-        return Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
-		 } catch (\Exception $e) {
-               return response()->json([
-            'success' => false,
-            'message' => 'Error al obtener ubicación de la máquina: ' . $e->getMessage()
-        ], 500);
-    }
+        try {
+            return Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener ubicación de la máquina: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
      * Crea un nuevo paquete.
      */
     private function crearPaquete($planillaId, $ubicacionId, $pesoTotal)
-{
-    try {
-        return Paquete::create([
-            'planilla_id' => $planillaId,
-            'ubicacion_id' => $ubicacionId,
-            'peso' => $pesoTotal ?? 0, // ✅ Usa el peso correcto pasado como parámetro
-        ]);
-    } catch (\Exception $e) {
-        \Log::error('Error al crear paquete: ' . $e->getMessage()); // ✅ Guarda el error en logs
-        throw new \Exception('No se pudo crear el paquete: ' . $e->getMessage()); // ✅ Lanza la excepción para que `store()` la maneje
+    {
+        try {
+            return Paquete::create([
+                'planilla_id' => $planillaId,
+                'ubicacion_id' => $ubicacionId,
+                'peso' => $pesoTotal ?? 0, // ✅ Usa el peso correcto pasado como parámetro
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al crear paquete: ' . $e->getMessage()); // ✅ Guarda el error en logs
+            throw new \Exception('No se pudo crear el paquete: ' . $e->getMessage()); // ✅ Lanza la excepción para que `store()` la maneje
+        }
     }
-}
 
 
     /**
@@ -193,75 +193,74 @@ if (!$planilla) {
      */
     private function asignarItemsAPaquete($etiquetas, $elementos, $subpaquetes, $paqueteId)
     {
-		try{
-        Etiqueta::whereIn('id', $etiquetas)->update(['paquete_id' => $paqueteId]);
-        Elemento::whereIn('id', $elementos)->update(['paquete_id' => $paqueteId]);
-        Subpaquete::whereIn('id', $subpaquetes)->update(['paquete_id' => $paqueteId]);
-		 } catch (\Exception $e) {
-               return response()->json([
-            'success' => false,
-            'message' => 'Error al asignar items a paquete: ' . $e->getMessage()
-        ], 500);
-    }
-    }
-
-public function verificarItems(Request $request)
-{
-    try {
-        $items = $request->input('items', []);
-
-        if (empty($items)) {
+        try {
+            Etiqueta::whereIn('id', $etiquetas)->update(['paquete_id' => $paqueteId]);
+            Elemento::whereIn('id', $elementos)->update(['paquete_id' => $paqueteId]);
+            Subpaquete::whereIn('id', $subpaquetes)->update(['paquete_id' => $paqueteId]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se recibieron ítems para verificar.',
+                'message' => 'Error al asignar items a paquete: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function verificarItems(Request $request)
+    {
+        try {
+            $items = $request->input('items', []);
+
+            if (empty($items)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se recibieron ítems para verificar.',
+                    'etiquetas_incompletas' => [],
+                    'elementos_incompletos' => [],
+                    'subpaquetes_incompletos' => []
+                ], 400);
+            }
+
+            // Separar por tipo
+            $etiquetasIds = collect($items)->where('type', 'etiqueta')->pluck('id')->toArray();
+            $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
+            $subpaquetesIds = collect($items)->where('type', 'subpaquete')->pluck('id')->toArray();
+
+            // Buscar etiquetas incompletas
+            $etiquetasIncompletas = Etiqueta::whereIn('id', $etiquetasIds)
+                ->where('estado', '!=', 'completado')
+                ->pluck('id')
+                ->toArray();
+
+            // Buscar elementos incompletos
+            $elementosIncompletos = Elemento::whereIn('id', $elementosIds)
+                ->where('estado', '!=', 'completado')
+                ->pluck('id')
+                ->toArray();
+
+            $subpaquetesIncompletos = []; // No es necesario filtrar, si existe, está completo.
+
+
+            return response()->json([
+                'success' => empty($etiquetasIncompletas) && empty($elementosIncompletos) && empty($subpaquetesIncompletos),
+                'message' => empty($etiquetasIncompletas) && empty($elementosIncompletos) && empty($subpaquetesIncompletos) ?
+                    'Todos los ítems están completos.' : 'Algunos ítems no están completos.',
+                'etiquetas_incompletas' => $etiquetasIncompletas,
+                'elementos_incompletos' => $elementosIncompletos,
+                'subpaquetes_incompletos' => $subpaquetesIncompletos
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error en verificarItems(): ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al verificar los ítems.',
+                'error' => $e->getMessage(),
                 'etiquetas_incompletas' => [],
                 'elementos_incompletos' => [],
                 'subpaquetes_incompletos' => []
-            ], 400);
+            ], 500);
         }
-
-        // Separar por tipo
-        $etiquetasIds = collect($items)->where('type', 'etiqueta')->pluck('id')->toArray();
-        $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
-        $subpaquetesIds = collect($items)->where('type', 'subpaquete')->pluck('id')->toArray();
-
-        // Buscar etiquetas incompletas
-        $etiquetasIncompletas = Etiqueta::whereIn('id', $etiquetasIds)
-            ->where('estado', '!=', 'completado')
-            ->pluck('id')
-            ->toArray();
-
-        // Buscar elementos incompletos
-        $elementosIncompletos = Elemento::whereIn('id', $elementosIds)
-            ->where('estado', '!=', 'completado')
-            ->pluck('id')
-            ->toArray();
-
-     $subpaquetesIncompletos = []; // No es necesario filtrar, si existe, está completo.
-
-
-        return response()->json([
-            'success' => empty($etiquetasIncompletas) && empty($elementosIncompletos) && empty($subpaquetesIncompletos),
-            'message' => empty($etiquetasIncompletas) && empty($elementosIncompletos) && empty($subpaquetesIncompletos) ? 
-                'Todos los ítems están completos.' : 'Algunos ítems no están completos.',
-            'etiquetas_incompletas' => $etiquetasIncompletas,
-            'elementos_incompletos' => $elementosIncompletos,
-            'subpaquetes_incompletos' => $subpaquetesIncompletos
-        ], 200);
-        
-    } catch (\Exception $e) {
-        \Log::error('Error en verificarItems(): ' . $e->getMessage());
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Error al verificar los ítems.',
-            'error' => $e->getMessage(),
-            'etiquetas_incompletas' => [],
-            'elementos_incompletos' => [],
-            'subpaquetes_incompletos' => []
-        ], 500);
     }
-}
 
 
     public function destroy($id)

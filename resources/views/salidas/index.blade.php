@@ -21,7 +21,8 @@
 
             <div class="bg-white shadow-md rounded-lg p-4 mb-6">
                 <h2 class="text-lg font-semibold text-gray-800">
-                    Planilla: {{ $planilla->codigo_limpio }} (Peso Total: {{ number_format($planilla->peso_total, 2) }} kg)
+                    Planilla: {{ $planilla->codigo_limpio }} (Peso Total: {{ number_format($planilla->peso_total, 2) }}
+                    kg)
                 </h2>
                 <p>Cliente: {{ $planilla->cliente }} </p>
                 <p>Obra: {{ $planilla->nom_obra }} </p>
@@ -37,7 +38,7 @@
                 </div>
 
                 <p class="mt-2 text-gray-700">
-                    Peso acumulado (paquetes + elementos no empaquetados + etiquetas no empaquetadas): 
+                    Peso acumulado (paquetes + elementos no empaquetados + etiquetas no empaquetadas):
                     <strong>{{ number_format($pesoAcumulado, 2) }} kg</strong>
                 </p>
                 <p class="text-gray-700">
@@ -50,8 +51,10 @@
                     <ul class="list-disc list-inside text-gray-700">
                         @foreach ($planilla->paquetes as $paquete)
                             <li>
-                                <a href="{{ route('paquetes.index', ['id' => $paquete->id]) }}" class="text-blue-500 hover:underline">
-                                    Paquete #{{ $paquete->id }} - Peso: {{ number_format($paquete->peso, 2) }} kg - Ubicación: {{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}
+                                <a href="{{ route('paquetes.index', ['id' => $paquete->id]) }}"
+                                    class="text-blue-500 hover:underline">
+                                    Paquete #{{ $paquete->id }} - Peso: {{ number_format($paquete->peso, 2) }} kg -
+                                    Ubicación: {{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}
                                 </a>
                             </li>
                         @endforeach
@@ -59,14 +62,15 @@
                 @else
                     <p class="text-gray-500">No hay paquetes creados aún.</p>
                 @endif
-  <!-- Etiquetas completas no empaquetadas -->
+                <!-- Etiquetas completas no empaquetadas -->
                 <h3 class="mt-4 text-md font-semibold">Etiquetas Completas No Empaquetadas:</h3>
                 @if ($planilla->etiquetas->isNotEmpty())
                     <ul class="list-disc list-inside text-gray-700">
                         @foreach ($planilla->etiquetas as $etiqueta)
                             <li>
-                                <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}" class="text-blue-500 hover:underline">
-                                   Etiqueta #{{ $etiqueta->id }} - Peso: {{ $etiqueta->peso_kg }}
+                                <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
+                                    class="text-blue-500 hover:underline">
+                                    Etiqueta #{{ $etiqueta->id }} - Peso: {{ $etiqueta->peso_kg }}
                                 </a>
                             </li>
                         @endforeach
@@ -80,10 +84,12 @@
                     <ul class="list-disc list-inside text-gray-700">
                         @foreach ($planilla->elementos as $elemento)
                             <li>
-								 <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}" class="text-blue-500 hover:underline">
-                                   Elemento #{{ $elemento->id }} - Peso: {{ $elemento->peso_kg }} 
+                                <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                                    class="text-blue-500 hover:underline">
+                                    Elemento #{{ $elemento->id }} - Peso: {{ $elemento->peso_kg }} -
+                                    {{ $elemento->ubicacion->nombre }}
                                 </a>
-                               
+
                             </li>
                         @endforeach
                     </ul>
@@ -91,7 +97,7 @@
                     <p class="text-gray-500">No hay elementos completos sin empaquetar.</p>
                 @endif
 
-              
+
             </div>
         @endforeach
     </div>

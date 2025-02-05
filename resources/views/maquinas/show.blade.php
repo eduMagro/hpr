@@ -1,7 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Trabajando en Máquina') }}: <strong>{{ $maquina->nombre }}</strong>
+            <a href="{{ route('maquinas.index') }}" class="text-blue-500">
+                {{ __('Máquinas') }}
+            </a><span> / </span>{{ __('Trabajando en Máquina') }}: <strong>{{ $maquina->nombre }}</strong>
         </h2>
     </x-slot>
     <style>
@@ -86,7 +88,7 @@
                     <p>No hay productos en esta máquina.</p>
                 @else
                     <ul class="list-none p-6 break-words">
-                        @foreach ($maquina->productos as $producto)
+                        @foreach ($maquina->productos->sortBy([['diametro', 'asc'], ['peso_stock', 'asc']]) as $producto)
                             <li class="mb-1">
                                 <div class="flex items-center justify-between">
                                     <div class="flex flex-col">
@@ -132,9 +134,20 @@
                         @endforeach
                     </ul>
                 @endif
+                <div class="flex flex-col gap-2 p-4">
+                    <!-- Botón Reportar Incidencia -->
+                    <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
+                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
+                        🚨 Reportar Incidencia
+                    </button>
 
+                    <!-- Botón Realizar Chequeo de Máquina -->
+                    <button onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
+                        🛠️ Chequeo de Máquina
+                    </button>
+                </div>
             </div>
-
             <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
             <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-3">
 
@@ -202,7 +215,7 @@
                                         id="final-{{ $etiqueta->id }}">{{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}</span>
                                     <span id="emoji-{{ $etiqueta->id }}"></span><br>
                                     <strong> Estado: </strong><span
-                                        id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
+                                        id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado_icon }}</span>
                                 </p>
                                 <p>
                                     <strong>Paquete:
@@ -223,6 +236,7 @@
                                         <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
                                         <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
                                         <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
+                                        <strong>Estado:</strong> {{ $elementoOtro->estado_icon }}
                                     </p>
                                     <hr class="my-2">
                                 @endforeach
@@ -230,17 +244,15 @@
                         @endif
                         <!-- GRID PARA ELEMENTOS -->
 
-                        <div class="grid grid-cols-1 gap-4">
+                        <div class="grid grid-cols-1 gap-1">
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
                                     class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-
-
                                     <p class="text-gray-600 text-sm">
                                         <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }}
                                     </p>
 
-
+                                    <hr style="border: 1px solid black; margin: 10px 0;">
                                     <!-- Contenedor oculto para generar el QR -->
                                     <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
                                     @if ($tieneElementosEnOtrasMaquinas)
@@ -251,7 +263,7 @@
                                                 id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
                                             <span id="emoji-{{ $elemento->id }}"></span><br>
                                             <strong> Estado: </strong><span
-                                                id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
+                                                id="estado-{{ $elemento->id }}">{{ $elemento->estado_icon }}</span>
                                         </p>
                                         <p class="text-gray-600 text-sm">
                                             {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
@@ -289,11 +301,13 @@
                                         </div>
                                     @endif
                                     <!-- Botón para Subpaquetar -->
-                                    <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
-                                        class="p-1 bg-purple-500 text-white rounded hover:bg-purple-700 mt-2">
-                                        ➕ Subpaquetar
-                                    </button>
-                                    <hr style="border: 1px solid black; margin: 10px 0;">
+                                    @if ($elemento->peso > 100)
+                                        <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
+                                            class="p-1 bg-purple-500 text-white rounded hover:bg-purple-700 mt-2">
+                                            ➕ Subpaquetar
+                                        </button>
+                                    @endif
+
                                     <p class="text-gray-600 text-sm">
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }} <strong>Diámetro:</strong>
                                         {{ $elemento->diametro_mm }} <strong> Longitud:</strong>
@@ -301,7 +315,7 @@
                                         {{ $elemento->barras ?? 'No asignado' }} <strong> Tipo de Figura:</strong>
                                         {{ $elemento->figura ?? 'No asignado' }}
                                     </p>
-                                    <hr class="my-2">
+
                                     <p class="text-gray-600 text-sm">
                                         <strong>Dimensiones:</strong> {{ $elemento->dimensiones ?? 'No asignado' }}
                                     </p>
@@ -359,17 +373,6 @@
             <!-- --------------------------------------------------------------- GRID PARA OTROS --------------------------------------------------------------- -->
             <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <div class="flex flex-col gap-4">
-                    <!-- Botón Reportar Incidencia -->
-                    <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
-                        🚨 Reportar Incidencia
-                    </button>
-
-                    <!-- Botón Realizar Chequeo de Máquina -->
-                    <button onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
-                        🛠️ Chequeo de Máquina
-                    </button>
                     <!-- Input de lectura de QR -->
                     <div class="bg-white border p-2 shadow-md rounded-lg self-start sm:col-span-1 md:sticky">
                         <h3 class="font-bold text-xl">PROCESO ETIQUETA</h3>
@@ -383,10 +386,9 @@
 
                     </div>
                     <!-- Sistema de inputs para crear paquetes -->
-                    <div class="bg-gray-100 border p-2 shadow-md rounded-lg">
+                    <div class="bg-gray-100 border p-2 mb-2 shadow-md rounded-lg">
                         <h3 class="font-bold text-xl">Crear Paquete</h3>
-
-                        <div class="mb-4">
+                        <div class="mb-2">
                             <label for="itemType" class="block text-gray-700 font-semibold">Selecciona el
                                 tipo:</label>
                             <select id="itemType" class="border rounded p-2 w-full">
@@ -395,8 +397,7 @@
                                 <option value="Subpaquete">Subpaquete</option>
                             </select>
                         </div>
-
-                        <div class="mb-4">
+                        <div class="mb-2">
                             <label for="qrItem" class="block text-gray-700 font-semibold">Escanear QR:</label>
                             <input type="text" id="qrItem" class="border rounded p-2 w-full"
                                 placeholder="Escanea o ingresa un código QR">
@@ -418,17 +419,15 @@
 
                     </div>
                 </div>
+                <!-- ---------------------------------------- ELIMINAR PAQUETE ------------------------------- -->
                 <form id="deleteForm" method="POST">
                     @csrf
                     @method('DELETE')
-
                     <label for="paquete_id" class="block text-gray-700 font-semibold mb-2">
                         ID del Paquete a Eliminar:
                     </label>
-
                     <input type="number" name="paquete_id" id="paquete_id" required
                         class="w-full border p-2 rounded mb-2" placeholder="Ingrese ID del paquete">
-
                     <button type="submit"
                         class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md mt-2">
                         🗑️ Eliminar Paquete

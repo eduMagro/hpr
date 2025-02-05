@@ -5,21 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Elemento;
 use App\Models\Planilla;
 use App\Models\Etiqueta;
+use App\Models\Maquina;
+use App\Models\Ubicacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-
-
 class ElementoController extends Controller
 {
-    /**
-     * Muestra una lista de todos los elementos.
-     *
-     * @return \Illuminate\Http\Response
-     */
-
     public function index(Request $request)
     {
         $query = Elemento::with([
@@ -29,21 +23,78 @@ class ElementoController extends Controller
             'producto',
             'user',
             'user2'
-        ])
-            ->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
+        ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
 
-        // Aplicar filtro por ID si se proporciona
-        if ($request->filled('id')) {
-            $query->where('id', $request->input('id'));
-        }
-    // Filtrar por Estado si está presente
-    $query->when($request->filled('estado'), function ($q) use ($request) {
-        $q->where('estado', $request->estado);
-    });
+        // Aplicar los filtros utilizando un método separado
+        $query = $this->aplicarFiltros($query, $request);
 
         $elementos = $query->paginate(10);
 
         return view('elementos.index', compact('elementos'));
+    }
+
+    /**
+     * Aplica los filtros a la consulta de elementos
+     */
+    private function aplicarFiltros($query, Request $request)
+    {
+        if ($request->filled('id')) {
+            $query->where('id', $request->input('id'));
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('fecha_inicio') && $request->filled('fecha_finalizacion')) {
+            $query->whereBetween('created_at', [$request->fecha_inicio, $request->fecha_finalizacion]);
+        } elseif ($request->filled('fecha_inicio')) {
+            $query->whereDate('created_at', '>=', $request->fecha_inicio);
+        } elseif ($request->filled('fecha_finalizacion')) {
+            $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
+        }
+
+        if ($request->filled('codigo_planilla')) {
+            $query->whereHas('planilla', function ($q) use ($request) {
+                $q->where('codigo', 'like', '%' . $request->codigo_planilla . '%');
+            });
+        }
+
+        if ($request->filled('usuario1')) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->usuario1 . '%');
+            });
+        }
+
+        if ($request->filled('etiqueta')) {
+            $query->whereHas('etiquetaRelacion', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->etiqueta . '%');
+            });
+        }
+
+        if ($request->filled('maquina')) {
+            $query->whereHas('maquina', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->maquina . '%');
+            });
+        }
+
+        if ($request->filled('producto1')) {
+            $query->whereHas('producto', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->producto1 . '%');
+            });
+        }
+
+        if ($request->filled('producto2')) {
+            $query->whereHas('producto', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->producto2 . '%');
+            });
+        }
+
+        if ($request->filled('figura')) {
+            $query->where('figura', 'like', '%' . $request->figura . '%');
+        }
+
+        return $query;
     }
 
 
@@ -213,7 +264,10 @@ class ElementoController extends Controller
 
                 $elemento->fecha_finalizacion = now();
                 $elemento->estado = 'completado';
-
+                // Verificar código de máquina y ubicación
+                $codigoMaquina = $elemento->maquina->codigo;
+                $ubicacion = $this->obtenerUbicacionPorCodigoMaquina($codigoMaquina);
+                $elemento->ubicacion_id = $ubicacion->id;
                 // ✅ Se asignan solo si existen productos consumidos
                 $producto1 = isset($productosConsumidos[0]) ? $productosConsumidos[0] : null;
                 $producto2 = isset($productosConsumidos[1]) ? $productosConsumidos[1] : null;
@@ -297,180 +351,20 @@ class ElementoController extends Controller
             ], 500);
         }
     }
-    public function actualizarEtiqueta(Request $request, $id)
+    /**
+     * Obtiene la ubicación según el código de máquina.
+     */
+    private function obtenerUbicacionPorCodigoMaquina($codigoMaquina)
     {
-        DB::beginTransaction();
-
         try {
-            $etiqueta = Etiqueta::with('elementos')->findOrFail($id);
-            $primerElemento = $etiqueta->elementos->first();
-
-            if (!$primerElemento) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'No se encontraron elementos asociados a esta etiqueta.',
-                ], 400);
-            }
-
-            $maquina = $primerElemento->maquina;
-
-            if (!$maquina) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'La máquina asociada al elemento no existe.',
-                ], 404);
-            }
-
-            $productosConsumidos = [];
-            $producto1 = null;
-            $producto2 = null;
-
-            if ($etiqueta->estado == "pendiente") {
-                $etiqueta->estado = "fabricando";
-                $etiqueta->fecha_inicio = now();
-                $etiqueta->users_id = Auth::id();
-                $etiqueta->users_id_2 = session()->get('compañero_id', null);
-                $etiqueta->save();
-            } elseif ($etiqueta->estado == "fabricando") {
-                $productos = $maquina->productos()
-                    ->where('diametro', $primerElemento->diametro)
-                    ->orderBy('peso_stock')
-                    ->get();
-
-                if ($productos->isEmpty()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'En esta máquina no hay materia prima con ese diámetro.',
-                    ], 400);
-                }
-
-                $pesoRequerido = $etiqueta->peso;
-
-                if ($pesoRequerido <= 0) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'El peso de la etiqueta es 0, no es necesario consumir materia prima.',
-                    ], 400);
-                }
-
-                foreach ($productos as $prod) {
-                    if ($pesoRequerido <= 0) {
-                        break;
-                    }
-
-                    $pesoDisponible = $prod->peso_stock;
-                    if ($pesoDisponible > 0) {
-                        $restar = min($pesoDisponible, $pesoRequerido);
-                        $prod->peso_stock -= $restar;
-
-                        if ($prod->peso_stock == 0) {
-                            $prod->estado = "consumido";
-                        }
-
-                        $prod->save();
-                        $productosConsumidos[] = $prod;
-                        $pesoRequerido -= $restar;
-                    }
-                }
-
-                if ($pesoRequerido > 0) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'No hay suficiente materia prima. Avisa al gruista.',
-                    ], 400);
-                }
-
-                $etiqueta->fecha_finalizacion = now();
-                $etiqueta->estado = 'completado';
-
-                // ✅ Se asignan solo si existen productos consumidos
-                $producto1 = isset($productosConsumidos[0]) ? $productosConsumidos[0] : null;
-                $producto2 = isset($productosConsumidos[1]) ? $productosConsumidos[1] : null;
-
-                $etiqueta->producto_id = $producto1 ? $producto1->id : null;
-                $etiqueta->producto_id_2 = $producto2 ? $producto2->id : null;
-                $etiqueta->save();
-            } elseif ($etiqueta->estado == "completado") {
-                $producto1 = $etiqueta->producto_id ? $maquina->productos()->find($etiqueta->producto_id) : null;
-                $producto2 = $etiqueta->producto_id_2 ? $maquina->productos()->find($etiqueta->producto_id_2) : null;
-
-                if (!$producto1 && !$producto2) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'No se encontraron los productos consumidos para restaurar.',
-                    ], 400);
-                }
-
-                $pesoRestaurar = $etiqueta->peso;
-
-                if ($producto1) {
-                    $pesoIncremento = min($pesoRestaurar, $producto1->peso_inicial - $producto1->peso_stock);
-                    $producto1->peso_stock += $pesoIncremento;
-                    $pesoRestaurar -= $pesoIncremento;
-                    $producto1->estado = "fabricando";
-                    $producto1->save();
-                }
-
-                if ($pesoRestaurar > 0 && $producto2) {
-                    $pesoIncremento = min($pesoRestaurar, $producto2->peso_inicial - $producto2->peso_stock);
-                    $producto2->peso_stock += $pesoIncremento;
-                    $pesoRestaurar -= $pesoIncremento;
-                    $producto2->estado = "fabricando";
-                    $producto2->save();
-                }
-
-                // Resetear la etiqueta a estado "pendiente"
-                $etiqueta->fecha_inicio = null;
-                $etiqueta->fecha_finalizacion = null;
-                $etiqueta->estado = "pendiente";
-                $etiqueta->users_id = null;
-                $etiqueta->users_id_2 = null;
-                $etiqueta->producto_id = null;
-                $etiqueta->producto_id_2 = null;
-                $etiqueta->save();
-            }
-
-            DB::commit();
-
-            // ✅ Se asegura de llenar `productosAfectados` en TODAS las transiciones
-            $productosAfectados = [];
-
-            if ($producto1 && isset($producto1->id)) {
-                $productosAfectados[] = [
-                    'id' => $producto1->id,
-                    'peso_stock' => $producto1->peso_stock,
-                    'peso_inicial' => $producto1->peso_inicial
-                ];
-            }
-
-            if ($producto2 && isset($producto2->id)) {
-                $productosAfectados[] = [
-                    'id' => $producto2->id,
-                    'peso_stock' => $producto2->peso_stock,
-                    'peso_inicial' => $producto2->peso_inicial
-                ];
-            }
-
-            return response()->json([
-                'success' => true,
-                'estado' => $etiqueta->estado,
-                'fecha_inicio' => $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
-                'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
-                'productos_afectados' => $productosAfectados
-            ]);
+            return Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'message' => 'Error al obtener ubicación de la máquina: ' . $e->getMessage()
             ], 500);
         }
     }
-
-
-
-
-
 
     /**
      * Elimina un elemento existente de la base de datos.

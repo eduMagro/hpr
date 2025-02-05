@@ -86,7 +86,7 @@
                             <p>No hay productos en esta máquina.</p>
                         @else
                             <ul class="list-disc pl-6 break-words">
-                                @foreach ($maquina->productos as $producto)
+                                @foreach ($maquina->productos->sortBy([['diametro', 'asc'], ['peso_stock', 'asc']]) as $producto)
                                     <li class="mb-2 flex items-center justify-between">
                                         <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
 

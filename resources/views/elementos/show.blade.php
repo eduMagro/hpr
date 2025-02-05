@@ -185,7 +185,7 @@
                         (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                     </h2>
                     <!-- Datos adicionales de la etiqueta -->
-                    <div class="mb-4 bg-yellow-100 p-4 rounded-lg">
+                    <div class="mb-4 bg-yellow-100 p-2 rounded-lg">
                         <p><strong>Peso:</strong> {{ $etiqueta->peso ?? 'Desconocido' }} kg</p>
                         <p><strong>Estado:</strong> {{ $etiqueta->estado ?? 'Sin estado' }}</p>
                         <p><strong>Inicio:</strong> {{ $etiqueta->fecha_inicio ?? 'No iniciado' }}</p>
@@ -196,12 +196,11 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         @forelse ($etiqueta->elementos as $elemento)
                             <div id="elemento-{{ $elemento->id }}"
-                                class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-                                {{ $loop->iteration }}.
+                                class="bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                                {{ $loop->iteration }}. <strong>#</strong>{{ $elemento->id }}
                                 <!-- ID -->
                                 <p class="text-gray-500 text-sm">
-                                    <strong>ID:</strong>
-                                    {{ $elemento->id }}
+
                                 </p>
                                 <hr class="my-2">
                                 <!-- Estado -->
