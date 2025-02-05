@@ -153,7 +153,7 @@ class ProductoController extends Controller
 
         // Validación de datos con reglas ajustadas a la base de datos
         $validatedData = $request->validate([
-            'fabricante' => 'required|in:MEGASA,Getafe,Siderúrgica Sevillana,NERVADUCTIL',
+            'fabricante' => 'required|in:MEGASA,GETAFE,Siderúrgica Sevillana,NERVADUCTIL',
             'nombre'         => 'nullable|string|max:255',
             'tipo' => 'required|in:encarretado,barras',
             'diametro' => 'required|in:8,10,12,16,20,25,32',

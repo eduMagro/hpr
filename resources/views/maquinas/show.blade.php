@@ -6,15 +6,7 @@
             </a><span> / </span>{{ __('Trabajando en Máquina') }}: <strong>{{ $maquina->nombre }}</strong>
         </h2>
     </x-slot>
-    <style>
-        canvas {
-            width: 100%;
-            max-width: 100%;
-            border: 1px solid blue;
-            border-radius: 4px;
-            background-color: rgba(0, 123, 255, 0.1)
-        }
-    </style>
+
     @if ($errors->any())
         <div class="alert alert-danger">
             <ul>
@@ -96,7 +88,7 @@
                                         @if ($producto->tipo === 'barras')
                                             <span><strong>L:</strong> {{ $producto->longitud_metros }}</span>
                                         @endif
-                                        <a href="{{ route('productos.show', $producto->id) }}"
+                                        <a href="{{ route('productos.index', ['id' => $producto->id]) }}"
                                             class="btn btn-sm btn-primary mb-2">Ver</a>
                                     </div>
 
@@ -247,7 +239,7 @@
                         <div class="grid grid-cols-1 gap-1">
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
-                                    class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
+                                    class="bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                                     <p class="text-gray-600 text-sm">
                                         <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }}
                                     </p>
@@ -292,7 +284,6 @@
                                                         <p><strong>#</strong>{{ $subpaquete->id }}</p>
                                                         <p><strong>Peso:</strong> {{ $subpaquete->peso }} kg</p>
                                                         <p><strong>Cantidad:</strong> {{ $subpaquete->cantidad }}</p>
-
                                                         <p><strong>Descripción:</strong>
                                                             {{ $subpaquete->descripcion ?? 'Sin descripción' }}</p>
                                                     </li>
@@ -319,13 +310,15 @@
                                     <p class="text-gray-600 text-sm">
                                         <strong>Dimensiones:</strong> {{ $elemento->dimensiones ?? 'No asignado' }}
                                     </p>
-
-                                    <!-- Canvas para dibujo -->
-                                    <canvas id="canvas-{{ $elemento->id }}"
-                                        data-loop="{{ $loop->iteration }}"></canvas>
                                 </div>
                             @endforeach
                         </div>
+                        <!-- Asegúrate de que el canvas esté contenido en un div para que se ajuste al ancho del contenedor -->
+                        <div id="canvas-container" style="width: 100%; border: 1px solid #ccc; border-radius: 8px;">
+                            <canvas id="canvas-etiqueta-{{ $etiqueta->id }}" class="border"></canvas>
+                        </div>
+
+
                     </div>
                 @empty
                     <div class="col-span-4 text-center py-4 text-gray-600">
@@ -568,7 +561,6 @@
     </script>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="{{ asset('js/maquinaJS/trabajo_maquina.js') }}"></script>
     <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
     <script src="{{ asset('js/maquinaJS/trabajoElemento.js') }}"></script>
     <script src="{{ asset('js/imprimirQr.js') }}"></script>

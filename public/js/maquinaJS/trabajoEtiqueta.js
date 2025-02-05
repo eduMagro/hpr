@@ -20,21 +20,43 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 return;
             }
- // Si la etiqueta tiene elementos en otras máquinas, no permitir su actualización
- if (
-    !etiquetasEnUnaSolaMaquina.includes(
-        parseInt(etiquetaId)
-    )
-) {
-    Swal.fire({
-        icon: "warning",
-        title: "Acción no permitida",
-        text: "Esta etiqueta tiene elementos en otras máquinas. No puedes procesarla.",
-    });
-    this.value = ""; // Limpiar input tras intento fallido
-    return;
-}
-            actualizarEtiqueta(etiquetaId, maquina_id);
+
+            // Si la etiqueta tiene elementos en otras máquinas, no permitir su actualización
+            if (!etiquetasEnUnaSolaMaquina.includes(parseInt(etiquetaId))) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Acción no permitida",
+                    text: "Esta etiqueta tiene elementos en otras máquinas. No puedes procesarla.",
+                });
+                this.value = ""; // Limpiar input tras intento fallido
+                return;
+            }
+
+            // Verificar el estado actual de la etiqueta (asumiendo que existe un elemento con id "estado-<etiquetaId>")
+            let estadoElemento = document.getElementById(
+                `estado-${etiquetaId}`
+            );
+            if (
+                estadoElemento &&
+                estadoElemento.textContent.trim().toLowerCase() === "completado"
+            ) {
+                // Mostrar SweetAlert de confirmación antes de reiniciar la etiqueta
+                Swal.fire({
+                    title: "¿Estás seguro?",
+                    text: "La etiqueta se reiniciará a estado pendiente y se revertirá el consumo. ¿Desea continuar?",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Sí, reiníciala",
+                    cancelButtonText: "Cancelar",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        actualizarEtiqueta(etiquetaId, maquina_id);
+                    }
+                });
+            } else {
+                // Si no está en estado "completado", se actualiza normalmente
+                actualizarEtiqueta(etiquetaId, maquina_id);
+            }
             this.value = ""; // Limpiar input tras lectura
         }
     });

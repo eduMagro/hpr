@@ -50,6 +50,7 @@
     @endif
 
     <div class="container mx-auto px-3 py-6">
+        <!-- Enlaces de acción -->
         <div class="flex flex-wrap gap-4 mb-4">
             <a href="{{ route('planillas.create') }}" class="btn btn-primary">
                 Importar Planilla
@@ -164,58 +165,103 @@
             </form>
         </div>
 
-        <!-- Mostrar planillas -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-            @forelse ($planillas as $planilla)
-                <div class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-                    <h2 class="font-semibold text-lg mb-2 text-center">{{ $planilla->codigo_limpio }}</h2>
-                    <p class="text-gray-600 mb-2"><strong>Código Obra:</strong>
-                        {{ $planilla->cod_obra ?? 'No asignado' }}</p>
-                    <p class="text-gray-600 mb-2"><strong>Cliente:</strong> {{ $planilla->cliente ?? 'Desconocido' }}
-                    </p>
-                    <p class="text-gray-600 mb-2"><strong>Nombre Obra:</strong>
-                        {{ $planilla->nom_obra ?? 'No especificado' }}</p>
-                    <p class="text-gray-600 mb-2"><strong>Sección:</strong> {{ $planilla->seccion ?? 'No definida' }}
-                    </p>
-                    <p class="text-gray-600 mb-2"><strong>Descripción:</strong>
-                        {{ $planilla->descripcion ?? 'Sin descripción' }}</p>
-                    <p class="text-gray-600 mb-2"><strong>Ensamblado:</strong>
-                        {{ $planilla->ensamblado ?? 'Sin datos' }}</p>
-                    <p class="text-gray-600 mb-2"><strong>Peso Total:</strong> {{ $planilla->peso_total_kg }}</p>
-
-                    <p class="text-gray-600 mb-2">
-                        <strong>Tiempo Estimado Finalización:</strong>
-                        {{ $planilla->tiempo_estimado_finalizacion_formato }}
-                    </p>
-
-                    <p class="text-gray-600 mb-2"><strong>Fecha Inicio:</strong>
-                        {{ $planilla->fecha_inicio }}
-                    </p>
-                    <p class="text-gray-600 mb-2"><strong>Fecha Finalización:</strong>
-                        {{ $planilla->fecha_finalizacion }}
-                    </p>
-                    <p class="text-gray-600 mb-2"><strong>Fecha Importación:</strong>
-                        {{ $planilla->created_at->format('d/m/Y H:i') }}</p>
-
-                    <hr style="border: 1px solid #ccc; margin: 10px 0;">
-
-                    <p><small><strong>Usuario: </strong> {{ $planilla->user->name ?? 'Usuario desconocido' }} </small>
-                    </p>
-                    <hr style="border: 1px solid #ccc; margin: 10px 0;">
-
-                    <div class="mt-4 flex justify-between items-center">
-                        <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
-                        <!-- Enlace para editar -->
-                        <a href="{{ route('planillas.edit', $planilla->id) }}"
-                            class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                        <!-- Enlace para ver -->
-                        <a href="{{ route('elementosEtiquetas', $planilla->id) }}"
-                            class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
-                    </div>
-                </div>
-            @empty
-                <div class="col-span-3 text-center py-4">No hay planillas disponibles.</div>
-            @endforelse
+        <!-- TABLA DE PLANILLAS -->
+        <div class="overflow-x-auto mt-4">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Código</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Código Obra</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cliente</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Nombre Obra</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Sección</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Descripción</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Ensamblado</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Peso Total</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Tiempo Estimado</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha Inicio</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha Finalización</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Fecha Importación</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Usuario</th>
+                        <th scope="col"
+                            class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @forelse ($planillas as $planilla)
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ $planilla->codigo_limpio }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->cod_obra ?? 'No asignado' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->cliente ?? 'Desconocido' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->nom_obra ?? 'No especificado' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->seccion ?? 'No definida' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->descripcion ?? 'Sin descripción' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->ensamblado ?? 'Sin datos' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->peso_total_kg }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->tiempo_estimado_finalizacion_formato }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->fecha_inicio }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->fecha_finalizacion }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->user->name ?? 'Usuario desconocido' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                <div class="flex space-x-2 justify-center">
+                                    <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
+                                    <a href="{{ route('planillas.edit', $planilla->id) }}"
+                                        class="text-blue-600 hover:text-blue-900">Editar</a>
+                                    <a href="{{ route('elementosEtiquetas', $planilla->id) }}"
+                                        class="text-green-600 hover:text-green-900">Ver</a>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="14" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
+                                No hay planillas disponibles.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
 
         <!-- Paginación -->
