@@ -171,6 +171,45 @@ class etiquetaController extends Controller
                 $etiqueta->users_id_2 = session()->get('compañero_id', null);
                 $etiqueta->save();
             } elseif ($etiqueta->estado == "fabricando") {
+                $productos = $maquina->productos()
+                    ->where('diametro', $primerElemento->diametro)
+                    ->orderBy('peso_stock')
+                    ->get();
+                $pesoRequerido = $etiqueta->peso;
+
+                if ($pesoRequerido <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'El peso de la etiqueta es 0, no es necesario consumir materia prima.',
+                    ], 400);
+                }
+
+                foreach ($productos as $prod) {
+                    if ($pesoRequerido <= 0) {
+                        break;
+                    }
+
+                    $pesoDisponible = $prod->peso_stock;
+                    if ($pesoDisponible > 0) {
+                        $restar = min($pesoDisponible, $pesoRequerido);
+                        $prod->peso_stock -= $restar;
+
+                        if ($prod->peso_stock == 0) {
+                            $prod->estado = "consumido";
+                        }
+
+                        $prod->save();
+                        $productosConsumidos[] = $prod;
+                        $pesoRequerido -= $restar;
+                    }
+                }
+
+                if ($pesoRequerido > 0) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No hay suficiente materia prima. Avisa al gruista.',
+                    ], 400);
+                }
 
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->estado = 'completado';
