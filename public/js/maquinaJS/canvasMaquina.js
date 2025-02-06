@@ -9,10 +9,8 @@ const gapSpacing = 10;
 
 // Accede a la variable global que inyectamos en el HTML
 const elementos = window.elementosAgrupadosScript;
-console.log("Elementos agrupados:", elementos);
 
 elementos.forEach((grupo) => {
-    console.log("Procesando etiqueta:", grupo.etiqueta);
     const canvas = document.getElementById(
         `canvas-etiqueta-${grupo.etiqueta?.id}`
     );
@@ -40,8 +38,6 @@ elementos.forEach((grupo) => {
     const availableWidth = canvasWidth - 2 * marginX;
 
     grupo.elementos.forEach((elemento, index) => {
-        console.log(`Dibujando elemento #${index + 1}:`, elemento);
-
         // Extraer longitudes y ángulos del string (ej.: "400" o "15 90d 85 ..." )
         const dimensionesStr = elemento.dimensiones || "";
         const { longitudes, angulos } = extraerDimensiones(dimensionesStr);
@@ -129,9 +125,6 @@ elementos.forEach((grupo) => {
                 availableWidth / effectiveWidth,
                 availableSlotHeight / effectiveHeight
             );
-            console.log(
-                `Elemento ID ${elemento.id}: figWidth=${figWidth}, figHeight=${figHeight}, rotate=${rotate}, scale=${scale}`
-            );
 
             // 4. Aplicar las transformaciones: trasladar, (rotar si es necesario), escalar y centrar.
             ctx.save();
@@ -206,8 +199,6 @@ elementos.forEach((grupo) => {
             ctx.fillText(`#${elemento.id}`, labelX, labelY);
         }
     });
-
-    console.log(`Finalizado dibujo para etiqueta ID: ${grupo.etiqueta?.id}`);
 });
 
 /* Función que calcula el bounding box de la figura en coordenadas locales.
