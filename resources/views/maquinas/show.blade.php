@@ -565,7 +565,7 @@
     <script src="{{ asset('js/maquinaJS/trabajoElemento.js') }}"></script>
     <script src="{{ asset('js/imprimirQr.js') }}"></script>
     <script>
-        window.etiquetasConElementos = @json($elementosAgrupadosScript);
+        window.elementosAgrupadosScript = @json($elementosAgrupadosScript);
     </script>
     <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
     <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
