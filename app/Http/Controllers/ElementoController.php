@@ -68,7 +68,7 @@ class ElementoController extends Controller
 
         if ($request->filled('etiqueta')) {
             $query->whereHas('etiquetaRelacion', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->etiqueta . '%');
+                $q->where('id', $request->etiqueta);
             });
         }
 

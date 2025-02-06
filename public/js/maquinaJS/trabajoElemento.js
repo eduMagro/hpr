@@ -8,8 +8,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
-
-
     procesoElemento.addEventListener("keydown", function (e) {
         if (e.key === "Enter") {
             e.preventDefault(); // Evita que el formulario se envíe
@@ -23,7 +21,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 return;
             }
-
 
             // 🛑 Verificar si el elemento no se puede procesar
             if (elementosEnUnaSolaMaquina.includes(elementoId)) {
@@ -41,7 +38,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 });
-
 
 async function actualizarElemento(id, maquina_id) {
     let url = `/actualizar-elemento/${id}/maquina/${maquina_id}`;
@@ -68,7 +64,7 @@ async function actualizarElemento(id, maquina_id) {
 
         let data = await response.json();
         if (data.success) {
-            actualizarDOM(id, data);
+            actualizarDOMElemento(id, data);
         } else {
             Swal.fire({
                 icon: "error",
@@ -85,7 +81,7 @@ async function actualizarElemento(id, maquina_id) {
     }
 }
 
-function actualizarDOM(id, data) {
+function actualizarDOMElemento(id, data) {
     let estadoElemento = document.getElementById(`estado-${id}`);
     let inicioElemento = document.getElementById(`inicio-${id}`);
     let finalElemento = document.getElementById(`final-${id}`);
@@ -106,7 +102,7 @@ function actualizarDOM(id, data) {
         Swal.fire({
             icon: "info",
             title: "Elemento reiniciado",
-            text: "Se ha restaurado el elemento a estado pendiente.",
+            text: "tu puta madre.",
             timer: 2000,
             showConfirmButton: false,
         });

@@ -68,13 +68,13 @@
         </div>
 
         <!-- Grid principal -->
-        <div class="grid grid-cols-1 sm:grid-cols-7 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
             <!-- --------------------------------------------------------------- Información de la máquina --------------------------------------------------------------- -->
             <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
                     {{ $maquina->codigo }}
                 </h3>
-                <!-- Mostrar los productos en la máquina -->
+
                 <!-- Mostrar los productos en la máquina -->
                 @if ($maquina->productos->isEmpty())
                     <p>No hay productos en esta máquina.</p>
@@ -141,7 +141,7 @@
                 </div>
             </div>
             <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
-            <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-3">
+            <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
 
 
                 @php
@@ -207,7 +207,7 @@
                                         id="final-{{ $etiqueta->id }}">{{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}</span>
                                     <span id="emoji-{{ $etiqueta->id }}"></span><br>
                                     <strong> Estado: </strong><span
-                                        id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado_icon }}</span>
+                                        id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
                                 </p>
                                 <p>
                                     <strong>Paquete:
@@ -228,14 +228,13 @@
                                         <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
                                         <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
                                         <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
-                                        <strong>Estado:</strong> {{ $elementoOtro->estado_icon }}
+                                        <strong>Estado:</strong> {{ $elementoOtro->estado }}
                                     </p>
                                     <hr class="my-2">
                                 @endforeach
                             </div>
                         @endif
                         <!-- GRID PARA ELEMENTOS -->
-
                         <div class="grid grid-cols-1 gap-1">
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
@@ -255,7 +254,7 @@
                                                 id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
                                             <span id="emoji-{{ $elemento->id }}"></span><br>
                                             <strong> Estado: </strong><span
-                                                id="estado-{{ $elemento->id }}">{{ $elemento->estado_icon }}</span>
+                                                id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
                                         </p>
                                         <p class="text-gray-600 text-sm">
                                             {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}

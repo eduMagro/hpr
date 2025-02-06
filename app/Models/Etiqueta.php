@@ -10,7 +10,7 @@ class Etiqueta extends Model
     use HasFactory;
 
     protected $table = 'etiquetas';
-    protected $appends = ['estado_icon']; // Agregamos el atributo calculado
+
     protected $fillable = [
         'planilla_id',
         'users_id_1',
@@ -83,14 +83,5 @@ class Etiqueta extends Model
     public function getUser2NameAttribute()
     {
         return optional($this->user2)->name ?? 'N/A';
-    }
-    // Estado Icono
-    public function getEstadoIconAttribute()
-    {
-        return match ($this->estado) {
-            'completado' => 'Completado ✔', // Check verde ✅
-            'fabricando' => 'Fabricando 🕒', // Engranaje amarillo ⚙
-            'pendiente' => 'Pendiente 🔜', // X roja ❌ para pendientes o desconocidos
-        };
     }
 }

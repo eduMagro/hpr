@@ -15,7 +15,7 @@ class Elemento extends Model
      * @var string
      */
     protected $table = 'elementos';
-    protected $appends = ['estado_icon']; // Agregamos el atributo calculado
+
     /**
      * Los atributos que son asignables masivamente.
      *
@@ -136,15 +136,7 @@ class Elemento extends Model
     {
         return $this->diametro ? number_format($this->diametro, 2) . ' mm' : 'No asignado';
     }
-    // Estado Icono
-    public function getEstadoIconAttribute()
-    {
-        return match ($this->estado) {
-            'completado' => 'Completado ✔', // Check verde ✅
-            'fabricando' => 'Fabricando 🕒', // Engranaje amarillo ⚙
-            'pendiente' => 'Pendiente 🔜', // X roja ❌ para pendientes o desconocidos
-        };
-    }
+
     // Tiempos
     public function getTiempoFabricacionFormatoAttribute()
     {

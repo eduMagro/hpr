@@ -49,7 +49,7 @@
         </script>
     @endif
 
-    <div class="container mx-auto px-3 py-6">
+    <div class="w-full px-6 py-4">
         <!-- Enlaces de acción -->
         <div class="flex flex-wrap gap-4 mb-4">
             <a href="{{ route('planillas.create') }}" class="btn btn-primary">
@@ -166,63 +166,56 @@
         </div>
 
         <!-- TABLA DE PLANILLAS -->
-        <div class="overflow-x-auto mt-4">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <div class="w-full overflow-x-auto bg-white shadow-md rounded-lg">
+            <table class="w-full min-w-[1200px] border-collapse">
+                <thead class="bg-gray-800 text-white">
+                    <tr class="text-left text-sm uppercase">
+
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Código</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Código Obra</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Código Cliente</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Cliente</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Nombre Obra</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Código Obra</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Obra</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Sección</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Descripción</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Ensamblado</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Peso Total</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Tiempo Estimado</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            Estado</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Fecha Inicio</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Fecha Finalización</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Fecha Importación</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                             Usuario</th>
-                        <th scope="col"
-                            class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">
                             Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="text-gray-700 text-sm">
                     @forelse ($planillas as $planilla)
-                        <tr>
+                        <tr class="border-b hover:bg-gray-100">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                 {{ $planilla->codigo_limpio }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->cod_obra ?? 'No asignado' }}</td>
+                                {{ $planilla->cod_cliente ?? 'No asignado' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $planilla->cliente ?? 'Desconocido' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->cod_obra ?? 'No asignado' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $planilla->nom_obra ?? 'No especificado' }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -235,6 +228,8 @@
                                 {{ $planilla->peso_total_kg }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $planilla->tiempo_estimado_finalizacion_formato }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $planilla->estado }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $planilla->fecha_inicio }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

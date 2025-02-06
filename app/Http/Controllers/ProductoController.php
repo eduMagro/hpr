@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Producto;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Exception;
+use Illuminate\Validation\ValidationException;
 
 class ProductoController extends Controller
 {
-
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltros($query, Request $request)
     {
@@ -111,70 +113,65 @@ class ProductoController extends Controller
         return view('productos.edit', compact('producto'));
     }
 
-    //------------------------------------------------------------------------------------ UPDATE
     public function update(Request $request, Producto $producto)
     {
-        // Mensajes personalizados de validación
-        $messages = [
-            'fabricante.in' => 'El fabricante debe ser MEGASA, Getafe, Siderúrgica Sevillana o NERVADUCTIL.',
+        DB::beginTransaction(); // Iniciar transacción
+        try {
+            // Mensajes personalizados de validación
+            $messages = [
+                'fabricante.in' => 'El fabricante debe ser MEGASA, Getafe, Siderúrgica Sevillana o NERVADUCTIL.',
+                'nombre.string' => 'El nombre debe ser una cadena de texto.',
+                'nombre.max' => 'El nombre no puede tener más de 255 caracteres.',
+                'tipo.in' => 'El tipo debe ser "encarretado" o "barras".',
+                'diametro.in' => 'El diámetro debe ser 8, 10, 12, 16, 20, 25 o 32.',
+                'longitud.in' => 'La longitud debe ser 6, 12, 14, 15 o 16.',
+                'n_colada.string' => 'El número de colada debe ser una cadena de texto.',
+                'n_colada.max' => 'El número de colada no puede tener más de 255 caracteres.',
+                'n_paquete.string' => 'El número de paquete debe ser una cadena de texto.',
+                'n_paquete.max' => 'El número de paquete no puede tener más de 255 caracteres.',
+                'peso_inicial.required' => 'El peso inicial es obligatorio.',
+                'peso_inicial.numeric' => 'El peso inicial debe ser un número decimal.',
+                'peso_stock.required' => 'El peso en stock es obligatorio.',
+                'peso_stock.numeric' => 'El peso en stock debe ser un número decimal.',
+                'ubicacion_id.integer' => 'La ubicación debe ser un identificador válido.',
+                'ubicacion_id.exists' => 'La ubicación seleccionada no es válida.',
+                'maquina_id.integer' => 'La máquina debe ser un identificador válido.',
+                'maquina_id.exists' => 'La máquina seleccionada no es válida.',
+                'estado.string' => 'El estado debe ser una cadena de texto.',
+                'estado.max' => 'El estado no puede tener más de 50 caracteres.',
+                'otros.string' => 'El campo "Otros" debe ser una cadena de texto.',
+            ];
 
-            'nombre.string'          => 'El nombre debe ser una cadena de texto.',
-            'nombre.max'             => 'El nombre no puede tener más de 255 caracteres.',
+            // Validación de datos
+            $validatedData = $request->validate([
+                'fabricante' => 'required|in:MEGASA,GETAFE,Siderúrgica Sevillana,NERVADUCTIL',
+                'nombre' => 'nullable|string|max:255',
+                'tipo' => 'required|in:encarretado,barras',
+                'diametro' => 'required|in:8,10,12,16,20,25,32',
+                'longitud' => 'nullable|in:6,12,14,15,16',
+                'n_colada' => 'required|string|max:255',
+                'n_paquete' => 'required|string|max:255',
+                'peso_inicial' => 'required|numeric|between:0,9999999.99',
+                'peso_stock' => 'required|numeric|between:0,9999999.99',
+                'ubicacion_id' => 'nullable|integer|exists:ubicaciones,id',
+                'maquina_id' => 'nullable|integer|exists:maquinas,id',
+                'estado' => 'nullable|string|max:50',
+                'otros' => 'nullable|string',
+            ], $messages);
 
-            'tipo.in' => 'El tipo debe ser "encarretado" o "barras".',
+            // Actualizar el producto con los datos validados
+            $producto->update($validatedData);
 
-            'diametro.in' => 'El diámetro debe ser 8, 10, 12, 16, 20, 25 o 32.',
+            DB::commit(); // Confirmar transacción
 
-            'longitud.in' => 'La longitud debe ser 6, 12, 14, 15 o 16.',
-
-            'n_colada.string'        => 'El número de colada debe ser una cadena de texto.',
-            'n_colada.max'           => 'El número de colada no puede tener más de 255 caracteres.',
-
-            'n_paquete.string'       => 'El número de paquete debe ser una cadena de texto.',
-            'n_paquete.max'          => 'El número de paquete no puede tener más de 255 caracteres.',
-
-            'peso_inicial.required'  => 'El peso inicial es obligatorio.',
-            'peso_inicial.numeric'   => 'El peso inicial debe ser un número decimal.',
-
-            'peso_stock.required'    => 'El peso en stock es obligatorio.',
-            'peso_stock.numeric'     => 'El peso en stock debe ser un número decimal.',
-
-            'ubicacion_id.integer'   => 'La ubicación debe ser un identificador válido.',
-            'ubicacion_id.exists'    => 'La ubicación seleccionada no es válida.',
-
-            'maquina_id.integer'     => 'La máquina debe ser un identificador válido.',
-            'maquina_id.exists'      => 'La máquina seleccionada no es válida.',
-
-            'estado.string'          => 'El estado debe ser una cadena de texto.',
-            'estado.max'             => 'El estado no puede tener más de 50 caracteres.',
-
-            'otros.string'           => 'El campo "Otros" debe ser una cadena de texto.',
-        ];
-
-        // Validación de datos con reglas ajustadas a la base de datos
-        $validatedData = $request->validate([
-            'fabricante' => 'required|in:MEGASA,GETAFE,Siderúrgica Sevillana,NERVADUCTIL',
-            'nombre'         => 'nullable|string|max:255',
-            'tipo' => 'required|in:encarretado,barras',
-            'diametro' => 'required|in:8,10,12,16,20,25,32',
-            'longitud' => 'nullable|in:6,12,14,15,16',
-            'n_colada'       => 'required|string|max:255',
-            'n_paquete'      => 'required|string|max:255',
-            'peso_inicial'   => 'required|numeric|between:0,9999999.99',
-            'peso_stock'     => 'required|numeric|between:0,9999999.99',
-            'ubicacion_id'   => 'nullable|integer|exists:ubicaciones,id',
-            'maquina_id'     => 'nullable|integer|exists:maquinas,id',
-            'estado'         => 'nullable|string|max:50',
-            'otros'          => 'nullable|string',
-        ], $messages);
-
-
-        // Actualizar el producto con los datos validados
-        $producto->update($validatedData);
-
-        // Redireccionar con mensaje de éxito
-        return redirect()->route('productos.index')->with('success', 'Producto actualizado con éxito.');
+            // Redireccionar con mensaje de éxito
+            return redirect()->route('productos.index')->with('success', 'Producto actualizado con éxito.');
+        } catch (Exception $e) {
+            DB::rollBack(); // Si ocurre un error, revertimos la transacción
+            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+        }
     }
+
 
 
     //------------------------------------------------------------------------------------ DESTROY

@@ -62,6 +62,7 @@ class etiquetaController extends Controller
 
         try {
             $etiqueta = Etiqueta::with('elementos.planilla')->findOrFail($id);
+            // Capturamos el primero objeto en la maquina de la misma etiqueta
             $primerElemento = $etiqueta->elementos()
                 ->where('maquina_id', $maquina_id)
                 ->first();
@@ -69,10 +70,13 @@ class etiquetaController extends Controller
             if (!$primerElemento) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'No se encontraron elementos asociados a esta etiqueta.',
+                    'error' => 'No se encontraron elementos asociados a esta etiqueta en esta máquina.',
                 ], 400);
             }
-
+            // Capturamos colección de objetos en la maquina de la misma etiqueta
+            $elementosEnMaquina = $etiqueta->elementos()
+                ->where('maquina_id', $maquina_id)
+                ->get();
             $maquina = Maquina::findOrFail($maquina_id);
             if (!$maquina) {
                 return response()->json([
@@ -81,10 +85,11 @@ class etiquetaController extends Controller
                 ], 404);
             }
 
-            // ✅ Verificar si la planilla tiene fecha_inicio NULL y actualizarla
-            if ($primerElemento->planilla && is_null($primerElemento->planilla->fecha_inicio)) {
-                $primerElemento->planilla->fecha_inicio = now();
-                $primerElemento->planilla->save();
+            // ✅ Si fecha_inicio es NULL, establacemos now() y estado FABRICANDO
+            if ($etiqueta->planilla && is_null($etiqueta->planilla->fecha_inicio)) {
+                $etiqueta->planilla->fecha_inicio = now();
+                $etiqueta->planilla->estado = "fabricando";
+                $etiqueta->planilla->save();
             }
 
             $productosConsumidos = [];
@@ -92,35 +97,68 @@ class etiquetaController extends Controller
             $producto2 = null;
 
             if ($etiqueta->estado == "pendiente") {
-                $otrasMaquinas = $etiqueta->elementos()
+
+                // Verificar si la etiqueta está repartida en diferentes máquinas
+                $enOtrasMaquinas = $etiqueta->elementos()
                     ->where('maquina_id', '!=', $maquina->id)
                     ->exists();
 
-                if ($otrasMaquinas) {
+                if ($enOtrasMaquinas) {
                     return response()->json([
                         'success' => false,
                         'error' => 'La etiqueta está repartida en diferentes máquinas. Trabaja con el elemento que sí está en la máquina.',
                     ], 400);
                 }
 
+                // Obtener los elementos en la máquina actual
+                $elementosEnMaquina = $etiqueta->elementos()->where('maquina_id', $maquina->id)->get();
+
+                if ($elementosEnMaquina->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No hay elementos de esta etiqueta en la máquina seleccionada.',
+                    ], 400);
+                }
+
+                // Inicializar array para acumular pesos por diámetro
+                $diametrosConPesos = [];
+
+                // Recorrer los elementos en la máquina para sumar los pesos por diámetro
+                foreach ($elementosEnMaquina as $elemento) {
+                    $diametro = $elemento->diametro;
+                    $peso = $elemento->peso;
+
+                    if (!isset($diametrosConPesos[$diametro])) {
+                        $diametrosConPesos[$diametro] = 0;
+                    }
+                    $diametrosConPesos[$diametro] += $peso;
+                }
+
+                // Obtener los productos disponibles con esos diámetros
                 $productos = $maquina->productos()
-                    ->where('diametro', $primerElemento->diametro)
+                    ->whereIn('diametro', array_keys($diametrosConPesos))
                     ->orderBy('peso_stock')
                     ->get();
 
                 if ($productos->isEmpty()) {
                     return response()->json([
                         'success' => false,
-                        'error' => 'En esta máquina no hay materia prima con ese diámetro.',
+                        'error' => 'En esta máquina no hay materias primas con los diámetros requeridos.',
                     ], 400);
                 }
-                //Verificar si hay suficiente peso, para ir avisando al gruista
-                $productos = $maquina->productos()
-                    ->where('diametro', $primerElemento->diametro)
-                    ->orderBy('peso_stock')
-                    ->get();
 
+                // Restar el peso de los elementos en la máquina al peso de stock de los productos
+                foreach ($productos as $producto) {
+                    $diametro = $producto->diametro;
+                    if (isset($diametrosConPesos[$diametro])) {
+                        $producto->peso_stock -= $diametrosConPesos[$diametro];
+                    }
+                }
+
+                // Obtener el primer elemento de la máquina para verificar el peso requerido
+                $primerElemento = $elementosEnMaquina->first();
                 $pesoRequerido = $etiqueta->peso;
+
                 if ($pesoRequerido <= 0) {
                     return response()->json([
                         'success' => false,
@@ -128,22 +166,24 @@ class etiquetaController extends Controller
                     ], 400);
                 }
 
-                foreach ($productos as $prod) {
+                // Consumir materia prima
+                $productosConsumidos = [];
+                foreach ($productos as $producto) {
                     if ($pesoRequerido <= 0) {
                         break;
                     }
 
-                    $pesoDisponible = $prod->peso_stock;
+                    $pesoDisponible = $producto->peso_stock;
                     if ($pesoDisponible > 0) {
                         $restar = min($pesoDisponible, $pesoRequerido);
-                        $prod->peso_stock -= $restar;
+                        $producto->peso_stock -= $restar;
 
-                        if ($prod->peso_stock == 0) {
-                            $prod->estado = "consumido";
+                        if ($producto->peso_stock == 0) {
+                            $producto->estado = "consumido";
                         }
 
-                        $prod->save();
-                        $productosConsumidos[] = $prod;
+                        $producto->save();
+                        $productosConsumidos[] = $producto;
                         $pesoRequerido -= $restar;
                     }
                 }
@@ -165,6 +205,7 @@ class etiquetaController extends Controller
                     $primerElemento->planilla->save();
                 }
 
+                // Actualizar la etiqueta
                 $etiqueta->estado = "fabricando";
                 $etiqueta->fecha_inicio = now();
                 $etiqueta->users_id_1 = Auth::id();
@@ -212,7 +253,7 @@ class etiquetaController extends Controller
                 }
 
                 $etiqueta->fecha_finalizacion = now();
-                $etiqueta->estado = 'completado';
+                $etiqueta->estado = 'completada';
                 $etiqueta->save();
 
 
@@ -230,7 +271,7 @@ class etiquetaController extends Controller
                 $etiqueta->producto_id = $producto1?->id;
                 $etiqueta->producto_id_2 = $producto2?->id;
                 $etiqueta->save();
-            } elseif ($etiqueta->estado == "completado") {
+            } elseif ($etiqueta->estado == "completada") {
                 // Código de reversión de consumo
                 $producto1 = $etiqueta->producto_id ? $maquina->productos()->find($etiqueta->producto_id) : null;
                 $producto2 = $etiqueta->producto_id_2 ? $maquina->productos()->find($etiqueta->producto_id_2) : null;
