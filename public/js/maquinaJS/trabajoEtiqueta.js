@@ -184,30 +184,33 @@ function actualizarDOMEtiqueta(id, data) {
                 showConfirmButton: false,
             });
     }
-}
+    if (data.productos_afectados && data.productos_afectados.length > 0) {
+        data.productos_afectados.forEach((producto) => {
+            let pesoStockElemento = document.getElementById(
+                `peso-stock-${producto.id}`
+            );
+            let progresoTexto = document.getElementById(
+                `progreso-texto-${producto.id}`
+            );
+            let progresoBarra = document.getElementById(
+                `progreso-barra-${producto.id}`
+            );
 
-/**
- * Actualiza los datos de un producto en el DOM
- */
-function actualizarProductoEnDOM(producto) {
-    const pesoStockElemento = document.getElementById(
-        `peso-stock-${producto.id}`
-    );
-    const progresoTexto = document.getElementById(
-        `progreso-texto-${producto.id}`
-    );
-    const progresoBarra = document.getElementById(
-        `progreso-barra-${producto.id}`
-    );
+            if (pesoStockElemento) {
+                pesoStockElemento.textContent = `${producto.peso_stock} kg`;
+            }
 
-    if (pesoStockElemento)
-        pesoStockElemento.textContent = `${producto.peso_stock} kg`;
-    if (progresoTexto)
-        progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
+            if (progresoTexto) {
+                progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
+            }
 
-    if (progresoBarra && producto.peso_inicial) {
-        const progresoPorcentaje =
-            (producto.peso_stock / producto.peso_inicial) * 100;
-        progresoBarra.style.height = `${progresoPorcentaje}%`;
+            if (progresoBarra) {
+                let progresoPorcentaje =
+                    (producto.peso_stock / producto.peso_inicial) * 100;
+                progresoBarra.style.height = `${progresoPorcentaje}%`;
+            }
+        });
+    } else {
+        console.warn("No se encontraron productos afectados en la respuesta.");
     }
 }

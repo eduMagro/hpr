@@ -78,7 +78,10 @@ class PaqueteController extends Controller
             if (!$planilla && $elementos->isNotEmpty()) {
                 $planilla = $elementos->first()->planilla ?? null;
             }
-
+            // Si no hay planilla y hay elementos, buscar la planilla desde los elementos
+            if (!$planilla && $subpaquetes->isNotEmpty()) {
+                $planilla = $subpaquetes->first()->planilla ?? null;
+            }
             // Si no se encontró una planilla en etiquetas ni en elementos, error
             if (!$planilla) {
                 DB::rollBack();
@@ -227,7 +230,7 @@ class PaqueteController extends Controller
 
             // Buscar etiquetas incompletas
             $etiquetasIncompletas = Etiqueta::whereIn('id', $etiquetasIds)
-                ->where('estado', '!=', 'completado')
+                ->where('estado', '!=', 'completada')
                 ->pluck('id')
                 ->toArray();
 
