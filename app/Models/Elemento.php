@@ -32,6 +32,7 @@ class Elemento extends Model
         'producto_id',
         'producto_id_2',
         'paquete_id',
+        'ubicacion_id',
         'figura',
         'fila',
         'descripcion_fila',
@@ -80,6 +81,10 @@ class Elemento extends Model
     public function etiquetaRelacion()
     {
         return $this->belongsTo(Etiqueta::class, 'etiqueta_id');
+    }
+    public function ubicacion()
+    {
+        return $this->belongsTo(Ubicacion::class, 'ubicacion_id');
     }
 
 

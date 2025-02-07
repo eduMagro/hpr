@@ -246,7 +246,18 @@
                                 @endif
                             </td>
                             <td class="px-4 py-2">{{ $elemento->paquete_id ?? 'N/A' }}</td>
-                            <td class="px-4 py-2">{{ $elemento->ubicacion_id ?? 'N/A' }}</td>
+                            <td class="px-4 py-2">
+                                @if ($elemento->ubicacion)
+                                    <a href="{{ route('ubicaciones.show', ['ubicacione' => $elemento->ubicacion->id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->ubicacion->nombre }}
+                                    </a>
+                                @else
+                                    N/A
+                                @endif
+                            </td>
+
+
                             <td class="px-4 py-2">{{ $elemento->figura }}</td>
                             <td class="px-4 py-2">{{ $elemento->fila }}</td>
                             <td class="px-4 py-2">{{ $elemento->etiquetaRelacion->nombre }}</td>
