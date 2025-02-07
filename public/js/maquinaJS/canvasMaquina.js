@@ -1,5 +1,5 @@
 // Altura fija para el canvas (ajústala según necesites)
-const canvasHeight = 400;
+const canvasHeight = 250;
 // Márgenes internos para delimitar el área de dibujo
 const marginX = 50; // margen horizontal
 const marginY = 25; // margen vertical

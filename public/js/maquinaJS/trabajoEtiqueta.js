@@ -33,18 +33,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const etiquetaIdNum = parseInt(etiquetaId, 10);
 
         // Verificar si `etiquetasEnUnaSolaMaquina` está definido antes de usarlo
-        if (
-            typeof etiquetasEnUnaSolaMaquina !== "undefined" &&
-            !etiquetasEnUnaSolaMaquina.includes(etiquetaIdNum)
-        ) {
-            Swal.fire({
-                icon: "warning",
-                title: "Acción no permitida",
-                text: "Esta etiqueta tiene elementos en otras máquinas. No puedes procesarla.",
-            });
-            e.target.value = ""; // Limpiar el input tras el error
-            return;
-        }
+        // if (
+        //     typeof etiquetasEnUnaSolaMaquina !== "undefined" &&
+        //     !etiquetasEnUnaSolaMaquina.includes(etiquetaIdNum)
+        // ) {
+        //     Swal.fire({
+        //         icon: "warning",
+        //         title: "Acción no permitida",
+        //         text: "Esta etiqueta tiene elementos en otras máquinas. No puedes procesarla.",
+        //     });
+        //     e.target.value = ""; // Limpiar el input tras el error
+        //     return;
+        // }
 
         // Verificar el estado actual de la etiqueta en el DOM
         const estadoElemento = document.getElementById(`estado-${etiquetaId}`);

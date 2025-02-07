@@ -53,15 +53,16 @@ class etiquetaController extends Controller
         return view('etiquetas.index', compact('etiquetas'));
     }
 
-
-
-
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
         DB::beginTransaction();
 
         try {
             $etiqueta = Etiqueta::with('elementos.planilla')->findOrFail($id);
+
+            $planilla_id = $etiqueta->planilla_id;
+            $planilla = Planilla::find($planilla_id);
+
             // Capturamos el primero objeto en la maquina de la misma etiqueta
             $primerElemento = $etiqueta->elementos()
                 ->where('maquina_id', $maquina_id)
@@ -77,6 +78,11 @@ class etiquetaController extends Controller
             $elementosEnMaquina = $etiqueta->elementos()
                 ->where('maquina_id', $maquina_id)
                 ->get();
+            // Verificar si la etiqueta está repartida en diferentes máquinas
+            $enOtrasMaquinas = $etiqueta->elementos()
+                ->where('maquina_id', '!=', $maquina_id)
+                ->exists();
+
             $maquina = Maquina::findOrFail($maquina_id);
             if (!$maquina) {
                 return response()->json([
@@ -84,57 +90,33 @@ class etiquetaController extends Controller
                     'error' => 'La máquina asociada al elemento no existe.',
                 ], 404);
             }
-
-            // ✅ Si fecha_inicio es NULL, establacemos now() y estado FABRICANDO
-            if ($etiqueta->planilla && is_null($etiqueta->planilla->fecha_inicio)) {
-                $etiqueta->planilla->fecha_inicio = now();
-                $etiqueta->planilla->estado = "fabricando";
-                $etiqueta->planilla->save();
+            // 1. Agrupar los elementos por diámetro sumando sus pesos
+            $diametrosConPesos = [];
+            foreach ($elementosEnMaquina as $elemento) {
+                $diametro = $elemento->diametro;
+                $peso = $elemento->peso;
+                if (!isset($diametrosConPesos[$diametro])) {
+                    $diametrosConPesos[$diametro] = 0;
+                }
+                $diametrosConPesos[$diametro] += $peso;
             }
 
-            $productosConsumidos = [];
+
             $producto1 = null;
             $producto2 = null;
 
-            if ($etiqueta->estado == "pendiente") {
+            if ($etiqueta->estado == "pendiente") { // ---------------------------------- P E N D I E N T E
 
-                // Verificar si la etiqueta está repartida en diferentes máquinas
-                $enOtrasMaquinas = $etiqueta->elementos()
-                    ->where('maquina_id', '!=', $maquina->id)
-                    ->exists();
-
-                if ($enOtrasMaquinas) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'La etiqueta está repartida en diferentes máquinas. Trabaja con el elemento que sí está en la máquina.',
-                    ], 400);
-                }
-
-                // Obtener los elementos en la máquina actual
-                $elementosEnMaquina = $etiqueta->elementos()->where('maquina_id', $maquina->id)->get();
-
-                if ($elementosEnMaquina->isEmpty()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'No hay elementos de esta etiqueta en la máquina seleccionada.',
-                    ], 400);
-                }
-
-                // Inicializar array para acumular pesos por diámetro
-                $diametrosConPesos = [];
-
-                // Recorrer los elementos en la máquina para sumar los pesos por diámetro
+                // Actualizar el estado de los elementos en la máquina a "fabricando"
                 foreach ($elementosEnMaquina as $elemento) {
-                    $diametro = $elemento->diametro;
-                    $peso = $elemento->peso;
-
-                    if (!isset($diametrosConPesos[$diametro])) {
-                        $diametrosConPesos[$diametro] = 0;
-                    }
-                    $diametrosConPesos[$diametro] += $peso;
+                    $elemento->users_id = Auth::id();
+                    $elemento->users_id_2 = session()->get('compañero_id', null);
+                    $elemento->estado = "fabricando";
+                    $elemento->fecha_inicio = now();
+                    $elemento->save();
                 }
 
-                // Obtener los productos disponibles con esos diámetros
+                // 2. Obtener los productos disponibles en la máquina que tengan los diámetros requeridos
                 $productos = $maquina->productos()
                     ->whereIn('diametro', array_keys($diametrosConPesos))
                     ->orderBy('peso_stock')
@@ -147,152 +129,109 @@ class etiquetaController extends Controller
                     ], 400);
                 }
 
-                // Restar el peso de los elementos en la máquina al peso de stock de los productos
-                foreach ($productos as $producto) {
-                    $diametro = $producto->diametro;
-                    if (isset($diametrosConPesos[$diametro])) {
-                        $producto->peso_stock -= $diametrosConPesos[$diametro];
+                // 3. Para cada diámetro, comprobar que el stock total de los productos con ese diámetro es suficiente
+                //    y, de ser así, restar el peso necesario.
+                foreach ($diametrosConPesos as $diametro => $pesoNecesario) {
+                    // Filtrar los productos del mismo diámetro
+                    $productosPorDiametro = $productos->where('diametro', $diametro);
+
+                    // Sumar el stock total disponible para este diámetro
+                    $stockTotal = $productosPorDiametro->sum('peso_stock');
+
+                    if ($stockTotal < $pesoNecesario) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => "No hay suficiente materia prima para el diámetro {$diametro}. Se requieren {$pesoNecesario}, pero solo hay {$stockTotal} disponibles. Avisa al gruista",
+                        ], 400);
                     }
                 }
 
-                // Obtener el primer elemento de la máquina para verificar el peso requerido
-                $primerElemento = $elementosEnMaquina->first();
-                $pesoRequerido = $etiqueta->peso;
-
-                if ($pesoRequerido <= 0) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'El peso de la etiqueta es 0, no es necesario consumir materia prima.',
-                    ], 400);
+                // ✅ Si fecha_inicio es NULL, establacemos now() y estado FABRICANDO
+                if ($etiqueta->planilla && is_null($etiqueta->planilla->fecha_inicio)) {
+                    $etiqueta->planilla->fecha_inicio = now();
+                    $etiqueta->planilla->estado = "fabricando";
+                    $etiqueta->planilla->save();
                 }
 
-                // Consumir materia prima
-                $productosConsumidos = [];
-                foreach ($productos as $producto) {
-                    if ($pesoRequerido <= 0) {
-                        break;
-                    }
-
-                    $pesoDisponible = $producto->peso_stock;
-                    if ($pesoDisponible > 0) {
-                        $restar = min($pesoDisponible, $pesoRequerido);
-                        $producto->peso_stock -= $restar;
-
-                        if ($producto->peso_stock == 0) {
-                            $producto->estado = "consumido";
-                        }
-
-                        $producto->save();
-                        $productosConsumidos[] = $producto;
-                        $pesoRequerido -= $restar;
-                    }
-                }
-
-                if ($pesoRequerido > 0) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'No hay suficiente materia prima. Avisa al gruista.',
-                    ], 400);
-                }
-
-                // ✅ Verificar si esta es la primera etiqueta completada de la planilla
-                $otrasEtiquetasFinalizadas = $primerElemento->planilla->elementos()
-                    ->whereNotNull('fecha_finalizacion')
-                    ->exists();
-
-                if (!$otrasEtiquetasFinalizadas) {
-                    $primerElemento->planilla->fecha_inicio = now();
-                    $primerElemento->planilla->save();
-                }
-
-                // Actualizar la etiqueta
+                // Actualizar la etiqueta a "fabricando"
                 $etiqueta->estado = "fabricando";
                 $etiqueta->fecha_inicio = now();
-                $etiqueta->users_id_1 = Auth::id();
-                $etiqueta->users_id_2 = session()->get('compañero_id', null);
+                if (!$enOtrasMaquinas) {
+                    $etiqueta->users_id_1 = Auth::id();
+                    $etiqueta->users_id_2 = session()->get('compañero_id', null);
+                }
                 $etiqueta->save();
-            } elseif ($etiqueta->estado == "fabricando") {
-                $productos = $maquina->productos()
-                    ->where('diametro', $primerElemento->diametro)
-                    ->orderBy('peso_stock')
-                    ->get();
-                $pesoRequerido = $etiqueta->peso;
+            } elseif ($etiqueta->estado == "fabricando") {  // ---------------------------------- F A B R I C A N D O
 
-                if ($pesoRequerido <= 0) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'El peso de la etiqueta es 0, no es necesario consumir materia prima.',
-                    ], 400);
-                }
+                // ---------------------------------- ACTUALIZAR PESOS
+                foreach ($diametrosConPesos as $diametro => $pesoNecesario) {
+                    $productosPorDiametro = $maquina->productos()
+                        ->where('diametro', $diametro)
+                        ->orderBy('peso_stock')
+                        ->get();
 
-                foreach ($productos as $prod) {
-                    if ($pesoRequerido <= 0) {
-                        break;
+                    if ($productosPorDiametro->isEmpty()) {
+                        return response()->json([
+                            'success' => false,
+                            'error' => "No se encontraron materias primas para el diámetro {$diametro} en la máquina.",
+                        ], 400);
                     }
 
-                    $pesoDisponible = $prod->peso_stock;
-                    if ($pesoDisponible > 0) {
-                        $restar = min($pesoDisponible, $pesoRequerido);
-                        $prod->peso_stock -= $restar;
-
-                        if ($prod->peso_stock == 0) {
-                            $prod->estado = "consumido";
+                    foreach ($productosPorDiametro as $producto) {
+                        if ($pesoNecesario <= 0) {
+                            break;
                         }
-
-                        $prod->save();
-                        $productosConsumidos[] = $prod;
-                        $pesoRequerido -= $restar;
+                        $pesoDisponible = $producto->peso_stock;
+                        if ($pesoDisponible > 0) {
+                            $restar = min($pesoDisponible, $pesoNecesario);
+                            $producto->peso_stock -= $restar;
+                            $pesoNecesario -= $restar;
+                            if ($producto->peso_stock == 0) {
+                                $producto->estado = "consumido";
+                            }
+                            $producto->save();
+                        }
                     }
                 }
-
-                if ($pesoRequerido > 0) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'No hay suficiente materia prima. Avisa al gruista.',
-                    ], 400);
+                // ---------------------------------- ACTUALIZAR ELEMENTOS
+                foreach ($elementosEnMaquina as $elemento) {
+                    $elemento->estado = "completado";
+                    $elemento->fecha_finalizacion = now();
+                    $elemento->save();
                 }
-
+                // ---------------------------------- ACTUALIZAR ETIQUETA
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->estado = 'completada';
                 $etiqueta->save();
 
-
-                // ✅ Verificar si todas las etiquetas están finalizadas para asignar fecha_finalizacion a la planilla
-                $todasFinalizadas = $primerElemento->planilla->elementos()->whereNull('fecha_finalizacion')->doesntExist();
+                // ---------------------------------- ACTUALIZAR PLANILLA
+                $todasFinalizadas = $etiqueta->planilla->elementos()->whereNull('fecha_finalizacion')->doesntExist();
                 if ($todasFinalizadas) {
-                    $primerElemento->planilla->fecha_finalizacion = now();
-                    $primerElemento->planilla->save();
+                    $planilla->fecha_finalizacion = now();
+                    $planilla->save();
                 }
 
-                // ✅ Asignar productos consumidos a la etiqueta
-                $producto1 = $productosConsumidos[0] ?? null;
-                $producto2 = $productosConsumidos[1] ?? null;
-
-                $etiqueta->producto_id = $producto1?->id;
-                $etiqueta->producto_id_2 = $producto2?->id;
-                $etiqueta->save();
-            } elseif ($etiqueta->estado == "completada") {
-                // Código de reversión de consumo
+                // Aquí podrías asignar información de los productos consumidos a la etiqueta si fuera necesario.
+            } elseif ($etiqueta->estado == "completada") { // ---------------------------------- C O M P L E T A D O
+                // ---------------------------------- REVERTIR PESOS --  C O M P L E T A D O
                 $producto1 = $etiqueta->producto_id ? $maquina->productos()->find($etiqueta->producto_id) : null;
                 $producto2 = $etiqueta->producto_id_2 ? $maquina->productos()->find($etiqueta->producto_id_2) : null;
 
-                if (!$producto1 && !$producto2) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'No se encontraron los productos consumidos para restaurar.',
-                    ], 400);
-                }
 
+                // Se toma como referencia el peso total original de la etiqueta
                 $pesoRestaurar = $etiqueta->peso;
 
+                // Restaurar en producto1 (sin sobrepasar el peso_inicial)
                 if ($producto1) {
                     $pesoIncremento = min($pesoRestaurar, $producto1->peso_inicial - $producto1->peso_stock);
                     $producto1->peso_stock += $pesoIncremento;
                     $pesoRestaurar -= $pesoIncremento;
+                    // Se restaura el estado al original (o se deja "fabricando" según la lógica de negocio)
                     $producto1->estado = "fabricando";
                     $producto1->save();
                 }
 
+                // Restaurar en producto2, si aún queda peso pendiente por restaurar
                 if ($pesoRestaurar > 0 && $producto2) {
                     $pesoIncremento = min($pesoRestaurar, $producto2->peso_inicial - $producto2->peso_stock);
                     $producto2->peso_stock += $pesoIncremento;
@@ -301,7 +240,20 @@ class etiquetaController extends Controller
                     $producto2->save();
                 }
 
-                // Resetear la etiqueta a estado "pendiente"
+                // ---------------------------------- REVERTIR ELEMENTOS -- C O M P L E T A D O
+
+                // 2. (Opcional) Revertir el estado de los elementos asociados a la etiqueta,
+                // en caso de que hayan sido modificados (por ejemplo, pasar de "fabricando" a "pendiente")
+                foreach ($elementosEnMaquina as $elemento) {
+                    $elemento->estado = "pendiente";
+                    $elemento->fecha_inicio = null;
+                    $elemento->fecha_finalizacion = null;
+                    $elemento->users_id = null;
+                    $elemento->users_id_2 = null;
+                    $elemento->save();
+                }
+
+                // ---------------------------------- REVERTIR ETIQUETAS -- C O M P L E T A D O
                 $etiqueta->fecha_inicio = null;
                 $etiqueta->fecha_finalizacion = null;
                 $etiqueta->estado = "pendiente";
@@ -310,7 +262,13 @@ class etiquetaController extends Controller
                 $etiqueta->producto_id = null;
                 $etiqueta->producto_id_2 = null;
                 $etiqueta->save();
+                // ---------------------------------- REVERTIR ETIQUETAS -- C O M P L E T A D O
+                $planilla->fecha_inicio = null;
+                $planilla->fecha_finalizacion = null;
+                $planilla->estado = 'pendiente';
+                $planilla->save();
             }
+
 
             DB::commit();
 

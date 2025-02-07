@@ -18,15 +18,28 @@
     @endif
     <!-- Mostrar mensajes de éxito o error -->
     @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
+                    confirmButtonColor: '#d33'
+                });
+            });
+        </script>
     @endif
-    {{-- mostrar mensaje de exito --}}
+
     @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'success',
+                    text: '{{ session('success') }}',
+                    confirmButtonColor: '#28a745'
+                });
+            });
+        </script>
     @endif
     {{-- mision abortada --}}
     @if (session('abort'))
