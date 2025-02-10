@@ -171,6 +171,15 @@ function actualizarDOMEtiqueta(id, data) {
                 showConfirmButton: false,
             });
             break;
+        case "parcialmente completada":
+            Swal.fire({
+                icon: "info",
+                title: "Etiqueta reiniciada",
+                text: "Hemos reiniciado la etiqueta.",
+                timer: 2000,
+                showConfirmButton: false,
+            });
+            break;
         default:
             console.warn(
                 `Estado no manejado para etiqueta ${id}:`,

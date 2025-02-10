@@ -91,6 +91,7 @@ class etiquetaController extends Controller
                     'error' => 'La máquina asociada al elemento no existe.',
                 ], 404);
             }
+
             // Buscar la ubicación que contenga el código de la máquina en su descripción
             $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
             // 1. Agrupar los elementos por diámetro sumando sus pesos
@@ -163,11 +164,19 @@ class etiquetaController extends Controller
                     $etiqueta->users_id_2 = session()->get('compañero_id', null);
                 }
                 $etiqueta->save();
-            } elseif ($etiqueta->estado == "fabricando" || $etiqueta->estado == "parcialmente completada") {  // ---------------------------------- F A B R I C A N D O
+            } elseif ($etiqueta->estado == "fabricando") {  // ---------------------------------- F A B R I C A N D O
 
-                // ------------------------------ ESTADO: FABRICANDO  ->  COMPLETADA
-                // Registrar el consumo de materia prima por cada diámetro en un arreglo $consumos
-                // Estructura: [ <diametro> => [ ['producto_id' => X, 'consumido' => Y], ... ], ... ]
+                // ELEMENTOS COMPLETADOS?? SALIMOS DEL CONDICIONAL
+                $elementosCompletados = $elementosEnMaquina->where('estado', 'completado')->count();
+
+                if ($elementosCompletados == $elementosEnMaquina->count()) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'error' => "Todos los elementos en la máquina ya han sido completados.",
+                    ], 400);
+                }
+                // -------------- CONSUMOS
                 $consumos = [];
 
                 foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
@@ -249,6 +258,15 @@ class etiquetaController extends Controller
                     $elemento->ubicacion_id = $ubicacion->id;
                     $elemento->save();
 
+                    // Si la descripción de la planilla contiene "carcasas" o "taller", cambiar maquina_id a 1
+                    if (
+                        stripos($etiqueta->planilla->descripcion, 'carcasas') !== false ||
+                        stripos($etiqueta->planilla->descripcion, 'taller') !== false
+                    ) {
+                        $elemento->maquina_id_2 = 7;
+                        $elemento->ubicacion_id = null;
+                    }
+
                     // Actualizar el registro global de consumos para este diámetro
                     $consumos[$elemento->diametro] = $consumosDisponibles;
                 }
@@ -261,10 +279,6 @@ class etiquetaController extends Controller
                     // Si todos los elementos están completados, la etiqueta pasa a "completada"
                     $etiqueta->estado = 'completada';
                     $etiqueta->fecha_finalizacion = now();
-                } elseif ($elementosCompletados > 0) {
-                    // Si hay algunos completados pero no todos, la etiqueta pasa a "parcialmente completada"
-                    $etiqueta->estado = 'parcialmente completada';
-                    $etiqueta->fecha_finalizacion = null; // No se finaliza hasta que esté completa
                 } else {
                     // Si ningún elemento está completado, mantener el estado actual
                     $etiqueta->estado = 'fabricando';

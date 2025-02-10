@@ -29,6 +29,7 @@ class Elemento extends Model
         'etiqueta_id',
         'nombre',
         'maquina_id',
+        'maquina_id_2',
         'producto_id',
         'producto_id_2',
         'paquete_id',
@@ -92,6 +93,11 @@ class Elemento extends Model
     public function maquina()
     {
         return $this->belongsTo(Maquina::class, 'maquina_id');
+    }
+    // Relación con el modelo Maquina (si existe)
+    public function maquina_2()
+    {
+        return $this->belongsTo(Maquina::class, 'maquina_id_2');
     }
 
     // Relación con el modelo Producto (si existe)

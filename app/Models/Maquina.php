@@ -24,17 +24,22 @@ class Maquina extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    
+
 
     public function productos()
     {
         return $this->hasMany(Producto::class, 'maquina_id');
     }
 
-     public function elementos()
+    // Elementos que tienen esta máquina como principal
+    public function elementos()
     {
-        return $this->hasMany(Elemento::class);
+        return $this->hasMany(Elemento::class, 'maquina_id');
     }
 
-   
+    // Elementos que tienen esta máquina como secundaria
+    public function elementosSecundarios()
+    {
+        return $this->hasMany(Elemento::class, 'maquina_id_2');
+    }
 }
