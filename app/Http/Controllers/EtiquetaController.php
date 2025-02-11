@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Maquina;
 use Illuminate\Support\Facades\Log;
-use App\Notifications\StockInsuficiente;
+
 
 class etiquetaController extends Controller
 {
@@ -163,18 +163,7 @@ class etiquetaController extends Controller
 
                     if ($stockTotal < $pesoNecesario) {
                         // Obtener el usuario gruista (ajusta según tu lógica de negocio)
-                        $gruista = User::where('categoria', 'gruista')->first();
-                        if ($gruista) {
-                            Alerta::create([
-                                'user_id_1' => auth()->id(),
-                                'user_id_2' => $gruista->id,
-                                'destinatario' => 'gruista',
-                                'mensaje' => "Stock insuficiente en la máquina {$maquina->nombre}. Solo hay {$stockTotal} kg, pero se necesitan {$pesoNecesario} kg.",
-                                'leida' => false,
-                            ]);
-                            $mensaje = "Stock insuficiente en la máquina {$maquina->nombre}. Solo hay {$stockTotal} kg, pero se necesitan {$pesoNecesario} kg.";
-                            $gruista->notify(new StockInsuficiente($mensaje));
-                        }
+
                     }
                 }
 
