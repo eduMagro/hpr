@@ -40,6 +40,16 @@
             });
         </script>
     @endif
+    @if (session('warning'))
+        <script>
+            Swal.fire({
+                icon: 'warning',
+                title: 'Atención',
+                text: "{{ session('warning') }}",
+                confirmButtonText: 'Entendido'
+            });
+        </script>
+    @endif
 
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->

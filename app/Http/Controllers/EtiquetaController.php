@@ -160,11 +160,10 @@ class etiquetaController extends Controller
                     $stockTotal = $productosPorDiametro->sum('peso_stock');
 
                     if ($stockTotal < $pesoNecesario) {
-                        return response()->json([
-                            'success' => false,
-                            'error' => "No hay suficiente materia prima para el diámetro {$diametro}. Se requieren {$pesoNecesario}, pero solo hay {$stockTotal} disponibles. Avisa al gruista",
-                        ], 400);
+                        session()->flash('warning', "No hay suficiente materia prima para el diámetro {$diametro}. Se requieren {$pesoNecesario}, pero solo hay {$stockTotal} disponibles. Avisa al gruista");
                     }
+                    // Continuar con el código...
+
                 }
 
                 if ($etiqueta->planilla) {
@@ -294,7 +293,7 @@ class etiquetaController extends Controller
 
                     // Obtener el ID de la máquina llamada "IDEA 5" sin importar mayúsculas o minúsculas
                     $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
-                    if ($maquinaIdea5) {
+                    if ($maquina->nombre == "Idea 5") {
                         // Si la descripción de la planilla contiene "carcasas" o "taller", cambiar maquina_id_2 al ID de "IDEA 5"
                         if (
                             stripos($etiqueta->planilla->ensamblado, 'CARCASAS') !== false ||

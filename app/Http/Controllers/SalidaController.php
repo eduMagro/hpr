@@ -4,49 +4,60 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Planilla;
-use Illuminate\Support\Facades\Log;
 
 class SalidaController extends Controller
 {
-    /**
-     * Muestra la lista de planillas con sus paquetes y el progreso de peso.
-     */
     public function index()
     {
-
-        // Cargar las relaciones necesarias
         $planillas = Planilla::with([
             'paquetes:id,planilla_id,peso,ubicacion_id',
-            'etiquetas' => function ($query) {
-                $query->whereNull('paquete_id')
-                    ->where('estado', 'completado')
-                    ->select('id', 'planilla_id', 'estado', 'peso');
-            },
-            'elementos' => function ($query) {
-                $query->whereNull('paquete_id')
-                    ->where('estado', 'completado')
-                    ->select('id', 'planilla_id', 'estado', 'peso', 'ubicacion_id');
-            }
+            'paquetes.ubicacion:id,nombre', // Cargar la ubicación de cada paquete
+            'etiquetas:id,planilla_id,estado,peso,paquete_id',
+            'elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
+            'elementos.ubicacion:id,nombre', // Cargar la ubicación de cada elemento
+            'elementos.maquina:id,nombre' // Cargar la máquina de cada elemento
         ])->get();
 
-        // Procesar los cálculos en el servidor
-        $planillasCalculadas = $planillas->map(function ($planilla) {
-            $pesoTotalPaquetes = $planilla->paquetes->sum('peso');
-            $pesoElementosNoEmpaquetados = $planilla->elementos->sum('peso');
-            $pesoEtiquetasNoEmpaquetadas = $planilla->etiquetas->sum('peso');
+        // Función para asignar color de fondo según estado
+        $getColor = function ($estado, $tipo) {
+            $estado = strtolower($estado ?? 'desconocido');
 
-            $pesoAcumulado = $pesoTotalPaquetes + $pesoElementosNoEmpaquetados + $pesoEtiquetasNoEmpaquetadas;
-            $pesoRestante = max(0, $planilla->peso_total - $pesoAcumulado);
-            $progreso = ($planilla->peso_total > 0) ? ($pesoAcumulado / $planilla->peso_total) * 100 : 0;
+            if ($tipo === 'etiqueta' && $estado === 'completada') {
+                $estado = 'completado';
+            }
+
+            return match ($estado) {
+                'completado' => 'bg-green-200',
+                'pendiente' => 'bg-red-200',
+                'fabricando' => 'bg-blue-200',
+                default => 'bg-gray-200'
+            };
+        };
+
+        // Procesar cada planilla
+        $planillasCalculadas = $planillas->map(function ($planilla) use ($getColor) {
+            $pesoAcumulado = $planilla->elementos->where('estado', 'completado')->sum('peso');
+            $pesoTotal = max(1, $planilla->peso_total ?? 1);
+
+            $progreso = min(100, ($pesoAcumulado / $pesoTotal) * 100);
+
+            $paquetes = $planilla->paquetes->map(fn($paquete) => tap($paquete, fn($p) => $p->color = $getColor($p->estado, 'paquete')));
+
+            $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $planilla) {
+                $etiqueta->color = $getColor($etiqueta->estado, 'etiqueta');
+                $etiqueta->elementos = $planilla->elementos->where('etiqueta_id', $etiqueta->id)
+                    ->map(fn($elemento) => tap($elemento, fn($e) => $e->color = $getColor($e->estado, 'elemento')));
+                return $etiqueta;
+            });
 
             return [
                 'planilla' => $planilla,
-                'pesoTotalPaquetes' => $pesoTotalPaquetes,
-                'pesoElementosNoEmpaquetados' => $pesoElementosNoEmpaquetados,
-                'pesoEtiquetasNoEmpaquetadas' => $pesoEtiquetasNoEmpaquetadas,
                 'pesoAcumulado' => $pesoAcumulado,
-                'pesoRestante' => $pesoRestante,
-                'progreso' => $progreso
+                'pesoRestante' => max(0, $pesoTotal - $pesoAcumulado),
+                'progreso' => round($progreso, 2),
+                'paquetes' => $paquetes,
+                'etiquetas' => $etiquetas,
+                'etiquetasSinPaquete' => $etiquetas->whereNull('paquete_id')
             ];
         });
 
