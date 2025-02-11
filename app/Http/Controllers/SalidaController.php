@@ -10,7 +10,7 @@ class SalidaController extends Controller
     public function index()
     {
         $planillas = Planilla::with([
-            'paquetes:id,planilla_id,peso,ubicacion_id',
+            'paquetes:id,planilla_id,peso,ubicacion_id,estado',
             'paquetes.ubicacion:id,nombre', // Cargar la ubicación de cada paquete
             'etiquetas:id,planilla_id,estado,peso,paquete_id',
             'elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
@@ -38,15 +38,21 @@ class SalidaController extends Controller
         $planillasCalculadas = $planillas->map(function ($planilla) use ($getColor) {
             $pesoAcumulado = $planilla->elementos->where('estado', 'completado')->sum('peso');
             $pesoTotal = max(1, $planilla->peso_total ?? 1);
-
             $progreso = min(100, ($pesoAcumulado / $pesoTotal) * 100);
 
-            $paquetes = $planilla->paquetes->map(fn($paquete) => tap($paquete, fn($p) => $p->color = $getColor($p->estado, 'paquete')));
+            $paquetes = $planilla->paquetes->map(function ($paquete) use ($getColor) {
+                $paquete->color = $getColor($paquete->estado, 'paquete');
+                return $paquete;
+            });
 
-            $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $planilla) {
+            $elementos = $planilla->elementos->map(function ($elemento) use ($getColor) {
+                $elemento->color = $getColor($elemento->estado, 'elemento');
+                return $elemento;
+            });
+
+            $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $elementos) {
                 $etiqueta->color = $getColor($etiqueta->estado, 'etiqueta');
-                $etiqueta->elementos = $planilla->elementos->where('etiqueta_id', $etiqueta->id)
-                    ->map(fn($elemento) => tap($elemento, fn($e) => $e->color = $getColor($e->estado, 'elemento')));
+                $etiqueta->elementos = $elementos->where('etiqueta_id', $etiqueta->id);
                 return $etiqueta;
             });
 
@@ -58,7 +64,6 @@ class SalidaController extends Controller
                 'paquetes' => $paquetes,
                 'etiquetas' => $etiquetas,
                 'elementos' => $elementos,
-                'subpaquetes' => $subpaquetes,
                 'etiquetasSinPaquete' => $etiquetas->whereNull('paquete_id')
             ];
         });
