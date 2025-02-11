@@ -45,7 +45,7 @@
                                     @endif
 
                                     @php
-                                        // Se filtran las etiquetas asociadas a este paquete.
+
                                         $etiquetasPaquete = $data['etiquetas']->where('paquete_id', $paquete->id);
                                         $elementosPaquete = $data['elementos']->where('paquete_id', $paquete->id);
                                         $subpaquetesPaquete = $data['subpaquetes']->where('paquete_id', $paquete->id);
