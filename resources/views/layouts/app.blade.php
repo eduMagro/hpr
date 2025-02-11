@@ -38,8 +38,10 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" crossorigin="anonymous">
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -64,5 +66,24 @@
         </main>
     </div>
 </body>
+<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var userId = {{ auth()->id() }}; // Obtener el ID del usuario autenticado
+
+        var pusher = new Pusher("TU_APP_KEY", {
+            cluster: "TU_CLUSTER",
+            encrypted: true
+        });
+
+        var channel = pusher.subscribe("private-App.Models.User." + userId);
+
+        channel.bind("Illuminate\\Notifications\\Events\\BroadcastNotificationCreated", function(data) {
+            alert(data.mensaje); // Muestra una alerta en pantalla
+            var audio = new Audio("/sonidos/alerta.mp3"); // Ruta al sonido
+            audio.play();
+        });
+    });
+</script>
 
 </html>

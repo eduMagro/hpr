@@ -7,12 +7,14 @@ use App\Models\Elemento;
 use App\Models\Planilla;
 use App\Models\Etiqueta;
 use App\Models\Ubicacion;
+use App\Models\Alerta;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Maquina;
 use Illuminate\Support\Facades\Log;
-
+use App\Notifications\StockInsuficiente;
 
 class etiquetaController extends Controller
 {
@@ -160,10 +162,20 @@ class etiquetaController extends Controller
                     $stockTotal = $productosPorDiametro->sum('peso_stock');
 
                     if ($stockTotal < $pesoNecesario) {
-                        session()->flash('warning', "No hay suficiente materia prima para el diámetro {$diametro}. Se requieren {$pesoNecesario}, pero solo hay {$stockTotal} disponibles. Avisa al gruista");
+                        // Obtener el usuario gruista (ajusta según tu lógica de negocio)
+                        $gruista = User::where('categoria', 'gruista')->first();
+                        if ($gruista) {
+                            Alerta::create([
+                                'user_id_1' => auth()->id(),
+                                'user_id_2' => $gruista->id,
+                                'destinatario' => 'gruista',
+                                'mensaje' => "Stock insuficiente en la máquina {$maquina->nombre}. Solo hay {$stockTotal} kg, pero se necesitan {$pesoNecesario} kg.",
+                                'leida' => false,
+                            ]);
+                            $mensaje = "Stock insuficiente en la máquina {$maquina->nombre}. Solo hay {$stockTotal} kg, pero se necesitan {$pesoNecesario} kg.";
+                            $gruista->notify(new StockInsuficiente($mensaje));
+                        }
                     }
-                    // Continuar con el código...
-
                 }
 
                 if ($etiqueta->planilla) {
