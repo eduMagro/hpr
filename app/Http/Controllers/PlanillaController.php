@@ -16,87 +16,71 @@ use Illuminate\Validation\ValidationException;
 
 class PlanillaController extends Controller
 {
-    //------------------------------------------------------------------------------------ ASIGNAR MAQUINA()
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
-        // Determinar si el elemento es un estribo, lo cual depende de la cantidad de dobles por barra
         $estribo = $doblesPorBarra >= 4;
 
-        // Obtener todos los diámetros de los elementos que pertenecen a la misma planilla
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
 
-        // Determinar si es necesario forzar la asignación de una máquina basada en los diámetros presentes en la planilla
         $maquinaForzada = null;
         if (count($diametrosPlanilla) > 1) {
             $maxDiametro = max($diametrosPlanilla);
             if ($maxDiametro <= 12) {
-                $maquinaForzada = ['PS12', 'F12']; // Para diámetros pequeños
+                $maquinaForzada = ['PS12', 'F12'];
             } elseif ($maxDiametro <= 20) {
-                $maquinaForzada = ['MSR20']; // Para diámetros medianos
+                $maquinaForzada = ['MSR20'];
             } elseif ($maxDiametro <= 25) {
-                $maquinaForzada = ['SL28']; // Para diámetros grandes
+                $maquinaForzada = ['SL28'];
             } else {
-                $maquinaForzada = ['MANUAL']; // Para diámetros muy grandes
+                $maquinaForzada = ['MANUAL'];
             }
         }
 
-        // Caso especial: si el diámetro es exactamente 5 mm, se asigna directamente a la máquina ID5
         if ($diametro == 5) {
             $maquinas = Maquina::where('codigo', 'ID5')->get();
-        }
-        // Si es un estribo y su diámetro está entre 8 y 12 mm, solo puede asignarse a PS12 o F12
-        elseif ($estribo && $diametro >= 8 && $diametro <= 12) {
-            $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
-        }
-        // Si la asignación de máquina está forzada debido a múltiples diámetros en la planilla
-        elseif ($maquinaForzada) {
-            $maquinas = Maquina::whereIn('codigo', $maquinaForzada)->get();
-        }
-        // Si el diámetro está entre 10 y 16 mm, se asigna a MSR20
-        elseif ($diametro >= 10 && $diametro <= 16) {
+        } elseif ($estribo) {
+            if ($diametro == 8) {
+                $maquinas = Maquina::where('codigo', 'PS12')->get();
+            } elseif (in_array($diametro, [10, 12])) {
+                $maquinas = Maquina::where('codigo', 'F12')->get();
+            } else {
+                $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
+            }
+        } elseif (!$estribo && $diametro >= 10 && $diametro <= 16) {
             $maquinas = Maquina::where('codigo', 'MSR20')->get();
-        }
-        // Si el diámetro está entre 8 y 20 mm, se asigna a MSR20
-        elseif ($diametro >= 8 && $diametro <= 20) {
+        } elseif (!$estribo && $diametro >= 8 && $diametro <= 20) {
             $maquinas = Maquina::where('codigo', 'MSR20')->get();
-        }
-        // Si el diámetro está entre 12 y 25 mm, se asigna a SL28
-        elseif ($diametro >= 12 && $diametro <= 25) {
+        } elseif (!$estribo && $diametro >= 12 && $diametro <= 25) {
             $maquinas = Maquina::where('codigo', 'SL28')->get();
+        } elseif ($maquinaForzada) {
+            $maquinas = Maquina::whereIn('codigo', $maquinaForzada)->get();
         } else {
-            // Si no cumple con ningún otro criterio, se asigna a la máquina manual
             $maquinas = Maquina::where('codigo', 'MANUAL')->get();
         }
 
-        // Si no hay máquinas disponibles, retornar null
         if ($maquinas->isEmpty()) {
             return null;
         }
 
-        // Buscar la máquina con menos peso asignado y que aún esté dentro de su límite de producción
         $maquinaSeleccionada = null;
         $pesoMinimo = PHP_INT_MAX;
 
         foreach ($maquinas as $maquina) {
-            // Calcular el peso total ya asignado a la máquina
             $pesoActual = Elemento::where('maquina_id', $maquina->id)->sum('peso');
 
-            // Definir el límite de producción de cada máquina
             $limiteProduccion = match ($maquina->codigo) {
-                'PS12', 'F12' => 10000, // Límite para máquinas pequeñas
-                'MSR20' => 12000, // Límite para máquinas medianas
-                'SL28' => 30000, // Límite para máquinas grandes
-                default => PHP_INT_MAX // La máquina manual no tiene límite
+                'PS12', 'F12' => 10000,
+                'MSR20' => 12000,
+                'SL28' => 30000,
+                default => PHP_INT_MAX
             };
 
-            // Seleccionar la máquina que tenga el menor peso total asignado y que aún tenga capacidad
             if ($pesoActual < $limiteProduccion && $pesoActual < $pesoMinimo) {
                 $pesoMinimo = $pesoActual;
                 $maquinaSeleccionada = $maquina;
             }
         }
 
-        // Retornar el ID de la máquina seleccionada o null si no hay opción válida
         return $maquinaSeleccionada?->id ?? null;
     }
 

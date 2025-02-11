@@ -45,51 +45,81 @@ class MaquinaController extends Controller
     {
         $maquina = Maquina::with([
             'elementos.planilla',
-            'elementos.etiquetaRelacion',  // Carga los elementos y sus etiquetas
-            'productos'            // Carga los productos en la máquina
+            'elementos.etiquetaRelacion',
+            'productos'
         ])->findOrFail($id);
 
-        $usuario1 = auth()->user(); // Usuario autenticado
-        $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null; // Usuario guardado en sesión
+        $usuario1 = auth()->user();
+        $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null;
 
-        // Asegurar que los nombres se decodifican correctamente
+        // Decodificar nombres de usuario
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
         if ($usuario2) {
             $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
         }
+
+        // Obtener la máquina "IDEA 5"
+        $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['idea 5'])->first();
+
         // Obtener los elementos de esta máquina
         $elementosMaquina = $maquina->elementos;
 
+        // Si la máquina actual es "IDEA 5", incluir también los elementos con maquina_id_2 asignado a IDEA 5
+        if ($maquinaIdea5 && $maquina->id == $maquinaIdea5->id) {
+            $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)
+                ->where('maquina_id', '!=', $maquinaIdea5->id) // ✅ Solo los que están en otras máquinas
+                ->get();
+
+            // Fusionar elementos en la máquina con los elementos extra
+            $elementosMaquina = $elementosMaquina->merge($elementosExtra);
+        }
+
         // Obtener las etiquetas de estos elementos
         $etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
-        // Buscar otros elementos de estas etiquetas que estén en otras máquinas
+
+        // Obtener elementos de otras máquinas con las mismas etiquetas
         $otrosElementos = Elemento::with('maquina')
             ->whereIn('etiqueta_id', $etiquetasIds)
-            ->where('maquina_id', '!=', $maquina->id)
-            ->get()
-            ->groupBy('etiqueta_id'); // Agrupar por etiqueta para mejor visualización
-// Obtener los etiqueta_id de los elementos de la máquina actual:
-		$etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
-//Buscar etiquetas cuyos elementos estén todos en una misma máquina:
-		$etiquetasEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasIds)
-    ->selectRaw('etiqueta_id, COUNT(DISTINCT maquina_id) as total_maquinas')
-    ->groupBy('etiqueta_id')
-    ->having('total_maquinas', 1)
-    ->pluck('etiqueta_id');
-//Obtener los elementos de esas etiquetas:
-		$elementosEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasEnUnaSolaMaquina)
-    ->with('maquina') // Cargar relación con máquina
-    ->get();
+            ->where('maquina_id', '!=', $maquina->id);
 
-            return view('maquinas.show', [
-                'maquina' => $maquina,
-                'usuario1' => $usuario1,
-                'usuario2' => $usuario2,
-                'otrosElementos' => $otrosElementos,
-                'etiquetasEnUnaSolaMaquina' => $etiquetasEnUnaSolaMaquina,
-				 'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
-            ]);
+        if ($maquinaIdea5) {
+            $otrosElementos = $otrosElementos->where(function ($query) use ($maquinaIdea5) {
+                $query->where('maquina_id_2', '!=', $maquinaIdea5->id)
+                    ->orWhereNull('maquina_id_2');
+            });
+        }
+
+        $otrosElementos = $otrosElementos->get()->groupBy('etiqueta_id');
+
+        // Buscar etiquetas cuyos elementos están todos en una misma máquina
+        $etiquetasEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasIds)
+            ->selectRaw('etiqueta_id, COUNT(DISTINCT maquina_id) as total_maquinas')
+            ->groupBy('etiqueta_id')
+            ->having('total_maquinas', 1)
+            ->pluck('etiqueta_id');
+
+        // Obtener los elementos de esas etiquetas
+        $elementosEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasEnUnaSolaMaquina)
+            ->with('maquina')
+            ->get();
+
+        // Fusionar con elementos de maquina_id_2 = IDEA 5
+        if ($maquinaIdea5) {
+            $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)->get();
+            $elementosEnUnaSolaMaquina = $elementosEnUnaSolaMaquina->merge($elementosExtra);
+        }
+
+        return view('maquinas.show', [
+            'maquina' => $maquina,
+            'usuario1' => $usuario1,
+            'usuario2' => $usuario2,
+            'otrosElementos' => $otrosElementos,
+            'etiquetasEnUnaSolaMaquina' => $etiquetasEnUnaSolaMaquina,
+            'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
+            'elementosMaquina' => $elementosMaquina, // ✅ Ahora incluye los elementos de otras máquinas con maquina_id_2 = IDEA 5
+        ]);
     }
+
 
 
     public function create()

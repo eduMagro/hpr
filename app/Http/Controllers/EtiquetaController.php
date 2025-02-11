@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Maquina;
+use Illuminate\Support\Facades\Log;
 
 
 class etiquetaController extends Controller
@@ -75,10 +76,15 @@ class etiquetaController extends Controller
                     'error' => 'No se encontraron elementos asociados a esta etiqueta en esta máquina.',
                 ], 400);
             }
-            // Capturamos colección de objetos en la maquina de la misma etiqueta
             $elementosEnMaquina = $etiqueta->elementos()
-                ->where('maquina_id', $maquina_id)
+                ->where(function ($query) use ($maquina_id) {
+                    $query->where('maquina_id', $maquina_id)
+                        ->orWhere('maquina_id_2', $maquina_id);
+                })
                 ->get();
+
+            // Para la máquina con id 7, incluir los elementos extra (aquellos con maquina_id_2 = 7)
+
             // Verificar si la etiqueta está repartida en diferentes máquinas
             $enOtrasMaquinas = $etiqueta->elementos()
                 ->where('maquina_id', '!=', $maquina_id)
@@ -91,9 +97,22 @@ class etiquetaController extends Controller
                     'error' => 'La máquina asociada al elemento no existe.',
                 ], 404);
             }
-
+            if ($maquina->id == 7) {
+                $elementosExtra = Elemento::with('etiquetaRelacion', 'planilla')
+                    ->where('maquina_id_2', $maquina->id)
+                    ->where('maquina_id', '!=', $maquina->id)
+                    ->get();
+                $elementosEnMaquina = $elementosEnMaquina->merge($elementosExtra);
+            }
             // Buscar la ubicación que contenga el código de la máquina en su descripción
             $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
+
+            if (!$ubicacion) {
+                // ID de una ubicación por defecto (ajústalo según tu base de datos)
+                $ubicacion = Ubicacion::find(33); // Cambia '1' por el ID de la ubicación predeterminada
+            }
+
+
             // 1. Agrupar los elementos por diámetro sumando sus pesos
             $diametrosConPesos = [];
             foreach ($elementosEnMaquina as $elemento) {
@@ -105,7 +124,6 @@ class etiquetaController extends Controller
                 $diametrosConPesos[$diametro] += $peso;
             }
 
-            $productosConsumidos = [];
             $producto1 = null;
             $producto2 = null;
 
@@ -149,11 +167,17 @@ class etiquetaController extends Controller
                     }
                 }
 
-                // Si la planilla de la etiqueta no tiene fecha de inicio, asignarla y cambiar su estado
-                if ($etiqueta->planilla && is_null($etiqueta->planilla->fecha_inicio)) {
-                    $etiqueta->planilla->fecha_inicio = now();
-                    $etiqueta->planilla->estado = "fabricando";
-                    $etiqueta->planilla->save();
+                if ($etiqueta->planilla) {
+                    if (is_null($etiqueta->planilla->fecha_inicio)) {
+                        $etiqueta->planilla->fecha_inicio = now();
+                        $etiqueta->planilla->estado = "fabricando";
+                        $etiqueta->planilla->save();
+                    }
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'La etiqueta no tiene una planilla asociada.',
+                    ], 400);
                 }
 
                 // Actualizar la etiqueta a "fabricando"
@@ -176,10 +200,16 @@ class etiquetaController extends Controller
                         'error' => "Todos los elementos en la máquina ya han sido completados.",
                     ], 400);
                 }
+
                 // -------------- CONSUMOS
                 $consumos = [];
 
                 foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
+                    // Si la máquina es ID 7, solo permitir diámetro 5
+                    if ($maquina_id == 7 && $diametro != 5) {
+                        continue; // Saltar cualquier otro diámetro
+                    }
+
                     $productosPorDiametro = $maquina->productos()
                         ->where('diametro', $diametro)
                         ->orderBy('peso_stock')
@@ -224,6 +254,11 @@ class etiquetaController extends Controller
                     }
                 }
 
+                // **Filtramos los elementos en la máquina** para procesar solo los de diámetro 5 cuando la máquina es 7
+                if ($maquina_id == 7) {
+                    $elementosEnMaquina = $elementosEnMaquina->where('diametro', 5);
+                }
+
                 // Asignar a cada elemento los productos de los cuales se consumió material,
                 // de acuerdo al peso que requiere cada uno
                 foreach ($elementosEnMaquina as $elemento) {
@@ -256,17 +291,21 @@ class etiquetaController extends Controller
                     $elemento->estado = "completado";
                     $elemento->fecha_finalizacion = now();
                     $elemento->ubicacion_id = $ubicacion->id;
-                    $elemento->save();
 
-                    // Si la descripción de la planilla contiene "carcasas" o "taller", cambiar maquina_id a 1
-                    if (
-                        stripos($etiqueta->planilla->descripcion, 'carcasas') !== false ||
-                        stripos($etiqueta->planilla->descripcion, 'taller') !== false
-                    ) {
-                        $elemento->maquina_id_2 = 7;
-                        $elemento->ubicacion_id = null;
+                    // Obtener el ID de la máquina llamada "IDEA 5" sin importar mayúsculas o minúsculas
+                    $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
+                    if ($maquinaIdea5) {
+                        // Si la descripción de la planilla contiene "carcasas" o "taller", cambiar maquina_id_2 al ID de "IDEA 5"
+                        if (
+                            stripos($etiqueta->planilla->ensamblado, 'CARCASAS') !== false ||
+                            stripos($etiqueta->planilla->ensamblado, 'TALLER') !== false
+                        ) {
+                            $elemento->maquina_id_2 = $maquinaIdea5->id;
+                            $elemento->ubicacion_id = null;
+                        }
                     }
 
+                    $elemento->save();
                     // Actualizar el registro global de consumos para este diámetro
                     $consumos[$elemento->diametro] = $consumosDisponibles;
                 }

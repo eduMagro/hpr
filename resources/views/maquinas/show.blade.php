@@ -41,7 +41,6 @@
         </script>
     @endif
 
-
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->
         <div class="mb-4">
@@ -143,13 +142,24 @@
             <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
             <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
 
-
                 @php
-                    // Agrupamos los elementos por etiqueta_id
-                    $elementosAgrupados = $maquina->elementos->groupBy('etiqueta_id');
+                    if ($maquina->id == 7) {
+                        // Usamos $elementosMaquina que ya contiene los elementos propios y los extra (maquina_id_2 = 7)
+                        $elementosAgrupados = $elementosMaquina
+                            ->groupBy('etiqueta_id')
+                            ->map(function ($grupo) {
+                                return $grupo->filter(function ($elemento) {
+                                    return strtolower(optional($elemento->etiquetaRelacion)->estado) === 'fabricando';
+                                });
+                            })
+                            ->filter(function ($grupo) {
+                                return $grupo->isNotEmpty();
+                            });
+                    } else {
+                        $elementosAgrupados = $maquina->elementos->groupBy('etiqueta_id');
+                    }
 
-                    $elementosAgrupadosScript = $maquina->elementos
-                        ->groupBy('etiqueta_id')
+                    $elementosAgrupadosScript = $elementosAgrupados
                         ->map(function ($grupo) {
                             return [
                                 'etiqueta' => $grupo->first()->etiquetaRelacion ?? null,
@@ -167,30 +177,32 @@
                                             'figura' => $elemento->figura,
                                         ];
                                     })
-                                    ->values(), // Asegurar que sea un array y no una colección
+                                    ->values(),
                             ];
                         })
-                        ->values(); // Convertimos en un array numérico en lugar de objeto
-
+                        ->values();
                 @endphp
 
                 @forelse ($elementosAgrupados as $etiquetaId => $elementos)
                     @php
-                        $etiqueta = $elementos->first()->etiquetaRelacion ?? null; // Obtener la etiqueta del primer elemento para mostrarla. cambio el nombre de la relacion para que nocree conflicto con la columna etiquta
-                        $planilla = $elementos->first()->planilla ?? null; // Obtener la etiqueta del primer elemento para mostrarla
-                    @endphp
-                    @php
-                        $etiqueta = $elementos->first()->etiquetaRelacion ?? null;
-                        $planilla = $elementos->first()->planilla ?? null;
+                        $firstElement = $elementos->first();
+                        if ($firstElement) {
+                            $etiqueta = $firstElement->etiquetaRelacion;
+                            $planilla = $firstElement->planilla;
+                        } else {
+                            $etiqueta = null;
+                            $planilla = null;
+                        }
                         $tieneElementosEnOtrasMaquinas =
                             isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
                     @endphp
 
                     <div
-                        class="{{ str_contains($planilla->ensamblado, 'TALLER') ? 'bg-red-200 text-white' : 'bg-yellow-200' }} p-6 rounded-lg shadow-md mt-4">
+                        class="{{ isset($planilla) && str_contains(optional($planilla)->ensamblado, 'TALLER') ? 'bg-red-200 text-white' : 'bg-yellow-200' }} p-6 rounded-lg shadow-md mt-4">
 
                         <h2 class="text-lg font-semibold text-gray-700">
-                            <strong> {{ $planilla->codigo_limpio }}</strong>
+                            <strong> {{ optional($planilla)->codigo_limpio }}
+                            </strong>
                         </h2>
                         <h3 class="text-lg font-semibold text-gray-800">
                             {{ $etiqueta->id_et }} {{ $etiqueta->nombre ?? 'Sin nombre' }} {{ $etiqueta->marca }}
@@ -200,21 +212,24 @@
                         <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
 
                         <div class="mb-4 bg-yellow-100 p-2 rounded-lg">
-                            <p><strong>Fecha Inicio:</strong> <span
-                                    id="inicio-{{ $etiqueta->id }}">{{ $etiqueta->fecha_inicio ?? 'No asignada' }}</span><strong>
-                                    Fecha
-                                    Finalización:</strong> <span
-                                    id="final-{{ $etiqueta->id }}">{{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}</span>
+                            <p>
+                                <strong>Fecha Inicio:</strong>
+                                <span id="inicio-{{ $etiqueta->id }}">
+                                    {{ $etiqueta->fecha_inicio ?? 'No asignada' }}
+                                </span>
+                                <strong>Fecha Finalización:</strong>
+                                <span id="final-{{ $etiqueta->id }}">
+                                    {{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}
+                                </span>
                                 <span id="emoji-{{ $etiqueta->id }}"></span><br>
-                                <strong> Estado: </strong><span
-                                    id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
+                                <strong> Estado: </strong>
+                                <span id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
                             </p>
                             <p>
-                                <strong>Paquete:
-                                </strong>{{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
+                                <strong>Paquete:</strong>
+                                {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
                             </p>
                         </div>
-
 
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
@@ -247,14 +262,18 @@
                                     <!-- Contenedor oculto para generar el QR -->
                                     <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
                                     @if ($tieneElementosEnOtrasMaquinas)
-                                        <p class="text-gray-600 text-sm"><strong>Fecha Inicio:</strong> <span
-                                                id="inicio-{{ $elemento->id }}">{{ $elemento->fecha_inicio ?? 'No asignada' }}</span><strong>
-                                                Fecha
-                                                Finalización:</strong> <span
-                                                id="final-{{ $elemento->id }}">{{ $elemento->fecha_finalizacion ?? 'No asignada' }}</span>
+                                        <p class="text-gray-600 text-sm">
+                                            <strong>Fecha Inicio:</strong>
+                                            <span id="inicio-{{ $elemento->id }}">
+                                                {{ $elemento->fecha_inicio ?? 'No asignada' }}
+                                            </span>
+                                            <strong>Fecha Finalización:</strong>
+                                            <span id="final-{{ $elemento->id }}">
+                                                {{ $elemento->fecha_finalizacion ?? 'No asignada' }}
+                                            </span>
                                             <span id="emoji-{{ $elemento->id }}"></span><br>
-                                            <strong> Estado: </strong><span
-                                                id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
+                                            <strong> Estado: </strong>
+                                            <span id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
                                         </p>
                                         <p class="text-gray-600 text-sm">
                                             {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
@@ -299,11 +318,11 @@
                                     @endif
 
                                     <p class="text-gray-600 text-sm">
-                                        <strong>Peso:</strong> {{ $elemento->peso_kg }} <strong>Diámetro:</strong>
-                                        {{ $elemento->diametro_mm }} <strong> Longitud:</strong>
-                                        {{ $elemento->longitud_cm }}<strong> Número de piezas:</strong>
-                                        {{ $elemento->barras ?? 'No asignado' }} <strong> Tipo de Figura:</strong>
-                                        {{ $elemento->figura ?? 'No asignado' }}
+                                        <strong>Peso:</strong> {{ $elemento->peso_kg }}
+                                        <strong>Diámetro:</strong> {{ $elemento->diametro_mm }}
+                                        <strong>Longitud:</strong> {{ $elemento->longitud_cm }}
+                                        <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
+                                        <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
                                     </p>
 
                                     <p class="text-gray-600 text-sm">
@@ -312,11 +331,10 @@
                                 </div>
                             @endforeach
                         </div>
-                        <!-- Asegúrate de que el canvas esté contenido en un div para que se ajuste al ancho del contenedor -->
+                        <!-- Contenedor para el canvas -->
                         <div id="canvas-container" style="width: 100%; border: 1px solid #ccc; border-radius: 8px;">
                             <canvas id="canvas-etiqueta-{{ $etiqueta->id }}" class="border"></canvas>
                         </div>
-
 
                     </div>
                 @empty
@@ -455,8 +473,6 @@
                     });
                 </script>
 
-
-
             </div>
 
             <!-- Modal Reportar Incidencia (Oculto por defecto) -->
@@ -466,7 +482,7 @@
                     <form method="POST" action="{{ route('alertas.store') }}">
                         @csrf
 
-                        <!-- Destinatario (Opcional: puedes ocultarlo o asignarlo dinámicamente) -->
+                        <!-- Destinatario -->
                         <label for="destinatario"
                             class="block text-sm font-medium text-gray-700 mb-1">Destinatario</label>
                         <select name="destinatario" id="destinatario" class="w-full border rounded p-2 mb-4"
@@ -481,8 +497,6 @@
                         <textarea name="mensaje" id="mensaje" class="w-full border rounded p-2 mb-4" rows="3"
                             placeholder="Describe el problema..." required></textarea>
                         <input type="hidden" name="user_id_2" value="{{ session('compañero_id') }}">
-
-
 
                         <div class="flex justify-end mt-4">
                             <button onclick="document.getElementById('modalIncidencia').classList.add('hidden')"
@@ -535,7 +549,6 @@
                             <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">
                                 Guardar Chequeo
                             </button>
-
                         </div>
                     </form>
                 </div>
@@ -556,7 +569,6 @@
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
-
     <script src="{{ asset('js/imprimirQr.js') }}"></script>
     <script>
         window.elementosAgrupadosScript = @json($elementosAgrupadosScript);

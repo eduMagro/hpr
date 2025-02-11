@@ -33,7 +33,7 @@ class Etiqueta extends Model
     // Relaciones
     public function planilla()
     {
-        return $this->belongsTo(Planilla::class);
+        return $this->belongsTo(Planilla::class, 'planilla_id');
     }
 
     public function elementos()
