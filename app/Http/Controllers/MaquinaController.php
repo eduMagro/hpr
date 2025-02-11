@@ -117,7 +117,6 @@ class MaquinaController extends Controller
         if ($maquinaIdea5) {
             $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)->get();
             $elementosEnUnaSolaMaquina = $elementosEnUnaSolaMaquina->merge($elementosExtra);
-            dd($elementosExtra->toArray(), $elementosEnUnaSolaMaquina->toArray());
         }
 
         return view('maquinas.show', [
