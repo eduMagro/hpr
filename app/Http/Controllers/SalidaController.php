@@ -10,8 +10,8 @@ class SalidaController extends Controller
     public function index()
     {
         $planillas = Planilla::with([
-            'paquetes:id,planilla_id,peso,ubicacion_id,estado',
-            'paquetes.ubicacion:id,nombre', // Cargar la ubicación de cada paquete
+            'paquetes:id,planilla_id,peso,ubicacion_id',
+            'paquetes.ubicacion:id', // Cargar la ubicación de cada paquete
             'etiquetas:id,planilla_id,estado,peso,paquete_id',
             'elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
             'elementos.ubicacion:id,nombre', // Cargar la ubicación de cada elemento
