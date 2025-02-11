@@ -66,24 +66,6 @@
         </main>
     </div>
 </body>
-<script src="https://js.pusher.com/7.0/pusher.min.js"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var userId = {{ auth()->id() }}; // Obtener el ID del usuario autenticado
 
-        var pusher = new Pusher("TU_APP_KEY", {
-            cluster: "TU_CLUSTER",
-            encrypted: true
-        });
-
-        var channel = pusher.subscribe("private-App.Models.User." + userId);
-
-        channel.bind("Illuminate\\Notifications\\Events\\BroadcastNotificationCreated", function(data) {
-            alert(data.mensaje); // Muestra una alerta en pantalla
-            var audio = new Audio("/sonidos/alerta.mp3"); // Ruta al sonido
-            audio.play();
-        });
-    });
-</script>
 
 </html>
