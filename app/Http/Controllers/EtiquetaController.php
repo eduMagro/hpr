@@ -234,6 +234,7 @@ class etiquetaController extends Controller
                             if ($producto->peso_stock == 0) {
                                 $producto->estado = "consumido";
                                 $producto->ubicacion_id = NULL;
+                                $producto->maquina_id = NULL;
                             }
                             $producto->save();
 
