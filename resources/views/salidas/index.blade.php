@@ -39,6 +39,9 @@
                             <li class="mt-2 {{ $etiqueta->color }} p-2 rounded-lg">
                                 <strong>Etiqueta #{{ $etiqueta->id }}</strong> - Peso:
                                 {{ number_format($etiqueta->peso, 2) }} kg
+                                @if (!is_null($etiqueta->ubicacion))
+                                    - Ubicación: {{ $etiqueta->ubicacion->nombre }}
+                                @endif
 
                                 <!-- Elementos dentro de esta etiqueta -->
                                 @if ($etiqueta->elementos->isNotEmpty())
@@ -47,8 +50,10 @@
                                             <li class="{{ $elemento->color }} p-1 rounded-lg">
                                                 <strong>Elemento #{{ $elemento->id }}</strong> -
                                                 Peso: {{ number_format($elemento->peso, 2) }} kg -
-                                                Máquina: {{ $elemento->maquina->nombre ?? 'Sin máquina' }} -
-                                                Ubicación: {{ $elemento->ubicacion->nombre ?? 'Sin ubicación' }}
+                                                Máquina: {{ $elemento->maquina->nombre ?? 'Sin máquina' }}
+                                                @if (!is_null($elemento->ubicacion))
+                                                    - Ubicación: {{ $elemento->ubicacion->nombre }}
+                                                @endif
                                             </li>
                                         @endforeach
                                     </ul>

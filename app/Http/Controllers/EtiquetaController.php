@@ -336,60 +336,64 @@ class etiquetaController extends Controller
                     $planilla->save();
                 }
             } elseif ($etiqueta->estado == "completada") { // ---------------------------------- C O M P L E T A D O
+                return response()->json([
+                    'success' => false,
+                    'error' => "Ya la has completado.",
+                ], 400);
                 // ---------------------------------- REVERTIR PESOS --  C O M P L E T A D O
-                $producto1 = $etiqueta->producto_id ? $maquina->productos()->find($etiqueta->producto_id) : null;
-                $producto2 = $etiqueta->producto_id_2 ? $maquina->productos()->find($etiqueta->producto_id_2) : null;
+                // $producto1 = $etiqueta->producto_id ? $maquina->productos()->find($etiqueta->producto_id) : null;
+                // $producto2 = $etiqueta->producto_id_2 ? $maquina->productos()->find($etiqueta->producto_id_2) : null;
 
 
                 // Se toma como referencia el peso total original de la etiqueta
-                $pesoRestaurar = $etiqueta->peso;
+                // $pesoRestaurar = $etiqueta->peso;
 
                 // Restaurar en producto1 (sin sobrepasar el peso_inicial)
-                if ($producto1) {
-                    $pesoIncremento = min($pesoRestaurar, $producto1->peso_inicial - $producto1->peso_stock);
-                    $producto1->peso_stock += $pesoIncremento;
-                    $pesoRestaurar -= $pesoIncremento;
-                    // Se restaura el estado al original (o se deja "fabricando" según la lógica de negocio)
-                    $producto1->estado = "fabricando";
-                    $producto1->save();
-                }
+                // if ($producto1) {
+                //     $pesoIncremento = min($pesoRestaurar, $producto1->peso_inicial - $producto1->peso_stock);
+                //     $producto1->peso_stock += $pesoIncremento;
+                //     $pesoRestaurar -= $pesoIncremento;
+                // Se restaura el estado al original (o se deja "fabricando" según la lógica de negocio)
+                //     $producto1->estado = "fabricando";
+                //     $producto1->save();
+                // }
 
                 // Restaurar en producto2, si aún queda peso pendiente por restaurar
-                if ($pesoRestaurar > 0 && $producto2) {
-                    $pesoIncremento = min($pesoRestaurar, $producto2->peso_inicial - $producto2->peso_stock);
-                    $producto2->peso_stock += $pesoIncremento;
-                    $pesoRestaurar -= $pesoIncremento;
-                    $producto2->estado = "fabricando";
-                    $producto2->save();
-                }
+                // if ($pesoRestaurar > 0 && $producto2) {
+                //     $pesoIncremento = min($pesoRestaurar, $producto2->peso_inicial - $producto2->peso_stock);
+                //     $producto2->peso_stock += $pesoIncremento;
+                //     $pesoRestaurar -= $pesoIncremento;
+                //     $producto2->estado = "fabricando";
+                //     $producto2->save();
+                // }
 
                 // ---------------------------------- REVERTIR ELEMENTOS -- C O M P L E T A D O
 
                 // 2. (Opcional) Revertir el estado de los elementos asociados a la etiqueta,
                 // en caso de que hayan sido modificados (por ejemplo, pasar de "fabricando" a "pendiente")
-                foreach ($elementosEnMaquina as $elemento) {
-                    $elemento->estado = "pendiente";
-                    $elemento->fecha_inicio = null;
-                    $elemento->fecha_finalizacion = null;
-                    $elemento->users_id = null;
-                    $elemento->users_id_2 = null;
-                    $elemento->save();
-                }
+                // foreach ($elementosEnMaquina as $elemento) {
+                //     $elemento->estado = "pendiente";
+                //     $elemento->fecha_inicio = null;
+                //     $elemento->fecha_finalizacion = null;
+                //     $elemento->users_id = null;
+                //     $elemento->users_id_2 = null;
+                //     $elemento->save();
+                // }
 
-                // ---------------------------------- REVERTIR ETIQUETAS -- C O M P L E T A D O
-                $etiqueta->fecha_inicio = null;
-                $etiqueta->fecha_finalizacion = null;
-                $etiqueta->estado = "pendiente";
-                $etiqueta->users_id_1 = null;
-                $etiqueta->users_id_2 = null;
-                $etiqueta->producto_id = null;
-                $etiqueta->producto_id_2 = null;
-                $etiqueta->save();
-                // ---------------------------------- REVERTIR ETIQUETAS -- C O M P L E T A D O
-                $planilla->fecha_inicio = null;
-                $planilla->fecha_finalizacion = null;
-                $planilla->estado = 'pendiente';
-                $planilla->save();
+                // // ---------------------------------- REVERTIR ETIQUETAS -- C O M P L E T A D O
+                // $etiqueta->fecha_inicio = null;
+                // $etiqueta->fecha_finalizacion = null;
+                // $etiqueta->estado = "pendiente";
+                // $etiqueta->users_id_1 = null;
+                // $etiqueta->users_id_2 = null;
+                // $etiqueta->producto_id = null;
+                // $etiqueta->producto_id_2 = null;
+                // $etiqueta->save();
+                // // ---------------------------------- REVERTIR ETIQUETAS -- C O M P L E T A D O
+                // $planilla->fecha_inicio = null;
+                // $planilla->fecha_finalizacion = null;
+                // $planilla->estado = 'pendiente';
+                // $planilla->save();
             }
 
 
