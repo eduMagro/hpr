@@ -35,4 +35,16 @@ class Ubicacion extends Model
     {
         return $this->hasMany(Producto::class);
     }
+    public function elementos()
+    {
+        return $this->hasMany(Elemento::class, 'ubicacion_id');
+    }
+    public function etiquetas()
+    {
+        return $this->hasMany(Etiqueta::class, 'ubicacion_id');
+    }
+    public function paquetes()
+    {
+        return $this->hasMany(Paquete::class, 'ubicacion_id');
+    }
 }

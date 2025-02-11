@@ -301,6 +301,7 @@ class etiquetaController extends Controller
                         ) {
                             $elemento->maquina_id_2 = $maquinaIdea5->id;
                             $elemento->ubicacion_id = null;
+                            $etiqueta->ubicacion_id = 33;
                         }
                     }
 

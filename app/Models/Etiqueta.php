@@ -64,6 +64,10 @@ class Etiqueta extends Model
     {
         return $this->belongsTo(User::class, 'users_id_2');
     }
+    public function ubicacion()
+    {
+        return $this->belongsTo(Ubicacion::class, 'ubicacion_id');
+    }
 
     // Accessors
     public function getPesoKgAttribute()
