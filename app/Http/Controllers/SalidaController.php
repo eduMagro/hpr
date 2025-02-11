@@ -57,6 +57,8 @@ class SalidaController extends Controller
                 'progreso' => round($progreso, 2),
                 'paquetes' => $paquetes,
                 'etiquetas' => $etiquetas,
+                'elementos' => $elementos,
+                'subpaquetes' => $subpaquetes,
                 'etiquetasSinPaquete' => $etiquetas->whereNull('paquete_id')
             ];
         });
