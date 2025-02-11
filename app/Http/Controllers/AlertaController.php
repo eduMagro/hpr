@@ -88,7 +88,7 @@ class AlertaController extends Controller
         ]);
         // Verificar si la sesión tiene el valor esperado
         $companeroId = session()->get('companero_id', null);
-        \Log::info("Valor de companero_id en la sesión: " . json_encode($companeroId));
+
 
         try {
             // Crear una nueva alerta
