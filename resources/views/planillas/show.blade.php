@@ -1,70 +1,200 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-
-            {{ __('Detalles Materia Prima') }}
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight"> <a href="{{ route('planillas.index') }}"
+                class="text-blue-500">
+                {{ __('Planillas') }}
+            </a><span> / </span>Elementos de Planilla <strong>{{ $planilla->codigo_limpio }}</strong>
         </h2>
     </x-slot>
-    <div class="container mx-auto px-4 py-6">
-        <!-- Tarjetas de productos -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <style>
+        canvas {
+            width: 100%;
+            max-width: 100%;
+            border: 1px solid blue;
+            border-radius: 4px;
+            background-color: rgba(0, 123, 255, 0.1)
+        }
+    </style>
 
-            @if (isset($detalles_producto))
-                <div class="bg-white shadow-md rounded-lg p-4">
 
-                    <h3 class="font-bold text-lg text-gray-700">ID Producto: {{ $detalles_producto->id }}</h3>
-                    <p><strong>Fabricante:</strong> {{ $detalles_producto->fabricante }}</p>
-                    <p><strong>Nombre:</strong> {{ $detalles_producto->nombre }}</p>
-                    <p><strong>Tipo:</strong> {{ $detalles_producto->tipo }}</p>
-                    <p><strong>Diámetro:</strong> {{ $detalles_producto->diametro }}</p>
-                    <p><strong>Longitud:</strong> {{ $detalles_producto->longitud ?? 'N/A' }}</p>
-                    <p><strong>Nº Colada:</strong> {{ $detalles_producto->n_colada }}</p>
-                    <p><strong>Nº Paquete:</strong> {{ $detalles_producto->n_paquete }}</p>
-                    <p><strong>Peso Inicial:</strong> {{ $detalles_producto->peso_inicial }} kg</p>
-                    <p><strong>Peso Stock:</strong> {{ $detalles_producto->peso_stock }} kg</p>
-                    <p><strong>Estado:</strong> {{ $detalles_producto->estado }}</p>
-                    <p><strong>Otros:</strong> {{ $detalles_producto->otros ?? 'N/A' }}</p>
-                    <p>
-                        <button onclick="generateAndPrintQR('{{ $detalles_producto->id }}')" class="btn btn-primary">Imprimir
-                            QR</button>
-                    </p>
-                    <div id="qrCanvas{{ $detalles_producto->id }}" style="display:none;"></div>
+    <div class="container mx-auto p-2">
+        <h1 class="text-2xl font-bold mb-4">Progreso de Planillas</h1>
 
-                    <hr class="m-2 border-gray-300">
+        @forelse ($planillasCalculadas as $data)
+            @php
+                $planilla = $data['planilla'];
+            @endphp
 
-                    <!-- Detalles de Ubicación o Máquina -->
-                    @if (isset($detalles_producto->ubicacion->descripcion))
-                        <p class="font-bold text-lg text-gray-800 break-words">
-                            {{ $detalles_producto->ubicacion->descripcion }}</p>
-                    @elseif (isset($detalles_producto->maquina->nombre))
-                        <p class="font-bold text-lg text-gray-800 break-words">{{ $detalles_producto->maquina->nombre }}
-                        </p>
-                    @else
-                        <p class="font-bold text-lg text-gray-800 break-words">No está ubicada</p>
-                    @endif
-                    <p class="text-gray-600 mt-2">{{ $detalles_producto->created_at->format('d/m/Y H:i') }}</p>
+            <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+                <h2 class="text-lg font-semibold text-gray-800">
+                    Planilla: {{ $planilla->codigo_limpio }}
+                    (Peso Total: {{ number_format($planilla->peso_total, 2) }} kg)
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                    <p><strong>Cliente:</strong> {{ $planilla->cliente }}</p>
+                    <p><strong>Obra:</strong> {{ $planilla->nom_obra }}</p>
+                    <p><strong>Sección:</strong> {{ $planilla->seccion }}</p>
+                    <p><strong>Descripción:</strong> {{ $planilla->descripcion }}</p>
+                </div>
 
-                    <hr class="my-2 border-gray-300">
-
-                    <div class="mt-2 flex justify-between">
-                         <!-- Enlace para editar -->
-                         <a href="{{ route('productos.edit', $detalles_producto->id) }}"
-                            class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                            <!-- Formulario para eliminar -->
-                        <form action="{{ route('productos.destroy', $detalles_producto->id) }}" method="POST"
-                            onsubmit="return confirm('¿Estás seguro de querer eliminar este producto?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-red-500">Eliminar</button>
-                        </form>
+                <!-- Barra de progreso -->
+                <div class="w-full bg-gray-200 rounded-full h-6 mt-4">
+                    <div class="bg-blue-600 text-xs font-medium text-white text-center p-1 leading-none rounded-full"
+                        style="width: {{ $data['progreso'] }}%">
+                        {{ number_format($data['progreso'], 2) }}%
                     </div>
                 </div>
-            @else
-                <div class="col-span-3 text-center py-4">No hay productos disponibles.</div>
-         
 
-            @endif
-        </div>
-      
+                <!-- Sección: Paquetes Empaquetados en dos columnas -->
+                @if ($data['paquetes']->isNotEmpty())
+                    <h3 class="text-md font-semibold mt-6">Paquetes Empaquetados</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                        @foreach ($data['paquetes'] as $paquete)
+                            <div class="bg-white shadow-md rounded-lg p-2 border {{ $paquete->color }}">
+                                <strong>Paquete #{{ $paquete->id }}</strong> -
+                                Peso: {{ number_format($paquete->peso, 2) }} kg
+                                @if (!is_null($paquete->ubicacion))
+                                    - Ubicación: {{ $paquete->ubicacion->nombre }}
+                                @endif
+
+                                @php
+                                    $etiquetasPaquete = $data['etiquetas']->where('paquete_id', $paquete->id);
+                                @endphp
+
+                                @if ($etiquetasPaquete->isNotEmpty())
+                                    <ul class="list-disc list-inside ml-4 mt-2">
+                                        @foreach ($etiquetasPaquete as $etiqueta)
+                                            <li class="p-2 rounded-lg {{ $etiqueta->color }}">
+                                                <strong>Etiqueta #{{ $etiqueta->id }}</strong> -
+                                                Peso: {{ number_format($etiqueta->peso, 2) }} kg
+                                                @if (!is_null($etiqueta->ubicacion))
+                                                    - Ubicación: {{ $etiqueta->ubicacion->nombre }}
+                                                @endif
+                                            </li>
+                                            <!-- Elementos dentro de la etiqueta sin paquete -->
+                                            @if ($etiqueta->elementos->isNotEmpty())
+                                                <ul class="list-disc list-inside text-gray-500 ml-4 mt-2">
+                                                    @foreach ($etiqueta->elementos as $elemento)
+                                                        <li class="p-2 rounded-lg {{ $elemento->color }}">
+                                                            <strong>Elemento #{{ $elemento->id }}</strong> -
+                                                            Peso: {{ number_format($elemento->peso, 2) }} kg
+                                                            @if (!is_null($elemento->maquina))
+                                                                - Máquina: {{ $elemento->maquina->nombre }}
+                                                            @else
+                                                                - Máquina: Sin máquina
+                                                            @endif
+                                                            @if (!is_null($elemento->ubicacion))
+                                                                - Ubicación: {{ $elemento->ubicacion->nombre }}
+                                                            @endif
+
+                                                            <!-- Subpaquetes dentro del elemento -->
+                                                            @if ($elemento->subpaquetes && $elemento->subpaquetes->isNotEmpty())
+                                                                <ul class="list-disc list-inside ml-6 mt-2">
+                                                                    @foreach ($elemento->subpaquetes as $subpaquete)
+                                                                        <li class="p-2 rounded-lg">
+                                                                            <strong>Subpaquete:</strong>
+                                                                            {{ $subpaquete->nombre }} -
+                                                                            Peso:
+                                                                            {{ number_format($subpaquete->peso, 2) }}
+                                                                            kg
+                                                                            @if (!empty($subpaquete->dimensiones))
+                                                                                - Dimensiones:
+                                                                                {{ $subpaquete->dimensiones }}
+                                                                            @endif
+                                                                            @if (!empty($subpaquete->cantidad))
+                                                                                - Cantidad: {{ $subpaquete->cantidad }}
+                                                                            @endif
+                                                                            @if (!empty($subpaquete->descripcion))
+                                                                                - Descripción:
+                                                                                {{ $subpaquete->descripcion }}
+                                                                            @endif
+                                                                        </li>
+                                                                    @endforeach
+                                                                </ul>
+                                                            @endif
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                <p class="text-gray-500 text-sm mt-2">No hay elementos en esta etiqueta.
+                                                </p>
+                                            @endif
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-gray-500 mt-4">No hay paquetes empaquetados.</p>
+                @endif
+
+                <hr style="border: 1px solid black; margin: 30px;">
+
+                <!-- Sección: Etiquetas sin paquete en dos columnas -->
+                @if ($data['etiquetasSinPaquete']->isNotEmpty())
+                    <h3 class="text-md font-semibold mt-8">Etiquetas sin paquete</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                        @foreach ($data['etiquetasSinPaquete'] as $etiqueta)
+                            <div class="bg-white shadow-md rounded-lg p-2 border {{ $etiqueta->color }}">
+                                <strong>Etiqueta #{{ $etiqueta->id }}</strong> -
+                                Peso: {{ number_format($etiqueta->peso, 2) }} kg
+                                @if (!is_null($etiqueta->ubicacion))
+                                    - Ubicación: {{ $etiqueta->ubicacion->nombre }}
+                                @endif
+
+                                <!-- Elementos dentro de la etiqueta sin paquete -->
+                                @if ($etiqueta->elementos->isNotEmpty())
+                                    <ul class="list-disc list-inside text-gray-500 ml-4 mt-2">
+                                        @foreach ($etiqueta->elementos as $elemento)
+                                            <li class="p-2 rounded-lg {{ $elemento->color }}">
+                                                <strong>Elemento #{{ $elemento->id }}</strong> -
+                                                Peso: {{ number_format($elemento->peso, 2) }} kg
+                                                @if (!is_null($elemento->maquina))
+                                                    - Máquina: {{ $elemento->maquina->nombre }}
+                                                @else
+                                                    - Máquina: Sin máquina
+                                                @endif
+                                                @if (!is_null($elemento->ubicacion))
+                                                    - Ubicación: {{ $elemento->ubicacion->nombre }}
+                                                @endif
+
+                                                <!-- Subpaquetes dentro del elemento -->
+                                                @if ($elemento->subpaquetes && $elemento->subpaquetes->isNotEmpty())
+                                                    <ul class="list-disc list-inside ml-6 mt-2">
+                                                        @foreach ($elemento->subpaquetes as $subpaquete)
+                                                            <li class="p-2 rounded-lg">
+                                                                <strong>Subpaquete:</strong> {{ $subpaquete->nombre }}
+                                                                -
+                                                                Peso: {{ number_format($subpaquete->peso, 2) }} kg
+                                                                @if (!empty($subpaquete->dimensiones))
+                                                                    - Dimensiones: {{ $subpaquete->dimensiones }}
+                                                                @endif
+                                                                @if (!empty($subpaquete->cantidad))
+                                                                    - Cantidad: {{ $subpaquete->cantidad }}
+                                                                @endif
+                                                                @if (!empty($subpaquete->descripcion))
+                                                                    - Descripción: {{ $subpaquete->descripcion }}
+                                                                @endif
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <p class="text-gray-500 text-sm mt-2">No hay elementos en esta etiqueta.</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-gray-500 mt-4">No hay etiquetas sin paquete.</p>
+                @endif
+            </div>
+        @empty
+            <p class="text-gray-500">No hay planillas disponibles.</p>
+        @endforelse
     </div>
 </x-app-layout>

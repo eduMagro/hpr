@@ -40,16 +40,6 @@
             });
         </script>
     @endif
-    @if (session('warning'))
-        <script>
-            Swal.fire({
-                icon: 'warning',
-                title: 'Atención',
-                text: "{{ session('warning') }}",
-                confirmButtonText: 'Entendido'
-            });
-        </script>
-    @endif
 
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->
@@ -153,6 +143,7 @@
             <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
 
                 @php
+
                     if ($maquina->id == 7) {
                         // Usamos $elementosMaquina que ya contiene los elementos propios y los extra (maquina_id_2 = 7)
                         $elementosAgrupados = $elementosMaquina
@@ -206,6 +197,8 @@
                         $tieneElementosEnOtrasMaquinas =
                             isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
                     @endphp
+
+
 
                     <div
                         class="{{ isset($planilla) && str_contains(optional($planilla)->ensamblado, 'TALLER') ? 'bg-red-200 text-white' : 'bg-yellow-200' }} p-6 rounded-lg shadow-md mt-4">

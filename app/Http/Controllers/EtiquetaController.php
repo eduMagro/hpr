@@ -296,17 +296,22 @@ class etiquetaController extends Controller
 
                     // Obtener el ID de la máquina llamada "IDEA 5" sin importar mayúsculas o minúsculas
                     $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
-                    if ($maquina->nombre == "Idea 5") {
-                        // Si la descripción de la planilla contiene "carcasas" o "taller", cambiar maquina_id_2 al ID de "IDEA 5"
-                        if (
-                            stripos($etiqueta->planilla->ensamblado, 'CARCASAS') !== false ||
-                            stripos($etiqueta->planilla->ensamblado, 'TALLER') !== false
-                        ) {
-                            $elemento->maquina_id_2 = $maquinaIdea5->id;
-                            $elemento->ubicacion_id = null;
-                            $etiqueta->ubicacion_id = 33;
-                        }
+
+                    // Si la descripción de la planilla contiene "carcasas" o "taller", cambiar maquina_id_2 al ID de "IDEA 5"
+                    if (
+                        stripos($etiqueta->planilla->ensamblado, 'CARCASAS') !== false
+
+                    ) {
+                        $elemento->maquina_id_2 = $maquinaIdea5->id;
+                        $elemento->ubicacion_id = null;
+                        $etiqueta->ubicacion_id = 33;
                     }
+                    if (stripos($etiqueta->planilla->ensamblado, 'TALLER') !== false) {
+                        $elemento->maquina_id_2 = $maquinaIdea5->id;
+                        $elemento->ubicacion_id = null;
+                        $etiqueta->ubicacion_id = 33;
+                    }
+
 
                     $elemento->save();
                     // Actualizar el registro global de consumos para este diámetro

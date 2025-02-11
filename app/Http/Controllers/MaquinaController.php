@@ -64,7 +64,7 @@ class MaquinaController extends Controller
         // Obtener los elementos de esta máquina
         $elementosMaquina = $maquina->elementos;
 
-        // Si la máquina actual es "IDEA 5", incluir también los elementos con maquina_id_2 asignado a IDEA 5
+        // Si la máquina actual es "IDEA 5" o la 7, incluir también los elementos con maquina_id_2 asignado
         if ($maquinaIdea5 && $maquina->id == $maquinaIdea5->id) {
             $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)
                 ->where('maquina_id', '!=', $maquinaIdea5->id) // ✅ Solo los que están en otras máquinas
@@ -73,6 +73,16 @@ class MaquinaController extends Controller
             // Fusionar elementos en la máquina con los elementos extra
             $elementosMaquina = $elementosMaquina->merge($elementosExtra);
         }
+
+        // 🔹 Agregar elementos con maquina_id_2 = 7 cuando la máquina sea la 7
+        if ($maquina->id == 7) {
+            $elementosExtra = Elemento::where('maquina_id_2', 7)
+                ->where('maquina_id', '!=', 7) // ✅ Solo los que están en otras máquinas
+                ->get();
+
+            $elementosMaquina = $elementosMaquina->merge($elementosExtra);
+        }
+
 
         // Obtener las etiquetas de estos elementos
         $etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
@@ -107,6 +117,7 @@ class MaquinaController extends Controller
         if ($maquinaIdea5) {
             $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)->get();
             $elementosEnUnaSolaMaquina = $elementosEnUnaSolaMaquina->merge($elementosExtra);
+            dd($elementosExtra->toArray(), $elementosEnUnaSolaMaquina->toArray());
         }
 
         return view('maquinas.show', [
