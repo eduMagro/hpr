@@ -233,6 +233,7 @@ class etiquetaController extends Controller
                             $pesoNecesarioTotal -= $restar;
                             if ($producto->peso_stock == 0) {
                                 $producto->estado = "consumido";
+                                $producto->ubicacion_id = NULL;
                             }
                             $producto->save();
 
@@ -333,6 +334,7 @@ class etiquetaController extends Controller
                     ->doesntExist();
                 if ($todasFinalizadas) {
                     $planilla->fecha_finalizacion = now();
+                    $planilla->estado = "completada";
                     $planilla->save();
                 }
             } elseif ($etiqueta->estado == "completada") { // ---------------------------------- C O M P L E T A D O
