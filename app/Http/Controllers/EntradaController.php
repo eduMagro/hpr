@@ -191,7 +191,7 @@ class EntradaController extends Controller
                 'albaran' => $request->albaran,
                 'peso_total' => $request->peso_total,
             ]);
-
+            DB::commit();
             return redirect()->route('entradas.index')->with('success', 'Entrada de material actualizada correctamente.');
         } catch (ValidationException $e) {
             // Mostrar todos los errores de validación
