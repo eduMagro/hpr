@@ -30,6 +30,7 @@ class Elemento extends Model
         'nombre',
         'maquina_id',
         'maquina_id_2',
+        'soldadora',
         'producto_id',
         'producto_id_2',
         'paquete_id',
@@ -98,6 +99,10 @@ class Elemento extends Model
     public function maquina_2()
     {
         return $this->belongsTo(Maquina::class, 'maquina_id_2');
+    }
+    public function maquina_3()
+    {
+        return $this->belongsTo(Maquina::class, 'soldadora');
     }
 
     // Relación con el modelo Producto (si existe)

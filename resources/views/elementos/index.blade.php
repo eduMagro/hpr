@@ -118,7 +118,19 @@
                         <th class="px-4 py-2">Máquina Secundaria
                             <!-- Formulario de búsqueda por ID -->
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
-                                <input type="text" name="maquina"
+                                <input type="text" name="maquina2"
+                                    class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
+                                <button type="submit"
+                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
+                                    Filtrar
+                                </button>
+                            </form>
+                        </th>
+                        <th class="px-4 py-2">Soldadora
+                            <!-- Formulario de búsqueda por ID -->
+                            <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
+                                <input type="text" name="maquina3"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                     placeholder="Buscar">
                                 <button type="submit"
@@ -239,6 +251,7 @@
                             <td class="px-4 py-2">{{ $elemento->nombre }}</td>
                             <td class="px-4 py-2">{{ $elemento->maquina->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $elemento->maquina_2->nombre ?? 'N/A' }}</td>
+                            <td class="px-4 py-2">{{ $elemento->maquina_3->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-2">
                                 @if ($elemento->producto)
                                     <a href="{{ route('productos.show', $elemento->producto_id) }}"

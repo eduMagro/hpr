@@ -293,27 +293,16 @@ class etiquetaController extends Controller
                     $elemento->estado = "completado";
                     $elemento->fecha_finalizacion = now();
                     $elemento->ubicacion_id = $ubicacion->id;
+                    $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
-                    // Obtener el ID de la máquina llamada "IDEA 5" sin importar mayúsculas o minúsculas
-                    $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
-
-                    // Si la descripción de la planilla contiene "carcasas" o "taller", cambiar maquina_id_2 al ID de "IDEA 5"
-                    if (
-                        stripos($etiqueta->planilla->ensamblado, 'CARCASAS') !== false
-
-                    ) {
-                        $elemento->maquina_id_2 = $maquinaIdea5->id;
-                        $elemento->ubicacion_id = null;
-                        $etiqueta->ubicacion_id = 33;
+                    if (strpos($ensamblado, 'CARCASAS') !== false) {
+                        asignarMaquinas($elemento, $etiqueta, 'CARCASAS');
+                    } elseif (strpos($ensamblado, 'TALLER') !== false) {
+                        asignarMaquinas($elemento, $etiqueta, 'TALLER');
                     }
-                    if (stripos($etiqueta->planilla->ensamblado, 'TALLER') !== false) {
-                        $elemento->maquina_id_2 = $maquinaIdea5->id;
-                        $elemento->ubicacion_id = null;
-                        $etiqueta->ubicacion_id = 33;
-                    }
-
-
+                    
                     $elemento->save();
+                    $etiqueta->save();
                     // Actualizar el registro global de consumos para este diámetro
                     $consumos[$elemento->diametro] = $consumosDisponibles;
                 }
@@ -473,4 +462,62 @@ class etiquetaController extends Controller
             'message' => 'Todas las etiquetas están completas.'
         ]);
     }
+
+    /**
+ * Asigna las máquinas a un elemento según el tipo de ensamblado.
+ *
+ * @param  \App\Models\Elemento $elemento
+ * @param  \App\Models\Etiqueta $etiqueta
+ * @param  string $tipoEnsamblado ("CARCASAS" o "TALLER")
+ * @return void
+ */
+function asignarMaquinas($elemento, $etiqueta, $tipoEnsamblado)
+{
+    // Obtener la máquina "IDEA 5"
+    $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
+
+    // Validar que exista la máquina "IDEA 5"
+    if (!$maquinaIdea5) {
+        return response()->json([
+            'success' => false,
+            'error' => 'No encontramos la maquina Idea 5',
+        ], 500);
+    }
+
+    // Asignar "IDEA 5"
+    $elemento->maquina_id_2 = $maquinaIdea5->id;
+    $elemento->ubicacion_id = null;
+    $etiqueta->ubicacion_id = 33;
+
+    // Si el ensamblado es "TALLER", también se asigna una máquina de soldar
+    if ($tipoEnsamblado === 'TALLER') {
+        // Buscar una máquina de soldar disponible
+        $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
+            ->whereDoesntHave('etiquetas')
+            ->first();
+
+        // Si no hay máquinas de soldar libres, seleccionar la que recibió un elemento primero
+        if (!$maquinaSoldarDisponible) {
+            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
+                ->whereHas('elementos', function ($query) {
+                    $query->orderBy('created_at'); // Seleccionar la que lleva más tiempo trabajando
+                })
+                ->first();
+        }
+
+        if ($maquinaSoldarDisponible) {
+            $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
+        } else {
+            return response()->json([
+                'success' => false,
+                'error' => 'No se encontró ninguna máquina de soldar disponible',
+            ], 500);
+        }
+    }
+
+    // Guardar cambios
+    $elemento->save();
+    $etiqueta->save();
+}
+
 }

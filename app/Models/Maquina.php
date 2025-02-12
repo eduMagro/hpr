@@ -42,4 +42,9 @@ class Maquina extends Model
     {
         return $this->hasMany(Elemento::class, 'maquina_id_2');
     }
+    // Elementos que tienen esta máquina como terciaria
+    public function elementosTerciarios()
+    {
+        return $this->hasMany(Elemento::class, 'soldadora');
+    }
 }

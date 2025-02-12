@@ -54,7 +54,7 @@
                             <!-- Diámetro mínimo -->
                             <div class="form-group mb-4">
                                 <label for="diametro_min" class="form-label fw-bold text-uppercase">Diámetro Mínimo *</label>
-                                <select id="diametro_min" name="diametro_min" class="form-control form-control-lg" required>
+                                <select id="diametro_min" name="diametro_min" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona un diámetro mínimo</option>
                                     <option value="8">8</option>
                                     <option value="10">10</option>
@@ -69,7 +69,7 @@
                             <!-- Diámetro máximo -->
                             <div class="form-group mb-4">
                                 <label for="diametro_max" class="form-label fw-bold text-uppercase">Diámetro Máximo *</label>
-                                <select id="diametro_max" name="diametro_max" class="form-control form-control-lg" required>
+                                <select id="diametro_max" name="diametro_max" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona un diámetro máximo</option>
                                     <option value="8">8</option>
                                     <option value="10">10</option>

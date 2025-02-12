@@ -148,8 +148,8 @@ class MaquinaController extends Controller
             $request->validate([
                 'codigo' => 'required|string|max:6|unique:maquinas,codigo',
                 'nombre' => 'required|string|max:40|unique:maquinas,nombre',
-                'diametro_min' => 'required|integer',
-                'diametro_max' => 'required|integer',
+                'diametro_min' => 'integer',
+                'diametro_max' => 'integer',
                 'peso_min' => 'integer',
                 'peso_max' => 'integer',
             ], [
@@ -164,10 +164,10 @@ class MaquinaController extends Controller
                 'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
                 'nombre.unique' => 'Ya existe una máquina con el mismo nombre',
 
-                'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
+                // 'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
                 'diametro_min.integer' => 'El campo "diámetro mínimo" debe ser un número entero.',
 
-                'diametro_max.required' => 'El campo "diámetro máximo" es obligatorio.',
+                // 'diametro_max.required' => 'El campo "diámetro máximo" es obligatorio.',
                 'diametro_max.integer' => 'El campo "diámetro máximo" debe ser un número entero.',
 
                 // 'peso_min.required'     => 'El campo "peso mínimo" es obligatorio.',
