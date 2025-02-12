@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Validator;
 
 class EntradaController extends Controller
 {
-
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
     {
@@ -68,20 +67,11 @@ class EntradaController extends Controller
         }
     }
 
-
-
     // Mostrar el formulario de creación
     public function create()
     {
         $ubicaciones = Ubicacion::all();
         $usuarios = User::all();
-
-        // Definir los nombres de los productos en el controlador
-        $nombre_productos = [
-            'Corrugado',
-            'Tipo 2',
-            'Tipo 3',
-        ];
 
         return view('entradas.create', compact('ubicaciones', 'usuarios', 'nombre_productos'));
     }
@@ -98,7 +88,7 @@ class EntradaController extends Controller
                 'paquetes' => 'required|array|min:1',
                 'paquetes.*.tipo' => 'required|in:ENCARRETADO,BARRA',
                 'paquetes.*.diametro' => 'required|numeric|in:5,8,10,12,16,20,25,32',
-                'paquetes.*.longitud' => 'numeric|in:6,10,12',
+                'paquetes.*.longitud' => 'nullable|numeric|in:6,12,14,15,16',
                 'paquetes.*.n_colada' => 'required|string|max:50',
                 'paquetes.*.n_paquete' => 'required|string|max:50',
                 'paquetes.*.peso' => 'required|numeric|min:1',
