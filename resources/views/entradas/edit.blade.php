@@ -5,18 +5,30 @@
         </h2>
     </x-slot>
 
+    <!-- Mostrar mensajes de error y éxito -->
     @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Errores encontrados',
+                    html: '<ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>',
+                    confirmButtonColor: '#d33'
+                });
+            });
+        </script>
     @endif
-
     @if (session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
+                    confirmButtonColor: '#d33'
+                });
+            });
+        </script>
     @endif
 
     @if (session('success'))
@@ -30,6 +42,7 @@
             });
         </script>
     @endif
+
 
     <div class="container mx-auto px-4 py-6">
         <form method="POST" action="{{ route('entradas.update', $entrada->id) }}"
