@@ -67,29 +67,39 @@
                             <ul>
                                 @foreach ($entrada->productos as $producto)
                                     <li>
-                                        <strong>ID:</strong> {{ $producto->id }} -
-                                        <strong>Producto:</strong> {{ $producto->nombre }} /
-                                        {{ $producto->tipo }} -
-                                        <strong>Ubicación:</strong>
-                                        {{ $producto->ubicacion->nombre ?? ($producto->maquina->nombre ?? 'No ubicada') }}
-                                        <button
-                                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
-                                            class="btn btn-primary btn-sm">QR</button>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </td>
-                        <td class="px-6 py-4">{{ $entrada->user->name }}</td>
-                        <td>
-                            <a href="{{ route('entradas.edit', $entrada->id) }}"
-                                class="text-blue-600 hover:text-blue-900">Editar</a>
-                            <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="px-6 py-4 text-center">No hay entradas de material disponibles.</td>
-                    </tr>
+                                        <strong>ID:</strong>
+                        <td class="px-4 py-2">
+                            @if ($producto->id)
+                                <a href="{{ route('productos.show', $producto->id) }}"
+                                    class="text-blue-500 hover:underline">
+                                    {{ $producto->id }}
+                                </a>
+                            @else
+                                N/A
+                            @endif
+                        </td> -
+                        <strong>Producto:</strong> {{ $producto->nombre }} /
+                        {{ $producto->tipo }} -
+                        <strong>Ubicación:</strong>
+                        {{ $producto->ubicacion->nombre ?? ($producto->maquina->nombre ?? 'No ubicada') }}
+                        <button
+                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
+                            class="btn btn-primary btn-sm">QR</button>
+                        </li>
+                @endforeach
+                </ul>
+                </td>
+                <td class="px-6 py-4">{{ $entrada->user->name }}</td>
+                <td>
+                    <a href="{{ route('entradas.edit', $entrada->id) }}"
+                        class="text-blue-600 hover:text-blue-900">Editar</a>
+                    <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
+                </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center">No hay entradas de material disponibles.</td>
+                </tr>
                 @endforelse
             </tbody>
         </table>
