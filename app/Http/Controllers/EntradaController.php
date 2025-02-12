@@ -5,13 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Entrada;
 use App\Models\Ubicacion;
 use App\Models\User;
+use App\Models\EntradaProducto;
 use App\Models\Producto;  // Asegúrate de importar Producto
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\DB;
-use App\Services\Fabricantes\FabricanteServiceFactory;
 use Exception;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
@@ -91,20 +88,84 @@ class EntradaController extends Controller
 
     public function store(Request $request)
     {
+        DB::beginTransaction();
         try {
-            // Obtener el servicio adecuado para el fabricante
-            $fabricanteService = FabricanteServiceFactory::getService($request->fabricante);
+            $request->validate([
+                'fabricante' => 'required|in:MEGASA,GETAFE,NERVADUCTIL,SIDERURGICA SEVILLANA',
+                'albaran' => 'required|string|min:5|max:15|unique:entradas,albaran',
+                'peso_total' => 'required|numeric|min:1',
+                'cantidad_paquetes' => 'required|integer|min:1|max:30',
+                'paquetes' => 'required|array|min:1',
+                'paquetes.*.tipo' => 'required|in:ENCARRETADO,BARRA',
+                'paquetes.*.diametro' => 'required|numeric|in:5,8,10,12,16,20,25,32',
+                'paquetes.*.longitud' => 'numeric|in:6,10,12',
+                'paquetes.*.n_colada' => 'required|string|max:50',
+                'paquetes.*.n_paquete' => 'required|string|max:50',
+                'paquetes.*.peso' => 'required|numeric|min:1',
+                'paquetes.*.ubicacion' => 'required|string|max:100',
+                'paquetes.*.otros' => 'nullable|string|max:255',
+            ], [
+                'fabricante.required' => 'El fabricante es obligatorio.',
+                'fabricante.in' => 'El fabricante seleccionado no es válido.',
+                'albaran.required' => 'El número de albarán es obligatorio.',
+                'albaran.unique' => 'El número de albarán ya está registrado.',
+                'peso_total.required' => 'El peso total es obligatorio.',
+                'peso_total.numeric' => 'El peso total debe ser un número.',
+                'cantidad_paquetes.required' => 'La cantidad de paquetes es obligatoria.',
+                'cantidad_paquetes.integer' => 'La cantidad de paquetes debe ser un número entero.',
+                'paquetes.*.tipo.required' => 'El tipo de paquete es obligatorio.',
+                'paquetes.*.diametro.required' => 'El diámetro es obligatorio.',
+                'paquetes.*.n_colada.required' => 'El número de colada es obligatorio.',
+                'paquetes.*.n_paquete.required' => 'El número de paquete es obligatorio.',
+                'paquetes.*.peso.required' => 'El peso es obligatorio.',
+                'paquetes.*.ubicacion.required' => 'La ubicación es obligatoria.',
+            ]);
 
-            // Delegar la lógica específica al servicio
-            $fabricanteService->procesar($request);
+            // Validar que la suma de los pesos de los paquetes coincida con el peso total
+            $pesoPaquetes = array_sum(array_column($request->paquetes, 'peso'));
+            // Crear la entrada
+            $entrada = Entrada::create([
+                'albaran' => $request->albaran,
+                'peso_total' => $request->peso_total,
+                'users_id' => auth()->id(),
+                'otros' => $request->otros ?? null,
+            ]);
 
+            foreach ($request->paquetes as $paquete) {
+                // Crear producto
+                $producto = Producto::create([
+                    'fabricante' => $request->fabricante,
+                    'nombre' => 'corrugado', // Puedes ajustar esto según sea necesario
+                    'tipo' => $paquete['tipo'],
+                    'diametro' => $paquete['diametro'],
+                    'longitud' => $paquete['longitud'],
+                    'n_colada' => $paquete['n_colada'],
+                    'n_paquete' => $paquete['n_paquete'],
+                    'peso_inicial' => $paquete['peso'],
+                    'peso_stock' => $paquete['peso'],
+                    'ubicacion_id' => $paquete['ubicacion'], // Debes relacionar esto con una ubicación existente
+                    'maquina_id' => null, // Puedes cambiarlo según sea necesario
+                    'estado' => 'almacenado',
+                    'otros' => $paquete['otros'] ?? null,
+                ]);
+
+                // Crear la relación en la tabla intermedia
+                EntradaProducto::create([
+                    'entrada_id' => $entrada->id,
+                    'producto_id' => $producto->id,
+                    'ubicacion_id' => $paquete['ubicacion'],
+                    'users_id' => auth()->id(),
+                ]);
+            }
+            DB::commit();
             return redirect()->route('entradas.index')->with('success', 'Entrada registrada correctamente.');
         } catch (ValidationException $e) {
-            // Manejar errores de validación
+            // Mostrar todos los errores de validación
+            DB::rollBack();  // Si ocurre un error, revertimos la transacción
             return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (Exception $e) {
-            // Manejar errores generales
-            return redirect()->back()->with('error', $e->getMessage())->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Hubo un problema al registrar la entrada: ' . $e->getMessage());
         }
     }
 
@@ -115,35 +176,23 @@ class EntradaController extends Controller
         return view('entradas.edit', compact('entrada', 'ubicaciones'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Entrada $entrada)
     {
         DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
         try {
-            // Validar los datos enviados
             $request->validate([
-                'fabricante' => 'nullable|string|max:255',
-                'nombre' => 'required|string|max:255',
-                'tipo' => 'nullable|string|max:255',
-                'diametro' => 'nullable|numeric|min:0',
-                'longitud' => 'nullable|numeric|min:0',
-                'n_colada' => 'nullable|string|max:255',
-                'n_paquete' => 'nullable|string|max:255',
-                'peso_inicial' => 'required|numeric|min:0',
-                'peso_stock' => 'required|numeric|min:0',
-                'ubicacion_id' => 'nullable|exists:ubicaciones,id',
-                'maquina_id' => 'nullable|exists:maquinas,id',
-                'estado' => 'nullable|string|max:255',
-                'otros' => 'nullable|string|max:255',
+                'fabricante' => 'required|string|max:255',
+                'albaran' => 'required|string|min:5|max:15|alpha_num',
+                'peso_total' => 'required|numeric|min:1',
             ]);
 
-            // Buscar el producto a actualizar
-            $producto = Producto::findOrFail($id);
+            $entrada->update([
+                'fabricante' => $request->fabricante,
+                'albaran' => $request->albaran,
+                'peso_total' => $request->peso_total,
+            ]);
 
-            // Actualizar los datos del producto
-            $producto->update($request->all());
-
-            DB::commit();  // Confirmamos la transacción
-            return redirect()->route('productos.index')->with('success', 'Producto actualizado correctamente.');
+            return redirect()->route('entradas.index')->with('success', 'Entrada de material actualizada correctamente.');
         } catch (ValidationException $e) {
             // Mostrar todos los errores de validación
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
@@ -154,6 +203,7 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
 
 
     // Eliminar una entrada y sus productos asociados
