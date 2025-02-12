@@ -73,15 +73,15 @@
                                                 class="text-blue-500 hover:underline">
                                                 {{ $producto->id }}
                                             </a>
-                                        @else
-                                            -
-                                            <strong>Producto:</strong> {{ $producto->nombre }} /
-                                            {{ $producto->tipo }} -
-                                            <strong>Ubicación:</strong>
-                                            {{ $producto->ubicacion->nombre ?? ($producto->maquina->nombre ?? 'No ubicada') }}
-                                            <button
-                                                onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
-                                                class="btn btn-primary btn-sm">QR</button>
+                                        @endif
+                                        -
+                                        <strong>Producto:</strong> {{ $producto->nombre }} /
+                                        {{ $producto->tipo }} -
+                                        <strong>Ubicación:</strong>
+                                        {{ $producto->ubicacion->nombre ?? ($producto->maquina->nombre ?? 'No ubicada') }}
+                                        <button
+                                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
+                                            class="btn btn-primary btn-sm">QR</button>
                                     </li>
                                 @endforeach
                             </ul>
@@ -93,18 +93,18 @@
                             <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
                         </td>
                     </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-6 py-4 text-center">No hay entradas de material disponibles.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                @empty
+                    <tr>
+                        <td colspan="6" class="px-6 py-4 text-center">No hay entradas de material disponibles.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
 
-            <div class="flex justify-center mt-4">
-                {{ $entradas->appends(request()->except('page'))->links() }}
-            </div>
+        <div class="flex justify-center mt-4">
+            {{ $entradas->appends(request()->except('page'))->links() }}
         </div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-        <script src="{{ asset('js/imprimirQr.js') }}"></script>
-    </x-app-layout>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="{{ asset('js/imprimirQr.js') }}"></script>
+</x-app-layout>
