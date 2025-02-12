@@ -296,11 +296,11 @@ class etiquetaController extends Controller
                     $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
                     if (strpos($ensamblado, 'CARCASAS') !== false) {
-                        asignarMaquinas($elemento, $etiqueta, 'CARCASAS');
+                        $this->asignarMaquinas($elemento, $etiqueta, 'CARCASAS');
                     } elseif (strpos($ensamblado, 'TALLER') !== false) {
-                        asignarMaquinas($elemento, $etiqueta, 'TALLER');
+                        $this->asignarMaquinas($elemento, $etiqueta, 'TALLER');
                     }
-                    
+
                     $elemento->save();
                     $etiqueta->save();
                     // Actualizar el registro global de consumos para este diámetro
@@ -464,60 +464,60 @@ class etiquetaController extends Controller
     }
 
     /**
- * Asigna las máquinas a un elemento según el tipo de ensamblado.
- *
- * @param  \App\Models\Elemento $elemento
- * @param  \App\Models\Etiqueta $etiqueta
- * @param  string $tipoEnsamblado ("CARCASAS" o "TALLER")
- * @return void
- */
-function asignarMaquinas($elemento, $etiqueta, $tipoEnsamblado)
-{
-    // Obtener la máquina "IDEA 5"
-    $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
+     * Asigna las máquinas a un elemento según el tipo de ensamblado.
+     *
+     * @param  \App\Models\Elemento $elemento
+     * @param  \App\Models\Etiqueta $etiqueta
+     * @param  string $tipoEnsamblado ("CARCASAS" o "TALLER")
+     * @return bool|string Devuelve true si se asignó correctamente, o un mensaje de error en caso contrario.
+     */
 
-    // Validar que exista la máquina "IDEA 5"
-    if (!$maquinaIdea5) {
-        return response()->json([
-            'success' => false,
-            'error' => 'No encontramos la maquina Idea 5',
-        ], 500);
-    }
+    public function asignarMaquinas($elemento, $etiqueta, $tipoEnsamblado)
+    {
+        // Obtener la máquina "IDEA 5"
+        $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
 
-    // Asignar "IDEA 5"
-    $elemento->maquina_id_2 = $maquinaIdea5->id;
-    $elemento->ubicacion_id = null;
-    $etiqueta->ubicacion_id = 33;
-
-    // Si el ensamblado es "TALLER", también se asigna una máquina de soldar
-    if ($tipoEnsamblado === 'TALLER') {
-        // Buscar una máquina de soldar disponible
-        $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-            ->whereDoesntHave('etiquetas')
-            ->first();
-
-        // Si no hay máquinas de soldar libres, seleccionar la que recibió un elemento primero
-        if (!$maquinaSoldarDisponible) {
-            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                ->whereHas('elementos', function ($query) {
-                    $query->orderBy('created_at'); // Seleccionar la que lleva más tiempo trabajando
-                })
-                ->first();
-        }
-
-        if ($maquinaSoldarDisponible) {
-            $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-        } else {
+        // Validar que exista la máquina "IDEA 5"
+        if (!$maquinaIdea5) {
             return response()->json([
                 'success' => false,
-                'error' => 'No se encontró ninguna máquina de soldar disponible',
+                'error' => 'No encontramos la maquina Idea 5',
             ], 500);
         }
+
+        // Asignar "IDEA 5"
+        $elemento->maquina_id_2 = $maquinaIdea5->id;
+        $elemento->ubicacion_id = null;
+        $etiqueta->ubicacion_id = 33;
+
+        // Si el ensamblado es "TALLER", también se asigna una máquina de soldar
+        if ($tipoEnsamblado === 'TALLER') {
+            // Buscar una máquina de soldar disponible
+            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
+                ->whereDoesntHave('etiquetas')
+                ->first();
+
+            // Si no hay máquinas de soldar libres, seleccionar la que recibió un elemento primero
+            if (!$maquinaSoldarDisponible) {
+                $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
+                    ->whereHas('elementos', function ($query) {
+                        $query->orderBy('created_at'); // Seleccionar la que lleva más tiempo trabajando
+                    })
+                    ->first();
+            }
+
+            if ($maquinaSoldarDisponible) {
+                $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No se encontró ninguna máquina de soldar disponible',
+                ], 500);
+            }
+        }
+
+        // Guardar cambios
+        $elemento->save();
+        $etiqueta->save();
     }
-
-    // Guardar cambios
-    $elemento->save();
-    $etiqueta->save();
-}
-
 }

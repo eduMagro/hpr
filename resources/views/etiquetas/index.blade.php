@@ -128,20 +128,20 @@
                             <td class="px-4 py-2">{{ $etiqueta->numero_etiqueta }}</td>
                             <td class="px-4 py-2">{{ $etiqueta->nombre }}</td>
                             <td class="px-4 py-2">
-                                @if ($etiqueta->producto)
-                                    <a href="{{ route('productos.show', $etiqueta->producto_id) }}"
+                                @if ($etiqueta->ubicacion)
+                                    <a href="{{ route('productos.show', $etiqueta->ubicacion_id) }}"
                                         class="text-blue-500 hover:underline">
-                                        {{ $etiqueta->producto->id }}
+                                        {{ $etiqueta->ubicacion->nombre }}
                                     </a>
                                 @else
                                     N/A
                                 @endif
                             </td>
                             <td class="px-4 py-2">
-                                @if ($etiqueta->ubicacion)
-                                    <a href="{{ route('productos.show', $etiqueta->ubicacion_id) }}"
+                                @if ($etiqueta->producto)
+                                    <a href="{{ route('productos.show', $etiqueta->producto->id) }}"
                                         class="text-blue-500 hover:underline">
-                                        {{ $etiqueta->ubicacion->nombre }}
+                                        {{ $etiqueta->producto->id }}
                                     </a>
                                 @else
                                     N/A
@@ -177,7 +177,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="14" class="text-center py-4 text-gray-500">No hay etiquetas registradas</td>
+                            <td colspan="14" class="text-center py-4 text-gray-500">No hay etiquetas registradas
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
