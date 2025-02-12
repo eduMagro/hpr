@@ -68,46 +68,43 @@
                                 @foreach ($entrada->productos as $producto)
                                     <li>
                                         <strong>ID:</strong>
-                        <td class="px-4 py-2">
-                            @if ($producto->id)
-                                <a href="{{ route('productos.show', $producto->id) }}"
-                                    class="text-blue-500 hover:underline">
-                                    {{ $producto->id }}
-                                </a>
-                            @else
-                                N/A
-                            @endif
-                        </td> -
-                        <strong>Producto:</strong> {{ $producto->nombre }} /
-                        {{ $producto->tipo }} -
-                        <strong>Ubicación:</strong>
-                        {{ $producto->ubicacion->nombre ?? ($producto->maquina->nombre ?? 'No ubicada') }}
-                        <button
-                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
-                            class="btn btn-primary btn-sm">QR</button>
-                        </li>
-                @endforeach
-                </ul>
-                </td>
-                <td class="px-6 py-4">{{ $entrada->user->name }}</td>
-                <td>
-                    <a href="{{ route('entradas.edit', $entrada->id) }}"
-                        class="text-blue-600 hover:text-blue-900">Editar</a>
-                    <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
-                </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="6" class="px-6 py-4 text-center">No hay entradas de material disponibles.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+                                        @if ($producto->id)
+                                            <a href="{{ route('productos.show', $producto->id) }}"
+                                                class="text-blue-500 hover:underline">
+                                                {{ $producto->id }}
+                                            </a>
+                                        @else
+                                            -
+                                            <strong>Producto:</strong> {{ $producto->nombre }} /
+                                            {{ $producto->tipo }} -
+                                            <strong>Ubicación:</strong>
+                                            {{ $producto->ubicacion->nombre ?? ($producto->maquina->nombre ?? 'No ubicada') }}
+                                            <button
+                                                onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
+                                                class="btn btn-primary btn-sm">QR</button>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </td>
+                        <td class="px-6 py-4">{{ $entrada->user->name }}</td>
+                        <td>
+                            <a href="{{ route('entradas.edit', $entrada->id) }}"
+                                class="text-blue-600 hover:text-blue-900">Editar</a>
+                            <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
+                        </td>
+                    </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="px-6 py-4 text-center">No hay entradas de material disponibles.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
 
-        <div class="flex justify-center mt-4">
-            {{ $entradas->appends(request()->except('page'))->links() }}
+            <div class="flex justify-center mt-4">
+                {{ $entradas->appends(request()->except('page'))->links() }}
+            </div>
         </div>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="{{ asset('js/imprimirQr.js') }}"></script>
-</x-app-layout>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+        <script src="{{ asset('js/imprimirQr.js') }}"></script>
+    </x-app-layout>
