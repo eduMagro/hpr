@@ -4,33 +4,6 @@
             {{ __('Crear Entradas de Material') }}
         </h2>
     </x-slot>
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    @if (session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
-    @if (session('success'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'success',
-                    text: '{{ session('success') }}',
-                    confirmButtonColor: '#28a745'
-                });
-            });
-        </script>
-    @endif
-
     <div class="container mx-auto px-4 py-6">
         <form id="inventarioForm" method="POST" action="{{ route('entradas.store') }}"
             class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow-md">
