@@ -18,10 +18,37 @@
             {{ session('error') }}
         </div>
     @endif
+    @if (session('error'))
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
+                    confirmButtonColor: '#d33'
+                });
+            });
+        </script>
+    @endif
     @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                Swal.fire({
+                    icon: 'success',
+                    text: '{{ session('success') }}',
+                    confirmButtonColor: '#28a745'
+                });
+            });
+        </script>
+    @endif
+    @if (session('abort'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Acceso denegado',
+                text: "{{ session('abort') }}",
+            });
+        </script>
     @endif
     <div class="container mx-auto px-4 py-6">
 
@@ -37,7 +64,7 @@
             <input type="text" name="albaran" class="form-control mb-3" placeholder="Buscar por albarán"
                 value="{{ request('albaran') }}">
 
-			 <input type="text" name="fecha" class="form-control mb-3" placeholder="Buscar por fecha"
+            <input type="text" name="fecha" class="form-control mb-3" placeholder="Buscar por fecha"
                 value="{{ request('fecha') }}">
 
             <button type="submit" class="btn btn-info ml-2">
@@ -99,7 +126,6 @@
                                 <div id="qrCanvas" style="display:none;"></div>
                             </li>
                             <hr style="border: 1px solid #ccc; margin: 10px 0;">
-                          
                         @endforeach
                         <p><small><strong>Usuario: </strong> {{ $entrada->user->name }} </small></p>
                         <hr style="border: 1px solid #ccc; margin: 10px 0;">
