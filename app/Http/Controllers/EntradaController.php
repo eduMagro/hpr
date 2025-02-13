@@ -73,7 +73,7 @@ class EntradaController extends Controller
         $ubicaciones = Ubicacion::all();
         $usuarios = User::all();
 
-        return view('entradas.create', compact('ubicaciones', 'usuarios', 'nombre_productos'));
+        return view('entradas.create', compact('ubicaciones', 'usuarios'));
     }
 
     public function store(Request $request)
