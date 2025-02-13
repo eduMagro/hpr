@@ -128,7 +128,7 @@ class EntradaController extends Controller
                     'nombre' => 'corrugado', // Puedes ajustar esto según sea necesario
                     'tipo' => $paquete['tipo'],
                     'diametro' => $paquete['diametro'],
-                    'longitud' => $paquete['longitud'],
+                    'longitud' => $paquete['longitud'] ?? NULL,
                     'n_colada' => $paquete['n_colada'],
                     'n_paquete' => $paquete['n_paquete'],
                     'peso_inicial' => $paquete['peso'],
