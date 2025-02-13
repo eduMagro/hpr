@@ -82,7 +82,7 @@ class EntradaController extends Controller
         try {
             $request->validate([
                 'fabricante' => 'required|in:MEGASA,GETAFE,NERVADUCTIL,SIDERURGICA SEVILLANA',
-                'albaran' => 'required|string|min:5|max:15|unique:entradas,albaran',
+                'albaran' => 'required|string|min:1|max:30',
                 'peso_total' => 'required|numeric|min:1',
                 'cantidad_paquetes' => 'required|integer|min:1|max:30',
                 'paquetes' => 'required|array|min:1',
@@ -98,7 +98,7 @@ class EntradaController extends Controller
                 'fabricante.required' => 'El fabricante es obligatorio.',
                 'fabricante.in' => 'El fabricante seleccionado no es válido.',
                 'albaran.required' => 'El número de albarán es obligatorio.',
-                'albaran.unique' => 'El número de albarán ya está registrado.',
+                // 'albaran.unique' => 'El número de albarán ya está registrado.',
                 'peso_total.required' => 'El peso total es obligatorio.',
                 'peso_total.numeric' => 'El peso total debe ser un número.',
                 'cantidad_paquetes.required' => 'La cantidad de paquetes es obligatoria.',
