@@ -155,7 +155,7 @@ class EntradaController extends Controller
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Hubo un problema al registrar la entrada: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Hubo un problema al registrar la entrada: ' . $e->getMessage())->withInput();
         }
     }
 
