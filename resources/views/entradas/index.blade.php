@@ -5,111 +5,102 @@
         </h2>
     </x-slot>
 
-    <!-- Mostrar mensajes de error y éxito -->
-    @if ($errors->any())
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Errores encontrados',
-                    html: '<ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>',
-                    confirmButtonColor: '#d33'
-                });
-            });
-        </script>
-    @endif
-    @if (session('error'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: '{{ session('error') }}',
-                    confirmButtonColor: '#d33'
-                });
-            });
-        </script>
-    @endif
+    <div class="container mx-auto px-4 py-6">
 
-    @if (session('success'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'success',
-                    text: '{{ session('success') }}',
-                    confirmButtonColor: '#28a745'
-                });
-            });
-        </script>
-    @endif
-
-    <div class="w-full px-6 py-4">
-        <div class="flex flex-wrap gap-4 mb-4">
-            <a href="{{ route('entradas.create') }}" class="btn btn-primary">Crear Nueva Entrada</a>
+        <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
+        <div class="mb-4">
+            <a href="{{ route('entradas.create') }}" class="btn btn-primary">
+                Crear Nueva Entrada
+            </a>
         </div>
 
-        <table class="w-full min-w-[1200px] border-collapse bg-white shadow-md rounded-lg">
-            <thead class="bg-gray-800 text-white">
-                <tr class="text-left text-sm uppercase">
-                    <th class="px-6 py-3">Albarán</th>
-                    <th class="px-6 py-3">Fecha</th>
-                    <th class="px-6 py-3">Fabricantes</th>
-                    <th class="px-6 py-3">Productos Asociados</th>
-                    <th class="px-6 py-3">Usuario</th>
-                    <th class="px-6 py-3 text-center">Acciones</th>
-                </tr>
-            </thead>
-            <tbody class="text-gray-700 text-sm">
-                @forelse ($entradas as $entrada)
-                    <tr class="border-b hover:bg-gray-100">
-                        <td class="px-6 py-4">{{ $entrada->albaran }}</td>
-                        <td class="px-6 py-4">{{ $entrada->created_at }}</td>
-                        <td class="px-6 py-4">
-                            @php $fabricantes = $entrada->productos->pluck('fabricante')->unique(); @endphp
-                            {{ $fabricantes->isNotEmpty() ? $fabricantes->join(', ') : 'No disponible' }}
-                        </td>
-                        <td class="px-6 py-4">
-                            <ul>
-                                @foreach ($entrada->productos as $producto)
-                                    <li>
-                                        <strong>ID:</strong>
-                                        @if ($producto->id)
-                                            <a href="{{ route('productos.show', $producto->id) }}"
-                                                class="text-blue-500 hover:underline">
-                                                {{ $producto->id }}
-                                            </a>
-                                        @endif
-                                        -
-                                        <strong>Producto:</strong> {{ $producto->nombre }} /
-                                        {{ $producto->tipo }} -
-                                        <strong>Ubicación:</strong>
-                                        {{ $producto->ubicacion->nombre ?? ($producto->maquina->nombre ?? 'No ubicada') }}
-                                        <button
-                                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
-                                            class="btn btn-primary btn-sm">QR</button>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </td>
-                        <td class="px-6 py-4">{{ $entrada->user->name }}</td>
-                        <td>
-                            <a href="{{ route('entradas.edit', $entrada->id) }}"
-                                class="text-blue-600 hover:text-blue-900">Editar</a>
-                            <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
-                        </td>
-                    </tr>
+        <!-- FORMULARIO DE BUSQUEDA -->
+        <form method="GET" action="{{ route('entradas.index') }}" class="form-inline mt-3 mb-3">
+            <input type="text" name="albaran" class="form-control mb-3" placeholder="Buscar por albarán"
+                value="{{ request('albaran') }}">
+
+            <input type="text" name="fecha" class="form-control mb-3" placeholder="Buscar por fecha"
+                value="{{ request('fecha') }}">
+
+            <button type="submit" class="btn btn-info ml-2">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+        </form>
+        <!-- Usamos una estructura de tarjetas para dispositivos móviles -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            @forelse ($entradas as $entrada)
+                <div class="bg-white border p-4 shadow-md rounded-lg">
+                    <h3 class="font-bold text-xl">{{ $entrada->albaran }}</h3>
+                    <p><strong>Fecha:</strong> {{ $entrada->created_at }}</p>
+                    <!-- Sección de Fabricantes -->
+                    <p><strong>Fabricante:</strong>
+                        @php
+                            // Obtener los fabricantes únicos de los productos asociados a esta entrada
+                            $fabricantes = $entrada->productos->pluck('fabricante')->unique();
+                        @endphp
+
+                        @if ($fabricantes->isNotEmpty())
+                            @foreach ($fabricantes as $fabricante)
+                                {{ $fabricante }}@if (!$loop->last)
+                                    ,
+                                @endif
+                            @endforeach
+                        @else
+                            No hay fabricantes disponibles.
+                        @endif
+                    </p>
+
+                    <h4 class="mt-4 font-semibold">Productos Asociados: {{ $entrada->productos->count() }}</h4>
+                    <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                    <ul>
+                        @foreach ($entrada->productos as $producto)
+                            <li class="mt-2">
+                                <p><strong>ID:</strong> {{ $producto->id }}</p>
+                                <a href="{{ route('productos.show', $producto->id) }}"
+                                    class="btn btn-sm btn-primary">Ver</a>
+                                <p><strong>Producto:</strong> {{ $producto->nombre }} / {{ $producto->tipo }}</p>
+                                <p><strong>Diámetro:</strong> {{ $producto->diametro }}</p>
+                                <p><strong>Longitud:</strong> {{ $producto->longitud }}</p>
+                                <!-- Lista desordenada con los detalles del producto -->
+                                @if (isset($producto->ubicacion->nombre))
+                                    <p><strong>Ubicación:</strong>
+                                        {{ $producto->ubicacion->nombre }}</p>
+                                @elseif (isset($producto->maquina->nombre))
+                                    <p><strong>Máquina:</strong>
+                                        {{ $producto->maquina->nombre }}
+                                    </p>
+                                @else
+                                    <p class="font-bold text-lg text-gray-800 break-words">No está ubicada</p>
+                                @endif
+                                <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
+                                <p>
+                                    <button
+                                        onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
+                                        class="btn btn-primary btn-sm">QR</button>
+                                </p>
+                                <div id="qrCanvas" style="display:none;"></div>
+                            </li>
+                            <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                        @endforeach
+                        <p><small><strong>Usuario: </strong> {{ $entrada->user->name }} </small></p>
+                        <hr style="border: 1px solid #ccc; margin: 10px 0;">
+                    </ul>
+
+                    <div class="mt-4 flex justify-between">
+                        <a href="{{ route('entradas.edit', $entrada->id) }}"
+                            class="text-blue-600 hover:text-blue-900">Editar</a>
+                        <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
+                    </div>
+                </div>
                 @empty
-                    <tr>
-                        <td colspan="6" class="px-6 py-4 text-center">No hay entradas de material disponibles.</td>
-                    </tr>
+                    <p>No hay entradas de material disponibles.</p> <!-- Mensaje si no hay datos -->
                 @endforelse
-            </tbody>
-        </table>
+            </div>
 
-        <div class="flex justify-center mt-4">
-            {{ $entradas->appends(request()->except('page'))->links() }}
+            <div class="flex justify-center mt-4">
+                {{ $entradas->appends(request()->except('page'))->links() }}
+            </div>
         </div>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="{{ asset('js/imprimirQr.js') }}"></script>
-</x-app-layout>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+        <script src="{{ asset('js/imprimirQr.js') }}"></script>
+    </x-app-layout>

@@ -26,9 +26,9 @@
                     <p><strong>Estado:</strong> {{ $detalles_producto->estado }}</p>
                     <p><strong>Otros:</strong> {{ $detalles_producto->otros ?? 'N/A' }}</p>
                     <p>
-                        <button onclick="generateAndPrintQR('{{ $detalles_producto->id }}')"
-                            class="btn btn-primary">Imprimir
-                            QR</button>
+                        <button
+                            onclick="generateAndPrintQR('{{ $detalles_producto->id }}', '{{ $detalles_producto->n_colada }}', 'MATERIA PRIMA')"
+                            class="btn btn-primary btn-sm">QR</button>
                     </p>
                     <div id="qrCanvas{{ $detalles_producto->id }}" style="display:none;"></div>
 
@@ -51,14 +51,14 @@
 
                     <div class="mt-2 flex justify-between">
                         {{-- sweet alert para eliminar --}}
-                        <x-boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                        <x-boton-eliminar :action="route('productos.destroy', $detalles_producto->id)" />
                         <!-- Enlace para editar -->
-                        <a href="{{ route('productos.edit', $producto->id) }}"
+                        <a href="{{ route('productos.edit', $detalles_producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                        <a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
+                        <a href="{{ route('movimientos.create', ['producto_id' => $detalles_producto->id]) }}"
                             class="text-green-500 hover:text-green-700 text-sm">Mover</a>
 
-                        <a href="{{ route('productos.show', $producto->id) }}"
+                        <a href="{{ route('productos.show', $detalles_producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
                     </div>
                 </div>
