@@ -148,7 +148,7 @@
                     <p>
 
                         <button
-                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->fabricante }}', 'MATERIA PRIMA')"
+                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_paquete }}', 'MATERIA PRIMA')"
                             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                             QR
                         </button>
@@ -196,5 +196,5 @@
     </div>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="{{ asset('js/imprimirQr.js') }}"></script>
+    <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
 </x-app-layout>
