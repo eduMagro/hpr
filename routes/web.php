@@ -28,7 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/users/{id}', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::delete('/users/{id}', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
 
     // Rutas para el controlador de entradas
     Route::resource('entradas', EntradaController::class);
