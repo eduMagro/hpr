@@ -114,6 +114,7 @@
                     <div class="mb-2">
                         <label for="longitud_${i}" class="block text-gray-700">Longitud:</label>
                         <select id="longitud_${i}" name="paquetes[${i}][longitud]" class="w-full px-3 py-2 border rounded-lg">
+                             <option value="" disabled selected>Seleccione una longitud</option>
                             <option value="6">6</option>
                             <option value="12">12</option>
                             <option value="14">14</option>
