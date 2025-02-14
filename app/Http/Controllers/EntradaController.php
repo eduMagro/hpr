@@ -89,7 +89,7 @@ class EntradaController extends Controller
                 'n_colada' => 'required|string|max:50',
                 'n_paquete' => 'required|string|max:50',
                 'peso' => 'required|numeric|min:1',
-                'ubicacion' => 'required|string|max:100',
+                'ubicacion' => 'nullable|string|max:100',
                 'otros' => 'nullable|string|max:255',
             ], [
                 'fabricante.required' => 'El fabricante es obligatorio.',
@@ -100,7 +100,6 @@ class EntradaController extends Controller
                 'n_colada.required' => 'El número de colada es obligatorio.',
                 'n_paquete.required' => 'El número de paquete es obligatorio.',
                 'peso.required' => 'El peso es obligatorio.',
-                'ubicacion.required' => 'La ubicación es obligatoria.',
             ]);
 
             // Crear la entrada
@@ -113,7 +112,7 @@ class EntradaController extends Controller
             // Crear producto
             $producto = Producto::create([
                 'fabricante' => $request->fabricante,
-                'nombre' => 'corrugado', // Puedes ajustar esto según sea necesario
+                'nombre' => 'CORRUGADO', // Puedes ajustar esto según sea necesario
                 'tipo' => $request->tipo,
                 'diametro' => $request->diametro,
                 'longitud' => $request->longitud ?? NULL,
@@ -123,7 +122,7 @@ class EntradaController extends Controller
                 'peso_stock' => $request->peso,
                 'ubicacion_id' => $request->ubicacion, // Debes relacionar esto con una ubicación existente
                 'maquina_id' => null, // Puedes cambiarlo según sea necesario
-                'estado' => 'almacenado',
+                'estado' => 'ALMACENADO',
                 'otros' => $request->otros ?? null,
             ]);
 

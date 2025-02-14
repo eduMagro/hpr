@@ -119,7 +119,7 @@ class ProductoController extends Controller
         try {
             // Mensajes personalizados de validación
             $messages = [
-                'fabricante.in' => 'El fabricante debe ser MEGASA, Getafe, Siderúrgica Sevillana o NERVADUCTIL.',
+                'fabricante.in' => 'El fabricante debe ser MEGASA, GETAFE, SIDERURGICA SEVILLANA o NERVADUCTIL.',
                 'nombre.string' => 'El nombre debe ser una cadena de texto.',
                 'nombre.max' => 'El nombre no puede tener más de 255 caracteres.',
                 'tipo.in' => 'El tipo debe ser "encarretado" o "barras".',
@@ -144,9 +144,9 @@ class ProductoController extends Controller
 
             // Validación de datos
             $validatedData = $request->validate([
-                'fabricante' => 'required|in:MEGASA,GETAFE,Siderúrgica Sevillana,NERVADUCTIL',
+                'fabricante' => 'required|in:MEGASA,GETAFE,SIDERURGICA SEVILLANA,NERVADUCTIL',
                 'nombre' => 'nullable|string|max:255',
-                'tipo' => 'required|in:encarretado,barras',
+                'tipo' => 'required|in:ENCARRETADO,BARRA',
                 'diametro' => 'required|in:8,10,12,16,20,25,32',
                 'longitud' => 'nullable|in:6,12,14,15,16',
                 'n_colada' => 'required|string|max:255',

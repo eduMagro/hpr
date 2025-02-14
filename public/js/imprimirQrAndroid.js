@@ -11,10 +11,7 @@ function generateAndPrintQR(id, nombre, tipo) {
 
     qrContainer.innerHTML = ""; // Limpia cualquier QR anterior
 
-    let qrSize =
-        tipo.toLowerCase() === "ubicacion" || tipo.toLowerCase() === "maquina"
-            ? 240
-            : 120;
+    const qrSize = 50; // Tamaño exacto en píxeles
 
     // Generamos el código QR
     new QRCode(qrContainer, {
@@ -34,18 +31,27 @@ function generateAndPrintQR(id, nombre, tipo) {
             return;
         }
 
-        // Convertir la imagen en base64 para descarga
+        // Crear un lienzo con el tamaño exacto
         let canvas = document.createElement("canvas");
         let ctx = canvas.getContext("2d");
         let img = new Image();
 
         img.onload = function () {
             canvas.width = qrSize;
-            canvas.height = qrSize;
+            canvas.height = qrSize + 40; // Espacio para el nombre
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, qrSize, qrSize);
-            let qrBase64 = canvas.toDataURL("image/png");
 
-            // Descargar la imagen QR
+            // Añadir el texto con el nombre
+            ctx.fillStyle = "black";
+            ctx.font = "16px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(nombre, qrSize / 2, qrSize + 30);
+
+            let qrBase64 = canvas.toDataURL("image/png", 1.0);
+
+            // Crear enlace para descargar la imagen con el tamaño exacto
             let link = document.createElement("a");
             link.href = qrBase64;
             link.download = `QR-${nombre}-${id}.png`;
@@ -57,7 +63,7 @@ function generateAndPrintQR(id, nombre, tipo) {
             Swal.fire({
                 icon: "success",
                 title: "QR Descargado",
-                text: "El QR se ha descargado correctamente. Ábrelo desde tu galería y presiona imprimir.",
+                text: "El QR se ha descargado correctamente. Ábrelo desde iPrint&Label",
             });
         };
 
