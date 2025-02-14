@@ -182,7 +182,8 @@
                             </strong>
                         </h2>
                         <h3 class="text-lg font-semibold text-gray-800">
-                            {{ $etiqueta->id_et }} {{ $etiqueta->nombre ?? 'Sin nombre' }} {{ $etiqueta->marca }}
+                            {{ $etiqueta->id_et }} {{ $etiqueta->nombre ?? 'Sin nombre' }} -
+                            {{ $etiqueta->marca ?? 'Sin Marca' }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
                         <!-- Contenedor oculto para generar el QR -->

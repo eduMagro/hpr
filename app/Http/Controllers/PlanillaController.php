@@ -332,7 +332,7 @@ class PlanillaController extends Controller
 
                     // Verificar si la etiqueta ya existe antes de crearla
                     $numeroEtiqueta = $row[30] ?? null;
-
+                    $marca = $row[23] ?? 'Sin marca';
                     if (!isset($etiquetasRegistradas[$numeroEtiqueta])) {
                         $etiqueta = Etiqueta::where('numero_etiqueta', $numeroEtiqueta)
                             ->where('planilla_id', $planilla->id)
@@ -343,7 +343,8 @@ class PlanillaController extends Controller
                                 'numero_etiqueta' => $numeroEtiqueta,
                                 'planilla_id' => $planilla->id,
                                 'nombre' => $row[22] ?? 'Sin nombre',
-                                'peso' => 0 // Inicialmente en 0, lo actualizamos después
+                                'peso' => 0, // Inicialmente en 0, lo actualizamos después
+                                'marca' => null, // Se actualizará después
                             ]);
                         }
 
@@ -373,6 +374,14 @@ class PlanillaController extends Controller
                 }
                 foreach ($etiquetasRegistradas as $etiqueta) {
                     $etiqueta->peso = $etiqueta->elementos()->sum('peso');
+
+                    $marcaMasComun = $etiqueta->elementos()
+                        ->select('marca', DB::raw('COUNT(*) as total'))
+                        ->groupBy('marca')
+                        ->orderByDesc('total')
+                        ->value('marca');
+
+                    $etiqueta->marca = $marcaMasComun;
                     $etiqueta->save();
                 }
             }
