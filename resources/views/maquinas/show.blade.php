@@ -130,9 +130,10 @@
                         $elementosAgrupados = $maquina
                             ->elementosTerciarios()
                             ->where('maquina_id_3', $maquina->id)
-                            //->where('estado', 'pendiente')
                             ->get()
-                            ->groupBy('etiqueta_id');
+                            ->groupBy(function ($item) {
+                                return $item->etiqueta_id . '-' . $item->marca;
+                            });
                     } else {
                         $elementosAgrupados = $maquina->elementos->groupBy('etiqueta_id');
                     }
