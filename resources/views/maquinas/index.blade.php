@@ -59,7 +59,7 @@
 
 
                                             <!-- Cuadro de progreso -->
-                                            @if ($producto->tipo == 'encarretado')
+                                            @if ($producto->tipo == 'ENCARRETADO')
                                                 <div
                                                     style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
                                                     <div class="cuadro verde"
@@ -80,7 +80,7 @@
                                                     <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
 
                                                 </div>
-                                            @elseif ($producto->tipo == 'barras')
+                                            @elseif ($producto->tipo == 'BARRA')
                                                 <!-- Información del producto -->
 
                                                 <div

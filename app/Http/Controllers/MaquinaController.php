@@ -205,14 +205,11 @@ class MaquinaController extends Controller
     public function guardarSesion(Request $request)
     {
         $request->validate([
-            'users_id_2' => 'required|exists:users,id',
-            'maquina_id' => 'required|exists:maquinas,id'
+            'maquina_id' => 'required|exists:maquinas,id',
+            'users_id_2' => 'nullable|exists:users,id' // Ahora puede ser null
         ]);
 
-        // Eliminar compañero anterior antes de asignar uno nuevo
-        session()->forget('compañero_id');
-
-        // Guardar el nuevo compañero en la sesión
+        // Guardar el nuevo compañero en la sesión (o eliminar si es null)
         session(['compañero_id' => $request->users_id_2]);
 
         return response()->json(['success' => true]);
