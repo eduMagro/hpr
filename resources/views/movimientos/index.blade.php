@@ -80,7 +80,7 @@
 
                         <!-- Botones de acción -->
                         <div class="flex justify-between mt-4">
-                            <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
+                            <x-boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
                         </div>
                     </div>
                 @endforeach
