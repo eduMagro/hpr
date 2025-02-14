@@ -188,7 +188,7 @@ class etiquetaController extends Controller
                     $etiqueta->users_id_2 = session()->get('compañero_id', null);
                 }
                 $etiqueta->save();
-            } elseif ($etiqueta->estado == "fabricando") {  // ---------------------------------- F A B R I C A N D O
+            } elseif ($etiqueta->estado == "fabricando" || $etiqueta->estado == "parcial completada") {  // ---------------------------------- F A B R I C A N D O
 
                 // ELEMENTOS COMPLETADOS?? SALIMOS DEL CONDICIONAL
                 $elementosCompletados = $elementosEnMaquina->where('estado', 'completado')->count();
@@ -316,8 +316,8 @@ class etiquetaController extends Controller
                     $etiqueta->estado = 'completada';
                     $etiqueta->fecha_finalizacion = now();
                 } else {
-                    // Si ningún elemento está completado, mantener el estado actual
-                    $etiqueta->estado = 'fabricando';
+                    // Si alguno no está completado, mantener el estado actual
+                    $etiqueta->estado = 'parcial completada';
                     $etiqueta->fecha_finalizacion = null;
                 }
 
@@ -494,7 +494,7 @@ class etiquetaController extends Controller
         if ($tipoEnsamblado === 'TALLER') {
             // Buscar una máquina de soldar disponible
             $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                ->whereDoesntHave('etiquetas')
+                ->whereDoesntHave('elementos') // Verifica si tiene elementos en lugar de etiquetas
                 ->first();
 
             // Si no hay máquinas de soldar libres, seleccionar la que recibió un elemento primero

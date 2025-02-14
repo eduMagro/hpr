@@ -112,15 +112,11 @@ function actualizarDOMEtiqueta(id, data) {
     const estadoEtiqueta = document.getElementById(`estado-${id}`);
     const inicioEtiqueta = document.getElementById(`inicio-${id}`);
     const finalEtiqueta = document.getElementById(`final-${id}`);
-    const contenedorEstadoEt = document.getElementById(
-        `contenedor-estado-et-${id}`
-    );
 
     if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
-    if (inicioEtiqueta)
-        inicioEtiqueta.textContent = data.fecha_inicio || "No asignada";
+    if (inicioEtiqueta) inicioEtiqueta.textContent = data.fecha_inicio || "N/A";
     if (finalEtiqueta)
-        finalEtiqueta.textContent = data.fecha_finalizacion || "No asignada";
+        finalEtiqueta.textContent = data.fecha_finalizacion || "N/A";
 
     // Verificar que el estado no sea `undefined` antes de procesarlo
     if (!data.estado) {
@@ -153,6 +149,15 @@ function actualizarDOMEtiqueta(id, data) {
                 icon: "info",
                 title: "Etiqueta reiniciada",
                 text: "Hemos reiniciado la etiqueta.",
+                timer: 2000,
+                showConfirmButton: false,
+            });
+            break;
+        case "parcial completada":
+            Swal.fire({
+                icon: "info",
+                title: "Etiqueta parcialmente completada",
+                text: "Aun quedan elementos por completar en otras máquinas.",
                 timer: 2000,
                 showConfirmButton: false,
             });

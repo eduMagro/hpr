@@ -158,8 +158,8 @@
                                 @endif
                             </td>
                             <td class="px-4 py-2">{{ $etiqueta->peso_kg }}</td>
-                            <td class="px-4 py-2">{{ $etiqueta->fecha_inicio ?? 'No asignado' }}</td>
-                            <td class="px-4 py-2">{{ $etiqueta->fecha_finalizacion ?? 'No asignado' }}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->fecha_inicio ?? 'N/A' }}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}</td>
                             <td class="px-4 py-2">{{ $etiqueta->estado }}</td>
                             <td class="px-4 py-2 flex space-x-2">
                                 <a href="{{ route('etiquetas.show', $etiqueta->id) }}"
