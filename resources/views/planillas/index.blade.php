@@ -5,53 +5,6 @@
         </h2>
     </x-slot>
 
-    <!-- Mostrar mensajes de error y éxito -->
-    @if ($errors->any())
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Errores encontrados',
-                    html: '<ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>',
-                    confirmButtonColor: '#d33'
-                });
-            });
-        </script>
-    @endif
-    @if (session('error'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: '{{ session('error') }}',
-                    confirmButtonColor: '#d33'
-                });
-            });
-        </script>
-    @endif
-
-    @if (session('success'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'success',
-                    text: '{{ session('success') }}',
-                    confirmButtonColor: '#28a745'
-                });
-            });
-        </script>
-    @endif
-    @if (session('abort'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Acceso denegado',
-                text: "{{ session('abort') }}",
-            });
-        </script>
-    @endif
-
     <div class="w-full px-6 py-4">
         <!-- Enlaces de acción -->
         <div class="flex flex-wrap gap-4 mb-4">

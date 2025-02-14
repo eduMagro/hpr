@@ -4,28 +4,6 @@
             {{ __('Editar Máquina') }}
         </h2>
     </x-slot>
-    <!-- Mostrar errores de validación -->
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    <!-- Mostrar mensajes de éxito o error -->
-    @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
-    @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-
     <div class="container mt-5">
         <div class="row justify-content-center">
             <div class="col-md-8">
@@ -37,55 +15,69 @@
                         <form action="{{ route('maquinas.update', $maquina->id) }}" method="POST">
                             @csrf
                             @method('PUT')
-                        
+
                             <!-- Código de la máquina -->
                             <div class="form-group mb-4">
-                                <label for="codigo" class="form-label fw-bold text-uppercase">Código de la Máquina</label>
+                                <label for="codigo" class="form-label fw-bold text-uppercase">Código de la
+                                    Máquina</label>
                                 <input type="text" id="codigo" name="codigo" class="form-control form-control-lg"
-                                    value="{{ old('codigo', $maquina->codigo) }}" placeholder="Introduce el código de la máquina" required>
+                                    value="{{ old('codigo', $maquina->codigo) }}"
+                                    placeholder="Introduce el código de la máquina" required>
                             </div>
-                        
+
                             <!-- Nombre de la máquina -->
                             <div class="form-group mb-4">
-                                <label for="nombre" class="form-label fw-bold text-uppercase">Nombre de la Máquina</label>
+                                <label for="nombre" class="form-label fw-bold text-uppercase">Nombre de la
+                                    Máquina</label>
                                 <input type="text" id="nombre" name="nombre" class="form-control form-control-lg"
-                                    value="{{ old('nombre', $maquina->nombre) }}" placeholder="Introduce el nombre de la máquina" required>
+                                    value="{{ old('nombre', $maquina->nombre) }}"
+                                    placeholder="Introduce el nombre de la máquina" required>
                             </div>
-                        
+
                             <!-- Diámetro mínimo -->
                             <div class="form-group mb-4">
-                                <label for="diametro_min" class="form-label fw-bold text-uppercase">Diámetro Mínimo</label>
-                                <input type="number" id="diametro_min" name="diametro_min" class="form-control form-control-lg"
-                                    value="{{ old('diametro_min', $maquina->diametro_min) }}" placeholder="Introduce el diámetro mínimo" required>
+                                <label for="diametro_min" class="form-label fw-bold text-uppercase">Diámetro
+                                    Mínimo</label>
+                                <input type="number" id="diametro_min" name="diametro_min"
+                                    class="form-control form-control-lg"
+                                    value="{{ old('diametro_min', $maquina->diametro_min) }}"
+                                    placeholder="Introduce el diámetro mínimo">
                             </div>
-                        
+
                             <!-- Diámetro máximo -->
                             <div class="form-group mb-4">
-                                <label for="diametro_max" class="form-label fw-bold text-uppercase">Diámetro Máximo</label>
-                                <input type="number" id="diametro_max" name="diametro_max" class="form-control form-control-lg"
-                                    value="{{ old('diametro_max', $maquina->diametro_max) }}" placeholder="Introduce el diámetro máximo" required>
+                                <label for="diametro_max" class="form-label fw-bold text-uppercase">Diámetro
+                                    Máximo</label>
+                                <input type="number" id="diametro_max" name="diametro_max"
+                                    class="form-control form-control-lg"
+                                    value="{{ old('diametro_max', $maquina->diametro_max) }}"
+                                    placeholder="Introduce el diámetro máximo">
                             </div>
-                        
+
                             <!-- Peso mínimo -->
                             <div class="form-group mb-4">
                                 <label for="peso_min" class="form-label fw-bold text-uppercase">Peso Mínimo</label>
-                                <input type="number" id="peso_min" name="peso_min" class="form-control form-control-lg"
-                                    value="{{ old('peso_min', $maquina->peso_min) }}" placeholder="Introduce el peso mínimo (opcional)">
+                                <input type="number" id="peso_min" name="peso_min"
+                                    class="form-control form-control-lg"
+                                    value="{{ old('peso_min', $maquina->peso_min) }}"
+                                    placeholder="Introduce el peso mínimo (opcional)">
                             </div>
-                        
+
                             <!-- Peso máximo -->
                             <div class="form-group mb-4">
                                 <label for="peso_max" class="form-label fw-bold text-uppercase">Peso Máximo</label>
-                                <input type="number" id="peso_max" name="peso_max" class="form-control form-control-lg"
-                                    value="{{ old('peso_max', $maquina->peso_max) }}" placeholder="Introduce el peso máximo (opcional)">
+                                <input type="number" id="peso_max" name="peso_max"
+                                    class="form-control form-control-lg"
+                                    value="{{ old('peso_max', $maquina->peso_max) }}"
+                                    placeholder="Introduce el peso máximo (opcional)">
                             </div>
-                        
+
                             <!-- Botón para actualizar -->
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary btn-lg">Actualizar Máquina</button>
                             </div>
                         </form>
-                        
+
                     </div>
                     <div class="card-footer text-center text-muted">
                         <small>Todos los campos con * son obligatorios.</small>

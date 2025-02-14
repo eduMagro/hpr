@@ -80,7 +80,7 @@
                 </div>
                 <div class="mb-2">
                     <label for="ubicacion" class="block text-gray-700">Ubicación:</label>
-                    <input type="text" id="ubicacion" name="ubicacion" value="{{ old('ubicacion') }}" required
+                    <input type="text" id="ubicacion" name="ubicacion" value="{{ old('ubicacion') }}"
                         class="w-full px-3 py-2 border rounded-lg">
                 </div>
             </div>

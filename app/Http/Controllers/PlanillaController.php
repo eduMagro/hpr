@@ -381,7 +381,7 @@ class PlanillaController extends Controller
             ]);
 
             DB::commit(); // Confirmar la transacción
-            return redirect()->route('planillas.index')->with('success', 'Planillas y elementos importados correctamente por código.');
+            return redirect()->route('planillas.index')->with('success', 'Planillas importadas con éxito.');
         } catch (Exception $e) {
             DB::rollBack(); // Revertir cambios en caso de error
             return redirect()->route('planillas.index')->with('error', 'Hubo un problema al importar las planillas: ' . $e->getMessage());
