@@ -158,4 +158,8 @@ class Planilla extends Model
         // Asegurar que created_at es un objeto Carbon y sumarle 6 días
         return Carbon::parse($this->created_at)->addDays(6);
     }
+    public function salidas()
+    {
+        return $this->belongsToMany(Salida::class, 'planilla_salida');
+    }
 }

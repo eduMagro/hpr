@@ -204,11 +204,12 @@ class PlanillaController extends Controller
         $pesoTotal = max(1, $planilla->peso_total ?? 1);
         $progreso = min(100, ($pesoAcumulado / $pesoTotal) * 100);
     
-        // Procesar paquetes
-        $paquetes = $planilla->paquetes->map(function ($paquete) use ($getColor) {
-            $paquete->color = $getColor($paquete->estado, 'paquete');
-            return $paquete;
-        });
+// Procesar paquetes
+$paquetes = $planilla->paquetes->map(function ($paquete) {
+    $paquete->color = 'bg-gray-300'; // Asignar color gris claro fijo a todos los paquetes
+    return $paquete;
+});
+
     
         // Procesar elementos
         $elementos = $planilla->elementos->map(function ($elemento) use ($getColor) {
