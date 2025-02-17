@@ -7,27 +7,6 @@
 
     <!-- Mensajes de Error y Éxito -->
     <div class="w-full px-6 py-4">
-        @if ($errors->any())
-            <div class="bg-red-100 text-red-800 p-4 rounded-lg mb-4">
-                <ul>
-                    @foreach ($errors->all() as $error)
-                        <li class="text-sm">{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="bg-red-500 text-white p-4 rounded-lg mb-4">
-                {{ session('error') }}
-            </div>
-        @endif
-
-        @if (session('success'))
-            <div class="bg-green-500 text-white p-4 rounded-lg mb-4">
-                {{ session('success') }}
-            </div>
-        @endif
         <!-- Alertas no leídas -->
         @if ($alertasNoLeidas->isNotEmpty())
             <div class="mb-6 bg-yellow-100 border border-yellow-400 text-yellow-800 p-4 rounded-lg shadow">

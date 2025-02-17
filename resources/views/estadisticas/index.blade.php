@@ -28,50 +28,74 @@
         </div>
     @endif
 
-    <!-- Contenedor de la gráfica -->
-    <div class="container my-5">
-        <h3>Gráfica de Productos por Estado</h3>
+    <div class="container mt-5">
+        <div class="card shadow-lg">
+            <div class="card-header bg-primary text-white text-center">
+                <h3>Reporte de Pesos por Planilla (Pendientes)</h3>
+            </div>
+            <div class="card-body">
 
-        <!-- Canvas para Chart.js -->
-        <canvas id="productosEstadoChart" width="400" height="200"></canvas>
+                <!-- Tabla 1: Peso Total por Diámetro -->
+                <div class="mb-4">
+                    <h4 class="text-center bg-secondary text-white p-2 rounded">Peso Total por Diámetro</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead class="table-dark text-center">
+                                <tr>
+                                    <th>Diámetro (mm)</th>
+                                    <th>Peso Total (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($pesoTotalPorDiametro as $fila)
+                                    <tr class="text-center">
+                                        <td>{{ number_format($fila->diametro, 2) }}</td>
+                                        <td>{{ number_format($fila->peso_total, 2) }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="2" class="text-center text-danger">No hay datos disponibles</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla 2: Peso por Planilla y Diámetro -->
+                <div class="mb-4">
+                    <h4 class="text-center bg-secondary text-white p-2 rounded">Peso por Planilla y Diámetro</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead class="table-dark text-center">
+                                <tr>
+                                    <th>Diámetro (mm)</th>
+                                    <th>Planilla</th>
+                                    <th>Peso por Planilla (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($datosPorPlanilla as $fila)
+                                    <tr class="text-center">
+                                        <td>{{ number_format($fila->diametro, 2) }}</td>
+                                        <td>{{ $fila->planilla_id }}</td>
+                                        <td>{{ number_format($fila->peso_por_planilla, 2) }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="3" class="text-center text-danger">No hay datos disponibles</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+            <div class="card-footer text-center text-muted">
+                Generado el {{ now()->format('d/m/Y H:i') }}
+            </div>
+        </div>
     </div>
 
-    <!-- Incluir el JS de Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Obtener los datos pasados desde el controlador
-        var productosPorEstado = @json($productosPorEstado);
-
-        // Extraer etiquetas y valores para la gráfica
-        var estados = productosPorEstado.map(function(item) {
-            return item.estado;
-        });
-
-        var totales = productosPorEstado.map(function(item) {
-            return item.total;
-        });
-
-        // Crear la gráfica
-        var ctx = document.getElementById('productosEstadoChart').getContext('2d');
-        var productosEstadoChart = new Chart(ctx, {
-            type: 'bar',  // Tipo de gráfica: barra
-            data: {
-                labels: estados,  // Etiquetas (los estados de los productos)
-                datasets: [{
-                    label: 'Cantidad de Productos',
-                    data: totales,  // Los valores (la cantidad de productos por estado)
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true  // Asegura que la escala Y comience desde 0
-                    }
-                }
-            }
-        });
-    </script>
 </x-app-layout>

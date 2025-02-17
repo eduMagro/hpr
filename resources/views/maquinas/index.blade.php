@@ -5,39 +5,6 @@
         </h2>
     </x-slot>
 
-    <!-- Mostrar errores de validación -->
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    <!-- Mostrar mensajes de éxito o error -->
-    @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
-    {{-- mostrar mensaje de exito --}}
-    @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-    {{-- mision abortada --}}
-    @if (session('abort'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Acceso denegado',
-                text: "{{ session('abort') }}",
-            });
-        </script>
-    @endif
-
     <div class="container mx-auto px-4 py-6">
         <!-- Botón para crear una nueva maquina con estilo Bootstrap -->
         <div class="mb-4">
@@ -92,7 +59,7 @@
 
 
                                             <!-- Cuadro de progreso -->
-                                            @if ($producto->tipo == 'encarretado')
+                                            @if ($producto->tipo == 'ENCARRETADO')
                                                 <div
                                                     style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
                                                     <div class="cuadro verde"
@@ -113,7 +80,7 @@
                                                     <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
 
                                                 </div>
-                                            @elseif ($producto->tipo == 'barras')
+                                            @elseif ($producto->tipo == 'BARRA')
                                                 <!-- Información del producto -->
 
                                                 <div
@@ -193,33 +160,27 @@
                 return;
             }
 
-            // Construir las opciones correctamente
-            let opciones = usuarios.map(usuario =>
+            // Construir las opciones correctamente, incluyendo la opción de no elegir compañero
+            let opciones = `<option value="" selected>Sin compañero</option>`;
+            opciones += usuarios.map(usuario =>
                 `<option value="${usuario.id}">${usuario.name}</option>`
             ).join('');
 
             Swal.fire({
                 title: 'Seleccionar Compañero',
                 html: `
-                <select id="users_id_2" style="width: 100%; padding: 10px; font-size: 16px;">
-                    ${opciones}
-                </select>
-            `,
+                    <select id="users_id_2" style="width: 100%; padding: 10px; font-size: 16px;">
+                        ${opciones}
+                    </select>
+                `,
                 showCancelButton: true,
                 confirmButtonText: 'Iniciar Sesión',
                 cancelButtonText: 'Cancelar',
-                didOpen: () => {
-                    // Depuración para verificar que el HTML del select se inserta
-                    const selectElement = document.getElementById('users_id_2');
-
-                },
                 preConfirm: () => {
-                    const users_id_2 = document.getElementById('users_id_2') ? document.getElementById(
-                        'users_id_2').value : null;
-                    if (!users_id_2) {
-                        Swal.showValidationMessage('Debes seleccionar un compañero');
-                        return false;
-                    }
+                    const selectElement = document.getElementById('users_id_2');
+                    const users_id_2 = selectElement ? selectElement.value : null;
+
+                    // Si el usuario elige "Sin compañero", enviar null
                     return fetch('{{ route('maquinas.sesion.guardar') }}', {
                         method: 'POST',
                         headers: {
@@ -228,7 +189,7 @@
                         },
                         body: JSON.stringify({
                             maquina_id: maquinaId,
-                            users_id_2: users_id_2
+                            users_id_2: users_id_2 || null // Si es vacío, se envía null
                         })
                     }).then(response => {
                         if (!response.ok) {

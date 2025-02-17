@@ -26,19 +26,21 @@
                     <p><strong>Estado:</strong> {{ $detalles_producto->estado }}</p>
                     <p><strong>Otros:</strong> {{ $detalles_producto->otros ?? 'N/A' }}</p>
                     <p>
-                        <button onclick="generateAndPrintQR('{{ $detalles_producto->id }}')" class="btn btn-primary">Imprimir
-                            QR</button>
+                        <button
+                            onclick="generateAndPrintQR('{{ $detalles_producto->id }}', '{{ $detalles_producto->n_colada }}', 'MATERIA PRIMA')"
+                            class="btn btn-primary btn-sm">QR</button>
                     </p>
                     <div id="qrCanvas{{ $detalles_producto->id }}" style="display:none;"></div>
 
                     <hr class="m-2 border-gray-300">
 
                     <!-- Detalles de Ubicación o Máquina -->
-                    @if (isset($detalles_producto->ubicacion->descripcion))
+                    @if (isset($detalles_producto->ubicacion->nombre))
                         <p class="font-bold text-lg text-gray-800 break-words">
-                            {{ $detalles_producto->ubicacion->descripcion }}</p>
+                            {{ $detalles_producto->ubicacion->nombre }}</p>
                     @elseif (isset($detalles_producto->maquina->nombre))
-                        <p class="font-bold text-lg text-gray-800 break-words">{{ $detalles_producto->maquina->nombre }}
+                        <p class="font-bold text-lg text-gray-800 break-words">
+                            {{ $detalles_producto->maquina->nombre }}
                         </p>
                     @else
                         <p class="font-bold text-lg text-gray-800 break-words">No está ubicada</p>
@@ -48,24 +50,27 @@
                     <hr class="my-2 border-gray-300">
 
                     <div class="mt-2 flex justify-between">
-                         <!-- Enlace para editar -->
-                         <a href="{{ route('productos.edit', $detalles_producto->id) }}"
+                        {{-- sweet alert para eliminar --}}
+                        <x-boton-eliminar :action="route('productos.destroy', $detalles_producto->id)" />
+                        <!-- Enlace para editar -->
+                        <a href="{{ route('productos.edit', $detalles_producto->id) }}"
                             class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                            <!-- Formulario para eliminar -->
-                        <form action="{{ route('productos.destroy', $detalles_producto->id) }}" method="POST"
-                            onsubmit="return confirm('¿Estás seguro de querer eliminar este producto?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="text-red-500">Eliminar</button>
-                        </form>
+                        <a href="{{ route('movimientos.create', ['producto_id' => $detalles_producto->id]) }}"
+                            class="text-green-500 hover:text-green-700 text-sm">Mover</a>
+
+                        <a href="{{ route('productos.show', $detalles_producto->id) }}"
+                            class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
                     </div>
                 </div>
             @else
                 <div class="col-span-3 text-center py-4">No hay productos disponibles.</div>
-         
+
 
             @endif
         </div>
-      
+
     </div>
+    <!-- SCRIPT PARA IMPRIMIR QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
 </x-app-layout>

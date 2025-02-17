@@ -9,15 +9,6 @@
             </p>
         @endif
     </x-slot>
-    @if (session('abort'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Acceso denegado',
-                text: "{{ session('abort') }}",
-            });
-        </script>
-    @endif
     <div class="container mx-auto px-4 py-6">
         <!-- Botón para crear un nuevo usuario con estilo Bootstrap -->
         <div class="mb-4">

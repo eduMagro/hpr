@@ -5,28 +5,6 @@
         </h2>
     </x-slot>
 
-    <!-- Mostrar errores de validación -->
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    <!-- Mostrar mensajes de éxito o error -->
-    @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
-    @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-
     <div class="container mx-auto px-4 py-6">
         <!-- Botón para crear un nuevo movimiento con estilo Bootstrap -->
         <div class="mb-4">
@@ -102,12 +80,7 @@
 
                         <!-- Botones de acción -->
                         <div class="flex justify-between mt-4">
-                            <form action="{{ route('movimientos.destroy', $movimiento->id) }}" method="POST"
-                                onsubmit="return confirm('¿Estás seguro de querer eliminar este movimiento?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-500 hover:text-red-700 text-sm">Eliminar</button>
-                            </form>
+                            <x-boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
                         </div>
                     </div>
                 @endforeach

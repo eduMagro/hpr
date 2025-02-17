@@ -5,20 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Entrada;
 use App\Models\Ubicacion;
 use App\Models\User;
+use App\Models\EntradaProducto;
 use App\Models\Producto;  // Asegúrate de importar Producto
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\DB;
-use App\Services\Fabricantes\FabricanteServiceFactory;
 use Exception;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
 
 class EntradaController extends Controller
 {
-
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
     {
@@ -71,42 +67,84 @@ class EntradaController extends Controller
         }
     }
 
-
-
     // Mostrar el formulario de creación
     public function create()
     {
         $ubicaciones = Ubicacion::all();
         $usuarios = User::all();
 
-        // Definir los nombres de los productos en el controlador
-        $nombre_productos = [
-            'Corrugado',
-            'Tipo 2',
-            'Tipo 3',
-        ];
-
-        return view('entradas.create', compact('ubicaciones', 'usuarios', 'nombre_productos'));
+        return view('entradas.create', compact('ubicaciones', 'usuarios'));
     }
 
     public function store(Request $request)
     {
+        DB::beginTransaction();
         try {
-            // Obtener el servicio adecuado para el fabricante
-            $fabricanteService = FabricanteServiceFactory::getService($request->fabricante);
+            $request->validate([
+                'fabricante' => 'required|in:MEGASA,GETAFE,NERVADUCTIL,SIDERURGICA SEVILLANA',
+                'albaran' => 'required|string|min:1|max:30',
+                'tipo' => 'required|in:ENCARRETADO,BARRA',
+                'diametro' => 'required|numeric|in:5,8,10,12,16,20,25,32',
+                'longitud' => 'nullable|numeric|in:6,12,14,15,16',
+                'n_colada' => 'required|string|max:50',
+                'n_paquete' => 'required|string|max:50',
+                'peso' => 'required|numeric|min:1',
+                'ubicacion' => 'nullable|string|max:100',
+                'otros' => 'nullable|string|max:255',
+            ], [
+                'fabricante.required' => 'El fabricante es obligatorio.',
+                'fabricante.in' => 'El fabricante seleccionado no es válido.',
+                'albaran.required' => 'El número de albarán es obligatorio.',
+                'tipo.required' => 'El tipo de paquete es obligatorio.',
+                'diametro.required' => 'El diámetro es obligatorio.',
+                'n_colada.required' => 'El número de colada es obligatorio.',
+                'n_paquete.required' => 'El número de paquete es obligatorio.',
+                'peso.required' => 'El peso es obligatorio.',
+            ]);
 
-            // Delegar la lógica específica al servicio
-            $fabricanteService->procesar($request);
+            // Crear la entrada
+            $entrada = Entrada::create([
+                'albaran' => $request->albaran,
+                'users_id' => auth()->id(),
+                'otros' => $request->otros ?? null,
+            ]);
 
+            // Crear producto
+            $producto = Producto::create([
+                'fabricante' => $request->fabricante,
+                'nombre' => 'CORRUGADO', // Puedes ajustar esto según sea necesario
+                'tipo' => $request->tipo,
+                'diametro' => $request->diametro,
+                'longitud' => $request->longitud ?? NULL,
+                'n_colada' => $request->n_colada,
+                'n_paquete' => $request->n_paquete,
+                'peso_inicial' => $request->peso,
+                'peso_stock' => $request->peso,
+                'ubicacion_id' => $request->ubicacion, // Debes relacionar esto con una ubicación existente
+                'maquina_id' => null, // Puedes cambiarlo según sea necesario
+                'estado' => 'ALMACENADO',
+                'otros' => $request->otros ?? null,
+            ]);
+
+            // Crear la relación en la tabla intermedia
+            EntradaProducto::create([
+                'entrada_id' => $entrada->id,
+                'producto_id' => $producto->id,
+                'ubicacion_id' => $request->ubicacion,
+                'users_id' => auth()->id(),
+            ]);
+
+            DB::commit();
             return redirect()->route('entradas.index')->with('success', 'Entrada registrada correctamente.');
         } catch (ValidationException $e) {
-            // Manejar errores de validación
+            DB::rollBack();
             return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (Exception $e) {
-            // Manejar errores generales
-            return redirect()->back()->with('error', $e->getMessage())->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Hubo un problema al registrar la entrada: ' . $e->getMessage())->withInput();
         }
     }
+
 
     public function edit($id)
     {
@@ -115,35 +153,23 @@ class EntradaController extends Controller
         return view('entradas.edit', compact('entrada', 'ubicaciones'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Entrada $entrada)
     {
         DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
         try {
-            // Validar los datos enviados
             $request->validate([
-                'fabricante' => 'nullable|string|max:255',
-                'nombre' => 'required|string|max:255',
-                'tipo' => 'nullable|string|max:255',
-                'diametro' => 'nullable|numeric|min:0',
-                'longitud' => 'nullable|numeric|min:0',
-                'n_colada' => 'nullable|string|max:255',
-                'n_paquete' => 'nullable|string|max:255',
-                'peso_inicial' => 'required|numeric|min:0',
-                'peso_stock' => 'required|numeric|min:0',
-                'ubicacion_id' => 'nullable|exists:ubicaciones,id',
-                'maquina_id' => 'nullable|exists:maquinas,id',
-                'estado' => 'nullable|string|max:255',
-                'otros' => 'nullable|string|max:255',
+                'fabricante' => 'required|string|max:255',
+                'albaran' => 'required|string|min:5|max:15|alpha_num',
+                'peso_total' => 'required|numeric|min:1',
             ]);
 
-            // Buscar el producto a actualizar
-            $producto = Producto::findOrFail($id);
-
-            // Actualizar los datos del producto
-            $producto->update($request->all());
-
-            DB::commit();  // Confirmamos la transacción
-            return redirect()->route('productos.index')->with('success', 'Producto actualizado correctamente.');
+            $entrada->update([
+                'fabricante' => $request->fabricante,
+                'albaran' => $request->albaran,
+                'peso_total' => $request->peso_total,
+            ]);
+            DB::commit();
+            return redirect()->route('entradas.index')->with('success', 'Entrada de material actualizada correctamente.');
         } catch (ValidationException $e) {
             // Mostrar todos los errores de validación
             DB::rollBack();  // Si ocurre un error, revertimos la transacción
@@ -154,6 +180,7 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
 
 
     // Eliminar una entrada y sus productos asociados

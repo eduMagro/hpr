@@ -103,7 +103,7 @@
                             </form>
                         </th>
                         <th class="px-4 py-2">Nombre</th>
-                        <th class="px-4 py-2">Máquina
+                        <th class="px-4 py-2">Máquina 1
                             <!-- Formulario de búsqueda por ID -->
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="maquina"
@@ -115,7 +115,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-2">Máquina Secundaria
+                        <th class="px-4 py-2">Máquina 2
                             <!-- Formulario de búsqueda por ID -->
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="maquina2"
@@ -127,7 +127,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-2">Soldadora
+                        <th class="px-4 py-2">Máquina 3
                             <!-- Formulario de búsqueda por ID -->
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="maquina3"
@@ -141,7 +141,8 @@
                         </th>
                         <th class="px-4 py-2">M. Prima 1
                             <!-- Formulario de búsqueda por ID -->
-                            <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
+                            <form method="GET" action="{{ route('elementos.index') }}"
+                                class="mt-2 flex space-x-2">
                                 <input type="text" name="producto1"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                     placeholder="Buscar">

@@ -13,6 +13,7 @@ class Maquina extends Model
     protected $fillable = [
         'codigo',
         'nombre',
+        'tipo',
         'diametro_min',
         'diametro_max',
         'peso_min',
@@ -45,6 +46,6 @@ class Maquina extends Model
     // Elementos que tienen esta máquina como terciaria
     public function elementosTerciarios()
     {
-        return $this->hasMany(Elemento::class, 'soldadora');
+        return $this->hasMany(Elemento::class, 'maquina_id_3');
     }
 }

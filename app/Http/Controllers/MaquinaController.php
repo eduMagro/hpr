@@ -148,6 +148,7 @@ class MaquinaController extends Controller
             $request->validate([
                 'codigo' => 'required|string|max:6|unique:maquinas,codigo',
                 'nombre' => 'required|string|max:40|unique:maquinas,nombre',
+                'tipo' => 'required|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual ',
                 'diametro_min' => 'integer',
                 'diametro_max' => 'integer',
                 'peso_min' => 'integer',
@@ -163,6 +164,11 @@ class MaquinaController extends Controller
                 'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
                 'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
                 'nombre.unique' => 'Ya existe una máquina con el mismo nombre',
+
+                'tipo.required' => 'El campo "tipo" es obligatorio.',
+                'tipo.string' => 'El campo "tpo" debe ser una cadena de texto.',
+                'tipo.max' => 'El campo "tipo" no puede tener más de 50 caracteres.',
+                'tipo.in' => 'El tipo no está entre los posibles',
 
                 // 'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
                 'diametro_min.integer' => 'El campo "diámetro mínimo" debe ser un número entero.',
@@ -182,6 +188,7 @@ class MaquinaController extends Controller
             Maquina::create([
                 'codigo' => $request->codigo,
                 'nombre' => $request->nombre,
+                'tipo' => $request->tipo,
                 'diametro_min' => $request->diametro_min,
                 'diametro_max' => $request->diametro_max,
                 'peso_min' => $request->peso_min,
@@ -205,14 +212,11 @@ class MaquinaController extends Controller
     public function guardarSesion(Request $request)
     {
         $request->validate([
-            'users_id_2' => 'required|exists:users,id',
-            'maquina_id' => 'required|exists:maquinas,id'
+            'maquina_id' => 'required|exists:maquinas,id',
+            'users_id_2' => 'nullable|exists:users,id' // Ahora puede ser null
         ]);
 
-        // Eliminar compañero anterior antes de asignar uno nuevo
-        session()->forget('compañero_id');
-
-        // Guardar el nuevo compañero en la sesión
+        // Guardar el nuevo compañero en la sesión (o eliminar si es null)
         session(['compañero_id' => $request->users_id_2]);
 
         return response()->json(['success' => true]);
@@ -236,8 +240,8 @@ class MaquinaController extends Controller
         $validatedData = $request->validate([
             'codigo' => 'required|string|max:6|unique:maquinas,codigo,' . $id,
             'nombre' => 'required|string|max:40',
-            'diametro_min' => 'required|integer',
-            'diametro_max' => 'required|integer',
+            'diametro_min' => 'nullable|integer',
+            'diametro_max' => 'nullable|integer',
             'peso_min' => 'nullable|integer',
             'peso_max' => 'nullable|integer',
         ], [
@@ -250,10 +254,8 @@ class MaquinaController extends Controller
             'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
             'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
 
-            'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
             'diametro_min.integer' => 'El "diámetro mínimo" debe ser un número entero.',
 
-            'diametro_max.required' => 'El campo "diámetro máximo" es obligatorio.',
             'diametro_max.integer' => 'El "diámetro máximo" debe ser un número entero.',
 
             'peso_min.integer' => 'El "peso mínimo" debe ser un número entero.',

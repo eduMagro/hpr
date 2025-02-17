@@ -28,7 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/users/{id}', [ProfileController::class, 'update'])->name('profile.update');
 
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::delete('/users/{id}', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
 
     // Rutas para el controlador de entradas
     Route::resource('entradas', EntradaController::class);
@@ -50,29 +51,27 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/productos/{id}/origen', [ProductoController::class, 'obtenerOrigen'])->name('productos.obtenerOrigen');
 
-
-
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');
     Route::resource('conjuntos', ConjuntoController::class);
     Route::resource('elementos', ElementoController::class);
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
         ->name('elementosEtiquetas');
-        Route::resource('subpaquetes',SubpaqueteController::class);
+    Route::resource('subpaquetes', SubpaqueteController::class);
     //Actualizar estado de etiquetas
     //Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
     //Route::post('/actualizar-etiqueta/{id}', [EtiquetaController::class, 'actualizarEtiqueta']);
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta']);
     Route::put('/actualizar-elemento/{id}/maquina/{maquina_id}', [ElementoController::class, 'actualizarElemento']);
 
- 	Route::post('/verificar-items', [PaqueteController::class, 'verificarItems']);
+    Route::post('/verificar-items', [PaqueteController::class, 'verificarItems']);
     // Para elegir un peon en maquinas
 
     // Para elegir un peon en maquinas
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])
         ->name('maquinas.sesion.guardar');
 
-        Route::resource('salidas', SalidaController::class);
+    Route::resource('salidas', SalidaController::class);
     Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
     Route::post('/alertas/store', [AlertaController::class, 'store'])->name('alertas.store');

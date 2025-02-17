@@ -102,7 +102,7 @@ class Elemento extends Model
     }
     public function maquina_3()
     {
-        return $this->belongsTo(Maquina::class, 'soldadora');
+        return $this->belongsTo(Maquina::class, 'maquina_id_3');
     }
 
     // Relación con el modelo Producto (si existe)

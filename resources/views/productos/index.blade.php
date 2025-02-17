@@ -6,51 +6,7 @@
 
         </h2>
     </x-slot>
-    <!-- Mostrar errores de validación -->
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    <!-- Mostrar mensajes de éxito o error -->
-    @if (session('error'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: '{{ session('error') }}',
-                    confirmButtonColor: '#d33'
-                });
-            });
-        </script>
-    @endif
 
-    @if (session('success'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'success',
-                    text: '{{ session('success') }}',
-                    confirmButtonColor: '#28a745'
-                });
-            });
-        </script>
-    @endif
-    {{-- mision abortada --}}
-    @if (session('abort'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Acceso denegado',
-                text: "{{ session('abort') }}",
-            });
-        </script>
-    @endif
     <div class="container mx-auto px-4 py-6">
         <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
         <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosBusqueda">
@@ -148,7 +104,7 @@
                     <p>
 
                         <button
-                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->fabricante }}', 'MATERIA PRIMA')"
+                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_paquete }}', 'MATERIA PRIMA')"
                             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                             QR
                         </button>
@@ -196,5 +152,5 @@
     </div>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="{{ asset('js/imprimirQr.js') }}"></script>
+    <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
 </x-app-layout>

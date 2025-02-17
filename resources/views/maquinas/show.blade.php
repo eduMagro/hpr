@@ -7,39 +7,6 @@
         </h2>
     </x-slot>
 
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    @if (session('error'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: '{{ session('error') }}',
-                    confirmButtonColor: '#d33'
-                });
-            });
-        </script>
-    @endif
-
-    @if (session('success'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'success',
-                    text: '{{ session('success') }}',
-                    confirmButtonColor: '#28a745'
-                });
-            });
-        </script>
-    @endif
 
     <div class="container mx-auto px-4 py-6">
         <!-- Mostrar los compañeros -->
@@ -84,14 +51,14 @@
                                 <div class="flex items-center justify-between">
                                     <div class="flex flex-col">
                                         <span><strong>Ø</strong> {{ $producto->diametro_mm }}</span>
-                                        @if ($producto->tipo === 'barras')
+                                        @if (strtoupper($producto->tipo === 'BARRA'))
                                             <span><strong>L:</strong> {{ $producto->longitud_metros }}</span>
                                         @endif
                                         <a href="{{ route('productos.index', ['id' => $producto->id]) }}"
                                             class="btn btn-sm btn-primary mb-2">Ver</a>
                                     </div>
 
-                                    @if ($producto->tipo == 'encarretado')
+                                    @if (strtoupper($producto->tipo == 'ENCARRETADO'))
                                         <div id="progreso-container-{{ $producto->id }}"
                                             class="ml-4 relative w-20 h-20 bg-gray-300 overflow-hidden rounded-lg">
                                             <div id="progreso-barra-{{ $producto->id }}"
@@ -103,7 +70,7 @@
                                                 {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
                                             </span>
                                         </div>
-                                    @elseif($producto->tipo == 'barras')
+                                    @elseif(strtoupper($producto->tipo == 'BARRA'))
                                         <div id="progreso-container-{{ $producto->id }}"
                                             class="ml-4 relative w-60 h-10 bg-gray-300 overflow-hidden rounded-lg">
                                             <div class="barra verde"
@@ -144,17 +111,28 @@
 
                 @php
 
-                    if ($maquina->id == 7) {
+                    if (stripos($maquina->tipo, 'ensambladora') !== false) {
                         // Usamos $elementosMaquina que ya contiene los elementos propios y los extra (maquina_id_2 = 7)
                         $elementosAgrupados = $elementosMaquina
                             ->groupBy('etiqueta_id')
                             ->map(function ($grupo) {
                                 return $grupo->filter(function ($elemento) {
-                                    return strtolower(optional($elemento->etiquetaRelacion)->estado) === 'fabricando';
+                                    return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') ===
+                                        'ensamblando';
                                 });
                             })
                             ->filter(function ($grupo) {
                                 return $grupo->isNotEmpty();
+                            });
+                    } elseif (stripos($maquina->nombre, 'Soldadora') !== false) {
+                        // Si el nombre de la máquina contiene "Soldadora", mostramos las etiquetas cuyos elementos
+                        // tienen maquina_id_3 igual a la soldadora y están "pendientes de soldar".
+                        $elementosAgrupados = $maquina
+                            ->elementosTerciarios()
+                            ->where('maquina_id_3', $maquina->id)
+                            ->get()
+                            ->groupBy(function ($item) {
+                                return $item->etiqueta_id . '-' . $item->marca;
                             });
                     } else {
                         $elementosAgrupados = $maquina->elementos->groupBy('etiqueta_id');
@@ -198,17 +176,15 @@
                             isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
                     @endphp
 
-
-
                     <div
-                        class="{{ isset($planilla) && str_contains(optional($planilla)->ensamblado, 'TALLER') ? 'bg-red-200 text-white' : 'bg-yellow-200' }} p-6 rounded-lg shadow-md mt-4">
-
+                        class="{{ isset($planilla) && str_contains(strtolower(optional($planilla)->ensamblado ?? ''), 'taller') ? 'bg-red-200' : 'bg-yellow-200' }} p-6 rounded-lg shadow-md mt-4">
                         <h2 class="text-lg font-semibold text-gray-700">
                             <strong> {{ optional($planilla)->codigo_limpio }}
                             </strong>
                         </h2>
                         <h3 class="text-lg font-semibold text-gray-800">
-                            {{ $etiqueta->id_et }} {{ $etiqueta->nombre ?? 'Sin nombre' }} {{ $etiqueta->marca }}
+                            {{ $etiqueta->id_et }} {{ $etiqueta->nombre ?? 'Sin nombre' }} -
+                            {{ $etiqueta->marca ?? 'Sin Marca' }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
                         </h3>
                         <!-- Contenedor oculto para generar el QR -->
@@ -265,7 +241,7 @@
                                     <!-- Contenedor oculto para generar el QR -->
                                     <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
                                     @if ($tieneElementosEnOtrasMaquinas)
-                                        <p class="text-gray-600 text-sm">
+                                        {{-- <p class="text-gray-600 text-sm">
                                             <strong>Fecha Inicio:</strong>
                                             <span id="inicio-{{ $elemento->id }}">
                                                 {{ $elemento->fecha_inicio ?? 'No asignada' }}
@@ -277,7 +253,7 @@
                                             <span id="emoji-{{ $elemento->id }}"></span><br>
                                             <strong> Estado: </strong>
                                             <span id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
-                                        </p>
+                                        </p> --}}
                                         <p class="text-gray-600 text-sm">
                                             {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
                                         </p>
@@ -323,14 +299,14 @@
                                     <p class="text-gray-600 text-sm">
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }}
                                         <strong>Diámetro:</strong> {{ $elemento->diametro_mm }}
-                                        <strong>Longitud:</strong> {{ $elemento->longitud_cm }}
+                                        {{-- <strong>Longitud:</strong> {{ $elemento->longitud_cm }} --}}
                                         <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
-                                        <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }}
+                                        {{-- <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }} --}}
                                     </p>
 
-                                    <p class="text-gray-600 text-sm">
+                                    {{-- <p class="text-gray-600 text-sm">
                                         <strong>Dimensiones:</strong> {{ $elemento->dimensiones ?? 'No asignado' }}
-                                    </p>
+                                    </p> --}}
                                 </div>
                             @endforeach
                         </div>

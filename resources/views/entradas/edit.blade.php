@@ -1,129 +1,51 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Editar Entradas de Material') }}
+            {{ __('Editar Entrada de Material') }}
         </h2>
     </x-slot>
 
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
 
-    @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
+    <div class="container mx-auto px-4 py-6">
+        <form method="POST" action="{{ route('entradas.update', $entrada->id) }}"
+            class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow-md">
+            @csrf
+            @method('PUT')
 
-    @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    <div class="container my-5">
-        <div class="accordion" id="fabricantesAccordion">
-            <!-- Fabricante 1 -->
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingOne">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                        MEGASA
-                    </button>
-                </h2>
-                <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne"
-                    data-bs-parent="#fabricantesAccordion">
-                    <div class="accordion-body">
-                        <form action="{{ route('entradas.update', $entrada->id) }}" method="POST">
-                            @csrf
-                            @method('PUT')
-
-                            <!-- Albarán -->
-                            <div class="form-group">
-                                <label for="albaran">Albarán</label>
-                                <input type="text" name="albaran" id="albaran" class="form-control" value="{{ old('albaran', $entrada->albaran) }}" required>
-                            </div>
-
-                            <!-- Número de productos -->
-                            <div class="form-group">
-                                <label for="cantidad_productos">Cantidad de Productos</label>
-                                <input type="number" name="cantidad_productos" id="cantidad_productos"
-                                    class="form-control" value="{{ old('cantidad_productos', $entrada->cantidad_productos) }}" min="1" required>
-                            </div>
-
-                            <!-- Contenedor para productos -->
-                            <div id="productos_container">
-                                <!-- Los productos se agregarán aquí dinámicamente -->
-                                @foreach($entrada->productos as $index => $producto)
-                                    <div class="product-form">
-                                        <h4 class="product-title">Producto {{ $index + 1 }}</h4>
-
-                                        <div class="form-group">
-                                            <label for="fabricante{{ $index + 1 }}">Fabricante</label>
-                                            <input type="text" name="fabricante[]" id="fabricante{{ $index + 1 }}" class="form-control" value="{{ $producto->fabricante }}" readonly>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="producto_nombre_{{ $index + 1 }}">Nombre del Producto</label>
-                                            <input type="text" name="producto_nombre[]" id="producto_nombre_{{ $index + 1 }}" class="form-control" value="{{ $producto->nombre }}" readonly>
-                                        </div>
-
-                                        <!-- Tipo de Producto -->
-                                        <div class="form-group">
-                                            <label for="tipo_producto">Tipo de Producto</label>
-                                            <select name="tipo_producto[]" id="tipo_producto" class="form-control" required>
-                                                <option value="encarretado" {{ $producto->tipo_producto == 'encarretado' ? 'selected' : '' }}>Encarretado</option>
-                                                <option value="barra" {{ $producto->tipo_producto == 'barra' ? 'selected' : '' }}>Barra</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="producto_codigo_{{ $index + 1 }}">Código del Producto</label>
-                                            <input type="text" name="producto_codigo[]" id="producto_codigo_{{ $index + 1 }}" class="form-control" value="{{ $producto->codigo }}" required>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="producto_peso_{{ $index + 1 }}">Peso Inicial</label>
-                                            <input type="number" name="producto_peso[]" id="producto_peso_{{ $index + 1 }}" class="form-control" step="0.01" value="{{ $producto->peso }}">
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="producto_otros_{{ $index + 1 }}">Otros detalles</label>
-                                            <input type="text" name="producto_otros[]" id="producto_otros_{{ $index + 1 }}" class="form-control" value="{{ $producto->otros }}">
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="ubicacion_id_{{ $index + 1 }}">Ubicación</label>
-                                            <select name="ubicacion_id[]" id="ubicacion_id_{{ $index + 1 }}" class="form-control" required>
-                                                <option value="">Seleccione una ubicación</option>
-                                                @foreach ($ubicaciones as $ubicacion)
-                                                    <option value="{{ $ubicacion->id }}" {{ $producto->ubicacion_id == $ubicacion->id ? 'selected' : '' }}>{{ $ubicacion->descripcion }}</option>
-                                                @endforeach
-                                            </select><br>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-
-                            <button type="submit" class="btn btn-success mt-3">Actualizar Entrada</button>
-                        </form>
-                    </div>
-                </div>
+            <div class="mb-4">
+                <label for="fabricante" class="block text-gray-700 font-bold mb-2">Fabricante:</label>
+                <select id="fabricante" name="fabricante" required class="w-full px-3 py-2 border rounded-lg">
+                    <option value="" {{ old('fabricante', $entrada->fabricante) == '' ? 'selected' : '' }}>
+                        Seleccione un fabricante</option>
+                    <option value="MEGASA" {{ old('fabricante', $entrada->fabricante) == 'MEGASA' ? 'selected' : '' }}>
+                        MEGASA</option>
+                    <option value="GETAFE" {{ old('fabricante', $entrada->fabricante) == 'GETAFE' ? 'selected' : '' }}>
+                        GETAFE</option>
+                    <option value="NERVADUCTIL"
+                        {{ old('fabricante', $entrada->fabricante) == 'NERVADUCTIL' ? 'selected' : '' }}>NERVADUCTIL
+                    </option>
+                    <option value="SIDERURGICA SEVILLANA"
+                        {{ old('fabricante', $entrada->fabricante) == 'SIDERURGICA SEVILLANA' ? 'selected' : '' }}>
+                        SIDERURGICA SEVILLANA</option>
+                </select>
             </div>
-        </div>
+
+            <div class="mb-4">
+                <label for="albaran" class="block text-gray-700 font-bold mb-2">Albarán:</label>
+                <input type="text" id="albaran" name="albaran" value="{{ old('albaran', $entrada->albaran) }}"
+                    required class="w-full px-3 py-2 border rounded-lg">
+            </div>
+
+            <div class="mb-4">
+                <label for="peso_total" class="block text-gray-700 font-bold mb-2">Peso Total (kg):</label>
+                <input type="number" id="peso_total" name="peso_total"
+                    value="{{ old('peso_total', $entrada->peso_total) }}" required min="1" step="0.01"
+                    class="w-full px-3 py-2 border rounded-lg">
+            </div>
+
+            <button type="submit"
+                class="w-full bg-blue-500 text-white py-2 px-4 mt-4 rounded-lg hover:bg-blue-600">Actualizar
+                Entrada</button>
+        </form>
     </div>
-
-    <!-- Incluir el JS de Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        // Al igual que en el create, aquí puedes mantener la funcionalidad de manejo dinámico de productos
-    </script>
-
 </x-app-layout>

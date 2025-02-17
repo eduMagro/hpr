@@ -41,6 +41,7 @@ elementos.forEach((grupo) => {
         // Extraer longitudes y ángulos del string (ej.: "400" o "15 90d 85 ..." )
         const dimensionesStr = elemento.dimensiones || "";
         const { longitudes, angulos } = extraerDimensiones(dimensionesStr);
+        const barras = elemento.barras || 0; // Si no tiene valor, asumir 1
 
         // Centro del slot asignado:
         // Se calcula el centro vertical considerando el gapSpacing:
@@ -58,7 +59,7 @@ elementos.forEach((grupo) => {
             const scale = availableWidth / Math.abs(length);
             const lineLength = Math.abs(length) * scale;
 
-            ctx.strokeStyle = "blue";
+            ctx.strokeStyle = "#0000FF";
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(centerX - lineLength / 2, centerY);
@@ -76,7 +77,7 @@ elementos.forEach((grupo) => {
             const offsetX = offset * Math.cos(angle - Math.PI / 2);
             const offsetY = offset * Math.sin(angle - Math.PI / 2);
 
-            ctx.strokeStyle = "red";
+            ctx.strokeStyle = "#0000FF";
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(pt1.x, pt1.y);
@@ -96,8 +97,13 @@ elementos.forEach((grupo) => {
             const labelX = marginX + availableWidth - 10;
             const labelY = slotBottom - 5;
             ctx.font = "14px Arial";
-            ctx.fillStyle = "black";
+            ctx.fillStyle = "#FF0000";
             ctx.fillText(`#${elemento.id}`, labelX, labelY);
+            ctx.fillText(
+                `x${barras}`,
+                centerX + availableWidth / 2 + 15,
+                centerY + 5
+            );
         } else {
             // CASO: FIGURA COMPUESTA (varias dimensiones)
             // 1. Calcular el bounding box de la figura en sus coordenadas locales
@@ -136,7 +142,8 @@ elementos.forEach((grupo) => {
             // Para centrar la figura en sus coordenadas locales se traslada su centro.
             ctx.translate(-figCenterX, -figCenterY);
 
-            ctx.strokeStyle = "blue";
+            ctx.strokeStyle = "#0000FF"; // SkyBlue (celeste clásico)
+
             ctx.lineWidth = 2 / scale; // Mantener grosor constante
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
@@ -174,7 +181,7 @@ elementos.forEach((grupo) => {
                 const offsetX = offset * Math.cos(angleCanvas - Math.PI / 2);
                 const offsetY = offset * Math.sin(angleCanvas - Math.PI / 2);
 
-                ctx.strokeStyle = "red";
+                ctx.strokeStyle = "#0000FF"; // SkyBlue (celeste clásico)
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(pt1.x, pt1.y);
@@ -182,11 +189,15 @@ elementos.forEach((grupo) => {
                 ctx.stroke();
 
                 ctx.font = "12px Arial";
-                ctx.fillStyle = "red";
+                ctx.fillStyle = "#FF0000";
                 const text = longitudes[i].toString();
                 ctx.fillText(text, midX + offsetX, midY + offsetY);
             }
-
+            ctx.fillText(
+                `x${barras}`,
+                centerX + availableWidth / 2 + 15,
+                centerY + 5
+            );
             // Colocar el label en la esquina inferior derecha del slot
             const slotBottom =
                 marginY +
@@ -195,7 +206,7 @@ elementos.forEach((grupo) => {
             const labelX = marginX + availableWidth - 10;
             const labelY = slotBottom - 5;
             ctx.font = "14px Arial";
-            ctx.fillStyle = "black";
+            ctx.fillStyle = "#FF0000";
             ctx.fillText(`#${elemento.id}`, labelX, labelY);
         }
     });
