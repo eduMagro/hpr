@@ -321,8 +321,9 @@ class etiquetaController extends Controller
                     $etiqueta->fecha_finalizacion = null;
                 }
 
-                // Guardar los cambios en la etiqueta
-                $etiqueta->save();
+    // Guardar cambios
+    $elemento->save();
+    $etiqueta->save();
 
                 // Si todos los elementos de la planilla están completados, actualizar la planilla
                 $todasFinalizadas = $etiqueta->planilla->elementos()
@@ -463,15 +464,8 @@ class etiquetaController extends Controller
         ]);
     }
 
-    /**
- * Asigna las máquinas a un elemento según el tipo de ensamblado.
- *
- * @param  \App\Models\Elemento $elemento
- * @param  \App\Models\Etiqueta $etiqueta
- * @param  string $tipoEnsamblado ("CARCASAS" o "TALLER")
- * @return void
- */
-function asignarMaquinas($elemento, $etiqueta, $tipoEnsamblado)
+
+public function asignarMaquinas($elemento, $etiqueta, $tipoEnsamblado)
 {
     // Obtener la máquina "IDEA 5"
     $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
@@ -515,9 +509,6 @@ function asignarMaquinas($elemento, $etiqueta, $tipoEnsamblado)
         }
     }
 
-    // Guardar cambios
-    $elemento->save();
-    $etiqueta->save();
 }
 
 }

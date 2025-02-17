@@ -57,12 +57,21 @@ class Etiqueta extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'users_id_1');
+        return $this->belongsTo(User::class, 'ensamblador1');
     }
 
     public function user2()
     {
-        return $this->belongsTo(User::class, 'users_id_2');
+        return $this->belongsTo(User::class, 'ensamblador2');
+    }
+    public function soldador1()
+    {
+        return $this->belongsTo(User::class, 'soldador1');
+    }
+
+    public function soldador2()
+    {
+        return $this->belongsTo(User::class, 'soldador2');
     }
     public function ubicacion()
     {
@@ -87,5 +96,14 @@ class Etiqueta extends Model
     public function getUser2NameAttribute()
     {
         return optional($this->user2)->name ?? 'N/A';
+    }
+    public function getSoldNameAttribute()
+    {
+        return optional($this->soldador1)->name ?? 'N/A';
+    }
+
+    public function getSold2NameAttribute()
+    {
+        return optional($this->soldador2)->name ?? 'N/A';
     }
 }

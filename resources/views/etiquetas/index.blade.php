@@ -84,8 +84,10 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-2">Usuario 1</th>
-                        <th class="px-4 py-2">Usuario 2</th>
+                        <th class="px-4 py-2">Ensamblador 1</th>
+                        <th class="px-4 py-2">Ensamblador 2</th>
+                        <th class="px-4 py-2">Soldador 1</th>
+                        <th class="px-4 py-2">Soldador 2</th>
                         <th class="px-4 py-2">Paquete</th>
                         <th class="px-4 py-2">Número de Etiqueta</th>
                         <th class="px-4 py-2">Nombre</th>
@@ -113,8 +115,10 @@
                                     N/A
                                 @endif
                             </td>
-                            <td class="px-4 py-2">{{ $etiqueta->user_name }}</td>
-                            <td class="px-4 py-2">{{ $etiqueta->user2_name }}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->ensamblador1 }}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->ensamblador2 }}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->soldador1 }}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->soldador2 }}</td>
                             <td class="px-4 py-2">
                                 @if ($etiqueta->paquete)
                                     <a href="{{ route('paquetes.index', ['paquete_id' => $etiqueta->paquete->id]) }}"
