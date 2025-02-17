@@ -77,6 +77,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/alertas/store', [AlertaController::class, 'store'])->name('alertas.store');
 
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
+
+    Route::post('/escaneo', [SalidaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
+
 });
 
 
