@@ -1,4 +1,8 @@
 <x-app-layout>
+    
+    @php
+    $planilla = $planillaCalculada['planilla'];
+@endphp
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight"> <a href="{{ route('planillas.index') }}"
                 class="text-blue-500">
@@ -6,30 +10,10 @@
             </a><span> / </span>Elementos de Planilla <strong>{{ $planilla->codigo_limpio }}</strong>
         </h2>
     </x-slot>
-    <style>
-        canvas {
-            width: 100%;
-            max-width: 100%;
-            border: 1px solid blue;
-            border-radius: 4px;
-            background-color: rgba(0, 123, 255, 0.1)
-        }
-    </style>
-
-
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Detalle de la Planilla') }}
-        </h2>
-    </x-slot>
 
     <div class="container mx-auto p-2">
         <h1 class="text-2xl font-bold mb-4">Progreso de la Planilla</h1>
 
-        @php
-            $planilla = $planillaCalculada['planilla'];
-        @endphp
 
         <div class="bg-white shadow-md rounded-lg p-6 mb-6">
             <h2 class="text-lg font-semibold text-gray-800">
@@ -80,6 +64,48 @@
                             @if (!is_null($etiqueta->ubicacion))
                                 - Ubicación: {{ $etiqueta->ubicacion->nombre }}
                             @endif
+                              <!-- Elementos dentro de la etiqueta -->
+                @if ($etiqueta->elementos->isNotEmpty())
+                <ul class="list-disc list-inside ml-4 mt-2">
+                    @foreach ($etiqueta->elementos as $elemento)
+                        <li class="p-2 rounded-lg {{ $elemento->color }}">
+                            <strong>Elemento #{{ $elemento->id }}</strong> - 
+                            Peso: {{ number_format($elemento->peso, 2) }} kg
+                            @if (!is_null($elemento->maquina))
+                                - Máquina: {{ $elemento->maquina->nombre }}
+                            @else
+                                - Máquina: Sin máquina
+                            @endif
+                            @if (!is_null($elemento->ubicacion))
+                                - Ubicación: {{ $elemento->ubicacion->nombre }}
+                            @endif
+
+                            <!-- Subpaquetes dentro del elemento -->
+                            @if ($elemento->subpaquetes && $elemento->subpaquetes->isNotEmpty())
+                                <ul class="list-disc list-inside ml-6 mt-2">
+                                    @foreach ($elemento->subpaquetes as $subpaquete)
+                                        <li class="p-2 rounded-lg bg-gray-100">
+                                            <strong>Subpaquete:</strong> {{ $subpaquete->nombre }} - 
+                                            Peso: {{ number_format($subpaquete->peso, 2) }} kg
+                                            @if (!empty($subpaquete->dimensiones))
+                                                - Dimensiones: {{ $subpaquete->dimensiones }}
+                                            @endif
+                                            @if (!empty($subpaquete->cantidad))
+                                                - Cantidad: {{ $subpaquete->cantidad }}
+                                            @endif
+                                            @if (!empty($subpaquete->descripcion))
+                                                - Descripción: {{ $subpaquete->descripcion }}
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="text-gray-500 text-sm mt-2">No hay elementos en esta etiqueta.</p>
+            @endif
                         </div>
                     @endforeach
                 </div>
@@ -90,4 +116,3 @@
     </div>
 </x-app-layout>
 
-</x-app-layout>

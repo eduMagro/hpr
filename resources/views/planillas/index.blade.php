@@ -199,7 +199,7 @@
                                     <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
                                     <a href="{{ route('planillas.edit', $planilla->id) }}"
                                         class="text-blue-600 hover:text-blue-900">Editar</a>
-                                    <a href="{{ route('elementos.show', $planilla->id) }}"
+                                    <a href="{{ route('planillas.show', $planilla->id) }}"
                                         class="text-green-600 hover:text-green-900">Ver</a>
                                 </div>
                             </td>

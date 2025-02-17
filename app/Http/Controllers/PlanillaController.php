@@ -179,7 +179,8 @@ class PlanillaController extends Controller
             'etiquetas:id,planilla_id,estado,peso,paquete_id',
             'elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
             'elementos.ubicacion:id,nombre', // Cargar la ubicación de cada elemento
-            'elementos.maquina:id,nombre' // Cargar la máquina de cada elemento
+            'elementos.maquina:id,nombre', // Cargar la máquina de cada elemento
+             'etiquetas.elementos.subpaquetes'
         ])->findOrFail($id);
     
         // Función para asignar color de fondo según estado
