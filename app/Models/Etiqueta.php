@@ -77,12 +77,12 @@ class Etiqueta extends Model
 
     public function getUserNameAttribute()
     {
-        return optional($this->user)->name ?? 'N/A';
+        return optional($this->ensamblador1)->name ?? 'N/A';
     }
 
     public function getUser2NameAttribute()
     {
-        return optional($this->user2)->name ?? 'N/A';
+        return optional($this->ensamblador2)->name ?? 'N/A';
     }
 
     public function getSoldNameAttribute()
