@@ -13,6 +13,7 @@ class Maquina extends Model
     protected $fillable = [
         'codigo',
         'nombre',
+        'tipo',
         'diametro_min',
         'diametro_max',
         'peso_min',

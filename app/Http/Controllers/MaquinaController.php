@@ -148,6 +148,7 @@ class MaquinaController extends Controller
             $request->validate([
                 'codigo' => 'required|string|max:6|unique:maquinas,codigo',
                 'nombre' => 'required|string|max:40|unique:maquinas,nombre',
+                'tipo' => 'required|string|max:50|in:cortadora,dobladora,ensambladora,soldadora,cortadora manual,dobladora manual ',
                 'diametro_min' => 'integer',
                 'diametro_max' => 'integer',
                 'peso_min' => 'integer',
@@ -163,6 +164,11 @@ class MaquinaController extends Controller
                 'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
                 'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
                 'nombre.unique' => 'Ya existe una máquina con el mismo nombre',
+
+                'tipo.required' => 'El campo "tipo" es obligatorio.',
+                'tipo.string' => 'El campo "tpo" debe ser una cadena de texto.',
+                'tipo.max' => 'El campo "tipo" no puede tener más de 50 caracteres.',
+                'tipo.in' => 'El tipo no está entre los posibles',
 
                 // 'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
                 'diametro_min.integer' => 'El campo "diámetro mínimo" debe ser un número entero.',
@@ -182,6 +188,7 @@ class MaquinaController extends Controller
             Maquina::create([
                 'codigo' => $request->codigo,
                 'nombre' => $request->nombre,
+                'tipo' => $request->tipo,
                 'diametro_min' => $request->diametro_min,
                 'diametro_max' => $request->diametro_max,
                 'peso_min' => $request->peso_min,

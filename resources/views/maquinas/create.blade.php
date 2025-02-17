@@ -36,24 +36,42 @@
                     <div class="card-body">
                         <form action="{{ route('maquinas.store') }}" method="POST">
                             @csrf
-                        
+
                             <!-- Código de la máquina -->
                             <div class="form-group mb-4">
-                                <label for="codigo" class="form-label fw-bold text-uppercase">Código de la Máquina *</label>
+                                <label for="codigo" class="form-label fw-bold text-uppercase">Código de la Máquina
+                                    *</label>
                                 <input type="text" id="codigo" name="codigo" class="form-control form-control-lg"
                                     placeholder="Introduce el código de la máquina" required>
                             </div>
-                        
+
                             <!-- Nombre de la máquina -->
                             <div class="form-group mb-4">
-                                <label for="nombre" class="form-label fw-bold text-uppercase">Nombre de la Máquina *</label>
+                                <label for="nombre" class="form-label fw-bold text-uppercase">Nombre de la Máquina
+                                    *</label>
                                 <input type="text" id="nombre" name="nombre" class="form-control form-control-lg"
                                     placeholder="Introduce el nombre de la máquina" required>
-                            </div> 
-                            
+                            </div>
+
+                            <!-- Tipo de máquina -->
+                            <div class="form-group mb-4">
+                                <label for="tipo" class="form-label fw-bold text-uppercase">Tipo de Máquina
+                                    *</label>
+                                <select id="tipo" name="tipo" class="form-control form-control-lg" required>
+                                    <option value="" disabled selected>Selecciona su función</option>
+                                    <option value="cortadora">Cortadora</option>
+                                    <option value="dobladora">Dobladora</option>
+                                    <option value="ensambladora">Ensambladora</option>
+                                    <option value="soldadora">Soldadora</option>
+                                    <option value="cortadora manual">Cortadora Manual</option>
+                                    <option value="dobladora manual">Dobladora Manual</option>
+                                </select>
+                            </div>
+
                             <!-- Diámetro mínimo -->
                             <div class="form-group mb-4">
-                                <label for="diametro_min" class="form-label fw-bold text-uppercase">Diámetro Mínimo *</label>
+                                <label for="diametro_min" class="form-label fw-bold text-uppercase">Diámetro Mínimo
+                                    *</label>
                                 <select id="diametro_min" name="diametro_min" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona un diámetro mínimo</option>
                                     <option value="8">8</option>
@@ -65,10 +83,11 @@
                                     <option value="32">32</option>
                                 </select>
                             </div>
-                        
+
                             <!-- Diámetro máximo -->
                             <div class="form-group mb-4">
-                                <label for="diametro_max" class="form-label fw-bold text-uppercase">Diámetro Máximo *</label>
+                                <label for="diametro_max" class="form-label fw-bold text-uppercase">Diámetro Máximo
+                                    *</label>
                                 <select id="diametro_max" name="diametro_max" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona un diámetro máximo</option>
                                     <option value="8">8</option>
@@ -80,7 +99,7 @@
                                     <option value="32">32</option>
                                 </select>
                             </div>
-                        
+
                             <!-- Peso mínimo -->
                             <div class="form-group mb-4">
                                 <label for="peso_min" class="form-label fw-bold text-uppercase">Peso Mínimo *</label>
@@ -91,7 +110,7 @@
                                     <option value="barras">Barras</option>
                                 </select>
                             </div>
-                        
+
                             <!-- Peso máximo -->
                             <div class="form-group mb-4">
                                 <label for="peso_max" class="form-label fw-bold text-uppercase">Peso Máximo *</label>
@@ -102,13 +121,13 @@
                                     <option value="barras">Barras</option>
                                 </select>
                             </div>
-                        
+
                             <!-- Botón para enviar -->
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-success btn-lg">Registrar Máquina</button>
                             </div>
                         </form>
-                        
+
                     </div>
                     <div class="card-footer text-center text-muted">
                         <small>Todos los campos con * son obligatorios.</small>
@@ -117,6 +136,6 @@
             </div>
         </div>
     </div>
-    
-    
+
+
 </x-app-layout>
