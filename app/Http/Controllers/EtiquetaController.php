@@ -188,7 +188,7 @@ class etiquetaController extends Controller
                     $etiqueta->users_id_2 = session()->get('compañero_id', null);
                 }
                 $etiqueta->save();
-            } elseif ($etiqueta->estado == "fabricando" || $etiqueta->estado == "parcial completada") {  // ---------------------------------- F A B R I C A N D O
+            } elseif ($etiqueta->estado == "fabricando" || $etiqueta->estado == "parcial completada" || $etiqueta->estado == "pendiente soldadura" || $etiqueta->estado == "pendiente ensamblado") {  // ---------------------------------- F A B R I C A N D O
 
                 // ELEMENTOS COMPLETADOS?? SALIMOS DEL CONDICIONAL
                 $elementosCompletados = $elementosEnMaquina->where('estado', 'completado')->count();
@@ -312,13 +312,20 @@ class etiquetaController extends Controller
                 $elementosCompletados = $etiqueta->elementos()->where('estado', 'completado')->count();
 
                 if ($elementosCompletados == $totalElementos) {
-                    // Si todos los elementos están completados, la etiqueta pasa a "completada"
-                    $etiqueta->estado = 'completada';
-                    $etiqueta->fecha_finalizacion = now();
+                    // Verificar si la planilla menciona "carcasas" o "taller"
+                    $descripcionPlanilla = strtolower($planilla->descripcion);
+                    if (strpos($descripcionPlanilla, 'carcasas') !== false || strpos($descripcionPlanilla, 'taller') !== false) {
+                        $etiqueta->estado = 'pendiente ensamblado';
+                        // Si la máquina es IDEA 5 y la descripción menciona "taller", pasa a "pendiente soldadura"
+                        if (strtolower($maquina->nombre) === 'idea 5' && strpos($descripcionPlanilla, 'taller') !== false) {
+                            $etiqueta->estado = 'pendiente soldadura';
+                        }
+                    } else {
+                        $etiqueta->estado = 'completada';
+                        $etiqueta->fecha_finalizacion = now();
+                    }
                 } else {
-                    // Si alguno no está completado, mantener el estado actual
                     $etiqueta->estado = 'parcial completada';
-                    $etiqueta->fecha_finalizacion = null;
                 }
 
                 // Guardar los cambios en la etiqueta

@@ -111,7 +111,7 @@
 
                 @php
 
-                    if ($maquina->id == 7) {
+                    if (stripos($maquina->nombre, 'Idea') !== false) {
                         // Usamos $elementosMaquina que ya contiene los elementos propios y los extra (maquina_id_2 = 7)
                         $elementosAgrupados = $elementosMaquina
                             ->groupBy('etiqueta_id')
