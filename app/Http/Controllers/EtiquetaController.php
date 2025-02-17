@@ -26,8 +26,10 @@ class etiquetaController extends Controller
             'paquete',
             'producto',
             'producto2',
-            'user',
-            'user2'
+            'soldador1',
+            'soldador2',
+            'ensamblador1',
+            'ensamblador2'
         ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
 
         // Filtrar por ID si está presente
