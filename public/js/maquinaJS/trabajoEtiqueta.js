@@ -153,11 +153,20 @@ function actualizarDOMEtiqueta(id, data) {
                 showConfirmButton: false,
             });
             break;
-        case "parcial completada":
+        case "soldando":
             Swal.fire({
                 icon: "info",
-                title: "Etiqueta parcialmente completada",
-                text: "Aun quedan elementos por completar en otras máquinas.",
+                title: "Etiqueta Soldando",
+                text: "Hemos mandado el paquete a la soldadura.",
+                timer: 2000,
+                showConfirmButton: false,
+            });
+            break;
+        case "ensamblando":
+            Swal.fire({
+                icon: "info",
+                title: "Etiqueta Ensamblado",
+                text: "Hemos mandado el paquete a la ensambladora",
                 timer: 2000,
                 showConfirmButton: false,
             });
