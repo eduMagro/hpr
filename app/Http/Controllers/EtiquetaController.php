@@ -349,15 +349,17 @@ class etiquetaController extends Controller
 
                 $etiqueta->save();
 
-                // Si todos los elementos de la planilla están completados, actualizar la planilla
-                $todasFinalizadas = $etiqueta->planilla->elementos()
-                    ->whereNull('fecha_finalizacion')
-                    ->doesntExist();
+            // Si todos los elementos de la planilla están completados, actualizar la planilla
+                $todasFinalizadas = !$etiqueta->planilla->etiquetas()
+                ->where('estado', '!=', 'completada')
+                ->exists();
+
                 if ($todasFinalizadas) {
-                    $planilla->fecha_finalizacion = now();
-                    $planilla->estado = "completada";
-                    $planilla->save();
+                $planilla->fecha_finalizacion = now();
+                $planilla->estado = "completada";
+                $planilla->save();
                 }
+
             } elseif ($etiqueta->estado == "ensamblando") {    // ---------------------------------- E N S A M B L A N D O
                 if ($maquina->tipo = ! 'ensambladora') {
                     return response()->json([
@@ -572,8 +574,8 @@ class etiquetaController extends Controller
                 }
 
                 $etiqueta->estado = 'completada';
-                $etiqueta->solador1 = Auth::id();
-                $etiqueta->solador2 = session()->get('compañero_id', null);
+                $etiqueta->soldador1 = Auth::id();
+                $etiqueta->soldador2 = session()->get('compañero_id', null);
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->save();
 

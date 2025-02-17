@@ -156,8 +156,8 @@ function actualizarDOMEtiqueta(id, data) {
         case "soldando":
             Swal.fire({
                 icon: "info",
-                title: "Etiqueta Soldando",
-                text: "Hemos mandado el paquete a la soldadura.",
+                title: "Etiqueta Ensamblada",
+                text: "Ensamblado terminado, enviamos a soldadura",
                 timer: 2000,
                 showConfirmButton: false,
             });
@@ -165,7 +165,7 @@ function actualizarDOMEtiqueta(id, data) {
         case "ensamblando":
             Swal.fire({
                 icon: "info",
-                title: "Etiqueta Ensamblado",
+                title: "Etiqueta fabricada",
                 text: "Hemos mandado el paquete a la ensambladora",
                 timer: 2000,
                 showConfirmButton: false,

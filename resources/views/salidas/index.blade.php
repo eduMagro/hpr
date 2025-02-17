@@ -126,7 +126,7 @@
                         @foreach ($data['etiquetasSinPaquete'] as $etiqueta)
                             <div class="bg-white shadow-md rounded-lg p-2 border {{ $etiqueta->color }}">
                                 <strong>Etiqueta #{{ $etiqueta->id }}</strong> -
-                                Peso: {{ number_format($etiqueta->peso, 2) }} kg
+                                Peso: {{ number_format($etiqueta->peso, 2) }} kg - Estado: {{ $etiqueta->estado}}
                                 @if (!is_null($etiqueta->ubicacion))
                                     - Ubicación: {{ $etiqueta->ubicacion->nombre }}
                                 @endif

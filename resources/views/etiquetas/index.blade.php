@@ -92,8 +92,6 @@
                         <th class="px-4 py-2">Número de Etiqueta</th>
                         <th class="px-4 py-2">Nombre</th>
                         <th class="px-4 py-2">Ubicación</th>
-                        <th class="px-4 py-2">M.Prima 1</th>
-                        <th class="px-4 py-2">M.Prima 2</th>
                         <th class="px-4 py-2">Peso (kg)</th>
                         <th class="px-4 py-2">Fecha Inicio</th>
                         <th class="px-4 py-2">Fecha Finalización</th>
@@ -115,10 +113,10 @@
                                     N/A
                                 @endif
                             </td>
-                            <td class="px-4 py-2">{{ $etiqueta->ensamblador1 }}</td>
-                            <td class="px-4 py-2">{{ $etiqueta->ensamblador2 }}</td>
-                            <td class="px-4 py-2">{{ $etiqueta->soldador1 }}</td>
-                            <td class="px-4 py-2">{{ $etiqueta->soldador2 }}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->ensamblador1 ?? 'N/A'}}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->ensamblador2 ?? 'N/A'}}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->soldador1 ?? 'N/A'}}</td>
+                            <td class="px-4 py-2">{{ $etiqueta->soldador2 ?? 'N/A'}}</td>
                             <td class="px-4 py-2">
                                 @if ($etiqueta->paquete)
                                     <a href="{{ route('paquetes.index', ['paquete_id' => $etiqueta->paquete->id]) }}"
@@ -136,26 +134,6 @@
                                     <a href="{{ route('productos.show', $etiqueta->ubicacion_id) }}"
                                         class="text-blue-500 hover:underline">
                                         {{ $etiqueta->ubicacion->nombre }}
-                                    </a>
-                                @else
-                                    N/A
-                                @endif
-                            </td>
-                            <td class="px-4 py-2">
-                                @if ($etiqueta->producto)
-                                    <a href="{{ route('productos.show', $etiqueta->producto->id) }}"
-                                        class="text-blue-500 hover:underline">
-                                        {{ $etiqueta->producto->id }}
-                                    </a>
-                                @else
-                                    N/A
-                                @endif
-                            </td>
-                            <td class="px-4 py-2">
-                                @if ($etiqueta->producto2)
-                                    <a href="{{ route('productos.show', $etiqueta->producto2->id) }}"
-                                        class="text-blue-500 hover:underline">
-                                        {{ $etiqueta->producto2->id }}
                                     </a>
                                 @else
                                     N/A

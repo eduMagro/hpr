@@ -110,32 +110,39 @@
             <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
 
                 @php
-
                     if (stripos($maquina->tipo, 'ensambladora') !== false) {
                         // Usamos $elementosMaquina que ya contiene los elementos propios y los extra (maquina_id_2 = 7)
                         $elementosAgrupados = $elementosMaquina
                             ->groupBy('etiqueta_id')
                             ->map(function ($grupo) {
                                 return $grupo->filter(function ($elemento) {
-                                    return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') ===
-                                        'ensamblando';
+                                    return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') === 'ensamblando';
                                 });
                             })
                             ->filter(function ($grupo) {
                                 return $grupo->isNotEmpty();
                             });
                     } elseif (stripos($maquina->nombre, 'Soldadora') !== false) {
-                        // Si el nombre de la máquina contiene "Soldadora", mostramos las etiquetas cuyos elementos
-                        // tienen maquina_id_3 igual a la soldadora y están "pendientes de soldar".
+                        // Filtramos los elementos terciarios que:
+                        // 1. Tengan maquina_id_3 igual a la máquina actual.
+                        // 2. En su relación etiquetaRelacion tengan el estado 'soldando'.
                         $elementosAgrupados = $maquina
                             ->elementosTerciarios()
                             ->where('maquina_id_3', $maquina->id)
                             ->get()
+                            ->filter(function ($item) {
+                                return strtolower(optional($item->etiquetaRelacion)->estado ?? '') === 'soldando';
+                            })
                             ->groupBy(function ($item) {
                                 return $item->etiqueta_id . '-' . $item->marca;
                             });
                     } else {
-                        $elementosAgrupados = $maquina->elementos->groupBy('etiqueta_id');
+                        // Del conjunto de elementos asociados a la máquina, eliminamos aquellos cuyo estado es 'completado'
+                        $elementosAgrupados = $maquina->elementos
+                            ->filter(function ($elemento) {
+                                return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') !== 'completada';
+                            })
+                            ->groupBy('etiqueta_id');
                     }
 
                     $elementosAgrupadosScript = $elementosAgrupados
