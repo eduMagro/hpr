@@ -118,7 +118,7 @@
                             ->map(function ($grupo) {
                                 return $grupo->filter(function ($elemento) {
                                     return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') ===
-                                        'fabricando';
+                                        'ensamblando';
                                 });
                             })
                             ->filter(function ($grupo) {

@@ -17,6 +17,11 @@ class Etiqueta extends Model
         'users_id_2',
         'producto_id',
         'producto_id_2',
+        'ubicacion_id',
+        'soldador1',
+        'soldador2',
+        'ensamblador1',
+        'ensamblador2',
         'nombre',
         'paquete_id',
         'numero_etiqueta',
@@ -87,5 +92,25 @@ class Etiqueta extends Model
     public function getUser2NameAttribute()
     {
         return optional($this->user2)->name ?? 'N/A';
+    }
+    // Relación con el modelo User
+    public function soldador1()
+    {
+        return $this->belongsTo(User::class, 'soldador1');
+    }
+
+    public function soldador2()
+    {
+        return $this->belongsTo(User::class, 'soldador2');
+    }
+
+    public function ensamblador1()
+    {
+        return $this->belongsTo(User::class, 'ensamblador1');
+    }
+
+    public function ensamblador2()
+    {
+        return $this->belongsTo(User::class, 'ensamblador2');
     }
 }
