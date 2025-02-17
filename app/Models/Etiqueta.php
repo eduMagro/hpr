@@ -65,24 +65,6 @@ class Etiqueta extends Model
         return $this->belongsTo(User::class, 'ensamblador1');
     }
 
-    public function user2()
-    {
-        return $this->belongsTo(User::class, 'ensamblador2');
-    }
-    public function soldador1()
-    {
-        return $this->belongsTo(User::class, 'soldador1');
-    }
-
-    public function soldador2()
-    {
-        return $this->belongsTo(User::class, 'soldador2');
-    }
-    public function ubicacion()
-    {
-        return $this->belongsTo(Ubicacion::class, 'ubicacion_id');
-    }
-
     // Accessors
     public function getPesoKgAttribute()
     {
@@ -102,7 +84,7 @@ class Etiqueta extends Model
     {
         return optional($this->user2)->name ?? 'N/A';
     }
-<<<<<<< HEAD
+
     public function getSoldNameAttribute()
     {
         return optional($this->soldador1)->name ?? 'N/A';
@@ -111,7 +93,7 @@ class Etiqueta extends Model
     public function getSold2NameAttribute()
     {
         return optional($this->soldador2)->name ?? 'N/A';
-=======
+    }
     // Relación con el modelo User
     public function soldador1()
     {
@@ -131,6 +113,6 @@ class Etiqueta extends Model
     public function ensamblador2()
     {
         return $this->belongsTo(User::class, 'ensamblador2');
->>>>>>> 6c8346b87c521e7a1d65b2edab12006ed0556629
+
     }
 }

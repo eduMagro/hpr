@@ -345,16 +345,7 @@ class etiquetaController extends Controller
                     $etiqueta->fecha_finalizacion = now();
                 }
 
-<<<<<<< HEAD
-    // Guardar cambios
-    $elemento->save();
-    $etiqueta->save();
-=======
-
-
-                // Guardar los cambios en la etiqueta
                 $etiqueta->save();
->>>>>>> 6c8346b87c521e7a1d65b2edab12006ed0556629
 
                 // Si todos los elementos de la planilla están completados, actualizar la planilla
                 $todasFinalizadas = $etiqueta->planilla->elementos()
@@ -722,55 +713,5 @@ class etiquetaController extends Controller
             'message' => 'Todas las etiquetas están completas.'
         ]);
     }
-<<<<<<< HEAD
 
-
-public function asignarMaquinas($elemento, $etiqueta, $tipoEnsamblado)
-{
-    // Obtener la máquina "IDEA 5"
-    $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['IDEA 5'])->first();
-
-    // Validar que exista la máquina "IDEA 5"
-    if (!$maquinaIdea5) {
-        return response()->json([
-            'success' => false,
-            'error' => 'No encontramos la maquina Idea 5',
-        ], 500);
-    }
-
-    // Asignar "IDEA 5"
-    $elemento->maquina_id_2 = $maquinaIdea5->id;
-    $elemento->ubicacion_id = null;
-    $etiqueta->ubicacion_id = 33;
-
-    // Si el ensamblado es "TALLER", también se asigna una máquina de soldar
-    if ($tipoEnsamblado === 'TALLER') {
-        // Buscar una máquina de soldar disponible
-        $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-            ->whereDoesntHave('etiquetas')
-            ->first();
-
-        // Si no hay máquinas de soldar libres, seleccionar la que recibió un elemento primero
-        if (!$maquinaSoldarDisponible) {
-            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                ->whereHas('elementos', function ($query) {
-                    $query->orderBy('created_at'); // Seleccionar la que lleva más tiempo trabajando
-                })
-                ->first();
-        }
-
-        if ($maquinaSoldarDisponible) {
-            $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-        } else {
-            return response()->json([
-                'success' => false,
-                'error' => 'No se encontró ninguna máquina de soldar disponible',
-            ], 500);
-        }
-    }
-
-}
-
-=======
->>>>>>> 6c8346b87c521e7a1d65b2edab12006ed0556629
 }
