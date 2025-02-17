@@ -111,14 +111,14 @@
 
                 @php
 
-                    if (stripos($maquina->nombre, 'Idea') !== false) {
+                    if (stripos($maquina->tipo, 'ensambladora') !== false) {
                         // Usamos $elementosMaquina que ya contiene los elementos propios y los extra (maquina_id_2 = 7)
                         $elementosAgrupados = $elementosMaquina
                             ->groupBy('etiqueta_id')
                             ->map(function ($grupo) {
                                 return $grupo->filter(function ($elemento) {
                                     return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') ===
-                                        'parcial completada';
+                                        'fabricando';
                                 });
                             })
                             ->filter(function ($grupo) {

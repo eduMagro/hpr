@@ -99,7 +99,7 @@ class etiquetaController extends Controller
                     'error' => 'La máquina asociada al elemento no existe.',
                 ], 404);
             }
-            if ($maquina->id == 7) {
+            if ($maquina->tipo === 'ensambladora') {
                 $elementosExtra = Elemento::with('etiquetaRelacion', 'planilla')
                     ->where('maquina_id_2', $maquina->id)
                     ->where('maquina_id', '!=', $maquina->id)
@@ -188,7 +188,7 @@ class etiquetaController extends Controller
                     $etiqueta->users_id_2 = session()->get('compañero_id', null);
                 }
                 $etiqueta->save();
-            } elseif ($etiqueta->estado == "fabricando" || $etiqueta->estado == "parcial completada") {  // ---------------------------------- F A B R I C A N D O
+            } elseif ($etiqueta->estado == "fabricando") {  // ---------------------------------- F A B R I C A N D O
 
                 // ELEMENTOS COMPLETADOS?? SALIMOS DEL CONDICIONAL
                 $elementosCompletados = $elementosEnMaquina->where('estado', 'completado')->count();
@@ -312,14 +312,29 @@ class etiquetaController extends Controller
                 $elementosCompletados = $etiqueta->elementos()->where('estado', 'completado')->count();
 
                 if ($elementosCompletados == $totalElementos) {
+                    // Si la descripción de la planilla contiene "taller" o "carcasas", cambiar estado a "ensamblando"
+                    if (
+                        strpos(strtolower($etiqueta->planilla->descripcion), 'taller') !== false ||
+                        strpos(strtolower($etiqueta->planilla->descripcion), 'carcasas') !== false
+                    )  if ($maquina->tipo === 'cortadora_dobladora') {
+                        $etiqueta->estado = 'ensamblando';
+                        $etiqueta->fecha_finalizacion = null;
+                    }
                     // Si todos los elementos están completados, la etiqueta pasa a "completada"
-                    $etiqueta->estado = 'completada';
-                    $etiqueta->fecha_finalizacion = now();
+                    elseif ($maquina->tipo === 'ensambladora') {
+                        $etiqueta->estado = 'soldando';
+                        $etiqueta->fecha_finalizacion = null;
+                    } else {
+                        $etiqueta->estado = 'completada';
+                        $etiqueta->fecha_finalizacion = now();
+                    }
                 } else {
+
                     // Si alguno no está completado, mantener el estado actual
-                    $etiqueta->estado = 'parcial completada';
+                    $etiqueta->estado = 'fabricando';
                     $etiqueta->fecha_finalizacion = null;
                 }
+
 
                 // Guardar los cambios en la etiqueta
                 $etiqueta->save();
@@ -333,6 +348,7 @@ class etiquetaController extends Controller
                     $planilla->estado = "completada";
                     $planilla->save();
                 }
+            } elseif ($etiqueta->estado == "soldando") {
             } elseif ($etiqueta->estado == "completada") { // ---------------------------------- C O M P L E T A D O
                 return response()->json([
                     'success' => false,

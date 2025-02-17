@@ -59,8 +59,7 @@
                                     *</label>
                                 <select id="tipo" name="tipo" class="form-control form-control-lg" required>
                                     <option value="" disabled selected>Selecciona su función</option>
-                                    <option value="cortadora">Cortadora</option>
-                                    <option value="dobladora">Dobladora</option>
+                                    <option value="cortadora_dobladora">Cortadora y Dobladora</option>
                                     <option value="ensambladora">Ensambladora</option>
                                     <option value="soldadora">Soldadora</option>
                                     <option value="cortadora manual">Cortadora Manual</option>
