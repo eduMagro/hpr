@@ -163,9 +163,7 @@
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($planillas as $planilla)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
-                            x-data="{ editando: false, planilla: @js($planilla) }"
-                          
-                            @click="editando = !editando">
+                            x-data="{ editando: false, planilla: @js($planilla) }">
                 
                             <!-- Código -->
                             <td class="px-4 py-3 text-center border">
@@ -284,8 +282,10 @@
                                 </button>
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
                                     class="text-green-500 hover:underline">Ver</a>
-                                <a href="{{ route('planillas.edit', $planilla->id) }}"
-                                    class="text-yellow-500 hover:underline">Editar</a>
+                                    <button @click.stop="editando = !editando" class="btn btn-primary">
+                                        <span x-show="!editando">✏️ Editar</span>
+                                        <span x-show="editando">✅ Guardar</span>
+                                    </button>
                                 <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
                             </td>
                         </tr>
