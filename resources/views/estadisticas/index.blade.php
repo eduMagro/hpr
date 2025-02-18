@@ -90,6 +90,38 @@
                         </table>
                     </div>
                 </div>
+<!-- Tabla: Peso Total Requerido y Stock Disponible por Diámetro -->
+<div class="mb-4">
+    <h4 class="text-center bg-secondary text-white p-2 rounded">Peso Total Requerido y Stock Disponible por Diámetro</h4>
+    <div class="table-responsive">
+        <table class="table table-striped table-bordered">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>Diámetro (mm)</th>
+                    <th>Peso Total Requerido (kg)</th>
+                    <th>Stock Disponible (kg)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($pesoTotalPorDiametro as $fila)
+                    @php
+                        // Buscamos en la colección el stock que corresponde al mismo diámetro
+                        $stock = $stockPorDiametro->firstWhere('diametro', $fila->diametro);
+                    @endphp
+                    <tr class="text-center">
+                        <td>{{ number_format($fila->diametro, 2) }}</td>
+                        <td>{{ number_format($fila->peso_total, 2) }}</td>
+                        <td>{{ $stock ? number_format($stock->stock, 2) : '0.00' }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="3" class="text-center text-danger">No hay datos disponibles</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
 
             </div>
             <div class="card-footer text-center text-muted">

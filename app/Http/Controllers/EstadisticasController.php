@@ -37,7 +37,19 @@ class EstadisticasController extends Controller
             ->orderBy('elementos.diametro')
             ->get();
 
-        // Pasar los datos a la vista
-        return view('estadisticas.index', compact(['pesoTotalPorDiametro', 'datosPorPlanilla']));
+       // Nuevo: Datos agrupados por diámetro (stock total por diámetro con estado almacenado)
+    $stockPorDiametro = DB::table('elementos')
+    ->join('planillas', 'elementos.planilla_id', '=', 'planillas.id')
+    ->select(
+        'elementos.diametro',
+        DB::raw('SUM(elementos.peso) AS stock')
+    )
+    ->where('planillas.estado', 'almacenado')
+    ->groupBy('elementos.diametro')
+    ->orderBy('elementos.diametro')
+    ->get();
+
+// Pasar los datos a la vista
+return view('estadisticas.index', compact(['pesoTotalPorDiametro', 'datosPorPlanilla', 'stockPorDiametro']));
     }
 }
