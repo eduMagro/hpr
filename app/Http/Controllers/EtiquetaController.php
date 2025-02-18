@@ -134,10 +134,11 @@ class etiquetaController extends Controller
 
                 // 2. Obtener los productos disponibles en la máquina que tengan los diámetros requeridos
                 $productos = $maquina->productos()
-                    ->whereIn('diametro_mm', array_keys($diametrosConPesos))
+                    ->whereIn('diametro', array_keys($diametrosConPesos))
                     ->orderBy('peso_stock')
                     ->get();
-
+                 
+                
                 if ($productos->isEmpty()) {
                     return response()->json([
                         'success' => false,
