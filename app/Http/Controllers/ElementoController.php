@@ -428,4 +428,17 @@ class ElementoController extends Controller
         $elemento->delete();
         return redirect()->route('elementos.index')->with('success', 'Elemento eliminado exitosamente.');
     }
+
+    public function update(Request $request, $id)
+{
+    $elemento = Elemento::findOrFail($id);
+
+    // Asegurar que se recibe JSON correctamente
+    $data = $request->json()->all();
+
+    $elemento->update($data);
+
+    return response()->json(['success' => true, 'message' => 'Planilla actualizada correctamente']);
+}
+
 }

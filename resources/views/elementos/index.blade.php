@@ -197,7 +197,7 @@
                 </thead>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
-                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
+                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200"  x-data="{ editando: false, planilla: @js($elemento) }">
                             <td class="px-4 py-3 text-center border">{{ $elemento->id }}</td>
                             <td class="px-4 py-3 text-center border">
                                 <a href="{{ route('planillas.index', ['id' => $elemento->planilla->id]) }}" class="text-blue-500 hover:underline">
@@ -230,17 +230,16 @@
                             <td class="px-4 py-3 text-center border">{{ $elemento->fecha_inicio ?? 'No asignado' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->fecha_finalizacion ?? 'No asignado' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->estado }}</td>
+                            <!-- Botones -->
                             <td class="px-4 py-3 text-center border">
-                                <a 
-                                href="#" 
-                                class="text-blue-500 hover:underline abrir-modal-dibujo"
-                                data-id="{{ $elemento->id }}"
-                                data-dimensiones="{{ $elemento->dimensiones }}"
-                                data-peso="{{ $elemento->peso_kg }}">
-                                Ver
-                            </a>
-                                <a href="{{ route('elementos.edit', $elemento->id) }}" class="text-yellow-500 hover:underline">Editar</a>
-                              <x-boton-eliminar :action="route('elementos.destroy', $elemento->id)" />
+                                <a href="{{ route('elementos.show', $elemento->id) }}"
+                                    class="text-green-500 hover:underline">Ver</a><br>
+                                    <button @click.stop="editando = !editando">
+                                        <span x-show="!editando">✏️</span>
+                                        <span x-show="editando" >✖</span>
+										 <span x-show="editando" @click.stop="guardarCambios(elemento)" >✅</span>
+                                    </button><br>
+                                <x-boton-eliminar :action="route('elementos.destroy', $elemento->id)" />
                             </td>
                         </tr>
                     @empty
@@ -405,4 +404,50 @@
         });
         
                 </script>
+                 <script src="//unpkg.com/alpinejs" defer></script>
+                 <script>
+                   function guardarCambios(elemento) {
+                 fetch(`/elementos/${elemento.id}`, {
+                     method: 'PUT',
+                     headers: {
+                         'Content-Type': 'application/json',
+                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                     },
+                     body: JSON.stringify(planilla)
+                 })
+                 .then(response => response.json())
+                 .then(data => {
+                     if (data.success) {
+                         Swal.fire({
+                             icon: "success",
+                             title: "Planilla actualizada",
+                             text: "La planilla se ha actualizado con éxito.",
+                             timer: 2000,
+                             showConfirmButton: false
+                         });
+             
+                     
+             
+                     } else {
+                         Swal.fire({
+                             icon: "error",
+                             title: "Error al actualizar",
+                             text: data.message || "Ha ocurrido un error inesperado.",
+                             confirmButtonText: "OK"
+                         });
+                     }
+                 })
+                 .catch(error => {
+                     console.error('Error:', error);
+                     Swal.fire({
+                         icon: "error",
+                         title: "Error de conexión",
+                         text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
+                         confirmButtonText: "OK"
+                     });
+                 });
+             }
+             
+                 </script>
+                 
 </x-app-layout>

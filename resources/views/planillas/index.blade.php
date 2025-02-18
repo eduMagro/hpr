@@ -275,17 +275,15 @@
                                 <span x-text="planilla.user?.name ?? 'Desconocido'"></span>
                             </td>
                 
-                            <!-- Botón Guardar -->
+                            <!-- Botones -->
                             <td class="px-4 py-3 text-center border">
-                                <button x-show="editando" @click.stop="guardarCambios(planilla)" class="btn btn-success">
-                                    Guardar
-                                </button>
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
-                                    class="text-green-500 hover:underline">Ver</a>
-                                    <button @click.stop="editando = !editando" class="btn btn-primary">
-                                        <span x-show="!editando">✏️ Editar</span>
-                                        <span x-show="editando">✅ Guardar</span>
-                                    </button>
+                                    class="text-green-500 hover:underline">Ver</a><br>
+                                    <button @click.stop="editando = !editando">
+                                        <span x-show="!editando">✏️</span>
+                                        <span x-show="editando" >✖</span>
+										 <span x-show="editando" @click.stop="guardarCambios(planilla)" >✅</span>
+                                    </button><br>
                                 <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
                             </td>
                         </tr>
@@ -302,7 +300,7 @@
     </div>
     <script src="//unpkg.com/alpinejs" defer></script>
     <script>
-      function guardarCambios(planilla, el) {
+      function guardarCambios(planilla) {
     fetch(`/planillas/${planilla.id}`, {
         method: 'PUT',
         headers: {
