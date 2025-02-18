@@ -165,7 +165,7 @@
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
                             x-data="{ editando: false, planilla: @js($planilla) }"
                           
-                            @click="editando = true">
+                            @click="editando = !editando">
                 
                             <!-- Código -->
                             <td class="px-4 py-3 text-center border">
