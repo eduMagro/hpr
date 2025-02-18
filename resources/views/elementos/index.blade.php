@@ -234,9 +234,9 @@
                                 <a 
                                 href="#" 
                                 class="text-blue-500 hover:underline abrir-modal-dibujo"
-                                data-id="{{ $subpaquete->id }}"
-                                data-dimensiones="{{ $subpaquete->dimensiones }}"
-                                data-peso="{{ $subpaquete->peso }}">
+                                data-id="{{ $elemento->id }}"
+                                data-dimensiones="{{ $elemento->dimensiones }}"
+                                data-peso="{{ $elemento->peso }}">
                                 Ver
                             </a>
                                 <a href="{{ route('elementos.edit', $elemento->id) }}" class="text-yellow-500 hover:underline">Editar</a>
