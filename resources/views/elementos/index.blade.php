@@ -236,7 +236,7 @@
                                 class="text-blue-500 hover:underline abrir-modal-dibujo"
                                 data-id="{{ $elemento->id }}"
                                 data-dimensiones="{{ $elemento->dimensiones }}"
-                                data-peso="{{ $elemento->peso }}">
+                                data-peso="{{ $elemento->peso_kg }}">
                                 Ver
                             </a>
                                 <a href="{{ route('elementos.edit', $elemento->id) }}" class="text-yellow-500 hover:underline">Editar</a>
@@ -249,18 +249,21 @@
                 </tbody>
             </table>
         </div>
-<!-- Modal -->
-<div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
-    <div class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative">
-        <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:text-red-900">
-            ✖
-        </button>
-        <canvas id="canvas-dibujo" class="border border-gray-300 w-full h-[300px]"></canvas>
-    </div>
-</div>
+
         <div class="mt-4 flex justify-center">
             {{ $elementos->links() }}
         </div>
+        <!-- Modal -->
+<div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative">
+
+        <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:text-red-900">
+            ✖
+        </button>
+		<h2 class="text-lg font-semibold mb-3">Elemento #{{ $elemento->id }}</h2>
+        <canvas id="canvas-dibujo" class="border border-gray-300 w-full h-[300px]"></canvas>
+    </div>
+</div>
     </div>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -370,9 +373,9 @@
                 ctx.restore();
         
                 // Mostrar cantidad
-                ctx.font = "14px Arial";
+                ctx.font = "12px Arial";
                 ctx.fillStyle = "#FF0000";
-                ctx.fillText(`${peso} Kg`, canvas.width - 50, canvas.height - 10);
+                ctx.fillText(`${peso}`, canvas.width - 50, canvas.height - 10);
             }
         
             // Manejar clic en enlaces "Ver"
@@ -381,7 +384,7 @@
                     event.preventDefault(); // Evita la recarga de la página
         
                     const dimensiones = this.getAttribute("data-dimensiones");
-                    const cantidad = this.getAttribute("data-cantidad") || 1;
+                    const cantidad = this.getAttribute("data-peso") || N/A;
         
                     modal.classList.remove("hidden");
                     dibujarFigura("canvas-dibujo", dimensiones, cantidad);
