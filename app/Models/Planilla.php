@@ -46,7 +46,7 @@ class Planilla extends Model
      * @var bool
      */
     public $timestamps = true;
-    protected $appends = ['codigo_limpio'];
+    protected $appends = ['codigo_limpio', 'peso_kg'];
     public function paquetes()
     {
         return $this->hasMany(Paquete::class, 'planilla_id');
