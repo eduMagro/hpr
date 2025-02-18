@@ -5,33 +5,24 @@
                 {{ __('Planillas') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Lista de Paquetes') }}
+          
+                {{ __('Lista de Paquetes') }}
+      
+            <span class="mx-2">/</span>
+            <a href="{{ route('etiquetas.index') }}" class="text-gray-600">
+                {{ __('Etiquetas') }}
+            </a>
+            <span class="mx-2">/</span>
+            <a href="{{ route('elementos.index') }}" class="text-gray-600">
+                {{ __('Elementos') }}
+            </a>
+            <span class="mx-2">/</span>
+            <a href="{{ route('subpaquetes.index') }}" class="text-gray-600">
+                {{ __('Subpaquetes') }}
+            </a>
         </h2>
     </x-slot>
-
-    <!-- Mensajes de Error y Éxito -->
     <div class="w-full px-6 py-4">
-        @if ($errors->any())
-            <div class="bg-red-100 text-red-800 p-4 rounded-lg mb-4">
-                <ul>
-                    @foreach ($errors->all() as $error)
-                        <li class="text-sm">{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="bg-red-500 text-white p-4 rounded-lg mb-4">
-                {{ session('error') }}
-            </div>
-        @endif
-
-        @if (session('success'))
-            <div class="bg-green-500 text-white p-4 rounded-lg mb-4">
-                {{ session('success') }}
-            </div>
-        @endif
 
         <!-- Encabezado -->
         <div class="flex justify-between items-center mb-4">

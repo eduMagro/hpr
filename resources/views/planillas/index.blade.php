@@ -1,7 +1,24 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Planillas') }}
+        <h2 class="text-lg font-semibold text-gray-800">
+                {{ __('Lista de Planillas') }}
+      
+            <span class="mx-2">/</span>
+            <a href="{{ route('paquetes.index') }}" class="text-blue-600">
+                {{ __('Paquetes') }}
+            </a>
+            <span class="mx-2">/</span>
+            <a href="{{ route('etiquetas.index') }}" class="text-blue-600">
+                {{ __('Etiquetas') }}
+            </a>
+            <span class="mx-2">/</span>
+            <a href="{{ route('elementos.index') }}" class="text-blue-600">
+                {{ __('Elementos') }}
+            </a>
+            <span class="mx-2">/</span>
+            <a href="{{ route('subpaquetes.index') }}" class="text-blue-600">
+                {{ __('Subpaquetes') }}
+            </a>
         </h2>
     </x-slot>
 
@@ -122,103 +139,59 @@
         </div>
 
         <!-- TABLA DE PLANILLAS -->
-        <div class="w-full overflow-x-auto bg-white shadow-md rounded-lg">
-            <table class="w-full min-w-[1200px] border-collapse">
-                <thead class="bg-gray-800 text-white">
+        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+            <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
+                <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm uppercase">
-
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Código</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Código Cliente</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Cliente</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Código Obra</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Obra</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Sección</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Descripción</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Ensamblado</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Peso Total</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Tiempo Estimado</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Estado</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Fecha Inicio</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Fecha Finalización</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Fecha Importación</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
-                            Usuario</th>
-                        <th scope="col" class="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider">
-                            Acciones</th>
+                        <th class="px-4 py-3 border">Código</th>
+                        <th class="px-4 py-3 border">Código Cliente</th>
+                        <th class="px-4 py-3 border">Cliente</th>
+                        <th class="px-4 py-3 border">Código Obra</th>
+                        <th class="px-4 py-3 border">Obra</th>
+                        <th class="px-4 py-3 border">Sección</th>
+                        <th class="px-4 py-3 border">Descripción</th>
+                        <th class="px-4 py-3 border">Ensamblado</th>
+                        <th class="px-4 py-3 border">Peso Total</th>
+                        <th class="px-4 py-3 border">Estado</th>
+                        <th class="px-4 py-3 border">Fecha Inicio</th>
+                        <th class="px-4 py-3 border">Fecha Finalización</th>
+                        <th class="px-4 py-3 border">Fecha Importación</th>
+                        <th class="px-4 py-3 border">Usuario</th>
+                        <th class="px-4 py-3 border text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($planillas as $planilla)
-                        <tr class="border-b hover:bg-gray-100">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {{ $planilla->codigo_limpio }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->cod_cliente ?? 'No asignado' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->cliente ?? 'Desconocido' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->cod_obra ?? 'No asignado' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->nom_obra ?? 'No especificado' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->seccion ?? 'No definida' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->descripcion ?? 'Sin descripción' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->ensamblado ?? 'Sin datos' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->peso_total_kg }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->tiempo_estimado_finalizacion_formato }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->estado }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->fecha_inicio }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->fecha_finalizacion }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $planilla->user->name ?? 'Usuario desconocido' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                <div class="flex space-x-2 justify-center">
-                                    <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
-                                    <a href="{{ route('planillas.edit', $planilla->id) }}"
-                                        class="text-blue-600 hover:text-blue-900">Editar</a>
-                                    <a href="{{ route('planillas.show', $planilla->id) }}"
-                                        class="text-green-600 hover:text-green-900">Ver</a>
-                                </div>
+                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
+                            <td class="px-4 py-3 text-center border">{{ $planilla->codigo_limpio }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->cod_cliente ?? 'No asignado' }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->cliente ?? 'Desconocido' }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->cod_obra ?? 'No asignado' }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->nom_obra ?? 'No especificado' }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->seccion ?? 'No definida' }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->descripcion ?? 'Sin descripción' }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->ensamblado ?? 'Sin datos' }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->peso_total_kg }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->estado }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->fecha_inicio }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->fecha_finalizacion }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $planilla->user->name ?? 'Desconocido' }}</td>
+                            <td class="px-4 py-3 text-center border flex space-x-2">
+                                <a href="{{ route('planillas.show', $planilla->id) }}"
+                                    class="text-green-500 hover:underline">Ver</a>
+                                <a href="{{ route('planillas.edit', $planilla->id) }}"
+                                    class="text-yellow-500 hover:underline">Editar</a>
+                                <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="14" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                                No hay planillas disponibles.
-                            </td>
-                        </tr>
+                        <tr><td colspan="15" class="text-center py-4 text-gray-500">No hay planillas disponibles.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
-        <!-- Paginación -->
-        <div class="flex justify-center mt-4 ml-4">
-            {{ $planillas->appends(request()->except('page'))->links() }}
-        </div>
-
+        <div class="mt-4 flex justify-center">{{ $planillas->appends(request()->except('page'))->links() }}</div>
     </div>
 </x-app-layout>
