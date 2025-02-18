@@ -3,28 +3,41 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Subpaquete;
+use App\Models\Planilla;
+use App\Models\Etiqueta;
+use App\Models\Paquete;
+use App\Models\Elemento;
 
 class SubpaqueteController extends Controller
 {
 
     public function index(Request $request)
-{
-    $subpaquetes = Subpaquete::with(['elemento', 'planilla', 'paquete'])
-        ->when($request->nombre, function ($query, $nombre) {
-            return $query->where('nombre', 'like', "%{$nombre}%");
-        })
-        ->when($request->planilla_id, function ($query, $planilla_id) {
-            return $query->where('planilla_id', $planilla_id);
-        })
-        ->when($request->paquete_id, function ($query, $paquete_id) {
-            return $query->where('paquete_id', $paquete_id);
-        })
-        ->orderBy($request->get('sort_by', 'created_at'), $request->get('order', 'desc'))
-        ->paginate($request->get('per_page', 10));
-
-    return view('subpaquetes.index', compact('subpaquetes'));
-}
-
+    {
+        $subpaquetes = Subpaquete::with(['elemento', 'planilla', 'paquete'])
+            ->when($request->id, function ($query, $id) {
+                return $query->where('id', $id);
+            })
+            ->when($request->planilla, function ($query, $planilla) {
+                return $query->whereHas('planilla', function ($q) use ($planilla) {
+                    $q->where('codigo_limpio', 'like', "%{$planilla}%");
+                });
+            })
+            ->when($request->paquete, function ($query, $paquete) {
+                return $query->whereHas('paquete', function ($q) use ($paquete) {
+                    $q->where('id', $paquete);
+                });
+            })
+            ->when($request->elemento, function ($query, $elemento) {
+                return $query->whereHas('elemento', function ($q) use ($elemento) {
+                    $q->where('id', $elemento);
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+    
+        return view('subpaquetes.index', compact('subpaquetes'));
+    }
+    
   public function store(Request $request)
 {
     // Validar que el elemento existe
@@ -38,7 +51,7 @@ class SubpaqueteController extends Controller
     ]);
 
     // Obtener el elemento y su planilla_id
-    $elemento = \App\Models\Elemento::findOrFail($request->elemento_id);
+    $elemento = Elemento::findOrFail($request->elemento_id);
 
     $pesoDisponible = $elemento->peso - $elemento->subpaquetes->sum('peso');
 
@@ -58,6 +71,40 @@ class SubpaqueteController extends Controller
     ]);
 
     return back()->with('success', 'Subpaquete creado correctamente.');
+}
+public function destroy(Subpaquete $subpaquete)
+{
+    try {
+        $subpaquete->delete();
+        return redirect()->route('subpaquetes.index')->with('success', 'Subpaquete eliminado correctamente.');
+    } catch (\Exception $e) {
+        return redirect()->route('subpaquetes.index')->with('error', 'Error al eliminar el subpaquete.');
+    }
+}
+public function edit(Subpaquete $subpaquete)
+{
+    $planillas = Planilla::all();
+    $paquetes = Paquete::all();
+    $elementos = Elemento::all();
+
+    return view('subpaquetes.edit', compact('subpaquete', 'planillas', 'paquetes', 'elementos'));
+}
+public function update(Request $request, Subpaquete $subpaquete)
+{
+    $validated = $request->validate([
+        'nombre' => 'required|string|max:255',
+        'peso' => 'required|numeric|min:0',
+        'dimensiones' => 'nullable|string|max:255',
+        'cantidad' => 'nullable|integer|min:1',
+        'descripcion' => 'nullable|string|max:500',
+        'planilla_id' => 'nullable|exists:planillas,id',
+        'paquete_id' => 'nullable|exists:paquetes,id',
+        'elemento_id' => 'nullable|exists:elementos,id',
+    ]);
+
+    $subpaquete->update($validated);
+
+    return redirect()->route('subpaquetes.index')->with('success', 'Subpaquete actualizado correctamente.');
 }
 
 }

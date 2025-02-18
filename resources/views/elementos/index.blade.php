@@ -206,14 +206,22 @@
                             </td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->user->name ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->user2->name ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->etiquetaRelacion->id ?? 'N/A' }}</td>
+                            <td class="px-4 py-3 text-center border">
+                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}" class="text-blue-500 hover:underline">
+                                    {{ $elemento->etiquetaRelacion->id ?? 'N/A' }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <a href="{{ route('paquetes.index', ['id' => $elemento->paquete_id]) }}" class="text-blue-500 hover:underline">
+                                    {{ $elemento->paquete_id ?? 'N/A' }}
+                                </a>
+                            </td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->nombre }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->maquina->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->maquina_2->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->maquina_3->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->producto->id ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->producto2->id ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->paquete_id ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->ubicacion->nombre ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->figura }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->peso_kg }}</td>
@@ -223,7 +231,14 @@
                             <td class="px-4 py-3 text-center border">{{ $elemento->fecha_finalizacion ?? 'No asignado' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $elemento->estado }}</td>
                             <td class="px-4 py-3 text-center border">
-                                <a href="{{ route('elementos.show', $elemento->id) }}" class="text-blue-500 hover:underline">Ver</a>
+                                <a 
+                                href="#" 
+                                class="text-blue-500 hover:underline abrir-modal-dibujo"
+                                data-id="{{ $subpaquete->id }}"
+                                data-dimensiones="{{ $subpaquete->dimensiones }}"
+                                data-peso="{{ $subpaquete->peso }}">
+                                Ver
+                            </a>
                                 <a href="{{ route('elementos.edit', $elemento->id) }}" class="text-yellow-500 hover:underline">Editar</a>
                               <x-boton-eliminar :action="route('elementos.destroy', $elemento->id)" />
                             </td>
@@ -234,9 +249,157 @@
                 </tbody>
             </table>
         </div>
-
+<!-- Modal -->
+<div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative">
+        <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:text-red-900">
+            ✖
+        </button>
+        <canvas id="canvas-dibujo" class="border border-gray-300 w-full h-[300px]"></canvas>
+    </div>
+</div>
         <div class="mt-4 flex justify-center">
             {{ $elementos->links() }}
         </div>
     </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const modal = document.getElementById("modal-dibujo");
+            const cerrarModal = document.getElementById("cerrar-modal");
+            const canvas = document.getElementById("canvas-dibujo");
+            const ctx = canvas.getContext("2d");
+        
+            // Márgenes internos para delimitar el área de dibujo
+            const marginX = 50; // Margen horizontal
+            const marginY = 25; // Margen vertical
+        
+            // Función para extraer longitudes y ángulos de un string de dimensiones
+            function extraerDimensiones(dimensiones) {
+                const longitudes = [];
+                const angulos = [];
+                if (!dimensiones) return { longitudes, angulos };
+        
+                const tokens = dimensiones.split(/\s+/).filter(token => token.length > 0);
+        
+                tokens.forEach(token => {
+                    if (token.includes("d")) {
+                        angulos.push(parseFloat(token.replace("d", "")) || 0);
+                    } else {
+                        longitudes.push(parseFloat(token) || 50);
+                    }
+                });
+        
+                return { longitudes, angulos };
+            }
+        
+            // Función para calcular el bounding box de la figura
+            function calcularBoundingBox(longitudes, angulos) {
+                let x = 0, y = 0, angle = 0;
+                let minX = 0, maxX = 0, minY = 0, maxY = 0;
+        
+                longitudes.forEach((longitud, i) => {
+                    x += longitud * Math.cos(angle * Math.PI / 180);
+                    y += longitud * Math.sin(angle * Math.PI / 180);
+        
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+        
+                    angle += angulos[i] || 0;
+                });
+        
+                return { minX, maxX, minY, maxY };
+            }
+        
+            // Función para dibujar la figura en un canvas
+            function dibujarFigura(canvasId, dimensionesStr, peso) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) {
+                    console.warn(`Canvas no encontrado: ${canvasId}`);
+                    return;
+                }
+        
+                const ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+                // Extraer dimensiones
+                const { longitudes, angulos } = extraerDimensiones(dimensionesStr);
+        
+                if (longitudes.length === 0) {
+                    console.warn("No hay dimensiones válidas para dibujar.");
+                    return;
+                }
+        
+                // Calcular bounding box para determinar escala y ajuste
+                const { minX, maxX, minY, maxY } = calcularBoundingBox(longitudes, angulos);
+                const figWidth = maxX - minX || 50; // Evitar división por cero
+                const figHeight = maxY - minY || 50;
+        
+                // Determinar escala para ajustar la figura al canvas
+                const availableWidth = canvas.width - 2 * marginX;
+                const availableHeight = canvas.height - 2 * marginY;
+                const scale = Math.min(availableWidth / figWidth, availableHeight / figHeight);
+        
+                // Centro del área de dibujo
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+        
+                // Ajustar la figura al centro del canvas
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.scale(scale, scale);
+                ctx.translate(-minX - figWidth / 2, -minY - figHeight / 2);
+        
+                // Dibujar la figura
+                ctx.strokeStyle = "#0000FF";
+                ctx.lineWidth = 2 / scale;
+                ctx.lineCap = "round";
+                ctx.lineJoin = "round";
+                ctx.beginPath();
+        
+                let x = 0, y = 0, angle = 0;
+                ctx.moveTo(x, y);
+                longitudes.forEach((longitud, i) => {
+                    x += longitud * Math.cos(angle * Math.PI / 180);
+                    y += longitud * Math.sin(angle * Math.PI / 180);
+                    ctx.lineTo(x, y);
+                    angle += angulos[i] || 0;
+                });
+                ctx.stroke();
+                ctx.restore();
+        
+                // Mostrar cantidad
+                ctx.font = "14px Arial";
+                ctx.fillStyle = "#FF0000";
+                ctx.fillText(`${peso} Kg`, canvas.width - 50, canvas.height - 10);
+            }
+        
+            // Manejar clic en enlaces "Ver"
+            document.querySelectorAll(".abrir-modal-dibujo").forEach((link) => {
+                link.addEventListener("click", function (event) {
+                    event.preventDefault(); // Evita la recarga de la página
+        
+                    const dimensiones = this.getAttribute("data-dimensiones");
+                    const cantidad = this.getAttribute("data-cantidad") || 1;
+        
+                    modal.classList.remove("hidden");
+                    dibujarFigura("canvas-dibujo", dimensiones, cantidad);
+                });
+            });
+        
+            // Cerrar el modal
+            cerrarModal.addEventListener("click", function () {
+                modal.classList.add("hidden");
+            });
+        
+            // Cerrar modal al hacer clic fuera de él
+            modal.addEventListener("click", function (e) {
+                if (e.target === modal) {
+                    modal.classList.add("hidden");
+                }
+            });
+        });
+        
+                </script>
 </x-app-layout>
