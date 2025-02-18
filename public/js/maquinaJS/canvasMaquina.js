@@ -1,11 +1,13 @@
-// Altura fija para el canvas (ajústala según necesites)
-const canvasHeight = 250;
 // Márgenes internos para delimitar el área de dibujo
 const marginX = 50; // margen horizontal
 const marginY = 25; // margen vertical
 
 // Espacio extra entre cada slot (recuadro)
+// Se redujo de 10 a 5 para disminuir el espacio entre figuras.
 const gapSpacing = 10;
+
+// Altura mínima para cada slot (puedes ajustar según tus necesidades)
+const minSlotHeight = 100;
 
 // Accede a la variable global que inyectamos en el HTML
 const elementos = window.elementosAgrupadosScript;
@@ -23,25 +25,28 @@ elementos.forEach((grupo) => {
     const parent = canvas.parentElement;
     // Ajusta el ancho del canvas al ancho del div padre
     const canvasWidth = parent.clientWidth;
+    
+    // Calcula la altura del canvas dinámicamente según el número de elementos
+    const numElementos = grupo.elementos.length;
+    const canvasHeight =
+        marginY * 2 + numElementos * minSlotHeight + (numElementos - 1) * gapSpacing;
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
 
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Distribución vertical: se reparte la altura disponible en "slots" para cada figura.
-    const numElementos = grupo.elementos.length;
-    // Se resta el espacio total ocupado por los gaps entre recuadros
-    const totalSlotArea =
-        canvasHeight - 2 * marginY - (numElementos - 1) * gapSpacing;
-    const availableSlotHeight = totalSlotArea / numElementos;
+    // Se reparte la altura disponible en "slots" para cada figura,
+    // descontando los márgenes y el espacio entre recuadros.
+    const availableSlotHeight =
+        (canvasHeight - 2 * marginY - (numElementos - 1) * gapSpacing) / numElementos;
     const availableWidth = canvasWidth - 2 * marginX;
 
     grupo.elementos.forEach((elemento, index) => {
         // Extraer longitudes y ángulos del string (ej.: "400" o "15 90d 85 ..." )
         const dimensionesStr = elemento.dimensiones || "";
         const { longitudes, angulos } = extraerDimensiones(dimensionesStr);
-        const barras = elemento.barras || 0; // Si no tiene valor, asumir 1
+        const barras = elemento.barras || 0; // Si no tiene valor, asumir 0
 
         // Centro del slot asignado:
         // Se calcula el centro vertical considerando el gapSpacing:
@@ -89,7 +94,6 @@ elementos.forEach((grupo) => {
             ctx.fillText(length.toString(), midX + offsetX, midY + offsetY);
 
             // Colocar el label en la esquina inferior derecha del slot
-            // Se calcula la parte inferior del slot:
             const slotBottom =
                 marginY +
                 availableSlotHeight +
@@ -142,8 +146,7 @@ elementos.forEach((grupo) => {
             // Para centrar la figura en sus coordenadas locales se traslada su centro.
             ctx.translate(-figCenterX, -figCenterY);
 
-            ctx.strokeStyle = "#0000FF"; // SkyBlue (celeste clásico)
-
+            ctx.strokeStyle = "#0000FF"; // Celeste clásico
             ctx.lineWidth = 2 / scale; // Mantener grosor constante
             ctx.lineCap = "round";
             ctx.lineJoin = "round";
@@ -181,7 +184,7 @@ elementos.forEach((grupo) => {
                 const offsetX = offset * Math.cos(angleCanvas - Math.PI / 2);
                 const offsetY = offset * Math.sin(angleCanvas - Math.PI / 2);
 
-                ctx.strokeStyle = "#0000FF"; // SkyBlue (celeste clásico)
+                ctx.strokeStyle = "#0000FF"; // Celeste clásico
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.moveTo(pt1.x, pt1.y);
@@ -213,7 +216,7 @@ elementos.forEach((grupo) => {
 });
 
 /* Función que calcula el bounding box de la figura en coordenadas locales.
-     Se recorre cada segmento acumulando posiciones (origen en 0,0). */
+   Se recorre cada segmento acumulando posiciones (origen en 0,0). */
 function calcularBoundingBox(longitudes, angulos) {
     let currentX = 0,
         currentY = 0,
@@ -240,7 +243,7 @@ function calcularBoundingBox(longitudes, angulos) {
 }
 
 /* Función que dibuja la figura (el path) en el canvas usando el sistema de coordenadas natural.
-     Se asume que ya se aplicaron las transformaciones (traslación, rotación y escala). */
+   Se asume que ya se aplicaron las transformaciones (traslación, rotación y escala). */
 function dibujarFiguraPath(ctx, longitudes, angulos) {
     ctx.beginPath();
     let currentX = 0,
@@ -262,7 +265,8 @@ function dibujarFiguraPath(ctx, longitudes, angulos) {
 }
 
 /* Función que extrae longitudes y ángulos a partir de un string de dimensiones.
-     Se asume que las longitudes vienen sin sufijo y que los ángulos llevan la "d" (ej.: "15 90d 85 ..."). */
+   Se asume que las longitudes vienen sin sufijo y que los ángulos llevan la "d"
+   (ej.: "15 90d 85 ..."). */
 function extraerDimensiones(dimensiones) {
     const longitudes = [];
     const angulos = [];
@@ -280,7 +284,7 @@ function extraerDimensiones(dimensiones) {
 }
 
 /* Función que computa la lista de puntos (en coordenadas locales) de la figura.
-     Comienza en (0,0) y acumula la posición de cada segmento. */
+   Comienza en (0,0) y acumula la posición de cada segmento. */
 function computePoints(longitudes, angulos) {
     const points = [];
     let cx = 0,
@@ -299,11 +303,10 @@ function computePoints(longitudes, angulos) {
 }
 
 /* Función que transforma un punto de coordenadas locales a coordenadas del canvas.
-     Aplica la misma transformación que en el dibujo de la figura:
-       - Si no se rota: global = center + scale * ( (x,y) - (figCenterX, figCenterY) )
-       - Si se rota 90° (por -90°), el punto se transforma a:
-         global = center + scale * ( (y - figCenterY), -(x - figCenterX) )
-  */
+   Aplica la misma transformación que en el dibujo de la figura:
+     - Si no se rota: global = center + scale * ((x,y) - (figCenterX, figCenterY))
+     - Si se rota 90° (por -90°): global = center + scale * ((y - figCenterY), -(x - figCenterX))
+*/
 function transformPoint(
     x,
     y,

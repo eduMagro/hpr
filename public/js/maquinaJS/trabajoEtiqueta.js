@@ -88,7 +88,21 @@ async function actualizarEtiqueta(id, maquinaId) {
 
         const data = await response.json();
         if (data.success) {
-            actualizarDOMEtiqueta(id, data);
+            if (data.warnings && data.warnings.length > 0) {
+                Swal.fire({
+                    icon: "warning",
+                    title: "Atención",
+                    html: data.warnings.join("<br>"),
+                    confirmButtonText: "OK"
+                }).then(() => {
+                    // Después de cerrar el modal de warnings, actualiza el DOM o muestra el éxito.
+                    actualizarDOMEtiqueta(id, data);
+                });
+            } else {
+                actualizarDOMEtiqueta(id, data);
+            }
+            
+            
         } else {
             Swal.fire({
                 icon: "error",

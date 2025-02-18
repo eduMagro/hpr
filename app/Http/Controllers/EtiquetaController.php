@@ -64,6 +64,7 @@ class etiquetaController extends Controller
         DB::beginTransaction();
 
         try {
+            $warnings = []; // Array para acumular mensajes de alerta
             $etiqueta = Etiqueta::with('elementos.planilla')->findOrFail($id);
 
             $planilla_id = $etiqueta->planilla_id;
@@ -133,7 +134,7 @@ class etiquetaController extends Controller
 
                 // 2. Obtener los productos disponibles en la máquina que tengan los diámetros requeridos
                 $productos = $maquina->productos()
-                    ->whereIn('diametro', array_keys($diametrosConPesos))
+                    ->whereIn('diametro_mm', array_keys($diametrosConPesos))
                     ->orderBy('peso_stock')
                     ->get();
 
@@ -153,9 +154,24 @@ class etiquetaController extends Controller
                     $stockTotal = $productosPorDiametro->sum('peso_stock');
 
                     if ($stockTotal < $pesoNecesario) {
-                        // Obtener el usuario gruista (ajusta según tu lógica de negocio)
-
+                        // Acumular el mensaje de alerta
+                        $warnings[] = "El stock para el  {$diametro} es insuficiente. Avisaremos a los gruistas.";
+                       
+                        // Lógica para obtener TODOS los usuarios gruistas y generar una alerta para cada uno
+                        $gruistas = User::where('categoria', 'gruista')->get();
+                        if ($gruistas->isNotEmpty()) {
+                            foreach ($gruistas as $gruista) {
+                                Alerta::create([
+                                    'mensaje'      => "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
+                                    'destinatario' => 'gruista',   // Puedes ajustar este campo según tu lógica de negocio
+                                    'user_id_1'    => Auth::id(),  // Usuario que genera la alerta
+                                    'user_id_2'    => $gruista->id, // Usuario destinatario (gruista)
+                                    'leida'        => false,       // Se marca como no leída por defecto
+                                ]);
+                            }
+                        }
                     }
+                    
                 }
 
                 if ($etiqueta->planilla) {
@@ -327,7 +343,8 @@ class etiquetaController extends Controller
 
                 if (
                     strpos(strtolower($etiqueta->planilla->ensamblado), 'taller') !== false ||
-                    strpos(strtolower($etiqueta->planilla->ensamblado), 'carcasas') !== false
+                    strpos(strtolower($etiqueta->planilla->ensamblado), 'carcasas') !== false ||
+                    !empty($enOtrasMaquinas)
                 ) {
 
                     if ($maquina->tipo === 'cortadora_dobladora' && $tiene_dm5) {
@@ -682,7 +699,8 @@ class etiquetaController extends Controller
                 'estado' => $etiqueta->estado,
                 'fecha_inicio' => $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
                 'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
-                'productos_afectados' => $productosAfectados
+                'productos_afectados' => $productosAfectados,
+                'warnings' => $warnings // Incluir los warnings en la respuesta
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

@@ -44,3 +44,19 @@
         });
     </script>
 @endif
+
+@if(session('warnings'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            @foreach(session('warnings') as $warning)
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Atención',
+                    text: "{{ $warning }}",
+                    timer: 5000,
+                    showConfirmButton: false
+                });
+            @endforeach
+        });
+    </script>
+@endif
