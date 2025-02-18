@@ -177,7 +177,7 @@
                             <td class="px-4 py-3 text-center border">{{ $planilla->fecha_finalizacion }}</td>
                             <td class="px-4 py-3 text-center border">{{ $planilla->created_at->format('d/m/Y H:i') }}</td>
                             <td class="px-4 py-3 text-center border">{{ $planilla->user->name ?? 'Desconocido' }}</td>
-                            <td class="px-4 py-3 text-center border flex space-x-2">
+                            <td class="px-4 py-3 text-center border">
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
                                     class="text-green-500 hover:underline">Ver</a>
                                 <a href="{{ route('planillas.edit', $planilla->id) }}"

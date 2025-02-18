@@ -25,6 +25,7 @@
     <div class="w-full px-6 py-4">
         <!-- Formulario de Filtros -->
         <form method="GET" action="{{ route('etiquetas.index') }}" class="mb-4 grid grid-cols-8 gap-4">
+			<div>
             <label for="estado" class="block text-sm font-medium text-gray-700">Estado</label>
                 <select name="estado" id="estado" class="w-40 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500">
                     <option value="">Todos</option>
@@ -32,6 +33,7 @@
                     <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando</option>
                     <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje</option>
                 </select>
+				</div>
                 <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Filtrar</button>
         </form>
 

@@ -24,6 +24,7 @@
     <div class="w-full px-6 py-4">
         <!-- Formulario de filtrado -->
    <form method="GET" action="{{ route('elementos.index') }}" class="mb-4 grid grid-cols-8 gap-4">
+	   <div>
     <label for="estado" class="block text-sm font-medium text-gray-700">Estado</label>
             <select name="estado" class="border p-2 rounded">
                 <option value="">Todos</option>
@@ -33,6 +34,7 @@
                 </option>
                 <option value="Montaje" {{ request('estado') == 'Montaje' ? 'selected' : '' }}>Montaje</option>
             </select>
+		   </div>
             <input type="date" name="fecha_inicio" value="{{ request('fecha_inicio') }}" class="border p-2 rounded">
             <input type="date" name="fecha_finalizacion" value="{{ request('fecha_finalizacion') }}"
                 class="border p-2 rounded">
