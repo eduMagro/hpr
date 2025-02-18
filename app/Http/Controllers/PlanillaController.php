@@ -458,7 +458,7 @@ $paquetes = $planilla->paquetes->map(function ($paquete) {
 
         return view('planillas.edit', compact('planilla'));
     }
-    public function update(Request $request, $id)
+    public function updateX(Request $request, $id)
     {
 
         DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
@@ -491,6 +491,16 @@ $paquetes = $planilla->paquetes->map(function ($paquete) {
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
+    public function update(Request $request, $id)
+{
+    $planilla = Planilla::findOrFail($id);
+
+    $planilla->update($request->all());
+
+    return response()->json(['success' => true, 'message' => 'Planilla actualizada correctamente']);
+}
+
 
     //------------------------------------------------------------------------------------ DESTROY()
 

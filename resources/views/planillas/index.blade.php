@@ -162,22 +162,125 @@
                 </thead>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($planillas as $planilla)
-                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-                            <td class="px-4 py-3 text-center border">{{ $planilla->codigo_limpio }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->cod_cliente ?? 'No asignado' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->cliente ?? 'Desconocido' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->cod_obra ?? 'No asignado' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->nom_obra ?? 'No especificado' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->seccion ?? 'No definida' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->descripcion ?? 'Sin descripción' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->ensamblado ?? 'Sin datos' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->peso_total_kg }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->estado }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->fecha_inicio }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->fecha_finalizacion }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $planilla->user->name ?? 'Desconocido' }}</td>
+                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
+                            x-data="{ editando: false, planilla: @js($planilla) }"
+                            @click="editando = true">
+                
+                            <!-- Código -->
                             <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.codigo_limpio"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.codigo_limpio" class="form-input w-full">
+                            </td>
+                
+                            <!-- Código Cliente -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.cod_cliente ?? 'No asignado'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.cod_cliente" class="form-input w-full">
+                            </td>
+                
+                            <!-- Cliente -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.cliente ?? 'Desconocido'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.cliente" class="form-input w-full">
+                            </td>
+                
+                            <!-- Código Obra -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.cod_obra ?? 'No asignado'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.cod_obra" class="form-input w-full">
+                            </td>
+                
+                            <!-- Obra -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.nom_obra ?? 'No especificado'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.nom_obra" class="form-input w-full">
+                            </td>
+                
+                            <!-- Sección -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.seccion ?? 'No definida'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.seccion" class="form-input w-full">
+                            </td>
+                
+                            <!-- Descripción -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.descripcion ?? 'Sin descripción'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.descripcion" class="form-input w-full">
+                            </td>
+                
+                            <!-- Estado Ensamblado -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.ensamblado ?? 'Sin datos'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.ensamblado" class="form-input w-full">
+                            </td>
+                
+                            <!-- Peso Total -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.peso_total_kg"></span>
+                                </template>
+                                <input x-show="editando" type="number" x-model="planilla.peso_total_kg" class="form-input w-full">
+                            </td>
+                
+                            <!-- Estado -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.estado"></span>
+                                </template>
+                                <select x-show="editando" x-model="planilla.estado" class="form-select w-full">
+                                    <option value="Pendiente">Pendiente</option>
+                                    <option value="En proceso">En proceso</option>
+                                    <option value="Completado">Completado</option>
+                                </select>
+                            </td>
+                
+                            <!-- Fecha Inicio -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.fecha_inicio"></span>
+                                </template>
+                                <input x-show="editando" type="date" x-model="planilla.fecha_inicio" class="form-input w-full">
+                            </td>
+                
+                            <!-- Fecha Finalización -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.fecha_finalizacion"></span>
+                                </template>
+                                <input x-show="editando" type="date" x-model="planilla.fecha_finalizacion" class="form-input w-full">
+                            </td>
+                
+                            <!-- Fecha Importación -->
+                            <td class="px-4 py-3 text-center border">
+                                <span x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
+                            </td>
+                
+                            <!-- Usuario -->
+                            <td class="px-4 py-3 text-center border">
+                                <span x-text="planilla.user?.name ?? 'Desconocido'"></span>
+                            </td>
+                
+                            <!-- Botón Guardar -->
+                            <td class="px-4 py-3 text-center border">
+                                <button x-show="editando" @click.stop="guardarCambios(planilla)" class="btn btn-success">
+                                    Guardar
+                                </button>
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
                                     class="text-green-500 hover:underline">Ver</a>
                                 <a href="{{ route('planillas.edit', $planilla->id) }}"
@@ -189,9 +292,35 @@
                         <tr><td colspan="15" class="text-center py-4 text-gray-500">No hay planillas disponibles.</td></tr>
                     @endforelse
                 </tbody>
+                
+                
             </table>
         </div>
 
         <div class="mt-4 flex justify-center">{{ $planillas->appends(request()->except('page'))->links() }}</div>
     </div>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <script>
+        function guardarCambios(planilla) {
+            fetch(`/planillas/${planilla.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(planilla)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Guardado con éxito');
+                    location.reload(); // Opcional: Actualizar la página para reflejar cambios
+                } else {
+                    alert('Error al guardar');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+    
 </x-app-layout>
