@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('planillas.index') }}" class="text-gray-600">
+            <a href="{{ route('planillas.index') }}" class="text-blue-600">
                 {{ __('Planillas') }}
             </a>
             <span class="mx-2">/</span>
@@ -9,15 +9,15 @@
                 {{ __('Lista de Paquetes') }}
       
             <span class="mx-2">/</span>
-            <a href="{{ route('etiquetas.index') }}" class="text-gray-600">
+            <a href="{{ route('etiquetas.index') }}" class="text-blue-600">
                 {{ __('Etiquetas') }}
             </a>
             <span class="mx-2">/</span>
-            <a href="{{ route('elementos.index') }}" class="text-gray-600">
+            <a href="{{ route('elementos.index') }}" class="text-blue-600">
                 {{ __('Elementos') }}
             </a>
             <span class="mx-2">/</span>
-            <a href="{{ route('subpaquetes.index') }}" class="text-gray-600">
+            <a href="{{ route('subpaquetes.index') }}" class="text-blue-600">
                 {{ __('Subpaquetes') }}
             </a>
         </h2>
