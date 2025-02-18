@@ -163,7 +163,8 @@
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($planillas as $planilla)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
-                            x-data="{ editando: false, planilla: @js($planilla) }"
+                            x-data="{ editando: false, planilla: @json($planilla) }"
+                          
                             @click="editando = true">
                 
                             <!-- Código -->
@@ -313,14 +314,37 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Guardado con éxito');
-                    location.reload(); // Opcional: Actualizar la página para reflejar cambios
+                    Swal.fire({
+                        icon: "success",
+                        title: "Planilla actualizada",
+                        text: "La planilla se ha actualizado con éxito.",
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+    
+                    // Opcional: Actualizar los datos en la UI sin recargar la página
+                    document.querySelector(`[x-data]`).__x.$data.editando = false;
+    
                 } else {
-                    alert('Error al guardar');
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error al actualizar",
+                        text: data.message || "Ha ocurrido un error inesperado.",
+                        confirmButtonText: "OK"
+                    });
                 }
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: "error",
+                    title: "Error de conexión",
+                    text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
+                    confirmButtonText: "OK"
+                });
+            });
         }
     </script>
+    
     
 </x-app-layout>
