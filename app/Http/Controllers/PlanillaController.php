@@ -492,14 +492,18 @@ $paquetes = $planilla->paquetes->map(function ($paquete) {
         }
     }
 
-    public function update(Request $request, $id)
+public function update(Request $request, $id)
 {
     $planilla = Planilla::findOrFail($id);
 
-    $planilla->update($request->all());
+    // Asegurar que se recibe JSON correctamente
+    $data = $request->json()->all();
+
+    $planilla->update($data);
 
     return response()->json(['success' => true, 'message' => 'Planilla actualizada correctamente']);
 }
+
 
 
     //------------------------------------------------------------------------------------ DESTROY()

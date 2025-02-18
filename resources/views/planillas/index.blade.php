@@ -236,7 +236,7 @@
                                 <template x-if="!editando">
                                     <span x-text="planilla.peso_total_kg"></span>
                                 </template>
-                                <input x-show="editando" type="number" x-model="planilla.peso_total_kg" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.peso_total_kg" class="form-input w-full">
                             </td>
                 
                             <!-- Estado -->
@@ -245,9 +245,9 @@
                                     <span x-text="planilla.estado"></span>
                                 </template>
                                 <select x-show="editando" x-model="planilla.estado" class="form-select w-full">
-                                    <option value="Pendiente">Pendiente</option>
-                                    <option value="En proceso">En proceso</option>
-                                    <option value="Completado">Completado</option>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="fabricando">Fabricando</option>
+                                    <option value="completada">Completada</option>
                                 </select>
                             </td>
                 
@@ -256,7 +256,7 @@
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_inicio"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="planilla.fecha_inicio" class="form-input w-full">
+                                <input x-show="editando" type="datetime" x-model="planilla.fecha_inicio" class="form-input w-full">
                             </td>
                 
                             <!-- Fecha Finalización -->
@@ -264,7 +264,7 @@
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_finalizacion"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="planilla.fecha_finalizacion" class="form-input w-full">
+                                <input x-show="editando" type="datetime" x-model="planilla.fecha_finalizacion" class="form-input w-full">
                             </td>
                 
                             <!-- Fecha Importación -->
@@ -302,48 +302,48 @@
     </div>
     <script src="//unpkg.com/alpinejs" defer></script>
     <script>
-        function guardarCambios(planilla) {
-            fetch(`/planillas/${planilla.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify(planilla)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: "success",
-                        title: "Planilla actualizada",
-                        text: "La planilla se ha actualizado con éxito.",
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-    
-                    // Opcional: Actualizar los datos en la UI sin recargar la página
-                    document.querySelector(`[x-data]`).__x.$data.editando = false;
-    
-                } else {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error al actualizar",
-                        text: data.message || "Ha ocurrido un error inesperado.",
-                        confirmButtonText: "OK"
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: "error",
-                    title: "Error de conexión",
-                    text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
-                    confirmButtonText: "OK"
-                });
+      function guardarCambios(planilla, el) {
+    fetch(`/planillas/${planilla.id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify(planilla)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: "success",
+                title: "Planilla actualizada",
+                text: "La planilla se ha actualizado con éxito.",
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+        
+
+        } else {
+            Swal.fire({
+                icon: "error",
+                title: "Error al actualizar",
+                text: data.message || "Ha ocurrido un error inesperado.",
+                confirmButtonText: "OK"
             });
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        Swal.fire({
+            icon: "error",
+            title: "Error de conexión",
+            text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
+            confirmButtonText: "OK"
+        });
+    });
+}
+
     </script>
     
     
