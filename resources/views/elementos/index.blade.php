@@ -197,8 +197,14 @@
                 </thead>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
-                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200"  x-data="{ editando: false, planilla: @js($elemento) }">
-                            <td class="px-4 py-3 text-center border">{{ $elemento->id }}</td>
+                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200"  x-data="{ editando: false, elemento: @js($elemento) }">
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.id"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.id" class="form-input w-full">
+                           </td>
+                           
                             <td class="px-4 py-3 text-center border">
                                 <a href="{{ route('planillas.index', ['id' => $elemento->planilla->id]) }}" class="text-blue-500 hover:underline">
                                     {{ $elemento->planilla->codigo_limpio }}
