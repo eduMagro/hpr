@@ -6,6 +6,25 @@ use App\Models\Subpaquete;
 
 class SubpaqueteController extends Controller
 {
+
+    public function index(Request $request)
+{
+    $subpaquetes = Subpaquete::with(['elemento', 'planilla', 'paquete'])
+        ->when($request->nombre, function ($query, $nombre) {
+            return $query->where('nombre', 'like', "%{$nombre}%");
+        })
+        ->when($request->planilla_id, function ($query, $planilla_id) {
+            return $query->where('planilla_id', $planilla_id);
+        })
+        ->when($request->paquete_id, function ($query, $paquete_id) {
+            return $query->where('paquete_id', $paquete_id);
+        })
+        ->orderBy($request->get('sort_by', 'created_at'), $request->get('order', 'desc'))
+        ->paginate($request->get('per_page', 10));
+
+    return view('subpaquetes.index', compact('subpaquetes'));
+}
+
   public function store(Request $request)
 {
     // Validar que el elemento existe
