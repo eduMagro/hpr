@@ -69,7 +69,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="py-3 border text-center">Usuario
+                        <th class="py-3 border text-center">Trabajador 1
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="usuario1"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -80,7 +80,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="py-3 border text-center">Usuario 2</th>
+                        <th class="py-3 border text-center">Trabajador 2</th>
                         <th class="py-3 border text-center">Etiqueta
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="etiqueta"
@@ -221,19 +221,20 @@
                                     class="form-input w-full">
                             </td>
                             <!-- USUARIO 1 -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="px-4 py-3 text-center border" x-data="{ usuario1Nombre: elemento.user?.name ?? '' }">
                                 <template x-if="!editando">
-                                    <span x-text="elemento.user?.name ?? 'N/A'"></span>
+                                    <span x-text="usuario1Nombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.user.name"
+                                <input x-show="editando" type="text" x-model="usuario1Nombre"
                                     class="form-input w-full">
                             </td>
+
                             <!-- USUARIO 2 -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="px-4 py-3 text-center border" x-data="{ usuario2Nombre: elemento.user2?.name ?? '' }">
                                 <template x-if="!editando">
-                                    <span x-text="elemento.user2?.name ?? 'N/A'"></span>
+                                    <span x-text="usuario2Nombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.user2.name"
+                                <input x-show="editando" type="text" x-model="usuario2Nombre"
                                     class="form-input w-full">
                             </td>
                             <!-- ETIQUETA -->
@@ -259,29 +260,31 @@
                                     class="form-input w-full">
                             </td>
                             <!-- MAQUINA 1 -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="px-4 py-3 text-center border" x-data="{ maquinaNombre: elemento.maquina?.nombre ?? '' }">
                                 <template x-if="!editando">
-                                    <span x-text="elemento.maquina?.nombre ?? 'N/A'"></span>
+                                    <span x-text="maquinaNombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.maquina.nombre"
+                                <input x-show="editando" type="text" x-model="maquinaNombre"
                                     class="form-input w-full">
                             </td>
                             <!-- MAQUINA 2 -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="px-4 py-3 text-center border" x-data="{ maquina2Nombre: elemento.maquina_2?.nombre ?? '' }">
                                 <template x-if="!editando">
-                                    <span x-text="elemento.maquina_2?.nombre ?? 'N/A'"></span>
+                                    <span x-text="maquina2Nombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.maquina_2.nombre"
+                                <input x-show="editando" type="text" x-model="maquina2Nombre"
                                     class="form-input w-full">
                             </td>
+
                             <!-- MAQUINA 3 -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="px-4 py-3 text-center border" x-data="{ maquina3Nombre: elemento.maquina_3?.nombre ?? '' }">
                                 <template x-if="!editando">
-                                    <span x-text="elemento.maquina_3?.nombre ?? 'N/A'"></span>
+                                    <span x-text="maquina3Nombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.maquina_3.nombre"
+                                <input x-show="editando" type="text" x-model="maquina3Nombre"
                                     class="form-input w-full">
                             </td>
+
                             <!-- PRODUCTO 1 -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
@@ -299,13 +302,14 @@
                                     class="form-input w-full">
                             </td>
                             <!-- UBICACION -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="px-4 py-3 text-center border" x-data="{ ubicacionNombre: elemento.ubicacion?.nombre ?? '' }">
                                 <template x-if="!editando">
-                                    <span x-text="elemento.ubicacion?.nombre ?? 'N/A'"></span>
+                                    <span x-text="ubicacionNombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.ubicacion.nombre"
+                                <input x-show="editando" type="text" x-model="ubicacionNombre"
                                     class="form-input w-full">
                             </td>
+
                             <!-- FIGURA -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
@@ -412,7 +416,7 @@
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: JSON.stringify(planilla)
+                    body: JSON.stringify(elemento)
                 })
                 .then(response => response.json())
                 .then(data => {

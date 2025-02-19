@@ -430,15 +430,14 @@ class ElementoController extends Controller
     }
 
     public function update(Request $request, $id)
-{
-    $elemento = Elemento::findOrFail($id);
+    {
+        $elemento = Elemento::findOrFail($id);
 
-    // Asegurar que se recibe JSON correctamente
-    $data = $request->json()->all();
+        // Asegurar que se recibe JSON correctamente
+        $data = $request->json()->all();
 
-    $elemento->update($data);
+        $elemento->update($data);
 
-    return response()->json(['success' => true, 'message' => 'Planilla actualizada correctamente']);
-}
-
+        return response()->json(['success' => true, 'message' => 'Elemento actualizadoX correctamente']);
+    }
 }
