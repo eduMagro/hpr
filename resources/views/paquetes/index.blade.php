@@ -88,6 +88,11 @@
                                 {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
                             </td>
                             <td class="px-4 py-3 text-center border">
+                                <button
+                                    onclick="generateAndPrintQR('{{ $paquete->id }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')"
+                                    class="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"><i
+                                        class="fas fa-qrcode"></i>
+                                </button>
                                 <a href="{{ route('paquetes.show', $paquete->id) }}"
                                     class="text-blue-500 hover:underline">Ver</a>
                                 <a href="{{ route('paquetes.edit', $paquete->id) }}"
@@ -109,4 +114,7 @@
             {{ $paquetes->links() }}
         </div>
     </div>
+    <!-- SCRIPT PARA IMPRIMIR QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="{{ asset('js/imprimirQrS.js') }}"></script>
 </x-app-layout>

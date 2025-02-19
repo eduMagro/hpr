@@ -1,4 +1,5 @@
 <x-app-layout>
+    <x-slot name="title">{{ $maquina->nombre }} - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             <a href="{{ route('maquinas.index') }}" class="text-blue-500">
@@ -116,7 +117,8 @@
                             ->groupBy('etiqueta_id')
                             ->map(function ($grupo) {
                                 return $grupo->filter(function ($elemento) {
-                                    return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') === 'ensamblando';
+                                    return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') ===
+                                        'ensamblando';
                                 });
                             })
                             ->filter(function ($grupo) {
@@ -192,7 +194,8 @@
                         <h3 class="text-lg font-semibold text-gray-800">
                             {{ $etiqueta->id_et }} {{ $etiqueta->nombre ?? 'Sin nombre' }} -
                             {{ $etiqueta->marca ?? 'Sin Marca' }}
-                            (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }}) - {{ $etiqueta->peso_kg}}
+                            (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
+                            - {{ $etiqueta->peso_kg }}
                         </h3>
                         <!-- Contenedor oculto para generar el QR -->
                         <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
@@ -220,9 +223,9 @@
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                         @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
-                            <h4 class="font-semibold text-red-700 mt-6">⚠️ Otros elementos de esta etiqueta están en
-                                otras máquinas:</h4>
-                            <div class="bg-red-100 p-4 rounded-lg shadow-md">
+                            <h4 class="font-semibold text-red-700 mt-6 mb-6">⚠️ Hay elementos en otras máquinas,
+                                Empaqueta Elementos!!</h4>
+                            {{-- <div class="bg-red-100 p-4 rounded-lg shadow-md">
                                 @foreach ($otrosElementos[$etiqueta->id] as $elementoOtro)
                                     <p class="text-gray-600">
                                         <strong>ID:</strong> {{ $elementoOtro->id_el }} |
@@ -233,7 +236,7 @@
                                     </p>
                                     <hr class="my-2">
                                 @endforeach
-                            </div>
+                            </div> --}}
                         @endif
                         <!-- GRID PARA ELEMENTOS -->
                         <div class="grid grid-cols-1 gap-1">
@@ -241,14 +244,13 @@
                                 <div id="elemento-{{ $elemento->id }}"
                                     class="bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                                     <p class="text-gray-600 text-sm">
-                                        <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }}
+                                        <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }} -
+                                        {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
+                                        -
+                                        <strong>Peso:</strong> {{ $elemento->peso_kg }}
                                     </p>
-
-                                    <hr style="border: 1px solid black; margin: 10px 0;">
-                                    <!-- Contenedor oculto para generar el QR -->
-                                    <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
-                                    @if ($tieneElementosEnOtrasMaquinas)
-                                        {{-- <p class="text-gray-600 text-sm">
+                                    {{-- @if ($tieneElementosEnOtrasMaquinas)
+                                         <p class="text-gray-600 text-sm">
                                             <strong>Fecha Inicio:</strong>
                                             <span id="inicio-{{ $elemento->id }}">
                                                 {{ $elemento->fecha_inicio ?? 'No asignada' }}
@@ -261,18 +263,16 @@
                                             <strong> Estado: </strong>
                                             <span id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
                                         </p> --}}
-                                        <p class="text-gray-600 text-sm">
-                                            {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
-                                        </p>
-                                        <!-- Si el elemento NO tiene subpaquetes, mostrar botón QR del elemento -->
-                                        @if ($elemento->subpaquetes->isEmpty())
+
+                                    <!-- Si el elemento NO tiene subpaquetes, mostrar botón QR del elemento -->
+                                    {{-- @if ($elemento->subpaquetes->isEmpty())
                                             <button
                                                 onclick="generateAndPrintQR('{{ $elemento->id }}', '{{ $elemento->planilla->codigo_limpio }}', 'ELEMENTO')"
                                                 class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                                                 QR Elemento
                                             </button>
                                         @endif
-                                    @endif
+                            @endif  --}}
                                     <!-- SUBPAQUETES RELACIONADOS -->
                                     @if ($elemento->subpaquetes->isNotEmpty())
                                         <div class="bg-gray-100 p-3 rounded-lg mt-3 shadow-md">
@@ -296,24 +296,14 @@
                                         </div>
                                     @endif
                                     <!-- Botón para Subpaquetar -->
-                                    @if ($elemento->peso > 100)
+                                    @if ($elemento->peso > 1000)
                                         <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
                                             class="p-1 bg-purple-500 text-white rounded hover:bg-purple-700 mt-2">
                                             ➕ Subpaquetar
                                         </button>
                                     @endif
 
-                                    <p class="text-gray-600 text-sm">
-                                        <strong>Peso:</strong> {{ $elemento->peso_kg }}
-                                        <strong>Diámetro:</strong> {{ $elemento->diametro_mm }}
-                                        {{-- <strong>Longitud:</strong> {{ $elemento->longitud_cm }} --}}
-                                        <strong>Número de piezas:</strong> {{ $elemento->barras ?? 'No asignado' }}
-                                        {{-- <strong>Tipo de Figura:</strong> {{ $elemento->figura ?? 'No asignado' }} --}}
-                                    </p>
 
-                                    {{-- <p class="text-gray-600 text-sm">
-                                        <strong>Dimensiones:</strong> {{ $elemento->dimensiones ?? 'No asignado' }}
-                                    </p> --}}
                                 </div>
                             @endforeach
                         </div>
