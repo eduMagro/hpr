@@ -1,4 +1,5 @@
 <x-app-layout>
+    <x-slot name="title">Etiquetas - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             <a href="{{ route('planillas.index') }}" class="text-blue-600">
@@ -25,16 +26,19 @@
     <div class="w-full px-6 py-4">
         <!-- Formulario de Filtros -->
         <form method="GET" action="{{ route('etiquetas.index') }}" class="mb-4 grid grid-cols-8 gap-4">
-			<div>
-            <label for="estado" class="block text-sm font-medium text-gray-700">Estado</label>
-                <select name="estado" id="estado" class="w-40 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500">
+            <div>
+                <label for="estado" class="block text-sm font-medium text-gray-700">Estado</label>
+                <select name="estado" id="estado"
+                    class="w-40 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500">
                     <option value="">Todos</option>
-                    <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada</option>
-                    <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando</option>
+                    <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada
+                    </option>
+                    <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando
+                    </option>
                     <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje</option>
                 </select>
-				</div>
-                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Filtrar</button>
+            </div>
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Filtrar</button>
         </form>
 
         <!-- Tabla con formularios de búsqueda -->
@@ -44,12 +48,16 @@
                     <tr class="text-left text-sm uppercase">
                         <th class="px-4 py-3 border">ID
                             <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                <input type="text" name="id" class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500" placeholder="Buscar">
+                                <input type="text" name="id"
+                                    class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
                             </form>
                         </th>
                         <th class="px-4 py-3 border">Planilla
                             <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                <input type="text" name="codigo_planilla" class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500" placeholder="Buscar">
+                                <input type="text" name="codigo_planilla"
+                                    class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
                             </form>
                         </th>
                         <th class="px-4 py-3 border">Ensamblador 1</th>
@@ -59,12 +67,16 @@
                         <th class="px-4 py-3 border">Paquete</th>
                         <th class="px-4 py-3 border">Número de Etiqueta
                             <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                <input type="text" name="numero_etiqueta" class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500" placeholder="Buscar">
+                                <input type="text" name="numero_etiqueta"
+                                    class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
                             </form>
                         </th>
                         <th class="px-4 py-3 border">Nombre
                             <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                <input type="text" name="nombre" class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500" placeholder="Buscar">
+                                <input type="text" name="nombre"
+                                    class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
                             </form>
                         </th>
                         <th class="px-4 py-3 border">Ubicación</th>
@@ -81,7 +93,8 @@
                             <td class="px-4 py-3 text-center border">{{ $etiqueta->id }}</td>
                             <td class="px-4 py-3 text-center border">
                                 @if ($etiqueta->planilla_id)
-                                    <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}" class="text-blue-500 hover:underline">
+                                    <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}"
+                                        class="text-blue-500 hover:underline">
                                         {{ $etiqueta->planilla->codigo_limpio }}
                                     </a>
                                 @else
@@ -101,13 +114,18 @@
                             <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $etiqueta->estado }}</td>
                             <td class="px-4 py-3 text-center border">
-                                <a href="{{ route('etiquetas.show', $etiqueta->id) }}" class="text-blue-500 hover:underline">Ver</a>
-                                <a href="{{ route('etiquetas.edit', $etiqueta->id) }}" class="text-yellow-500 hover:underline">Editar</a>
+                                <a href="{{ route('etiquetas.show', $etiqueta->id) }}"
+                                    class="text-blue-500 hover:underline">Ver</a>
+                                <a href="{{ route('etiquetas.edit', $etiqueta->id) }}"
+                                    class="text-yellow-500 hover:underline">Editar</a>
                                 <x-boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" />
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="15" class="text-center py-4 text-gray-500">No hay etiquetas registradas</td></tr>
+                        <tr>
+                            <td colspan="15" class="text-center py-4 text-gray-500">No hay etiquetas registradas
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

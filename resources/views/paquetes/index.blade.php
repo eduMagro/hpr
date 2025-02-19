@@ -1,13 +1,14 @@
 <x-app-layout>
+    <x-slot name="title">Paquetes - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             <a href="{{ route('planillas.index') }}" class="text-blue-600">
                 {{ __('Planillas') }}
             </a>
             <span class="mx-2">/</span>
-          
-                {{ __('Lista de Paquetes') }}
-      
+
+            {{ __('Lista de Paquetes') }}
+
             <span class="mx-2">/</span>
             <a href="{{ route('etiquetas.index') }}" class="text-blue-600">
                 {{ __('Etiquetas') }}
@@ -49,7 +50,8 @@
                                     {{ $paquete->planilla->codigo_limpio }}
                                 </a>
                             </td>
-                            <td class="px-4 py-3 text-center border">{{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}</td>
+                            <td class="px-4 py-3 text-center border">
+                                {{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}</td>
                             <td class="px-4 py-3 text-center border">{{ $paquete->etiquetas->count() }}</td>
                             <td class="px-4 py-3 text-center border">
                                 @if ($paquete->etiquetas->isNotEmpty())
@@ -67,7 +69,8 @@
                                                         <li>
                                                             <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
                                                                 class="text-green-500 hover:underline">
-                                                                ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
+                                                                ID {{ $elemento->id }} - FIGURA
+                                                                {{ $elemento->figura }}
                                                             </a>
                                                         </li>
                                                     @endforeach
@@ -79,13 +82,16 @@
                                     <span class="text-gray-500">Sin etiquetas</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="px-4 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}
+                            </td>
                             <td class="px-4 py-3 text-center border">
                                 {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
                             </td>
                             <td class="px-4 py-3 text-center border">
-                                <a href="{{ route('paquetes.show', $paquete->id) }}" class="text-blue-500 hover:underline">Ver</a>
-                                <a href="{{ route('paquetes.edit', $paquete->id) }}" class="text-yellow-500 hover:underline">Editar</a>
+                                <a href="{{ route('paquetes.show', $paquete->id) }}"
+                                    class="text-blue-500 hover:underline">Ver</a>
+                                <a href="{{ route('paquetes.edit', $paquete->id) }}"
+                                    class="text-yellow-500 hover:underline">Editar</a>
                                 <x-boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
                             </td>
                         </tr>

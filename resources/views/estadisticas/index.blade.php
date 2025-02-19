@@ -1,4 +1,5 @@
 <x-app-layout>
+    <x-slot name="title">Estadísticas - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             {{ __('Estadísticas') }}
@@ -27,8 +28,10 @@
                         <tbody class="text-gray-700">
                             @forelse ($pesoTotalPorDiametro as $fila)
                                 <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-                                    <td class="px-4 py-3 text-center border">{{ number_format($fila->diametro, 2) }}</td>
-                                    <td class="px-4 py-3 text-center border">{{ number_format($fila->peso_total, 2) }}</td>
+                                    <td class="px-4 py-3 text-center border">{{ number_format($fila->diametro, 2) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-center border">{{ number_format($fila->peso_total, 2) }}
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
@@ -56,9 +59,11 @@
                         <tbody class="text-gray-700">
                             @forelse ($datosPorPlanilla as $fila)
                                 <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-                                    <td class="px-4 py-3 text-center border">{{ number_format($fila->diametro, 2) }}</td>
+                                    <td class="px-4 py-3 text-center border">{{ number_format($fila->diametro, 2) }}
+                                    </td>
                                     <td class="px-4 py-3 text-center border">{{ $fila->planilla_id }}</td>
-                                    <td class="px-4 py-3 text-center border">{{ number_format($fila->peso_por_planilla, 2) }}</td>
+                                    <td class="px-4 py-3 text-center border">
+                                        {{ number_format($fila->peso_por_planilla, 2) }}</td>
                                 </tr>
                             @empty
                                 <tr>
@@ -82,20 +87,21 @@
             <div class="bg-blue-600 text-white text-center p-4 rounded-t-lg">
                 <h3 class="text-lg font-semibold">Stock Actual</h3>
             </div>
- @php
-                    // 1. Obtener todas las longitudes únicas presentes en $stockBarras
-                    $longitudesUnicas = $stockBarras->pluck('longitud')->unique()->sort();
+            @php
+                // 1. Obtener todas las longitudes únicas presentes en $stockBarras
+                $longitudesUnicas = $stockBarras->pluck('longitud')->unique()->sort();
 
-                    // 2. Reindexar las colecciones para un acceso más rápido
-                    $stockEncarretadoMap = $stockEncarretado->keyBy('diametro');
-                    $stockBarrasGroup = $stockBarras->groupBy('diametro');
+                // 2. Reindexar las colecciones para un acceso más rápido
+                $stockEncarretadoMap = $stockEncarretado->keyBy('diametro');
+                $stockBarrasGroup = $stockBarras->groupBy('diametro');
 
-                    // 3. Unir todos los diámetros (encarretado + barras)
-                    $diametros = $stockEncarretado->pluck('diametro')
-                                  ->merge($stockBarras->pluck('diametro'))
-                                  ->unique()
-                                  ->sort();
-                @endphp
+                // 3. Unir todos los diámetros (encarretado + barras)
+                $diametros = $stockEncarretado
+                    ->pluck('diametro')
+                    ->merge($stockBarras->pluck('diametro'))
+                    ->unique()
+                    ->sort();
+            @endphp
 
             <div class="p-4">
                 <div class="overflow-x-auto">
@@ -104,8 +110,9 @@
                             <tr>
                                 <th class="px-4 py-3 border text-center">Diámetro (mm)</th>
                                 <th class="px-4 py-3 border text-center">Encarretado (kg)</th>
-                                @foreach($longitudesUnicas as $longitud)
-                                    <th class="px-4 py-3 border text-center">Barras {{ number_format($longitud, 2) }} m (kg)</th>
+                                @foreach ($longitudesUnicas as $longitud)
+                                    <th class="px-4 py-3 border text-center">Barras {{ number_format($longitud, 2) }} m
+                                        (kg)</th>
                                 @endforeach
                                 <th class="px-4 py-3 border text-center">Barras Total (kg)</th>
                                 <th class="px-4 py-3 border text-center">Total (kg)</th>
@@ -121,23 +128,27 @@
                                 @endphp
                                 <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
                                     <td class="px-4 py-3 text-center border">{{ number_format($diam, 2) }}</td>
-                                    <td class="px-4 py-3 text-center border">{{ number_format($stockEncarretadoVal, 2) }}</td>
+                                    <td class="px-4 py-3 text-center border">
+                                        {{ number_format($stockEncarretadoVal, 2) }}</td>
 
-                                    @foreach($longitudesUnicas as $longitud)
+                                    @foreach ($longitudesUnicas as $longitud)
                                         @php
                                             $item = $barrasCollection->firstWhere('longitud', $longitud);
                                             $stockThisLength = $item ? $item->stock : 0;
                                             $barrasTotal += $stockThisLength;
                                         @endphp
-                                        <td class="px-4 py-3 text-center border">{{ number_format($stockThisLength, 2) }}</td>
+                                        <td class="px-4 py-3 text-center border">
+                                            {{ number_format($stockThisLength, 2) }}</td>
                                     @endforeach
 
                                     <td class="px-4 py-3 text-center border">{{ number_format($barrasTotal, 2) }}</td>
-                                    <td class="px-4 py-3 text-center border">{{ number_format($stockEncarretadoVal + $barrasTotal, 2) }}</td>
+                                    <td class="px-4 py-3 text-center border">
+                                        {{ number_format($stockEncarretadoVal + $barrasTotal, 2) }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ 3 + count($longitudesUnicas) }}" class="text-red-600 px-4 py-3 text-center">
+                                    <td colspan="{{ 3 + count($longitudesUnicas) }}"
+                                        class="text-red-600 px-4 py-3 text-center">
                                         No hay datos disponibles
                                     </td>
                                 </tr>

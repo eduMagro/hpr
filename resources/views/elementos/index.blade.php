@@ -1,5 +1,5 @@
 <x-app-layout>
-    <x-slot name="title">Lista de Elementos - {{ config('app.name') }}</x-slot>
+    <x-slot name="title">Elementos - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             <a href="{{ route('planillas.index') }}" class="text-blue-600">
