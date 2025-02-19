@@ -21,7 +21,7 @@ class PlanillaController extends Controller
         $estribo = $doblesPorBarra >= 4;
 
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
-
+        dd($diametrosPlanilla);
         $maquinaForzada = null;
         if (count($diametrosPlanilla) > 1) {
             $maxDiametro = max($diametrosPlanilla);
@@ -180,17 +180,17 @@ class PlanillaController extends Controller
             'elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
             'elementos.ubicacion:id,nombre', // Cargar la ubicación de cada elemento
             'elementos.maquina:id,nombre', // Cargar la máquina de cada elemento
-             'etiquetas.elementos.subpaquetes'
+            'etiquetas.elementos.subpaquetes'
         ])->findOrFail($id);
-    
+
         // Función para asignar color de fondo según estado
         $getColor = function ($estado, $tipo) {
             $estado = strtolower($estado ?? 'desconocido');
-    
+
             if ($tipo === 'etiqueta' && $estado === 'completada') {
                 $estado = 'completado';
             }
-    
+
             return match ($estado) {
                 'completado' => 'bg-green-200',
                 'pendiente' => 'bg-red-200',
@@ -198,32 +198,32 @@ class PlanillaController extends Controller
                 default => 'bg-gray-200'
             };
         };
-    
+
         // Calcular el progreso de la planilla
         $pesoAcumulado = $planilla->elementos->where('estado', 'completado')->sum('peso');
         $pesoTotal = max(1, $planilla->peso_total ?? 1);
         $progreso = min(100, ($pesoAcumulado / $pesoTotal) * 100);
-    
-// Procesar paquetes
-$paquetes = $planilla->paquetes->map(function ($paquete) {
-    $paquete->color = 'bg-gray-300'; // Asignar color gris claro fijo a todos los paquetes
-    return $paquete;
-});
 
-    
+        // Procesar paquetes
+        $paquetes = $planilla->paquetes->map(function ($paquete) {
+            $paquete->color = 'bg-gray-300'; // Asignar color gris claro fijo a todos los paquetes
+            return $paquete;
+        });
+
+
         // Procesar elementos
         $elementos = $planilla->elementos->map(function ($elemento) use ($getColor) {
             $elemento->color = $getColor($elemento->estado, 'elemento');
             return $elemento;
         });
-    
+
         // Procesar etiquetas
         $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $elementos) {
             $etiqueta->color = $getColor($etiqueta->estado, 'etiqueta');
             $etiqueta->elementos = $elementos->where('etiqueta_id', $etiqueta->id);
             return $etiqueta;
         });
-    
+
         $planillaCalculada = [
             'planilla' => $planilla,
             'pesoAcumulado' => $pesoAcumulado,
@@ -234,10 +234,10 @@ $paquetes = $planilla->paquetes->map(function ($paquete) {
             'elementos' => $elementos,
             'etiquetasSinPaquete' => $etiquetas->whereNull('paquete_id')
         ];
-    
+
         return view('planillas.show', compact('planillaCalculada'));
     }
-    
+
 
     //------------------------------------------------------------------------------------ CREATE()
     public function create()
@@ -492,17 +492,17 @@ $paquetes = $planilla->paquetes->map(function ($paquete) {
         }
     }
 
-public function update(Request $request, $id)
-{
-    $planilla = Planilla::findOrFail($id);
+    public function update(Request $request, $id)
+    {
+        $planilla = Planilla::findOrFail($id);
 
-    // Asegurar que se recibe JSON correctamente
-    $data = $request->json()->all();
+        // Asegurar que se recibe JSON correctamente
+        $data = $request->json()->all();
 
-    $planilla->update($data);
+        $planilla->update($data);
 
-    return response()->json(['success' => true, 'message' => 'Planilla actualizada correctamente']);
-}
+        return response()->json(['success' => true, 'message' => 'Planilla actualizada correctamente']);
+    }
 
 
 

@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-                {{ __('Lista de Planillas') }}
-      
+            {{ __('Lista de Planillas') }}
+
             <span class="mx-2">/</span>
             <a href="{{ route('paquetes.index') }}" class="text-blue-600">
                 {{ __('Paquetes') }}
@@ -23,27 +23,19 @@
     </x-slot>
 
     <div class="w-full px-6 py-4">
-        <!-- Enlaces de acción -->
+        <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
         <div class="flex flex-wrap gap-4 mb-4">
+
+            <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse"
+                data-bs-target="#filtrosBusqueda">
+                🔍 Filtros Avanzados
+            </button>
             <a href="{{ route('planillas.create') }}" class="btn btn-primary">
                 Importar Planilla
             </a>
-            <a href="{{ route('paquetes.index') }}" class="btn btn-primary">
-                Ver Paquetes
-            </a>
-            <a href="{{ route('etiquetas.index') }}" class="btn btn-primary">
-                Ver Etiquetas
-            </a>
-            <a href="{{ route('elementos.index') }}" class="btn btn-primary">
-                Ver Elementos
-            </a>
         </div>
 
-        <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
-        <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse"
-            data-bs-target="#filtrosBusqueda">
-            🔍 Filtros Avanzados
-        </button>
+
 
         <div id="filtrosBusqueda" class="collapse">
             <form method="GET" action="{{ route('planillas.index') }}" class="card card-body shadow-sm">
@@ -164,79 +156,88 @@
                     @forelse ($planillas as $planilla)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
                             x-data="{ editando: false, planilla: @js($planilla) }">
-                
+
                             <!-- Código -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.codigo_limpio"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.codigo_limpio" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.codigo_limpio"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Código Cliente -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.cod_cliente ?? 'No asignado'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.cod_cliente" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.cod_cliente"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Cliente -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.cliente ?? 'Desconocido'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.cliente" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.cliente"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Código Obra -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.cod_obra ?? 'No asignado'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.cod_obra" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.cod_obra"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Obra -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.nom_obra ?? 'No especificado'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.nom_obra" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.nom_obra"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Sección -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.seccion ?? 'No definida'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.seccion" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.seccion"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Descripción -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.descripcion ?? 'Sin descripción'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.descripcion" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.descripcion"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Estado Ensamblado -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.ensamblado ?? 'Sin datos'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.ensamblado" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.ensamblado"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Peso Total -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.peso_total_kg"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.peso_total_kg" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.peso_total_kg"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Estado -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
@@ -248,51 +249,56 @@
                                     <option value="completada">Completada</option>
                                 </select>
                             </td>
-                
+
                             <!-- Fecha Inicio -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_inicio"></span>
                                 </template>
-                                <input x-show="editando" type="datetime" x-model="planilla.fecha_inicio" class="form-input w-full">
+                                <input x-show="editando" type="datetime" x-model="planilla.fecha_inicio"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Fecha Finalización -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_finalizacion"></span>
                                 </template>
-                                <input x-show="editando" type="datetime" x-model="planilla.fecha_finalizacion" class="form-input w-full">
+                                <input x-show="editando" type="datetime" x-model="planilla.fecha_finalizacion"
+                                    class="form-input w-full">
                             </td>
-                
+
                             <!-- Fecha Importación -->
                             <td class="px-4 py-3 text-center border">
                                 <span x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
                             </td>
-                
+
                             <!-- Usuario -->
                             <td class="px-4 py-3 text-center border">
                                 <span x-text="planilla.user?.name ?? 'Desconocido'"></span>
                             </td>
-                
+
                             <!-- Botones -->
                             <td class="px-4 py-3 text-center border">
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
                                     class="text-green-500 hover:underline">Ver</a><br>
-                                    <button @click.stop="editando = !editando">
-                                        <span x-show="!editando">✏️</span>
-                                        <span x-show="editando" >✖</span>
-										 <span x-show="editando" @click.stop="guardarCambios(planilla)" >✅</span>
-                                    </button><br>
+                                <button @click.stop="editando = !editando">
+                                    <span x-show="!editando">✏️</span>
+                                    <span x-show="editando">✖</span>
+                                    <span x-show="editando" @click.stop="guardarCambios(planilla)">✅</span>
+                                </button><br>
                                 <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="15" class="text-center py-4 text-gray-500">No hay planillas disponibles.</td></tr>
+                        <tr>
+                            <td colspan="15" class="text-center py-4 text-gray-500">No hay planillas disponibles.
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
-                
-                
+
+
             </table>
         </div>
 
@@ -300,49 +306,48 @@
     </div>
     <script src="//unpkg.com/alpinejs" defer></script>
     <script>
-      function guardarCambios(planilla) {
-    fetch(`/planillas/${planilla.id}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify(planilla)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            Swal.fire({
-                icon: "success",
-                title: "Planilla actualizada",
-                text: "La planilla se ha actualizado con éxito.",
-                timer: 2000,
-                showConfirmButton: false
-            });
+        function guardarCambios(planilla) {
+            fetch(`/planillas/${planilla.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(planilla)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: "success",
+                            title: "Planilla actualizada",
+                            text: "La planilla se ha actualizado con éxito.",
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
 
-        
 
-        } else {
-            Swal.fire({
-                icon: "error",
-                title: "Error al actualizar",
-                text: data.message || "Ha ocurrido un error inesperado.",
-                confirmButtonText: "OK"
-            });
+
+                    } else {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error al actualizar",
+                            text: data.message || "Ha ocurrido un error inesperado.",
+                            confirmButtonText: "OK"
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error de conexión",
+                        text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
+                        confirmButtonText: "OK"
+                    });
+                });
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        Swal.fire({
-            icon: "error",
-            title: "Error de conexión",
-            text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
-            confirmButtonText: "OK"
-        });
-    });
-}
-
     </script>
-    
-    
+
+
 </x-app-layout>
