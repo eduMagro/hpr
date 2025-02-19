@@ -92,7 +92,19 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="py-3 border text-center">Nombre</th>
+                        <th class="py-3 border text-center">Paquete ID
+
+                            <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
+                                <input type="text" name="paquete_id"
+                                    class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
+                                <button type="submit"
+                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
+                                    Filtrar
+                                </button>
+                            </form>
+                        </th>
+
                         <th class="py-3 border text-center">Máquina 1
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="maquina"
@@ -105,7 +117,8 @@
                             </form>
                         </th>
                         <th class="py-3 border text-center">Máquina 2
-                            <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
+                            <form method="GET" action="{{ route('elementos.index') }}"
+                                class="mt-2 flex space-x-2">
                                 <input type="text" name="maquina2"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                     placeholder="Buscar">
@@ -151,19 +164,6 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="py-3 border text-center">Paquete ID
-
-                            <form method="GET" action="{{ route('elementos.index') }}"
-                                class="mt-2 flex space-x-2">
-                                <input type="text" name="paquete_id"
-                                    class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Buscar">
-                                <button type="submit"
-                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                    Filtrar
-                                </button>
-                            </form>
-                        </th>
                         <th class="py-3 border text-center">Ubicación
                             <form method="GET" action="{{ route('elementos.index') }}"
                                 class="mt-2 flex space-x-2">
@@ -201,6 +201,7 @@
                     @forelse ($elementos as $elemento)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200"
                             x-data="{ editando: false, elemento: @js($elemento) }">
+                            <!-- ID -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.id"></span>
@@ -208,6 +209,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.id"
                                     class="form-input w-full">
                             </td>
+                            <!-- PLANILLA -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <a href="{{ route('planillas.index', ['id' => $elemento->planilla->id]) }}"
@@ -218,6 +220,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.planilla.codigo_limpio"
                                     class="form-input w-full">
                             </td>
+                            <!-- USUARIO 1 -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.user?.name ?? 'N/A'"></span>
@@ -225,6 +228,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.user.name"
                                     class="form-input w-full">
                             </td>
+                            <!-- USUARIO 2 -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.user2?.name ?? 'N/A'"></span>
@@ -232,6 +236,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.user2.name"
                                     class="form-input w-full">
                             </td>
+                            <!-- ETIQUETA -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}"
@@ -242,6 +247,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.etiquetaRelacion.id"
                                     class="form-input w-full">
                             </td>
+                            <!-- PAQUETE -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <a href="{{ route('paquetes.index', ['id' => $elemento->paquete_id]) }}"
@@ -252,13 +258,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.paquete_id"
                                     class="form-input w-full">
                             </td>
-                            <td class="px-4 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.nombre"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="elemento.nombre"
-                                    class="form-input w-full">
-                            </td>
+                            <!-- MAQUINA 1 -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.maquina?.nombre ?? 'N/A'"></span>
@@ -266,6 +266,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.maquina.nombre"
                                     class="form-input w-full">
                             </td>
+                            <!-- MAQUINA 2 -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.maquina_2?.nombre ?? 'N/A'"></span>
@@ -273,6 +274,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.maquina_2.nombre"
                                     class="form-input w-full">
                             </td>
+                            <!-- MAQUINA 3 -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.maquina_3?.nombre ?? 'N/A'"></span>
@@ -280,6 +282,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.maquina_3.nombre"
                                     class="form-input w-full">
                             </td>
+                            <!-- PRODUCTO 1 -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.producto?.id ?? 'N/A'"></span>
@@ -287,6 +290,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.producto.id"
                                     class="form-input w-full">
                             </td>
+                            <!-- PRODUCTO 2 -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.producto2?.id ?? 'N/A'"></span>
@@ -294,6 +298,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.producto2.id"
                                     class="form-input w-full">
                             </td>
+                            <!-- UBICACION -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.ubicacion?.nombre ?? 'N/A'"></span>
@@ -301,6 +306,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.ubicacion.nombre"
                                     class="form-input w-full">
                             </td>
+                            <!-- FIGURA -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.figura"></span>
@@ -308,6 +314,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.figura"
                                     class="form-input w-full">
                             </td>
+                            <!-- PESO_KG -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.peso_kg"></span>
@@ -315,6 +322,7 @@
                                 <input x-show="editando" type="number" x-model="elemento.peso_kg"
                                     class="form-input w-full">
                             </td>
+                            <!-- DIAMETRO_MM -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.diametro_mm"></span>
@@ -322,6 +330,7 @@
                                 <input x-show="editando" type="number" x-model="elemento.diametro_mm"
                                     class="form-input w-full">
                             </td>
+                            <!-- LONGITUD_M -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.longitud_m"></span>
@@ -329,6 +338,7 @@
                                 <input x-show="editando" type="number" x-model="elemento.longitud_m"
                                     class="form-input w-full">
                             </td>
+                            <!-- FECHA_INICIO -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.fecha_inicio ?? 'No asignado'"></span>
@@ -336,6 +346,7 @@
                                 <input x-show="editando" type="date" x-model="elemento.fecha_inicio"
                                     class="form-input w-full">
                             </td>
+                            <!-- FECHA_FINALIZACION -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.fecha_finalizacion ?? 'No asignado'"></span>
@@ -343,6 +354,7 @@
                                 <input x-show="editando" type="date" x-model="elemento.fecha_finalizacion"
                                     class="form-input w-full">
                             </td>
+                            <!-- ESTADO -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.estado"></span>
@@ -383,7 +395,6 @@
         <div id="modal-dibujo"
             class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
             <div class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative">
-
                 <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:text-red-900">
                     ✖
                 </button>
@@ -392,6 +403,51 @@
             </div>
         </div>
     </div>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <script>
+        function guardarCambios(elemento) {
+            fetch(`/elementos/${elemento.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(planilla)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: "success",
+                            title: "Elemento actualizado",
+                            text: "El elemento se ha actualizado con éxito.",
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+
+
+
+                    } else {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error al actualizar",
+                            text: data.message || "Ha ocurrido un error inesperado.",
+                            confirmButtonText: "OK"
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error de conexión",
+                        text: "No se pudo actualizar el elemento. Inténtalo nuevamente.",
+                        confirmButtonText: "OK"
+                    });
+                });
+        }
+    </script>
+
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const modal = document.getElementById("modal-dibujo");
@@ -556,50 +612,6 @@
                 }
             });
         });
-    </script>
-    <script src="//unpkg.com/alpinejs" defer></script>
-    <script>
-        function guardarCambios(elemento) {
-            fetch(`/elementos/${elemento.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify(planilla)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Planilla actualizada",
-                            text: "La planilla se ha actualizado con éxito.",
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-
-
-
-                    } else {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error al actualizar",
-                            text: data.message || "Ha ocurrido un error inesperado.",
-                            confirmButtonText: "OK"
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error de conexión",
-                        text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
-                        confirmButtonText: "OK"
-                    });
-                });
-        }
     </script>
 
 </x-app-layout>
