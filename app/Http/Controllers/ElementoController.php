@@ -28,7 +28,8 @@ class ElementoController extends Controller
         // Aplicar los filtros utilizando un método separado
         $query = $this->aplicarFiltros($query, $request);
 
-        $elementos = $query->paginate(10);
+        // Aplicar paginación y mantener filtros en la URL
+        $elementos = $query->paginate(10)->appends($request->query());
 
         return view('elementos.index', compact('elementos'));
     }

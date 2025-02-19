@@ -54,7 +54,7 @@ class etiquetaController extends Controller
         }
 
         // Obtener los resultados con paginación
-        $etiquetas = $query->paginate(10);
+        $etiquetas = $query->paginate(10)->appends($request->query());
 
         return view('etiquetas.index', compact('etiquetas'));
     }
@@ -137,8 +137,8 @@ class etiquetaController extends Controller
                     ->whereIn('diametro', array_keys($diametrosConPesos))
                     ->orderBy('peso_stock')
                     ->get();
-                 
-                
+
+
                 if ($productos->isEmpty()) {
                     return response()->json([
                         'success' => false,
@@ -157,7 +157,7 @@ class etiquetaController extends Controller
                     if ($stockTotal < $pesoNecesario) {
                         // Acumular el mensaje de alerta
                         $warnings[] = "El stock para el  {$diametro} es insuficiente. Avisaremos a los gruistas.";
-                       
+
                         // Lógica para obtener TODOS los usuarios gruistas y generar una alerta para cada uno
                         $gruistas = User::where('categoria', 'gruista')->get();
                         if ($gruistas->isNotEmpty()) {
@@ -172,7 +172,6 @@ class etiquetaController extends Controller
                             }
                         }
                     }
-                    
                 }
 
                 if ($etiqueta->planilla) {
@@ -367,17 +366,16 @@ class etiquetaController extends Controller
 
                 $etiqueta->save();
 
-            // Si todos los elementos de la planilla están completados, actualizar la planilla
+                // Si todos los elementos de la planilla están completados, actualizar la planilla
                 $todasFinalizadas = !$etiqueta->planilla->etiquetas()
-                ->where('estado', '!=', 'completada')
-                ->exists();
+                    ->where('estado', '!=', 'completada')
+                    ->exists();
 
                 if ($todasFinalizadas) {
-                $planilla->fecha_finalizacion = now();
-                $planilla->estado = "completada";
-                $planilla->save();
+                    $planilla->fecha_finalizacion = now();
+                    $planilla->estado = "completada";
+                    $planilla->save();
                 }
-
             } elseif ($etiqueta->estado == "ensamblando") {    // ---------------------------------- E N S A M B L A N D O
                 if ($maquina->tipo = ! 'ensambladora') {
                     return response()->json([
@@ -736,5 +734,4 @@ class etiquetaController extends Controller
             'message' => 'Todas las etiquetas están completas.'
         ]);
     }
-
 }

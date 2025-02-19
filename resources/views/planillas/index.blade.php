@@ -241,7 +241,7 @@
                             <!-- Estado -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="planilla.estado"></span>
+                                    <span x-text="planilla.estado.toUpperCase()"></span>
                                 </template>
                                 <select x-show="editando" x-model="planilla.estado" class="form-select w-full">
                                     <option value="pendiente">Pendiente</option>

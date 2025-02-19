@@ -27,7 +27,7 @@ class PaqueteController extends Controller
             $query->where('id', $request->input('id'));
         }
 
-        $paquetes = $query->paginate(10);
+        $paquetes = $query->paginate(10)->appends($request->query());
 
         return view('paquetes.index', compact('paquetes'));
     }
