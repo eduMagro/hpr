@@ -21,7 +21,7 @@ class PlanillaController extends Controller
         $estribo = $doblesPorBarra >= 4;
 
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
-        dd($diametrosPlanilla);
+
         $maquinaForzada = null;
         if (count($diametrosPlanilla) > 1) {
             $maxDiametro = max($diametrosPlanilla);
