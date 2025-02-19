@@ -223,8 +223,8 @@
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                         @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
-                            <h4 class="font-semibold text-red-700 mt-6 mb-6">⚠️ Hay elementos en otras máquinas,
-                                Empaqueta Elementos!!</h4>
+                            <h4 class="font-semibold text-red-700 mt-6 mb-6">⚠️ Hay elementos en otras máquinas, crea un
+                                paquete con la etiqueta e imprimme QR!!</h4>
                             {{-- <div class="bg-red-100 p-4 rounded-lg shadow-md">
                                 @foreach ($otrosElementos[$etiqueta->id] as $elementoOtro)
                                     <p class="text-gray-600">
@@ -390,6 +390,7 @@
                             <ul id="itemsList" class="list-disc pl-6 space-y-2">
                                 <!-- Los items se agregarán aquí dinámicamente -->
                             </ul>
+                            <p id="totalPeso" class="font-semibold text-gray-700 mb-2">Total: 0 kg</p>
                         </div>
 
                         <!-- Botón para crear el paquete -->

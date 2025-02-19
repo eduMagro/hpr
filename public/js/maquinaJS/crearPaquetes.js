@@ -1,5 +1,5 @@
 const items = [];
-
+let totalPeso = 0;
 document
     .getElementById("qrItem")
     .addEventListener("keypress", function (event) {
@@ -16,6 +16,8 @@ function agregarItem() {
         .getElementById("itemType")
         .value.trim()
         .toLowerCase();
+    const pesoInput = document.getElementById("pesoItem");
+    const itemPeso = parseFloat(pesoInput.value.trim());
 
     if (!itemCode) {
         Swal.fire({
@@ -27,7 +29,17 @@ function agregarItem() {
         return;
     }
 
-    if (items.some((i) => i.code === itemCode)) {
+    if (isNaN(itemPeso) || itemPeso <= 0) {
+        Swal.fire({
+            icon: "warning",
+            title: "Peso Inválido",
+            text: "Ingrese un peso válido para el item.",
+            confirmButtonColor: "#3085d6",
+        });
+        return;
+    }
+
+    if (items.some((i) => i.id === itemCode)) {
         Swal.fire({
             icon: "error",
             title: "Item Duplicado",
@@ -38,29 +50,46 @@ function agregarItem() {
         return;
     }
 
-    const newItem = { id: itemCode, type: itemType };
+    const newItem = { id: itemCode, type: itemType, peso: itemPeso };
     items.push(newItem);
+    totalPeso += itemPeso; // Sumar peso al total
 
+    actualizarLista();
+}
+
+function eliminarItem(itemCode, itemPeso) {
+    const index = items.findIndex((i) => i.id === itemCode);
+    if (index > -1) {
+        items.splice(index, 1);
+        totalPeso -= itemPeso; // Restar el peso del item eliminado
+        actualizarLista();
+    }
+}
+
+function actualizarLista() {
     const itemsList = document.getElementById("itemsList");
-    const listItem = document.createElement("li");
-    listItem.textContent = `${itemType}: ${itemCode}`;
-    listItem.dataset.code = itemCode;
+    const totalPesoElement = document.getElementById("totalPeso");
 
-    const removeButton = document.createElement("button");
-    removeButton.textContent = "❌";
-    removeButton.className = "ml-2 text-red-600 hover:text-red-800";
-    removeButton.onclick = () => {
-        const index = items.findIndex((i) => i.code === itemCode);
-        if (index > -1) {
-            items.splice(index, 1);
-        }
-        itemsList.removeChild(listItem);
-    };
+    // Limpiar la lista
+    itemsList.innerHTML = "";
 
-    listItem.appendChild(removeButton);
-    itemsList.appendChild(listItem);
+    // Volver a renderizar los elementos
+    items.forEach((item) => {
+        const listItem = document.createElement("li");
+        listItem.textContent = `${item.type}: ${item.id} - ${item.peso} kg`;
+        listItem.dataset.code = item.id;
 
-    qrItem.value = "";
+        const removeButton = document.createElement("button");
+        removeButton.textContent = "❌";
+        removeButton.className = "ml-2 text-red-600 hover:text-red-800";
+        removeButton.onclick = () => eliminarItem(item.id, item.peso);
+
+        listItem.appendChild(removeButton);
+        itemsList.appendChild(listItem);
+    });
+
+    // Actualizar el total de peso
+    totalPesoElement.textContent = `Total: ${totalPeso.toFixed(2)} kg`;
 }
 
 function crearPaquete() {
