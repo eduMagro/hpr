@@ -433,11 +433,15 @@ class ElementoController extends Controller
     {
         $elemento = Elemento::findOrFail($id);
 
-        // Asegurar que se recibe JSON correctamente
-        $data = $request->json()->all();
+        // Convertir valores vacíos a NULL
+        $data = array_map(fn($value) => $value === "" ? null : $value, $request->all());
 
         $elemento->update($data);
 
-        return response()->json(['success' => true, 'message' => 'Elemento actualizadoX correctamente']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Elemento actualizado correctamente',
+            'data' => $elemento
+        ]);
     }
 }

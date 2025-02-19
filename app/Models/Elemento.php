@@ -23,34 +23,34 @@ class Elemento extends Model
      */
     // Campos que se pueden asignar masivamente
     protected $fillable = [
-        'planilla_id',
+        'id',
         'users_id',
         'users_id_2',
+        'planilla_id',
         'etiqueta_id',
-        'paquete_id',
         'maquina_id',
         'maquina_id_2',
         'maquina_id_3',
-        'soldadora',
         'producto_id',
         'producto_id_2',
+        'paquete_id',
         'ubicacion_id',
         'figura',
         'fila',
-        'descripcion_fila',
         'marca',
         'etiqueta',
+        'diametro',
+        'longitud',
         'barras',
         'dobles_barra',
         'peso',
         'dimensiones',
-        'diametro',
-        'longitud',
         'fecha_inicio',
         'fecha_finalizacion',
         'tiempo_fabricacion',
         'estado',
-
+        'suelta',
+        'subido'
     ];
 
     protected $appends = ['id_el', 'longitud_cm', 'longitud_m', 'peso_kg', 'diametro_mm'];

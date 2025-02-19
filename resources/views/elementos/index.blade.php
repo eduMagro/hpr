@@ -428,9 +428,6 @@
                             timer: 2000,
                             showConfirmButton: false
                         });
-
-
-
                     } else {
                         Swal.fire({
                             icon: "error",
