@@ -433,8 +433,8 @@ class ElementoController extends Controller
     {
         $elemento = Elemento::findOrFail($id);
 
-        // Convertir valores vacíos a NULL
-        $data = array_map(fn($value) => $value === "" ? null : $value, $request->all());
+        // Asegurar que se recibe JSON correctamente
+        $data = $request->json()->all();
 
         $elemento->update($data);
 

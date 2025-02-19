@@ -221,29 +221,35 @@
                                     class="form-input w-full">
                             </td>
                             <!-- USUARIO 1 -->
-                            <td class="px-4 py-3 text-center border" x-data="{ usuario1Nombre: elemento.user?.name ?? '' }">
+                            <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="usuario1Nombre || 'N/A'"></span>
+                                    <!-- Se muestra el nombre de la máquina -->
+                                    <span x-text="elemento.user?.name || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="usuario1Nombre"
+                                <!-- En modo edición, se edita el id de la máquina -->
+                                <input x-show="editando" type="text" x-model="elemento.users_id"
                                     class="form-input w-full">
                             </td>
 
                             <!-- USUARIO 2 -->
-                            <td class="px-4 py-3 text-center border" x-data="{ usuario2Nombre: elemento.user2?.name ?? '' }">
+                            <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="usuario2Nombre || 'N/A'"></span>
+                                    <!-- Se muestra el nombre de la máquina -->
+                                    <span x-text="elemento.user2?.name || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="usuario2Nombre"
+                                <!-- En modo edición, se edita el id de la máquina -->
+                                <input x-show="editando" type="text" x-model="elemento.users_id_2"
                                     class="form-input w-full">
                             </td>
+
                             <!-- ETIQUETA -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}"
+                                    <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
                                         class="text-blue-500 hover:underline">
-                                        {{ $elemento->etiquetaRelacion->id ?? 'N/A' }}
+                                        {{ $elemento->etiquetaRelacion?->id ?? 'N/A' }}
                                     </a>
+
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.etiquetaRelacion.id"
                                     class="form-input w-full">
@@ -260,28 +266,34 @@
                                     class="form-input w-full">
                             </td>
                             <!-- MAQUINA 1 -->
-                            <td class="px-4 py-3 text-center border" x-data="{ maquinaNombre: elemento.maquina?.nombre ?? '' }">
+                            <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="maquinaNombre || 'N/A'"></span>
+                                    <!-- Se muestra el nombre de la máquina -->
+                                    <span x-text="elemento.maquina?.nombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="maquinaNombre"
+                                <!-- En modo edición, se edita el id de la máquina -->
+                                <input x-show="editando" type="text" x-model="elemento.maquina_id"
                                     class="form-input w-full">
                             </td>
                             <!-- MAQUINA 2 -->
-                            <td class="px-4 py-3 text-center border" x-data="{ maquina2Nombre: elemento.maquina_2?.nombre ?? '' }">
+                            <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="maquina2Nombre || 'N/A'"></span>
+                                    <!-- Se muestra el nombre de la máquina -->
+                                    <span x-text="elemento.maquina2?.nombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="maquina2Nombre"
+                                <!-- En modo edición, se edita el id de la máquina -->
+                                <input x-show="editando" type="text" x-model="elemento.maquina_id_2"
                                     class="form-input w-full">
                             </td>
 
                             <!-- MAQUINA 3 -->
-                            <td class="px-4 py-3 text-center border" x-data="{ maquina3Nombre: elemento.maquina_3?.nombre ?? '' }">
+                            <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="maquina3Nombre || 'N/A'"></span>
+                                    <!-- Se muestra el nombre de la máquina -->
+                                    <span x-text="elemento.maquina3?.nombre || 'N/A'"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="maquina3Nombre"
+                                <!-- En modo edición, se edita el id de la máquina -->
+                                <input x-show="editando" type="text" x-model="elemento.maquina_id_3"
                                     class="form-input w-full">
                             </td>
 
@@ -320,18 +332,21 @@
                             </td>
                             <!-- PESO_KG -->
                             <td class="px-4 py-3 text-center border">
+                                <!-- Muestra el peso formateado en modo vista -->
                                 <template x-if="!editando">
                                     <span x-text="elemento.peso_kg"></span>
                                 </template>
-                                <input x-show="editando" type="number" x-model="elemento.peso_kg"
+                                <!-- Edita el valor original -->
+                                <input x-show="editando" type="number" x-model="elemento.peso"
                                     class="form-input w-full">
+
                             </td>
                             <!-- DIAMETRO_MM -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="elemento.diametro_mm"></span>
                                 </template>
-                                <input x-show="editando" type="number" x-model="elemento.diametro_mm"
+                                <input x-show="editando" type="number" x-model="elemento.diametro"
                                     class="form-input w-full">
                             </td>
                             <!-- LONGITUD_M -->
@@ -339,7 +354,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.longitud_m"></span>
                                 </template>
-                                <input x-show="editando" type="number" x-model="elemento.longitud_m"
+                                <input x-show="editando" type="number" x-model="elemento.longitud"
                                     class="form-input w-full">
                             </td>
                             <!-- FECHA_INICIO -->
@@ -363,12 +378,15 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.estado"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.estado"
-                                    class="form-input w-full">
+                                <select x-show="editando" x-model="elemento.estado" class="form-select w-full">
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="fabricando">Fabricando</option>
+                                    <option value="completado">Completado</option>
+                                </select>
                             </td>
-
                             <!-- Botones -->
                             <td class="px-4 py-3 text-center border">
+
                                 <a href="#" class="text-blue-500 hover:underline abrir-modal-dibujo"
                                     data-id="{{ $elemento->id }}" data-dimensiones="{{ $elemento->dimensiones }}"
                                     data-peso="{{ $elemento->peso_kg }}">
@@ -402,53 +420,20 @@
                 <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:text-red-900">
                     ✖
                 </button>
-                <h2 class="text-lg font-semibold mb-3">Elemento #{{ $elemento->id }}</h2>
+                @if (isset($elemento) && $elemento->id)
+                    <h2 class="text-lg font-semibold mb-3">Elemento #{{ $elemento->id }}</h2>
+                @endif
+
+
                 <canvas id="canvas-dibujo" class="border border-gray-300 w-full h-[300px]"></canvas>
             </div>
         </div>
     </div>
     <script src="//unpkg.com/alpinejs" defer></script>
+    <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
     <script>
-        function guardarCambios(elemento) {
-            fetch(`/elementos/${elemento.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify(elemento)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Elemento actualizado",
-                            text: "El elemento se ha actualizado con éxito.",
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error al actualizar",
-                            text: data.message || "Ha ocurrido un error inesperado.",
-                            confirmButtonText: "OK"
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error de conexión",
-                        text: "No se pudo actualizar el elemento. Inténtalo nuevamente.",
-                        confirmButtonText: "OK"
-                    });
-                });
-        }
+        window.elementoData = @json($elemento);
     </script>
-
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const modal = document.getElementById("modal-dibujo");

@@ -324,10 +324,9 @@
                             text: "La planilla se ha actualizado con éxito.",
                             timer: 2000,
                             showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload(); // Recarga la página tras el mensaje
                         });
-
-
-
                     } else {
                         Swal.fire({
                             icon: "error",
