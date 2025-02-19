@@ -40,7 +40,8 @@ class PaqueteController extends Controller
         $request->validate([
             'items' => 'required|array|min:1', // Debe recibir un array con al menos un item
             'items.*.id' => 'integer|required', // Asegurar que los IDs existen
-            'items.*.type' => 'required|in:etiqueta,elemento,subpaquete' // Tipos permitidos
+            'items.*.type' => 'required|in:etiqueta,elemento,subpaquete', // Tipos permitidos
+            'maquina_id' => 'required|integer|exists:maquinas,id'
         ]);
 
         try {
@@ -50,6 +51,10 @@ class PaqueteController extends Controller
             $etiquetasIds = collect($request->items)->where('type', 'etiqueta')->pluck('id')->toArray();
             $elementosIds = collect($request->items)->where('type', 'elemento')->pluck('id')->toArray();
             $subpaquetesIds = collect($request->items)->where('type', 'subpaquete')->pluck('id')->toArray();
+
+            $maquinaId = $request->input('maquina_id');
+            $maquina = DB::table('maquinas')->where('id', $maquinaId)->first();
+            $nombreMaquina = $maquina->nombre; // ✅ Obtener el nombre de la máquina
 
             // Verificar disponibilidad de etiquetas, elementos y subpaquetes
             if ($mensajeError = $this->verificarDisponibilidad($etiquetasIds, $elementosIds, $subpaquetesIds)) {
@@ -62,6 +67,16 @@ class PaqueteController extends Controller
             $etiquetas = Etiqueta::whereIn('id', $etiquetasIds)->with(['elementos', 'planilla'])->get();
             $elementos = Elemento::whereIn('id', $elementosIds)->get();
             $subpaquetes = Subpaquete::whereIn('id', $subpaquetesIds)->get();
+
+            // Incluir elementos de etiquetas en la lista de elementos a empaquetar
+            $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId) {
+                return $etiqueta->elementos->filter(fn($elemento) => $elemento->maquina_id == $maquinaId)
+                    ->pluck('id')
+                    ->toArray();
+            })->toArray();
+
+            // Fusionar elementos enviados y los obtenidos de las etiquetas
+            $elementosIds = array_merge($elementosIds, $elementosIdsDesdeEtiquetas);
 
             if ($etiquetas->isEmpty() && $elementos->isEmpty() && $subpaquetes->isEmpty()) {
                 DB::rollBack();
@@ -95,18 +110,25 @@ class PaqueteController extends Controller
             $pesoTotal = $etiquetas->sum(function ($etiqueta) {
                 return $etiqueta->elementos->sum('peso');
             }) + $elementos->sum('peso') + $subpaquetes->sum('peso');
-            // Verificar código de máquina y ubicación
-            $codigoMaquina = $elementos->pluck('codigo_maquina')->unique()->first();
-            $ubicacion = $this->obtenerUbicacionPorCodigoMaquina($codigoMaquina);
+            // Verificar si el peso total supera el límite
+            if ($pesoTotal > 1200) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => "El peso total del paquete ($pesoTotal kg) supera el límite permitido de 1200 kg."
+                ], 400);
+            }
+
+            // Obtener ubicación
+            $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%$nombreMaquina%")->first();
 
             if (!$ubicacion) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => "No se encontró una ubicación para la máquina con código $codigoMaquina"
+                    'message' => "No se encontró una ubicación con el nombre de la máquina: $nombreMaquina."
                 ], 400);
             }
-
             // Crear el paquete
             $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal);
 

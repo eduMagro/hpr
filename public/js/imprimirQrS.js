@@ -15,7 +15,7 @@ function generateAndPrintQR(id, nombre, tipo) {
     let qrSize =
         tipo.toLowerCase() === "ubicacion" || tipo.toLowerCase() === "maquina"
             ? 340
-            : 220;
+            : 120;
 
     // Generamos el código QR
     const qrCode = new QRCode(qrContainer, {

@@ -131,6 +131,7 @@ function crearPaquete() {
                 },
                 body: JSON.stringify({
                     items,
+                    maquina_id: maquinaId,
                     ubicacion_id: ubicacionId,
                 }),
             });

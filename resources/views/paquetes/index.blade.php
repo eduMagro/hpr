@@ -30,7 +30,18 @@
             <table class="w-full min-w-[800px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm uppercase">
-                        <th class="px-4 py-3 border">ID</th>
+                        <th class="px-4 py-3 border">ID
+                            <!-- Formulario de búsqueda por ID -->
+                            <form method="GET" action="{{ route('paquetes.index') }}" class="mt-2 flex space-x-2">
+                                <input type="text" name="id"
+                                    class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
+                                <button type="submit"
+                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
+                                    Filtrar
+                                </button>
+                            </form>
+                        </th>
                         <th class="px-4 py-3 border">Planilla</th>
                         <th class="px-4 py-3 border">Ubicación</th>
                         <th class="px-4 py-3 border">Cantidad de Etiquetas</th>
@@ -78,10 +89,22 @@
                                             @endif
                                         @endforeach
                                     </ul>
+                                @elseif ($paquete->elementos->isNotEmpty())
+                                    <ul class="list-disc pl-4 text-green-600 text-sm">
+                                        @foreach ($paquete->elementos as $elemento)
+                                            <li class="font-semibold">
+                                                <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                                                    class="text-green-500 hover:underline">
+                                                    ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
+                                                </a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
                                 @else
-                                    <span class="text-gray-500">Sin etiquetas</span>
+                                    <span class="text-gray-500">Vacío</span>
                                 @endif
                             </td>
+
                             <td class="px-4 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}
                             </td>
                             <td class="px-4 py-3 text-center border">

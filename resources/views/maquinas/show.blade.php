@@ -537,6 +537,10 @@
             document.getElementById('modalSubpaquete').classList.remove('hidden');
         }
     </script>
+    <script>
+        // Pasar el ID de la máquina desde PHP a JavaScript
+        const maquinaId = @json($maquina->id);
+    </script>
 
     <script>
         let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
@@ -545,7 +549,7 @@
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
-    <script src="{{ asset('js/imprimirQr.js') }}"></script>
+    <script src="{{ asset('js/imprimirQrS.js') }}"></script>
     <script>
         window.elementosAgrupadosScript = @json($elementosAgrupadosScript);
     </script>
