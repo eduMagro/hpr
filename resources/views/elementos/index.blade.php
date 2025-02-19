@@ -42,15 +42,15 @@
         </form>
 
         <!-- Tabla de elementos con scroll horizontal -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full border border-gray-300 rounded-lg">
+        <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+            <table class="w-full table-fixed border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm uppercase">
-                        <th class="px-4 py-3 border">ID
+                        <th class="py-3 border text-center">ID
                             <!-- Formulario de búsqueda por ID -->
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="id"
-                                    class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                     placeholder="Buscar">
                                 <button type="submit"
                                     class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
@@ -58,7 +58,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Planilla
+                        <th class="py-3 border text-center">Planilla
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="codigo_planilla"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -69,7 +69,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Usuario
+                        <th class="py-3 border text-center">Usuario
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="usuario1"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -80,8 +80,8 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Usuario 2</th>
-                        <th class="px-4 py-3 border">Etiqueta
+                        <th class="py-3 border text-center">Usuario 2</th>
+                        <th class="py-3 border text-center">Etiqueta
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="etiqueta"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -92,8 +92,8 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Nombre</th>
-                        <th class="px-4 py-3 border">Máquina 1
+                        <th class="py-3 border text-center">Nombre</th>
+                        <th class="py-3 border text-center">Máquina 1
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="maquina"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -104,7 +104,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Máquina 2
+                        <th class="py-3 border text-center">Máquina 2
                             <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="maquina2"
                                     class="w-20 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -115,7 +115,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Máquina 3
+                        <th class="py-3 border text-center">Máquina 3
                             <form method="GET" action="{{ route('elementos.index') }}"
                                 class="mt-2 flex space-x-2">
                                 <input type="text" name="maquina3"
@@ -127,7 +127,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">M. Prima 1
+                        <th class="py-3 border text-center">M. Prima 1
                             <form method="GET" action="{{ route('elementos.index') }}"
                                 class="mt-2 flex space-x-2">
                                 <input type="text" name="producto1"
@@ -139,7 +139,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">M. Prima 2
+                        <th class="py-3 border text-center">M. Prima 2
                             <form method="GET" action="{{ route('elementos.index') }}"
                                 class="mt-2 flex space-x-2">
                                 <input type="text" name="producto2"
@@ -151,7 +151,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Paquete ID
+                        <th class="py-3 border text-center">Paquete ID
 
                             <form method="GET" action="{{ route('elementos.index') }}"
                                 class="mt-2 flex space-x-2">
@@ -164,7 +164,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Ubicación
+                        <th class="py-3 border text-center">Ubicación
                             <form method="GET" action="{{ route('elementos.index') }}"
                                 class="mt-2 flex space-x-2">
                                 <input type="text" name="ubicacion_id"
@@ -176,7 +176,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Figura
+                        <th class="py-3 border text-center">Figura
                             <form method="GET" action="{{ route('elementos.index') }}"
                                 class="mt-2 flex space-x-2">
                                 <input type="text" name="figura"
@@ -188,13 +188,13 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-4 py-3 border">Peso (kg)</th>
-                        <th class="px-4 py-3 border">Diámetro (mm)</th>
-                        <th class="px-4 py-3 border">Longitud (m)</th>
-                        <th class="px-4 py-3 border">Fecha Inicio</th>
-                        <th class="px-4 py-3 border">Fecha Finalización</th>
-                        <th class="px-4 py-3 border">Estado</th>
-                        <th class="px-4 py-3 border">Acciones</th>
+                        <th class="py-3 border text-center">Peso (kg)</th>
+                        <th class="py-3 border text-center">Diámetro (mm)</th>
+                        <th class="py-3 border text-center">Longitud (m)</th>
+                        <th class="py-3 border text-center">Fecha Inicio</th>
+                        <th class="py-3 border text-center">Fecha Finalización</th>
+                        <th class="py-3 border text-center">Estado</th>
+                        <th class="py-3 border text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="text-gray-700 text-sm">
@@ -208,48 +208,154 @@
                                 <input x-show="editando" type="text" x-model="elemento.id"
                                     class="form-input w-full">
                             </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <a href="{{ route('planillas.index', ['id' => $elemento->planilla->id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->planilla->codigo_limpio }}
+                                    </a>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.planilla.codigo_limpio"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.user?.name ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.user.name"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.user2?.name ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.user2.name"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->etiquetaRelacion->id ?? 'N/A' }}
+                                    </a>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.etiquetaRelacion.id"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <a href="{{ route('paquetes.index', ['id' => $elemento->paquete_id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->paquete_id ?? 'N/A' }}
+                                    </a>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.paquete_id"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.nombre"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.nombre"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.maquina?.nombre ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.maquina.nombre"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.maquina_2?.nombre ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.maquina_2.nombre"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.maquina_3?.nombre ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.maquina_3.nombre"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.producto?.id ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.producto.id"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.producto2?.id ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.producto2.id"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.ubicacion?.nombre ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.ubicacion.nombre"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.figura"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.figura"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.peso_kg"></span>
+                                </template>
+                                <input x-show="editando" type="number" x-model="elemento.peso_kg"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.diametro_mm"></span>
+                                </template>
+                                <input x-show="editando" type="number" x-model="elemento.diametro_mm"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.longitud_m"></span>
+                                </template>
+                                <input x-show="editando" type="number" x-model="elemento.longitud_m"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.fecha_inicio ?? 'No asignado'"></span>
+                                </template>
+                                <input x-show="editando" type="date" x-model="elemento.fecha_inicio"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.fecha_finalizacion ?? 'No asignado'"></span>
+                                </template>
+                                <input x-show="editando" type="date" x-model="elemento.fecha_finalizacion"
+                                    class="form-input w-full">
+                            </td>
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="elemento.estado"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.estado"
+                                    class="form-input w-full">
+                            </td>
 
-                            <td class="px-4 py-3 text-center border">
-                                <a href="{{ route('planillas.index', ['id' => $elemento->planilla->id]) }}"
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->planilla->codigo_limpio }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->user->name ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->user2->name ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">
-                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}"
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->etiquetaRelacion->id ?? 'N/A' }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-3 text-center border">
-                                <a href="{{ route('paquetes.index', ['id' => $elemento->paquete_id]) }}"
-                                    class="text-blue-500 hover:underline">
-                                    {{ $elemento->paquete_id ?? 'N/A' }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->nombre }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->maquina->nombre ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->maquina_2->nombre ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->maquina_3->nombre ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->producto->id ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->producto2->id ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->ubicacion->nombre ?? 'N/A' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->figura }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->peso_kg }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->diametro_mm }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->longitud_m }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->fecha_inicio ?? 'No asignado' }}
-                            </td>
-                            <td class="px-4 py-3 text-center border">
-                                {{ $elemento->fecha_finalizacion ?? 'No asignado' }}</td>
-                            <td class="px-4 py-3 text-center border">{{ $elemento->estado }}</td>
                             <!-- Botones -->
                             <td class="px-4 py-3 text-center border">
                                 <a href="#" class="text-blue-500 hover:underline abrir-modal-dibujo"
                                     data-id="{{ $elemento->id }}" data-dimensiones="{{ $elemento->dimensiones }}"
-                                    data-peso="{{ $elemento->peso }}">
+                                    data-peso="{{ $elemento->peso_kg }}">
                                     Ver
                                 </a><br>
                                 <button @click.stop="editando = !editando">

@@ -52,6 +52,8 @@ class Elemento extends Model
         'estado',
 
     ];
+
+    protected $appends = ['id_el', 'longitud_cm', 'longitud_m', 'peso_kg', 'diametro_mm'];
     public function getIdElAttribute()
     {
         return 'EL' . $this->id;
