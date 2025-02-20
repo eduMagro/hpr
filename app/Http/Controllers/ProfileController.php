@@ -56,7 +56,7 @@ class ProfileController extends Controller
     public function show($id)
     {
         $user = User::with('registrosFichajes')->findOrFail($id);
-        return view('user.show', compact('user'));
+        return view('User.show', compact('user'));
     }
     
 
