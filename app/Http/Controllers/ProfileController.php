@@ -52,18 +52,13 @@ class ProfileController extends Controller
         return view('User.index', compact('registrosUsuarios', 'usuariosConectados'));
     }
     
-    // En tu UserController.php
 
     public function show($id)
     {
-        // Obtén al usuario y sus relaciones
-        $user = User::with(['entradas', 'movimientos'])->findOrFail($id);
-
-        // Pasa la variable a la vista
-        return view('User.show', compact('user'));
+        $user = User::with('registrosFichajes')->findOrFail($id);
+        return view('user.show', compact('user'));
     }
-
-
+    
 
     /**
      * Display the user's profile form.

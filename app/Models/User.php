@@ -116,4 +116,28 @@ class User extends Authenticatable
     {
         return $this->hasMany(Etiqueta::class, 'ensamblador2');
     }
+
+     /**
+     * Relación con `RegistroFichaje` (Un usuario tiene muchos registros de fichajes)
+     */
+    public function registrosFichajes()
+    {
+        return $this->hasMany(RegistroFichaje::class, 'user_id');
+    }
+
+    /**
+     * Relación con `AsignacionTurno` (Un usuario puede tener muchas asignaciones de turnos)
+     */
+    public function asignacionesTurnos()
+    {
+        return $this->hasMany(AsignacionTurno::class, 'user_id');
+    }
+
+    /**
+     * Obtener el turno actual del usuario basado en la asignación más reciente.
+     */
+    public function turnoActual()
+    {
+        return $this->hasOne(AsignacionTurno::class, 'user_id')->latest('fecha')->with('turno');
+    }
 }

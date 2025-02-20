@@ -1,48 +1,47 @@
 <x-app-layout>
+    <x-slot name="title">Detalles de {{ $user->name }}</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Detalles Usuario') }}
+            {{ __('Detalles del Usuario') }} - {{ $user->name }}
         </h2>
     </x-slot>
 
     <div class="container mx-auto px-4 py-6">
-        <!-- Detalles del Usuario -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h3 class="font-semibold text-xl">ID Usuario: {{ $user->id }}</h3>
-            <p class="text-gray-500 text-sm">Nombre: {{ $user->name }}</p>
-            <p class="text-gray-500 text-sm">Correo: {{ $user->email }}</p>
-			 <p class="text-gray-500 text-sm">Categoría: {{ $user->role }}</p>
+        <div class="mb-4">
+            <a href="{{ route('users.index') }}" class="btn btn-secondary">Volver a Usuarios</a>
         </div>
 
-        <!-- GRID PARA MOVIMIENTOS Y ENTRADAS -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-6">
-            <!-- Movimientos -->
-            @forelse ($user->movimientos as $movimiento)
-                <div class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-                    <p class="text-gray-500 text-sm">ID Movimiento: {{ $movimiento->id }}</p>
-                </div>
-            @empty
-                <div class="col-span-3 text-center py-4 text-gray-600">No hay movimientos disponibles.</div>
-            @endforelse
-
-            <!-- Entradas -->
-            @forelse ($user->entradas as $entrada)
-                <div class="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-                    <p class="text-gray-500 text-sm">ID Entrada: {{ $entrada->id }}</p>
-                </div>
-            @empty
-                <div class="col-span-3 text-center py-4 text-gray-600">No hay entradas disponibles.</div>
-            @endforelse
-
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-lg font-semibold mb-2">Información del Usuario</h3>
+            <p><strong>Nombre:</strong> {{ $user->name }}</p>
+            <p><strong>Email:</strong> {{ $user->email }}</p>
+            <p><strong>Categoría:</strong> {{ $user->categoria }}</p>
         </div>
-        
 
-        <!-- PAGINACIÓN -->
-
-        @if ($user instanceof \Illuminate\Pagination\LengthAwarePaginator)
-            <div class="mt-6">
-                {{ $user->appends(request()->except('page'))->links() }}
-            </div>
-        @endif
+        <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-lg font-semibold mb-2">Registros de Fichajes</h3>
+            <table class="w-full border border-gray-300 rounded-lg">
+                <thead class="bg-blue-500 text-white">
+                    <tr class="text-left text-sm uppercase">
+                        <th class="py-3 px-2 border text-center">ID</th>
+                        <th class="py-3 px-2 border text-center">Tipo</th>
+                        <th class="py-3 px-2 border text-center">Fecha y Hora</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700 text-sm">
+                    @forelse ($user->registrosFichajes as $fichaje)
+                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
+                            <td class="px-2 py-3 text-center border">{{ $fichaje->id }}</td>
+                            <td class="px-2 py-3 text-center border">{{ ucfirst($fichaje->tipo) }}</td>
+                            <td class="px-2 py-3 text-center border">{{ $fichaje->fecha_hora }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-gray-500">No hay registros de fichajes.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 </x-app-layout>

@@ -16,6 +16,9 @@
             <a href="{{ route('register') }}" class="btn btn-primary">
                 Registrar Usuario
             </a>
+            <a href="{{ route('registros-fichajes.create') }}" class="btn btn-success">
+                Registrar Fichaje
+            </a>
         </div>
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('users.index') }}" class="form-inline mt-3 mb-3">
@@ -46,16 +49,10 @@
                             <td class="px-2 py-3 text-center border">{{ $user->name }}</td>
                             <td class="px-2 py-3 text-center border">{{ $user->email }}</td>
                             <td class="px-2 py-3 text-center border">{{ $user->categoria }}</td>
-                            <td class="px-2 py-3 text-center border">
-                                @if ($user->turno)
-                                    <span class="px-2 py-1 rounded text-white"
-                                          style="background-color: {{ $user->turno == 'mañana' ? '#FFD700' : ($user->turno == 'tarde' ? '#FF8C00' : ($user->turno == 'noche' ? '#1E90FF' : '#32CD32')) }}">
-                                        {{ ucfirst($user->turno) }}
-                                    </span>
-                                @else
-                                    <span class="text-gray-500">Sin turno</span>
-                                @endif
-                            </td>
+                            <td class="px-2 py-3 text-center border"
+                            style="background-color: {{ $user->turno == 'mañana' ? '#FFD700' : ($user->turno == 'tarde' ? '#FF8C00' : ($user->turno == 'noche' ? '#1E90FF' : ($user->turno == 'flexible' ? '#32CD32' : ''))) }}">
+                            {{ $user->turno ? ucfirst($user->turno) : 'N/A' }}
+                        </td>
                             
                             <td class="px-2 py-3 text-center border">
                                 @if ($user->isOnline())

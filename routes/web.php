@@ -1,7 +1,9 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
+
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RegistroFichajeController;
 
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
@@ -43,7 +45,13 @@ Route::middleware('auth')->group(function () {
         6. DELETE /entradas/{id}  --> EntradaController@destroy (Elimina una entrada) */
     Route::resource('productos', ProductoController::class);
     Route::resource('ubicaciones', UbicacionController::class);
+
+    //USUARIOS
     Route::resource('users', ProfileController::class);
+   
+Route::resource('registros-fichajes', RegistroFichajeController::class);
+
+
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);
     Route::resource('paquetes', PaqueteController::class);
