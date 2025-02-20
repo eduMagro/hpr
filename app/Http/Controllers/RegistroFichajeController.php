@@ -15,7 +15,7 @@ class RegistroFichajeController extends Controller
     public function index()
     {
         $fichajes = RegistroFichaje::with('user')->latest()->paginate(10);
-        return view('user.show', compact('fichajes'));
+        return view('users.show', compact('fichajes'));
     }
 
     /**
@@ -32,21 +32,39 @@ class RegistroFichajeController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'tipo' => 'required|in:entrada,salida',
-            'fecha_hora' => 'required|date',
-        ]);
-
-        RegistroFichaje::create([
-            'user_id' => $request->user_id,
-            'tipo' => $request->tipo,
-            'fecha_hora' => $request->fecha_hora,
-        ]);
-
-        return redirect()->route('registros-fichajes.index')
-            ->with('success', 'Fichaje registrado correctamente.');
+        try {
+            $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'tipo' => 'required|in:entrada,salida',
+            ]);
+    
+            // Verificar si el usuario ya tiene un registro de fichaje hoy
+            $fichaje = RegistroFichaje::where('user_id', $request->user_id)
+                ->whereDate('entrada', now()->toDateString())
+                ->first();
+    
+            if ($request->tipo === 'entrada') {
+                if ($fichaje) {
+                    return redirect()->route('users.index')->with('error', 'Ya has registrado una entrada hoy.');
+                }
+                RegistroFichaje::create([
+                    'user_id' => $request->user_id,
+                    'entrada' => now(), // Se almacena la hora de entrada
+                    'salida' => null
+                ]);
+            } elseif ($request->tipo === 'salida') {
+                if (!$fichaje) {
+                    return redirect()->route('users.index')->with('error', 'No puedes registrar una salida sin haber registrado entrada.');
+                }
+                $fichaje->update(['salida' => now()]); // Se actualiza la hora de salida
+            }
+    
+            return redirect()->route('users.index')->with('success', 'Fichaje registrado correctamente.');
+        } catch (\Exception $e) {
+            return redirect()->route('users.index')->with('error', 'Error al registrar el fichaje: ' . $e->getMessage());
+        }
     }
+    
 
     /**
      * Mostrar un registro de fichaje específico.
@@ -54,7 +72,7 @@ class RegistroFichajeController extends Controller
     public function show($id)
     {
         $fichaje = RegistroFichaje::with('user')->findOrFail($id);
-        return view('registros_fichajes.show', compact('fichaje'));
+        return view('registros_fichaje.show', compact('fichaje'));
     }
 
     /**
@@ -65,7 +83,7 @@ class RegistroFichajeController extends Controller
         $fichaje = RegistroFichaje::findOrFail($id);
         $fichaje->delete();
 
-        return redirect()->route('registros-fichajes.index')
+        return redirect()->route('registros-fichaje.index')
             ->with('success', 'Fichaje eliminado correctamente.');
     }
 }

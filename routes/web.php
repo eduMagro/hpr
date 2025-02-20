@@ -49,7 +49,7 @@ Route::middleware('auth')->group(function () {
     //USUARIOS
     Route::resource('users', ProfileController::class);
    
-Route::resource('registros-fichajes', RegistroFichajeController::class);
+Route::resource('registros-fichaje', RegistroFichajeController::class);
 
 
     Route::resource('maquinas', MaquinaController::class);

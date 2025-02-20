@@ -2,7 +2,12 @@
     <x-slot name="title">Detalles de {{ $user->name }}</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Detalles del Usuario') }} - {{ $user->name }}
+        <a href="{{ route('users.index') }}" class="text-blue-600">
+            {{ __('Usuarios') }}
+        </a>
+        <span class="mx-2">/</span>
+        
+            {{ $user->name }}
         </h2>
     </x-slot>
 
@@ -24,16 +29,16 @@
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm uppercase">
                         <th class="py-3 px-2 border text-center">ID</th>
-                        <th class="py-3 px-2 border text-center">Tipo</th>
-                        <th class="py-3 px-2 border text-center">Fecha y Hora</th>
+                        <th class="py-3 px-2 border text-center">Entrada</th>
+                        <th class="py-3 px-2 border text-center">Salida</th>
                     </tr>
                 </thead>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($user->registrosFichajes as $fichaje)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
                             <td class="px-2 py-3 text-center border">{{ $fichaje->id }}</td>
-                            <td class="px-2 py-3 text-center border">{{ ucfirst($fichaje->tipo) }}</td>
-                            <td class="px-2 py-3 text-center border">{{ $fichaje->fecha_hora }}</td>
+                            <td class="px-2 py-3 text-center border">{{ $fichaje->entrada }}</td>
+                            <td class="px-2 py-3 text-center border">{{ $fichaje->salida }}</td>
                         </tr>
                     @empty
                         <tr>

@@ -11,14 +11,22 @@
         @endif
     </x-slot>
     <div class="container mx-auto px-4 py-6">
-        <!-- Botón para crear un nuevo usuario con estilo Bootstrap -->
-        <div class="mb-4">
+        <div class="mb-4 flex items-center space-x-4">
             <a href="{{ route('register') }}" class="btn btn-primary">
                 Registrar Usuario
             </a>
-            <a href="{{ route('registros-fichajes.create') }}" class="btn btn-success">
-                Registrar Fichaje
-            </a>
+            <form method="POST" action="{{ route('registros-fichaje.store') }}" class="inline-block">
+                @csrf
+                <input type="hidden" name="user_id" value="{{ auth()->id() }}">
+                <input type="hidden" name="tipo" value="entrada">
+                <button type="submit" class="btn btn-success">Entrada</button>
+            </form>
+            <form method="POST" action="{{ route('registros-fichaje.store') }}" class="inline-block">
+                @csrf
+                <input type="hidden" name="user_id" value="{{ auth()->id() }}">
+                <input type="hidden" name="tipo" value="salida">
+                <button type="submit" class="btn btn-success">Salida</button>
+            </form>
         </div>
         <!-- FORMULARIO DE BUSQUEDA -->
         <form method="GET" action="{{ route('users.index') }}" class="form-inline mt-3 mb-3">

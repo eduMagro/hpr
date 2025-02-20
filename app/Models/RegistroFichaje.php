@@ -13,8 +13,8 @@ class RegistroFichaje extends Model
 
     protected $fillable = [
         'user_id',
-        'tipo', // 'entrada' o 'salida'
-        'fecha_hora',
+        'entrada', // 'entrada' o 'salida'
+        'salida', // 'entrada' o 'salida
     ];
 
     /**
