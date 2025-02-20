@@ -9,7 +9,7 @@ class RegistroFichaje extends Model
 {
     use HasFactory;
 
-    protected $table = 'registros_fichajes'; // Nombre de la tabla en la BD
+    protected $table = 'registros_fichaje'; // Nombre de la tabla en la BD
 
     protected $fillable = [
         'user_id',
