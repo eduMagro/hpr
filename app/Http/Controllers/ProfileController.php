@@ -20,37 +20,38 @@ class ProfileController extends Controller
         if (auth()->user()->categoria !== 'administrador') {
             return redirect()->route('dashboard')->with('abort', 'No tienes los permisos necesarios.');
         }
-
-        $usuariosConectados = null;
-
+    
+        // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-
-        // Obtener las ubicaciones con sus productos asociados
-        $usuarios = User::all();
-
-        $query = User::query();
-        // $query = $this->aplicarFiltros($query, $request);
-
-        // Aplicar filtro por código si se pasa como parámetro en la solicitud
+    
+        // Consulta de usuarios con su turno más reciente
+        $query = User::query()
+            ->leftJoin('asignaciones_turnos', function ($join) {
+                $join->on('users.id', '=', 'asignaciones_turnos.user_id')
+                     ->where('asignaciones_turnos.fecha', '=', DB::raw('(SELECT MAX(fecha) FROM asignaciones_turnos WHERE user_id = users.id)'));
+            })
+            ->leftJoin('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
+            ->select('users.*', 'turnos.nombre as turno');
+    
+        // Filtrar por nombre si se pasa como parámetro
         if ($request->has('name')) {
             $name = $request->input('name');
-            $query->where('name', 'like', '%' . $name . '%');
+            $query->where('users.name', 'like', '%' . $name . '%');
         }
+    
         // Ordenar
-        $sortBy = $request->input('sort_by', 'created_at');  // Primer criterio de ordenación (nombre)
-        $order = $request->input('order', 'desc');        // Orden del primer criterio (asc o desc)
-
-        // Aplicar ordenamiento por múltiples columnas
+        $sortBy = $request->input('sort_by', 'users.created_at');
+        $order = $request->input('order', 'desc');
         $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
-
+    
         // Paginación
         $perPage = $request->input('per_page', 10);
         $registrosUsuarios = $query->paginate($perPage)->appends($request->except('page'));
-
-        // Pasar las ubicaciones y productos a la vista
+    
+        // Pasar datos a la vista
         return view('User.index', compact('registrosUsuarios', 'usuariosConectados'));
     }
-
+    
     // En tu UserController.php
 
     public function show($id)
