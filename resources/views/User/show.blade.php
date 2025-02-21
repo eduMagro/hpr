@@ -44,6 +44,11 @@
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
                 selectable: true,
                 events: eventosDesdeLaravel, // Usar eventos enviados desde el backend
                 select: function(info) {

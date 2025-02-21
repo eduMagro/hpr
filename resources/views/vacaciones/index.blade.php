@@ -38,6 +38,11 @@
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
                 events: eventosDesdeLaravel
             });
 
