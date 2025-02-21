@@ -4,6 +4,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RegistroFichajeController;
+use App\Http\Controllers\VacacionesController;
 
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
@@ -48,8 +49,9 @@ Route::middleware('auth')->group(function () {
 
     //USUARIOS
     Route::resource('users', ProfileController::class);
-   
-Route::resource('registros-fichaje', RegistroFichajeController::class);
+    Route::resource('vacaciones', VacacionesController::class);
+
+    Route::resource('registros-fichaje', RegistroFichajeController::class);
 
 
     Route::resource('maquinas', MaquinaController::class);
@@ -87,7 +89,6 @@ Route::resource('registros-fichaje', RegistroFichajeController::class);
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 
     Route::post('/escaneo', [SalidaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
-
 });
 
 

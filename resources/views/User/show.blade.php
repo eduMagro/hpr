@@ -16,6 +16,8 @@
             <p><strong>Nombre:</strong> {{ $user->name }}</p>
             <p><strong>Email:</strong> {{ $user->email }}</p>
             <p><strong>Categoría:</strong> {{ $user->categoria }}</p>
+            <p><strong>Especialidad:</strong> {{ $user->especialidad }}</p>
+            <p><strong>Días de vacaciones restantes:</strong> {{ $user->dias_vacaciones }}</p>
         </div>
 
         <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
@@ -24,35 +26,55 @@
         </div>
     </div>
 
-<!-- Cargar FullCalendar con prioridad -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
+    <!-- Cargar FullCalendar con prioridad -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
 
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var calendarEl = document.getElementById('calendario');
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendario');
 
-        var eventos = @json($eventos);
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                height: 'auto',
+                selectable: true, // Permitir seleccionar días
+                select: function(info) {
+                    var fechaSeleccionada = info.startStr;
 
-        console.log("✅ Eventos cargados en el calendario:", eventos); // Depuración
+                    if (confirm("¿Quieres registrar este día como vacaciones?")) {
+                        fetch("{{ route('vacaciones.store') }}", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                },
+                                body: JSON.stringify({
+                                    user_id: "{{ $user->id }}",
+                                    fecha: fechaSeleccionada
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    alert(data.success);
+                                    document.getElementById("vacaciones-restantes").innerText -= 1;
+                                    calendar.refetchEvents(); // Refrescar eventos en el calendario
+                                } else {
+                                    alert(data.error);
+                                }
+                            })
+                            .catch(error => console.error("Error:", error));
+                    }
+                }
+            });
 
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'es',
-            height: 'auto',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,timeGridDay'
-            },
-            events: eventos
+            calendar.render();
         });
+    </script>
 
-        calendar.render();
-    });
-</script>
 
 
 </x-app-layout>

@@ -117,7 +117,7 @@ class User extends Authenticatable
         return $this->hasMany(Etiqueta::class, 'ensamblador2');
     }
 
-     /**
+    /**
      * Relación con `RegistroFichaje` (Un usuario tiene muchos registros de fichajes)
      */
     public function registrosFichajes()
@@ -139,5 +139,9 @@ class User extends Authenticatable
     public function turnoActual()
     {
         return $this->hasOne(AsignacionTurno::class, 'user_id')->latest('fecha')->with('turno');
+    }
+    public function vacaciones()
+    {
+        return $this->hasMany(Vacaciones::class);
     }
 }

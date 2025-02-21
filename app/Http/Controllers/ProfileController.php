@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -17,49 +18,81 @@ class ProfileController extends Controller
 
     public function index(Request $request)
     {
-        if (auth()->user()->categoria !== 'administrador') {
-            return redirect()->route('dashboard')->with('abort', 'No tienes los permisos necesarios.');
-        }
-    
         // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-    
-        // Consulta de usuarios con su turno más reciente
-        $query = User::query()
-            ->leftJoin('asignaciones_turnos', function ($join) {
-                $join->on('users.id', '=', 'asignaciones_turnos.user_id')
-                     ->where('asignaciones_turnos.fecha', '=', DB::raw('(SELECT MAX(fecha) FROM asignaciones_turnos WHERE user_id = users.id)'));
-            })
-            ->leftJoin('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
-            ->select('users.*', 'turnos.nombre as turno');
-    
+
+        // Consulta de usuarios sin el LEFT JOIN innecesario
+        $query = User::query()->select('users.*');
+
         // Filtrar por nombre si se pasa como parámetro
         if ($request->has('name')) {
             $name = $request->input('name');
             $query->where('users.name', 'like', '%' . $name . '%');
         }
-    
+
         // Ordenar
         $sortBy = $request->input('sort_by', 'users.created_at');
         $order = $request->input('order', 'desc');
         $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
-    
+
         // Paginación
         $perPage = $request->input('per_page', 10);
         $registrosUsuarios = $query->paginate($perPage)->appends($request->except('page'));
-    
+
         // Pasar datos a la vista
         return view('User.index', compact('registrosUsuarios', 'usuariosConectados'));
     }
-    
 
     public function show($id)
     {
-        $user = User::with('registrosFichajes')->findOrFail($id);
-        return view('User.show', compact('user'));
-    }
-    
+        $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno'])->findOrFail($id);
 
+        // **Eventos de fichajes (entradas y salidas)**
+        $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
+            $events = [];
+
+            // Entrada
+            $events[] = [
+                'title' => 'Entrada: ' . Carbon::parse($fichaje->entrada)->format('H:i'),
+                'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
+                'color' => '#28a745', // Verde para entradas
+                'allDay' => false
+            ];
+
+            // Salida (si existe)
+            if ($fichaje->salida) {
+                $events[] = [
+                    'title' => 'Salida: ' . Carbon::parse($fichaje->salida)->format('H:i'),
+                    'start' => Carbon::parse($fichaje->salida)->toIso8601String(),
+                    'color' => '#dc3545', // Rojo para salidas
+                    'allDay' => false
+                ];
+            }
+
+            return $events;
+        });
+
+        // **Eventos de turnos asignados**
+        $eventosTurnos = $user->asignacionesTurnos->map(function ($asignacion) {
+            return [
+                'title' => 'Turno: ' . ucfirst($asignacion->turno->nombre),
+                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
+                'color' => match ($asignacion->turno->nombre) {
+                    'mañana' => '#FFD700',  // Amarillo para turno de mañana
+                    'tarde' => '#FF8C00',   // Naranja para turno de tarde
+                    'noche' => '#1E90FF',   // Azul para turno de noche
+                    'flexible' => '#32CD32', // Verde para flexible
+                    default => '#808080',   // Gris si hay un error
+                },
+                'allDay' => true // Ocupa todo el día
+            ];
+        });
+
+        // **Combinar fichajes y turnos en un solo array**
+        $eventos = $eventosFichajes->merge($eventosTurnos);
+
+        return view('User.show', compact('user', 'eventos'));
+    }
     /**
      * Display the user's profile form.
      */
