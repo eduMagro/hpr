@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\RegistroFichaje;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class RegistroFichajeController extends Controller
 {
@@ -32,17 +34,29 @@ class RegistroFichajeController extends Controller
      */
     public function store(Request $request)
     {
+        // 🔍 REGISTRAR LOG DE LOS DATOS RECIBIDOS
+        Log::info('📩 Datos recibidos en store()', $request->all());
         try {
             $request->validate([
                 'user_id' => 'required|exists:users,id',
                 'tipo' => 'required|in:entrada,salida',
                 'latitud' => 'required|numeric',
                 'longitud' => 'required|numeric',
+            ], [
+                'latitud.required' => 'La latitud es requerida.',
+                'latitud.numeric' => 'La latitud debe ser un número',
+                'longitud.required' => 'La longitud es requerida.',
+                'longitud.numeric' => 'La longitud debe ser un número.',
             ]);
 
             $user = User::findOrFail($request->user_id);
-            $fechaHoy = now()->toDateString();
 
+            // Verificar si el usuario tiene rol de operario
+            if ($user->rol !== 'operario') {
+                return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
+            }
+
+            $fechaHoy = now()->toDateString();
 
             // Obtener coordenadas de la nave
             $naveLatitud = config('app.nave_latitud');
@@ -62,7 +76,7 @@ class RegistroFichajeController extends Controller
             $asignacionTurno = $user->asignacionesTurnos()->where('fecha', $fechaHoy)->first();
 
             if (!$asignacionTurno) {
-                return redirect()->route('users.index')->with('error', 'No tienes un turno asignado para hoy.');
+                return response()->json(['error' => 'No tienes un turno asignado para hoy.'], 403);
             }
 
             $turnoNombre = strtolower($asignacionTurno->turno->nombre); // Convertir a minúsculas
@@ -75,11 +89,11 @@ class RegistroFichajeController extends Controller
             // Validar fichaje según el turno asignado
             if ($request->tipo === 'entrada') {
                 if ($fichaje) {
-                    return redirect()->route('users.index')->with('error', 'Ya has registrado una entrada hoy.');
+                    return response()->json(['error' => 'Ya has registrado una entrada hoy.'], 403);
                 }
 
                 if (!$this->validarHoraEntrada($turnoNombre, now())) {
-                    return redirect()->route('users.index')->with('error', 'No puedes fichar fuera de tu horario de turno.');
+                    return response()->json(['error' => 'No puedes fichar fuera de tu horario de turno.'], 403);
                 }
 
                 RegistroFichaje::create([
@@ -89,19 +103,19 @@ class RegistroFichajeController extends Controller
                 ]);
             } elseif ($request->tipo === 'salida') {
                 if (!$fichaje) {
-                    return redirect()->route('users.index')->with('error', 'No puedes registrar una salida sin haber registrado entrada.');
+                    return response()->json(['error' => 'No puedes registrar una salida sin haber registrado entrada.'], 403);
                 }
 
                 if (!$this->validarHoraSalida($turnoNombre, now())) {
-                    return redirect()->route('users.index')->with('error', 'No puedes fichar salida fuera de tu horario de turno.');
+                    return response()->json(['error' => 'No puedes fichar salida fuera de tu horario de turno.'], 403);
                 }
 
                 $fichaje->update(['salida' => now()]);
             }
 
-            return redirect()->route('users.index')->with('success', 'Fichaje registrado correctamente.');
+            return response()->json(['success' => 'Fichaje registrado correctamente.']);
         } catch (\Exception $e) {
-            return redirect()->route('users.index')->with('error', 'Error al registrar el fichaje: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
         }
     }
 

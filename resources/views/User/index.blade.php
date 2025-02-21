@@ -14,19 +14,14 @@
         <div class="container mx-auto px-4 py-6">
 
             <div class="flex justify-between items-center w-full gap-4 p-4">
-                <form method="POST" action="{{ route('registros-fichaje.store') }}" class="w-1/2">
-                    @csrf
-                    <input type="hidden" name="user_id" value="{{ auth()->id() }}">
-                    <input type="hidden" name="tipo" value="entrada">
-                    <button type="submit" class="w-full py-2 px-4 bg-green-600 text-white rounded-md">Entrada</button>
-                </form>
-                <form method="POST" action="{{ route('registros-fichaje.store') }}" class="w-1/2">
-                    @csrf
-                    <input type="hidden" name="user_id" value="{{ auth()->id() }}">
-                    <input type="hidden" name="tipo" value="salida">
-                    <button type="submit" class="w-full py-2 px-4 bg-red-600 text-white rounded-md">Salida</button>
-                </form>
+                <button onclick="registrarFichaje('entrada')" class="w-full py-2 px-4 bg-green-600 text-white rounded-md">
+                    Entrada
+                </button>
+                <button onclick="registrarFichaje('salida')" class="w-full py-2 px-4 bg-red-600 text-white rounded-md">
+                    Salida
+                </button>
             </div>
+
             <div class="mb-4 flex items-center space-x-4">
                 <a href="{{ route('register') }}" class="btn btn-primary">
                     Registrar Usuario
@@ -101,20 +96,16 @@
                 {{ $registrosUsuarios->links() }}
             </div>
         @else
-            <div class="mt-10 flex justify-between items-center w-full gap-4 p-4">
-                <form method="POST" action="{{ route('registros-fichaje.store') }}" class="w-1/2">
-                    @csrf
-                    <input type="hidden" name="user_id" value="{{ auth()->id() }}">
-                    <input type="hidden" name="tipo" value="entrada">
-                    <button type="submit" class="w-full py-2 px-4 bg-green-600 text-white rounded-md">Entrada</button>
-                </form>
-                <form method="POST" action="{{ route('registros-fichaje.store') }}" class="w-1/2">
-                    @csrf
-                    <input type="hidden" name="user_id" value="{{ auth()->id() }}">
-                    <input type="hidden" name="tipo" value="salida">
-                    <button type="submit" class="w-full py-2 px-4 bg-red-600 text-white rounded-md">Salida</button>
-                </form>
+            <div class="flex justify-between items-center w-full gap-4 p-4">
+                <button onclick="registrarFichaje('entrada')"
+                    class="w-full py-2 px-4 bg-green-600 text-white rounded-md">
+                    Entrada
+                </button>
+                <button onclick="registrarFichaje('salida')" class="w-full py-2 px-4 bg-red-600 text-white rounded-md">
+                    Salida
+                </button>
             </div>
+
             <div class="container mx-auto px-4 py-6">
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     <h3 class="text-lg font-semibold mb-2">Información del Usuario</h3>
@@ -130,9 +121,13 @@
             </div>
     @endif
     </div>
+
     <script>
         function registrarFichaje(tipo) {
+            console.log("🟢 Función `registrarFichaje` ejecutada para tipo:", tipo);
+
             if (!navigator.geolocation) {
+                console.error("❌ Geolocalización no soportada en este navegador.");
                 Swal.fire({
                     icon: 'error',
                     title: 'Geolocalización no disponible',
@@ -143,9 +138,23 @@
 
             navigator.geolocation.getCurrentPosition(
                 function(position) {
-                    document.getElementById('latitud').value = position.coords.latitude;
-                    document.getElementById('longitud').value = position.coords.longitude;
-                    document.getElementById('tipo-fichaje').value = tipo;
+                    console.log("🟢 Callback ejecutado. Datos de posición:", position);
+
+                    let latitud = position?.coords?.latitude;
+                    let longitud = position?.coords?.longitude;
+
+                    console.log(`📍 Coordenadas obtenidas: Latitud ${latitud}, Longitud ${longitud}`);
+
+                    // 🔍 Verificar si latitud y longitud son undefined
+                    if (latitud === undefined || longitud === undefined) {
+                        console.error("❌ Error: La API no devolvió coordenadas.");
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de ubicación',
+                            text: 'No se pudieron obtener las coordenadas. Intenta nuevamente.',
+                        });
+                        return;
+                    }
 
                     Swal.fire({
                         title: 'Confirmar Fichaje',
@@ -158,11 +167,56 @@
                         cancelButtonText: 'Cancelar'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            document.getElementById('fichaje-form').submit();
+                            console.log("🟢 Enviando datos al backend...");
+
+                            fetch("{{ route('registros-fichaje.store') }}", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                    },
+                                    body: JSON.stringify({
+                                        user_id: "{{ auth()->id() }}",
+                                        tipo: tipo,
+                                        latitud: latitud, // ✅ Ahora enviamos correctamente latitud
+                                        longitud: longitud // ✅ Ahora enviamos correctamente longitud
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    console.log("📩 Respuesta del servidor:", data);
+
+                                    if (data.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Fichaje registrado',
+                                            text: data.success,
+                                        });
+                                    } else {
+                                        let errorMessage = data.error;
+                                        if (data.messages) {
+                                            errorMessage = data.messages.join("\n");
+                                        }
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Error',
+                                            text: errorMessage,
+                                        });
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error("❌ Error en la solicitud fetch:", error);
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error de conexión',
+                                        text: 'No se pudo comunicar con el servidor.',
+                                    });
+                                });
                         }
                     });
                 },
                 function(error) {
+                    console.error(`⚠️ Error de geolocalización: ${error.message}`);
                     Swal.fire({
                         icon: 'error',
                         title: 'Error de ubicación',
@@ -174,4 +228,5 @@
             );
         }
     </script>
+
 </x-app-layout>
