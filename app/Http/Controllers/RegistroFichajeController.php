@@ -36,11 +36,28 @@ class RegistroFichajeController extends Controller
             $request->validate([
                 'user_id' => 'required|exists:users,id',
                 'tipo' => 'required|in:entrada,salida',
+                'latitud' => 'required|numeric',
+                'longitud' => 'required|numeric',
             ]);
 
             $user = User::findOrFail($request->user_id);
             $fechaHoy = now()->toDateString();
 
+
+            // Obtener coordenadas de la nave
+            $naveLatitud = config('app.nave_latitud');
+            $naveLongitud = config('app.nave_longitud');
+            $naveRadio = config('app.nave_radio');
+            // Calcular la distancia entre la ubicación del usuario y la nave
+            $distancia = $this->calcularDistancia(
+                $request->latitud,
+                $request->longitud,
+                $naveLatitud,
+                $naveLongitud
+            );
+            if ($distancia > $naveRadio) {
+                return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
+            }
             // Obtener el turno del trabajador para el día actual
             $asignacionTurno = $user->asignacionesTurnos()->where('fecha', $fechaHoy)->first();
 
@@ -112,7 +129,22 @@ class RegistroFichajeController extends Controller
         };
     }
 
+    /**
+     * Calcula la distancia en metros entre dos puntos geográficos usando la fórmula de Haversine.
+     */
+    private function calcularDistancia($lat1, $lon1, $lat2, $lon2)
+    {
+        $radioTierra = 6371000; // Radio de la Tierra en metros
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
 
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $radioTierra * $c; // Distancia en metros
+    }
     /**
      * Mostrar un registro de fichaje específico.
      */

@@ -130,5 +130,48 @@
             </div>
     @endif
     </div>
+    <script>
+        function registrarFichaje(tipo) {
+            if (!navigator.geolocation) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Geolocalización no disponible',
+                    text: '⚠️ Tu navegador no soporta geolocalización.',
+                });
+                return;
+            }
 
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    document.getElementById('latitud').value = position.coords.latitude;
+                    document.getElementById('longitud').value = position.coords.longitude;
+                    document.getElementById('tipo-fichaje').value = tipo;
+
+                    Swal.fire({
+                        title: 'Confirmar Fichaje',
+                        text: `¿Quieres registrar una ${tipo}?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Sí, fichar',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.getElementById('fichaje-form').submit();
+                        }
+                    });
+                },
+                function(error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de ubicación',
+                        text: `⚠️ No se pudo obtener la ubicación: ${error.message}`,
+                    });
+                }, {
+                    enableHighAccuracy: true
+                }
+            );
+        }
+    </script>
 </x-app-layout>

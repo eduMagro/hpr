@@ -128,4 +128,10 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+
+    'nave_latitud' => env('NAVE_LATITUD', 37.202342080516125),
+    'nave_longitud' => env('NAVE_LONGITUD', -5.929214024683033),
+    'nave_radio' => env('NAVE_RADIO', 200),
+
+
 ];

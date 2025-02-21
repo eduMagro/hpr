@@ -6,12 +6,14 @@ use Illuminate\Http\Request;
 use App\Models\Vacaciones;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 
 class VacacionesController extends Controller
 {
 
     public function index()
     {
+        //----------------- VACACIONES
         $vacaciones = Vacaciones::with('user')->get();
 
         $eventosVacaciones = $vacaciones->map(function ($vacacion) {
@@ -23,11 +25,40 @@ class VacacionesController extends Controller
                 'textColor' => 'white',
                 'allDay' => true
             ];
-        });
+        })->toArray(); // Convertimos la colección a array
 
+        //----------------- OBTENER FESTIVOS
+        $response = Http::get("https://date.nager.at/api/v3/PublicHolidays/" . date('Y') . "/ES");
+
+        $festivos = [];
+
+        if ($response->successful()) {
+            $festivos = collect($response->json())->filter(function ($holiday) {
+                // Si no tiene 'counties', es un festivo NACIONAL
+                if (!isset($holiday['counties'])) {
+                    return true;
+                }
+
+                // Si el festivo pertenece a Andalucía
+                return in_array('ES-AN', $holiday['counties']);
+            })->map(function ($holiday) {
+                return [
+                    'title' => $holiday['localName'],
+                    'start' => $holiday['date'],
+                    'backgroundColor' => '#ff0000', // Rojo para festivos
+                    'borderColor' => '#b91c1c',
+                    'textColor' => 'white',
+                    'allDay' => true
+                ];
+            })->toArray();
+        }
+
+        // Mezclar festivos y vacaciones de empleados
+        $eventosVacaciones = array_merge($festivos, $eventosVacaciones);
 
         return view('vacaciones.index', compact('eventosVacaciones'));
     }
+
 
 
     public function store(Request $request)
