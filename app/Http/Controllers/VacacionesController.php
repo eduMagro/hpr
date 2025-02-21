@@ -12,14 +12,12 @@ class VacacionesController extends Controller
 
     public function index()
     {
-        // Obtener todas las vacaciones con el usuario correspondiente
         $vacaciones = Vacaciones::with('user')->get();
 
-        // Convertir las vacaciones a eventos de FullCalendar
         $eventosVacaciones = $vacaciones->map(function ($vacacion) {
             return [
                 'title' => 'Vacaciones: ' . $vacacion->user->name, // Mostrar el nombre del trabajador
-                'start' => Carbon::parse($vacacion->fecha)->toIso8601String(),
+                'start' => \Carbon\Carbon::parse($vacacion->fecha)->toIso8601String(),
                 'backgroundColor' => '#f87171', // Rojo claro para vacaciones
                 'borderColor' => '#dc2626', // Rojo oscuro para el borde
                 'textColor' => 'white',
@@ -27,8 +25,11 @@ class VacacionesController extends Controller
             ];
         });
 
-        return view('vacaciones.index', compact('eventosVacaciones'));
+        return view('vacaciones.index', [
+            'eventosVacaciones' => json_encode($eventosVacaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+        ]);
     }
+
 
     public function store(Request $request)
     {

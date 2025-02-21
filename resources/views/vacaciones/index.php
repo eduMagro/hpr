@@ -2,7 +2,11 @@
     <x-slot name="title">Calendario de Vacaciones</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Calendario de Vacaciones
+            <a href="{{ route('users.index') }}" class="text-blue-600">
+                {{ __('Usuarios') }}
+            </a>
+            <span class="mx-2">/</span>
+            {{ __('Calendario de Vacaciones Globales') }}
         </h2>
     </x-slot>
 
@@ -22,10 +26,18 @@
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendario');
 
-            // ✅ PASANDO JSON DESDE LARAVEL A JAVASCRIPT CORRECTAMENTE
+            if (!calendarEl) {
+                console.error("Elemento 'calendario' no encontrado.");
+                return;
+            }
+
+            // Cargar eventos desde Laravel (convertidos en JSON correctamente)
             var eventosDesdeLaravel = {
-                !!json_encode($eventosVacaciones) !!
+                !!json_encode($eventosVacaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!
             };
+
+            // Verifica en consola si los eventos están bien formateados
+            console.log("Eventos cargados:", eventosDesdeLaravel);
 
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
@@ -37,5 +49,6 @@
             calendar.render();
         });
     </script>
+
 
 </x-app-layout>
