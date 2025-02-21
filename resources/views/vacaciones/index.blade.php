@@ -31,24 +31,18 @@
                 return;
             }
 
-            // Cargar eventos desde Laravel (convertidos en JSON correctamente)
-            var eventosDesdeLaravel = {
-                !!json_encode($eventosVacaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!
-            };
-
-            // Verifica en consola si los eventos están bien formateados
-            console.log("Eventos cargados:", eventosDesdeLaravel);
+            // Convertir los datos de Laravel en JSON válido
+            var eventosDesdeLaravel = @json($eventosVacaciones) || [];
 
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 height: 'auto',
-                events: eventosDesdeLaravel // Mostrar todas las vacaciones
+                events: eventosDesdeLaravel
             });
 
             calendar.render();
         });
     </script>
-
 
 </x-app-layout>

@@ -16,18 +16,17 @@ class VacacionesController extends Controller
 
         $eventosVacaciones = $vacaciones->map(function ($vacacion) {
             return [
-                'title' => 'Vacaciones: ' . $vacacion->user->name, // Mostrar el nombre del trabajador
-                'start' => \Carbon\Carbon::parse($vacacion->fecha)->toIso8601String(),
-                'backgroundColor' => '#f87171', // Rojo claro para vacaciones
-                'borderColor' => '#dc2626', // Rojo oscuro para el borde
+                'title' => 'Vacaciones: ' . $vacacion->user->name,
+                'start' => Carbon::parse($vacacion->fecha)->toIso8601String(),
+                'backgroundColor' => '#f87171',
+                'borderColor' => '#dc2626',
                 'textColor' => 'white',
                 'allDay' => true
             ];
         });
 
-        return view('vacaciones.index', [
-            'eventosVacaciones' => json_encode($eventosVacaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-        ]);
+
+        return view('vacaciones.index', compact('eventosVacaciones'));
     }
 
 
