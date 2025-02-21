@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 use App\Models\User;
+use App\Models\Vacaciones;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -45,7 +46,10 @@ class ProfileController extends Controller
 
     public function show($id)
     {
-        $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno'])->findOrFail($id);
+        $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno', 'vacaciones'])->findOrFail($id);
+
+        // **Obtener fechas de vacaciones**
+        $fechasVacaciones = $user->vacaciones->pluck('fecha')->toArray();
 
         // **Eventos de fichajes (entradas y salidas)**
         $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
@@ -72,8 +76,10 @@ class ProfileController extends Controller
             return $events;
         });
 
-        // **Eventos de turnos asignados**
-        $eventosTurnos = $user->asignacionesTurnos->map(function ($asignacion) {
+        // **Eventos de turnos asignados (EXCLUYENDO los días que sean vacaciones)**
+        $eventosTurnos = $user->asignacionesTurnos->filter(function ($asignacion) use ($fechasVacaciones) {
+            return !in_array($asignacion->fecha, $fechasVacaciones); // Solo incluir si NO es un día de vacaciones
+        })->map(function ($asignacion) {
             return [
                 'title' => 'Turno: ' . ucfirst($asignacion->turno->nombre),
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
@@ -88,11 +94,24 @@ class ProfileController extends Controller
             ];
         });
 
-        // **Combinar fichajes y turnos en un solo array**
-        $eventos = $eventosFichajes->merge($eventosTurnos);
+        // **Eventos de vacaciones**
+        $eventosVacaciones = $user->vacaciones->map(function ($vacacion) {
+            return [
+                'title' => 'Vacaciones',
+                'start' => Carbon::parse($vacacion->fecha)->toIso8601String(),
+                'backgroundColor' => '#f87171', // Rojo claro para vacaciones
+                'borderColor' => '#dc2626', // Rojo oscuro para el borde
+                'textColor' => 'white',
+                'allDay' => true
+            ];
+        });
+
+        // **Combinar fichajes, turnos (sin vacaciones) y vacaciones en un solo array**
+        $eventos = $eventosFichajes->merge($eventosTurnos)->merge($eventosVacaciones);
 
         return view('User.show', compact('user', 'eventos'));
     }
+
     /**
      * Display the user's profile form.
      */

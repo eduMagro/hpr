@@ -31,6 +31,9 @@
                 <a href="{{ route('register') }}" class="btn btn-primary">
                     Registrar Usuario
                 </a>
+                <a href="{{ route('vacaciones.index') }}" class="btn btn-primary">
+                    Mostrar Vacaciones Globales
+                </a>
 
             </div>
             <!-- FORMULARIO DE BUSQUEDA -->

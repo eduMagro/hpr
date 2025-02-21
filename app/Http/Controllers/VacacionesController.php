@@ -5,9 +5,31 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Vacaciones;
 use App\Models\User;
+use Carbon\Carbon;
 
 class VacacionesController extends Controller
 {
+
+    public function index()
+    {
+        // Obtener todas las vacaciones con el usuario correspondiente
+        $vacaciones = Vacaciones::with('user')->get();
+
+        // Convertir las vacaciones a eventos de FullCalendar
+        $eventosVacaciones = $vacaciones->map(function ($vacacion) {
+            return [
+                'title' => 'Vacaciones: ' . $vacacion->user->name, // Mostrar el nombre del trabajador
+                'start' => Carbon::parse($vacacion->fecha)->toIso8601String(),
+                'backgroundColor' => '#f87171', // Rojo claro para vacaciones
+                'borderColor' => '#dc2626', // Rojo oscuro para el borde
+                'textColor' => 'white',
+                'allDay' => true
+            ];
+        });
+
+        return view('vacaciones.index', compact('eventosVacaciones'));
+    }
+
     public function store(Request $request)
     {
         try {
@@ -20,7 +42,7 @@ class VacacionesController extends Controller
 
             // Verificar si el usuario tiene días de vacaciones disponibles
             if ($user->dias_vacaciones <= 0) {
-                return response()->json(['error' => 'No tienes más días de vacaciones disponibles.'], 400);
+                return response()->json(['error' => 'No tiene más días de vacaciones disponibles.'], 400);
             }
 
             // Verificar si ya ha seleccionado ese día
