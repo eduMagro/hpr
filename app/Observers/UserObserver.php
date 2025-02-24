@@ -25,7 +25,7 @@ class UserObserver
         $fin = Carbon::now()->endOfYear();
         
         if ($user->turno == 'diurno') {
-            $turnoAsignado = ($user->turno_actual == $turnoMañanaId) ? $turnoMañanaId : $turnoTardeId;
+            $turnoAsignado = ($user->turno_actual == 1) ? $turnoMañanaId : $turnoTardeId;
         } elseif ($user->turno == 'nocturno') {
             $turnoAsignado = $turnoNocheId;
         } else {

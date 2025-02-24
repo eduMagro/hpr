@@ -32,11 +32,12 @@ class GenerarTurnosAnuales extends Command
         $fin = Carbon::now()->endOfYear();
         
         if ($user->turno == 'diurno') {
-            $turnoAsignado = ($user->turno_actual == $turnoMañanaId) ? $turnoMañanaId : $turnoTardeId;
-        } else {
+            $turnoAsignado = ($user->turno_actual == 1) ? $turnoMañanaId : $turnoTardeId;
+        } elseif ($user->turno == 'nocturno') {
             $turnoAsignado = $turnoNocheId;
+        } else {
+            return; // No asignar turno si no es diurno o nocturno
         }
-        
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
             if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
                 continue;
