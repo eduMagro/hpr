@@ -6,7 +6,8 @@
         </h2>
     </x-slot>
     <div class="container mx-auto px-4 py-6">
-    <form method="POST" action="{{ route('register') }}">
+        <div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-lg mt-6">
+            <form method="POST" action="{{ route('register') }}" class="space-y-6">
         @csrf
 
         <!-- Name -->
