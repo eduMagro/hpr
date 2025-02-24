@@ -15,14 +15,13 @@ function registrarFichaje(tipo) {
         function(position) {
             console.log("🟢 Callback ejecutado. Datos de posición:", position);
 
-            let latitud = position?.coords?.latitude;
-            let longitud = position?.coords?.longitude;
+            let latitud = position.coords.latitude;
+            let longitud = position.coords.longitude;
 
             console.log(`📍 Coordenadas obtenidas: Latitud ${latitud}, Longitud ${longitud}`);
 
-            // 🔍 Verificar si latitud y longitud son undefined
             if (latitud === undefined || longitud === undefined) {
-                console.error("❌ Error: La API no devolvió coordenadas.");
+                console.error("❌ Error: No se pudieron obtener las coordenadas.");
                 Swal.fire({
                     icon: 'error',
                     title: 'Error de ubicación',
@@ -44,49 +43,54 @@ function registrarFichaje(tipo) {
                 if (result.isConfirmed) {
                     console.log("🟢 Enviando datos al backend...");
 
-                    fetch("{{ route('registros-fichaje.store') }}", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                            },
-                            body: JSON.stringify({
-                                user_id: userId,
-                                tipo: tipo,
-                                latitud: latitud, // ✅ Ahora enviamos correctamente latitud
-                                longitud: longitud // ✅ Ahora enviamos correctamente longitud
-                            })
+                    fetch(fichajeRoute, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": csrfToken
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            tipo: tipo,
+                            latitud: latitud,
+                            longitud: longitud
                         })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log("📩 Respuesta del servidor:", data);
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Error HTTP: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("📩 Respuesta del servidor:", data);
 
-                            if (data.success) {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Fichaje registrado',
-                                    text: data.success,
-                                });
-                            } else {
-                                let errorMessage = data.error;
-                                if (data.messages) {
-                                    errorMessage = data.messages.join("\n");
-                                }
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error',
-                                    text: errorMessage,
-                                });
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Fichaje registrado',
+                                text: data.success,
+                            });
+                        } else {
+                            let errorMessage = data.error || 'Error desconocido';
+                            if (data.messages) {
+                                errorMessage = data.messages.join("\n");
                             }
-                        })
-                        .catch(error => {
-                            console.error("❌ Error en la solicitud fetch:", error);
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error de conexión',
-                                text: 'No se pudo comunicar con el servidor.',
+                                title: 'Error',
+                                text: errorMessage,
                             });
+                        }
+                    })
+                    .catch(error => {
+                        console.error("❌ Error en la solicitud fetch:", error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de conexión',
+                            text: 'No se pudo comunicar con el servidor.',
                         });
+                    });
                 }
             });
         },

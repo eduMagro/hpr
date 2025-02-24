@@ -121,9 +121,14 @@
             </div>
     @endif
     </div>
+    <!-- Variables globales para JavaScript -->
     <script>
         const userId = "{{ auth()->id() }}";
+        const fichajeRoute = "{{ route('registros-fichaje.store') }}";
+        const csrfToken = "{{ csrf_token() }}";
     </script>
+
+    <!-- Cargar el script externo -->
     <script src="{{ asset('js/usuarios/registrarFichaje.js') }}"></script>
     
 </x-app-layout>
