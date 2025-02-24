@@ -13,22 +13,10 @@ function registrarFichaje(tipo) {
 
     navigator.geolocation.getCurrentPosition(
         function(position) {
-            console.log("🟢 Callback ejecutado. Datos de posición:", position);
-
             let latitud = position.coords.latitude;
             let longitud = position.coords.longitude;
 
             console.log(`📍 Coordenadas obtenidas: Latitud ${latitud}, Longitud ${longitud}`);
-
-            if (latitud === undefined || longitud === undefined) {
-                console.error("❌ Error: No se pudieron obtener las coordenadas.");
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de ubicación',
-                    text: 'No se pudieron obtener las coordenadas. Intenta nuevamente.',
-                });
-                return;
-            }
 
             Swal.fire({
                 title: 'Confirmar Fichaje',
@@ -47,7 +35,8 @@ function registrarFichaje(tipo) {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "X-CSRF-TOKEN": csrfToken
+                            "Accept": "application/json",
+                            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content') // ✅ OBTENIENDO EL TOKEN DEL LAYOUT
                         },
                         body: JSON.stringify({
                             user_id: userId,
@@ -64,24 +53,11 @@ function registrarFichaje(tipo) {
                     })
                     .then(data => {
                         console.log("📩 Respuesta del servidor:", data);
-
-                        if (data.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Fichaje registrado',
-                                text: data.success,
-                            });
-                        } else {
-                            let errorMessage = data.error || 'Error desconocido';
-                            if (data.messages) {
-                                errorMessage = data.messages.join("\n");
-                            }
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: errorMessage,
-                            });
-                        }
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Fichaje registrado',
+                            text: data.success,
+                        });
                     })
                     .catch(error => {
                         console.error("❌ Error en la solicitud fetch:", error);

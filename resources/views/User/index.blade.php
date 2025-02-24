@@ -125,7 +125,6 @@
     <script>
         const userId = "{{ auth()->id() }}";
         const fichajeRoute = "{{ route('registros-fichaje.store') }}";
-        const csrfToken = "{{ csrf_token() }}";
     </script>
 
     <!-- Cargar el script externo -->
