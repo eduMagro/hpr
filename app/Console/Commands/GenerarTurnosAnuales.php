@@ -32,7 +32,7 @@ class GenerarTurnosAnuales extends Command
         $fin = Carbon::now()->endOfYear();
         
         $turnoAsignado = ($user->turno == 'diurno')
-            ? ($user->turno_actual === 'mañana' ? $turnoMañana : $turnoTarde)
+            ? ($user->turno_actual === 1 ? $turnoMañana : $turnoTarde)
             : $turnoNoche;
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
