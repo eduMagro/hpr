@@ -43,6 +43,8 @@ class RegisteredUserController extends Controller
 
             'turno' => ['required', 'string', 'max:255', 'in:diurno,nocturno,flexible'], // Campo turno añadido
 
+            'turno_actual' => ['nullable', 'string', 'max:50', 'in:mañana,tarde'], // Campo turno añadido
+
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
             'name.required' => 'El nombre es obligatorio.',
@@ -71,6 +73,10 @@ class RegisteredUserController extends Controller
             'turno.max' => 'El turno no puede superar los 255 caracteres.',
             'turno.in' => 'El turno debe ser uno de los siguientes: diurno, nocturno o flexible.',
 
+            'turno_actual.string' => 'El turno debe ser un texto válido.',
+            'turno_actual.max' => 'El turno no puede superar los 50 caracteres.',
+            'turno_actual.in' => 'El turno debe ser uno de los siguientes: mañana o tarde.',
+
             'password.required' => 'La contraseña es obligatoria.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
@@ -84,6 +90,7 @@ class RegisteredUserController extends Controller
             'rol' => $request->rol,
             'categoria' => $request->categoria,
             'turno' => $request->turno,
+            'turno-actual' => $request->turno_actual,
             'password' => Hash::make($request->password),
         ]);
 

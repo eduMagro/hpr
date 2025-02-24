@@ -71,6 +71,18 @@
                 </select>
                 <x-input-error :messages="$errors->get('turno')" class="mt-2 text-red-500 text-sm" />
             </div>
+            <!-- Turno Actual -->
+            <div>
+                <label for="turno_actual" class="block text-gray-700 font-semibold">Turno Actual</label>
+                <select id="turno_actual" name="turno_actual"
+                    class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 py-3 px-4 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200"
+                    required>
+                    <option value="" disabled selected>Selecciona un turno si tiene horario diurno</option>
+                    <option value="mañana">Mañana</option>
+                    <option value="tarde">Tarde</option>
+                </select>
+                <x-input-error :messages="$errors->get('turno_actual')" class="mt-2 text-red-500 text-sm" />
+            </div>
 
             <!-- Contraseña -->
             <div>
