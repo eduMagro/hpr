@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\RegistroFichaje;
 use App\Models\User;
+use App\Models\Obra;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
@@ -58,18 +59,20 @@ class RegistroFichajeController extends Controller
 
             $fechaHoy = now()->toDateString();
 
-            // Obtener coordenadas de la nave
-            $naveLatitud = config('app.nave_latitud');
-            $naveLongitud = config('app.nave_longitud');
-            $naveRadio = config('app.nave_radio');
+            // Obtener coordenadas de la obra seleccionada
+        $obra = Obra::findOrFail($request->obra_id);
+        $latitud = $obra->latitud;
+        $longitud = $obra->longitud;
+        $radio = $obra->distancia;
+
             // Calcular la distancia entre la ubicación del usuario y la nave
             $distancia = $this->calcularDistancia(
                 $request->latitud,
                 $request->longitud,
-                $naveLatitud,
-                $naveLongitud
+                $latitud,
+                $longitud
             );
-            if ($distancia > $naveRadio) {
+            if ($distancia > $radio) {
                 return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
             }
             // Obtener el turno del trabajador para el día actual

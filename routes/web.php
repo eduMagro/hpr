@@ -20,6 +20,7 @@ use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\SubpaqueteController;
 use App\Http\Controllers\SalidaController;
+use App\Http\Controllers\ObraController;
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -58,6 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('movimientos', MovimientoController::class);
     Route::resource('paquetes', PaqueteController::class);
     Route::resource('etiquetas', EtiquetaController::class);
+    Route::resource('obras', ObraController::class);
 
     Route::get('/productos/{id}/origen', [ProductoController::class, 'obtenerOrigen'])->name('productos.obtenerOrigen');
 
