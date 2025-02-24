@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Obra;
 use Exception;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+
 class ProfileController extends Controller
 {
 
@@ -166,6 +169,7 @@ class ProfileController extends Controller
     }
     public function actualizarUsuario(Request $request, $id)
     {
+       
         try {
             // Validar los datos con mensajes personalizados
             $request->validate([
@@ -173,7 +177,7 @@ class ProfileController extends Controller
                 'email' => 'required|email|max:255|unique:users,email,' . $id,
                 'rol' => 'required|string|max:255',
                 'categoria' => 'required|string|max:255',
-                'turno' => 'required|string|in:mañana,tarde,noche,flexible'
+                'turno' => 'nullable|string|in:nocturno,diurno,flexible'
             ], [
                 'name.required' => 'El nombre es obligatorio.',
                 'name.string' => 'El nombre debe ser un texto válido.',
@@ -192,7 +196,6 @@ class ProfileController extends Controller
                 'categoria.string' => 'La categoría debe ser un texto válido.',
                 'categoria.max' => 'La categoría no puede superar los 255 caracteres.',
 
-                'turno.required' => 'El turno es obligatorio.',
                 'turno.string' => 'El turno debe ser un texto válido.',
                 'turno.in' => 'El turno debe ser "mañana", "tarde", "noche" o "flexible".'
             ]);
@@ -213,6 +216,8 @@ class ProfileController extends Controller
             ]);
 
             return response()->json(['success' => 'Usuario actualizado correctamente.']);
+        } catch (ValidationException $e) {
+            return response()->json(['error' => $e->errors()], 422);
         } catch (Exception $e) {
             return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }

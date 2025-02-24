@@ -25,16 +25,16 @@ class User extends Authenticatable
     public $timestamps = true;
 
     protected $table = 'users';
-    protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-    ];
 
 
     protected $fillable = [
         'name',
         'email',
         'password',
+        'rol',
+        'categoria',
+        'turno',
+        'dias_vacaciones',
     ];
 
     /**
@@ -52,14 +52,13 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
-
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
+    
     // Relación: Un usuario tiene muchas entradas
     public function entradas()
     {
@@ -88,12 +87,8 @@ class User extends Authenticatable
     {
         $resultado = DB::table('sessions')
             ->where('user_id', $this->id)
-            ->where('last_activity', '>=', now()->subMinutes(5)->timestamp)
+            ->where('last_activity', '>=', now()->subMinutes(1)->timestamp)
             ->exists();
-
-        // Depuración
-        logger("User {$this->id} isOnline: " . ($resultado ? 'Sí' : 'No'));
-
         return $resultado;
     }
 

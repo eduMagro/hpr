@@ -46,7 +46,7 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
 
-            'categoria' => $request->categoria, // Cambiado de role a categoria
+            'categoria' => $request->categoria, 
 
             'password' => Hash::make($request->password),
         ]);
