@@ -13,7 +13,7 @@ use App\Models\Vacaciones;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-
+use App\Models\Obra;
 class ProfileController extends Controller
 {
 
@@ -21,7 +21,7 @@ class ProfileController extends Controller
     {
         // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-
+        $obras = Obra::all(); // Obtiene todas las obras
         // Consulta de usuarios sin el LEFT JOIN innecesario
         $query = User::query()->select('users.*');
 
@@ -41,7 +41,7 @@ class ProfileController extends Controller
         $registrosUsuarios = $query->paginate($perPage)->appends($request->except('page'));
 
         // Pasar datos a la vista
-        return view('User.index', compact('registrosUsuarios', 'usuariosConectados'));
+        return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras'));
     }
 
     public function show($id)

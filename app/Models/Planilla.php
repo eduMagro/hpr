@@ -47,6 +47,11 @@ class Planilla extends Model
      */
     public $timestamps = true;
     protected $appends = ['codigo_limpio', 'peso_total_kg'];
+
+    public function obra()
+    {
+        return $this->belongsTo(Obra::class);
+    }
     public function paquetes()
     {
         return $this->hasMany(Paquete::class, 'planilla_id');

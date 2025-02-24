@@ -14,6 +14,13 @@
         <div class="container mx-auto px-4 py-6">
 
             <div class="flex justify-between items-center w-full gap-4 p-4">
+                <select id="obraSeleccionada" class="w-full py-2 px-4 border rounded-md">
+                    @foreach ($obras as $obra)
+                        <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="flex justify-between items-center w-full gap-4 p-4">
                 <button onclick="registrarFichaje('entrada')" class="w-full py-2 px-4 bg-green-600 text-white rounded-md">
                     Entrada
                 </button>
@@ -96,6 +103,13 @@
                 {{ $registrosUsuarios->links() }}
             </div>
         @else
+        <div class="flex justify-between items-center w-full gap-4 p-4">
+            <select id="obraSeleccionada" class="w-full py-2 px-4 border rounded-md">
+                @foreach ($obras as $obra)
+                    <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                @endforeach
+            </select>
+        </div>
             <div class="flex justify-between items-center w-full gap-4 p-4">
                 <button onclick="registrarFichaje('entrada')"
                     class="w-full py-2 px-4 bg-green-600 text-white rounded-md">
