@@ -21,6 +21,8 @@ use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\SubpaqueteController;
 use App\Http\Controllers\SalidaController;
 use App\Http\Controllers\ObraController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Http\Request;
 
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -52,9 +54,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', ProfileController::class);
     Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.actualizar');
     Route::resource('vacaciones', VacacionesController::class);
-
     Route::resource('registros-fichaje', RegistroFichajeController::class);
-
+    Route::post('/generar-turnos', function (Request $request) {
+        Artisan::call('turnos:generar-anuales');
+        return back()->with('success', '✅ Turnos generados correctamente.');
+    })->name('generar-turnos');
+    
 
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);

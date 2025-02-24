@@ -32,6 +32,13 @@
             <div class="mb-4 flex items-center space-x-4">
                 <a href="{{ route('register') }}" class="btn btn-primary">Registrar Usuario</a>
                 <a href="{{ route('vacaciones.index') }}" class="btn btn-primary">Mostrar Vacaciones Globales</a>
+                <form action="{{ route('generar-turnos') }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-primary">
+                        Generar Turnos
+                    </button>
+                </form>
+                
             </div>
 
             <!-- FORMULARIO DE BUSQUEDA -->
