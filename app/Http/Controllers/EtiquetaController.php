@@ -135,19 +135,46 @@ class etiquetaController extends Controller
                     $elemento->save();
                 }
 
-                // 2. Obtener los productos disponibles en la máquina que tengan los diámetros requeridos
-                $productos = $maquina->productos()
-                    ->whereIn('diametro', array_keys($diametrosConPesos))
-                    ->orderBy('peso_stock')
-                    ->get();
+            // Convertir los diámetros requeridos a enteros
+            $diametrosRequeridos = array_map('intval', array_keys($diametrosConPesos));
 
+            // Obtener los productos disponibles en la máquina con los diámetros requeridos
+            $productos = $maquina->productos()
+                ->whereIn('diametro', $diametrosRequeridos)
+                ->orderBy('peso_stock')
+                ->get();
 
-                if ($productos->isEmpty()) {
-                    return response()->json([
-                        'success' => false,
-                        'error' => 'En esta máquina no hay materias primas con los diámetros requeridos.',
-                    ], 400);
+            // Depuración: Ver qué diámetros se están obteniendo
+            // dd($productos->pluck('diametro')->toArray()); 
+
+            if ($productos->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No se encontraron productos en la máquina con los diámetros especificados.',
+                ], 400);
+            }
+
+            // Agrupar productos por diámetro (asegurando que sean enteros)
+            $productosAgrupados = $productos->groupBy(fn ($producto) => (int) $producto->diametro);
+
+            // Verificar si hay productos para cada diámetro requerido
+            $faltantes = [];
+            foreach ($diametrosRequeridos as $diametro) {
+                if (!$productosAgrupados->has($diametro) || $productosAgrupados[$diametro]->isEmpty()) {
+                    $faltantes[] = $diametro;
                 }
+            }
+
+            // Si hay diámetros sin productos, devolver error
+            if (!empty($faltantes)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No hay materias primas disponibles para los siguientes diámetros: ' . implode(', ', $faltantes),
+                ], 400);
+            }
+
+// Continúa con la lógica si hay productos para todos los diámetros...
+
 
                 // Arreglo donde se guardarán los detalles del consumo por diámetro
                 $consumos = []; // Estructura: [ <diametro> => [ ['producto_id' => X, 'consumido' => Y], ... ], ... ]

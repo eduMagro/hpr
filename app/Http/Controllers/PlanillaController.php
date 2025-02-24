@@ -19,9 +19,9 @@ class PlanillaController extends Controller
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
         $estribo = $doblesPorBarra >= 4;
-
+    
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
-
+    
         $maquinaForzada = null;
         if (count($diametrosPlanilla) > 1) {
             $maxDiametro = max($diametrosPlanilla);
@@ -35,7 +35,7 @@ class PlanillaController extends Controller
                 $maquinaForzada = ['MANUAL'];
             }
         }
-
+    
         if ($diametro == 5) {
             $maquinas = Maquina::where('codigo', 'ID5')->get();
         } elseif ($estribo) {
@@ -57,33 +57,33 @@ class PlanillaController extends Controller
         } else {
             $maquinas = Maquina::where('codigo', 'MANUAL')->get();
         }
-
+    
         if ($maquinas->isEmpty()) {
             return null;
         }
-
+    
+        // Selección de la máquina con menor carga
         $maquinaSeleccionada = null;
         $pesoMinimo = PHP_INT_MAX;
-
+    
         foreach ($maquinas as $maquina) {
             $pesoActual = Elemento::where('maquina_id', $maquina->id)->sum('peso');
-
-            $limiteProduccion = match ($maquina->codigo) {
-                'PS12', 'F12' => 10000,
-                'MSR20' => 12000,
-                'SL28' => 30000,
-                default => PHP_INT_MAX
-            };
-
-            if ($pesoActual < $limiteProduccion && $pesoActual < $pesoMinimo) {
+    
+            if ($pesoActual < 5000) {
+                // Prioriza la primera máquina con menos de 5,000 kg
+                return $maquina->id;
+            }
+    
+            // Si todas están por encima del umbral, selecciona la de menor peso acumulado
+            if ($pesoActual < $pesoMinimo) {
                 $pesoMinimo = $pesoActual;
                 $maquinaSeleccionada = $maquina;
             }
         }
-
+    
         return $maquinaSeleccionada?->id ?? null;
     }
-
+    
 
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
