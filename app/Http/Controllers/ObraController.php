@@ -10,7 +10,7 @@ class ObraController extends Controller
     public function index(Request $request)
     {
         $query = Obra::query();
-
+    
         if ($request->filled('buscar')) {
             $query->where(function ($q) use ($request) {
                 $q->where('obra', 'like', '%' . $request->buscar . '%')
@@ -19,29 +19,33 @@ class ObraController extends Controller
                     ->orWhere('cod_cliente', 'like', '%' . $request->buscar . '%');
             });
         }
-
+    
         if ($request->filled('cod_obra')) {
             $query->where('cod_obra', 'like', '%' . $request->cod_obra . '%');
         }
-
+    
         if ($request->filled('cliente')) {
             $query->where('cliente', 'like', '%' . $request->cliente . '%');
         }
-
+    
         if ($request->filled('cod_cliente')) {
             $query->where('cod_cliente', 'like', '%' . $request->cod_cliente . '%');
         }
-
+    
+        if ($request->filled('completada')) {
+            $query->where('completada', $request->completada);
+        }
+    
         if ($request->filled('sort_by') && in_array($request->sort_by, ['created_at', 'cod_obra', 'cliente', 'cod_cliente'])) {
             $order = $request->order === 'desc' ? 'desc' : 'asc';
             $query->orderBy($request->sort_by, $order);
         }
-
+    
         $obras = $query->paginate($request->get('per_page', 10));
-
+    
         return view('obras.index', compact('obras'));
     }
-
+    
     public function create()
     {
         return view('obras.create');

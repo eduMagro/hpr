@@ -21,7 +21,8 @@ class ProfileController extends Controller
     {
         // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-        $obras = Obra::all(); // Obtiene todas las obras
+        $obras = Obra::where('completada', 0)->get();
+
         // Consulta de usuarios sin el LEFT JOIN innecesario
         $query = User::query()->select('users.*');
 

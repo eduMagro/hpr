@@ -424,18 +424,18 @@
                                 </select>
                             </td>
                             <!-- Botones -->
-                            <td class="px-1 py-3 text-center border">
+                            <td class="px-1 py-3 text-center border flex flex-col gap-2">
 
                                 <a href="#" class="text-blue-500 hover:underline abrir-modal-dibujo"
                                     data-id="{{ $elemento->id }}" data-dimensiones="{{ $elemento->dimensiones }}"
                                     data-peso="{{ $elemento->peso_kg }}">
                                     Ver
-                                </a><br>
+                                </a>
                                 <button @click.stop="editando = !editando">
                                     <span x-show="!editando">✏️</span>
-                                    <span x-show="editando">✖</span>
+                                    <span x-show="editando" class="mr-2">✖</span>
                                     <span x-show="editando" @click.stop="guardarCambios(elemento)">✅</span>
-                                </button><br>
+                                </button>
                                 <x-boton-eliminar :action="route('elementos.destroy', $elemento->id)" />
                             </td>
                         </tr>
@@ -456,9 +456,9 @@
         <div id="modal-dibujo"
             class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
             <div class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative">
-                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:text-red-900">
+                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
                     ✖
-                </button>
+                  </button>
                 @if (isset($elemento) && $elemento->id)
                     <h2 class="text-lg font-semibold mb-3">Elemento #{{ $elemento->id }}</h2>
                 @endif

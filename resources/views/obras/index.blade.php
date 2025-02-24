@@ -23,6 +23,13 @@
                         <input type="text" name="buscar" class="form-control" placeholder="Buscar en código, cliente, obra..." value="{{ request('buscar') }}">
                     </div>
                     <div class="col-md-4">
+                        <select name="completada" class="form-control">
+                            <option value="">Todas</option>
+                            <option value="1" {{ request('completada') == '1' ? 'selected' : '' }}>Completadas</option>
+                            <option value="0" {{ request('completada') == '0' ? 'selected' : '' }}>No Completadas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
                         <input type="text" name="cod_obra" class="form-control" placeholder="Código de Obra" value="{{ request('cod_obra') }}">
                     </div>
                     <div class="col-md-4">
@@ -116,7 +123,7 @@
                                 <a href="https://www.google.com/maps?q={{ $obra->latitud }},{{ $obra->longitud }}" 
                                     target="_blank" 
                                     class="text-blue-500 hover:underline">
-                                    Ver
+                                    Mapa
                                  </a>
                                 <button @click.stop="editando = !editando">
                                     <span x-show="!editando">✏️</span>
