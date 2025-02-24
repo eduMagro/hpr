@@ -34,6 +34,7 @@ class User extends Authenticatable
         'rol',
         'categoria',
         'turno',
+        'turno_actual',
         'dias_vacaciones',
     ];
 

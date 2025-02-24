@@ -83,14 +83,15 @@ class RegisteredUserController extends Controller
 
         // Calcular los días de vacaciones disponibles
         $diasVacaciones = $this->calcularVacaciones();
-
+        $turno_actual = Turno::where('nombre', $request->turno_actual)->value('id');
+       
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'rol' => $request->rol,
             'categoria' => $request->categoria,
             'turno' => $request->turno,
-            'turno_actual' => Turno::where('nombre', $request->turno_actual)->value('id'),
+            'turno_actual' => $turno_actual,
             'dias_vacaciones'=> $diasVacaciones,
             'password' => Hash::make($request->password),
         ]);
