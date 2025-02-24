@@ -10,7 +10,9 @@ class UserObserver
 {
     public function created(User $user)
     {
+        \Log::info("Observer ejecutado para el usuario: {$user->id}");
         $this->generarTurnos($user);
+   
     }
 
     private function generarTurnos(User $user)

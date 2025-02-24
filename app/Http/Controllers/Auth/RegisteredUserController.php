@@ -40,7 +40,7 @@ class RegisteredUserController extends Controller
 
             'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'], // Campo rol
 
-            'categoria' => ['required', 'string', 'max:255', 'in:administracion,gruista,operario,mecanico,visitante'],
+            'categoria' => ['required', 'string', 'max:255'],
 
             'turno' => ['required', 'string', 'max:255', 'in:diurno,nocturno,flexible'], // Campo turno añadido
 
@@ -67,7 +67,6 @@ class RegisteredUserController extends Controller
             'categoria.required' => 'La categoría es obligatoria.',
             'categoria.string' => 'La categoría debe ser un texto válido.',
             'categoria.max' => 'La categoría no puede superar los 255 caracteres.',
-            'categoria.in' => 'La categoría debe ser una de las siguientes: administración, gruista, operario, mecánico o visitante.',
 
             'turno.required' => 'El turno es obligatorio.',
             'turno.string' => 'El turno debe ser un texto válido.',

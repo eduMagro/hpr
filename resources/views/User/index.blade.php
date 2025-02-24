@@ -52,7 +52,7 @@
                             <th class="py-3 px-2 border text-center">Email</th>
                             <th class="py-3 px-2 border text-center">Rol</th>
                             <th class="py-3 px-2 border text-center">Categoría</th>
-                            <th class="py-3 px-2 border text-center">Especialidad</th>
+                            <th class="py-3 px-2 border text-center">Especialidad</th> 
                             <th class="py-3 px-2 border text-center">Turno</th>
                             <th class="py-3 px-2 border text-center">Estado</th>
                             <th class="py-3 px-2 border text-center">Acciones</th>
