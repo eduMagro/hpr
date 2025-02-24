@@ -46,58 +46,90 @@
                     <i class="fas fa-search"></i> Buscar
                 </button>
             </form>
-            <!-- Tabla de usuarios -->
-            <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-                <table class="w-full border border-gray-300 rounded-lg">
-                    <thead class="bg-blue-500 text-white">
-                        <tr class="text-left text-sm uppercase">
-                            <th class="py-3 px-2 border text-center">ID</th>
-                            <th class="py-3 px-2 border text-center">Nombre</th>
-                            <th class="py-3 px-2 border text-center">Email</th>
-                            <th class="py-3 px-2 border text-center">Rol</th>
-                            <th class="py-3 px-2 border text-center">Categoría</th>
-                            <th class="py-3 px-2 border text-center">Turno</th>
-                            <th class="py-3 px-2 border text-center">Estado</th>
-                            <th class="py-3 px-2 border text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-gray-700 text-sm">
-                        @forelse ($registrosUsuarios as $user)
-                            <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-                                <td class="px-2 py-3 text-center border">{{ $user->id }}</td>
-                                <td class="px-2 py-3 text-center border">{{ $user->name }}</td>
-                                <td class="px-2 py-3 text-center border">{{ $user->email }}</td>
-                                <td class="px-2 py-3 text-center border">{{ $user->rol }}</td>
-                                <td class="px-2 py-3 text-center border">{{ $user->categoria }}</td>
-                                <td class="px-2 py-3 text-center border"
-                                    style="background-color: {{ $user->turno == 'mañana' ? '#FFD700' : ($user->turno == 'tarde' ? '#FF8C00' : ($user->turno == 'noche' ? '#1E90FF' : ($user->turno == 'flexible' ? '#32CD32' : ''))) }}">
-                                    {{ $user->turno ? ucfirst($user->turno) : 'N/A' }}
-                                </td>
+           <!-- Tabla de usuarios con edición en línea -->
+<div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+    <table class="w-full border border-gray-300 rounded-lg">
+        <thead class="bg-blue-500 text-white">
+            <tr class="text-left text-sm uppercase">
+                <th class="py-3 px-2 border text-center">ID</th>
+                <th class="py-3 px-2 border text-center">Nombre</th>
+                <th class="py-3 px-2 border text-center">Email</th>
+                <th class="py-3 px-2 border text-center">Rol</th>
+                <th class="py-3 px-2 border text-center">Categoría</th>
+                <th class="py-3 px-2 border text-center">Turno</th>
+                <th class="py-3 px-2 border text-center">Estado</th>
+                <th class="py-3 px-2 border text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="text-gray-700 text-sm">
+            @forelse ($registrosUsuarios as $user)
+                <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
+                    x-data="{ editando: false, usuario: @js($user) }">
+                    
+                    <td class="px-2 py-3 text-center border" x-text="usuario.id"></td>
 
-                                <td class="px-2 py-3 text-center border">
-                                    @if ($user->isOnline())
-                                        <span class="text-green-600">En línea</span>
-                                    @else
-                                        <span class="text-gray-500">Desconectado</span>
-                                    @endif
-                                </td>
-                                <td class="px-2 py-3 text-center border">
-                                    <a href="{{ route('users.edit', $user->id) }}"
-                                        class="text-blue-500 hover:underline">Editar</a>
-                                    |
-                                    <a href="{{ route('users.show', $user->id) }}"
-                                        class="text-blue-500 hover:underline">Ver</a>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="text-center py-4 text-gray-500">No hay usuarios disponibles.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                    <td class="px-2 py-3 text-center border">
+                        <template x-if="!editando">
+                            <span x-text="usuario.name"></span>
+                        </template>
+                        <input x-show="editando" type="text" x-model="usuario.name" class="form-input w-full">
+                    </td>
+
+                    <td class="px-2 py-3 text-center border">
+                        <template x-if="!editando">
+                            <span x-text="usuario.email"></span>
+                        </template>
+                        <input x-show="editando" type="text" x-model="usuario.email" class="form-input w-full">
+                    </td>
+
+                    <td class="px-2 py-3 text-center border">
+                        <template x-if="!editando">
+                            <span x-text="usuario.rol"></span>
+                        </template>
+                        <input x-show="editando" type="text" x-model="usuario.rol" class="form-input w-full">
+                    </td>
+
+                    <td class="px-2 py-3 text-center border">
+                        <template x-if="!editando">
+                            <span x-text="usuario.categoria"></span>
+                        </template>
+                        <input x-show="editando" type="text" x-model="usuario.categoria" class="form-input w-full">
+                    </td>
+
+                    <td class="px-2 py-3 text-center border"
+                        :style="'background-color:' + (usuario.turno === 'mañana' ? '#FFD700' : (usuario.turno === 'tarde' ? '#FF8C00' : (usuario.turno === 'noche' ? '#1E90FF' : (usuario.turno === 'flexible' ? '#32CD32' : ''))))">
+                        <template x-if="!editando">
+                            <span x-text="usuario.turno ? usuario.turno.charAt(0).toUpperCase() + usuario.turno.slice(1) : 'N/A'"></span>
+                        </template>
+                        <select x-show="editando" x-model="usuario.turno" class="form-input w-full">
+                            <option value="mañana">Mañana</option>
+                            <option value="tarde">Tarde</option>
+                            <option value="noche">Noche</option>
+                            <option value="flexible">Flexible</option>
+                        </select>
+                    </td>
+
+                    <td class="px-2 py-3 text-center border">
+                        <span x-text="usuario.estado === 'online' ? 'En línea' : 'Desconectado'"
+                              :class="usuario.estado === 'online' ? 'text-green-600' : 'text-gray-500'"></span>
+                    </td>
+
+                    <td class="px-2 py-3 text-center border">
+                        <button @click.stop="editando = !editando">
+                            <span x-show="!editando">✏️</span>
+                            <span x-show="editando">✖</span>
+                        </button>
+                        <span x-show="editando" @click.stop="guardarCambios(usuario)">✅</span>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="8" class="text-center py-4 text-gray-500">No hay usuarios disponibles.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
 
             <div class="mt-4 flex justify-center">
                 {{ $registrosUsuarios->links() }}
@@ -244,5 +276,46 @@
             );
         }
     </script>
-
+<script src="//unpkg.com/alpinejs" defer></script>
+<script>
+    function guardarCambios(usuario) {
+        fetch(`/actualizar-usuario/${usuario.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(usuario)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: "success",
+                    title: "Usuario actualizado",
+                    text: "Los cambios se han guardado correctamente.",
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error al actualizar",
+                    text: data.message || "Ha ocurrido un error inesperado.",
+                    confirmButtonText: "OK"
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: "error",
+                title: "Error de conexión",
+                text: "No se pudo actualizar el usuario. Inténtalo nuevamente.",
+                confirmButtonText: "OK"
+            });
+        });
+    }
+</script>
 </x-app-layout> 

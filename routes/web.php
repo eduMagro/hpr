@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
 
     //USUARIOS
     Route::resource('users', ProfileController::class);
+    Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.actualizar');
     Route::resource('vacaciones', VacacionesController::class);
 
     Route::resource('registros-fichaje', RegistroFichajeController::class);

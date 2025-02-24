@@ -14,6 +14,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Obra;
+use Exception;
 class ProfileController extends Controller
 {
 
@@ -163,7 +164,59 @@ class ProfileController extends Controller
 
         return Redirect::route('profile.edit', ['id' => $id])->with('status', 'profile-updated');
     }
+    public function actualizarUsuario(Request $request, $id)
+    {
+        try {
+            // Validar los datos con mensajes personalizados
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|max:255|unique:users,email,' . $id,
+                'rol' => 'required|string|max:255',
+                'categoria' => 'required|string|max:255',
+                'turno' => 'required|string|in:mañana,tarde,noche,flexible'
+            ], [
+                'name.required' => 'El nombre es obligatorio.',
+                'name.string' => 'El nombre debe ser un texto válido.',
+                'name.max' => 'El nombre no puede superar los 255 caracteres.',
 
+                'email.required' => 'El correo electrónico es obligatorio.',
+                'email.email' => 'Debe ingresar un correo electrónico válido.',
+                'email.max' => 'El correo no puede superar los 255 caracteres.',
+                'email.unique' => 'Este correo ya está registrado en otro usuario.',
+
+                'rol.required' => 'El rol es obligatorio.',
+                'rol.string' => 'El rol debe ser un texto válido.',
+                'rol.max' => 'El rol no puede superar los 255 caracteres.',
+
+                'categoria.required' => 'La categoría es obligatoria.',
+                'categoria.string' => 'La categoría debe ser un texto válido.',
+                'categoria.max' => 'La categoría no puede superar los 255 caracteres.',
+
+                'turno.required' => 'El turno es obligatorio.',
+                'turno.string' => 'El turno debe ser un texto válido.',
+                'turno.in' => 'El turno debe ser "mañana", "tarde", "noche" o "flexible".'
+            ]);
+
+            // Buscar el usuario
+            $usuario = User::find($id);
+            if (!$usuario) {
+                return response()->json(['error' => 'Usuario no encontrado.'], 404);
+            }
+
+            // Actualizar los datos
+            $usuario->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'rol' => $request->rol,
+                'categoria' => $request->categoria,
+                'turno' => $request->turno
+            ]);
+
+            return response()->json(['success' => 'Usuario actualizado correctamente.']);
+        } catch (Exception $e) {
+            return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
+        }
+    }
     public function destroy(Request $request, $id)
     {
         $admin = auth()->user();
