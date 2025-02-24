@@ -90,7 +90,7 @@ class RegisteredUserController extends Controller
             'rol' => $request->rol,
             'categoria' => $request->categoria,
             'turno' => $request->turno,
-            'turno-actual' => Turno::where('nombre', $request->turno_actual)->value('id'),
+            'turno_actual' => Turno::where('nombre', $request->turno_actual)->value('id'),
             'dias_vacaciones'=> $diasVacaciones,
             'password' => Hash::make($request->password),
         ]);
