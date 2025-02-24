@@ -15,19 +15,23 @@ class UserObserver
    
     }
 
-    private function generarTurnos(User $user)
+    public function generarTurnos($user)
     {
-        $turnoMañana = Turno::where('nombre', 'mañana')->first()->id;
-        $turnoTarde = Turno::where('nombre', 'tarde')->first()->id;
-        $turnoNoche = Turno::where('nombre', 'noche')->first()->id;
+        $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
+        $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
+        $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
 
         $inicio = Carbon::now()->startOfYear();
         $fin = Carbon::now()->endOfYear();
-
-        $turnoAsignado = ($user->turno == 'diurno')
-            ? ($user->turno_actual === 'mañana' ? $turnoMañana : $turnoTarde)
-            : $turnoNoche;
-
+        
+        if ($user->turno == 'diurno') {
+            $turnoAsignado = ($user->turno_actual == $turnoMañanaId) ? $turnoMañanaId : $turnoTardeId;
+        } elseif ($user->turno == 'nocturno') {
+            $turnoAsignado = $turnoNocheId;
+        } else {
+            return; // No asignar turno si no es diurno o nocturno
+        }
+        
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
             if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
                 continue;
@@ -39,7 +43,7 @@ class UserObserver
             );
 
             if ($user->turno == 'diurno' && $fecha->dayOfWeek == Carbon::FRIDAY) {
-                $turnoAsignado = ($turnoAsignado === $turnoMañana) ? $turnoTarde : $turnoMañana;
+                $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
             }
         }
     }
