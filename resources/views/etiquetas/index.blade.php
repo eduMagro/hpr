@@ -152,7 +152,7 @@
         </div>
     </div>
 </div>
-
+<script src="{{ asset('js/etiquetasJs/figurasEtiqueta.js') }}" defer></script>
 <script>
     window.etiquetasConElementos = @json($etiquetasJson);
 </script>
