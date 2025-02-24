@@ -100,9 +100,9 @@
                                         <option value="">Selecciona cat.</option>
                                         <option value="administrador">Admninistrador</option>
                                         <option value="administracion">Dept. Administración</option>
-                                        <option value="oficila 1">Oficial 1ª</option>
-                                        <option value="oficila 2">Oficial 2ª</option>
-                                        <option value="oficila 3">Oficial 3ª</option>
+                                        <option value="oficial 1">Oficial 1ª</option>
+                                        <option value="oficial 2">Oficial 2ª</option>
+                                        <option value="oficial 3">Oficial 3ª</option>
                                         <option value="gruista">Gruista</option>
                                         <option value="camionero">Camionero</option>
                                     </select>

@@ -21,7 +21,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
-            $schedule->command('turnos:actualizar')->dailyAt('00:00'); // Ejecuta la rotación de turnos cada día a medianoche
+            // Ejecuta la rotación de turnos cada día a medianoche
+            $schedule->command('turnos:generar-anuales')->yearly();
+            // Restablece las vacaciones cada 1 de enero a la medianoche
+            $schedule->command('vacaciones:reset')->yearly();
         });
     }
 }
