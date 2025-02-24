@@ -84,16 +84,28 @@
                                     <template x-if="!editando">
                                         <span x-text="usuario.rol"></span>
                                     </template>
-                                    <input x-show="editando" type="text" x-model="usuario.rol"
-                                        class="form-input w-full">
+                                    <select x-show="editando" x-model="usuario.rol" class="form-input w-full">
+                                        <option value="">Selecciona rol</option>
+                                        <option value="oficina">Oficina</option>
+                                        <option value="operario">Operario</option>
+                                        <option value="visitante">Visitante</option>
+                                    </select>
                                 </td>
 
                                 <td class="px-2 py-3 text-center border">
                                     <template x-if="!editando">
                                         <span x-text="usuario.categoria"></span>
                                     </template>
-                                    <input x-show="editando" type="text" x-model="usuario.categoria"
-                                        class="form-input w-full">
+                                    <select x-show="editando" x-model="usuario.categoria" class="form-input w-full">
+                                        <option value="">Selecciona cat.</option>
+                                        <option value="administrador">Admninistrador</option>
+                                        <option value="administracion">Dept. Administración</option>
+                                        <option value="oficila 1">Oficial 1ª</option>
+                                        <option value="oficila 2">Oficial 2ª</option>
+                                        <option value="oficila 3">Oficial 3ª</option>
+                                        <option value="gruista">Gruista</option>
+                                        <option value="camionero">Camionero</option>
+                                    </select>
                                 </td>
 
                                 <td class="px-2 py-3 text-center border">
@@ -117,13 +129,18 @@
                                     @endif
                                 </td>
 
-                                <td class="px-2 py-3 text-center border">
+                                <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
+                                    <a href="{{ route('users.show', $user->id) }}" class="text-green-500 hover:underline">Ver</a>
+                                    <span> | </span>
                                     <button @click.stop="editando = !editando">
                                         <span x-show="!editando">✏️</span>
-                                        <span x-show="editando">✖</span>
+                                        <span x-show="editando" class="mr-2">✖</span>
+                                        <span x-show="editando" @click.stop="guardarCambios(usuario)">✅</span>
                                     </button>
-                                    <span x-show="editando" @click.stop="guardarCambios(usuario)">✅</span>
+                                    <span> | </span>
+                                    <x-boton-eliminar :action="route('users.destroy', $user->id)" />
                                 </td>
+                                
                             </tr>
                         @empty
                             <tr>

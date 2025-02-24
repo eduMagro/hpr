@@ -426,7 +426,7 @@
                             <!-- Botones -->
                             <td class="px-1 py-3 text-center border flex flex-col gap-2">
 
-                                <a href="#" class="text-blue-500 hover:underline abrir-modal-dibujo"
+                                <a href="#" class="text-blue-500 hover:text-blue-700 abrir-modal-dibujo"
                                     data-id="{{ $elemento->id }}" data-dimensiones="{{ $elemento->dimensiones }}"
                                     data-peso="{{ $elemento->peso_kg }}">
                                     Ver

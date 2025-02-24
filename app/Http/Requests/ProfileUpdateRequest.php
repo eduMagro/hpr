@@ -18,7 +18,12 @@ class ProfileUpdateRequest extends FormRequest
         return [
             'name' => ['sometimes', 'string', 'max:255'],
             'email' => ['sometimes', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user()->id)],
-            'categoria' => ['sometimes', 'string', 'max:255', 'in:administracion,gruista,operario,mecanico,visitante'],
+
+            'rol' => ['sometimes', 'string', 'max:255', 'in:operario,oficina,visitante'], // Nuevo campo rol
+
+            'categoria' => ['sometimes', 'string', 'max:255', 'in:administracion,gruista,operario,mecanico,visitante'], 
+
+            'turno' => ['sometimes', 'string', 'max:255', 'in:diurno,nocturno,flexible'], // Nuevo campo turno
         ];
     }
 }
