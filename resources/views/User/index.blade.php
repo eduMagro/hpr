@@ -52,6 +52,7 @@
                             <th class="py-3 px-2 border text-center">Email</th>
                             <th class="py-3 px-2 border text-center">Rol</th>
                             <th class="py-3 px-2 border text-center">Categoría</th>
+                            <th class="py-3 px-2 border text-center">Especialidad</th>
                             <th class="py-3 px-2 border text-center">Turno</th>
                             <th class="py-3 px-2 border text-center">Estado</th>
                             <th class="py-3 px-2 border text-center">Acciones</th>
@@ -105,6 +106,17 @@
                                         <option value="oficial 3">Oficial 3ª</option>
                                         <option value="gruista">Gruista</option>
                                         <option value="camionero">Camionero</option>
+                                    </select>
+                                </td>
+
+                                <td class="px-2 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="usuario.especialidad"></span>
+                                    </template>
+                                    <select x-show="editando" x-model="usuario.especialidad" class="form-input w-full">
+                                        <option value="">Selecciona esp.</option>
+                                        <option value="administrador">MSR20</option>
+                                        <option value="administracion">SL28</option>
                                     </select>
                                 </td>
 

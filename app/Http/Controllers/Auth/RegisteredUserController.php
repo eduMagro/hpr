@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Turno;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -90,7 +91,8 @@ class RegisteredUserController extends Controller
             'rol' => $request->rol,
             'categoria' => $request->categoria,
             'turno' => $request->turno,
-            'turno-actual' => $request->turno_actual,
+            'turno-actual' => Turno::where('nombre', $request->turno_actual)->value('id'),
+            'dias_vacaciones'=> $diasVacaciones,
             'password' => Hash::make($request->password),
         ]);
 

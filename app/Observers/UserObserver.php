@@ -1,28 +1,19 @@
 <?php
-namespace App\Console\Commands;
+namespace App\Observers;
 
-use Illuminate\Console\Command;
 use App\Models\User;
 use App\Models\Turno;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
 
-class GenerarTurnosAnuales extends Command
+class UserObserver
 {
-    protected $signature = 'turnos:generar-anuales';
-    protected $description = 'Genera turnos rotativos para trabajadores diurnos y turno fijo para nocturnos durante todo el año excluyendo sábados y domingos';
-
-    public function handle()
+    public function created(User $user)
     {
-        $usuarios = User::all();
-        foreach ($usuarios as $user) {
-            $this->generarTurnos($user);
-        }
-        
-        $this->info("✅ Turnos generados correctamente respetando la rotación individual de cada trabajador diurno.");
+        $this->generarTurnos($user);
     }
 
-    public function generarTurnos($user)
+    private function generarTurnos(User $user)
     {
         $turnoMañana = Turno::where('nombre', 'mañana')->first()->id;
         $turnoTarde = Turno::where('nombre', 'tarde')->first()->id;
@@ -30,7 +21,7 @@ class GenerarTurnosAnuales extends Command
 
         $inicio = Carbon::now()->startOfYear();
         $fin = Carbon::now()->endOfYear();
-        
+
         $turnoAsignado = ($user->turno == 'diurno')
             ? ($user->turno_actual === 'mañana' ? $turnoMañana : $turnoTarde)
             : $turnoNoche;

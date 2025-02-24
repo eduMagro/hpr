@@ -51,6 +51,9 @@
                     <option value="" disabled selected>Selecciona una categoría</option>
                     <option value="administracion">Administración</option>
                     <option value="gruista">Gruista</option>
+                    <option value="oficial 1">Oficial 1ª</option>
+                    <option value="oficial 2">Oficial 2ª</option>
+                    <option value="oficial 3">Oficial 3ª</option>
                     <option value="operario">Operario</option>
                     <option value="mecanico">Mecánico</option>
                     <option value="visitante">Visitante</option>
