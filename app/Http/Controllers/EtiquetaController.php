@@ -53,10 +53,13 @@ class etiquetaController extends Controller
             }
         }
 
-        // Obtener los resultados con paginación
-        $etiquetas = $query->paginate(10)->appends($request->query());
+           // Paginación de la tabla
+    $etiquetas = $query->paginate(10)->appends($request->query());
 
-        return view('etiquetas.index', compact('etiquetas'));
+    // Obtener todas las etiquetas con elementos (sin paginar) para JavaScript
+    $etiquetasJson = Etiqueta::with('elementos')->get();
+
+    return view('etiquetas.index', compact('etiquetas', 'etiquetasJson'));
     }
 
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)

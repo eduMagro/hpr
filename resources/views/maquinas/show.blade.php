@@ -124,6 +124,7 @@
                             ->filter(function ($grupo) {
                                 return $grupo->isNotEmpty();
                             });
+                  
                     } elseif (stripos($maquina->nombre, 'Soldadora') !== false) {
                         // Filtramos los elementos terciarios que:
                         // 1. Tengan maquina_id_3 igual a la máquina actual.
@@ -138,6 +139,7 @@
                             ->groupBy(function ($item) {
                                 return $item->etiqueta_id . '-' . $item->marca;
                             });
+             
                     } else {
                         // Del conjunto de elementos asociados a la máquina, eliminamos aquellos cuyo estado es 'completado'
                         $elementosAgrupados = $maquina->elementos
@@ -145,6 +147,7 @@
                                 return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') !== 'completada';
                             })
                             ->groupBy('etiqueta_id');
+                      
                     }
 
                     $elementosAgrupadosScript = $elementosAgrupados
@@ -183,6 +186,7 @@
                         }
                         $tieneElementosEnOtrasMaquinas =
                             isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
+                      
                     @endphp
 
                     <div
