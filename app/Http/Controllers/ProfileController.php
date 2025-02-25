@@ -22,25 +22,64 @@ use Illuminate\Validation\ValidationException;
 class ProfileController extends Controller
 {
 
+    public function aplicarFiltros(Request $request)
+    {
+        // Iniciar la consulta de usuarios
+        $query = User::query()->select('users.*');
+
+        // Filtrar por nombre
+        if ($request->filled('name')) {
+            $query->where('users.name', 'like', '%' . $request->input('name') . '%');
+        }
+
+        // Filtrar por email
+        if ($request->filled('email')) {
+            $query->where('users.email', 'like', '%' . $request->input('email') . '%');
+        }
+
+        // Filtrar por rol
+        if ($request->filled('rol')) {
+            $query->where('users.rol', $request->input('rol'));
+        }
+
+        // Filtrar por categoría
+        if ($request->filled('categoria')) {
+            $query->where('users.categoria', 'like', '%' . $request->input('categoria') . '%');
+        }
+
+        // Filtrar por especialidad
+        if ($request->filled('especialidad')) {
+            $query->where('users.especialidad', 'like', '%' . $request->input('especialidad') . '%');
+        }
+
+        // Filtrar por turno
+        if ($request->filled('turno')) {
+            $query->whereHas('asignacionesTurnos.turno', function ($q) use ($request) {
+                $q->where('nombre', $request->input('turno'));
+            });
+        }
+
+        // Filtrar por estado
+        if ($request->filled('estado')) {
+            $query->where('users.estado', $request->input('estado'));
+        }
+
+        // Ordenar resultados
+        $sortBy = $request->input('sort_by', 'users.created_at');
+        $order = $request->input('order', 'desc');
+        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
+
+        return $query;
+    }
+
     public function index(Request $request)
     {
         // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
         $obras = Obra::where('completada', 0)->get();
 
-        // Consulta de usuarios sin el LEFT JOIN innecesario
-        $query = User::query()->select('users.*');
-
-        // Filtrar por nombre si se pasa como parámetro
-        if ($request->has('name')) {
-            $name = $request->input('name');
-            $query->where('users.name', 'like', '%' . $name . '%');
-        }
-
-        // Ordenar
-        $sortBy = $request->input('sort_by', 'users.created_at');
-        $order = $request->input('order', 'desc');
-        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
+        // Aplicar filtros
+        $query = $this->aplicarFiltros($request);
 
         // Paginación
         $perPage = $request->input('per_page', 10);

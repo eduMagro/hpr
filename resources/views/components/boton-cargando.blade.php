@@ -2,13 +2,13 @@
 
 @if ($href)
     <a href="{{ $href }}" class="btn btn-primary flex items-center space-x-2" onclick="mostrarCargando(this)">
-        <span class="hidden spinner"></span>
-        <span>{{ $text }}</span>
+        <span class="spinner hidden"></span>
+        <span class="btn-text">{{ $text }}</span>
     </a>
 @else
     <button type="{{ $type }}" class="btn btn-primary flex items-center space-x-2" onclick="mostrarCargando(this)">
-        <span class="hidden spinner"></span>
-        <span>{{ $text }}</span>
+        <span class="spinner hidden"></span>
+        <span class="btn-text">{{ $text }}</span>
     </button>
 @endif
 
@@ -34,15 +34,30 @@
             transform: rotate(360deg);
         }
     }
+
+    .hidden {
+        display: none;
+    }
 </style>
 
-<!-- Script para mostrar el spinner -->
+<!-- Script para mostrar el Spinner sin bloquear el envío del formulario -->
 <script>
-    function mostrarCargando(boton) {
-        boton.disabled = true;
-        let spinner = boton.querySelector('.spinner');
-        if (spinner) {
-            spinner.classList.remove('hidden'); // Muestra el spinner
-        }
-    }
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll("form").forEach(form => {
+            form.addEventListener("submit", function(event) {
+                let boton = form.querySelector("button");
+                if (boton) {
+                    let spinner = boton.querySelector('.spinner');
+                    let texto = boton.querySelector('.btn-text');
+
+                    if (spinner && texto) {
+                        spinner.classList.remove('hidden'); // Muestra el spinner
+                        texto.classList.add('hidden'); // Oculta el texto del botón
+                    }
+
+                    boton.disabled = true; // Deshabilita el botón para evitar múltiples clics
+                }
+            });
+        });
+    });
 </script>

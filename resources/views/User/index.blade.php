@@ -39,20 +39,85 @@
 
             </div>
 
-            <!-- FORMULARIO DE BUSQUEDA -->
-            <form method="GET" action="{{ route('users.index') }}" class="form-inline mt-3 mb-3">
-                <input type="text" name="name" class="form-control mb-3" placeholder="Buscar por nombre"
-                    value="{{ request('name') }}">
-                <button type="submit" class="btn btn-info ml-2">
-                    <i class="fas fa-search"></i> Buscar
-                </button>
-            </form>
-            <!-- Tabla de usuarios con edición en línea -->
-            <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+            <!-- FORMULARIO DE FILTROS -->
+            <div class="bg-white p-4 rounded-lg shadow-md">
+                <form method="GET" action="{{ route('users.index') }}" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Filtro: Nombre -->
+                    <input type="text" name="name" class="form-control" placeholder="Buscar por nombre"
+                        value="{{ request('name') }}">
+
+                    <!-- Filtro: Email -->
+                    <input type="text" name="email" class="form-control" placeholder="Buscar por email"
+                        value="{{ request('email') }}">
+
+                    <!-- Filtro: Rol -->
+                    <select name="rol" class="form-control">
+                        <option value="">-- Filtrar por Rol --</option>
+                        <option value="admin" {{ request('rol') == 'admin' ? 'selected' : '' }}>Admin</option>
+                        <option value="operario" {{ request('rol') == 'operario' ? 'selected' : '' }}>Operario</option>
+                        <option value="supervisor" {{ request('rol') == 'supervisor' ? 'selected' : '' }}>Supervisor
+                        </option>
+                    </select>
+
+                    <!-- Filtro: Categoría -->
+                    <input type="text" name="categoria" class="form-control" placeholder="Buscar por categoría"
+                        value="{{ request('categoria') }}">
+
+                    <!-- Filtro: Especialidad -->
+                    <input type="text" name="especialidad" class="form-control" placeholder="Buscar por especialidad"
+                        value="{{ request('especialidad') }}">
+
+                    <!-- Filtro: Turno -->
+                    <select name="turno" class="form-control">
+                        <option value="">-- Filtrar por Turno --</option>
+                        <option value="mañana" {{ request('turno') == 'mañana' ? 'selected' : '' }}>Mañana</option>
+                        <option value="tarde" {{ request('turno') == 'tarde' ? 'selected' : '' }}>Tarde</option>
+                        <option value="noche" {{ request('turno') == 'noche' ? 'selected' : '' }}>Noche</option>
+                    </select>
+
+                    <!-- Filtro: Estado -->
+                    <select name="estado" class="form-control">
+                        <option value="">-- Filtrar por Estado --</option>
+                        <option value="activo" {{ request('estado') == 'activo' ? 'selected' : '' }}>Activo</option>
+                        <option value="inactivo" {{ request('estado') == 'inactivo' ? 'selected' : '' }}>Inactivo
+                        </option>
+                    </select>
+
+                    <!-- Filtro: Número de registros a mostrar -->
+                    <select name="per_page" class="form-control">
+                        <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10 registros
+                        </option>
+                        <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25 registros
+                        </option>
+                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 registros
+                        </option>
+                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100 registros
+                        </option>
+                    </select>
+
+                    <!-- Botones -->
+                    <div class="col-span-2 md:col-span-4 flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                        <a href="{{ route('users.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Limpiar filtros
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TABLA DE USUARIOS -->
+            <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
                 <table class="w-full border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white">
                         <tr class="text-left text-sm uppercase">
-                            <th class="py-3 px-2 border text-center">ID</th>
+                            <th class="py-3 px-2 border text-center">
+                                <a
+                                    href="{{ request()->fullUrlWithQuery(['sort' => 'id', 'order' => request('order') === 'asc' ? 'desc' : 'asc']) }}">
+                                    ID <i class="fas fa-sort"></i>
+                                </a>
+                            </th>
                             <th class="py-3 px-2 border text-center">Nombre</th>
                             <th class="py-3 px-2 border text-center">Email</th>
                             <th class="py-3 px-2 border text-center">Rol</th>
@@ -118,7 +183,8 @@
                                     <template x-if="!editando">
                                         <span x-text="usuario.especialidad"></span>
                                     </template>
-                                    <select x-show="editando" x-model="usuario.especialidad" class="form-input w-full">
+                                    <select x-show="editando" x-model="usuario.especialidad"
+                                        class="form-input w-full">
                                         <option value="">Selecciona esp.</option>
                                         <option value="administrador">MSR20</option>
                                         <option value="administracion">SL28</option>
