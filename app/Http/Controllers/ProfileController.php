@@ -53,53 +53,52 @@ class ProfileController extends Controller
     {
         $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno'])->findOrFail($id);
 
+        // **Definir colores para cada turno**
+        $coloresTurnos = [
+            'mañana' => ['bg' => '#FFD700', 'border' => '#d4af37'],  // Amarillo
+            'tarde' => ['bg' => '#FF8C00', 'border' => '#cc7000'],   // Naranja
+            'noche' => ['bg' => '#1E90FF', 'border' => '#0050b3'],   // Azul
+            'flexible' => ['bg' => '#32CD32', 'border' => '#228b22'], // Verde
+            'vacaciones' => ['bg' => '#f87171', 'border' => '#dc2626'], // Rojo
+            'baja' => ['bg' => '#6366f1', 'border' => '#4338ca'], // Azul oscuro
+        ];
+
         // **Eventos de fichajes (entradas y salidas)**
         $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
-            $events = [];
-
-            // Entrada
-            $events[] = [
-                'title' => 'Entrada: ' . Carbon::parse($fichaje->entrada)->format('H:i'),
-                'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
-                'color' => '#28a745', // Verde para entradas
-                'allDay' => false
-            ];
-
-            // Salida (si existe)
-            if ($fichaje->salida) {
-                $events[] = [
+            return [
+                [
+                    'title' => 'Entrada: ' . Carbon::parse($fichaje->entrada)->format('H:i'),
+                    'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
+                    'color' => '#28a745', // Verde
+                    'allDay' => false
+                ],
+                $fichaje->salida ? [
                     'title' => 'Salida: ' . Carbon::parse($fichaje->salida)->format('H:i'),
                     'start' => Carbon::parse($fichaje->salida)->toIso8601String(),
-                    'color' => '#dc3545', // Rojo para salidas
+                    'color' => '#dc3545', // Rojo
                     'allDay' => false
-                ];
-            }
+                ] : null
+            ];
+        })->filter();
 
-            return $events;
-        });
+        // **Eventos de turnos asignados**
+        $eventosTurnos = $user->asignacionesTurnos->map(function ($asignacion) use ($coloresTurnos) {
+            $color = $coloresTurnos[$asignacion->turno->nombre] ?? ['bg' => '#808080', 'border' => '#606060']; // Gris por defecto
 
-        // **Eventos de turnos asignados (incluyendo vacaciones como turno)**
-        $eventosTurnos = $user->asignacionesTurnos->map(function ($asignacion) {
             return [
                 'title' => 'Turno: ' . ucfirst($asignacion->turno->nombre),
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
-                'color' => match ($asignacion->turno->nombre) {
-                    'mañana' => '#FFD700',  // Amarillo para turno de mañana
-                    'tarde' => '#FF8C00',   // Naranja para turno de tarde
-                    'noche' => '#1E90FF',   // Azul para turno de noche
-                    'flexible' => '#32CD32', // Verde para flexible
-                    'vacaciones' => '#f87171', // Rojo para vacaciones
-                    'baja' => '#6366f1', // Azul oscuro para baja
-                    default => '#808080',   // Gris si hay un error
-                },
-                'allDay' => true // Ocupa todo el día
+                'backgroundColor' => $color['bg'],
+                'borderColor' => $color['border'],
+                'textColor' => 'white',
+                'allDay' => true
             ];
         });
 
-        // **Combinar fichajes y turnos en un solo array**
+        // **Combinar eventos**
         $eventos = $eventosFichajes->merge($eventosTurnos);
 
-        return view('User.show', compact('user', 'eventos'));
+        return view('User.show', compact('user', 'eventos', 'coloresTurnos'));
     }
 
 

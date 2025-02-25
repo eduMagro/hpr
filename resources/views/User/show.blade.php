@@ -39,6 +39,7 @@
 
             // Cargar eventos directamente desde Laravel
             var eventosDesdeLaravel = {!! json_encode($eventos) !!};
+            var coloresTurnos = {!! json_encode($coloresTurnos) !!}; // Colores desde el backend
 
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
@@ -98,28 +99,10 @@
                                             showConfirmButton: false
                                         });
 
-                                        // Colores según tipo de día
-                                        let colores = {
-                                            vacaciones: {
-                                                bg: '#f87171',
-                                                border: '#dc2626'
-                                            }, // Rojo
-                                            baja: {
-                                                bg: '#6366f1',
-                                                border: '#4338ca'
-                                            }, // Azul
-                                            mañana: {
-                                                bg: '#34d399',
-                                                border: '#059669'
-                                            }, // Verde
-                                            tarde: {
-                                                bg: '#fbbf24',
-                                                border: '#d97706'
-                                            }, // Amarillo
-                                            noche: {
-                                                bg: '#a78bfa',
-                                                border: '#7c3aed'
-                                            } // Morado
+                                        // Obtener colores desde el backend
+                                        let color = coloresTurnos[tipoSeleccionado] || {
+                                            bg: '#808080',
+                                            border: '#606060'
                                         };
 
                                         // Agregar el nuevo evento sin recargar la página
@@ -128,10 +111,8 @@
                                                 .toUpperCase() + tipoSeleccionado
                                                 .slice(1),
                                             start: fechaSeleccionada,
-                                            backgroundColor: colores[
-                                                tipoSeleccionado].bg,
-                                            borderColor: colores[tipoSeleccionado]
-                                                .border,
+                                            backgroundColor: color.bg,
+                                            borderColor: color.border,
                                             textColor: 'white',
                                             allDay: true
                                         });
