@@ -34,9 +34,7 @@
                 <a href="{{ route('vacaciones.index') }}" class="btn btn-primary">Mostrar Vacaciones Globales</a>
                 <form action="{{ route('generar-turnos') }}" method="POST">
                     @csrf
-                    <button type="submit" class="btn btn-primary">
-                        Generar Turnos
-                    </button>
+                    <x-boton-cargando text="Generar Turnos" type="submit" />
                 </form>
 
             </div>
@@ -208,7 +206,7 @@
         </div>
         {{-- ------------------------------- CALENDARIO MODO OPERARIO -------------------------------- --}}
         <div class="mt-4 bg-white p-4 rounded-lg shadow-lg">
-            <h3 class="text-base font-semibold mb-2 text-center">Calendario de Fichajes</h3>
+            <h3 class="text-base font-semibold mb-2 text-center">Calendario de Turnos</h3>
             <div id="calendario"></div>
         </div>
     @endif
