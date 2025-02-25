@@ -60,10 +60,10 @@ class RegistroFichajeController extends Controller
             $fechaHoy = now()->toDateString();
 
             // Obtener coordenadas de la obra seleccionada
-        $obra = Obra::findOrFail($request->obra_id);
-        $latitud = $obra->latitud;
-        $longitud = $obra->longitud;
-        $radio = $obra->distancia;
+            $obra = Obra::findOrFail($request->obra_id);
+            $latitud = $obra->latitud;
+            $longitud = $obra->longitud;
+            $radio = $obra->distancia;
 
             // Calcular la distancia entre la ubicación del usuario y la nave
             $distancia = $this->calcularDistancia(
@@ -96,7 +96,7 @@ class RegistroFichajeController extends Controller
                 }
 
                 if (!$this->validarHoraEntrada($turnoNombre, now())) {
-                    return response()->json(['error' => 'No puedes fichar fuera de tu horario de turno.'], 403);
+                    $warning = 'Has fichado fuera de tu horario de turno.';
                 }
 
                 RegistroFichaje::create([
@@ -110,13 +110,17 @@ class RegistroFichajeController extends Controller
                 }
 
                 if (!$this->validarHoraSalida($turnoNombre, now())) {
-                    return response()->json(['error' => 'No puedes fichar salida fuera de tu horario de turno.'], 403);
+                    $warning = 'Has fichado salida fuera de tu horario de turno.';
                 }
 
                 $fichaje->update(['salida' => now()]);
             }
 
-            return response()->json(['success' => 'Fichaje registrado correctamente.']);
+            // Devolver éxito y warning si aplica
+            return response()->json([
+                'success' => 'Fichaje registrado correctamente.',
+                'warning' => $warning
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
         }
@@ -127,9 +131,9 @@ class RegistroFichajeController extends Controller
         $hora = $horaActual->format('H:i');
 
         return match ($turno) {
-            'mañana' => $hora >= '05:45' && $hora <= '08:30',
-            'tarde' => $hora >= '13:45' && $hora <= '16:30',
-            'noche' => $hora >= '11:45' && $hora <= '23:59' || $hora >= '00:00' && $hora <= '02:30',
+            'mañana' => $hora >= '05:45' && $hora <= '06:30',
+            'tarde' => $hora >= '13:45' && $hora <= '14:30',
+            'noche' => $hora >= '21:45' && $hora <= '22:30',
             default => false,
         };
     }
@@ -139,9 +143,9 @@ class RegistroFichajeController extends Controller
         $hora = $horaActual->format('H:i');
 
         return match ($turno) {
-            'mañana' => $hora >= '14:00' && $hora <= '15:00',
-            'tarde' => $hora >= '22:00' && $hora <= '23:00',
-            'noche' => $hora >= '06:00' && $hora <= '07:30',
+            'mañana' => $hora >= '13:45' && $hora <= '14:30',
+            'tarde' => $hora >= '21:45' && $hora <= '22:30',
+            'noche' => $hora >= '05:45' && $hora <= '06:30',
             default => false,
         };
     }

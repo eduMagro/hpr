@@ -38,7 +38,7 @@
                         Generar Turnos
                     </button>
                 </form>
-                
+
             </div>
 
             <!-- FORMULARIO DE BUSQUEDA -->
@@ -59,7 +59,7 @@
                             <th class="py-3 px-2 border text-center">Email</th>
                             <th class="py-3 px-2 border text-center">Rol</th>
                             <th class="py-3 px-2 border text-center">Categoría</th>
-                            <th class="py-3 px-2 border text-center">Especialidad</th> 
+                            <th class="py-3 px-2 border text-center">Especialidad</th>
                             <th class="py-3 px-2 border text-center">Turno</th>
                             <th class="py-3 px-2 border text-center">Estado</th>
                             <th class="py-3 px-2 border text-center">Acciones</th>
@@ -149,7 +149,8 @@
                                 </td>
 
                                 <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
-                                    <a href="{{ route('users.show', $user->id) }}" class="text-green-500 hover:underline">Ver</a>
+                                    <a href="{{ route('users.show', $user->id) }}"
+                                        class="text-green-500 hover:underline">Ver</a>
                                     <span> | </span>
                                     <button @click.stop="editando = !editando">
                                         <span x-show="!editando">✏️</span>
@@ -159,7 +160,7 @@
                                     <span> | </span>
                                     <x-boton-eliminar :action="route('users.destroy', $user->id)" />
                                 </td>
-                                
+
                             </tr>
                         @empty
                             <tr>
@@ -273,10 +274,18 @@
                                     console.log("📩 Respuesta del servidor:", data);
 
                                     if (data.success) {
+                                        let mensaje = data.success;
+
+                                        if (data.warning) {
+                                            mensaje += "\n⚠️ " + data.warning;
+                                        }
+
                                         Swal.fire({
-                                            icon: 'success',
-                                            title: 'Fichaje registrado',
-                                            text: data.success,
+                                            title: "Fichaje registrado",
+                                            text: mensaje,
+                                            icon: data.warning ? "warning" : "success",
+                                            timer: 3000,
+                                            showConfirmButton: false
                                         });
                                     } else {
                                         let errorMessage = data.error;

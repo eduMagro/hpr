@@ -96,7 +96,7 @@ class AlertaController extends Controller
                 'mensaje' => $request->mensaje,
                 'destinatario' => $request->destinatario,
                 'user_id_1' => Auth::id(), // Usuario que crea la alerta
-                'user_id_2' => session()->get('compañero_id', null), // Sin tilde en 'compañero'
+                'user_id_2' => session()->get('compañero_id', null),
                 'leida' => false, // Se marca como no leída por defecto
             ]);
 
