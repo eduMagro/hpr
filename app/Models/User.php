@@ -59,7 +59,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
-    
+
     // Relación: Un usuario tiene muchas entradas
     public function entradas()
     {
@@ -135,9 +135,5 @@ class User extends Authenticatable
     public function turnoActual()
     {
         return $this->hasOne(AsignacionTurno::class, 'user_id')->latest('fecha')->with('turno');
-    }
-    public function vacaciones()
-    {
-        return $this->hasMany(Vacaciones::class);
     }
 }

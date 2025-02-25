@@ -14,6 +14,6 @@ class Turno extends Model
 
     public function asignaciones()
     {
-        return $this->hasMany(AsignacionTurno::class);
+        return $this->hasMany(AsignacionTurno::class, 'turno_id');
     }
 }
