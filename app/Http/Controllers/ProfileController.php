@@ -51,10 +51,7 @@ class ProfileController extends Controller
 
     public function show($id)
     {
-        $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno', 'vacaciones'])->findOrFail($id);
-
-        // **Obtener fechas de vacaciones**
-        $fechasVacaciones = $user->vacaciones->pluck('fecha')->toArray();
+        $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno'])->findOrFail($id);
 
         // **Eventos de fichajes (entradas y salidas)**
         $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
@@ -81,10 +78,8 @@ class ProfileController extends Controller
             return $events;
         });
 
-        // **Eventos de turnos asignados (EXCLUYENDO los días que sean vacaciones)**
-        $eventosTurnos = $user->asignacionesTurnos->filter(function ($asignacion) use ($fechasVacaciones) {
-            return !in_array($asignacion->fecha, $fechasVacaciones); // Solo incluir si NO es un día de vacaciones
-        })->map(function ($asignacion) {
+        // **Eventos de turnos asignados (incluyendo vacaciones como turno)**
+        $eventosTurnos = $user->asignacionesTurnos->map(function ($asignacion) {
             return [
                 'title' => 'Turno: ' . ucfirst($asignacion->turno->nombre),
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
@@ -93,29 +88,20 @@ class ProfileController extends Controller
                     'tarde' => '#FF8C00',   // Naranja para turno de tarde
                     'noche' => '#1E90FF',   // Azul para turno de noche
                     'flexible' => '#32CD32', // Verde para flexible
+                    'vacaciones' => '#f87171', // Rojo para vacaciones
+                    'baja' => '#6366f1', // Azul oscuro para baja
                     default => '#808080',   // Gris si hay un error
                 },
                 'allDay' => true // Ocupa todo el día
             ];
         });
 
-        // **Eventos de vacaciones**
-        $eventosVacaciones = $user->vacaciones->map(function ($vacacion) {
-            return [
-                'title' => 'Vacaciones',
-                'start' => Carbon::parse($vacacion->fecha)->toIso8601String(),
-                'backgroundColor' => '#f87171', // Rojo claro para vacaciones
-                'borderColor' => '#dc2626', // Rojo oscuro para el borde
-                'textColor' => 'white',
-                'allDay' => true
-            ];
-        });
-
-        // **Combinar fichajes, turnos (sin vacaciones) y vacaciones en un solo array**
-        $eventos = $eventosFichajes->merge($eventosTurnos)->merge($eventosVacaciones);
+        // **Combinar fichajes y turnos en un solo array**
+        $eventos = $eventosFichajes->merge($eventosTurnos);
 
         return view('User.show', compact('user', 'eventos'));
     }
+
 
     /**
      * Display the user's profile form.
@@ -169,7 +155,7 @@ class ProfileController extends Controller
     }
     public function actualizarUsuario(Request $request, $id)
     {
-       
+
         try {
             // Validar los datos con mensajes personalizados
             $request->validate([
