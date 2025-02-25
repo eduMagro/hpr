@@ -56,7 +56,7 @@
                     var fechaSeleccionada = info.startStr;
 
                     Swal.fire({
-                        title: "Selecciona el tipo de día",
+                        title: "Elige turno para ese día",
                         html: `
                             <select id="tipo-dia" class="swal2-select">
                                 <option value="vacaciones">Vacaciones</option>
