@@ -18,6 +18,7 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
+
 class ProfileController extends Controller
 {
 
@@ -45,8 +46,56 @@ class ProfileController extends Controller
         $perPage = $request->input('per_page', 10);
         $registrosUsuarios = $query->paginate($perPage)->appends($request->except('page'));
 
+        // Obtener el usuario autenticado
+        $user = auth()->user();
+
+        // **Definir colores para cada turno**
+        $coloresTurnos = [
+            'mañana' => ['bg' => '#FFD700', 'border' => '#d4af37'],  // Amarillo
+            'tarde' => ['bg' => '#FF8C00', 'border' => '#cc7000'],   // Naranja
+            'noche' => ['bg' => '#1E90FF', 'border' => '#0050b3'],   // Azul
+            'flexible' => ['bg' => '#32CD32', 'border' => '#228b22'], // Verde
+            'vacaciones' => ['bg' => '#f87171', 'border' => '#dc2626'], // Rojo
+            'baja' => ['bg' => '#6366f1', 'border' => '#4338ca'], // Azul oscuro
+        ];
+
+        // **Eventos de fichajes**
+        $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
+            return [
+                [
+                    'title' => 'Entrada: ' . Carbon::parse($fichaje->entrada)->format('H:i'),
+                    'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
+                    'color' => '#28a745', // Verde para entradas
+                    'allDay' => false
+                ],
+                $fichaje->salida ? [
+                    'title' => 'Salida: ' . Carbon::parse($fichaje->salida)->format('H:i'),
+                    'start' => Carbon::parse($fichaje->salida)->toIso8601String(),
+                    'color' => '#dc3545', // Rojo para salidas
+                    'allDay' => false
+                ] : null
+            ];
+        })->filter();
+
+        // **Eventos de turnos asignados**
+        $eventosTurnos = $user->asignacionesTurnos->map(function ($asignacion) use ($coloresTurnos) {
+            $color = $coloresTurnos[$asignacion->turno->nombre] ?? ['bg' => '#808080', 'border' => '#606060']; // Gris por defecto
+
+            return [
+                'title' => 'Turno: ' . ucfirst($asignacion->turno->nombre),
+                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
+                'backgroundColor' => $color['bg'],
+                'borderColor' => $color['border'],
+                'textColor' => 'white',
+                'allDay' => true
+            ];
+        });
+
+        // **Combinar eventos**
+        $eventos = $eventosFichajes->merge($eventosTurnos);
+
         // Pasar datos a la vista
-        return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras'));
+        return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'eventos', 'coloresTurnos'));
     }
 
     public function show($id)

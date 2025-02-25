@@ -96,7 +96,7 @@ class RegistroFichajeController extends Controller
                 }
 
                 if (!$this->validarHoraEntrada($turnoNombre, now())) {
-                    $warning = 'Has fichado fuera de tu horario de turno.';
+                    $warning = 'Has fichado entrada fuera de tu horario de turno.';
                 }
 
                 RegistroFichaje::create([

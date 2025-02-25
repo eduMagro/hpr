@@ -177,6 +177,7 @@
             </div>
         </div>
     @else
+        {{-- ------------------------------- FICHAJE MODO OPERARIO -------------------------------- --}}
         <div class="flex justify-between items-center w-full gap-4 p-4">
             <select id="obraSeleccionada" class="w-full py-2 px-4 border rounded-md">
                 @foreach ($obras as $obra)
@@ -194,6 +195,7 @@
         </div>
 
         <div class="container mx-auto px-4 py-6">
+            {{-- ------------------------------- FICHA MODO OPERARIO -------------------------------- --}}
             <div class="bg-white p-6 rounded-lg shadow-lg">
                 <h3 class="text-lg font-semibold mb-2">Información del Usuario</h3>
                 <p><strong>Nombre:</strong> {{ auth()->user()->name }}</p>
@@ -204,8 +206,44 @@
                 <p><strong>Días de vacaciones restantes:</strong> {{ auth()->user()->dias_vacaciones }}</p>
             </div>
         </div>
+        {{-- ------------------------------- CALENDARIO MODO OPERARIO -------------------------------- --}}
+        <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-lg font-semibold mb-2">Calendario de Fichajes</h3>
+            <div id="calendario"></div>
+        </div>
     @endif
     </div>
+
+    <!-- Cargar FullCalendar con prioridad -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendario');
+
+            // Cargar eventos directamente desde Laravel
+            var eventosDesdeLaravel = {!! json_encode($eventos) !!};
+            var coloresTurnos = {!! json_encode($coloresTurnos) !!}; // Colores desde el backend
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                selectable: false, // ❌ Desactivar selección
+                editable: false, // ❌ Desactivar edición
+                events: eventosDesdeLaravel // ✅ Solo mostrar los turnos asignados
+            });
+
+            calendar.render();
+        });
+    </script>
+
     <script src="//unpkg.com/alpinejs" defer></script>
     <script>
         function registrarFichaje(tipo) {
@@ -284,8 +322,7 @@
                                             title: "Fichaje registrado",
                                             text: mensaje,
                                             icon: data.warning ? "warning" : "success",
-                                            timer: 3000,
-                                            showConfirmButton: false
+                                            showConfirmButton: true
                                         });
                                     } else {
                                         let errorMessage = data.error;
