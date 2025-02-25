@@ -82,7 +82,7 @@ class ProfileController extends Controller
             $color = $coloresTurnos[$asignacion->turno->nombre] ?? ['bg' => '#808080', 'border' => '#606060']; // Gris por defecto
 
             return [
-                'title' => 'Turno: ' . ucfirst($asignacion->turno->nombre),
+                'title' => ucfirst($asignacion->turno->nombre),
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
                 'backgroundColor' => $color['bg'],
                 'borderColor' => $color['border'],
@@ -135,7 +135,7 @@ class ProfileController extends Controller
             $color = $coloresTurnos[$asignacion->turno->nombre] ?? ['bg' => '#808080', 'border' => '#606060']; // Gris por defecto
 
             return [
-                'title' => 'Turno: ' . ucfirst($asignacion->turno->nombre),
+                'title' => ucfirst($asignacion->turno->nombre),
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
                 'backgroundColor' => $color['bg'],
                 'borderColor' => $color['border'],

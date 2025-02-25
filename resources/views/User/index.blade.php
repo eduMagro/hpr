@@ -207,13 +207,38 @@
             </div>
         </div>
         {{-- ------------------------------- CALENDARIO MODO OPERARIO -------------------------------- --}}
-        <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold mb-2">Calendario de Fichajes</h3>
+        <div class="mt-4 bg-white p-4 rounded-lg shadow-lg">
+            <h3 class="text-base font-semibold mb-2 text-center">Calendario de Fichajes</h3>
             <div id="calendario"></div>
         </div>
     @endif
     </div>
+    <!-- Estilos CSS para hacer los botones más pequeños en móviles -->
+    <style>
+        #calendario {
+            max-width: 100%;
+            overflow-x: auto;
+        }
 
+        /* 📌 Reducir el tamaño de los botones en pantallas pequeñas */
+        @media (max-width: 600px) {
+            .fc-button {
+                font-size: 12px !important;
+                /* Reducir el tamaño del texto */
+                padding: 4px 6px !important;
+                /* Reducir el padding del botón */
+                height: 26px !important;
+                /* Ajustar la altura */
+                min-width: 50px !important;
+                /* Ajustar el ancho mínimo */
+            }
+
+            .fc-toolbar-title {
+                font-size: 14px !important;
+                /* Reducir el tamaño del título */
+            }
+        }
+    </style>
     <!-- Cargar FullCalendar con prioridad -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
