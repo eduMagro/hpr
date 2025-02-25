@@ -309,31 +309,26 @@ class ProfileController extends Controller
             return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }
     }
+
+
     public function destroy(Request $request, $id)
     {
-        $admin = auth()->user();
+        try {
 
-        // Verificar que el usuario autenticado es un administrador
-        if ($admin->categoria !== 'administrador') {
-            return redirect()->route('dashboard')->with('error', 'No tienes permiso para eliminar usuarios.');
+            // Buscar el usuario a eliminar
+            $user = User::findOrFail($id);
+
+            // Validar la contraseña del administrador
+            if (!Hash::check($request->password, $user->password)) {
+                return back()->withErrors(['userDeletion.password' => 'La contraseña proporcionada es incorrecta.']);
+            }
+
+            // Eliminar usuario
+            $user->delete();
+
+            return redirect()->route('users.index')->with('success', 'Usuario eliminado correctamente.');
+        } catch (\Exception $e) {
+            return redirect()->route('users.index')->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
         }
-
-        // Buscar el usuario a eliminar
-        $user = User::findOrFail($id);
-
-        // Evitar que un administrador se elimine a sí mismo
-        if ($admin->id === $user->id) {
-            return redirect()->route('dashboard')->with('error', 'No puedes eliminar tu propia cuenta.');
-        }
-
-        // Validar la contraseña del administrador
-        if (!Hash::check($request->password, $admin->password)) {
-            return back()->withErrors(['userDeletion.password' => 'La contraseña proporcionada es incorrecta.']);
-        }
-
-        // Eliminar usuario
-        $user->delete();
-
-        return redirect()->route('users.index')->with('status', 'Usuario eliminado correctamente.');
     }
 }

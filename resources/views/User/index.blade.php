@@ -240,7 +240,8 @@
                                         <span x-show="editando" @click.stop="guardarCambios(usuario)">✅</span>
                                     </button>
                                     <span> | </span>
-                                    <x-boton-eliminar :action="route('users.destroy', $user->id)" />
+                                    <a href="{{ route('users.edit', $user->id) }}"
+                                        class="text-green-500 hover:underline">Ajustes</a>
                                 </td>
 
                             </tr>
