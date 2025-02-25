@@ -15,6 +15,7 @@
             <h3 class="text-lg font-semibold mb-2">Información del Usuario</h3>
             <p><strong>Nombre:</strong> {{ $user->name }}</p>
             <p><strong>Email:</strong> {{ $user->email }}</p>
+            <p><strong>Rol:</strong> {{ $user->rol }}</p>
             <p><strong>Categoría:</strong> {{ $user->categoria }}</p>
             <p><strong>Especialidad:</strong> {{ $user->especialidad }}</p>
             <p><strong>Días de vacaciones restantes:</strong> <span

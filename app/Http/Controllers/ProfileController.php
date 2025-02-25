@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 use App\Models\User;
-use App\Models\Vacaciones;
+use App\Models\AsignacionTurno;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -51,14 +51,16 @@ class ProfileController extends Controller
         if ($request->filled('especialidad')) {
             $query->where('users.especialidad', 'like', '%' . $request->input('especialidad') . '%');
         }
-
-        // Filtrar por turno
+        // Obtener la fecha de hoy
+        $hoy = Carbon::today()->toDateString();
+        // Filtrar por turno de hoy si se selecciona un turno
         if ($request->filled('turno')) {
-            $query->whereHas('asignacionesTurnos.turno', function ($q) use ($request) {
-                $q->where('nombre', $request->input('turno'));
+            $query->whereHas('asignacionesTurnos', function ($q) use ($request, $hoy) {
+                $q->where('fecha', $hoy)->whereHas('turno', function ($t) use ($request) {
+                    $t->where('nombre', $request->input('turno'));
+                });
             });
         }
-
         // Filtrar por estado
         if ($request->filled('estado')) {
             $query->where('users.estado', $request->input('estado'));
@@ -77,7 +79,19 @@ class ProfileController extends Controller
         // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
         $obras = Obra::where('completada', 0)->get();
+        // Obtener valores únicos desde la tabla users
+        $categorias = User::distinct()->pluck('categoria')->filter()->sort();
+        $especialidades = User::distinct()->pluck('especialidad')->filter()->sort();
+        $roles = User::distinct()->pluck('rol')->filter()->sort();
+        // Obtener la fecha de hoy
+        $hoy = Carbon::today()->toDateString();
 
+        // Obtener los turnos asignados para hoy desde la tabla asignaciones_turnos
+        $turnosHoy = AsignacionTurno::where('fecha', $hoy)
+            ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
+            ->pluck('turnos.nombre')
+            ->unique()
+            ->sort();
         // Aplicar filtros
         $query = $this->aplicarFiltros($request);
 
@@ -134,7 +148,7 @@ class ProfileController extends Controller
         $eventos = $eventosFichajes->merge($eventosTurnos);
 
         // Pasar datos a la vista
-        return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'eventos', 'coloresTurnos'));
+        return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'eventos', 'coloresTurnos', 'categorias', 'especialidades', 'roles', 'turnosHoy'));
     }
 
     public function show($id)

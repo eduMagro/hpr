@@ -12,23 +12,6 @@
     </x-slot>
     @if (Auth::check() && Auth::user()->categoria == 'administrador')
         <div class="container mx-auto px-4 py-6">
-            <div class="flex justify-between items-center w-full gap-4 p-4">
-                <select id="obraSeleccionada" class="w-full py-2 px-4 border rounded-md">
-                    @foreach ($obras as $obra)
-                        <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="flex justify-between items-center w-full gap-4 p-4">
-                <button onclick="registrarFichaje('entrada')"
-                    class="w-full py-2 px-4 bg-green-600 text-white rounded-md">
-                    Entrada
-                </button>
-                <button onclick="registrarFichaje('salida')" class="w-full py-2 px-4 bg-red-600 text-white rounded-md">
-                    Salida
-                </button>
-            </div>
-
             <div class="mb-4 flex items-center space-x-4">
                 <a href="{{ route('register') }}" class="btn btn-primary">Registrar Usuario</a>
                 <a href="{{ route('vacaciones.index') }}" class="btn btn-primary">Mostrar Vacaciones Globales</a>
@@ -36,73 +19,108 @@
                     @csrf
                     <x-boton-cargando text="Generar Turnos" type="submit" />
                 </form>
-
+                <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#filtrosBusqueda">
+                    🔍 Filtros Avanzados
+                </button>
             </div>
 
             <!-- FORMULARIO DE FILTROS -->
-            <div class="bg-white p-4 rounded-lg shadow-md">
-                <form method="GET" action="{{ route('users.index') }}" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <!-- Filtro: Nombre -->
-                    <input type="text" name="name" class="form-control" placeholder="Buscar por nombre"
-                        value="{{ request('name') }}">
-
-                    <!-- Filtro: Email -->
-                    <input type="text" name="email" class="form-control" placeholder="Buscar por email"
-                        value="{{ request('email') }}">
-
-                    <!-- Filtro: Rol -->
-                    <select name="rol" class="form-control">
-                        <option value="">-- Filtrar por Rol --</option>
-                        <option value="admin" {{ request('rol') == 'admin' ? 'selected' : '' }}>Admin</option>
-                        <option value="operario" {{ request('rol') == 'operario' ? 'selected' : '' }}>Operario</option>
-                        <option value="supervisor" {{ request('rol') == 'supervisor' ? 'selected' : '' }}>Supervisor
-                        </option>
-                    </select>
-
-                    <!-- Filtro: Categoría -->
-                    <input type="text" name="categoria" class="form-control" placeholder="Buscar por categoría"
-                        value="{{ request('categoria') }}">
-
-                    <!-- Filtro: Especialidad -->
-                    <input type="text" name="especialidad" class="form-control" placeholder="Buscar por especialidad"
-                        value="{{ request('especialidad') }}">
-
-                    <!-- Filtro: Turno -->
-                    <select name="turno" class="form-control">
-                        <option value="">-- Filtrar por Turno --</option>
-                        <option value="mañana" {{ request('turno') == 'mañana' ? 'selected' : '' }}>Mañana</option>
-                        <option value="tarde" {{ request('turno') == 'tarde' ? 'selected' : '' }}>Tarde</option>
-                        <option value="noche" {{ request('turno') == 'noche' ? 'selected' : '' }}>Noche</option>
-                    </select>
-
-                    <!-- Filtro: Estado -->
-                    <select name="estado" class="form-control">
-                        <option value="">-- Filtrar por Estado --</option>
-                        <option value="activo" {{ request('estado') == 'activo' ? 'selected' : '' }}>Activo</option>
-                        <option value="inactivo" {{ request('estado') == 'inactivo' ? 'selected' : '' }}>Inactivo
-                        </option>
-                    </select>
-
-                    <!-- Filtro: Número de registros a mostrar -->
-                    <select name="per_page" class="form-control">
-                        <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10 registros
-                        </option>
-                        <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25 registros
-                        </option>
-                        <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 registros
-                        </option>
-                        <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100 registros
-                        </option>
-                    </select>
-
-                    <!-- Botones -->
-                    <div class="col-span-2 md:col-span-4 flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search"></i> Buscar
-                        </button>
-                        <a href="{{ route('users.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Limpiar filtros
-                        </a>
+            <div id="filtrosBusqueda" class="collapse">
+                <form method="GET" action="{{ route('users.index') }}" class="card card-body shadow-sm">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <!-- Filtro: Nombre -->
+                            <input type="text" name="name" class="form-control" placeholder="Buscar por nombre"
+                                value="{{ request('name') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <!-- Filtro: Email -->
+                            <input type="text" name="email" class="form-control" placeholder="Buscar por email"
+                                value="{{ request('email') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <!-- Filtro: Rol -->
+                            <select name="rol" class="form-control">
+                                <option value="">-- Filtrar por Rol --</option>
+                                @foreach ($roles as $nombre)
+                                    <option value="{{ $nombre }}"
+                                        {{ request('rol') == $nombre ? 'selected' : '' }}>
+                                        {{ ucfirst($nombre) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <!-- Filtro: Categoría -->
+                            <select name="categoria" class="form-control">
+                                <option value="">-- Filtrar por Categoría --</option>
+                                @foreach ($categorias as $nombre)
+                                    <option value="{{ $nombre }}"
+                                        {{ request('categoria') == $nombre ? 'selected' : '' }}>
+                                        {{ ucfirst($nombre) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <!-- Filtro: Especialidad -->
+                            <select name="especialidad" class="form-control">
+                                <option value="">-- Filtrar por Especialidad --</option>
+                                @foreach ($especialidades as $nombre)
+                                    <option value="{{ $nombre }}"
+                                        {{ request('especialidad') == $nombre ? 'selected' : '' }}>
+                                        {{ ucfirst($nombre) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <!-- Filtro: Turno -->
+                            <select name="turno" class="form-control">
+                                <option value="">-- Filtrar por Turno Actual --</option>
+                                @foreach ($turnosHoy as $turno)
+                                    <option value="{{ $turno }}"
+                                        {{ request('turno') == $turno ? 'selected' : '' }}>
+                                        {{ ucfirst($turno) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <!-- Filtro: Estado -->
+                            <select name="estado" class="form-control">
+                                <option value="">-- Filtrar por Estado --</option>
+                                <option value="activo" {{ request('estado') == 'activo' ? 'selected' : '' }}>Activo
+                                </option>
+                                <option value="inactivo" {{ request('estado') == 'inactivo' ? 'selected' : '' }}>
+                                    Inactivo
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <!-- Filtro: Número de registros a mostrar -->
+                            <select name="per_page" class="form-control">
+                                <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10 registros
+                                </option>
+                                <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25 registros
+                                </option>
+                                <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 registros
+                                </option>
+                                <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100
+                                    registros
+                                </option>
+                            </select>
+                        </div>
+                        <!-- Botones -->
+                        <div class="col-12 d-flex justify-content-between">
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                            <a href="{{ route('planillas.index') }}" class="btn btn-warning">
+                                <i class="fas fa-undo"></i> Resetear Filtros
+                            </a>
+                        </div>
                     </div>
                 </form>
             </div>
