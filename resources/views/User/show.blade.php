@@ -55,15 +55,27 @@
                     var fechaSeleccionada = info.startStr;
 
                     Swal.fire({
-                        title: "¿Registrar vacaciones?",
-                        text: `¿Quieres registrar el ${fechaSeleccionada} como vacaciones?`,
-                        icon: "question",
+                        title: "Selecciona el tipo de día",
+                        html: `
+                            <select id="tipo-dia" class="swal2-select">
+                                <option value="vacaciones">Vacaciones</option>
+                                <option value="baja">Baja</option>
+                                <option value="mañana">Mañana</option>
+                                <option value="tarde">Tarde</option>
+                                <option value="noche">Noche</option>
+                            </select>
+                        `,
                         showCancelButton: true,
-                        confirmButtonText: "Sí, registrar",
-                        cancelButtonText: "Cancelar"
+                        confirmButtonText: "Registrar",
+                        cancelButtonText: "Cancelar",
+                        preConfirm: () => {
+                            return document.getElementById("tipo-dia").value;
+                        }
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            fetch("{{ route('vacaciones.store') }}", {
+                            let tipoSeleccionado = result.value;
+
+                            fetch("{{ route('asignaciones-turnos.store') }}", {
                                     method: "POST",
                                     headers: {
                                         "Content-Type": "application/json",
@@ -71,7 +83,8 @@
                                     },
                                     body: JSON.stringify({
                                         user_id: "{{ $user->id }}",
-                                        fecha: fechaSeleccionada
+                                        fecha: fechaSeleccionada,
+                                        tipo: tipoSeleccionado
                                     })
                                 })
                                 .then(response => response.json())
@@ -85,23 +98,40 @@
                                             showConfirmButton: false
                                         });
 
-                                        let vacacionesRestantesElement = document
-                                            .getElementById("vacaciones-restantes");
-                                        if (vacacionesRestantesElement) {
-                                            let diasRestantes = parseInt(
-                                                vacacionesRestantesElement.innerText);
-                                            if (!isNaN(diasRestantes)) {
-                                                vacacionesRestantesElement.innerText =
-                                                    diasRestantes - 1;
-                                            }
-                                        }
+                                        // Colores según tipo de día
+                                        let colores = {
+                                            vacaciones: {
+                                                bg: '#f87171',
+                                                border: '#dc2626'
+                                            }, // Rojo
+                                            baja: {
+                                                bg: '#6366f1',
+                                                border: '#4338ca'
+                                            }, // Azul
+                                            mañana: {
+                                                bg: '#34d399',
+                                                border: '#059669'
+                                            }, // Verde
+                                            tarde: {
+                                                bg: '#fbbf24',
+                                                border: '#d97706'
+                                            }, // Amarillo
+                                            noche: {
+                                                bg: '#a78bfa',
+                                                border: '#7c3aed'
+                                            } // Morado
+                                        };
 
-                                        // Agregar el nuevo evento de vacaciones al calendario sin recargar
+                                        // Agregar el nuevo evento sin recargar la página
                                         calendar.addEvent({
-                                            title: 'Vacaciones',
+                                            title: tipoSeleccionado.charAt(0)
+                                                .toUpperCase() + tipoSeleccionado
+                                                .slice(1),
                                             start: fechaSeleccionada,
-                                            backgroundColor: '#f87171',
-                                            borderColor: '#dc2626',
+                                            backgroundColor: colores[
+                                                tipoSeleccionado].bg,
+                                            borderColor: colores[tipoSeleccionado]
+                                                .border,
                                             textColor: 'white',
                                             allDay: true
                                         });
@@ -118,7 +148,7 @@
                                     console.error("Error:", error);
                                     Swal.fire({
                                         title: "Error",
-                                        text: "Ocurrió un problema al registrar las vacaciones.",
+                                        text: "Ocurrió un problema al registrar el día.",
                                         icon: "error"
                                     });
                                 });
@@ -130,6 +160,7 @@
             calendar.render();
         });
     </script>
+
 
 
 </x-app-layout>
