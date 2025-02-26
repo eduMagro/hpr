@@ -51,7 +51,7 @@
 
 
                         <div class="mb-4">
-                            <label for="rol" class="block text-sm font-semibold">Destino (Rol):</label>
+                            <label for="rol" class="block text-sm font-semibold">Destinatarios Generales</label>
                             <select id="rol" name="rol" class="w-full border rounded-lg p-2" x-model="rol"
                                 @change="rol = ''">
                                 <option value="">-- Seleccionar un Rol --</option>
@@ -62,7 +62,7 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="categoria" class="block text-sm font-semibold">categoria (Categoría):</label>
+                            <label for="categoria" class="block text-sm font-semibold">Destinatarios particulares</label>
                             <select id="categoria" name="categoria" class="w-full border rounded-lg p-2"
                                 x-model="categoria" @change="categoria = ''">
                                 <option value="">-- Seleccionar una Categoría --</option>
@@ -121,20 +121,20 @@
                         </div>
                         @if (auth()->user()->categoria == 'administrador')
                             <div class="col-md-2">
-                                <label for="rol" class="font-semibold">Filtrar por destino:</label>
+                                <label for="rol" class="font-semibold">Filtrar por roles:</label>
                                 <select id="rol" name="rol" class="w-full border rounded-lg p-2"
                                     x-model="rol" @change="rol = ''">
-                                    <option value="">-- Filtrar por destinatario --</option>
+                                    <option value="">-- Filtrar por rol --</option>
                                     @foreach ($roles as $rol)
                                         <option value="{{ $rol }}">{{ ucfirst($rol) }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <label for="categoria" class="font-semibold">Filtrar por destinatario:</label>
+                                <label for="categoria" class="font-semibold">Filtrar por categorías:</label>
                                 <select id="categoria" name="categoria" class="w-full border rounded-lg p-2"
                                     x-model="categoria" @change="categoria = ''">
-                                    <option value="">-- Filtrar por destinatario --</option>
+                                    <option value="">-- Filtrar por categoría --</option>
                                     @foreach ($categorias as $categoria)
                                         <option value="{{ $categoria }}">{{ ucfirst($categoria) }}</option>
                                     @endforeach

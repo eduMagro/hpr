@@ -540,7 +540,7 @@
     </script>
 <script>
     const maquinaId = @json($maquina->id);
-    const ubicacionId = @json($ubicacion->id);
+    const ubicacionId = @json(optional($ubicacion)->id); // Esto puede ser null si no se encontró
 </script>
 
 
