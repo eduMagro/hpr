@@ -49,9 +49,8 @@ class MaquinaController extends Controller
             'elementos.etiquetaRelacion',
             'productos'
         ])->findOrFail($id);
-        $ubicacion = Ubicacion::where('nombre', 'like', '%' . $maquina->nombre . '%')->first();
+        $ubicacion = Ubicacion::where('descripcion', 'like', '%' . $maquina->codigo . '%')->first();
 
-        
         $usuario1 = auth()->user();
         $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null;
 
