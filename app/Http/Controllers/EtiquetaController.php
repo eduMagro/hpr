@@ -240,7 +240,7 @@ class etiquetaController extends Controller
 
                 foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
                     // Si la máquina es ID 7, solo permitir diámetro 5
-                    if ($maquina_id->tipo == 'ensambladora' && $diametro != 5) {
+                    if ($maquina->tipo == 'ensambladora' && $diametro != 5) {
                         continue; // Saltar cualquier otro diámetro
                     }
 
@@ -324,6 +324,7 @@ class etiquetaController extends Controller
                     // Asignar hasta dos productos al elemento según lo requerido
                     $elemento->producto_id = $productosAsignados[0] ?? null;
                     $elemento->producto_id_2 = $productosAsignados[1] ?? null;
+                    $elemento->producto_id_3 = $productosAsignados[2] ?? null;
                     $elemento->estado = "completado";
                     $elemento->ubicacion_id = $ubicacion->id;
                     $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
@@ -336,7 +337,7 @@ class etiquetaController extends Controller
                             // Asignar "IDEA 5"
                             $elemento->maquina_id_2 = 7;
                             // Registrar en el log de Laravel para depuración
-    Log::info('La máquina es cortadora_dobladora, asignamos maquina_id_2 = 7 al elemento con ID: ' . $elemento->id);
+
                         } elseif ($maquina->tipo === 'ensambladora') {
 
                             // Buscar una máquina de soldar disponible
@@ -408,8 +409,9 @@ class etiquetaController extends Controller
                     $planilla->estado = "completada";
                     $planilla->save();
                 }
-            } elseif ($etiqueta->estado == "ensamblando") {    // ---------------------------------- E N S A M B L A N D O
-                if ($maquina->tipo = !'ensambladora') {
+            } elseif ($etiqueta->estado == "ensamblando") {    // ------------------------------------------------------------ E N S A M B L A N D O
+                Log::info('vamos a ver que tiene $maquina' . $maquina);
+                if ($maquina->tipo !== 'ensambladora') {
                     return response()->json([
                         'success' => false,
                         'error' => "La etiqueta esta en otra máquina",
@@ -421,7 +423,7 @@ class etiquetaController extends Controller
 
                 foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
                     // Si la máquina es ID 7, solo permitir diámetro 5
-                    if ($maquina_id->tipo == 'ensambladora' && $diametro != 5) {
+                    if ($maquina->tipo == 'ensambladora' && $diametro != 5) {
                         continue; // Saltar cualquier otro diámetro
                     }
 
@@ -581,7 +583,7 @@ class etiquetaController extends Controller
                     $planilla->save();
                 }
             } elseif ($etiqueta->estado == "soldando") {     // ---------------------------------- S O L D A N D O
-                if ($maquina->tipo = !'soldadora') {
+                if ($maquina->tipo !== 'soldadora') {
                     return response()->json([
                         'success' => false,
                         'error' => "La etiqueta esta en otra máquina",
@@ -649,96 +651,16 @@ class etiquetaController extends Controller
                     'success' => false,
                     'error' => "Ya la has completado.",
                 ], 400);
-                // ---------------------------------- REVERTIR PESOS --  C O M P L E T A D O
-                // $producto1 = $etiqueta->producto_id ? $maquina->productos()->find($etiqueta->producto_id) : null;
-                // $producto2 = $etiqueta->producto_id_2 ? $maquina->productos()->find($etiqueta->producto_id_2) : null;
-
-
-                // Se toma como referencia el peso total original de la etiqueta
-                // $pesoRestaurar = $etiqueta->peso;
-
-                // Restaurar en producto1 (sin sobrepasar el peso_inicial)
-                // if ($producto1) {
-                //     $pesoIncremento = min($pesoRestaurar, $producto1->peso_inicial - $producto1->peso_stock);
-                //     $producto1->peso_stock += $pesoIncremento;
-                //     $pesoRestaurar -= $pesoIncremento;
-                // Se restaura el estado al original (o se deja "fabricando" según la lógica de negocio)
-                //     $producto1->estado = "fabricando";
-                //     $producto1->save();
-                // }
-
-                // Restaurar en producto2, si aún queda peso pendiente por restaurar
-                // if ($pesoRestaurar > 0 && $producto2) {
-                //     $pesoIncremento = min($pesoRestaurar, $producto2->peso_inicial - $producto2->peso_stock);
-                //     $producto2->peso_stock += $pesoIncremento;
-                //     $pesoRestaurar -= $pesoIncremento;
-                //     $producto2->estado = "fabricando";
-                //     $producto2->save();
-                // }
-
-                // ---------------------------------- REVERTIR ELEMENTOS -- C O M P L E T A D O
-
-                // 2. (Opcional) Revertir el estado de los elementos asociados a la etiqueta,
-                // en caso de que hayan sido modificados (por ejemplo, pasar de "fabricando" a "pendiente")
-                // foreach ($elementosEnMaquina as $elemento) {
-                //     $elemento->estado = "pendiente";
-                //     $elemento->fecha_inicio = null;
-                //     $elemento->fecha_finalizacion = null;
-                //     $elemento->users_id = null;
-                //     $elemento->users_id_2 = null;
-                //     $elemento->save();
-                // }
-
-                // // ---------------------------------- REVERTIR ETIQUETAS -- C O M P L E T A D O
-                // $etiqueta->fecha_inicio = null;
-                // $etiqueta->fecha_finalizacion = null;
-                // $etiqueta->estado = "pendiente";
-                // $etiqueta->users_id_1 = null;
-                // $etiqueta->users_id_2 = null;
-                // $etiqueta->producto_id = null;
-                // $etiqueta->producto_id_2 = null;
-                // $etiqueta->save();
-                // // ---------------------------------- REVERTIR ETIQUETAS -- C O M P L E T A D O
-                // $planilla->fecha_inicio = null;
-                // $planilla->fecha_finalizacion = null;
-                // $planilla->estado = 'pendiente';
-                // $planilla->save();
             }
 
 
             DB::commit();
-
-            // Preparar una lista de productos afectados (únicos) para incluir en la respuesta
-            $productosAfectados = [];
-            foreach ($elementosEnMaquina as $elemento) {
-                if ($elemento->producto_id) {
-                    $producto = $maquina->productos()->find($elemento->producto_id);
-                    if ($producto && !collect($productosAfectados)->pluck('id')->contains($producto->id)) {
-                        $productosAfectados[] = [
-                            'id' => $producto->id,
-                            'peso_stock' => $producto->peso_stock,
-                            'peso_inicial' => $producto->peso_inicial,
-                        ];
-                    }
-                }
-                if ($elemento->producto_id_2) {
-                    $producto = $maquina->productos()->find($elemento->producto_id_2);
-                    if ($producto && !collect($productosAfectados)->pluck('id')->contains($producto->id)) {
-                        $productosAfectados[] = [
-                            'id' => $producto->id,
-                            'peso_stock' => $producto->peso_stock,
-                            'peso_inicial' => $producto->peso_inicial,
-                        ];
-                    }
-                }
-            }
 
             return response()->json([
                 'success' => true,
                 'estado' => $etiqueta->estado,
                 'fecha_inicio' => $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
                 'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
-                'productos_afectados' => $productosAfectados,
                 'warnings' => $warnings // Incluir los warnings en la respuesta
             ]);
         } catch (\Exception $e) {
