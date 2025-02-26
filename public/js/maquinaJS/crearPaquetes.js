@@ -131,7 +131,6 @@ function crearPaquete() {
                 throw new Error("Error en verificación de ítems.");
             }
 
-            const ubicacionId = document.getElementById("ubicacionInput")?.value || null;
             console.log("Ubicación ID obtenida:", ubicacionId);
 
             return fetch("/paquetes", {
