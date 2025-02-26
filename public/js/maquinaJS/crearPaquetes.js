@@ -1,11 +1,4 @@
-// Recuperamos los datos inyectados en el div
-const dataContainer = document.getElementById('dataVariables');
-const etiquetas = JSON.parse(dataContainer.getAttribute('data-etiquetas'));
-const elementos = JSON.parse(dataContainer.getAttribute('data-elementos'));
-const subpaquetes = JSON.parse(dataContainer.getAttribute('data-subpaquetes'));
-
 const items = [];
-let totalPeso = 0;
 
 document.getElementById("qrItem").addEventListener("keypress", function (event) {
     if (event.key === "Enter") {
@@ -14,31 +7,11 @@ document.getElementById("qrItem").addEventListener("keypress", function (event) 
     }
 });
 
-// Función que, según el tipo, busca en el array correspondiente y extrae el peso.
-// Se asume que cada objeto (etiqueta, elemento o subpaquete) tiene una propiedad "id" para identificarlo
-// y una propiedad "peso" con su valor.
-function getPesoFromData(itemType, itemCode) {
-    let peso = 0;
-    if (itemType === "etiqueta") {
-        const encontrado = etiquetas.find(item => item.id == itemCode);
-        peso = encontrado ? parseFloat(encontrado.peso) : 0;
-    } else if (itemType === "elemento") {
-        const encontrado = elementos.find(item => item.id == itemCode);
-        peso = encontrado ? parseFloat(encontrado.peso) : 0;
-    } else if (itemType === "subpaquete") {
-        const encontrado = subpaquetes.find(item => item.id == itemCode);
-        peso = encontrado ? parseFloat(encontrado.peso) : 0;
-    }
-    return peso;
-}
 
 function agregarItem() {
     const qrItem = document.getElementById("qrItem");
     const itemCode = qrItem.value.trim();
     const itemType = document.getElementById("itemType").value.trim().toLowerCase();
-
-    // Obtenemos el peso desde la información inyectada
-    const itemPeso = getPesoFromData(itemType, itemCode);
 
     if (!itemCode) {
         Swal.fire({
@@ -50,16 +23,7 @@ function agregarItem() {
         return;
     }
 
-    if (isNaN(itemPeso) || itemPeso <= 0) {
-        Swal.fire({
-            icon: "warning",
-            title: "Peso Inválido",
-            text: "El peso del item no es válido.",
-            confirmButtonColor: "#3085d6",
-        });
-        return;
-    }
-
+    
     if (items.some((i) => i.id === itemCode)) {
         Swal.fire({
             icon: "error",
@@ -71,25 +35,23 @@ function agregarItem() {
         return;
     }
 
-    const newItem = { id: itemCode, type: itemType, peso: itemPeso };
+    const newItem = { id: itemCode, type: itemType};
     items.push(newItem);
-    totalPeso += itemPeso; // Sumar peso al total
+   
 
     actualizarLista();
 }
 
-function eliminarItem(itemCode, itemPeso) {
+function eliminarItem(itemCode) {
     const index = items.findIndex((i) => i.id === itemCode);
     if (index > -1) {
         items.splice(index, 1);
-        totalPeso -= itemPeso; // Restar el peso del item eliminado
         actualizarLista();
     }
 }
 
 function actualizarLista() {
     const itemsList = document.getElementById("itemsList");
-    const totalPesoElement = document.getElementById("totalPeso");
 
     // Limpiar la lista
     itemsList.innerHTML = "";
@@ -97,20 +59,17 @@ function actualizarLista() {
     // Volver a renderizar los elementos
     items.forEach((item) => {
         const listItem = document.createElement("li");
-        listItem.textContent = `${item.type}: ${item.id} - ${item.peso} kg`;
+        listItem.textContent = `${item.type}: ${item.id}`;
         listItem.dataset.code = item.id;
 
         const removeButton = document.createElement("button");
         removeButton.textContent = "❌";
         removeButton.className = "ml-2 text-red-600 hover:text-red-800";
-        removeButton.onclick = () => eliminarItem(item.id, item.peso);
+        removeButton.onclick = () => eliminarItem(item.id);
 
         listItem.appendChild(removeButton);
         itemsList.appendChild(listItem);
     });
-
-    // Actualizar el total de peso
-    totalPesoElement.textContent = `Total: ${totalPeso.toFixed(2)} kg`;
 }
 
 function crearPaquete() {

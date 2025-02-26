@@ -141,7 +141,7 @@
                             });
              
                     } else {
-                        // Del conjunto de elementos asociados a la máquina, eliminamos aquellos cuyo estado es 'completado'
+                        // Del conjunto de elementos asociados a la máquina,
                         $elementosAgrupados = $maquina->elementos->groupBy('etiqueta_id');
                       
                     }
@@ -366,11 +366,6 @@
                             placeholder="Escanea un QR..." autofocus>
                         <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
                     </div>
-                    <div id="dataVariables"
-     data-etiquetas='@json($etiquetas)'
-     data-elementos='@json($elementos)'
-     data-subpaquetes='@json($subpaquetes)'>
-</div>
 
                     <!-- Sistema de inputs para crear paquetes -->
                     <div class="bg-gray-100 border p-2 mb-2 shadow-md rounded-lg">
