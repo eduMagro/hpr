@@ -327,7 +327,7 @@ class ProfileController extends Controller
             $user->delete();
 
             return redirect()->route('users.index')->with('success', 'Usuario eliminado correctamente.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return redirect()->route('users.index')->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
         }
     }

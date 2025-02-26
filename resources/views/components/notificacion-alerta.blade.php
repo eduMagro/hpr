@@ -59,10 +59,27 @@
             .then(data => {
                 if (data.cantidad > 0) {
                     let notificacion = document.getElementById("notificacion-alerta");
-                    notificacion.style.display = "block"; // Mostrar el div
+                    let notificacionTexto = document.getElementById("notificacion-alertas-texto");
+
+                    // Determinar si es singular o plural
+                    let mensaje = data.cantidad === 1 
+                        ? `🔔 Tienes 1 alerta sin leer`
+                        : `🔔 Tienes ${data.cantidad} alertas sin leer`;
+
+                    // Mostrar el div de notificación
+                    notificacion.style.display = "block";
                     notificacion.classList.add("visible");
+
+                    // Actualizar el texto con el conteo
+                    notificacionTexto.innerHTML = mensaje;
+                       // Si el usuario es gruista, reproducir un sonido
+                       if ("{{ auth()->user()->rol }}" === "gruista") {
+                        let sonido = new Audio("/sonidos/alerta1.mp3"); // Ruta al archivo de sonido
+                        sonido.play().catch(error => console.error("Error al reproducir el sonido:", error));
+                    }
                 }
             })
             .catch(error => console.error("Error al obtener alertas:", error));
     });
 </script>
+

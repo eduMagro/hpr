@@ -3,103 +3,123 @@
 namespace App\Http\Controllers;
 
 use App\Models\Alerta;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Exception;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class AlertaController extends Controller
 {
-
     private function aplicarFiltros($query)
     {
         $usuario = Auth::user();
-
-        // Aplicar orden por fecha de creación descendente para que la más reciente sea la primera
+    
+        // Aplicar orden por fecha de creación descendente
         $query->orderBy('id', 'desc');
-
-        // Filtrar por destinatario según la categoría del usuario (excepto administradores)
+    
+        // Filtrar por destino (rol) o destinatario (categoría), excepto administradores
         if ($usuario->categoria !== 'administrador') {
-            $query->where('destinatario', $usuario->categoria);
+            $query->where(function ($q) use ($usuario) {
+                $q->where('destino', $usuario->rol)
+                  ->orWhere('destinatario', $usuario->categoria);
+            });
         } elseif (request()->filled('destinatario') && request('destinatario') !== 'todos') {
-            // Si es administrador y ha seleccionado un destinatario específico
+            // Si el administrador ha seleccionado un destinatario específico
             $query->where('destinatario', request('destinatario'));
+        } elseif (request()->filled('destino')) {
+            // Si el administrador ha seleccionado un destino específico
+            $query->where('destino', request('destino'));
         }
-
+    
         // Filtrar por ID de la alerta
         if (request()->filled('alerta_id')) {
             $query->where('id', request('alerta_id'));
         }
-
+    
         // Filtrar por Usuario 1
         if (request()->filled('usuario1')) {
             $query->whereHas('usuario1', function ($q) {
                 $q->where('name', 'like', '%' . request('usuario1') . '%');
             });
         }
-
+    
         // Filtrar por Usuario 2
         if (request()->filled('usuario2')) {
             $query->whereHas('usuario2', function ($q) {
                 $q->where('name', 'like', '%' . request('usuario2') . '%');
             });
         }
-
+    
         // Filtrar por mensaje
         if (request()->filled('mensaje')) {
             $query->where('mensaje', 'like', '%' . request('mensaje') . '%');
         }
-
+    
         // Filtrar por fecha de creación
         if (request()->filled('fecha_inicio')) {
             $query->whereDate('created_at', '>=', request('fecha_inicio'));
         }
-
+    
         if (request()->filled('fecha_fin')) {
             $query->whereDate('created_at', '<=', request('fecha_fin'));
         }
-
+    
         // Filtrar por cantidad de registros por página
-        $perPage = request('per_page', 10); // Valor por defecto: 10
+        $perPage = request('per_page', 10);
         return $query->paginate($perPage);
     }
+    
 
     public function index()
     {
         try {
             DB::beginTransaction();
     
-            // Verificar si el usuario está autenticado
             $usuario = Auth::user();
             if (!$usuario) {
-                return redirect()->route('login')->with('swal_error', 'Debe iniciar sesión para ver las alertas.');
+                return redirect()->route('login')->with('error', 'Debe iniciar sesión para ver las alertas.');
             }
+    
+            // Obtener todos los roles y categorías únicas desde la tabla users
+            $roles = User::distinct()->pluck('rol')->filter()->values();
+            $categorias = User::distinct()->pluck('categoria')->filter()->values();
     
             // Obtener TODAS las alertas no leídas antes de aplicar paginación
             $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
                 $q->where('user_id', $usuario->id);
-            })->orderBy('created_at', 'desc')->get(); // Obtener todas sin paginación
+            })
+            ->when($usuario->categoria !== 'administrador', function ($q) use ($usuario) {
+                $q->where(function ($query) use ($usuario) {
+                    $query->where('destino', $usuario->rol)
+                          ->orWhere('destinatario', $usuario->categoria);
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
     
-            // Registrar la lectura para todas las alertas no leídas
-            if ($alertasNoLeidas->isNotEmpty()) {
-                foreach ($alertasNoLeidas as $alerta) {
+            // Registrar la lectura SOLO para las alertas que cumplen la condición de destinatario o destino
+            foreach ($alertasNoLeidas as $alerta) {
+                if (!$alerta->usuariosQueLeen()->where('user_id', $usuario->id)->exists()) {
                     $alerta->usuariosQueLeen()->attach($usuario->id, ['leida_en' => now()]);
                 }
             }
     
-            // Ahora aplicamos la paginación sobre todas las alertas
+            // Aplicar filtros y obtener alertas paginadas
             $query = Alerta::orderBy('created_at', 'desc');
             $alertas = $this->aplicarFiltros($query);
     
             DB::commit();
     
-            return view('alertas.index', compact('alertas', 'alertasNoLeidas'));
+            return view('alertas.index', compact('alertas', 'alertasNoLeidas', 'roles', 'categorias'));
     
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             return redirect()->route('alertas.index')->with('error', 'Ocurrió un error al cargar las alertas.');
         }
     }
-    
     
     /**
      * Devuelve la cantidad de alertas sin leer (para mostrar la exclamación en la navbar).
@@ -116,38 +136,69 @@ class AlertaController extends Controller
             $q->where('user_id', $usuario->id);
         })
         ->when($usuario->categoria !== 'administrador', function ($q) use ($usuario) {
-            $q->where('destinatario', $usuario->categoria);
+            $q->where(function ($subQuery) use ($usuario) {
+                $subQuery->where('destino', $usuario->rol)  // Coincide con el rol del usuario
+                        ->orWhere('destinatario', $usuario->categoria); // Coincide con la categoría del usuario
+            });
         })
         ->count();
     
         return response()->json(['cantidad' => $cantidad]);
     }
-    
-    public function store(Request $request)
+        public function store(Request $request)
     {
-        // Validar los datos de la alerta
+        // Validar los datos de la alerta asegurando que SOLO uno (rol o categoría) sea seleccionado
         $request->validate([
             'mensaje' => 'required|string|max:255',
-            'destinatario' => 'required|in:desarrollador,administracion,mecanico', // Ajusta según los destinatarios válidos
-            'user_id_2' => 'nullable|exists:users,id' // Validación para asegurar que es un usuario válido
+            'rol' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!empty($value) && !empty($request->categoria)) {
+                        $fail('No puedes seleccionar tanto destino como destinatario. Debes elegir solo uno.');
+                    }
+                }
+            ],
+            'categoria' => [
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!empty($value) && !empty($request->rol)) {
+                        $fail('No puedes seleccionar tanto destino como destinatario. Debes elegir solo uno.');
+                    }
+                }
+            ],
+            'user_id_2' => 'nullable|exists:users,id'
+        ], [
+            'mensaje.required' => 'El mensaje es obligatorio.',
+            'mensaje.max' => 'Máximo 255 caracteres',
+            'rol.max' => 'Máximo 255 caracteres',
+            'categoria.max' => 'Máximo 255 caracteres',
+            'user_id_2.exists' => 'El usuario 2 no existe',
         ]);
-        // Verificar si la sesión tiene el valor esperado
-        $companeroId = session()->get('companero_id', null);
-
-
+    
+        // Verificar que al menos uno (destino o destinatario) esté presente
+        if (empty($request->rol) && empty($request->categoria)) {
+            return response()->json(['error' => 'Debes seleccionar un destino o un destinatario.'], 422);
+        }
+    
         try {
             // Crear una nueva alerta
             Alerta::create([
                 'mensaje' => $request->mensaje,
-                'destinatario' => $request->destinatario,
-                'user_id_1' => Auth::id(), // Usuario que crea la alerta
-                'user_id_2' => session()->get('compañero_id', null),
-                'leida' => false, // Se marca como no leída por defecto
+                'destino' => $request->rol,
+                'destinatario' => $request->categoria,
+                'user_id_1' => Auth::id(),
+                'user_id_2' => session()->get('companero_id', null),
+                'leida' => false,
             ]);
-
-            return redirect()->back()->with('swal_success', 'Alerta creada correctamente.');
-        } catch (\Exception $e) {
-            return redirect()->back()->with('swal_error', 'Hubo un error al crear la alerta.');
+    
+            return redirect()->back()->with('success', 'Alerta creada correctamente.');
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Error inesperado: ' . $e->getMessage());
         }
+    
     }
 }

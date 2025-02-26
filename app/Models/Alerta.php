@@ -13,6 +13,7 @@ class Alerta extends Model
     protected $fillable = [
         'user_id_1', 
         'user_id_2', 
+        'destino', 
         'destinatario', 
         'mensaje', 
         'leida', 
