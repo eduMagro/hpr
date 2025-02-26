@@ -1,23 +1,44 @@
+// Recuperamos los datos inyectados en el div
+const dataContainer = document.getElementById('dataVariables');
+const etiquetas = JSON.parse(dataContainer.getAttribute('data-etiquetas'));
+const elementos = JSON.parse(dataContainer.getAttribute('data-elementos'));
+const subpaquetes = JSON.parse(dataContainer.getAttribute('data-subpaquetes'));
+
 const items = [];
 let totalPeso = 0;
-document
-    .getElementById("qrItem")
-    .addEventListener("keypress", function (event) {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            agregarItem();
-        }
-    });
+
+document.getElementById("qrItem").addEventListener("keypress", function (event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        agregarItem();
+    }
+});
+
+// Función que, según el tipo, busca en el array correspondiente y extrae el peso.
+// Se asume que cada objeto (etiqueta, elemento o subpaquete) tiene una propiedad "id" para identificarlo
+// y una propiedad "peso" con su valor.
+function getPesoFromData(itemType, itemCode) {
+    let peso = 0;
+    if (itemType === "etiqueta") {
+        const encontrado = etiquetas.find(item => item.id == itemCode);
+        peso = encontrado ? parseFloat(encontrado.peso) : 0;
+    } else if (itemType === "elemento") {
+        const encontrado = elementos.find(item => item.id == itemCode);
+        peso = encontrado ? parseFloat(encontrado.peso) : 0;
+    } else if (itemType === "subpaquete") {
+        const encontrado = subpaquetes.find(item => item.id == itemCode);
+        peso = encontrado ? parseFloat(encontrado.peso) : 0;
+    }
+    return peso;
+}
 
 function agregarItem() {
     const qrItem = document.getElementById("qrItem");
     const itemCode = qrItem.value.trim();
-    const itemType = document
-        .getElementById("itemType")
-        .value.trim()
-        .toLowerCase();
-    const pesoInput = document.getElementById("pesoItem");
-    const itemPeso = parseFloat(pesoInput.value.trim());
+    const itemType = document.getElementById("itemType").value.trim().toLowerCase();
+
+    // Obtenemos el peso desde la información inyectada
+    const itemPeso = getPesoFromData(itemType, itemCode);
 
     if (!itemCode) {
         Swal.fire({
@@ -33,7 +54,7 @@ function agregarItem() {
         Swal.fire({
             icon: "warning",
             title: "Peso Inválido",
-            text: "Ingrese un peso válido para el item.",
+            text: "El peso del item no es válido.",
             confirmButtonColor: "#3085d6",
         });
         return;
@@ -120,19 +141,13 @@ function crearPaquete() {
                 let mensajeError = "Los siguientes ítems no están completos:\n";
 
                 if (data.etiquetas_incompletas?.length) {
-                    mensajeError += `- Etiquetas: ${data.etiquetas_incompletas.join(
-                        ", "
-                    )}\n`;
+                    mensajeError += `- Etiquetas: ${data.etiquetas_incompletas.join(", ")}\n`;
                 }
                 if (data.elementos_incompletos?.length) {
-                    mensajeError += `- Elementos: ${data.elementos_incompletos.join(
-                        ", "
-                    )}\n`;
+                    mensajeError += `- Elementos: ${data.elementos_incompletos.join(", ")}\n`;
                 }
                 if (data.subpaquetes_incompletos?.length) {
-                    mensajeError += `- Subpaquetes: ${data.subpaquetes_incompletos.join(
-                        ", "
-                    )}\n`;
+                    mensajeError += `- Subpaquetes: ${data.subpaquetes_incompletos.join(", ")}\n`;
                 }
 
                 Swal.fire({
@@ -142,7 +157,6 @@ function crearPaquete() {
                     confirmButtonColor: "#d33",
                 });
 
-                // Lanzar un error para que se termine la cadena de promesas.
                 throw new Error("Error en verificación de ítems.");
             }
 
@@ -165,7 +179,6 @@ function crearPaquete() {
                 }),
             });
         })
-
         .then((response) => response.json())
         .then((data) => {
             if (data?.success) {
