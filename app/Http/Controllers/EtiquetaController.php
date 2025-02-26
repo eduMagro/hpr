@@ -548,9 +548,7 @@ class etiquetaController extends Controller
                 });
 
                 if (
-                    strpos(strtolower($etiqueta->planilla->ensamblado), 'taller') !== false ||
-                    strpos(strtolower($etiqueta->planilla->ensamblado), 'carcasas') !== false
-                ) {
+                    strpos(strtolower($etiqueta->planilla->ensamblado), 'taller') !== false) {
 
                     if ($maquina->tipo === 'cortadora_dobladora' && $tiene_dm5) {
 
@@ -560,7 +558,6 @@ class etiquetaController extends Controller
                         $etiqueta->estado = 'soldando';
                         $etiqueta->fecha_finalizacion = null;
                     } else {
-
                         $etiqueta->estado = 'completada';
                         $etiqueta->fecha_finalizacion = now();
                     }

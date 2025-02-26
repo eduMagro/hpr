@@ -101,28 +101,49 @@
                                         N/A
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->ensamblador1 ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->ensamblador2 ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-center border">
+                                    @if ($etiqueta->ensamblador1)
+                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}"
+                                            class="text-blue-500 hover:underline">
+                                            {{ $etiqueta->ensambladorRelacion->name }}
+                                        </a>
+                                    @else
+                                        N/A
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-center border">
+                                    @if ($etiqueta->ensamblador2)
+                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}"
+                                            class="text-blue-500 hover:underline">
+                                            {{ $etiqueta->ensamblador2Relacion->name }}
+                                        </a>
+                                    @else
+                                        N/A
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->soldador1 ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->soldador2 ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->paquete_id ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->numero_etiqueta }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->nombre }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->ubicacion->nombre ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-center border">{{ $etiqueta->ubicacion->nombre ?? 'N/A' }}
+                                </td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->peso_kg }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_inicio ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}
+                                </td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->estado }}</td>
                                 <td class="px-4 py-3 text-center border flex flex-col gap-2">
-                                
-                                        <button onclick="mostrarDibujo({{ $etiqueta->id }})" class="text-blue-500 hover:underline">
-                                            Ver
-                                        </button>
-                                        <button @click.stop="editando = !editando">
-                                            <span x-show="!editando">✏️</span>
-                                            <span x-show="editando" class="mr-2">✖</span>
-                                            <span x-show="editando" @click.stop="guardarCambios(etiqueta)">✅</span>
-                                        </button>
+
+                                    <button onclick="mostrarDibujo({{ $etiqueta->id }})"
+                                        class="text-blue-500 hover:underline">
+                                        Ver
+                                    </button>
+                                    <button @click.stop="editando = !editando">
+                                        <span x-show="!editando">✏️</span>
+                                        <span x-show="editando" class="mr-2">✖</span>
+                                        <span x-show="editando" @click.stop="guardarCambios(etiqueta)">✅</span>
+                                    </button>
                                     <x-boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" />
                                 </td>
                             </tr>
@@ -140,23 +161,26 @@
                 {{ $etiquetas->links() }}
             </div>
         </div>
-<!-- Modal con Canvas para Dibujar las Dimensiones -->
-<div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
-    <div class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
-        <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
-            ✖
-          </button>
-          
-        <h2 class="text-xl font-semibold mb-4 text-center">Elementos de la Etiqueta</h2>
-        <!-- Contenedor desplazable -->
-        <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
-            <canvas id="canvas-dibujo" width="800" height="600" class="border max-w-full h-auto"></canvas>
+        <!-- Modal con Canvas para Dibujar las Dimensiones -->
+        <div id="modal-dibujo"
+            class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
+            <div
+                class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
+                    ✖
+                </button>
+
+                <h2 class="text-xl font-semibold mb-4 text-center">Elementos de la Etiqueta</h2>
+                <!-- Contenedor desplazable -->
+                <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
+                    <canvas id="canvas-dibujo" width="800" height="600"
+                        class="border max-w-full h-auto"></canvas>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
-<script src="{{ asset('js/etiquetasJs/figurasEtiqueta.js') }}" defer></script>
-<script>
-    window.etiquetasConElementos = @json($etiquetasJson);
-</script>
+        <script src="{{ asset('js/etiquetasJs/figurasEtiqueta.js') }}" defer></script>
+        <script>
+            window.etiquetasConElementos = @json($etiquetasJson);
+        </script>
 
     </x-app-layout>

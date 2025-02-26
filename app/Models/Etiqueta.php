@@ -105,12 +105,12 @@ class Etiqueta extends Model
         return $this->belongsTo(User::class, 'soldador2');
     }
 
-    public function ensamblador1()
+    public function ensambladorRelacion()
     {
         return $this->belongsTo(User::class, 'ensamblador1');
     }
 
-    public function ensamblador2()
+    public function ensamblador2Relacion()
     {
         return $this->belongsTo(User::class, 'ensamblador2');
 
