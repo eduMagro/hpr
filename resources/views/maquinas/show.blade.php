@@ -391,7 +391,6 @@
                             <ul id="itemsList" class="list-disc pl-6 space-y-2">
                                 <!-- Los items se agregarán aquí dinámicamente -->
                             </ul>
-                            <p id="totalPeso" class="font-semibold text-gray-700 mb-2">Total: 0 kg</p>
                         </div>
 
                         <!-- Botón para crear el paquete -->

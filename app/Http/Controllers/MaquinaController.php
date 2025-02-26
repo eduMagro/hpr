@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Maquina;
 use App\Models\Elemento;
 use App\Models\User;
+use App\Models\Ubicacion;
 use Illuminate\Support\Facades\DB;
 
 class MaquinaController extends Controller
@@ -48,10 +49,13 @@ class MaquinaController extends Controller
             'elementos.etiquetaRelacion',
             'productos'
         ])->findOrFail($id);
+        $ubicacion = Ubicacion::where('nombre', 'like', '%' . $maquina->nombre . '%')->first();
 
+        
         $usuario1 = auth()->user();
         $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null;
 
+        
         // Decodificar nombres de usuario
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
         if ($usuario2) {
@@ -121,6 +125,7 @@ class MaquinaController extends Controller
 
         return view('maquinas.show', [
             'maquina' => $maquina,
+            'ubicacion' => $ubicacion,
             'usuario1' => $usuario1,
             'usuario2' => $usuario2,
             'otrosElementos' => $otrosElementos,

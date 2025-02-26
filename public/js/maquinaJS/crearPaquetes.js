@@ -3,17 +3,20 @@ const items = [];
 document.getElementById("qrItem").addEventListener("keypress", function (event) {
     if (event.key === "Enter") {
         event.preventDefault();
+        console.log("Se presionó Enter en el input QR");
         agregarItem();
     }
 });
-
 
 function agregarItem() {
     const qrItem = document.getElementById("qrItem");
     const itemCode = qrItem.value.trim();
     const itemType = document.getElementById("itemType").value.trim().toLowerCase();
 
+    console.log("Intentando agregar item:", { itemCode, itemType });
+
     if (!itemCode) {
+        console.log("No se encontró código en el input");
         Swal.fire({
             icon: "warning",
             title: "QR Inválido",
@@ -23,34 +26,38 @@ function agregarItem() {
         return;
     }
 
-    
     if (items.some((i) => i.id === itemCode)) {
+        console.log("Item duplicado:", itemCode);
         Swal.fire({
             icon: "error",
             title: "Item Duplicado",
             text: "Este item ya ha sido agregado.",
             confirmButtonColor: "#d33",
         });
-        qrItem.value = "";
+        qrItem.value = ""; // Se limpia el input en caso de duplicado
         return;
     }
 
-    const newItem = { id: itemCode, type: itemType};
+    const newItem = { id: itemCode, type: itemType };
     items.push(newItem);
-   
+    console.log("Item agregado. Lista actualizada:", items);
 
+    qrItem.value = ""; // Vaciar el input tras agregar el item
     actualizarLista();
 }
 
 function eliminarItem(itemCode) {
+    console.log("Eliminando item:", itemCode);
     const index = items.findIndex((i) => i.id === itemCode);
     if (index > -1) {
         items.splice(index, 1);
+        console.log("Item eliminado. Lista actualizada:", items);
         actualizarLista();
     }
 }
 
 function actualizarLista() {
+    console.log("Actualizando la lista visual de items");
     const itemsList = document.getElementById("itemsList");
 
     // Limpiar la lista
@@ -73,7 +80,9 @@ function actualizarLista() {
 }
 
 function crearPaquete() {
+    console.log("Iniciando la creación del paquete con items:", items);
     if (items.length === 0) {
+        console.log("No hay items para crear el paquete");
         Swal.fire({
             icon: "warning",
             title: "Sin Items",
@@ -87,15 +96,17 @@ function crearPaquete() {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "X-CSRF-TOKEN": document
-                .querySelector('meta[name="csrf-token"]')
-                .getAttribute("content"),
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
             "X-Requested-With": "XMLHttpRequest",
         },
         body: JSON.stringify({ items }),
     })
-        .then((response) => response.json())
+        .then((response) => {
+            console.log("Respuesta de /verificar-items:", response);
+            return response.json();
+        })
         .then((data) => {
+            console.log("Datos recibidos de /verificar-items:", data);
             if (!data.success) {
                 let mensajeError = "Los siguientes ítems no están completos:\n";
 
@@ -109,6 +120,7 @@ function crearPaquete() {
                     mensajeError += `- Subpaquetes: ${data.subpaquetes_incompletos.join(", ")}\n`;
                 }
 
+                console.error("Error en verificación de ítems:", mensajeError);
                 Swal.fire({
                     icon: "error",
                     title: "Error",
@@ -119,27 +131,29 @@ function crearPaquete() {
                 throw new Error("Error en verificación de ítems.");
             }
 
-            const ubicacionId =
-                document.getElementById("ubicacionInput")?.value || null;
+            const ubicacionId = document.getElementById("ubicacionInput")?.value || null;
+            console.log("Ubicación ID obtenida:", ubicacionId);
 
             return fetch("/paquetes", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document
-                        .querySelector('meta[name="csrf-token"]')
-                        .getAttribute("content"),
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute("content"),
                     "X-Requested-With": "XMLHttpRequest",
                 },
                 body: JSON.stringify({
                     items,
-                    maquina_id: maquinaId,
+                    maquina_id: maquinaId, // Se asume que "maquinaId" está definido en otro lugar
                     ubicacion_id: ubicacionId,
                 }),
             });
         })
-        .then((response) => response.json())
+        .then((response) => {
+            console.log("Respuesta de /paquetes:", response);
+            return response.json();
+        })
         .then((data) => {
+            console.log("Datos recibidos de /paquetes:", data);
             if (data?.success) {
                 Swal.fire({
                     icon: "success",
@@ -150,11 +164,10 @@ function crearPaquete() {
                 }).then(() => {
                     items.length = 0;
                     document.getElementById("itemsList").innerHTML = "";
+                    console.log("Lista de items reiniciada después de crear el paquete.");
                 });
             } else {
-                throw new Error(
-                    data.message || "Error desconocido al crear el paquete."
-                );
+                throw new Error(data.message || "Error desconocido al crear el paquete.");
             }
         })
         .catch((error) => {
@@ -171,6 +184,7 @@ function crearPaquete() {
 document.addEventListener("DOMContentLoaded", function () {
     const crearPaqueteBtn = document.getElementById("crearPaqueteBtn");
     if (crearPaqueteBtn) {
+        console.log("Botón crearPaqueteBtn encontrado, asignando evento click.");
         crearPaqueteBtn.addEventListener("click", crearPaquete);
     } else {
         console.error("El botón #crearPaqueteBtn no existe en el DOM.");
