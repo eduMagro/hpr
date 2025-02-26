@@ -3,40 +3,8 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Bienvenido, :name. Elige una tarea', ['name' => strtok(auth()->user()->name, ' ')]) }}
         </h2>
+        <p id="notificacion-alertas-texto" class="text-green-600">Tienes alertas sin leer</p>
     </x-slot>
-    @if (session('abort'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Acceso denegado',
-                text: "{{ session('abort') }}",
-            });
-        </script>
-    @endif
- @if (session('error'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: '{{ session('error') }}',
-                    confirmButtonColor: '#d33'
-                });
-            });
-        </script>
-    @endif
-
-    @if (session('success'))
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                Swal.fire({
-                    icon: 'success',
-                    text: '{{ session('success') }}',
-                    confirmButtonColor: '#28a745'
-                });
-            });
-        </script>
-    @endif
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -123,8 +91,9 @@
                             <a href="{{ route('alertas.index') }}" class="relative">
                                 <img src="https://img.icons8.com/?size=100&id=xaInJjDQEige&format=png&color=000000"
                                     alt="Alertas">
-                                <img id="notificacion-alertas" src="https://img.icons8.com/color/48/high-priority.png"
-                                    alt="Alerta" class="absolute top-0 right-0 w-6 h-6 animate-alerta">
+                                <img id="notificacion-alertas-icono"
+                                    src="https://img.icons8.com/color/48/high-priority.png" alt="Alerta"
+                                    class="absolute top-0 right-0 w-6 h-6 animate-alerta">
 
                                 <span>Alertas</span>
                             </a>
@@ -187,6 +156,12 @@
         }
 
         /*----------- EXCLAMACION ------------*/
+
+        #notificacion-alertas-icono {
+            animation: expandirContraer 1s infinite ease-in-out;
+            display: none;
+        }
+
         @keyframes expandirContraer {
             0% {
                 transform: scale(1);
@@ -201,10 +176,57 @@
             }
         }
 
-        #notificacion-alertas {
-            animation: expandirContraer 1s infinite ease-in-out;
+
+        #notificacion-alertas-texto {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #ff5733;
+            /* Rojo llamativo */
+            color: white;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transform: scale(0.8);
             display: none;
+            z-index: 1000;
+            animation: aparecerNotificacion 0.5s ease-out forwards, parpadeo 3s infinite ease-in-out;
         }
+
+        /* Animación de aparición y rebote */
+        @keyframes aparecerNotificacion {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(-20px);
+            }
+
+            80% {
+                opacity: 1;
+                transform: scale(1.05) translateY(0);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Parpadeo sutil cada 3 segundos */
+        @keyframes parpadeo {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.85;
+            }
+        }
+
 
         /* Responsive tweaks */
         @media (max-width: 1024px) {
@@ -255,7 +277,8 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.cantidad > 0) {
-                        document.getElementById("notificacion-alertas").style.display = "block";
+                        document.getElementById("notificacion-alertas-icono").style.display = "block";
+                        document.getElementById("notificacion-alertas-texto").style.display = "block";
                     }
                 });
         });

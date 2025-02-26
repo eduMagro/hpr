@@ -9,35 +9,80 @@ use Illuminate\Support\Facades\Auth;
 
 class AlertaController extends Controller
 {
+
+    private function aplicarFiltros($query)
+    {
+        $usuario = Auth::user();
+    
+        // Aplicar orden por fecha de creación descendente para que la más reciente sea la primera
+        $query->orderBy('id', 'desc');
+    
+        // Filtrar por destinatario según la categoría del usuario (excepto administradores)
+        if ($usuario->categoria !== 'administrador') {
+            $query->where('destinatario', $usuario->categoria);
+        } elseif (request()->filled('destinatario') && request('destinatario') !== 'todos') {
+            // Si es administrador y ha seleccionado un destinatario específico
+            $query->where('destinatario', request('destinatario'));
+        }
+    
+        // Filtrar por ID de la alerta
+        if (request()->filled('alerta_id')) {
+            $query->where('id', request('alerta_id'));
+        }
+    
+        // Filtrar por Usuario 1
+        if (request()->filled('usuario1')) {
+            $query->whereHas('usuario1', function ($q) {
+                $q->where('name', 'like', '%' . request('usuario1') . '%');
+            });
+        }
+    
+        // Filtrar por Usuario 2
+        if (request()->filled('usuario2')) {
+            $query->whereHas('usuario2', function ($q) {
+                $q->where('name', 'like', '%' . request('usuario2') . '%');
+            });
+        }
+    
+        // Filtrar por mensaje
+        if (request()->filled('mensaje')) {
+            $query->where('mensaje', 'like', '%' . request('mensaje') . '%');
+        }
+    
+        // Filtrar por fecha de creación
+        if (request()->filled('fecha_inicio')) {
+            $query->whereDate('created_at', '>=', request('fecha_inicio'));
+        }
+    
+        if (request()->filled('fecha_fin')) {
+            $query->whereDate('created_at', '<=', request('fecha_fin'));
+        }
+    
+        // Filtrar por cantidad de registros por página
+        $perPage = request('per_page', 10); // Valor por defecto: 10
+        return $query->paginate($perPage);
+    }
+    
+
     public function index()
     {
         try {
             DB::beginTransaction();
 
-            // Obtener el usuario autenticado
+            // Verificar si el usuario está autenticado
             $usuario = Auth::user();
             if (!$usuario) {
                 return redirect()->route('login')->with('swal_error', 'Debe iniciar sesión para ver las alertas.');
             }
 
-            // Filtrar alertas según la categoría del usuario
+            // Obtener alertas con filtros aplicados
             $query = Alerta::orderBy('created_at', 'desc');
+            $alertas = $this->aplicarFiltros($query);
 
-            if ($usuario->categoria === 'administracion') {
-                $query->where('destinatario', 'administracion');
-            } elseif ($usuario->categoria === 'mecanico') {
-                $query->where('destinatario', 'mecanico');
-            } elseif ($usuario->categoria === 'desarrollador') { // Nueva categoría
-                $query->where('destinatario', 'desarrollador');
-            }
-
-            // Obtener alertas paginadas
-            $alertas = $query->paginate(10);
-
-            // Clonar la consulta para obtener alertas no leídas antes de marcarlas como leídas
+            // Clonar consulta para obtener alertas no leídas antes de marcarlas
             $alertasNoLeidas = (clone $query)->where('leida', false)->get();
 
-            // Marcar todas las alertas como leídas
+            // Marcar alertas como leídas
             Alerta::whereIn('id', $alertasNoLeidas->pluck('id'))->update(['leida' => true]);
 
             DB::commit();
@@ -48,6 +93,7 @@ class AlertaController extends Controller
             return redirect()->route('alertas.index')->with('swal_error', 'Ocurrió un error al cargar las alertas.');
         }
     }
+
 
     /**
      * Devuelve la cantidad de alertas sin leer (para mostrar la exclamación en la navbar).
