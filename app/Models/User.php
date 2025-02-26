@@ -59,6 +59,13 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+    public function alertasLeidas()
+    {
+        return $this->belongsToMany(Alerta::class, 'alertas_users')
+                    ->withPivot('leida_en')
+                    ->withTimestamps();
+    }
+    
 
     // Relación: Un usuario tiene muchas entradas
     public function entradas()

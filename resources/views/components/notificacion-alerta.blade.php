@@ -1,6 +1,6 @@
-<div id="notificacion-alerta">
+<a id="notificacion-alerta" href="{{ route('alertas.index') }}">
     <p id="notificacion-alertas-texto">🔔 Tienes alertas sin leer</p>
-</div>
+</a>
 
 <style>
     /* 🔴 Estilo base de la notificación */
@@ -8,7 +8,7 @@
         position: fixed;
         top: 20px;
         right: 20px;
-        background-color: rgba(220, 38, 38, 0.7); /* Rojo con 80% de transparencia */
+        background-color: rgba(220, 38, 38, 0.8); /* Rojo translúcido */
         color: white;
         padding: 12px 20px;
         font-size: 16px;
@@ -19,12 +19,14 @@
         transform: translateY(-10px);
         display: none;
         z-index: 1000;
-        animation: fadeIn 0.5s ease-in-out forwards;
+        text-decoration: none;
+        transition: background-color 0.3s ease, transform 0.2s ease;
     }
 
-    /* 🎭 Difuminado del fondo si se quiere */
-    #notificacion-alerta.blurred {
-        backdrop-filter: blur(50px); /* Opcional: desenfoca el fondo */
+    /* 🎭 Efecto hover para dar feedback */
+    #notificacion-alerta:hover {
+        background-color: rgba(220, 38, 38, 1); /* Más opaco al pasar el mouse */
+        transform: scale(1.05); /* Pequeño zoom */
     }
 
     /* 🔄 Animación de aparición */
@@ -50,7 +52,6 @@
         animation: blink 3s infinite ease-in-out;
     }
 </style>
-
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         fetch("/alertas/sin-leer") // Asegúrate de que la ruta es correcta

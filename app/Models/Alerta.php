@@ -23,7 +23,13 @@ class Alerta extends Model
     protected $casts = [
         'leida' => 'boolean', // Para que Laravel lo maneje como booleano
     ];
-
+    public function usuariosQueLeen()
+    {
+        return $this->belongsToMany(User::class, 'alertas_users')
+                    ->withPivot('leida_en')
+                    ->withTimestamps();
+    }
+    
     /**
      * Relación con el usuario que genera la alerta.
      */
