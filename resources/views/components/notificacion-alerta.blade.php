@@ -73,10 +73,10 @@
                     // Actualizar el texto con el conteo
                     notificacionTexto.innerHTML = mensaje;
                        // Si el usuario es gruista, reproducir un sonido
-                       if ("{{ auth()->user()->categoria }}" === "gruista") {
-                        let sonido = new Audio("/sonidos/alerta1.mp3"); // Ruta al archivo de sonido
-                        sonido.play().catch(error => console.error("Error al reproducir el sonido:", error));                        
-                    }
+                    //    if ("{{ auth()->user()->categoria }}" === "gruista") {
+                    //     let sonido = new Audio("/sonidos/alerta1.mp3"); // Ruta al archivo de sonido
+                    //     sonido.play().catch(error => console.error("Error al reproducir el sonido:", error));                        
+                    //}
                 }
             })
             .catch(error => console.error("Error al obtener alertas:", error));
