@@ -8,7 +8,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.cantidad > 0) {
-                    let notificacion = document.getElementById("notificacion-alertas");
+                    let notificacion = document.getElementById("notificacion-alerta");
                     notificacion.classList.remove("hidden");
 
                     // Ocultar después de 5 segundos
