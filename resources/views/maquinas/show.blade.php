@@ -538,10 +538,11 @@
             document.getElementById('modalSubpaquete').classList.remove('hidden');
         }
     </script>
-    <script>
-        // Pasar el ID de la máquina desde PHP a JavaScript
-        const maquinaId = @json($maquina->id);
-    </script>
+<script>
+    const maquinaId = @json($maquina->id);
+    const ubicacionId = @json($ubicacion->id);
+</script>
+
 
     <script>
         let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
