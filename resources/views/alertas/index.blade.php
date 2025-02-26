@@ -21,9 +21,61 @@
                 </ul>
             </div>
         @endif
+        <!-- Botón para abrir el modal -->
+        <button @click="mostrarModal = true"
+            class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">
+            ➕ Nueva Alerta
+        </button>
+
+        <!-- Modal para crear alerta -->
+        <div x-data="{ mostrarModal: false }">
+            <div x-show="mostrarModal" class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+                <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+                    <h2 class="text-lg font-semibold mb-4">📢 Crear Nueva Alerta</h2>
+
+                    <!-- Formulario -->
+                    <form method="POST" action="{{ route('alertas.store') }}">
+                        @csrf
+                        <div class="mb-4">
+                            <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
+                            <textarea id="mensaje" name="mensaje" rows="3"
+                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="destinatario" class="block text-sm font-semibold">Destinatario:</label>
+                            <select id="destinatario" name="destinatario" class="w-full border rounded-lg p-2" required>
+                                <option value="administrador">Administradores</option>
+                                <option value="administracion">Administración</option>
+                                <option value="programador">Programador</option>
+                                <option value="mecanico">Mecánico</option>
+                                <option value="operario">Operarios</option>
+                                <option value="gruista">Gruista</option>
+                                <option value="visitante">Visitantes</option>
+                                <option value="cliente">Clientes</option>
+                            </select>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="flex justify-end space-x-2">
+                            <button type="button" @click="mostrarModal = false"
+                                class="bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-lg">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
+                                Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Botón para mostrar filtros avanzados -->
         <div class="mb-4 flex items-center space-x-4">
-            <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosBusqueda">
+            <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
+                data-bs-target="#filtrosBusqueda">
                 🔍 Filtros Avanzados
             </button>
         </div>
@@ -159,4 +211,5 @@
             {{ $alertas->links() }}
         </div>
     </div>
+
 </x-app-layout>

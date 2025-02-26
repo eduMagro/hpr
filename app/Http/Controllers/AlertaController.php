@@ -63,7 +63,6 @@ class AlertaController extends Controller
         return $query->paginate($perPage);
     }
 
-
     public function index()
     {
         try {
@@ -75,28 +74,32 @@ class AlertaController extends Controller
                 return redirect()->route('login')->with('swal_error', 'Debe iniciar sesión para ver las alertas.');
             }
     
-            // Obtener alertas con filtros aplicados
+            // Obtener TODAS las alertas no leídas antes de aplicar paginación
+            $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
+                $q->where('user_id', $usuario->id);
+            })->orderBy('created_at', 'desc')->get(); // Obtener todas sin paginación
+    
+            // Registrar la lectura para todas las alertas no leídas
+            if ($alertasNoLeidas->isNotEmpty()) {
+                foreach ($alertasNoLeidas as $alerta) {
+                    $alerta->usuariosQueLeen()->attach($usuario->id, ['leida_en' => now()]);
+                }
+            }
+    
+            // Ahora aplicamos la paginación sobre todas las alertas
             $query = Alerta::orderBy('created_at', 'desc');
             $alertas = $this->aplicarFiltros($query);
-    
-            // Obtener IDs de alertas que el usuario NO ha leído aún
-            $alertasNoLeidas = $query->whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
-                $q->where('user_id', $usuario->id);
-            })->get();
-    
-            // Registrar la lectura para este usuario
-            foreach ($alertasNoLeidas as $alerta) {
-                $alerta->usuariosQueLeen()->attach($usuario->id, ['leida_en' => now()]);
-            }
     
             DB::commit();
     
             return view('alertas.index', compact('alertas', 'alertasNoLeidas'));
+    
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->route('alertas.index')->with('error', 'Ocurrió un error al cargar las alertas.');
         }
     }
+    
     
     /**
      * Devuelve la cantidad de alertas sin leer (para mostrar la exclamación en la navbar).
@@ -105,22 +108,21 @@ class AlertaController extends Controller
     {
         $usuario = Auth::user();
         if (!$usuario) {
-            return response()->json(['cantidad' => 0]); // Si no está autenticado, devolver 0
+            return response()->json(['cantidad' => 0]);
         }
-
-        $query = Alerta::where('leida', false);
-
-        // 🔹 Si NO es administrador, filtrar por destinatario
-        if ($usuario->categoria !== 'administrador') {
-            $query->where('destinatario', $usuario->categoria);
-        }
-
-        // Contar alertas sin leer (según el filtro aplicado)
-        $cantidad = $query->count();
-
+    
+        // Buscar alertas que el usuario NO ha leído
+        $cantidad = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
+            $q->where('user_id', $usuario->id);
+        })
+        ->when($usuario->categoria !== 'administrador', function ($q) use ($usuario) {
+            $q->where('destinatario', $usuario->categoria);
+        })
+        ->count();
+    
         return response()->json(['cantidad' => $cantidad]);
     }
-
+    
     public function store(Request $request)
     {
         // Validar los datos de la alerta
