@@ -94,13 +94,13 @@ class etiquetaController extends Controller
                     'error' => 'La máquina asociada al elemento no existe.',
                 ], 404);
             }
-            if ($maquina->tipo === 'ensambladora') {
-                $elementosExtra = Elemento::with('etiquetaRelacion', 'planilla')
-                    ->where('maquina_id_2', $maquina->id)
-                    ->where('maquina_id', '!=', $maquina->id)
-                    ->get();
-                $elementosEnMaquina = $elementosEnMaquina->merge($elementosExtra);
-            }
+            // if ($maquina->tipo === 'ensambladora') {
+            //     $elementosExtra = Elemento::with('etiquetaRelacion', 'planilla')
+            //         ->where('maquina_id_2', $maquina->id)
+            //         ->where('maquina_id', '!=', $maquina->id)
+            //         ->get();
+            //     $elementosEnMaquina = $elementosEnMaquina->merge($elementosExtra);
+            // }
             // Buscar la ubicación que contenga el código de la máquina en su descripción
             $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
 
@@ -325,6 +325,7 @@ class etiquetaController extends Controller
                     $elemento->producto_id = $productosAsignados[0] ?? null;
                     $elemento->producto_id_2 = $productosAsignados[1] ?? null;
                     $elemento->producto_id_3 = $productosAsignados[2] ?? null;
+
                     $elemento->estado = "completado";
                     $elemento->ubicacion_id = $ubicacion->id;
                     $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
@@ -332,11 +333,9 @@ class etiquetaController extends Controller
                     if (
                         (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false)) {
 
-                        // Código a ejecutar si "taller" o "carcasas" están en la variable ensamblado
-                        if ($maquina->tipo === 'cortadora_dobladora') {
-                            // Asignar "IDEA 5"
+                        if ($maquina->tipo === 'estribadora') {
+
                             $elemento->maquina_id_2 = 7;
-                            // Registrar en el log de Laravel para depuración
 
                         } elseif ($maquina->tipo === 'ensambladora') {
 
@@ -379,20 +378,17 @@ class etiquetaController extends Controller
                     strpos(strtolower($etiqueta->planilla->ensamblado), 'carcasas') !== false ||
                     !empty($enOtrasMaquinas)
                 ) {
+                    Log::info('Vamos a ver que tiene $maquina' . $enOtrasMaquinas);
 
                     if ($maquina->tipo === 'cortadora_dobladora' && $tiene_dm5) {
-
                         $etiqueta->estado = 'ensamblando';
                         $etiqueta->fecha_finalizacion = null;
                     } elseif ($maquina->tipo === 'ensambladora') {
                         $etiqueta->estado = 'soldando';
                         $etiqueta->fecha_finalizacion = null;
-                    } else {
-
-                        $etiqueta->estado = 'completada';
-                        $etiqueta->fecha_finalizacion = now();
-                    }
+                    } 
                 } else {
+                    Log::info('Vamos a ver que tiene en otras maquina' . $enOtrasMaquinas);
                     $etiqueta->estado = 'completada';
                     $etiqueta->fecha_finalizacion = now();
                 }
@@ -472,10 +468,6 @@ class etiquetaController extends Controller
                         ], 400);
                     }
                 }
-
-
-                // Asignar a cada elemento los productos de los cuales se consumió material,
-                // de acuerdo al peso que requiere cada uno
                 foreach ($elementosEnMaquina as $elemento) {
                     $pesoRestanteElemento = $elemento->peso;
                     // Obtener los registros de consumo para el diámetro del elemento
@@ -500,10 +492,10 @@ class etiquetaController extends Controller
                         }
                     }
 
-                    // Asignar hasta dos productos al elemento según lo requerido
                     $elemento->producto_id = $productosAsignados[0] ?? null;
                     $elemento->producto_id_2 = $productosAsignados[1] ?? null;
                     $elemento->producto_id_3 = $productosAsignados[2] ?? null;
+
                     $elemento->estado = "completado";
                     $elemento->fecha_finalizacion = now();
                     $elemento->ubicacion_id = $ubicacion->id;
