@@ -410,13 +410,13 @@ class etiquetaController extends Controller
                     $planilla->save();
                 }
             } elseif ($etiqueta->estado == "ensamblando") {    // ------------------------------------------------------------ E N S A M B L A N D O
-                Log::info('vamos a ver que tiene $maquina' . $maquina);
-                if ($maquina->tipo !== 'ensambladora') {
-                    return response()->json([
-                        'success' => false,
-                        'error' => "La etiqueta esta en otra máquina",
-                    ], 400);
-                }
+               
+                // if ($maquina->tipo !== 'ensambladora') {
+                //     return response()->json([
+                //         'success' => false,
+                //         'error' => "La etiqueta esta en otra máquina",
+                //     ], 400);
+                // }
 
                 // -------------- CONSUMOS
                 $consumos = [];
