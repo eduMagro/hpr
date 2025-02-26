@@ -72,6 +72,16 @@ class Producto extends Model
     {
         return $this->hasMany(Elemento::class, 'producto_id');
     }
+    public function elementos2()
+{
+    return $this->hasMany(Elemento::class, 'producto_id_2');
+}
+
+public function elementos3()
+{
+    return $this->hasMany(Elemento::class, 'producto_id_3');
+}
+
     // Diámetro (mm)
     public function getDiametroMmAttribute()
     {

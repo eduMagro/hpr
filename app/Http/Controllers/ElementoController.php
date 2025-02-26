@@ -18,9 +18,16 @@ class ElementoController extends Controller
     {
         $query = Elemento::with([
             'planilla',
+            'subpaquetes',
             'etiquetaRelacion',
+            'ubicacion',
             'maquina',
+            'maquina_2',
+            'maquina_3',
             'producto',
+            'producto2',
+            'producto3',
+            'paquete',
             'user',
             'user2'
         ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
@@ -42,11 +49,15 @@ class ElementoController extends Controller
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));
         }
-
+    
         if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
+            if ($request->estado === '.') {
+                $query->whereNull('estado');
+            } else {
+                $query->where('estado', $request->estado);
+            }
         }
-
+    
         if ($request->filled('fecha_inicio') && $request->filled('fecha_finalizacion')) {
             $query->whereBetween('created_at', [$request->fecha_inicio, $request->fecha_finalizacion]);
         } elseif ($request->filled('fecha_inicio')) {
@@ -54,50 +65,78 @@ class ElementoController extends Controller
         } elseif ($request->filled('fecha_finalizacion')) {
             $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
         }
-
+    
         if ($request->filled('codigo_planilla')) {
-            $query->whereHas('planilla', function ($q) use ($request) {
-                $q->where('codigo', 'like', '%' . $request->codigo_planilla . '%');
-            });
+            if ($request->codigo_planilla === '.') {
+                $query->whereDoesntHave('planilla');
+            } else {
+                $query->whereHas('planilla', function ($q) use ($request) {
+                    $q->where('codigo', 'like', '%' . $request->codigo_planilla . '%');
+                });
+            }
         }
-
+    
         if ($request->filled('usuario1')) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->usuario1 . '%');
-            });
+            if ($request->usuario1 === '.') {
+                $query->whereDoesntHave('user');
+            } else {
+                $query->whereHas('user', function ($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->usuario1 . '%');
+                });
+            }
         }
-
+    
         if ($request->filled('etiqueta')) {
-            $query->whereHas('etiquetaRelacion', function ($q) use ($request) {
-                $q->where('id', $request->etiqueta);
-            });
+            if ($request->etiqueta === '.') {
+                $query->whereDoesntHave('etiquetaRelacion');
+            } else {
+                $query->whereHas('etiquetaRelacion', function ($q) use ($request) {
+                    $q->where('id', $request->etiqueta);
+                });
+            }
         }
-
+    
         if ($request->filled('maquina')) {
-            $query->whereHas('maquina', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->maquina . '%');
-            });
+            if ($request->maquina === '.') {
+                $query->whereDoesntHave('maquina');
+            } else {
+                $query->whereHas('maquina', function ($q) use ($request) {
+                    $q->where('nombre', 'like', '%' . $request->maquina . '%');
+                });
+            }
         }
-
+    
         if ($request->filled('producto1')) {
-            $query->whereHas('producto', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->producto1 . '%');
-            });
+            if ($request->producto1 === '.') {
+                $query->whereDoesntHave('producto');
+            } else {
+                $query->whereHas('producto', function ($q) use ($request) {
+                    $q->where('nombre', 'like', '%' . $request->producto1 . '%');
+                });
+            }
         }
-
+    
         if ($request->filled('producto2')) {
-            $query->whereHas('producto', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->producto2 . '%');
-            });
+            if ($request->producto2 === '.') {
+                $query->whereDoesntHave('producto');
+            } else {
+                $query->whereHas('producto', function ($q) use ($request) {
+                    $q->where('nombre', 'like', '%' . $request->producto2 . '%');
+                });
+            }
         }
-
+    
         if ($request->filled('figura')) {
-            $query->where('figura', 'like', '%' . $request->figura . '%');
+            if ($request->figura === '.') {
+                $query->whereNull('figura');
+            } else {
+                $query->where('figura', 'like', '%' . $request->figura . '%');
+            }
         }
-
+    
         return $query;
     }
-
+    
 
 
     /**

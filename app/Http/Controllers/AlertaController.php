@@ -26,12 +26,12 @@ class AlertaController extends Controller
                 $q->where('destino', $usuario->rol)
                   ->orWhere('destinatario', $usuario->categoria);
             });
-        } elseif (request()->filled('destinatario') && request('destinatario') !== 'todos') {
+        } elseif (request()->filled('categoria') && request('categoria') !== 'todos') {
             // Si el administrador ha seleccionado un destinatario específico
-            $query->where('destinatario', request('destinatario'));
-        } elseif (request()->filled('destino')) {
+            $query->where('destinatario', request('categoria'));
+        } elseif (request()->filled('rol')) {
             // Si el administrador ha seleccionado un destino específico
-            $query->where('destino', request('destino'));
+            $query->where('destino', request('rol'));
         }
     
         // Filtrar por ID de la alerta
@@ -163,12 +163,7 @@ class AlertaController extends Controller
             'categoria' => [
                 'nullable',
                 'string',
-                'max:255',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($value) && !empty($request->rol)) {
-                        $fail('No puedes seleccionar tanto destino como destinatario. Debes elegir solo uno.');
-                    }
-                }
+                'max:255'
             ],
             'user_id_2' => 'nullable|exists:users,id'
         ], [
@@ -181,7 +176,8 @@ class AlertaController extends Controller
     
         // Verificar que al menos uno (destino o destinatario) esté presente
         if (empty($request->rol) && empty($request->categoria)) {
-            return response()->json(['error' => 'Debes seleccionar un destino o un destinatario.'], 422);
+
+            return redirect()->back()->with('error', 'Debes seleccionar un destino o un destinatario.');
         }
     
         try {

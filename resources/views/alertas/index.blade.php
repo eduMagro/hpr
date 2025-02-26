@@ -27,8 +27,6 @@
                 class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 mb-2 rounded-lg">
                 ➕ Nueva Alerta
             </button>
-
-            <!-- Modal -->
             <!-- Modal -->
             <div x-show="mostrarModal"
                 class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50"
@@ -48,23 +46,25 @@
                         <div class="mb-4">
                             <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
                             <textarea id="mensaje" name="mensaje" rows="3"
-                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required></textarea>
+                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
                         </div>
 
 
                         <div class="mb-4">
                             <label for="rol" class="block text-sm font-semibold">Destino (Rol):</label>
-                            <select id="rol" name="rol" class="w-full border rounded-lg p-2" x-model="rol" @change="rol = ''">
+                            <select id="rol" name="rol" class="w-full border rounded-lg p-2" x-model="rol"
+                                @change="rol = ''">
                                 <option value="">-- Seleccionar un Rol --</option>
                                 @foreach ($roles as $rol)
                                     <option value="{{ $rol }}">{{ ucfirst($rol) }}</option>
                                 @endforeach
                             </select>
                         </div>
-                        
+
                         <div class="mb-4">
                             <label for="categoria" class="block text-sm font-semibold">categoria (Categoría):</label>
-                            <select id="categoria" name="categoria" class="w-full border rounded-lg p-2" x-model="categoria" @change="categoria = ''">
+                            <select id="categoria" name="categoria" class="w-full border rounded-lg p-2"
+                                x-model="categoria" @change="categoria = ''">
                                 <option value="">-- Seleccionar una Categoría --</option>
                                 @foreach ($categorias as $categoria)
                                     <option value="{{ $categoria }}">{{ ucfirst($categoria) }}</option>
@@ -86,7 +86,7 @@
                     </form>
                 </div>
             </div>
-     
+
             <!-- Botón para mostrar filtros avanzados -->
             <div class="mb-4 flex items-center space-x-4">
                 <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
@@ -121,21 +121,23 @@
                         </div>
                         @if (auth()->user()->categoria == 'administrador')
                             <div class="col-md-2">
-                                <label for="destinatario" class="font-semibold">Filtrar por destinatario:</label>
-                                <select name="destinatario" id="destinatario" class="form-control">
+                                <label for="rol" class="font-semibold">Filtrar por destino:</label>
+                                <select id="rol" name="rol" class="w-full border rounded-lg p-2"
+                                    x-model="rol" @change="rol = ''">
                                     <option value="">-- Filtrar por destinatario --</option>
-                                    <option value="todos">Todos</option>
-                                    <option value="administracion"
-                                        {{ request('destinatario') == 'administracion' ? 'selected' : '' }}>
-                                        Administración
-                                    </option>
-                                    <option value="mecanico"
-                                        {{ request('destinatario') == 'mecanico' ? 'selected' : '' }}>
-                                        Mecánico</option>
-                                    <option value="desarrollador"
-                                        {{ request('destinatario') == 'desarrollador' ? 'selected' : '' }}>
-                                        Desarrollador
-                                    </option>
+                                    @foreach ($roles as $rol)
+                                        <option value="{{ $rol }}">{{ ucfirst($rol) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="categoria" class="font-semibold">Filtrar por destinatario:</label>
+                                <select id="categoria" name="categoria" class="w-full border rounded-lg p-2"
+                                    x-model="categoria" @change="categoria = ''">
+                                    <option value="">-- Filtrar por destinatario --</option>
+                                    @foreach ($categorias as $categoria)
+                                        <option value="{{ $categoria }}">{{ ucfirst($categoria) }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                         @endif
@@ -234,15 +236,5 @@
             <div class="mt-4 flex justify-center">
                 {{ $alertas->links() }}
             </div>
-        </div>
-      
-        <script>
-            document.addEventListener('alpine:init', () => {
-                Alpine.data('alertaForm', () => ({
-                    rol: '',
-                    categoria: '',
-                }));
-            });
-        </script>
-        
+        </div>    
 </x-app-layout>

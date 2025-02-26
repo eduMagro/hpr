@@ -19,12 +19,12 @@
                     @csrf
                     <x-boton-cargando text="Generar Turnos" type="submit" />
                 </form>
-             
+
             </div>
             <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
-            data-bs-target="#filtrosBusqueda">
-            🔍 Filtros Avanzados
-        </button>
+                data-bs-target="#filtrosBusqueda">
+                🔍 Filtros Avanzados
+            </button>
             <!-- FORMULARIO DE FILTROS -->
             <div id="filtrosBusqueda" class="collapse">
                 <form method="GET" action="{{ route('users.index') }}" class="card card-body shadow-sm">

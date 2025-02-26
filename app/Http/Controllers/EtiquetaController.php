@@ -53,13 +53,13 @@ class etiquetaController extends Controller
             }
         }
 
-           // Paginación de la tabla
-    $etiquetas = $query->paginate(10)->appends($request->query());
+        // Paginación de la tabla
+        $etiquetas = $query->paginate(10)->appends($request->query());
 
-    // Obtener todas las etiquetas con elementos (sin paginar) para JavaScript
-    $etiquetasJson = Etiqueta::with('elementos')->get();
+        // Obtener todas las etiquetas con elementos (sin paginar) para JavaScript
+        $etiquetasJson = Etiqueta::with('elementos')->get();
 
-    return view('etiquetas.index', compact('etiquetas', 'etiquetasJson'));
+        return view('etiquetas.index', compact('etiquetas', 'etiquetasJson'));
     }
 
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
@@ -131,49 +131,48 @@ class etiquetaController extends Controller
                     $elemento->users_id = Auth::id();
                     $elemento->users_id_2 = session()->get('compañero_id', null);
                     $elemento->estado = "fabricando";
-                    $elemento->fecha_inicio = now();
                     $elemento->save();
                 }
 
-            // Convertir los diámetros requeridos a enteros
-            $diametrosRequeridos = array_map('intval', array_keys($diametrosConPesos));
+                // Convertir los diámetros requeridos a enteros
+                $diametrosRequeridos = array_map('intval', array_keys($diametrosConPesos));
 
-            // Obtener los productos disponibles en la máquina con los diámetros requeridos
-            $productos = $maquina->productos()
-                ->whereIn('diametro', $diametrosRequeridos)
-                ->orderBy('peso_stock')
-                ->get();
+                // Obtener los productos disponibles en la máquina con los diámetros requeridos
+                $productos = $maquina->productos()
+                    ->whereIn('diametro', $diametrosRequeridos)
+                    ->orderBy('peso_stock')
+                    ->get();
 
-            // Depuración: Ver qué diámetros se están obteniendo
-            // dd($productos->pluck('diametro')->toArray()); 
+                // Depuración: Ver qué diámetros se están obteniendo
+                // dd($productos->pluck('diametro')->toArray()); 
 
-            if ($productos->isEmpty()) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'No se encontraron productos en la máquina con los diámetros especificados.',
-                ], 400);
-            }
-
-            // Agrupar productos por diámetro (asegurando que sean enteros)
-            $productosAgrupados = $productos->groupBy(fn ($producto) => (int) $producto->diametro);
-
-            // Verificar si hay productos para cada diámetro requerido
-            $faltantes = [];
-            foreach ($diametrosRequeridos as $diametro) {
-                if (!$productosAgrupados->has($diametro) || $productosAgrupados[$diametro]->isEmpty()) {
-                    $faltantes[] = $diametro;
+                if ($productos->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No se encontraron productos en la máquina con los diámetros especificados.',
+                    ], 400);
                 }
-            }
 
-            // Si hay diámetros sin productos, devolver error
-            if (!empty($faltantes)) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'No hay materias primas disponibles para los siguientes diámetros: ' . implode(', ', $faltantes),
-                ], 400);
-            }
+                // Agrupar productos por diámetro (asegurando que sean enteros)
+                $productosAgrupados = $productos->groupBy(fn($producto) => (int) $producto->diametro);
 
-// Continúa con la lógica si hay productos para todos los diámetros...
+                // Verificar si hay productos para cada diámetro requerido
+                $faltantes = [];
+                foreach ($diametrosRequeridos as $diametro) {
+                    if (!$productosAgrupados->has($diametro) || $productosAgrupados[$diametro]->isEmpty()) {
+                        $faltantes[] = $diametro;
+                    }
+                }
+
+                // Si hay diámetros sin productos, devolver error
+                if (!empty($faltantes)) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'No hay materias primas disponibles para los siguientes diámetros: ' . implode(', ', $faltantes),
+                    ], 400);
+                }
+
+                // Continúa con la lógica si hay productos para todos los diámetros...
 
 
                 // Arreglo donde se guardarán los detalles del consumo por diámetro
@@ -193,11 +192,11 @@ class etiquetaController extends Controller
                         if ($gruistas->isNotEmpty()) {
                             foreach ($gruistas as $gruista) {
                                 Alerta::create([
-                                    'mensaje'      => "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
+                                    'mensaje' => "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
                                     'destinatario' => 'gruista',   // Puedes ajustar este campo según tu lógica de negocio
-                                    'user_id_1'    => Auth::id(),  // Usuario que genera la alerta
-                                    'user_id_2'    => $gruista->id, // Usuario destinatario (gruista)
-                                    'leida'        => false,       // Se marca como no leída por defecto
+                                    'user_id_1' => Auth::id(),  // Usuario que genera la alerta
+                                    'user_id_2' => $gruista->id, // Usuario destinatario (gruista)
+                                    'leida' => false,       // Se marca como no leída por defecto
                                 ]);
                             }
                         }
@@ -221,7 +220,7 @@ class etiquetaController extends Controller
                 $etiqueta->estado = "fabricando";
                 $etiqueta->fecha_inicio = now();
                 $etiqueta->save();
-            } elseif ($etiqueta->estado == "fabricando" || $etiqueta->estado == "ensamblando" || $etiqueta->estado == "soldando") {  // ---------------------------------- F A B R I C A N D O
+            } elseif ($etiqueta->estado == "fabricando") {  // ---------------------------------- F A B R I C A N D O
 
                 // ELEMENTOS COMPLETADOS?? SALIMOS DEL CONDICIONAL
                 $elementosCompletados = $elementosEnMaquina->where('estado', 'completado')->count();
@@ -241,7 +240,7 @@ class etiquetaController extends Controller
 
                 foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
                     // Si la máquina es ID 7, solo permitir diámetro 5
-                    if ($maquina_id == 7 && $diametro != 5) {
+                    if ($maquina_id->tipo == 'ensambladora' && $diametro != 5) {
                         continue; // Saltar cualquier otro diámetro
                     }
 
@@ -277,7 +276,7 @@ class etiquetaController extends Controller
                             // Registrar cuánto se consumió de este producto para este diámetro
                             $consumos[$diametro][] = [
                                 'producto_id' => $producto->id,
-                                'consumido'   => $restar,
+                                'consumido' => $restar,
                             ];
                         }
                     }
@@ -326,15 +325,18 @@ class etiquetaController extends Controller
                     $elemento->producto_id = $productosAsignados[0] ?? null;
                     $elemento->producto_id_2 = $productosAsignados[1] ?? null;
                     $elemento->estado = "completado";
-                    $elemento->fecha_finalizacion = now();
                     $elemento->ubicacion_id = $ubicacion->id;
                     $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
-                    if (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false && $elementosEnMaquina == $etiqueta->elementos->count()) {
+                    if (
+                        (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false)) {
+
                         // Código a ejecutar si "taller" o "carcasas" están en la variable ensamblado
                         if ($maquina->tipo === 'cortadora_dobladora') {
                             // Asignar "IDEA 5"
                             $elemento->maquina_id_2 = 7;
+                            // Registrar en el log de Laravel para depuración
+    Log::info('La máquina es cortadora_dobladora, asignamos maquina_id_2 = 7 al elemento con ID: ' . $elemento->id);
                         } elseif ($maquina->tipo === 'ensambladora') {
 
                             // Buscar una máquina de soldar disponible
@@ -407,7 +409,7 @@ class etiquetaController extends Controller
                     $planilla->save();
                 }
             } elseif ($etiqueta->estado == "ensamblando") {    // ---------------------------------- E N S A M B L A N D O
-                if ($maquina->tipo = ! 'ensambladora') {
+                if ($maquina->tipo = !'ensambladora') {
                     return response()->json([
                         'success' => false,
                         'error' => "La etiqueta esta en otra máquina",
@@ -419,7 +421,7 @@ class etiquetaController extends Controller
 
                 foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
                     // Si la máquina es ID 7, solo permitir diámetro 5
-                    if ($maquina_id == 7 && $diametro != 5) {
+                    if ($maquina_id->tipo == 'ensambladora' && $diametro != 5) {
                         continue; // Saltar cualquier otro diámetro
                     }
 
@@ -455,7 +457,7 @@ class etiquetaController extends Controller
                             // Registrar cuánto se consumió de este producto para este diámetro
                             $consumos[$diametro][] = [
                                 'producto_id' => $producto->id,
-                                'consumido'   => $restar,
+                                'consumido' => $restar,
                             ];
                         }
                     }
@@ -499,12 +501,16 @@ class etiquetaController extends Controller
                     // Asignar hasta dos productos al elemento según lo requerido
                     $elemento->producto_id = $productosAsignados[0] ?? null;
                     $elemento->producto_id_2 = $productosAsignados[1] ?? null;
+                    $elemento->producto_id_3 = $productosAsignados[2] ?? null;
                     $elemento->estado = "completado";
                     $elemento->fecha_finalizacion = now();
                     $elemento->ubicacion_id = $ubicacion->id;
                     $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
-                    if (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false && $elementosEnMaquina == $etiqueta->elementos->count()) {
+                    if (
+                        (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false)
+                        && $elementosEnMaquina->count() == $etiqueta->elementos->count()
+                    ) {
 
                         // Buscar una máquina de soldar disponible
                         $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
@@ -575,7 +581,7 @@ class etiquetaController extends Controller
                     $planilla->save();
                 }
             } elseif ($etiqueta->estado == "soldando") {     // ---------------------------------- S O L D A N D O
-                if ($maquina->tipo = ! 'soldadora') {
+                if ($maquina->tipo = !'soldadora') {
                     return response()->json([
                         'success' => false,
                         'error' => "La etiqueta esta en otra máquina",
@@ -584,7 +590,11 @@ class etiquetaController extends Controller
 
                 $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
-                if (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false && $elementosEnMaquina == $etiqueta->elementos->count()) {
+                if (
+                    (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false)
+                    && $elementosEnMaquina->count() == $etiqueta->elementos->count()
+                ) {
+
                     // Código a ejecutar si "taller" o "carcasas" están en la variable ensamblado
                     if ($maquina->tipo === 'cortadora_dobladora') {
                         // Asignar "IDEA 5"

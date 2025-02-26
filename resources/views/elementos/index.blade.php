@@ -318,7 +318,7 @@
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
                                     <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.maquina2?.nombre || 'N/A'"></span>
+                                    <span x-text="elemento.maquina_2?.nombre || 'N/A'"></span>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.maquina_id_2"

@@ -142,11 +142,7 @@
              
                     } else {
                         // Del conjunto de elementos asociados a la máquina, eliminamos aquellos cuyo estado es 'completado'
-                        $elementosAgrupados = $maquina->elementos
-                            ->filter(function ($elemento) {
-                                return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') !== 'completada';
-                            })
-                            ->groupBy('etiqueta_id');
+                        $elementosAgrupados = $maquina->elementos->groupBy('etiqueta_id');
                       
                     }
 

@@ -117,6 +117,11 @@ class Elemento extends Model
     {
         return $this->belongsTo(Producto::class, 'producto_id_2');
     }
+    public function producto3()
+    {
+        return $this->belongsTo(Producto::class, 'producto_id_3');
+    }
+
     public function paquete()
     {
         return $this->belongsTo(Paquete::class, 'paquete_id');
