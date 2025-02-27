@@ -139,19 +139,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function mostrarDibujo(paqueteId) {
         const paquete = window.paquetes.find(p => p.id == paqueteId);
-
+    
         if (!paquete) {
             console.warn("No se encontró el paquete.");
             return;
         }
-
-        // Obtener SOLO los elementos que pertenecen a este paquete
-        let elementos = [];
-        paquete.etiquetas.forEach(etiqueta => {
-            elementos = elementos.concat(
-                etiqueta.elementos.filter(e => e.paquete_id == paqueteId) // Filtra por paquete_id
-            );
-        });
+    
+        // Obtener los elementos directamente del paquete
+        let elementos = paquete.elementos || [];
+        
         if (elementos.length > 0) {
             dibujarElementos(elementos);
             modal.classList.remove("hidden");
@@ -159,6 +155,7 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Este paquete no tiene elementos para dibujar.");
         }
     }
+    
 
     cerrarModal.addEventListener("click", function () {
         modal.classList.add("hidden");

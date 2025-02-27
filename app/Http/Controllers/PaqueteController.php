@@ -20,14 +20,14 @@ class PaqueteController extends Controller
             'etiquetas.elementos',
             'ubicacion'
         ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
-    
+
         // Aplicar filtro por ID si se proporciona
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));
         }
-    
+
         $paquetes = $query->paginate(10)->appends($request->query());
-    
+
         // Filtrar elementos manualmente después de cargar los datos
         foreach ($paquetes as $paquete) {
             foreach ($paquete->etiquetas as $etiqueta) {
@@ -36,10 +36,10 @@ class PaqueteController extends Controller
                 });
             }
         }
-    
+
         return view('paquetes.index', compact('paquetes'));
     }
-    
+
     /**
      * Crear un nuevo paquete y asociar etiquetas existentes.
      */
@@ -64,6 +64,7 @@ class PaqueteController extends Controller
             $maquinaId = $request->input('maquina_id');
             $maquina = DB::table('maquinas')->where('id', $maquinaId)->first();
             $nombreMaquina = $maquina->nombre; // ✅ Obtener el nombre de la máquina
+            $codigoMaquina = $maquina->codigo; // ✅ Obtener el nombre de la máquina
 
             // Verificar disponibilidad de etiquetas, elementos y subpaquetes
             if ($mensajeError = $this->verificarDisponibilidad($etiquetasIds, $elementosIds, $subpaquetesIds)) {
@@ -88,9 +89,6 @@ class PaqueteController extends Controller
                 return $etiqueta->elementos->where('maquina_id', $maquinaId)->pluck('id');
             })->unique()->values()->toArray(); // ✅ Elimina duplicados y reindexa el array
 
-            // Fusionar elementos enviados y los obtenidos de las etiquetas
-            $elementosIds = array_merge($elementosIds, $elementosIdsDesdeEtiquetas);
-
             if ($etiquetas->isEmpty() && $elementos->isEmpty() && $subpaquetes->isEmpty()) {
                 DB::rollBack();
                 return response()->json([
@@ -98,7 +96,10 @@ class PaqueteController extends Controller
                     'message' => 'No se encontraron datos válidos para crear el paquete.'
                 ], 400);
             }
-
+            // Si no se pasaron etiquetas en el request, usar los elementos directamente del request
+            if (empty($etiquetasIds)) {
+                $elementosIdsDesdeEtiquetas = $elementosIds;
+            }
             // Obtener la planilla desde las etiquetas (si existen)
             $planilla = $etiquetas->first()->planilla ?? null;
 
@@ -120,9 +121,10 @@ class PaqueteController extends Controller
             }
             $codigo_planilla = $planilla->codigo_limpio;
 
-            $pesoTotal = $etiquetas->sum(function ($etiqueta) {
-                return $etiqueta->elementos->sum('peso');
-            }) + $elementos->sum('peso') + $subpaquetes->sum('peso');
+            $pesoTotal = $etiquetas->sum(function ($etiqueta) use ($maquinaId) {
+                return $etiqueta->elementos->where('maquina_id', $maquinaId)->sum('peso');
+            }) + $elementos->where('maquina_id', $maquinaId)->sum('peso') + $subpaquetes->where('maquina_id', $maquinaId)->sum('peso');
+            
             // Verificar si el peso total supera el límite
             if ($pesoTotal > 1200) {
                 DB::rollBack();
@@ -132,21 +134,22 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
+
             // Obtener ubicación
-            $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%$nombreMaquina%")->first();
+            $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
 
             if (!$ubicacion) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => "No se encontró una ubicación con el nombre de la máquina: $nombreMaquina."
+                    'message' => "No se encontró una ubicación con el nombre de la máquina: $codigoMaquina."
                 ], 400);
             }
             // Crear el paquete
             $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal);
 
             // Asociar elementos al paquete
-            $this->asignarItemsAPaquete($etiquetasIds, $elementosIdsDesdeEtiquetas, $subpaquetesIds, $paquete->id);
+            $this->asignarItemsAPaquete($elementosIdsDesdeEtiquetas, $subpaquetesIds, $paquete->id);
 
             DB::commit();
 
@@ -168,17 +171,15 @@ class PaqueteController extends Controller
     /**
      * Verifica si los elementos están disponibles para ser empaquetados.
      */
-    private function verificarDisponibilidad($etiquetas, $elementos, $subpaquetes)
+    private function verificarDisponibilidad($elementos, $subpaquetes)
     {
         try {
-            $ocupados = Etiqueta::whereIn('id', $etiquetas)->whereNotNull('paquete_id')->pluck('id');
             $elementosOcupados = Elemento::whereIn('id', $elementos)->whereNotNull('paquete_id')->pluck('id');
             $subpaquetesOcupados = Subpaquete::whereIn('id', $subpaquetes)->whereNotNull('paquete_id')->pluck('id');
 
-            if ($ocupados->isNotEmpty() || $elementosOcupados->isNotEmpty() || $subpaquetesOcupados->isNotEmpty()) {
+            if ($elementosOcupados->isNotEmpty() || $subpaquetesOcupados->isNotEmpty()) {
                 return [
                     'message' => 'Algunos elementos ya están asignados a otro paquete.',
-                    'etiquetas_ocupadas' => $ocupados->toArray(),
                     'elementos_ocupados' => $elementosOcupados->toArray(),
                     'subpaquetes_ocupados' => $subpaquetesOcupados->toArray()
                 ];
@@ -229,10 +230,9 @@ class PaqueteController extends Controller
     /**
      * Asigna etiquetas, elementos y subpaquetes al paquete.
      */
-    private function asignarItemsAPaquete($etiquetas, $elementos, $subpaquetes, $paqueteId)
+    private function asignarItemsAPaquete($elementos, $subpaquetes, $paqueteId)
     {
         try {
-            Etiqueta::whereIn('id', $etiquetas)->update(['paquete_id' => $paqueteId]);
             Elemento::whereIn('id', $elementos)->update(['paquete_id' => $paqueteId]);
             Subpaquete::whereIn('id', $subpaquetes)->update(['paquete_id' => $paqueteId]);
         } catch (\Exception $e) {
@@ -252,22 +252,14 @@ class PaqueteController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'No se recibieron ítems para verificar.',
-                    'etiquetas_incompletas' => [],
                     'elementos_incompletos' => [],
                     'subpaquetes_incompletos' => []
                 ], 400);
             }
 
-            // Separar por tipo
-            $etiquetasIds = collect($items)->where('type', 'etiqueta')->pluck('id')->toArray();
+    
             $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
             $subpaquetesIds = collect($items)->where('type', 'subpaquete')->pluck('id')->toArray();
-
-            // Buscar etiquetas incompletas
-            $etiquetasIncompletas = Etiqueta::whereIn('id', $etiquetasIds)
-                ->where('estado', '!=', 'completada')
-                ->pluck('id')
-                ->toArray();
 
             // Buscar elementos incompletos
             $elementosIncompletos = Elemento::whereIn('id', $elementosIds)
@@ -279,10 +271,9 @@ class PaqueteController extends Controller
 
 
             return response()->json([
-                'success' => empty($etiquetasIncompletas) && empty($elementosIncompletos) && empty($subpaquetesIncompletos),
-                'message' => empty($etiquetasIncompletas) && empty($elementosIncompletos) && empty($subpaquetesIncompletos) ?
+                'success' => empty($elementosIncompletos) && empty($subpaquetesIncompletos),
+                'message' => empty($elementosIncompletos) && empty($subpaquetesIncompletos) ?
                     'Todos los ítems están completos.' : 'Algunos ítems no están completos.',
-                'etiquetas_incompletas' => $etiquetasIncompletas,
                 'elementos_incompletos' => $elementosIncompletos,
                 'subpaquetes_incompletos' => $subpaquetesIncompletos
             ], 200);
@@ -293,7 +284,6 @@ class PaqueteController extends Controller
                 'success' => false,
                 'message' => 'Error al verificar los ítems.',
                 'error' => $e->getMessage(),
-                'etiquetas_incompletas' => [],
                 'elementos_incompletos' => [],
                 'subpaquetes_incompletos' => []
             ], 500);

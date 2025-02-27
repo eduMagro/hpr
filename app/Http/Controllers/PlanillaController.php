@@ -47,7 +47,10 @@ class PlanillaController extends Controller
                 $maquinas = Maquina::where('codigo', 'F12')->get();
             } elseif (in_array($diametro, [10, 12])) {
                 $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
+            }elseif (in_array($diametro, [10, 16])){
+                $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12', 'MS16'])->get();
             }
+            
         } elseif (!$estribo && $diametro >= 10 && $diametro <= 16) {
             $maquinas = Maquina::where('codigo', 'MS16')->get();
         } elseif (!$estribo && $diametro >= 8 && $diametro <= 20) {
@@ -149,28 +152,32 @@ class PlanillaController extends Controller
     {
         try {
             $query = Planilla::with(['user', 'elementos']);
-
+              
+                
             // Aplicar filtros
             $query = $this->aplicarFiltros($query, $request);
-
+    
             // 📌 Ordenación segura
             $allowedSortColumns = ['created_at', 'codigo', 'cliente', 'nom_obra'];
             $sortBy = in_array($request->input('sort_by'), $allowedSortColumns) ? $request->input('sort_by') : 'created_at';
             $order = in_array($request->input('order'), ['asc', 'desc']) ? $request->input('order') : 'desc';
-
+    
             $query->orderBy($sortBy, $order);
-
+    
             // 📌 Paginación
             $perPage = $request->input('per_page', 10);
             $planillas = $query->paginate($perPage)->appends($request->except('page'));
-
+        
+            $planillas->loadSum(['elementos as suma_peso_completados' => function ($query) {
+                $query->where('estado', 'completado');
+            }], 'peso');
             // Retornar vista con los datos
             return view('planillas.index', compact('planillas'));
         } catch (Exception $e) {
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-
+    
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
     {

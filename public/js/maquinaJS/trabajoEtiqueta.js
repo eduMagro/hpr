@@ -152,7 +152,7 @@ function actualizarDOMEtiqueta(id, data) {
         case "fabricando":
             Swal.fire({
                 icon: "info",
-                title: "Etiqueta comenzada",
+                title: "Fabricando",
                 text: "Empezamos a fabricar la etiqueta.",
                 timer: 2000,
                 showConfirmButton: false,

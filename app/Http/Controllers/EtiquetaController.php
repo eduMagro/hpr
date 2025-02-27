@@ -79,7 +79,8 @@ class etiquetaController extends Controller
                         ->orWhere('maquina_id_2', $maquina_id);
                 })
                 ->get();
-
+            // ELEMENTOS COMPLETADOS?? SALIMOS DEL CONDICIONAL
+            $elementosCompletados = $elementosEnMaquina->where('estado', 'completado')->count();
             // Para la máquina con id 7, incluir los elementos extra (aquellos con maquina_id_2 = 7)
 
             // Verificar si la etiqueta está repartida en diferentes máquinas
@@ -222,11 +223,12 @@ class etiquetaController extends Controller
                 $etiqueta->save();
             } elseif ($etiqueta->estado == "fabricando") {  // ---------------------------------- F A B R I C A N D O
 
-                // ELEMENTOS COMPLETADOS?? SALIMOS DEL CONDICIONAL
-                $elementosCompletados = $elementosEnMaquina->where('estado', 'completado')->count();
+
                 if (
-                    $elementosCompletados == $elementosEnMaquina->count() &&
-                    $maquina->tipo == 'cortadora_dobladora'
+                    isset($elementosEnMaquina) && 
+                    $elementosEnMaquina->count() > 0 &&
+                    $elementosCompletados >= $elementosEnMaquina->count() &&
+                    in_array($maquina->tipo, ['cortadora_dobladora', 'estribadora'])
                 ) {
                     DB::rollBack();
                     return response()->json([
@@ -331,7 +333,8 @@ class etiquetaController extends Controller
                     $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
                     if (
-                        (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false)) {
+                        (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false)
+                    ) {
 
                         if ($maquina->tipo === 'estribadora') {
 
@@ -381,13 +384,17 @@ class etiquetaController extends Controller
                     Log::info('Vamos a ver que tiene $maquina' . $enOtrasMaquinas);
 
                     if ($maquina->tipo === 'cortadora_dobladora' && $tiene_dm5) {
+                        // Actualizar el estado de los elementos en la máquina a "fabricando"
+                        foreach ($elementosEnMaquina as $elemento) {
+
+                            $elemento->estado = "completado";
+                            $elemento->save();
+                        }
                         $etiqueta->estado = 'ensamblando';
                         $etiqueta->fecha_finalizacion = null;
-                    } elseif ($maquina->tipo === 'ensambladora') {
-                        $etiqueta->estado = 'soldando';
-                        $etiqueta->fecha_finalizacion = null;
-                    } 
+                    }
                 } else {
+
                     Log::info('Vamos a ver que tiene en otras maquina' . $enOtrasMaquinas);
                     $etiqueta->estado = 'completada';
                     $etiqueta->fecha_finalizacion = now();
@@ -406,14 +413,20 @@ class etiquetaController extends Controller
                     $planilla->save();
                 }
             } elseif ($etiqueta->estado == "ensamblando") {    // ------------------------------------------------------------ E N S A M B L A N D O
-               
-                // if ($maquina->tipo !== 'ensambladora') {
-                //     return response()->json([
-                //         'success' => false,
-                //         'error' => "La etiqueta esta en otra máquina",
-                //     ], 400);
-                // }
 
+                if (
+                    isset($elementosEnMaquina) && 
+                    $elementosEnMaquina->count() > 0 &&
+                    $elementosCompletados >= $elementosEnMaquina->count() &&
+                    in_array($maquina->tipo, ['cortadora_dobladora', 'estribadora'])
+                ) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'error' => "Todos los elementos en la máquina ya han sido completados.",
+                    ], 400);
+                }
+                
                 // -------------- CONSUMOS
                 $consumos = [];
 
@@ -540,7 +553,8 @@ class etiquetaController extends Controller
                 });
 
                 if (
-                    strpos(strtolower($etiqueta->planilla->ensamblado), 'taller') !== false) {
+                    strpos(strtolower($etiqueta->planilla->ensamblado), 'taller') !== false
+                ) {
 
                     if ($maquina->tipo === 'cortadora_dobladora' && $tiene_dm5) {
 
@@ -553,10 +567,8 @@ class etiquetaController extends Controller
                         $etiqueta->estado = 'completada';
                         $etiqueta->fecha_finalizacion = now();
                     }
-                } else {
-                    $etiqueta->estado = 'completada';
-                    $etiqueta->fecha_finalizacion = now();
-                }
+                } 
+                
                 $etiqueta->ensamblador1 = Auth::id();
                 $etiqueta->ensamblador2 = session()->get('compañero_id', null);
                 // Guardar los cambios en la etiqueta

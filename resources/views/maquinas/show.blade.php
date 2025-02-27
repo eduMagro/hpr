@@ -296,7 +296,7 @@
                                         </div>
                                     @endif
                                     <!-- Botón para Subpaquetar -->
-                                    @if ($elemento->peso > 1000)
+                                    @if ($elemento->peso > 500)
                                         <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
                                             class="p-1 bg-purple-500 text-white rounded hover:bg-purple-700 mt-2">
                                             ➕ Subpaquetar

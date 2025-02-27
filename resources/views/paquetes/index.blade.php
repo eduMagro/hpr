@@ -44,13 +44,13 @@
                         </th>
                         <th class="px-2 py-3 border">Planilla</th>
                         <th class="px-2 py-3 border">Ubicación</th>
-                        <th class="px-2 py-3 border">Nº Etiquetas</th>
                         <th class="px-2 py-3 border">Elementos</th>
                         <th class="px-2 py-3 border">Creación Paquete</th>
                         <th class="px-2 py-3 border">Fecha Límite Reparto</th>
                         <th class="px-2 py-3 border text-center">Acciones</th>
                     </tr>
                 </thead>
+                </tbody>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($paquetes as $paquete)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
@@ -63,50 +63,27 @@
                             </td>
                             <td class="py-3 text-center border">
                                 {{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}</td>
-                            <td class="px-2 py-3 text-center border">{{ $paquete->etiquetas->count() }}</td>
                             <td class="px-2 py-3 text-center border">
-                                @if ($paquete->etiquetas->isNotEmpty())
-                                    <ul class="list-disc pl-4 text-blue-600 text-sm">
-                                        @foreach ($paquete->etiquetas as $etiqueta)
-                                            <li class="font-semibold">
-                                                <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
+                                @if ($paquete->elementos->isNotEmpty())
+                                    @foreach ($paquete->elementos as $elemento)
+                                        <ul class="text-green-600 text-sm">
+                                            <li>
+                                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}"
                                                     class="text-blue-500 hover:underline">
-                                                    {{ $etiqueta->nombre }} (ID: {{ $etiqueta->id }})
+                                                    {{ $elemento->etiquetaRelacion->nombre }} (#{{ $elemento->etiquetaRelacion->id }})
                                                 </a>
-                                            </li>
-                                            @if ($etiqueta->elementos->where('paquete_id', $paquete->id)->isNotEmpty())
-                                            <ul class="list-disc pl-6 text-green-600 text-sm">
-                                                @foreach ($etiqueta->elementos->where('paquete_id', $paquete->id) as $elemento)
-                                                    <li>
-                                                        <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
-                                                            class="text-green-500 hover:underline">
-                                                            ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
-                                                        </a>
-                                                    </li>
-                                                @endforeach
-                                            </ul>
-                                        @endif
-                                        
-                                        @endforeach
-                                    </ul>
-                                @elseif ($paquete->elementos->isNotEmpty())
-                                    <ul class="list-disc pl-4 text-green-600 text-sm">
-                                        @foreach ($paquete->elementos as $elemento)
-                                            <li class="font-semibold">
                                                 <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
                                                     class="text-green-500 hover:underline">
-                                                    ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
+                                                    #{{ $elemento->id }} - FIGURA {{ $elemento->figura }}
                                                 </a>
                                             </li>
-                                        @endforeach
-                                    </ul>
+                                        </ul>
+                                    @endforeach
                                 @else
                                     <span class="text-gray-500">Vacío</span>
                                 @endif
                             </td>
-
-                            <td class="px-2 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}
-                            </td>
+                            <td class="px-2 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}</td>
                             <td class="px-2 py-3 text-center border">
                                 {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
                             </td>
@@ -137,28 +114,25 @@
             {{ $paquetes->links() }}
         </div>
     </div>
-       <!-- Modal con Canvas para Dibujar las Dimensiones -->
-       <div id="modal-dibujo"
-       class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
-       <div
-           class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
-           <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
-               ✖
-           </button>
+    <!-- Modal con Canvas para Dibujar las Dimensiones -->
+    <div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
+        <div
+            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+            <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
+                ✖
+            </button>
 
-           <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
-           <!-- Contenedor desplazable -->
-           <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
-               <canvas id="canvas-dibujo" width="800" height="600"
-                   class="border max-w-full h-auto"></canvas>
-           </div>
-       </div>
-   </div>
-   <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
-   <script>
-    window.paquetes = @json($paquetes->items());
-</script>
-
+            <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
+            <!-- Contenedor desplazable -->
+            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
+                <canvas id="canvas-dibujo" width="800" height="600" class="border max-w-full h-auto"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
+    <script>
+        window.paquetes = @json($paquetes->items());
+    </script>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/imprimirQrS.js') }}"></script>

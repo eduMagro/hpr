@@ -144,6 +144,7 @@
                         <th class="px-4 py-3 border">Sección</th>
                         <th class="px-4 py-3 border">Descripción</th>
                         <th class="px-4 py-3 border">Ensamblado</th>
+                        <th class="px-4 py-3 border">Peso Fabricado</th>
                         <th class="px-4 py-3 border">Peso Total</th>
                         <th class="px-4 py-3 border">Estado</th>
                         <th class="px-4 py-3 border">Fecha Inicio</th>
@@ -230,6 +231,15 @@
                                     class="form-input w-full">
                             </td>
 
+                            <!-- Peso Fabricado -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.suma_peso_completados ?? 0"></span> kg
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.suma_peso_completados"
+                                    class="form-input w-full">
+                            </td>
+                            
                             <!-- Peso Total -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">

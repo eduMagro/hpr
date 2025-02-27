@@ -64,7 +64,7 @@
                             <th class="px-4 py-3 border">Ensamblador 2</th>
                             <th class="px-4 py-3 border">Soldador 1</th>
                             <th class="px-4 py-3 border">Soldador 2</th>
-                            <th class="px-4 py-3 border">Paquete</th>
+                            {{-- <th class="px-4 py-3 border">Paquete</th> --}}
                             <th class="px-4 py-3 border">Número de Etiqueta
                                 <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
                                     <input type="text" name="numero_etiqueta"
@@ -79,7 +79,7 @@
                                         placeholder="Buscar">
                                 </form>
                             </th>
-                            <th class="px-4 py-3 border">Ubicación</th>
+                            {{-- <th class="px-4 py-3 border">Ubicación</th> --}}
                             <th class="px-4 py-3 border">Peso (kg)</th>
                             <th class="px-4 py-3 border">Fecha Inicio</th>
                             <th class="px-4 py-3 border">Fecha Finalización</th>
@@ -123,16 +123,16 @@
                                 </td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->soldador1 ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->soldador2 ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->paquete_id ?? 'N/A' }}</td>
+                                {{-- <td class="px-4 py-3 text-center border">{{ $etiqueta->paquete_id ?? 'N/A' }}</td> --}}
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->numero_etiqueta }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->nombre }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->ubicacion->nombre ?? 'N/A' }}
-                                </td>
+                                {{-- <td class="px-4 py-3 text-center border">{{ $etiqueta->ubicacion->nombre ?? 'N/A' }}
+                                </td> --}}
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->peso_kg }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_inicio ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}
                                 </td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->estado }}</td>
+                                <td class="px-4 py-3 text-center border">{{ ucfirst($etiqueta->estado) }}</td>
                                 <td class="px-4 py-3 text-center border flex flex-col gap-2">
 
                                     <button onclick="mostrarDibujo({{ $etiqueta->id }})"
