@@ -19,14 +19,16 @@ class PlanillaController extends Controller
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
         $estribo = $doblesPorBarra >= 4;
-    
+
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
-    
+
         $maquinaForzada = null;
         if (count($diametrosPlanilla) > 1) {
             $maxDiametro = max($diametrosPlanilla);
             if ($maxDiametro <= 12) {
                 $maquinaForzada = ['PS12', 'F12'];
+            } elseif ($maxDiametro <= 16) {
+                $maquinaForzada = ['MS16'];
             } elseif ($maxDiametro <= 20) {
                 $maquinaForzada = ['MSR20'];
             } elseif ($maxDiametro <= 25) {
@@ -35,7 +37,7 @@ class PlanillaController extends Controller
                 $maquinaForzada = ['MANUAL'];
             }
         }
-    
+
         if ($diametro == 5) {
             $maquinas = Maquina::where('codigo', 'ID5')->get();
         } elseif ($estribo) {
@@ -43,11 +45,11 @@ class PlanillaController extends Controller
                 $maquinas = Maquina::where('codigo', 'PS12')->get();
             } elseif (in_array($diametro, [10, 12])) {
                 $maquinas = Maquina::where('codigo', 'F12')->get();
-            } else {
+            } elseif (in_array($diametro, [10, 12])) {
                 $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
             }
         } elseif (!$estribo && $diametro >= 10 && $diametro <= 16) {
-            $maquinas = Maquina::where('codigo', 'MSR20')->get();
+            $maquinas = Maquina::where('codigo', 'MS16')->get();
         } elseif (!$estribo && $diametro >= 8 && $diametro <= 20) {
             $maquinas = Maquina::where('codigo', 'MSR20')->get();
         } elseif (!$estribo && $diametro >= 12 && $diametro <= 25) {
@@ -57,33 +59,33 @@ class PlanillaController extends Controller
         } else {
             $maquinas = Maquina::where('codigo', 'MANUAL')->get();
         }
-    
+
         if ($maquinas->isEmpty()) {
             return null;
         }
-    
+
         // Selección de la máquina con menor carga
         $maquinaSeleccionada = null;
         $pesoMinimo = PHP_INT_MAX;
-    
+
         foreach ($maquinas as $maquina) {
             $pesoActual = Elemento::where('maquina_id', $maquina->id)->sum('peso');
-    
+
             if ($pesoActual < 5000) {
                 // Prioriza la primera máquina con menos de 5,000 kg
                 return $maquina->id;
             }
-    
+
             // Si todas están por encima del umbral, selecciona la de menor peso acumulado
             if ($pesoActual < $pesoMinimo) {
                 $pesoMinimo = $pesoActual;
                 $maquinaSeleccionada = $maquina;
             }
         }
-    
+
         return $maquinaSeleccionada?->id ?? null;
     }
-    
+
 
     //------------------------------------------------------------------------------------ FILTROS
     private function aplicarFiltros($query, Request $request)
@@ -170,69 +172,62 @@ class PlanillaController extends Controller
     }
 
     //------------------------------------------------------------------------------------ SHOW()
-
     public function show($id)
     {
         $planilla = Planilla::with([
             'paquetes:id,planilla_id,peso,ubicacion_id',
-            'paquetes.ubicacion:id,nombre', // Cargar la ubicación de cada paquete
+            'paquetes.ubicacion:id,nombre',
             'etiquetas:id,planilla_id,estado,peso,paquete_id',
+            'etiquetas.elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
+            'etiquetas.elementos.ubicacion:id,nombre',
+            'etiquetas.elementos.maquina:id,nombre',
             'elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
-            'elementos.ubicacion:id,nombre', // Cargar la ubicación de cada elemento
-            'elementos.maquina:id,nombre', // Cargar la máquina de cada elemento
-            'etiquetas.elementos.subpaquetes'
+            'elementos.ubicacion:id,nombre',
+            'elementos.maquina:id,nombre',
         ])->findOrFail($id);
 
         // Función para asignar color de fondo según estado
-        $getColor = function ($estado, $tipo) {
-            $estado = strtolower($estado ?? 'desconocido');
-
-            if ($tipo === 'etiqueta' && $estado === 'completada') {
-                $estado = 'completado';
-            }
-
-            return match ($estado) {
-                'completado' => 'bg-green-200',
-                'pendiente' => 'bg-red-200',
-                'fabricando' => 'bg-blue-200',
-                default => 'bg-gray-200'
-            };
+        $getColor = fn($estado) => match (strtolower(trim($estado ?? 'desconocido'))) {
+            'completado' => 'bg-green-200',
+            'pendiente' => 'bg-red-200',
+            'fabricando' => 'bg-blue-200',
+            default => 'bg-gray-200'
         };
 
-        // Calcular el progreso de la planilla
-        $pesoAcumulado = $planilla->elementos->where('estado', 'completado')->sum('peso');
-        $pesoTotal = max(1, $planilla->peso_total ?? 1);
-        $progreso = min(100, ($pesoAcumulado / $pesoTotal) * 100);
-
-        // Procesar paquetes
-        $paquetes = $planilla->paquetes->map(function ($paquete) {
-            $paquete->color = 'bg-gray-300'; // Asignar color gris claro fijo a todos los paquetes
-            return $paquete;
-        });
-
-
-        // Procesar elementos
+        // ✅ Asignar color a TODOS los elementos antes de cualquier filtrado
         $elementos = $planilla->elementos->map(function ($elemento) use ($getColor) {
-            $elemento->color = $getColor($elemento->estado, 'elemento');
+            $elemento->color = $getColor($elemento->estado);
             return $elemento;
         });
 
-        // Procesar etiquetas
+        // 🔹 Separar elementos con y sin paquete (sin duplicaciones)
+        [$elementosConPaquete, $elementosSinPaquete] = $elementos->partition(fn($elemento) => !empty($elemento->paquete_id));
+
+        // 🔹 Asignar elementos a cada paquete SIN duplicaciones
+        $paquetes = $planilla->paquetes->map(function ($paquete) use ($elementosConPaquete) {
+            $paquete->color = 'bg-gray-300';
+            $paquete->elementos = $elementosConPaquete->where('paquete_id', $paquete->id);
+            return $paquete;
+        });
+
+        // 🔹 Asignar elementos a cada etiqueta (sin afectar el filtrado de paquetes)
         $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $elementos) {
-            $etiqueta->color = $getColor($etiqueta->estado, 'etiqueta');
+            $etiqueta->color = $getColor($etiqueta->estado);
             $etiqueta->elementos = $elementos->where('etiqueta_id', $etiqueta->id);
             return $etiqueta;
         });
 
+        // 🔹 Filtrar etiquetas sin paquete
+        $etiquetasSinPaquete = $etiquetas->whereNull('paquete_id');
+
+        // 📌 Estructura final para la vista
         $planillaCalculada = [
             'planilla' => $planilla,
-            'pesoAcumulado' => $pesoAcumulado,
-            'pesoRestante' => max(0, $pesoTotal - $pesoAcumulado),
-            'progreso' => round($progreso, 2),
-            'paquetes' => $paquetes,
-            'etiquetas' => $etiquetas,
-            'elementos' => $elementos,
-            'etiquetasSinPaquete' => $etiquetas->whereNull('paquete_id')
+            'progreso' => round(min(100, ($elementos->where('estado', 'completado')->sum('peso') / max(1, $planilla->peso_total)) * 100), 2),
+            'paquetes' => $paquetes, // Ahora los paquetes tienen solo sus elementos
+            'etiquetas' => $etiquetas, // Ahora las etiquetas tienen solo sus elementos
+            'elementosSinPaquete' => $elementosSinPaquete, // ✅ Ahora no incluirá elementos que están en paquetes
+            'etiquetasSinPaquete' => $etiquetasSinPaquete
         ];
 
         return view('planillas.show', compact('planillaCalculada'));
@@ -299,7 +294,7 @@ class PlanillaController extends Controller
             foreach ($groupedByCodigo as $codigo => $rows) {
                 // Sumar todos los pesos de las filas con este código
                 $pesoTotal = array_reduce($rows, function ($carry, $row) {
-                    return $carry + (float)($row[34] ?? 0);
+                    return $carry + (float) ($row[34] ?? 0);
                 }, 0);
 
                 // Crear el registro de planilla
