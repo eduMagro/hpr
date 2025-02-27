@@ -145,12 +145,13 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        // Obtener elementos de todas las etiquetas del paquete
+        // Obtener SOLO los elementos que pertenecen a este paquete
         let elementos = [];
         paquete.etiquetas.forEach(etiqueta => {
-            elementos = elementos.concat(etiqueta.elementos);
+            elementos = elementos.concat(
+                etiqueta.elementos.filter(e => e.paquete_id == paqueteId) // Filtra por paquete_id
+            );
         });
-
         if (elementos.length > 0) {
             dibujarElementos(elementos);
             modal.classList.remove("hidden");
