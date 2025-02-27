@@ -74,19 +74,19 @@
                                                     {{ $etiqueta->nombre }} (ID: {{ $etiqueta->id }})
                                                 </a>
                                             </li>
-                                            @if ($etiqueta->elementos->isNotEmpty())
-                                                <ul class="list-disc pl-6 text-green-600 text-sm">
-                                                    @foreach ($etiqueta->elementos as $elemento)
-                                                        <li>
-                                                            <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
-                                                                class="text-green-500 hover:underline">
-                                                                ID {{ $elemento->id }} - FIGURA
-                                                                {{ $elemento->figura }}
-                                                            </a>
-                                                        </li>
-                                                    @endforeach
-                                                </ul>
-                                            @endif
+                                            @if ($etiqueta->elementos->where('paquete_id', $paquete->id)->isNotEmpty())
+                                            <ul class="list-disc pl-6 text-green-600 text-sm">
+                                                @foreach ($etiqueta->elementos->where('paquete_id', $paquete->id) as $elemento)
+                                                    <li>
+                                                        <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                                                            class="text-green-500 hover:underline">
+                                                            ID {{ $elemento->id }} - FIGURA {{ $elemento->figura }}
+                                                        </a>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                        
                                         @endforeach
                                     </ul>
                                 @elseif ($paquete->elementos->isNotEmpty())
@@ -116,8 +116,10 @@
                                     class="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"><i
                                         class="fas fa-qrcode"></i>
                                 </button>
-                                <a href="{{ route('paquetes.show', $paquete->id) }}"
-                                    class="text-blue-500 hover:underline">Ver</a>
+                                <button onclick="mostrarDibujo({{ $etiqueta->id }})"
+                                    class="text-blue-500 hover:underline">
+                                    Ver
+                                </button>
                                 <a href="{{ route('paquetes.edit', $paquete->id) }}"
                                     class="text-yellow-500 hover:underline">Editar</a>
                                 <x-boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
@@ -137,6 +139,28 @@
             {{ $paquetes->links() }}
         </div>
     </div>
+       <!-- Modal con Canvas para Dibujar las Dimensiones -->
+       <div id="modal-dibujo"
+       class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
+       <div
+           class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+           <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
+               ✖
+           </button>
+
+           <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
+           <!-- Contenedor desplazable -->
+           <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
+               <canvas id="canvas-dibujo" width="800" height="600"
+                   class="border max-w-full h-auto"></canvas>
+           </div>
+       </div>
+   </div>
+   <script src="{{ asset('js/etiquetasJs/figurasPaquete.js') }}" defer></script>
+   <script>
+    window.paquetes = @json($paquetes->items());
+</script>
+
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/imprimirQrS.js') }}"></script>

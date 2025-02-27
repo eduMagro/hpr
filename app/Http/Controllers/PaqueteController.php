@@ -19,18 +19,27 @@ class PaqueteController extends Controller
             'planilla',
             'etiquetas.elementos',
             'ubicacion'
-        ])
-            ->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
-
+        ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
+    
         // Aplicar filtro por ID si se proporciona
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));
         }
-
+    
         $paquetes = $query->paginate(10)->appends($request->query());
-
+    
+        // Filtrar elementos manualmente después de cargar los datos
+        foreach ($paquetes as $paquete) {
+            foreach ($paquete->etiquetas as $etiqueta) {
+                $etiqueta->elementos = $etiqueta->elementos->filter(function ($elemento) use ($paquete) {
+                    return $elemento->paquete_id == $paquete->id;
+                });
+            }
+        }
+    
         return view('paquetes.index', compact('paquetes'));
     }
+    
     /**
      * Crear un nuevo paquete y asociar etiquetas existentes.
      */
@@ -69,11 +78,15 @@ class PaqueteController extends Controller
             $subpaquetes = Subpaquete::whereIn('id', $subpaquetesIds)->get();
 
             // Incluir elementos de etiquetas en la lista de elementos a empaquetar
+            // $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId) {
+            //     return $etiqueta->elementos->filter(fn($elemento) => $elemento->maquina_id == $maquinaId)
+            //         ->pluck('id')
+            //         ->toArray();
+            // })->toArray();
+// Obtener elementos que pertenecen a la máquina seleccionada
             $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId) {
-                return $etiqueta->elementos->filter(fn($elemento) => $elemento->maquina_id == $maquinaId)
-                    ->pluck('id')
-                    ->toArray();
-            })->toArray();
+                return $etiqueta->elementos->where('maquina_id', $maquinaId)->pluck('id');
+            })->unique()->values()->toArray(); // ✅ Elimina duplicados y reindexa el array
 
             // Fusionar elementos enviados y los obtenidos de las etiquetas
             $elementosIds = array_merge($elementosIds, $elementosIdsDesdeEtiquetas);
@@ -133,7 +146,7 @@ class PaqueteController extends Controller
             $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal);
 
             // Asociar elementos al paquete
-            $this->asignarItemsAPaquete($etiquetasIds, $elementosIds, $subpaquetesIds, $paquete->id);
+            $this->asignarItemsAPaquete($etiquetasIds, $elementosIdsDesdeEtiquetas, $subpaquetesIds, $paquete->id);
 
             DB::commit();
 
@@ -147,7 +160,7 @@ class PaqueteController extends Controller
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Error en el servidor: ' . $e->getMessage()
+                'message' => 'Error en el controlador: ' . $e->getMessage()
             ], 500);
         }
     }

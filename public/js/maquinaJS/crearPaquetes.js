@@ -128,7 +128,7 @@ function crearPaquete() {
                     confirmButtonColor: "#d33",
                 });
 
-                throw new Error("Error en verificación de ítems.");
+                // throw new Error("Error en verificación de ítems.");
             }
 
             console.log("Ubicación ID obtenida:", ubicacionId);

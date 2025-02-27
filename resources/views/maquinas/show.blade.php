@@ -543,7 +543,6 @@
     const ubicacionId = @json(optional($ubicacion)->id); // Esto puede ser null si no se encontró
 </script>
 
-
     <script>
         let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
         let etiquetasEnUnaSolaMaquina = @json($etiquetasEnUnaSolaMaquina);
