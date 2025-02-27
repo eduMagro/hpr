@@ -147,11 +147,15 @@ document.addEventListener("DOMContentLoaded", function () {
     
         // Obtener los elementos directamente del paquete
         let elementos = paquete.elementos || [];
+        let subpaquetes = paquete.subpaquetes || [];
         
         if (elementos.length > 0) {
             dibujarElementos(elementos);
             modal.classList.remove("hidden");
-        } else {
+        } else if(subpaquetes.length > 0){
+            dibujarElementos(subpaquetes);
+            modal.classList.remove("hidden");
+        }else {
             alert("Este paquete no tiene elementos para dibujar.");
         }
     }

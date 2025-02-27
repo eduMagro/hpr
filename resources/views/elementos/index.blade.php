@@ -29,11 +29,12 @@
                 <label for="estado" class="block text-sm font-medium text-gray-700">Estado</label>
                 <select name="estado" class="border p-2 rounded">
                     <option value="">Todos</option>
-                    <option value="Completado" {{ request('estado') == 'Completado' ? 'selected' : '' }}>Completado
+                    <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente
                     </option>
-                    <option value="Fabricando" {{ request('estado') == 'Fabricando' ? 'selected' : '' }}>Fabricando
+                    <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando
                     </option>
-                    <option value="Montaje" {{ request('estado') == 'Montaje' ? 'selected' : '' }}>Montaje</option>
+                    <option value="completado" {{ request('estado') == 'completado' ? 'selected' : '' }}>Completado</option>
+                    <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje</option>
                 </select>
             </div>
             <input type="date" name="fecha_inicio" value="{{ request('fecha_inicio') }}" class="border p-2 rounded">

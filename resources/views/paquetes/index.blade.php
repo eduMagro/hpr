@@ -66,11 +66,12 @@
                             <td class="px-2 py-3 text-center border">
                                 @if ($paquete->elementos->isNotEmpty())
                                     @foreach ($paquete->elementos as $elemento)
-                                        <ul class="text-green-600 text-sm">
+                                        <ul class="text-sm">
                                             <li>
                                                 <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}"
                                                     class="text-blue-500 hover:underline">
-                                                    {{ $elemento->etiquetaRelacion->nombre }} (#{{ $elemento->etiquetaRelacion->id }})
+                                                    {{ $elemento->etiquetaRelacion->nombre }}
+                                                    (#{{ $elemento->etiquetaRelacion->id }})
                                                 </a>
                                                 <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
                                                     class="text-green-500 hover:underline">
@@ -79,11 +80,35 @@
                                             </li>
                                         </ul>
                                     @endforeach
+                                @elseif($paquete->subpaquetes->isNotEmpty())
+                                    {{-- Mostrar subpaquetes si existen --}}
+                                    @foreach ($paquete->subpaquetes as $subpaquete)
+                                    <ul class="text-sm">
+                                       
+                                            <li>
+                                                <a href="{{ route('etiquetas.index', ['id' => $subpaquete->elemento->etiquetaRelacion->id]) }}"
+                                                    class="text-blue-500 hover:underline">
+                                                    {{ $subpaquete->elemento->etiquetaRelacion->nombre }}
+                                                    (#{{ $subpaquete->elemento->etiquetaRelacion->id }})
+                                                </a>
+                                                <a href="{{ route('elementos.index', ['id' => $subpaquete->elemento->id]) }}"
+                                                    class="text-green-500 hover:underline">
+                                                    #{{ $subpaquete->elemento->id }} - FIGURA {{ $subpaquete->elemento->figura }}
+                                                </a>
+                                                <a href="{{ route('subpaquetes.index', ['id' => $subpaquete->id]) }}"
+                                                    class="text-red-500 hover:underline">
+                                                    Subpaquete #{{ $subpaquete->id }}
+                                                </a>
+                                            </li>
+                                        </ul>
+                                        @endforeach
+                                   
                                 @else
                                     <span class="text-gray-500">Vacío</span>
                                 @endif
                             </td>
-                            <td class="px-2 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="px-2 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}
+                            </td>
                             <td class="px-2 py-3 text-center border">
                                 {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
                             </td>

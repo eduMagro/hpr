@@ -67,7 +67,7 @@ class PaqueteController extends Controller
             $codigoMaquina = $maquina->codigo; // ✅ Obtener el nombre de la máquina
 
             // Verificar disponibilidad de etiquetas, elementos y subpaquetes
-            if ($mensajeError = $this->verificarDisponibilidad($etiquetasIds, $elementosIds, $subpaquetesIds)) {
+            if ($mensajeError = $this->verificarDisponibilidad( $elementosIds, $subpaquetesIds)) {
                 DB::rollBack();
                 return response()->json(array_merge(['success' => false], $mensajeError), 400);
             }

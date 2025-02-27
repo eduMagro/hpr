@@ -214,10 +214,6 @@
                                 <strong> Estado: </strong>
                                 <span id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
                             </p>
-                            <p>
-                                <strong>Paquete:</strong>
-                                {{ $etiqueta->paquete_id ? '✅ ' . 'Paquete ID' . $etiqueta->paquete_id : 'SIN EMPAQUETAR' }}
-                            </p>
                         </div>
 
                         <hr style="border: 1px solid black; margin: 10px 0;">

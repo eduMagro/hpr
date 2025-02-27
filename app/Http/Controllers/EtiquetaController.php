@@ -222,10 +222,15 @@ class etiquetaController extends Controller
                 $etiqueta->fecha_inicio = now();
                 $etiqueta->save();
             } elseif ($etiqueta->estado == "fabricando") {  // ---------------------------------- F A B R I C A N D O
-
+                // Actualizar el estado de los elementos en la máquina a "fabricando"
+                foreach ($elementosEnMaquina as $elemento) {
+                    $elemento->users_id = Auth::id();
+                    $elemento->users_id_2 = session()->get('compañero_id', null);
+                    $elemento->save();
+                }
 
                 if (
-                    isset($elementosEnMaquina) && 
+                    isset($elementosEnMaquina) &&
                     $elementosEnMaquina->count() > 0 &&
                     $elementosCompletados >= $elementosEnMaquina->count() &&
                     in_array($maquina->tipo, ['cortadora_dobladora', 'estribadora'])
@@ -415,7 +420,7 @@ class etiquetaController extends Controller
             } elseif ($etiqueta->estado == "ensamblando") {    // ------------------------------------------------------------ E N S A M B L A N D O
 
                 if (
-                    isset($elementosEnMaquina) && 
+                    isset($elementosEnMaquina) &&
                     $elementosEnMaquina->count() > 0 &&
                     $elementosCompletados >= $elementosEnMaquina->count() &&
                     in_array($maquina->tipo, ['cortadora_dobladora', 'estribadora'])
@@ -426,7 +431,7 @@ class etiquetaController extends Controller
                         'error' => "Todos los elementos en la máquina ya han sido completados.",
                     ], 400);
                 }
-                
+
                 // -------------- CONSUMOS
                 $consumos = [];
 
@@ -567,8 +572,8 @@ class etiquetaController extends Controller
                         $etiqueta->estado = 'completada';
                         $etiqueta->fecha_finalizacion = now();
                     }
-                } 
-                
+                }
+
                 $etiqueta->ensamblador1 = Auth::id();
                 $etiqueta->ensamblador2 = session()->get('compañero_id', null);
                 // Guardar los cambios en la etiqueta

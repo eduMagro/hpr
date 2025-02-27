@@ -18,7 +18,8 @@ class PlanillaController extends Controller
 {
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
-        $estribo = $doblesPorBarra >= 4;
+        $estribo = $doblesPorBarra >= 5;
+        $maquinas = collect(); // Inicializar con una colección vacía de Laravel
 
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
 
@@ -47,10 +48,10 @@ class PlanillaController extends Controller
                 $maquinas = Maquina::where('codigo', 'F12')->get();
             } elseif (in_array($diametro, [10, 12])) {
                 $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
-            }elseif (in_array($diametro, [10, 16])){
+            } elseif (in_array($diametro, [10, 16])) {
                 $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12', 'MS16'])->get();
             }
-            
+
         } elseif (!$estribo && $diametro >= 10 && $diametro <= 16) {
             $maquinas = Maquina::where('codigo', 'MS16')->get();
         } elseif (!$estribo && $diametro >= 8 && $diametro <= 20) {
@@ -152,92 +153,75 @@ class PlanillaController extends Controller
     {
         try {
             $query = Planilla::with(['user', 'elementos']);
-              
-                
+
+
             // Aplicar filtros
             $query = $this->aplicarFiltros($query, $request);
-    
+
             // 📌 Ordenación segura
             $allowedSortColumns = ['created_at', 'codigo', 'cliente', 'nom_obra'];
             $sortBy = in_array($request->input('sort_by'), $allowedSortColumns) ? $request->input('sort_by') : 'created_at';
             $order = in_array($request->input('order'), ['asc', 'desc']) ? $request->input('order') : 'desc';
-    
+
             $query->orderBy($sortBy, $order);
-    
+
             // 📌 Paginación
             $perPage = $request->input('per_page', 10);
             $planillas = $query->paginate($perPage)->appends($request->except('page'));
-        
-            $planillas->loadSum(['elementos as suma_peso_completados' => function ($query) {
-                $query->where('estado', 'completado');
-            }], 'peso');
+
+            $planillas->loadSum([
+                'elementos as suma_peso_completados' => function ($query) {
+                    $query->where('estado', 'completado');
+                }
+            ], 'peso');
             // Retornar vista con los datos
             return view('planillas.index', compact('planillas'));
         } catch (Exception $e) {
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-    
+
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
     {
         $planilla = Planilla::with([
             'paquetes:id,planilla_id,peso,ubicacion_id',
             'paquetes.ubicacion:id,nombre',
-            'etiquetas:id,planilla_id,estado,peso,paquete_id',
-            'etiquetas.elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
-            'etiquetas.elementos.ubicacion:id,nombre',
-            'etiquetas.elementos.maquina:id,nombre',
-            'elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
+            'paquetes.subpaquetes:id,paquete_id,elemento_id,peso',
+            'paquetes.subpaquetes.elemento:id,planilla_id,estado,peso',
+            'elementos:id,planilla_id,estado,peso,diametro,ubicacion_id,paquete_id,maquina_id',
             'elementos.ubicacion:id,nombre',
             'elementos.maquina:id,nombre',
+            'etiquetas:id'
         ])->findOrFail($id);
-
-        // Función para asignar color de fondo según estado
+    
         $getColor = fn($estado) => match (strtolower(trim($estado ?? 'desconocido'))) {
             'completado' => 'bg-green-200',
             'pendiente' => 'bg-red-200',
             'fabricando' => 'bg-blue-200',
             default => 'bg-gray-200'
         };
-
-        // ✅ Asignar color a TODOS los elementos antes de cualquier filtrado
-        $elementos = $planilla->elementos->map(function ($elemento) use ($getColor) {
-            $elemento->color = $getColor($elemento->estado);
-            return $elemento;
-        });
-
-        // 🔹 Separar elementos con y sin paquete (sin duplicaciones)
-        [$elementosConPaquete, $elementosSinPaquete] = $elementos->partition(fn($elemento) => !empty($elemento->paquete_id));
-
-        // 🔹 Asignar elementos a cada paquete SIN duplicaciones
-        $paquetes = $planilla->paquetes->map(function ($paquete) use ($elementosConPaquete) {
-            $paquete->color = 'bg-gray-300';
-            $paquete->elementos = $elementosConPaquete->where('paquete_id', $paquete->id);
-            return $paquete;
-        });
-
-        // 🔹 Asignar elementos a cada etiqueta (sin afectar el filtrado de paquetes)
-        $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $elementos) {
-            $etiqueta->color = $getColor($etiqueta->estado);
-            $etiqueta->elementos = $elementos->where('etiqueta_id', $etiqueta->id);
-            return $etiqueta;
-        });
-
-        // 🔹 Filtrar etiquetas sin paquete
-        $etiquetasSinPaquete = $etiquetas->whereNull('paquete_id');
-
-        // 📌 Estructura final para la vista
-        $planillaCalculada = [
-            'planilla' => $planilla,
-            'progreso' => round(min(100, ($elementos->where('estado', 'completado')->sum('peso') / max(1, $planilla->peso_total)) * 100), 2),
-            'paquetes' => $paquetes, // Ahora los paquetes tienen solo sus elementos
-            'etiquetas' => $etiquetas, // Ahora las etiquetas tienen solo sus elementos
-            'elementosSinPaquete' => $elementosSinPaquete, // ✅ Ahora no incluirá elementos que están en paquetes
-            'etiquetasSinPaquete' => $etiquetasSinPaquete
-        ];
-
-        return view('planillas.show', compact('planillaCalculada'));
+    
+        $elementos = $planilla->elementos->map(fn($e) => tap($e, fn($e) => $e->color = $getColor($e->estado)));
+        $subpaquetes = $planilla->paquetes->flatMap->subpaquetes->map(fn($s) => tap($s, fn($s) => $s->color = 'bg-green-200'));
+    
+        [$elementosConPaquete, $elementosSinPaquete] = $elementos->partition(fn($e) => !empty($e->paquete_id));
+    
+        $paquetes = $planilla->paquetes->map(fn($p) => tap($p, function ($p) use ($elementosConPaquete, $subpaquetes) {
+            $p->color = 'bg-gray-300';
+            $p->elementos = $elementosConPaquete->where('paquete_id', $p->id);
+            $p->subpaquetes = $subpaquetes->where('paquete_id', $p->id);
+        }));
+    
+        return view('planillas.show', [
+            'planillaCalculada' => [
+                'planilla' => $planilla,
+                'progreso' => round(min(100, ($elementos->where('estado', 'completado')->sum('peso') / max(1, $planilla->peso_total)) * 100), 2),
+                'paquetes' => $paquetes,
+                'elementosSinPaquete' => $elementosSinPaquete,
+                'subpaquetes' => $subpaquetes
+            ]
+        ]);
     }
 
 

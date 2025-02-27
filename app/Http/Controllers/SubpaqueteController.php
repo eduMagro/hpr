@@ -47,32 +47,35 @@ class SubpaqueteController extends Controller
             'nombre' => 'nullable|string|max:255',
             'peso' => 'nullable|numeric|min:0.01',
             'dimensiones' => 'nullable|string|max:255',
-            'cantidad' => 'nullable|integer|min:1',
+            'cantidad' => 'required|integer|min:1', // Asegurar que la cantidad es requerida y válida
             'descripcion' => 'nullable|string',
         ]);
-
+    
         // Obtener el elemento y su planilla_id
         $elemento = Elemento::findOrFail($request->elemento_id);
-
         $pesoDisponible = $elemento->peso - $elemento->subpaquetes->sum('peso');
-
-        // Validar que el peso del subpaquete no exceda el peso disponible
-        if ($request->peso > $pesoDisponible) {
-            return back()->with('error', 'El peso del subpaquete no puede superar el peso del elemento (' . $elemento->peso_kg . ').');
+    
+        // Validar que el peso total de los subpaquetes no exceda el peso disponible
+        $pesoTotal = $request->peso * $request->cantidad;
+        if ($pesoTotal > $pesoDisponible) {
+            return back()->with('error', 'El peso total de los subpaquetes no puede superar el peso disponible del elemento (' . $elemento->peso . ').');
         }
-        // Crear el subpaquete con el mismo planilla_id que el elemento
-        Subpaquete::create([
-            'elemento_id' => $elemento->id,
-            'planilla_id' => $elemento->planilla_id, // Se asigna automáticamente
-
-            'peso' => $request->peso,
-            'dimensiones' => $elemento->dimensiones,
-            'cantidad' => $request->cantidad,
-            'descripcion' => $request->descripcion,
-        ]);
-
-        return back()->with('success', 'Subpaquete creado correctamente.');
+    
+        // Crear los subpaquetes según la cantidad especificada
+        for ($i = 0; $i < $request->cantidad; $i++) {
+            Subpaquete::create([
+                'elemento_id' => $elemento->id,
+                'planilla_id' => $elemento->planilla_id,
+                'peso' => $request->peso,
+                'dimensiones' => $elemento->dimensiones,
+                'cantidad' => 1, // Cada subpaquete representa una unidad
+                'descripcion' => $request->descripcion,
+            ]);
+        }
+    
+        return back()->with('success', 'Se han creado ' . $request->cantidad . ' subpaquetes correctamente.');
     }
+    
     public function destroy(Subpaquete $subpaquete)
     {
         try {
