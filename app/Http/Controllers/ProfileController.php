@@ -95,10 +95,7 @@ class ProfileController extends Controller
         // Aplicar filtros
         $query = $this->aplicarFiltros($request);
 
-        // Paginación
-        $perPage = $request->input('per_page', 10);
-        $registrosUsuarios = $query->paginate($perPage)->appends($request->except('page'));
-
+        $registrosUsuarios = $query->paginate(10)->appends($request->except('page'));
         // Obtener el usuario autenticado
         $user = auth()->user();
 
@@ -146,7 +143,7 @@ class ProfileController extends Controller
 
         // **Combinar eventos**
         $eventos = $eventosFichajes->merge($eventosTurnos);
-
+     
         // Pasar datos a la vista
         return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'eventos', 'coloresTurnos', 'categorias', 'especialidades', 'roles', 'turnosHoy'));
     }

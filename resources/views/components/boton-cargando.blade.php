@@ -45,7 +45,7 @@
     document.addEventListener("DOMContentLoaded", function() {
         document.querySelectorAll("form").forEach(form => {
             form.addEventListener("submit", function(event) {
-                let boton = form.querySelector("button");
+                let boton = event.submitter; // Solo el botón que se hizo clic
                 if (boton) {
                     let spinner = boton.querySelector('.spinner');
                     let texto = boton.querySelector('.btn-text');
@@ -55,7 +55,7 @@
                         texto.classList.add('hidden'); // Oculta el texto del botón
                     }
 
-                    boton.disabled = true; // Deshabilita el botón para evitar múltiples clics
+                    boton.disabled = true; // Deshabilita SOLO este botón
                 }
             });
         });

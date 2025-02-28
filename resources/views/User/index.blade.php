@@ -243,7 +243,6 @@
                                     <a href="{{ route('users.edit', $user->id) }}"
                                         class="text-green-500 hover:underline">Ajustes</a>
                                 </td>
-
                             </tr>
                         @empty
                             <tr>
@@ -254,7 +253,6 @@
                     </tbody>
                 </table>
             </div>
-
             <div class="mt-4 flex justify-center">
                 {{ $registrosUsuarios->links() }}
             </div>
