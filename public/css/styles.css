@@ -107,10 +107,19 @@
 #calendario {
     max-width: 100%;
     overflow-x: auto;
+	padding: 20px;
 }
 
 /* 📌 Reducir el tamaño de los botones en pantallas pequeñas */
 @media (max-width: 600px) {
+	
+	#conetendorCalendario{
+	padding:0;
+	}
+	#calendario{
+		padding: 0;	
+	}
+
     .fc-button {
         font-size: 12px !important;
         /* Reducir el tamaño del texto */

@@ -10,11 +10,11 @@
         </h2>
     </x-slot>
 
-    <div class="container mx-auto px-4 py-6">
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold mb-2">Vacaciones de los Trabajadores</h3>
+    <div class="container mx-auto px-4 py-6" id="contenedorCalendario">
+        <div class="bg-white rounded-lg shadow-lg">
             <div id="calendario"></div>
         </div>
+        
     </div>
 
     <!-- Cargar FullCalendar con prioridad -->

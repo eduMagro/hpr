@@ -22,7 +22,7 @@ class VacacionesController extends Controller
 
         $eventosVacaciones = $vacaciones->map(function ($asignacion) {
             return [
-                'title' => 'Vacaciones: ' . $asignacion->user->name,
+                'title' => $asignacion->user->name,
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
                 'backgroundColor' => '#f87171', // Rojo claro para vacaciones
                 'borderColor' => '#dc2626', // Rojo oscuro para el borde
