@@ -11,7 +11,7 @@
     </x-slot>
 
     <div class="container mx-auto px-4 py-6">
-        <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto border border-gray-200">
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto mb-6 border border-gray-200">
             <!-- Encabezado con avatar -->
             <div class="flex items-center space-x-4 border-b pb-4 mb-4">
                 <div class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700">
@@ -24,7 +24,7 @@
             </div>
         
             <!-- Contenido en dos columnas -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Información del usuario -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">Información</h3>
