@@ -93,6 +93,15 @@
     background: #f44336;
     color: white;
 }
+/* BOTON DE CARGA */
+.btn-cargando .spinner-border {
+    display: none; /* Ocultar spinner por defecto */
+}
+
+/* Mostrar spinner cuando el formulario está en proceso de envío */
+.form-cargando:focus-within .btn-cargando .spinner-border {
+    display: inline-block;
+}
 
 /* Responsive tweaks */
 @media (max-width: 1024px) {

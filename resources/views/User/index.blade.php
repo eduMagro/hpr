@@ -15,11 +15,13 @@
             <div class="mb-4 flex items-center space-x-4">
                 <a href="{{ route('register') }}" class="btn btn-primary">Registrar Usuario</a>
                 <a href="{{ route('vacaciones.index') }}" class="btn btn-primary">Mostrar Vacaciones Globales</a>
-                <form class="form-con-spinner" action="{{ route('generar-turnos') }}" method="POST">
+                <form action="{{ route('generar-turnos') }}" method="POST" class="form-cargando">
                     @csrf
-                    <x-boton-cargando text="Generar Turnos" type="submit" />
+                    <button type="submit" class="btn btn-primary btn-cargando">
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span class="texto">Generar Turnos</span>
+                    </button>
                 </form>
-                
             </div>
             <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
                 data-bs-target="#filtrosBusqueda">
@@ -267,11 +269,14 @@
             </select>
         </div>
         <div class="flex justify-between items-center w-full gap-4 p-4">
-            <button onclick="registrarFichaje('entrada')" class="w-full py-2 px-4 bg-green-600 text-white rounded-md">
-                Entrada
+            <button onclick="registrarFichaje('entrada')" class="w-full py-2 px-4 bg-green-600 text-white rounded-md btn-cargando">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span class="texto">Entrada</span>
             </button>
-            <button onclick="registrarFichaje('salida')" class="w-full py-2 px-4 bg-red-600 text-white rounded-md">
-                Salida
+            
+            <button onclick="registrarFichaje('salida')" class="w-full py-2 px-4 bg-red-600 text-white rounded-md btn-cargando">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span class="texto">Salida</span>
             </button>
         </div>
 
