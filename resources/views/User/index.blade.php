@@ -15,11 +15,11 @@
             <div class="mb-4 flex items-center space-x-4">
                 <a href="{{ route('register') }}" class="btn btn-primary">Registrar Usuario</a>
                 <a href="{{ route('vacaciones.index') }}" class="btn btn-primary">Mostrar Vacaciones Globales</a>
-                <form action="{{ route('generar-turnos') }}" method="POST">
+                <form class="form-con-spinner" action="{{ route('generar-turnos') }}" method="POST">
                     @csrf
                     <x-boton-cargando text="Generar Turnos" type="submit" />
                 </form>
-
+                
             </div>
             <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
                 data-bs-target="#filtrosBusqueda">

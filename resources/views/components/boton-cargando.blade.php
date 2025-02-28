@@ -43,9 +43,9 @@
 <!-- Script para mostrar el Spinner sin bloquear el envío del formulario -->
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        document.querySelectorAll("form").forEach(form => {
+        document.querySelectorAll(".form-con-spinner").forEach(form => {
             form.addEventListener("submit", function(event) {
-                let boton = event.submitter; // Solo el botón que se hizo clic
+                let boton = event.submitter; // Solo el botón que activó el envío
                 if (boton) {
                     let spinner = boton.querySelector('.spinner');
                     let texto = boton.querySelector('.btn-text');
