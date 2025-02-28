@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
 use App\Models\User;
+use App\Models\Maquina;
+use App\Models\Turno;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -81,7 +83,7 @@ class ProfileController extends Controller
         $obras = Obra::where('completada', 0)->get();
         // Obtener valores únicos desde la tabla users
         $categorias = User::distinct()->pluck('categoria')->filter()->sort();
-        $especialidades = User::distinct()->pluck('especialidad')->filter()->sort();
+        $especialidades = Maquina::distinct()->pluck('codigo')->filter()->sort();
         $roles = User::distinct()->pluck('rol')->filter()->sort();
         // Obtener la fecha de hoy
         $hoy = Carbon::today()->toDateString();
@@ -99,16 +101,19 @@ class ProfileController extends Controller
         // Obtener el usuario autenticado
         $user = auth()->user();
 
-        // **Definir colores para cada turno**
+        // **Asignación fija de colores a los turnos**
         $coloresTurnos = [
-            'mañana' => ['bg' => '#FFD700', 'border' => '#d4af37'],  // Amarillo
-            'tarde' => ['bg' => '#FF8C00', 'border' => '#cc7000'],   // Naranja
-            'noche' => ['bg' => '#1E90FF', 'border' => '#0050b3'],   // Azul
-            'flexible' => ['bg' => '#32CD32', 'border' => '#228b22'], // Verde
-            'vacaciones' => ['bg' => '#f87171', 'border' => '#dc2626'], // Rojo
-            'baja' => ['bg' => '#6366f1', 'border' => '#4338ca'], // Azul oscuro
+            'mañana' => ['bg' => '#FFD700', 'border' => $this->darkenColor('#FFD700')],  // Dorado
+            'tarde' => ['bg' => '#f87171', 'border' => $this->darkenColor('#f87171')],   // Rojo claro
+            'noche' => ['bg' => '#1E90FF', 'border' => $this->darkenColor('#1E90FF')],   // Azul
+            'baja' => ['bg' => '#32CD32', 'border' => $this->darkenColor('#32CD32')],    // Verde lima
+            'vacaciones' => ['bg' => '#FF8C00', 'border' => $this->darkenColor('#FF8C00')], // Naranja
+            'falta_justificada' => ['bg' => '#6366f1', 'border' => $this->darkenColor('#6366f1')], // Azul violáceo
+            'falta_injustificada' => ['bg' => '#FF69B4', 'border' => $this->darkenColor('#FF69B4')], // Rosa
+            'media_falta_justificada' => ['bg' => '#A52A2A', 'border' => $this->darkenColor('#A52A2A')], // Marrón
+            'media_falta_injustificada' => ['bg' => '#8A2BE2', 'border' => $this->darkenColor('#8A2BE2')], // Violeta
         ];
-
+        
         // **Eventos de fichajes**
         $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
             return [
@@ -143,7 +148,7 @@ class ProfileController extends Controller
 
         // **Combinar eventos**
         $eventos = $eventosFichajes->merge($eventosTurnos);
-     
+
         // Pasar datos a la vista
         return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'eventos', 'coloresTurnos', 'categorias', 'especialidades', 'roles', 'turnosHoy'));
     }
@@ -152,15 +157,49 @@ class ProfileController extends Controller
     {
         $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno'])->findOrFail($id);
 
-        // **Definir colores para cada turno**
+        // Fecha de inicio (1 de enero del año actual)
+        $inicioAño = Carbon::now()->startOfYear();
+
+        // Contar asignaciones de turnos específicos desde el 1 de enero
+        $faltasInjustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_injustificada')
+            ->where('fecha', '>=', $inicioAño)->count();
+
+        $faltasJustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_justificada')
+            ->where('fecha', '>=', $inicioAño)->count();
+
+        $mediaFaltasJustificadas = $user->asignacionesTurnos->where('turno.nombre', 'media_falta_justificada')
+            ->where('fecha', '>=', $inicioAño)->count();
+
+        $mediaFaltasInjustificadas = $user->asignacionesTurnos->where('turno.nombre', 'media_falta_injustificada')
+            ->where('fecha', '>=', $inicioAño)->count();
+
+        $diasBaja = $user->asignacionesTurnos->where('turno.nombre', 'baja')
+            ->where('fecha', '>=', $inicioAño)->count();
+
+        // **Obtener todos los turnos de la base de datos**
+        $turnos = Turno::all();
+
+        // **Asignación fija de colores a los turnos**
         $coloresTurnos = [
-            'mañana' => ['bg' => '#FFD700', 'border' => '#d4af37'],  // Amarillo
-            'tarde' => ['bg' => '#FF8C00', 'border' => '#cc7000'],   // Naranja
-            'noche' => ['bg' => '#1E90FF', 'border' => '#0050b3'],   // Azul
-            'flexible' => ['bg' => '#32CD32', 'border' => '#228b22'], // Verde
-            'vacaciones' => ['bg' => '#f87171', 'border' => '#dc2626'], // Rojo
-            'baja' => ['bg' => '#6366f1', 'border' => '#4338ca'], // Azul oscuro
+            'mañana' => ['bg' => '#FFD700', 'border' => $this->darkenColor('#FFD700')],  // Dorado
+            'tarde' => ['bg' => '#f87171', 'border' => $this->darkenColor('#f87171')],   // Rojo claro
+            'noche' => ['bg' => '#1E90FF', 'border' => $this->darkenColor('#1E90FF')],   // Azul
+            'baja' => ['bg' => '#32CD32', 'border' => $this->darkenColor('#32CD32')],    // Verde lima
+            'vacaciones' => ['bg' => '#FF8C00', 'border' => $this->darkenColor('#FF8C00')], // Naranja
+            'falta_justificada' => ['bg' => '#6366f1', 'border' => $this->darkenColor('#6366f1')], // Azul violáceo
+            'falta_injustificada' => ['bg' => '#FF69B4', 'border' => $this->darkenColor('#FF69B4')], // Rosa
+            'media_falta_justificada' => ['bg' => '#A52A2A', 'border' => $this->darkenColor('#A52A2A')], // Marrón
+            'media_falta_injustificada' => ['bg' => '#8A2BE2', 'border' => $this->darkenColor('#8A2BE2')], // Violeta
         ];
+
+        // Uso en el código
+        $coloresAsignados = $turnos->mapWithKeys(function ($turno) use ($coloresTurnos) {
+            return [
+                $turno->nombre => $coloresTurnos[$turno->nombre] ?? ['bg' => '#708090', 'border' => $this->darkenColor('#708090')] // Gris oscuro si no está definido
+            ];
+        });
+
+
 
         // **Eventos de fichajes (entradas y salidas)**
         $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
@@ -197,9 +236,37 @@ class ProfileController extends Controller
         // **Combinar eventos**
         $eventos = $eventosFichajes->merge($eventosTurnos);
 
-        return view('User.show', compact('user', 'eventos', 'coloresTurnos'));
+        return view('User.show', compact(
+            'user',
+            'eventos',
+            'coloresTurnos',
+            'turnos',
+            'faltasInjustificadas',
+            'faltasJustificadas',
+            'mediaFaltasJustificadas',
+            'mediaFaltasInjustificadas',
+            'diasBaja'
+        ));
     }
 
+    /**
+     * Función para oscurecer un color en hexadecimal.
+     */
+    private function darkenColor($hex, $percent = 20)
+    {
+        $hex = str_replace("#", "", $hex);
+        $rgb = [
+            hexdec(substr($hex, 0, 2)),
+            hexdec(substr($hex, 2, 2)),
+            hexdec(substr($hex, 4, 2))
+        ];
+
+        foreach ($rgb as &$value) {
+            $value = max(0, min(255, $value - ($value * ($percent / 100))));
+        }
+
+        return sprintf("#%02X%02X%02X", $rgb[0], $rgb[1], $rgb[2]);
+    }
 
     /**
      * Display the user's profile form.
@@ -257,28 +324,31 @@ class ProfileController extends Controller
         try {
             // Validar los datos con mensajes personalizados
             $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:50',
                 'email' => 'required|email|max:255|unique:users,email,' . $id,
-                'rol' => 'required|string|max:255',
-                'categoria' => 'required|string|max:255',
+                'rol' => 'required|string|max:50',
+                'categoria' => 'required|string|max:50',
+                'especialidad' => 'nullable|string|max:15',
                 'turno' => 'nullable|string|in:nocturno,diurno,flexible'
             ], [
                 'name.required' => 'El nombre es obligatorio.',
                 'name.string' => 'El nombre debe ser un texto válido.',
-                'name.max' => 'El nombre no puede superar los 255 caracteres.',
+                'name.max' => 'El nombre no puede superar los 50 caracteres.',
 
                 'email.required' => 'El correo electrónico es obligatorio.',
                 'email.email' => 'Debe ingresar un correo electrónico válido.',
-                'email.max' => 'El correo no puede superar los 255 caracteres.',
+                'email.max' => 'El correo no puede superar los 50 caracteres.',
                 'email.unique' => 'Este correo ya está registrado en otro usuario.',
 
                 'rol.required' => 'El rol es obligatorio.',
                 'rol.string' => 'El rol debe ser un texto válido.',
-                'rol.max' => 'El rol no puede superar los 255 caracteres.',
+                'rol.max' => 'El rol no puede superar los 50 caracteres.',
 
                 'categoria.required' => 'La categoría es obligatoria.',
                 'categoria.string' => 'La categoría debe ser un texto válido.',
                 'categoria.max' => 'La categoría no puede superar los 255 caracteres.',
+
+                'especialidad.string' => 'La especialidad debe ser un texto válido.',
 
                 'turno.string' => 'El turno debe ser un texto válido.',
                 'turno.in' => 'El turno debe ser "mañana", "tarde", "noche" o "flexible".'
@@ -296,6 +366,7 @@ class ProfileController extends Controller
                 'email' => $request->email,
                 'rol' => $request->rol,
                 'categoria' => $request->categoria,
+                'especialidad' => $request->especialidad,
                 'turno' => $request->turno
             ]);
 

@@ -189,13 +189,12 @@
                                     </template>
                                     <select x-show="editando" x-model="usuario.categoria" class="form-input w-full">
                                         <option value="">Selecciona cat.</option>
-                                        <option value="administrador">Admninistrador</option>
-                                        <option value="administracion">Dept. Administración</option>
-                                        <option value="oficial 1">Oficial 1ª</option>
-                                        <option value="oficial 2">Oficial 2ª</option>
-                                        <option value="oficial 3">Oficial 3ª</option>
-                                        <option value="gruista">Gruista</option>
-                                        <option value="camionero">Camionero</option>
+                                        @foreach ($categorias as $categoria)
+                                    <option value="{{ $categoria }}"
+                                        {{ request('categoria') == $categoria ? 'selected' : '' }}>
+                                        {{ ucfirst($categoria) }}
+                                    </option>
+                                @endforeach
                                     </select>
                                 </td>
 
@@ -206,8 +205,12 @@
                                     <select x-show="editando" x-model="usuario.especialidad"
                                         class="form-input w-full">
                                         <option value="">Selecciona esp.</option>
-                                        <option value="administrador">MSR20</option>
-                                        <option value="administracion">SL28</option>
+                                        @foreach ($especialidades as $nombre)
+                                    <option value="{{ $nombre }}"
+                                        {{ request('especialidad') == $nombre ? 'selected' : '' }}>
+                                        {{ ucfirst($nombre) }}
+                                    </option>
+                                @endforeach
                                     </select>
                                 </td>
 
@@ -299,32 +302,7 @@
         </div>
     @endif
     </div>
-    <!-- Estilos CSS para hacer los botones más pequeños en móviles -->
-    <style>
-        #calendario {
-            max-width: 100%;
-            overflow-x: auto;
-        }
 
-        /* 📌 Reducir el tamaño de los botones en pantallas pequeñas */
-        @media (max-width: 600px) {
-            .fc-button {
-                font-size: 12px !important;
-                /* Reducir el tamaño del texto */
-                padding: 4px 6px !important;
-                /* Reducir el padding del botón */
-                height: 26px !important;
-                /* Ajustar la altura */
-                min-width: 50px !important;
-                /* Ajustar el ancho mínimo */
-            }
-
-            .fc-toolbar-title {
-                font-size: 14px !important;
-                /* Reducir el tamaño del título */
-            }
-        }
-    </style>
     <!-- Cargar FullCalendar con prioridad -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>

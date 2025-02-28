@@ -33,6 +33,7 @@ class User extends Authenticatable
         'password',
         'rol',
         'categoria',
+        'especialidad',
         'turno',
         'turno_actual',
         'dias_vacaciones',

@@ -11,16 +11,45 @@
     </x-slot>
 
     <div class="container mx-auto px-4 py-6">
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold mb-2">Información del Usuario</h3>
-            <p><strong>Nombre:</strong> {{ $user->name }}</p>
-            <p><strong>Email:</strong> {{ $user->email }}</p>
-            <p><strong>Rol:</strong> {{ $user->rol }}</p>
-            <p><strong>Categoría:</strong> {{ $user->categoria }}</p>
-            <p><strong>Especialidad:</strong> {{ $user->especialidad }}</p>
-            <p><strong>Días de vacaciones restantes:</strong> <span
-                    id="vacaciones-restantes">{{ $user->dias_vacaciones }}</span></p>
+        <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto border border-gray-200">
+            <!-- Encabezado con avatar -->
+            <div class="flex items-center space-x-4 border-b pb-4 mb-4">
+                <div class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700">
+                    {{ strtoupper(substr($user->name, 0, 1)) }}
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold">{{ $user->name }}</h3>
+                    <p class="text-gray-500 text-sm">{{ $user->rol }}</p>
+                </div>
+            </div>
+        
+            <!-- Contenido en dos columnas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Información del usuario -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Información</h3>
+                    <p><strong>Email:</strong> <span class="text-gray-600">{{ $user->email }}</span></p>
+                    <p><strong>Categoría:</strong> <span class="text-gray-600">{{ $user->categoria }}</span></p>
+                    <p><strong>Especialidad:</strong> <span class="text-gray-600">{{ $user->especialidad }}</span></p>
+                    <p class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
+                        <strong>Vacaciones restantes:</strong> {{ $user->dias_vacaciones }}
+                    </p>
+                </div>
+        
+                <!-- Resumen de asistencias -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Asistencias</h3>
+                    <div class="bg-gray-100 p-3 rounded-lg">
+                        <p><strong>Faltas injustificadas:</strong> <span class="text-red-600">{{ $faltasInjustificadas }}</span></p>
+                        <p><strong>Faltas justificadas:</strong> <span class="text-green-600">{{ $faltasJustificadas }}</span></p>
+                        <p><strong>Medias faltas justificadas:</strong> <span class="text-yellow-600">{{ $mediaFaltasJustificadas }}</span></p>
+                        <p><strong>Medias faltas injustificadas:</strong> <span class="text-orange-600">{{ $mediaFaltasInjustificadas }}</span></p>
+                        <p><strong>Días de baja:</strong> <span class="text-purple-600">{{ $diasBaja }}</span></p>
+                    </div>
+                </div>
+            </div>
         </div>
+        
 
         <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
             <h3 class="text-lg font-semibold mb-2">Calendario de Fichajes</h3>
@@ -59,12 +88,10 @@
                     Swal.fire({
                         title: "Elige turno para ese día",
                         html: `
-                            <select id="tipo-dia" class="swal2-select">
-                                <option value="vacaciones">Vacaciones</option>
-                                <option value="baja">Baja</option>
-                                <option value="mañana">Mañana</option>
-                                <option value="tarde">Tarde</option>
-                                <option value="noche">Noche</option>
+                           <select id="tipo-dia" class="swal2-select">
+                                @foreach ($turnos as $turno)
+                                    <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
+                                @endforeach
                             </select>
                         `,
                         showCancelButton: true,
