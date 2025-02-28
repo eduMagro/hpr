@@ -24,7 +24,7 @@
             </div>
         
             <!-- Contenido en dos columnas -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <!-- Información del usuario -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">Información</h3>
