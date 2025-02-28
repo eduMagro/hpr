@@ -296,8 +296,7 @@
             </div>
         </div>
         {{-- ------------------------------- CALENDARIO MODO OPERARIO -------------------------------- --}}
-        <div class="mt-4 bg-white p-4 rounded-lg shadow-lg">
-            <h3 class="text-base font-semibold mb-2 text-center">Calendario de Turnos</h3>
+        <div class="bg-white rounded-lg shadow-lg">
             <div id="calendario"></div>
         </div>
     @endif

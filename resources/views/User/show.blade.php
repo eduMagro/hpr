@@ -51,8 +51,7 @@
         </div>
         
 
-        <div class="mt-6 bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-semibold mb-2">Calendario de Fichajes</h3>
+        <div class="bg-white rounded-lg shadow-lg">
             <div id="calendario"></div>
         </div>
     </div>

@@ -113,11 +113,13 @@
 /* 📌 Reducir el tamaño de los botones en pantallas pequeñas */
 @media (max-width: 600px) {
 	
-	#conetendorCalendario{
-	padding:0;
+	#contenedorCalendario{
+	padding: 0;
+		margin: 0;
 	}
 	#calendario{
 		padding: 0;	
+		margin: 0;
 	}
 
     .fc-button {
@@ -129,11 +131,13 @@
         /* Ajustar la altura */
         min-width: 50px !important;
         /* Ajustar el ancho mínimo */
+		padding: 4px !important;
     }
 
     .fc-toolbar-title {
         font-size: 14px !important;
         /* Reducir el tamaño del título */
+		padding: 4px !important;
     }
 }
 /* Responsive tweaks */
@@ -169,6 +173,17 @@
     .icon-card span {
         font-size: 13px;
     }
+	
+		#contenedorCalendario{
+	padding: 0 !important;
+		margin: auto !important;
+			width: 100% !important;
+	}
+	#calendario{
+		padding: 0 !important;	
+		margin: 0 !important;
+		width: 100%;
+	}
 }
 
 @media (max-width: 480px) {
