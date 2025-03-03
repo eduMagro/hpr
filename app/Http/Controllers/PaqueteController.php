@@ -8,7 +8,9 @@ use App\Models\Etiqueta;
 use App\Models\Ubicacion;
 use App\Models\Elemento;
 use App\Models\Subpaquete;
-
+use Exception;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
 
 class PaqueteController extends Controller
@@ -17,9 +19,9 @@ class PaqueteController extends Controller
     {
         $query = Paquete::with([
             'planilla',
-            'etiquetas.elementos',
-            'ubicacion'
-        ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
+            'ubicacion',
+            'elementos' // Cargamos la relación sin modificar la consulta
+        ])->orderBy('created_at', 'desc'); // Ordenar paquetes por fecha de creación descendente
 
         // Aplicar filtro por ID si se proporciona
         if ($request->filled('id')) {
@@ -28,17 +30,14 @@ class PaqueteController extends Controller
 
         $paquetes = $query->paginate(10)->appends($request->query());
 
-        // Filtrar elementos manualmente después de cargar los datos
+        // Ordenar manualmente los elementos dentro de cada paquete después de la consulta
         foreach ($paquetes as $paquete) {
-            foreach ($paquete->etiquetas as $etiqueta) {
-                $etiqueta->elementos = $etiqueta->elementos->filter(function ($elemento) use ($paquete) {
-                    return $elemento->paquete_id == $paquete->id;
-                });
-            }
+            $paquete->elementos = $paquete->elementos->sortBy('id')->values();
         }
 
         return view('paquetes.index', compact('paquetes'));
     }
+
 
     /**
      * Crear un nuevo paquete y asociar etiquetas existentes.
@@ -67,7 +66,7 @@ class PaqueteController extends Controller
             $codigoMaquina = $maquina->codigo; // ✅ Obtener el nombre de la máquina
 
             // Verificar disponibilidad de etiquetas, elementos y subpaquetes
-            if ($mensajeError = $this->verificarDisponibilidad( $elementosIds, $subpaquetesIds)) {
+            if ($mensajeError = $this->verificarDisponibilidad($elementosIds, $subpaquetesIds)) {
                 DB::rollBack();
                 return response()->json(array_merge(['success' => false], $mensajeError), 400);
             }
@@ -84,7 +83,7 @@ class PaqueteController extends Controller
             //         ->pluck('id')
             //         ->toArray();
             // })->toArray();
-// Obtener elementos que pertenecen a la máquina seleccionada
+            // Obtener elementos que pertenecen a la máquina seleccionada
             $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId) {
                 return $etiqueta->elementos->where('maquina_id', $maquinaId)->pluck('id');
             })->unique()->values()->toArray(); // ✅ Elimina duplicados y reindexa el array
@@ -96,22 +95,25 @@ class PaqueteController extends Controller
                     'message' => 'No se encontraron datos válidos para crear el paquete.'
                 ], 400);
             }
-            // Si no se pasaron etiquetas en el request, usar los elementos directamente del request
-            if (empty($etiquetasIds)) {
-                $elementosIdsDesdeEtiquetas = $elementosIds;
-            }
-            // Obtener la planilla desde las etiquetas (si existen)
-            $planilla = $etiquetas->first()->planilla ?? null;
+            // **Siempre** añadir los elementos directos a `$elementosIdsDesdeEtiquetas`
+            $elementosIdsDesdeEtiquetas = array_unique(array_merge($elementosIdsDesdeEtiquetas, $elementosIds));
 
-            // Si no hay planilla y hay elementos, buscar la planilla desde los elementos
-            if (!$planilla && $elementos->isNotEmpty()) {
-                $planilla = $elementos->first()->planilla ?? null;
+            // Obtener la lista de todos los elementos a procesar
+            $todosElementos = Elemento::whereIn('id', $elementosIdsDesdeEtiquetas)->get();
+
+            // Si no hay datos válidos, devolver error
+            if ($todosElementos->isEmpty() && $subpaquetes->isEmpty()) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron datos válidos para crear el paquete.'
+                ], 400);
             }
-            // Si no hay planilla y hay elementos, buscar la planilla desde los elementos
-            if (!$planilla && $subpaquetes->isNotEmpty()) {
-                $planilla = $subpaquetes->first()->planilla ?? null;
-            }
-            // Si no se encontró una planilla en etiquetas ni en elementos, error
+
+            // Obtener la planilla desde etiquetas, elementos o subpaquetes
+            $planilla = $etiquetas->first()->planilla ?? $todosElementos->first()->planilla ?? $subpaquetes->first()->planilla ?? null;
+
+            // Si no hay planilla, error
             if (!$planilla) {
                 DB::rollBack();
                 return response()->json([
@@ -119,12 +121,12 @@ class PaqueteController extends Controller
                     'message' => 'No se encontró una planilla válida para las etiquetas o los elementos.'
                 ], 400);
             }
+
             $codigo_planilla = $planilla->codigo_limpio;
 
-            $pesoTotal = $etiquetas->sum(function ($etiqueta) use ($maquinaId) {
-                return $etiqueta->elementos->where('maquina_id', $maquinaId)->sum('peso');
-            }) + $elementos->where('maquina_id', $maquinaId)->sum('peso') + $subpaquetes->where('maquina_id', $maquinaId)->sum('peso');
-            
+            // Calcular el peso total recorriendo $todosElementos
+            $pesoTotal = $todosElementos->sum('peso') + $subpaquetes->sum('peso');
+
             // Verificar si el peso total supera el límite
             if ($pesoTotal > 1200) {
                 DB::rollBack();
@@ -159,7 +161,7 @@ class PaqueteController extends Controller
                 'paquete_id' => $paquete->id,
                 'codigo_planilla' => $codigo_planilla
             ], 201);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
@@ -186,7 +188,7 @@ class PaqueteController extends Controller
             }
 
             return null; // <- Importante: Devuelve NULL si no hay problemas
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // No devolvemos response()->json(), solo un array de error
             return [
                 'message' => 'Error al verificar disponibilidad: ' . $e->getMessage()
@@ -201,7 +203,7 @@ class PaqueteController extends Controller
     {
         try {
             return Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al obtener ubicación de la máquina: ' . $e->getMessage()
@@ -220,8 +222,8 @@ class PaqueteController extends Controller
                 'ubicacion_id' => $ubicacionId,
                 'peso' => $pesoTotal ?? 0, // ✅ Usa el peso correcto pasado como parámetro
             ]);
-        } catch (\Exception $e) {
-            \Log::error('Error al crear paquete: ' . $e->getMessage()); // ✅ Guarda el error en logs
+        } catch (Exception $e) {
+            Log::error('Error al crear paquete: ' . $e->getMessage()); // ✅ Guarda el error en logs
             throw new \Exception('No se pudo crear el paquete: ' . $e->getMessage()); // ✅ Lanza la excepción para que `store()` la maneje
         }
     }
@@ -257,7 +259,7 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-    
+
             $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
             $subpaquetesIds = collect($items)->where('type', 'subpaquete')->pluck('id')->toArray();
 
@@ -277,8 +279,8 @@ class PaqueteController extends Controller
                 'elementos_incompletos' => $elementosIncompletos,
                 'subpaquetes_incompletos' => $subpaquetesIncompletos
             ], 200);
-        } catch (\Exception $e) {
-            \Log::error('Error en verificarItems(): ' . $e->getMessage());
+        } catch (Exception $e) {
+            Log::error('Error en verificarItems(): ' . $e->getMessage());
 
             return response()->json([
                 'success' => false,
@@ -299,7 +301,7 @@ class PaqueteController extends Controller
             $paquete = Paquete::findOrFail($id);
 
             // Desasociar las etiquetas (poner paquete_id en NULL)
-            Etiqueta::where('paquete_id', $paquete->id)->update(['paquete_id' => null]);
+            Elemento::where('paquete_id', $paquete->id)->update(['paquete_id' => null]);
 
             // Eliminar el paquete
             $paquete->delete();
@@ -307,7 +309,7 @@ class PaqueteController extends Controller
             DB::commit();
 
             return redirect()->back()->with('success', 'Paquete eliminado correctamente.');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Error al eliminar el paquete: ' . $e->getMessage());
         }

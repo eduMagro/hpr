@@ -334,7 +334,6 @@ class etiquetaController extends Controller
                     $elemento->producto_id_3 = $productosAsignados[2] ?? null;
 
                     $elemento->estado = "completado";
-                    $elemento->ubicacion_id = $ubicacion->id;
                     $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
                     if (
@@ -344,7 +343,6 @@ class etiquetaController extends Controller
                         if ($maquina->tipo === 'estribadora') {
 
                             $elemento->maquina_id_2 = 7;
-
                         } elseif ($maquina->tipo === 'ensambladora') {
 
                             // Buscar una máquina de soldar disponible
@@ -407,14 +405,23 @@ class etiquetaController extends Controller
 
                 $etiqueta->save();
 
-                // Si todos los elementos de la planilla están completados, actualizar la planilla
-                $todasFinalizadas = !$etiqueta->planilla->etiquetas()
-                    ->where('estado', '!=', 'completada')
-                    ->exists();
+                // Verificar si todos los elementos de la etiqueta están en estado "completado"
+                $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'completado')->doesntExist();
 
-                if ($todasFinalizadas) {
-                    $planilla->fecha_finalizacion = now();
-                    $planilla->estado = "completada";
+                if ($elementosEtiquetaCompletos) {
+                    $etiqueta->estado = 'completada';
+                    $etiqueta->fecha_finalizacion = now();
+                    $etiqueta->save();
+                }
+
+                // Si todos los elementos de la planilla están en estado "completado", actualizar la planilla
+                $elementosPlanillaCompletos = $etiqueta->planilla->elementos()
+                    ->where('estado', '!=', 'completado') // Buscar elementos que NO estén completados
+                    ->doesntExist(); // Si no hay ninguno, significa que todos están completados
+
+                if ($elementosPlanillaCompletos) {
+                    $planilla->fecha_finalizacion = now(); // Si deseas registrar la fecha de finalización
+                    $planilla->estado = "completada"; // Actualizar estado de la planilla
                     $planilla->save();
                 }
             } elseif ($etiqueta->estado == "ensamblando") {    // ------------------------------------------------------------ E N S A M B L A N D O
@@ -515,8 +522,6 @@ class etiquetaController extends Controller
                     $elemento->producto_id_3 = $productosAsignados[2] ?? null;
 
                     $elemento->estado = "completado";
-                    $elemento->fecha_finalizacion = now();
-                    $elemento->ubicacion_id = $ubicacion->id;
                     $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
                     if (
@@ -579,11 +584,20 @@ class etiquetaController extends Controller
                 // Guardar los cambios en la etiqueta
                 $etiqueta->save();
 
+                // Verificar si todos los elementos de la etiqueta están en estado "completado"
+                $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'completado')->doesntExist();
+
+                if ($elementosEtiquetaCompletos) {
+                    $etiqueta->estado = 'completada';
+                    $etiqueta->fecha_finalizacion = now();
+                    $etiqueta->save();
+                }
+
                 // Si todos los elementos de la planilla están completados, actualizar la planilla
-                $todasFinalizadas = $etiqueta->planilla->elementos()
+                $elementosPlanillaCompletos = $etiqueta->planilla->elementos()
                     ->whereNull('fecha_finalizacion')
                     ->doesntExist();
-                if ($todasFinalizadas) {
+                if ($elementosPlanillaCompletos) {
                     $planilla->fecha_finalizacion = now();
                     $planilla->estado = "completada";
                     $planilla->save();
@@ -643,11 +657,20 @@ class etiquetaController extends Controller
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->save();
 
+                // Verificar si todos los elementos de la etiqueta están en estado "completado"
+                $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'completado')->doesntExist();
+
+                if ($elementosEtiquetaCompletos) {
+                    $etiqueta->estado = 'completada';
+                    $etiqueta->fecha_finalizacion = now();
+                    $etiqueta->save();
+                }
+
                 // Si todos los elementos de la planilla están completados, actualizar la planilla
-                $todasFinalizadas = $etiqueta->planilla->elementos()
+                $elementosPlanillaCompletos = $etiqueta->planilla->elementos()
                     ->whereNull('fecha_finalizacion')
                     ->doesntExist();
-                if ($todasFinalizadas) {
+                if ($elementosPlanillaCompletos) {
                     $planilla->fecha_finalizacion = now();
                     $planilla->estado = "completada";
                     $planilla->save();

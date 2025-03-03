@@ -51,7 +51,6 @@ class PlanillaController extends Controller
             } elseif (in_array($diametro, [10, 16])) {
                 $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12', 'MS16'])->get();
             }
-
         } elseif (!$estribo && $diametro >= 10 && $diametro <= 16) {
             $maquinas = Maquina::where('codigo', 'MS16')->get();
         } elseif (!$estribo && $diametro >= 8 && $diametro <= 20) {
@@ -194,25 +193,25 @@ class PlanillaController extends Controller
             'elementos.maquina:id,nombre',
             'etiquetas:id'
         ])->findOrFail($id);
-    
+
         $getColor = fn($estado) => match (strtolower(trim($estado ?? 'desconocido'))) {
             'completado' => 'bg-green-200',
             'pendiente' => 'bg-red-200',
             'fabricando' => 'bg-blue-200',
             default => 'bg-gray-200'
         };
-    
+
         $elementos = $planilla->elementos->map(fn($e) => tap($e, fn($e) => $e->color = $getColor($e->estado)));
         $subpaquetes = $planilla->paquetes->flatMap->subpaquetes->map(fn($s) => tap($s, fn($s) => $s->color = 'bg-green-200'));
-    
+
         [$elementosConPaquete, $elementosSinPaquete] = $elementos->partition(fn($e) => !empty($e->paquete_id));
-    
+
         $paquetes = $planilla->paquetes->map(fn($p) => tap($p, function ($p) use ($elementosConPaquete, $subpaquetes) {
             $p->color = 'bg-gray-300';
             $p->elementos = $elementosConPaquete->where('paquete_id', $p->id);
             $p->subpaquetes = $subpaquetes->where('paquete_id', $p->id);
         }));
-    
+
         return view('planillas.show', [
             'planillaCalculada' => [
                 'planilla' => $planilla,
@@ -357,8 +356,6 @@ class PlanillaController extends Controller
                         'dobles_barra' => $row[33] ?? 0,
                         'peso' => $row[34],
                         'dimensiones' => $row[47] ?? null,
-                        'fecha_inicio' => null,
-                        'fecha_finalizacion' => null,
                         'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
                     ]);
                 }
@@ -462,8 +459,6 @@ class PlanillaController extends Controller
                 'ensamblado' => $request->ensamblado,
                 'codigo' => $request->codigo,
                 'peso_total' => $request->peso_total,
-                'fecha_inicio' => NULL,
-                'fecha_finalizacion' => NULL,
                 'tiempo_fabricacion' => 0,
             ]);
 

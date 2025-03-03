@@ -33,7 +33,8 @@
                     </option>
                     <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando
                     </option>
-                    <option value="completado" {{ request('estado') == 'completado' ? 'selected' : '' }}>Completado</option>
+                    <option value="completado" {{ request('estado') == 'completado' ? 'selected' : '' }}>Completado
+                    </option>
                     <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje</option>
                 </select>
             </div>
@@ -191,7 +192,7 @@
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
-                                <span class="self-center">M. Prima 3</span>
+                                <span class="self-center">M. Prima 2</span>
                                 <form method="GET" action="{{ route('elementos.index') }}"
                                     class="mt-2 flex space-x-2">
                                     <input type="text" name="producto2"
@@ -204,17 +205,20 @@
                                 </form>
                             </div>
                         </th>
-                        <th class="py-3 border text-center">Ubicación
-                            <form method="GET" action="{{ route('elementos.index') }}"
-                                class="mt-2 flex space-x-2">
-                                <input type="text" name="ubicacion_id"
-                                    class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Buscar">
-                                <button type="submit"
-                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                    Filtrar
-                                </button>
-                            </form>
+                        <th class="py-3 border text-center">
+                            <div class="flex flex-col items-end h-full">
+                                <span class="self-center">M. Prima 3</span>
+                                <form method="GET" action="{{ route('elementos.index') }}"
+                                    class="mt-2 flex space-x-2">
+                                    <input type="text" name="producto2"
+                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Buscar">
+                                    <button type="submit"
+                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
+                                        Filtrar
+                                    </button>
+                                </form>
+                            </div>
                         </th>
                         <th class="py-3 border text-center">Figura
                             <form method="GET" action="{{ route('elementos.index') }}"
@@ -231,8 +235,6 @@
                         <th class="py-3 border text-center">Peso (kg)</th>
                         <th class="py-3 border text-center">Diámetro (mm)</th>
                         <th class="py-3 border text-center">Longitud (m)</th>
-                        <th class="py-3 border text-center">Fecha Inicio</th>
-                        <th class="py-3 border text-center">Fecha Finaliz.</th>
                         <th class="py-3 border text-center">Estado</th>
                         <th class="py-3 border text-center">Acciones</th>
                     </tr>
@@ -263,8 +265,10 @@
                             <!-- USUARIO 1 -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.user?.name || 'N/A'"></span>
+                                    <a href="{{ route('users.index', ['id' => $elemento->user?->id ?? '#']) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->user?->name ?? 'N/A' }}
+                                    </a>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.users_id"
@@ -274,8 +278,10 @@
                             <!-- USUARIO 2 -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.user2?.name || 'N/A'"></span>
+                                    <a href="{{ route('users.index', ['id' => $elemento->user2?->id ?? '#']) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->user2?->name ?? 'N/A' }}
+                                    </a>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.users_id_2"
@@ -340,7 +346,10 @@
                             <!-- PRODUCTO 1 -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="elemento.producto?.id ?? 'N/A'"></span>
+                                    <a href="{{ route('productos.index', ['id' => $elemento->producto_id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->producto_id ?? 'N/A' }}
+                                    </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.producto.id"
                                     class="form-input w-full">
@@ -348,20 +357,25 @@
                             <!-- PRODUCTO 2 -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="elemento.producto2?.id ?? 'N/A'"></span>
+                                    <a href="{{ route('productos.index', ['id' => $elemento->producto_id_2]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->producto_id_2 ?? 'N/A' }}
+                                    </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.producto2.id"
                                     class="form-input w-full">
                             </td>
-                            <!-- UBICACION -->
-                            <td class="px-1 py-3 text-center border" x-data="{ ubicacionNombre: elemento.ubicacion?.nombre ?? '' }">
+                            <!-- PRODUCTO 3 -->
+                            <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="ubicacionNombre || 'N/A'"></span>
+                                    <a href="{{ route('productos.index', ['id' => $elemento->producto_id_3]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->producto_id_3 ?? 'N/A' }}
+                                    </a>
                                 </template>
-                                <input x-show="editando" type="text" x-model="ubicacionNombre"
+                                <input x-show="editando" type="text" x-model="elemento.producto3.id"
                                     class="form-input w-full">
                             </td>
-
                             <!-- FIGURA -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
@@ -395,22 +409,6 @@
                                     <span x-text="elemento.longitud_m"></span>
                                 </template>
                                 <input x-show="editando" type="number" x-model="elemento.longitud"
-                                    class="form-input w-full">
-                            </td>
-                            <!-- FECHA_INICIO -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.fecha_inicio ?? 'No asignado'"></span>
-                                </template>
-                                <input x-show="editando" type="date" x-model="elemento.fecha_inicio"
-                                    class="form-input w-full">
-                            </td>
-                            <!-- FECHA_FINALIZACION -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="elemento.fecha_finalizacion ?? 'No asignado'"></span>
-                                </template>
-                                <input x-show="editando" type="date" x-model="elemento.fecha_finalizacion"
                                     class="form-input w-full">
                             </td>
                             <!-- ESTADO -->
@@ -459,7 +457,7 @@
             <div class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative">
                 <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
                     ✖
-                  </button>
+                </button>
                 @if (isset($elemento) && $elemento->id)
                     <h2 class="text-lg font-semibold mb-3">Elemento #{{ $elemento->id }}</h2>
                 @endif

@@ -29,6 +29,10 @@ class ProfileController extends Controller
         // Iniciar la consulta de usuarios
         $query = User::query()->select('users.*');
 
+        // Aplicar filtros si están presentes en la solicitud
+        if ($request->filled('id')) {
+            $query->where('id', $request->id);
+        }
         // Filtrar por nombre
         if ($request->filled('name')) {
             $query->where('users.name', 'like', '%' . $request->input('name') . '%');
@@ -113,7 +117,7 @@ class ProfileController extends Controller
             'media_falta_justificada' => ['bg' => '#A52A2A', 'border' => $this->darkenColor('#A52A2A')], // Marrón
             'media_falta_injustificada' => ['bg' => '#8A2BE2', 'border' => $this->darkenColor('#8A2BE2')], // Violeta
         ];
-        
+
         // **Eventos de fichajes**
         $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
             return [

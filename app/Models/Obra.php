@@ -12,12 +12,13 @@ class Obra extends Model
     protected $table = 'obras';
 
     protected $fillable = [
-        'obra', 
-        'cod_obra', 
-        'cliente', 
-        'cod_cliente', 
-        'latitud', 
-        'longitud', 
+        'obra',
+        'cod_obra',
+        'cliente',
+        'cod_cliente',
+        'completada',
+        'latitud',
+        'longitud',
         'distancia'
     ];
 

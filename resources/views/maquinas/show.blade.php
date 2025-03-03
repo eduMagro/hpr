@@ -111,9 +111,30 @@
             <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
 
                 @php
+                    function debeSerExcluido($elemento)
+                    {
+                        // Verificar si el elemento tiene un paquete directo
+                        $tienePaqueteDirecto = !is_null($elemento->paquete_id);
+
+                        // Verificar si el elemento tiene subpaquetes y si todos están en un paquete
+                        $tieneTodosLosSubpaquetesEnPaquete =
+                            $elemento->subpaquetes->isNotEmpty() &&
+                            $elemento->subpaquetes->every(function ($subpaquete) {
+                                return !is_null($subpaquete->paquete_id);
+                            });
+
+                        // Verificar si el estado es "completado"
+                        $estaCompletado = strtolower($elemento->estado) === 'completado';
+
+                        // Excluir solo si el elemento tiene un paquete directo O si todos sus subpaquetes están en un paquete Y además está completado
+                        return ($tienePaqueteDirecto || $tieneTodosLosSubpaquetesEnPaquete) && $estaCompletado;
+                    }
+
                     if (stripos($maquina->tipo, 'ensambladora') !== false) {
-                        // Usamos $elementosMaquina que ya contiene los elementos propios y los extra (maquina_id_2 = 7)
                         $elementosAgrupados = $elementosMaquina
+                            ->filter(function ($elemento) {
+                                return !debeSerExcluido($elemento);
+                            })
                             ->groupBy('etiqueta_id')
                             ->map(function ($grupo) {
                                 return $grupo->filter(function ($elemento) {
@@ -124,26 +145,24 @@
                             ->filter(function ($grupo) {
                                 return $grupo->isNotEmpty();
                             });
-                  
                     } elseif (stripos($maquina->nombre, 'Soldadora') !== false) {
-                        // Filtramos los elementos terciarios que:
-                        // 1. Tengan maquina_id_3 igual a la máquina actual.
-                        // 2. En su relación etiquetaRelacion tengan el estado 'soldando'.
                         $elementosAgrupados = $maquina
                             ->elementosTerciarios()
                             ->where('maquina_id_3', $maquina->id)
                             ->get()
                             ->filter(function ($item) {
-                                return strtolower(optional($item->etiquetaRelacion)->estado ?? '') === 'soldando';
+                                return !debeSerExcluido($item) &&
+                                    strtolower(optional($item->etiquetaRelacion)->estado ?? '') === 'soldando';
                             })
                             ->groupBy(function ($item) {
                                 return $item->etiqueta_id . '-' . $item->marca;
                             });
-             
                     } else {
-                        // Del conjunto de elementos asociados a la máquina,
-                        $elementosAgrupados = $maquina->elementos->groupBy('etiqueta_id');
-                      
+                        $elementosAgrupados = $maquina->elementos
+                            ->filter(function ($elemento) {
+                                return !debeSerExcluido($elemento);
+                            })
+                            ->groupBy('etiqueta_id');
                     }
 
                     $elementosAgrupadosScript = $elementosAgrupados
@@ -152,6 +171,9 @@
                                 'etiqueta' => $grupo->first()->etiquetaRelacion ?? null,
                                 'planilla' => $grupo->first()->planilla ?? null,
                                 'elementos' => $grupo
+                                    ->filter(function ($elemento) {
+                                        return !debeSerExcluido($elemento);
+                                    })
                                     ->map(function ($elemento) {
                                         return [
                                             'id' => $elemento->id,
@@ -182,7 +204,7 @@
                         }
                         $tieneElementosEnOtrasMaquinas =
                             isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
-                      
+
                     @endphp
 
                     <div
@@ -192,33 +214,33 @@
                             </strong>
                         </h2>
                         <h3 class="text-lg font-semibold text-gray-800">
-                            {{ $etiqueta->id_et }} {{ $etiqueta->nombre ?? 'Sin nombre' }} -
+                            {{ $etiqueta->id_et ?? 'N/A' }} {{ $etiqueta->nombre ?? 'Sin nombre' }} -
                             {{ $etiqueta->marca ?? 'Sin Marca' }}
                             (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
-                            - {{ $etiqueta->peso_kg }}
+                            - {{ $etiqueta->peso_kg ?? 'N/A' }}
                         </h3>
                         <!-- Contenedor oculto para generar el QR -->
-                        <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
+                        <div id="qrContainer-{{ $etiqueta->id ?? 'N/A' }}" style="display: none;"></div>
 
                         <div class="mb-4 bg-yellow-100 p-2 rounded-lg">
                             <p>
                                 <strong>Fecha Inicio:</strong>
-                                <span id="inicio-{{ $etiqueta->id }}">
+                                <span id="inicio-{{ $etiqueta->id ?? 'N/A' }}">
                                     {{ $etiqueta->fecha_inicio ?? 'No asignada' }}
                                 </span>
                                 <strong>Fecha Finalización:</strong>
-                                <span id="final-{{ $etiqueta->id }}">
+                                <span id="final-{{ $etiqueta->id ?? 'N/A' }}">
                                     {{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}
                                 </span>
-                                <span id="emoji-{{ $etiqueta->id }}"></span><br>
+                                <span id="emoji-{{ $etiqueta->id ?? 'N/A' }}"></span><br>
                                 <strong> Estado: </strong>
-                                <span id="estado-{{ $etiqueta->id }}">{{ $etiqueta->estado }}</span>
+                                <span id="estado-{{ $etiqueta->id ?? 'N/A' }}">{{ $etiqueta->estado ?? 'N/A' }}</span>
                             </p>
                         </div>
 
                         <hr style="border: 1px solid black; margin: 10px 0;">
                         <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
-                        @if (isset($otrosElementos[$etiqueta->id]) && $otrosElementos[$etiqueta->id]->isNotEmpty())
+                        @if (isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty())
                             <h4 class="font-semibold text-red-700 mt-6 mb-6">⚠️ Hay elementos en otras máquinas, crea un
                                 paquete con la etiqueta e imprimme QR!!</h4>
                             {{-- <div class="bg-red-100 p-4 rounded-lg shadow-md">
@@ -241,9 +263,9 @@
                                     class="bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition duration-300">
                                     <p class="text-gray-600 text-sm">
                                         <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }} -
-                                        {{ $elemento->paquete_id ? '✅ ' . 'Paquete ID' . $elemento->paquete_id : 'SIN EMPAQUETAR' }}
-                                        -
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }}
+                                        -
+                                        <strong>Dm:</strong> {{ $elemento->diametro_mm }}
                                     </p>
                                     {{-- @if ($tieneElementosEnOtrasMaquinas)
                                          <p class="text-gray-600 text-sm">
@@ -305,7 +327,7 @@
                         </div>
                         <!-- Contenedor para el canvas -->
                         <div id="canvas-container" style="width: 100%; border: 1px solid #ccc; border-radius: 8px;">
-                            <canvas id="canvas-etiqueta-{{ $etiqueta->id }}" class="border"></canvas>
+                            <canvas id="canvas-etiqueta-{{ $etiqueta->id ?? 'N/A' }}" class="border"></canvas>
                         </div>
 
                     </div>
@@ -534,10 +556,10 @@
             document.getElementById('modalSubpaquete').classList.remove('hidden');
         }
     </script>
-<script>
-    const maquinaId = @json($maquina->id);
-    const ubicacionId = @json(optional($ubicacion)->id); // Esto puede ser null si no se encontró
-</script>
+    <script>
+        const maquinaId = @json($maquina->id);
+        const ubicacionId = @json(optional($ubicacion)->id); // Esto puede ser null si no se encontró
+    </script>
 
     <script>
         let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
