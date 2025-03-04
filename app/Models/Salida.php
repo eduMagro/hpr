@@ -33,10 +33,10 @@ class Salida extends Model
     }
 
     /**
-     * Relación: Una salida tiene muchas planillas.
+     * Relación: Una salida tiene muchos paquetes.
      */
-    public function planillas()
+    public function paquetes()
     {
-        return $this->belongsToMany(Planilla::class, 'salida_planilla');
+        return $this->belongsToMany(Paquete::class, 'salidas_paquetes', 'salida_id', 'paquete_id');
     }
 }

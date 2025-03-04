@@ -37,6 +37,7 @@ class Planilla extends Model
         'fecha_inicio',
         'fecha_finalizacion',
         'tiempo_fabricacion',
+        'fecha_estimada_entrega',
 
     ];
 
@@ -47,6 +48,20 @@ class Planilla extends Model
      */
     public $timestamps = true;
     protected $appends = ['codigo_limpio', 'peso_total_kg'];
+
+    public function getFechaEstimadaEntregaAttribute($value)
+    {
+        return Carbon::parse($value)->format('d/m/Y');
+    }
+    public function getFechaInicioAttribute($value)
+    {
+        return $value ? Carbon::parse($value)->format('d/m/Y H:i') : null;
+    }
+
+    public function getFechaFinalizacionAttribute($value)
+    {
+        return $value ? Carbon::parse($value)->format('d/m/Y H:i') : null;
+    }
 
     public function obra()
     {
@@ -70,7 +85,7 @@ class Planilla extends Model
     {
         return $this->hasMany(Subpaquete::class, 'planilla_id');
     }
-    
+
     /**
      * Relación con la tabla 'users'
      * Una planilla pertenece a un usuario

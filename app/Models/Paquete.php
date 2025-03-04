@@ -14,7 +14,7 @@ class Paquete extends Model
     protected $fillable = [
         'ubicacion_id',
         'planilla_id',
-		'peso'
+        'peso'
     ];
     public function getIdPqAttribute()
     {
@@ -32,7 +32,7 @@ class Paquete extends Model
     {
         return $this->hasMany(Etiqueta::class, 'paquete_id');
     }
-	    public function elementos()
+    public function elementos()
     {
         return $this->hasMany(Elemento::class, 'paquete_id');
     }
@@ -49,10 +49,10 @@ class Paquete extends Model
     }
 
     /**
-     * Relación muchos a uno con Salida (Varios paquetes pueden pertenecer a una salida)
+     * Relación: Un paquete puede estar asociado a muchas salidas.
      */
-    // public function salida()
-    // {
-    //     return $this->belongsTo(Salida::class, 'salida_id');
-    // }
+    public function salidas()
+    {
+        return $this->belongsToMany(Salida::class, 'salidas_paquetes', 'paquete_id', 'salida_id');
+    }
 }

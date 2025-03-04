@@ -314,6 +314,8 @@ class PlanillaController extends Controller
                     'fecha_inicio' => null,
                     'fecha_finalizacion' => null, // Actualizaremos más adelante
                     'tiempo_fabricacion' => 0, // Inicialmente en 0, lo actualizamos después
+                    'fecha_estimada_entrega' => now()->addDays(7), // Fecha actual + 7 días
+
                 ]);
 
                 // Array para almacenar etiquetas ya registradas en esta ejecución
