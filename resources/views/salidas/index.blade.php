@@ -6,146 +6,64 @@
     </x-slot>
 
     <div class="container mx-auto p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            <!-- SECCIÓN: CREAR NUEVA SALIDA -->
+        <div class="grid grid-cols-1 gap-6">
+
+            <!-- SECCIÓN: PLANILLAS COMPLETADAS -->
             <div class="bg-white shadow-md rounded-lg p-6">
-                <h1 class="text-2xl font-bold mb-4 text-black">Registrar Nueva Salida</h1>
+                <h1 class="text-2xl font-bold mb-4 text-black">Planillas Completadas</h1>
 
-                <form action="{{ route('salidas.store') }}" method="POST">
-                    @csrf
-                    <div class="mb-4">
-                        <label for="camion" class="block text-black font-semibold">Camión</label>
-                        <input type="text" name="camion" id="camion" class="w-full p-2 border rounded mt-1" placeholder="Ej: Camión ABC123" required>
-                    </div>
+                <div class="space-y-4">
+                    @foreach ($planillasCompletadas as $planilla)
+                        <div class="bg-gray-100 p-4 rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <h2 class="font-semibold text-lg text-gray-800">{{ $planilla->codigo_limpio }}</h2>
+                                <span class="text-sm text-gray-600">{{ $planilla->peso_total_kg }} kg</span>
+                            </div>
+                            <p class="text-gray-700">Cliente: {{ $planilla->cliente }}</p>
+                            <p class="text-gray-700">Obra: {{ $planilla->obra }}</p>
+                            <p class="text-gray-700">Sección: {{ $planilla->seccion }}</p>
+                            <p class="text-gray-700">Descripción: {{ $planilla->descripcion }}</p>
 
-                    <div class="mb-4">
-                        <label class="block text-black font-semibold">Seleccionar Planillas Completadas</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                            @foreach ($planillasCompletadas as $planilla)
-                                <label class="flex items-center bg-gray-100 p-2 rounded-lg">
-                                    <input type="checkbox" name="planillas[]" value="{{ $planilla->id }}" class="mr-2">
-                                    <span class="text-gray-800">
-                                        Planilla: <strong>{{ $planilla->codigo_limpio }}</strong> - Cliente: {{ $planilla->cliente }}
-                                    </span>
-                                </label>
-                            @endforeach
+                            <div class="mt-4">
+                                <h3 class="font-semibold text-md text-gray-800">Paquetes Asociados:</h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                                    @foreach ($planilla->paquetes as $paquete)
+                                        <div class="p-4 bg-white shadow rounded-lg flex justify-between items-center">
+                                            <span class="text-gray-800">Paquete #{{ $paquete->id }}</span>
+                                            <span class="text-gray-600">Peso: {{ $paquete->peso }} kg - </span>
+                                            <button onclick="mostrarDibujo({{ $paquete->id }})"
+                                                class="text-blue-500 hover:underline">
+                                                Ver
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
-                    </div>
-
-                    <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        Registrar Salida
-                    </button>
-                </form>
-            </div>
-
-            <!-- SECCIÓN: ESCANEO DE QR -->
-            <div class="bg-white shadow-md rounded-lg p-6">
-                <h1 class="text-2xl font-bold mb-4 text-black">Escanear Carga del Camión</h1>
-                
-                <label class="block text-black font-semibold">Escanear QR:</label>
-                <input type="text" id="qrInput" class="w-full p-2 border rounded mt-2" placeholder="Escanea el QR aquí">
-                <button onclick="marcarSubido()" class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mt-2">
-                    Confirmar
-                </button>
-
-                <div id="mensaje" class="mt-3 text-center"></div>
-            </div>
-        </div>
-
-        <!-- TABLA: SEGUIMIENTO DE ESCANEOS -->
-        <div class="mt-6 bg-white shadow-md rounded-lg p-6">
-            <h1 class="text-2xl font-bold mb-4 text-black">Elementos Cargados</h1>
-            <table class="w-full border-collapse">
-                <thead class="bg-gray-800 text-white">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">Tipo</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">Código</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">Estado</th>
-                    </tr>
-                </thead>
-                <tbody id="tablaSubidos" class="text-gray-700 text-sm">
-                    <!-- Se llenará con JavaScript -->
-                </tbody>
-            </table>
-        </div>
-
-        <!-- TABLA: HISTORIAL DE SALIDAS -->
-        <div class="mt-6 bg-white shadow-md rounded-lg p-6">
-            <h1 class="text-2xl font-bold mb-4 text-black">Historial de Salidas</h1>
-            <table class="w-full border-collapse">
-                <thead class="bg-gray-800 text-white">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">Camión</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">Planillas Transportadas</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">Fecha de Salida</th>
-                    </tr>
-                </thead>
-                <tbody class="text-gray-700 text-sm">
-                    @foreach ($salidas as $salida)
-                        <tr class="border-b hover:bg-gray-100">
-                            <td class="px-6 py-4 text-black">{{ $salida->camion }}</td>
-                            <td class="px-6 py-4 text-gray-800">
-                                @foreach ($salida->planillas as $planilla)
-                                    <span class="block">{{ $planilla->codigo_limpio }} - {{ $planilla->cliente }}</span>
-                                @endforeach
-                            </td>
-                            <td class="px-6 py-4 text-gray-600">{{ $salida->created_at->format('d/m/Y H:i') }}</td>
-                        </tr>
                     @endforeach
-                </tbody>
-            </table>
+                </div>
+            </div>
+
         </div>
     </div>
+    <!-- Modal -->
+    <div id="modal-dibujo" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
+        <div
+            class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+            <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
+                ✖
+            </button>
 
+            <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
+
+            <!-- Scrollable container for package content -->
+            <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
+                <canvas id="canvas-dibujo" width="800" height="600" class="border max-w-full h-auto"></canvas>
+            </div>
+        </div>
+    </div>
     <script>
-        function marcarSubido() {
-            let codigo = document.getElementById("qrInput").value;
-            if (!codigo) return alert("Por favor, escanea un código.");
-
-            fetch("{{ route('escaneo.marcarSubido') }}", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                },
-                body: JSON.stringify({ codigo: codigo })
-            })
-            .then(response => response.json())
-            .then(data => {
-                let mensajeDiv = document.getElementById("mensaje");
-                if (data.success) {
-                    mensajeDiv.innerHTML = `<p class="text-green-600 font-semibold">${data.mensaje}</p>`;
-                    agregarATabla(codigo);
-                    document.getElementById("qrInput").value = "";
-                } else {
-                    mensajeDiv.innerHTML = `<p class="text-red-600 font-semibold">${data.mensaje}</p>`;
-                }
-            })
-            .catch(error => console.error("Error:", error));
-        }
-
-        function agregarATabla(codigo) {
-            let tabla = document.getElementById("tablaSubidos");
-            let fila = document.createElement("tr");
-            fila.classList.add("border-b", "hover:bg-gray-100");
-
-            let celdaTipo = document.createElement("td");
-            celdaTipo.classList.add("px-6", "py-4", "text-black");
-            celdaTipo.innerText = "Escaneado";
-
-            let celdaCodigo = document.createElement("td");
-            celdaCodigo.classList.add("px-6", "py-4", "text-gray-800");
-            celdaCodigo.innerText = codigo;
-
-            let celdaEstado = document.createElement("td");
-            celdaEstado.classList.add("px-6", "py-4", "text-gray-600");
-            celdaEstado.innerText = "Subido";
-
-            fila.appendChild(celdaTipo);
-            fila.appendChild(celdaCodigo);
-            fila.appendChild(celdaEstado);
-            tabla.appendChild(fila);
-        }
+        window.paquetes = @json($paquetes);
     </script>
+    <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
 </x-app-layout>

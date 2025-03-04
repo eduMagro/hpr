@@ -15,39 +15,20 @@ class SalidaController extends Controller
 {
     public function index()
     {
-        // Obtener planillas COMPLETADAS (100% progreso)
-        $planillasCompletadas = Planilla::whereHas('elementos', function ($query) {
-            $query->where('estado', 'completado');
-        })
-            ->with('user') // Aseguramos que se traigan los usuarios asociados a las planillas
+        // Obtener planillas COMPLETADAS con los paquetes, sus elementos y subpaquetes
+        $planillasCompletadas = Planilla::where('estado', 'completada')
+            ->with(['paquetes.elementos', 'paquetes.subpaquetes'])  // Incluir subpaquetes y elementos
             ->get();
 
-        // Obtener todas las salidas registradas
-        $salidas = Salida::with(['planillas'])->latest()->get();
+        // Obtener los paquetes con sus elementos y subpaquetes
+        $paquetes = $planillasCompletadas->pluck('paquetes')->flatten();
 
-        // Obtener empresas de transporte con sus camiones
-        $empresasTransporte = EmpresaTransporte::with('camiones')->get();
-
-        // Obtener la información adicional para cada planilla (por ejemplo, código_limpio, cliente, obra, etc.)
-        $planillasCompletadasDetalles = $planillasCompletadas->map(function ($planilla) {
-            return [
-                'codigo_limpio' => $planilla->codigo_limpio,
-                'cliente' => $planilla->cliente,
-                'obra' => $planilla->obra,
-                'seccion' => $planilla->seccion,
-                'descripcion' => $planilla->descripcion,
-                'peso_total_kg' => $planilla->peso_total_kg,
-            ];
-        });
-
-        // Pasamos todas las variables necesarias a la vista
+        // Pasar planillas, paquetes, elementos y subpaquetes a la vista
         return view('salidas.index', [
-            'planillasCompletadas' => $planillasCompletadasDetalles,
-            'salidas' => $salidas,
-            'empresasTransporte' => $empresasTransporte
+            'planillasCompletadas' => $planillasCompletadas,
+            'paquetes' => $paquetes,
         ]);
     }
-
 
     // Método para almacenar una nueva salida
     public function store(Request $request)
