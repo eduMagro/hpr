@@ -16,10 +16,19 @@ class SalidaController extends Controller
     public function index()
     {
         // Obtener todas las salidas con sus paquetes asociados
-        $salidas = Salida::with('paquetes')->get();
+        $salidas = Salida::all();
 
         // Pasar las salidas a la vista
         return view('salidas.index', compact('salidas'));
+    }
+
+    public function show($id)
+    {
+        // Obtener la salida con su ID, y cargar los paquetes asociados
+        $salida = Salida::with('paquetes')->findOrFail($id);
+
+        // Pasar la salida a la vista
+        return view('salidas.show', compact('salida'));
     }
 
 
@@ -27,22 +36,31 @@ class SalidaController extends Controller
     {
         // Obtener planillas COMPLETADAS con los paquetes, sus elementos y subpaquetes
         $planillasCompletadas = Planilla::where('estado', 'completada')
-            ->with(['paquetes.elementos', 'paquetes.subpaquetes'])  // Incluir subpaquetes y elementos
+            ->with(['paquetes' => function ($query) {
+                // Filtrar solo los paquetes que NO tienen salida asociada
+                $query->whereDoesntHave('salidas');
+            }, 'paquetes.elementos', 'paquetes.subpaquetes'])  // Incluir subpaquetes y elementos
+            ->whereHas('paquetes', function ($query) {
+                // Asegurarnos de que la planilla tenga al menos un paquete sin salida asociada
+                $query->whereDoesntHave('salidas');
+            })
             ->orderBy('fecha_estimada_entrega', 'asc') // Ordenar por fecha estimada de entrega
             ->get();
 
-        // Obtener los paquetes con sus elementos y subpaquetes
+        // Obtener los paquetes de las planillas (filtrados previamente)
         $paquetes = $planillasCompletadas->pluck('paquetes')->flatten();
 
-        $empresas = EmpresaTransporte::with('camiones')->get(); // Asegúrate de tener la relación con camiones
+        // Obtener las empresas con sus camiones
+        $empresas = EmpresaTransporte::with('camiones')->get();
 
-        // Pasar planillas, paquetes, elementos y subpaquetes a la vista
-        return view('salidas.index', [
+        // Pasar planillas, paquetes disponibles, elementos y subpaquetes a la vista
+        return view('salidas.create', [
             'planillasCompletadas' => $planillasCompletadas,
             'paquetes' => $paquetes,
             'empresas' => $empresas,
         ]);
     }
+
 
     public function store(Request $request)
     {
