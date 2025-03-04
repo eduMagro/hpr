@@ -136,15 +136,27 @@ class PlanillaController extends Controller
                 $q->where('name', 'like', "%{$request->name}%");
             });
         }
-        if ($request->filled('id')) {
-            $query->where('id', $request->id);
-        }
+
         // 📌 Filtrar por planilla_id si está presente
         if ($request->has('planilla_id')) {
             $query->where('id', $request->planilla_id);
         }
+
+        // 🛠️ Filtrar por estado de fabricación
+        if ($request->has('estado') && $request->estado) {
+            $query->where('estado', 'like', "%{$request->estado}%");
+        }
+
+        // 🏷️ Ordenar los resultados
+        if ($request->has('sort_by') && $request->has('order')) {
+            $sortBy = $request->input('sort_by');
+            $order = $request->input('order') == 'desc' ? 'desc' : 'asc'; // Default to 'asc' if no 'order' value
+            $query->orderBy($sortBy, $order);
+        }
+
         return $query;
     }
+
 
 
     //------------------------------------------------------------------------------------ INDEX()

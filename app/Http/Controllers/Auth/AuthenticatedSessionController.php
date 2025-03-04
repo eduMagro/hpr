@@ -41,9 +41,9 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
-
+        // Elimina la sesión de la base de datos
+        $request->session()->flush();  // Esto elimina la sesión de la tabla `sessions` en la base de datos
 
         return redirect('/login');
-
     }
 }

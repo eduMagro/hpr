@@ -16,14 +16,37 @@ class SalidaController extends Controller
         // Obtener planillas COMPLETADAS (100% progreso)
         $planillasCompletadas = Planilla::whereHas('elementos', function ($query) {
             $query->where('estado', 'completado');
-        })->with('user')->get();
-    
+        })
+            ->with('user') // Aseguramos que se traigan los usuarios asociados a las planillas
+            ->get();
+
         // Obtener todas las salidas registradas
         $salidas = Salida::with(['planillas'])->latest()->get();
-        
-        return view('salidas.index', compact('planillasCompletadas', 'salidas'));
+
+        // Obtener empresas de transporte con sus camiones
+        $empresasTransporte = EmpresaTransporte::with('camiones')->get();
+
+        // Obtener la información adicional para cada planilla (por ejemplo, código_limpio, cliente, obra, etc.)
+        $planillasCompletadasDetalles = $planillasCompletadas->map(function ($planilla) {
+            return [
+                'codigo_limpio' => $planilla->codigo_limpio,
+                'cliente' => $planilla->cliente,
+                'obra' => $planilla->obra,
+                'seccion' => $planilla->seccion,
+                'descripcion' => $planilla->descripcion,
+                'peso_total_kg' => $planilla->peso_total_kg,
+            ];
+        });
+
+        // Pasamos todas las variables necesarias a la vista
+        return view('salidas.index', [
+            'planillasCompletadas' => $planillasCompletadasDetalles,
+            'salidas' => $salidas,
+            'empresasTransporte' => $empresasTransporte
+        ]);
     }
-    
+
+
     // Método para almacenar una nueva salida
     public function store(Request $request)
     {
@@ -32,16 +55,16 @@ class SalidaController extends Controller
             'planillas' => 'required|array',
             'planillas.*' => 'exists:planillas,id'
         ]);
-    
+
         $salida = Salida::create([
             'camion' => $request->camion
         ]);
-    
+
         $salida->planillas()->attach($request->planillas);
-    
+
         return redirect()->route('salidas.index')->with('success', 'Salida registrada correctamente.');
     }
-    
+
 
     public function marcarSubido(Request $request)
     {

@@ -37,46 +37,75 @@
         </div>
 
 
-
         <div id="filtrosBusqueda" class="collapse">
             <form method="GET" action="{{ route('planillas.index') }}" class="card card-body shadow-sm">
                 <div class="row g-3">
-                    <!-- Búsqueda global -->
+
+                    <!-- Filtros de texto -->
                     <div class="col-md-6">
                         <input type="text" name="buscar" class="form-control"
                             placeholder="Buscar en código, cliente, obra..." value="{{ request('buscar') }}">
                     </div>
-                    <!-- Código de Planilla -->
                     <div class="col-md-3">
                         <input type="text" name="codigo" class="form-control" placeholder="Código de Planilla"
                             value="{{ request('codigo') }}">
                     </div>
-                    <!-- Código de Obra -->
                     <div class="col-md-3">
                         <input type="text" name="cod_obra" class="form-control" placeholder="Código de Obra"
                             value="{{ request('cod_obra') }}">
                     </div>
-                    <!-- Nombre de Usuario -->
                     <div class="col-md-4">
                         <input type="text" name="name" class="form-control" placeholder="Nombre de Usuario"
                             value="{{ request('name') }}">
                     </div>
-                    <!-- Cliente -->
                     <div class="col-md-4">
                         <input type="text" name="cliente" class="form-control" placeholder="Nombre de Cliente"
                             value="{{ request('cliente') }}">
                     </div>
-                    <!-- Nombre de Obra -->
                     <div class="col-md-4">
                         <input type="text" name="nom_obra" class="form-control" placeholder="Nombre de Obra"
                             value="{{ request('nom_obra') }}">
                     </div>
-                    <!-- Estado Ensamblado -->
                     <div class="col-md-4">
                         <input type="text" name="ensamblado" class="form-control" placeholder="Estado de Ensamblado"
                             value="{{ request('ensamblado') }}">
                     </div>
-                    <!-- Rango de Fechas -->
+
+                    <!-- Filtros de selección -->
+                    <div class="col-md-4">
+                        <select name="estado" class="form-control">
+                            <option value="">Todos los estados de fabricación</option>
+                            <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
+                                Pendiente</option>
+                            <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>
+                                Fabricando</option>
+                            <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>
+                                Completada</option>
+                            <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="sort_by" class="form-control">
+                            <option value="">Elige un ítem para ordenar</option>
+                            <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Fecha
+                                Creación</option>
+                            <option value="codigo" {{ request('sort_by') == 'codigo' ? 'selected' : '' }}>Código
+                            </option>
+                            <option value="cliente" {{ request('sort_by') == 'cliente' ? 'selected' : '' }}>Cliente
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <select name="order" class="form-control">
+                            <option value="asc" {{ request('order') == 'asc' ? 'selected' : '' }}>Ascendente
+                            </option>
+                            <option value="desc" {{ request('order') == 'desc' ? 'selected' : '' }}>Descendente
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- Filtros de fechas -->
                     <div class="col-md-4">
                         <label for="fecha_inicio">Desde:</label>
                         <input type="date" name="fecha_inicio" class="form-control"
@@ -87,27 +116,7 @@
                         <input type="date" name="fecha_finalizacion" class="form-control"
                             value="{{ request('fecha_finalizacion') }}">
                     </div>
-                    <!-- Ordenar por -->
-                    <div class="col-md-4">
-                        <label for="sort_by">Ordenar por:</label>
-                        <select name="sort_by" class="form-control">
-                            <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Fecha
-                                Creación</option>
-                            <option value="codigo" {{ request('sort_by') == 'codigo' ? 'selected' : '' }}>Código
-                            </option>
-                            <option value="cliente" {{ request('sort_by') == 'cliente' ? 'selected' : '' }}>Cliente
-                            </option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="order">Orden:</label>
-                        <select name="order" class="form-control">
-                            <option value="asc" {{ request('order') == 'asc' ? 'selected' : '' }}>Ascendente
-                            </option>
-                            <option value="desc" {{ request('order') == 'desc' ? 'selected' : '' }}>Descendente
-                            </option>
-                        </select>
-                    </div>
+
                     <!-- Registros por página -->
                     <div class="col-md-4">
                         <label for="per_page">Mostrar:</label>
@@ -119,7 +128,7 @@
                     </div>
 
                     <!-- Botones -->
-                    <div class="col-12 d-flex justify-content-between">
+                    <div class="col-12 d-flex justify-content-between mt-3">
                         <button type="submit" class="btn btn-info">
                             <i class="fas fa-search"></i> Buscar
                         </button>
@@ -127,9 +136,11 @@
                             <i class="fas fa-undo"></i> Resetear Filtros
                         </a>
                     </div>
+
                 </div>
             </form>
         </div>
+
 
         <!-- TABLA DE PLANILLAS -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
@@ -239,7 +250,7 @@
                                 <input x-show="editando" type="text" x-model="planilla.suma_peso_completados"
                                     class="form-input w-full">
                             </td>
-                            
+
                             <!-- Peso Total -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
