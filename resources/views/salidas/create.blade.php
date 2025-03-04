@@ -6,7 +6,7 @@
                 {{ __('Salidas') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Gestión de Salidas de Camiones') }}
+            {{ __('Crear Nuevas Salidas de Camiones') }}
         </h2>
     </x-slot>
 

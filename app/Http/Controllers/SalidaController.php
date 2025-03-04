@@ -24,12 +24,16 @@ class SalidaController extends Controller
 
     public function show($id)
     {
-        // Obtener la salida con su ID, y cargar los paquetes asociados
-        $salida = Salida::with('paquetes')->findOrFail($id);
+        // Obtener la salida con su ID
+        $salida = Salida::findOrFail($id);
 
-        // Pasar la salida a la vista
-        return view('salidas.show', compact('salida'));
+        // Obtener los paquetes asociados con los elementos y subpaquetes
+        $paquetes = $salida->paquetes()->with(['elementos', 'subpaquetes'])->get();
+
+        // Pasar la salida y los paquetes a la vista
+        return view('salidas.show', compact('salida', 'paquetes'));
     }
+
 
 
     public function create()
@@ -86,6 +90,12 @@ class SalidaController extends Controller
             'fecha_salida' => now(),
             'estado' => 'pendiente', // Estado por defecto, puedes cambiarlo si es necesario
         ]);
+        // Generar el código de salida
+        $codigo_salida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
+
+        // Asignar el código de salida
+        $salida->codigo_salida = $codigo_salida;
+        $salida->save();
 
         // Asociar los paquetes a la salida
         foreach ($request->paquete_ids as $paquete_id) {
