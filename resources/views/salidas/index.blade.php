@@ -54,44 +54,7 @@
                 <h3 class="font-semibold text-xl text-gray-800 mb-4">Salidas Pendientes</h3>
 
                 @foreach ($salidas as $salida)
-                    <div class="mb-6" x-data="{
-                        open: false,
-                        todosVerificados: false,
-                        verificados: [],
-                        verificarPaquete(event) {
-                            const { verificado, paqueteId } = event.detail;
-                            if (verificado) {
-                                if (!this.verificados.includes(paqueteId)) {
-                                    this.verificados.push(paqueteId);
-                                }
-                            } else {
-                                this.verificados = this.verificados.filter(id => id !== paqueteId);
-                            }
-                            // Comprobamos si todos los paquetes han sido verificados
-                            this.todosVerificados = this.verificados.length === {{ count($salida->paquetes) }};
-                        },
-                        async actualizarEstado(salidaId) {
-                                const response = await fetch(`/salidas/${salidaId}/actualizar`, {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'), }, body:
-                        JSON.stringify({ estado: 'completada' }) }); if (response.ok) { Swal.fire({ title: 'Éxito' ,
-                        text: 'El estado de la salida ha sido actualizado a "completada".' , icon: 'success' ,
-                        confirmButtonText: 'OK' , }).then(()=> {
-                        location.reload();
-                        });
-                        } else {
-                        const data = await response.json();
-                        Swal.fire({
-                        title: 'Error',
-                        text: data.message || 'Hubo un error al actualizar el estado.',
-                        icon: 'error',
-                        confirmButtonText: 'Reintentar'
-                        });
-                        }
-                        }
-                        }">
+                    <div class="mb-6" x-data="{ open: false }">
                         <div class="bg-gray-100 p-4 rounded-lg shadow-md">
                             <div class="flex justify-between items-center">
                                 <div>
@@ -127,11 +90,11 @@
 
                                 <!-- Botón para actualizar estado a "completada" -->
                                 <div class="mt-4">
-                                    <button x-show="todosVerificados"
+                                    <button"
                                         class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300"
                                         @click="actualizarEstado({{ $salida->id }})">
                                         Marcar como Completada
-                                    </button>
+                                        </button>
                                 </div>
                             </div>
                         </div>
