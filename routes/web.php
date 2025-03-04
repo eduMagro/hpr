@@ -92,6 +92,8 @@ Route::middleware('auth')->group(function () {
         ->name('maquinas.sesion.guardar');
 
     Route::resource('salidas', SalidaController::class);
+    Route::post('/salidas/{id}/actualizar', [SalidaController::class, 'actualizarEstadoSalida'])
+        ->name('salidas.actualizar');
     Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
     Route::post('/alertas/store', [AlertaController::class, 'store'])->name('alertas.store');

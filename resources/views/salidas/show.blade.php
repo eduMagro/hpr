@@ -16,14 +16,14 @@
             <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center">
                     <label class="font-semibold text-lg text-gray-800">
-                        Salida #{{ $salida->id }}
+                        {{ $salida->codigo_salida }}
                     </label>
                 </div>
                 <span class="text-sm text-gray-600">Fecha: {{ $salida->created_at->format('d/m/Y H:i') }}</span>
             </div>
 
             <p class="text-gray-700 mt-2">Empresa Transporte: <span
-                    class="font-semibold text-gray-800">{{ $salida->empresatransporte->nombre }}</p>
+                    class="font-semibold text-gray-800">{{ $salida->empresaTransporte->nombre }}</p>
 
             <p class="text-gray-700 mt-2"> </span>Camión: <span
                     class="font-semibold text-gray-800">{{ $salida->camion->modelo }}
