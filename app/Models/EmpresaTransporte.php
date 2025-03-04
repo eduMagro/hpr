@@ -23,7 +23,7 @@ class EmpresaTransporte extends Model
      */
     public function camiones()
     {
-        return $this->hasMany(Camion::class);
+        return $this->hasMany(Camion::class 'camion_id');
     }
 
     /**
@@ -31,6 +31,6 @@ class EmpresaTransporte extends Model
      */
     public function salidas()
     {
-        return $this->hasMany(Salida::class);
+        return $this->hasMany(Salida::class 'salida_id');
     }
 }

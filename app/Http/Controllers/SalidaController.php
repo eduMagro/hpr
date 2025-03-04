@@ -8,6 +8,8 @@ use App\Models\Salida;
 use App\Models\Paquete;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
+use App\Models\EmpresaTransporte;
+use App\Models\Camion;
 
 class SalidaController extends Controller
 {

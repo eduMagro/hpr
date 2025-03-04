@@ -29,7 +29,7 @@ class Salida extends Model
      */
     public function empresaTransporte()
     {
-        return $this->belongsTo(EmpresaTransporte::class);
+        return $this->belongsTo(EmpresaTransporte::class, 'empresa_id');
     }
 
     /**
