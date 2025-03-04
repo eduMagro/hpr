@@ -40,21 +40,29 @@ class SalidaController extends Controller
         return view('salidas.show', compact('salida', 'paquetes'));
     }
 
-    public function actualizarEstadoSalida(Request $request, $salidaId)
+    public function actualizarEstado(Request $request, $salidaId)
     {
-        $salida = Salida::findOrFail($salidaId);
+        try {
+            $salida = Salida::findOrFail($salidaId);
 
-        // Verificamos que el estado actual sea pendiente antes de cambiarlo a completado
-        if ($salida->estado != 'pendiente') {
-            return response()->json(['message' => 'El estado de la salida ya ha sido actualizado.'], 400);
+            // Verificamos que el estado actual sea pendiente antes de cambiarlo a completado
+            if ($salida->estado != 'pendiente') {
+                return response()->json(['message' => 'El estado de la salida ya ha sido actualizado.'], 400);
+            }
+
+            // Actualizamos el estado
+            $salida->estado = 'completada';
+            $salida->save();
+
+            return response()->json([
+                'message' => 'Todas las etiquetas están completas.'
+            ]);
+        } catch (\Exception $e) {
+            // Capturamos cualquier error y retornamos un mensaje
+            return response()->json(['message' => 'Hubo un error al actualizar el estado de la salida. ' . $e->getMessage()], 500);
         }
-
-        // Actualizamos el estado
-        $salida->estado = 'completada';
-        $salida->save();
-
-        return response()->json(['message' => 'Estado actualizado a completada.'], 200);
     }
+
 
     public function create()
     {
@@ -140,11 +148,6 @@ class SalidaController extends Controller
             // Si hay paquetes repetidos, devolver el error
             if ($repetidos) {
                 return back()->withErrors(['paquete_ids' => 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $repetidos)]);
-            }
-
-            // Asociar los paquetes no repetidos a la salida
-            foreach ($paquetesNoAsociados as $paquete_id) {
-                $salida->paquetes()->attach($paquete_id);
             }
 
             // Retornar una respuesta de éxito

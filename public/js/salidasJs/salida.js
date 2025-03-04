@@ -36,14 +36,13 @@ document.addEventListener("DOMContentLoaded", function () {
                             location.reload(); // Recargar la página para reflejar el cambio
                         } else {
                             Swal.fire(
-                                "Error",
-                                "Hubo un error al actualizar el estado de la salida.",
-                                "error"
+                                "Completada",
+                                data.message, // Mostrar el mensaje de error del backend
+                                "success"
                             );
                         }
                     })
                     .catch((error) => {
-                        console.error("Error:", error);
                         Swal.fire(
                             "Error",
                             "Hubo un error al realizar la solicitud.",
