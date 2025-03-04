@@ -54,7 +54,44 @@
                 <h3 class="font-semibold text-xl text-gray-800 mb-4">Salidas Pendientes</h3>
 
                 @foreach ($salidas as $salida)
-                    <div class="mb-6" x-data="{ open: false }">
+                    <div class="mb-6" x-data="{
+                        open: false,
+                        todosVerificados: false,
+                        verificados: [],
+                        verificarPaquete(event) {
+                            const { verificado, paqueteId } = event.detail;
+                            if (verificado) {
+                                if (!this.verificados.includes(paqueteId)) {
+                                    this.verificados.push(paqueteId);
+                                }
+                            } else {
+                                this.verificados = this.verificados.filter(id => id !== paqueteId);
+                            }
+                            // Comprobamos si todos los paquetes han sido verificados
+                            this.todosVerificados = this.verificados.length === {{ count($salida->paquetes) }};
+                        },
+                        async actualizarEstado(salidaId) {
+                                const response = await fetch(`/salidas/${salidaId}/actualizar`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'), }, body:
+                        JSON.stringify({ estado: 'completada' }) }); if (response.ok) { Swal.fire({ title: 'Éxito' ,
+                        text: 'El estado de la salida ha sido actualizado a "completada".' , icon: 'success' ,
+                        confirmButtonText: 'OK' , }).then(()=> {
+                        location.reload();
+                        });
+                        } else {
+                        const data = await response.json();
+                        Swal.fire({
+                        title: 'Error',
+                        text: data.message || 'Hubo un error al actualizar el estado.',
+                        icon: 'error',
+                        confirmButtonText: 'Reintentar'
+                        });
+                        }
+                        }
+                        }">
                         <div class="bg-gray-100 p-4 rounded-lg shadow-md">
                             <div class="flex justify-between items-center">
                                 <div>
@@ -104,66 +141,5 @@
         @endif
     </div>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
-    <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('salidaVerificada', () => ({
-                todosVerificados: false,
-                verificados: [],
-                paqueteVerificado: false,
-                idIngresado: '',
-
-                verificarPaquete(event) {
-                    const {
-                        verificado,
-                        paqueteId
-                    } = event.detail;
-                    if (verificado) {
-                        if (!this.verificados.includes(paqueteId)) {
-                            this.verificados.push(paqueteId);
-                        }
-                    } else {
-                        this.verificados = this.verificados.filter(id => id !== paqueteId);
-                    }
-                    this.todosVerificados = this.verificados.length === document.querySelectorAll(
-                        '[x-data]').length;
-                },
-
-                async actualizarEstado(salidaId) {
-                    // Realizamos la petición AJAX para actualizar el estado de la salida
-                    const response = await fetch(`/salidas/${salidaId}/actualizar`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}' // Asegúrate de incluir el token CSRF
-                        },
-                        body: JSON.stringify({
-                            estado: 'completada' // El estado a actualizar
-                        })
-                    });
-
-                    if (response.ok) {
-                        // SweetAlert2 en lugar de alert
-                        Swal.fire({
-                            title: 'Éxito',
-                            text: 'El estado de la salida ha sido actualizado a "completada".',
-                            icon: 'success',
-                            confirmButtonText: 'OK'
-                        }).then(() => {
-                            location.reload(); // Recarga la página para reflejar el cambio
-                        });
-                    } else {
-                        // SweetAlert2 para error
-                        const data = await response.json();
-                        Swal.fire({
-                            title: 'Error',
-                            text: data.message || 'Hubo un error al actualizar el estado.',
-                            icon: 'error',
-                            confirmButtonText: 'Reintentar'
-                        });
-                    }
-                }
-
-            }));
-        });
-    </script>
+    <script src="{{ asset('js/salidasJs/salida.js') }}" defer></script>
 </x-app-layout>
