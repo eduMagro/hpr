@@ -18,15 +18,19 @@ class SalidaController extends Controller
     {
         // Verificar si el usuario es administrador
         if (auth()->user()->categoria == 'administrador') {
-            // Si es administrador, mostrar todas las salidas
-            $salidas = Salida::all();
+            // Si es administrador, mostrar todas las salidas con sus paquetes, subpaquetes y elementos
+            $salidas = Salida::with(['paquetes.subpaquetes', 'paquetes.elementos'])->get();
         } else {
             // Si no es administrador, mostrar solo las salidas con estado pendiente
-            $salidas = Salida::where('estado', 'pendiente')->get();
+            $salidas = Salida::where('estado', 'pendiente')
+                ->with(['paquetes.subpaquetes', 'paquetes.elementos'])  // Cargar subpaquetes y elementos para cada paquete
+                ->get();
         }
 
+        // Pasar las salidas a la vista
         return view('salidas.index', compact('salidas'));
     }
+
 
     public function show($id)
     {
@@ -52,7 +56,9 @@ class SalidaController extends Controller
 
             // Actualizamos el estado
             $salida->estado = 'completada';
+            $salida->fecha_salida = now();
             $salida->save();
+
 
             return response()->json([
                 'message' => 'Todas las etiquetas están completas.'
@@ -118,7 +124,7 @@ class SalidaController extends Controller
             $salida = Salida::create([
                 'empresa_id' => $empresa->id,
                 'camion_id' => $request->camion_id,
-                'fecha_salida' => now(),
+                'fecha_salida' => null,
                 'estado' => 'pendiente', // Estado por defecto, puedes cambiarlo si es necesario
             ]);
             // Generar el código de salida

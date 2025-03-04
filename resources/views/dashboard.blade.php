@@ -3,7 +3,7 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Bienvenido, :name. Elige una tarea', ['name' => strtok(auth()->user()->name, ' ')]) }}
         </h2>
-       
+
     </x-slot>
 
     <div class="py-4 lg:py-12 ">
@@ -73,6 +73,14 @@
                                     src="https://img.icons8.com/?size=100&id=HjcUJuI6Siqo&format=png&color=000000"
                                     alt="terms-and-conditions" />
                                 <span>Obras</span>
+                            </a>
+                        </div>
+                        <div class="icon-card">
+                            <a href="{{ route('empresas-transporte.index') }}">
+                                <img width="100" height="100"
+                                    src="https://img.icons8.com/?size=100&id=HjcUJuI6Siqo&format=png&color=000000"
+                                    alt="terms-and-conditions" />
+                                <span>Transporte</span>
                             </a>
                         </div>
                         <div class="icon-card">
@@ -227,7 +235,7 @@
                 .then(data => {
                     if (data.cantidad > 0) {
                         document.getElementById("notificacion-alertas-icono").style.display = "block";
-                     
+
                     }
                 });
         });

@@ -33,6 +33,6 @@ class Camion extends Model
      */
     public function salidas()
     {
-        return $this->hasMany(Salida::class, 'salida_id');
+        return $this->hasMany(Salida::class, 'camion_id');
     }
 }

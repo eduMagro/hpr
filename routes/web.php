@@ -22,6 +22,8 @@ use App\Http\Controllers\SubpaqueteController;
 use App\Http\Controllers\SalidaController;
 use App\Http\Controllers\ObraController;
 use App\Http\Controllers\AsignacionTurnoController;
+use App\Http\Controllers\CamionController;
+use App\Http\Controllers\EmpresaTransporteController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 
@@ -93,6 +95,12 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('salidas', SalidaController::class);
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaController::class, 'actualizarEstado']);
+    // Rutas para la gestión de camiones
+    Route::resource('camiones', CamionController::class);
+
+    // Rutas para la gestión de empresas de transporte
+    Route::resource('empresas-transporte', EmpresaTransporteController::class);
+
     Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
     Route::post('/alertas/store', [AlertaController::class, 'store'])->name('alertas.store');
