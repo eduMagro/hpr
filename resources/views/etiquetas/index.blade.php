@@ -23,13 +23,16 @@
 
         </x-slot>
 
-        <div class="w-full px-6 py-4">
+        <div class="container mx-auto p-4 sm:p-6">
             <!-- Formulario de Filtros -->
-            <form method="GET" action="{{ route('etiquetas.index') }}" class="mb-4 grid grid-cols-8 gap-4">
-                <div>
-                    <label for="estado" class="block text-sm font-medium text-gray-700">Estado</label>
+            <form method="GET" action="{{ route('etiquetas.index') }}"
+                class="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-2 md:gap-4 p-2">
+
+                <!-- Estado -->
+                <div class="flex flex-col">
+                    <label for="estado" class="text-sm font-medium text-gray-700">Estado</label>
                     <select name="estado" id="estado"
-                        class="w-40 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500">
+                        class="w-full md:w-40 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500">
                         <option value="">Todos</option>
                         <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente
                         </option>
@@ -39,11 +42,17 @@
                         </option>
                     </select>
                 </div>
-                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Filtrar</button>
+
+                <!-- Botón Filtrar -->
+                <div class="flex flex-col justify-end">
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded w-full md:w-auto">
+                        Filtrar
+                    </button>
+                </div>
             </form>
 
             <!-- Tabla con formularios de búsqueda -->
-            <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+            <div class="bg-white shadow-lg rounded-lg p-4 sm:p-6 mt-6 overflow-x-auto">
                 <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white">
                         <tr class="text-left text-sm uppercase">

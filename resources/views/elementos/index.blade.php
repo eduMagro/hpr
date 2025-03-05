@@ -22,12 +22,15 @@
         </h2>
     </x-slot>
 
-    <div class="w-full px-6 py-4">
+    <div class="container mx-auto p-4 sm:p-6">
         <!-- Formulario de filtrado -->
-        <form method="GET" action="{{ route('elementos.index') }}" class="mb-4 grid grid-cols-8 gap-4">
-            <div>
-                <label for="estado" class="block text-sm font-medium text-gray-700">Estado</label>
-                <select name="estado" class="border p-2 rounded">
+        <form method="GET" action="{{ route('elementos.index') }}"
+            class="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 md:gap-4 p-2">
+
+            <!-- Estado -->
+            <div class="flex flex-col">
+                <label for="estado" class="text-sm font-medium text-gray-700">Estado</label>
+                <select name="estado" class="border p-2 rounded w-full">
                     <option value="">Todos</option>
                     <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente
                     </option>
@@ -38,15 +41,32 @@
                     <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje</option>
                 </select>
             </div>
-            <input type="date" name="fecha_inicio" value="{{ request('fecha_inicio') }}" class="border p-2 rounded">
-            <input type="date" name="fecha_finalizacion" value="{{ request('fecha_finalizacion') }}"
-                class="border p-2 rounded">
-            <button type="submit" class="bg-blue-500 text-white px-1 py-2 rounded">Filtrar</button>
+
+            <!-- Fecha Inicio -->
+            <div class="flex flex-col">
+                <label for="fecha_inicio" class="text-sm font-medium text-gray-700">Fecha Inicio</label>
+                <input type="date" name="fecha_inicio" value="{{ request('fecha_inicio') }}"
+                    class="border p-2 rounded w-full">
+            </div>
+
+            <!-- Fecha Finalización -->
+            <div class="flex flex-col">
+                <label for="fecha_finalizacion" class="text-sm font-medium text-gray-700">Fecha Fin</label>
+                <input type="date" name="fecha_finalizacion" value="{{ request('fecha_finalizacion') }}"
+                    class="border p-2 rounded w-full">
+            </div>
+
+            <!-- Botón Filtrar -->
+            <div class="flex flex-col justify-end">
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded w-full md:w-auto">
+                    Filtrar
+                </button>
+            </div>
         </form>
 
         <!-- Tabla de elementos con scroll horizontal -->
-        <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full table-fixed border border-gray-300 rounded-lg">
+        <div class="bg-white shadow-lg rounded-lg p-4 sm:p-6 mt-6 overflow-x-auto">
+            <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm uppercase">
                         <th class="py-3 border text-center">
