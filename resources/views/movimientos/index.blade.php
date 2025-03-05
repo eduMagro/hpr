@@ -12,35 +12,99 @@
             <a href="{{ route('movimientos.create') }}" class="btn btn-primary">
                 Crear Movimiento
             </a>
-        </div>
-        <!-- FORMULARIO DE BUSQUEDA -->
-        <form method="GET" action="{{ route('movimientos.index') }}" class="form-inline mt-3 mb-3">
-
-            <input type="text" name="producto_id" class="form-control mb-3" placeholder="Buscar por QR de producto"
-                value="{{ request('producto_id') }}">
-            <input type="text" name="nombre_usuario" class="form-control mb-3"
-                placeholder="Buscar por nombre de usuario" value="{{ request('nombre_usuario') }}">
-
-            <button type="submit" class="btn btn-info ml-2">
-                <i class="fas fa-search"></i> Buscar
+            <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosBusqueda">
+                🔍 Filtros Avanzados
             </button>
-        </form>
+        </div>
+        <div id="filtrosBusqueda" class="collapse">
+            <form method="GET" action="{{ route('movimientos.index') }}" class="card card-body shadow-sm">
+                <div class="row g-3">
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            @if ($registrosMovimientos instanceof \Illuminate\Pagination\LengthAwarePaginator && $registrosMovimientos->isNotEmpty())
-                @foreach ($registrosMovimientos as $movimiento)
-                    <div class="bg-white border p-6 shadow-md rounded-lg">
-                        <!-- Encabezado -->
-                        <h3 class="font-bold text-lg text-gray-700">Movimiento #{{ $movimiento->id }}</h3>
-                        <p class="text-sm text-gray-500">Fecha: {{ $movimiento->created_at->format('d/m/Y H:i') }}</p>
+                    <!-- Filtros de texto -->
+                    <div class="col-md-4">
+                        <input type="text" name="movimiento_id" class="form-control" placeholder="ID de Movimiento"
+                            value="{{ request('movimiento_id') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" name="usuario" class="form-control" placeholder="Nombre de Usuario"
+                            value="{{ request('usuario') }}">
+                    </div>
 
-                        <!-- Información del Movimiento -->
-                        <div class="mt-3">
-                            <p><strong>Usuario:</strong> {{ $movimiento->usuario->name ?? 'Usuario desconocido' }}</p>
-                            <div class="border-t my-3"></div>
+                    <!-- Filtros de búsqueda por Producto o Paquete -->
+                    <div class="col-md-4">
+                        <input type="text" name="producto_id" class="form-control" placeholder="ID Producto"
+                            value="{{ request('producto_id') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" name="paquete_id" class="form-control" placeholder="ID Paquete"
+                            value="{{ request('paquete_id') }}">
+                    </div>
 
-                            <!-- Origen -->
-                            <p><strong>Origen:</strong>
+                    <!-- Filtros de fechas -->
+                    <div class="col-md-4">
+                        <label for="fecha_inicio">Desde:</label>
+                        <input type="date" name="fecha_inicio" class="form-control"
+                            value="{{ request('fecha_inicio') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="fecha_finalizacion">Hasta:</label>
+                        <input type="date" name="fecha_finalizacion" class="form-control"
+                            value="{{ request('fecha_finalizacion') }}">
+                    </div>
+
+                    <!-- Registros por página -->
+                    <div class="col-md-4">
+                        <label for="per_page">Mostrar:</label>
+                        <select name="per_page" class="form-control">
+                            <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
+                            <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25</option>
+                            <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+                        </select>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="col-12 d-flex justify-content-between mt-3">
+                        <button type="submit" class="btn btn-info">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                        <a href="{{ route('movimientos.index') }}" class="btn btn-warning">
+                            <i class="fas fa-undo"></i> Resetear Filtros
+                        </a>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+
+
+        <div class="overflow-x-auto bg-white shadow-md rounded-lg">
+            <table class="min-w-full table-auto">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Movimiento ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Origen</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destino</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto Asociado
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($registrosMovimientos as $movimiento)
+                        <tr class="border-b">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {{ $movimiento->id }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ $movimiento->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <a href="{{ route('users.index', ['id' => $movimiento->usuario->id]) }}"
+                                    class="text-blue-500 hover:underline">
+                                    {{ $movimiento->usuario->name }}
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 @if ($movimiento->ubicacionOrigen && $movimiento->ubicacionOrigen->nombre)
                                     {{ $movimiento->ubicacionOrigen->nombre }}
                                 @elseif ($movimiento->maquinaOrigen && $movimiento->maquinaOrigen->nombre)
@@ -48,10 +112,8 @@
                                 @else
                                     Sin origen
                                 @endif
-                            </p>
-
-                            <!-- Destino -->
-                            <p><strong>Destino:</strong>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 @if ($movimiento->ubicacionDestino && $movimiento->ubicacionDestino->nombre)
                                     {{ $movimiento->ubicacionDestino->nombre }}
                                 @elseif ($movimiento->maquina && $movimiento->maquina->nombre)
@@ -59,42 +121,33 @@
                                 @else
                                     Sin destino
                                 @endif
-                            </p>
-                        </div>
-
-                        <div class="border-t my-3"></div>
-
-                        <!-- Producto Asociado -->
-                        <h4 class="font-semibold text-gray-600">Producto asociado:</h4>
-                        @if ($movimiento->producto)
-                            <p>{{ 'ID: ' . $movimiento->producto->id }}</p>
-                            <p>{{ 'Tipo de producto: ' . $movimiento->producto->tipo }}</p>
-                            <p>{{ 'Diámetro: ' . $movimiento->producto->diametro }}</p>
-                            <p>{{ 'Longitud: ' . $movimiento->producto->longitud }}</p>
-                            <a href="{{ route('productos.show', $movimiento->producto->id) }}"
-                                class="btn btn-sm btn-primary">Ver</a>
-                        @else
-                            <p class="text-sm text-gray-500">No hay producto asociado a este movimiento.</p>
-                        @endif
-
-                        <div class="border-t my-3"></div>
-
-                        <!-- Botones de acción -->
-                        <div class="flex justify-between mt-4">
-                            <x-boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
-                        </div>
-                    </div>
-                @endforeach
-            @else
-                <p class="text-gray-500">No hay movimientos registrados ahora mismo.</p>
-            @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                @if ($movimiento->producto)
+                                    <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        Materia Prima #{{ $movimiento->producto->id }}
+                                    </a>
+                                @elseif ($movimiento->paquete)
+                                    <a href="{{ route('paquetes.index', ['id' => $movimiento->paquete->id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        Paquete #{{ $movimiento->paquete->id }}
+                                    </a>
+                                @else
+                                    N/A
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <x-boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
-
-
-        <!-- Paginación -->
-        @if (isset($registrosMovimientos) && $registrosMovimientos instanceof \Illuminate\Pagination\LengthAwarePaginator)
-            {{ $registrosMovimientos->appends(request()->except('page'))->links() }}
-        @endif
+        <div class="mt-4 flex justify-center">
+            {{ $registrosMovimientos->links() }}
+        </div>
     </div>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

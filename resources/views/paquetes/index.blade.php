@@ -42,7 +42,18 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-2 py-3 border">Planilla</th>
+                        <th class="px-2 py-3 border">Planilla
+                            <!-- Formulario de búsqueda por ID -->
+                            <form method="GET" action="{{ route('paquetes.index') }}" class="mt-2 flex space-x-2">
+                                <input type="text" name="planilla"
+                                    class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
+                                <button type="submit"
+                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
+                                    Filtrar
+                                </button>
+                            </form>
+                        </th>
                         <th class="px-2 py-3 border">Ubicación</th>
                         <th class="px-2 py-3 border">Elementos</th>
                         <th class="px-2 py-3 border">Creación Paquete</th>
@@ -83,8 +94,8 @@
                                 @elseif($paquete->subpaquetes->isNotEmpty())
                                     {{-- Mostrar subpaquetes si existen --}}
                                     @foreach ($paquete->subpaquetes as $subpaquete)
-                                    <ul class="text-sm">
-                                       
+                                        <ul class="text-sm">
+
                                             <li>
                                                 <a href="{{ route('etiquetas.index', ['id' => $subpaquete->elemento->etiquetaRelacion->id]) }}"
                                                     class="text-blue-500 hover:underline">
@@ -93,7 +104,8 @@
                                                 </a>
                                                 <a href="{{ route('elementos.index', ['id' => $subpaquete->elemento->id]) }}"
                                                     class="text-green-500 hover:underline">
-                                                    #{{ $subpaquete->elemento->id }} - FIGURA {{ $subpaquete->elemento->figura }}
+                                                    #{{ $subpaquete->elemento->id }} - FIGURA
+                                                    {{ $subpaquete->elemento->figura }}
                                                 </a>
                                                 <a href="{{ route('subpaquetes.index', ['id' => $subpaquete->id]) }}"
                                                     class="text-red-500 hover:underline">
@@ -101,8 +113,7 @@
                                                 </a>
                                             </li>
                                         </ul>
-                                        @endforeach
-                                   
+                                    @endforeach
                                 @else
                                     <span class="text-gray-500">Vacío</span>
                                 @endif

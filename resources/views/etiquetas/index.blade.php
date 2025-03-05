@@ -31,11 +31,12 @@
                     <select name="estado" id="estado"
                         class="w-40 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500">
                         <option value="">Todos</option>
-                        <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada
+                        <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente
                         </option>
                         <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando
                         </option>
-                        <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje</option>
+                        <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada
+                        </option>
                     </select>
                 </div>
                 <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Filtrar</button>

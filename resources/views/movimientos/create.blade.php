@@ -4,28 +4,6 @@
             {{ __('Crear Movimientos') }}
         </h2>
     </x-slot>
-
-    @if (session('error'))
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: '¡Error!',
-                text: "{{ session('error') }}",
-                confirmButtonText: 'Aceptar'
-            });
-        </script>
-    @endif
-    @if (session('success'))
-        <script>
-            Swal.fire({
-                icon: 'success',
-                title: '¡Éxito!',
-                text: "{{ session('success') }}",
-                confirmButtonText: 'Aceptar'
-            });
-        </script>
-    @endif
-
     <div class="container mt-5">
         <div class="row justify-content-center">
             <div class="col-md-8">
@@ -36,18 +14,32 @@
                     <div class="card-body">
                         <form action="{{ route('movimientos.store') }}" method="POST" id="form-movimiento">
                             @csrf
-
-                            <!-- Seleccionar Producto -->
+                            <!-- Seleccionar Producto o Paquete -->
                             <div class="form-group mb-4">
-                                <label for="producto_id" class="form-label fw-bold">Materia Prima</label>
-								@if(request('producto_id'))
-								<input type="text" name="producto_id" class="form-control" value="{{ request('producto_id') }}" readonly>
-@elseif(!request('producto_id'))
-    <input type="text" name="producto_id" id="producto_id" class="form-control mb-3"
-                                    placeholder="Buscar por QR" value="{{ old('producto_id') }}">
-@endif
+                                <label for="tipo_movimiento" class="form-label fw-bold">Tipo de Movimiento</label>
+                                <select id="tipo_movimiento" name="tipo_movimiento" class="form-control">
+                                    <option value="producto">Materia Prima</option>
+                                    <option value="paquete">Paquete</option>
+                                </select>
+                            </div>
 
-                                
+                            <!-- Seleccionar Producto (solo visible si se elige 'Materia Prima') -->
+                            <div id="producto-section" class="form-group mb-4">
+                                <label for="producto_id" class="form-label fw-bold">Materia Prima</label>
+                                @if (request('producto_id'))
+                                    <input type="text" name="producto_id" class="form-control"
+                                        value="{{ request('producto_id') }}" readonly>
+                                @elseif(!request('producto_id'))
+                                    <input type="text" name="producto_id" id="producto_id" class="form-control mb-3"
+                                        placeholder="QR Materia Prima" value="{{ old('producto_id') }}">
+                                @endif
+                            </div>
+
+                            <!-- Seleccionar Paquete (solo visible si se elige 'Paquete') -->
+                            <div id="paquete-section" class="form-group mb-4" style="display: none;">
+                                <label for="paquete_id" class="form-label fw-bold">Paquete</label>
+                                <input type="text" name="paquete_id" id="paquete_id" class="form-control mb-3"
+                                    placeholder="QR Paquete" value="{{ old('paquete_id') }}">
                             </div>
 
                             <!-- Movimiento a Ubicación -->
@@ -62,7 +54,7 @@
                             </div>
 
                             <!-- Movimiento a Máquina -->
-                            <div class="form-group mb-4">
+                            <div id="maquina-section" class="form-group mb-4">
                                 <label for="maquina_id" class="form-label fw-bold">Máquina Destino</label>
                                 <select id="maquina_id" name="maquina_id" class="form-control">
                                     <option selected value="">Seleccione una máquina</option>
@@ -78,6 +70,7 @@
                                     Movimiento</button>
                             </div>
                         </form>
+
                     </div>
                     <div class="card-footer text-center text-muted">
                         <small>El producto puede moverse a otra ubicación o a una máquina, pero no ambos.</small>
@@ -147,6 +140,32 @@
                         });
                 });
             }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const tipoMovimiento = document.getElementById('tipo_movimiento');
+            const productoSection = document.getElementById('producto-section');
+            const paqueteSection = document.getElementById('paquete-section');
+            const maquinaSection = document.getElementById('maquina-section'); // Corregido
+
+            // Función para manejar la visibilidad de los campos
+            function toggleFields() {
+                if (tipoMovimiento.value === 'producto') {
+                    productoSection.style.display = 'block'; // Mostrar campo de Producto
+                    paqueteSection.style.display = 'none'; // Ocultar campo de Paquete
+                    maquinaSection.style.display = 'block'; // Mostrar campo de Maquina
+                } else if (tipoMovimiento.value === 'paquete') {
+                    productoSection.style.display = 'none'; // Ocultar campo de Producto
+                    maquinaSection.style.display = 'none'; // Ocultar campo de Maquina
+                    paqueteSection.style.display = 'block'; // Mostrar campo de Paquete
+                }
+            }
+
+            // Inicializar el estado de los campos según la selección actual
+            toggleFields();
+
+            // Cambiar visibilidad cuando se seleccione un tipo de movimiento
+            tipoMovimiento.addEventListener('change', toggleFields);
         });
     </script>
 

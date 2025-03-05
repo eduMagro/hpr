@@ -86,12 +86,12 @@
                                                     if (value) paquetesVerificados++
                                                     else paquetesVerificados--;
                                                 })">
-                                                <span>{{ $paquete->nombre }} (ID: {{ $paquete->id }})</span>
+                                                <span>{{ $paquete->ubicacion->nombre }} (ID:
+                                                    {{ $paquete->id }})</span>
                                                 <input type="text" placeholder="QR Paquete"
                                                     class="border mb-2 px-2 py-1 rounded-md w-20 sm:w-auto max-w-full"
                                                     x-model="idIngresado"
-                                                    @input="paqueteVerificado = (idIngresado == paqueteId); $dispatch('verificar-paquete', { verificado: paqueteVerificado, paqueteId: paqueteId })"
-                                                    readonly>
+                                                    @input="paqueteVerificado = (idIngresado == paqueteId); $dispatch('verificar-paquete', { verificado: paqueteVerificado, paqueteId: paqueteId })">
 
 
                                                 <span x-show="paqueteVerificado" class="text-green-500">&#10004;</span>

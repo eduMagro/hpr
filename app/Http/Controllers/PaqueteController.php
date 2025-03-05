@@ -27,6 +27,17 @@ class PaqueteController extends Controller
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));
         }
+        if ($request->filled('planilla')) {
+            $planillaInput = $request->input('planilla');
+
+            $query->where(function ($q) use ($planillaInput) {
+                $q->where('planilla_id', $planillaInput) // Buscar por ID en la tabla paquetes
+                    ->orWhereHas('planilla_id', function ($subQuery) use ($planillaInput) {
+                        $subQuery->where('codigo', 'like', '%' . $planillaInput . '%'); // Buscar por código en planillas
+                    });
+            });
+        }
+
 
         $paquetes = $query->paginate(10)->appends($request->query());
 
