@@ -54,10 +54,12 @@
                                                 </label>
                                                 <span class="text-gray-600 ml-auto">Peso: {{ $paquete->peso }}
                                                     kg</span>
-                                                <button onclick="mostrarDibujo({{ $paquete->id }})"
+                                                <button
+                                                    onclick="mostrarDibujo({{ $paquete->id }}); event.preventDefault();"
                                                     class="text-blue-500 hover:underline ml-2">
                                                     Ver
                                                 </button>
+
                                             </div>
                                         @endforeach
                                     </div>

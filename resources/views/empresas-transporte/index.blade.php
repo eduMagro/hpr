@@ -1,37 +1,150 @@
 <x-app-layout>
-    <x-slot name="title">Crear Salidas - {{ config('app.name') }}</x-slot>
+    <x-slot name="title">Transporte - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('salidas.index') }}" class="text-blue-600">
-                {{ __('Salidas') }}
-            </a>
-            <span class="mx-2">/</span>
-            {{ __('Crear Nuevas Salidas de Camiones') }}
+            {{ __('Empresas de Transporte') }}
         </h2>
     </x-slot>
 
-    <div class="container mx-auto p-6">
-        <h1>Empresas de Transporte</h1>
+    <div x-data="{ openEmpresaModal: false, openCamionModal: false }" class="container mx-auto p-6">
 
-        @foreach ($empresasTransporte as $empresa)
-            <div class="empresa">
-                <h2>{{ $empresa->nombre }}</h2>
-                <p><strong>Teléfono:</strong> {{ $empresa->telefono }}</p>
-                <p><strong>Email:</strong> {{ $empresa->email }}</p>
+        <!-- Botón para abrir el modal de añadir empresa -->
+        <div class="flex justify-between mb-6">
+            <button @click="openEmpresaModal = true"
+                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                + Añadir Empresa
+            </button>
+        </div>
 
-                <h3>Camiones</h3>
-                <ul>
-                    @foreach ($empresa->camiones as $camion)
-                        <li>
-                            <strong>Matrícula:</strong> {{ $camion->matricula }} <br>
-                            <strong>Modelo:</strong> {{ $camion->modelo }} <br>
-                            <strong>Año:</strong> {{ $camion->año }} <br>
-                            <strong>Capacidad:</strong> {{ $camion->capacidad }} <br>
-                            <strong>Estado:</strong> {{ $camion->estado }}
-                        </li>
-                    @endforeach
-                </ul>
+        <!-- Modal para añadir nueva empresa -->
+        <div x-show="openEmpresaModal" x-transition x-cloak
+            class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-50">
+            <div class="bg-white p-6 rounded-lg w-96">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Añadir Empresa</h2>
+                <form action="{{ route('empresas-transporte.store') }}" method="POST">
+                    @csrf
+
+                    <div class="mb-4">
+                        <label for="nombre" class="block text-gray-700">Nombre</label>
+                        <input type="text" id="nombre" name="nombre"
+                            class="w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="direccion" class="block text-gray-700">Dirección</label>
+                        <input type="text" id="direccion" name="direccion"
+                            class="w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="telefono" class="block text-gray-700">Teléfono</label>
+                        <input type="text" id="telefono" name="telefono"
+                            class="w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="email" class="block text-gray-700">Email</label>
+                        <input type="email" id="email" name="email"
+                            class="w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+
+                    <div class="flex justify-between">
+                        <button type="button" @click="openEmpresaModal = false"
+                            class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                            Guardar
+                        </button>
+                    </div>
+                </form>
             </div>
-        @endforeach
+        </div>
+
+        <!-- Contenedor de empresas en grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach ($empresasTransporte as $empresa)
+                <div class="mb-8 p-4 bg-white rounded-lg shadow-sm">
+                    <h2 class="text-xl font-semibold text-blue-600">{{ $empresa->nombre }}</h2>
+                    <p class="text-gray-600"><strong>Teléfono:</strong> {{ $empresa->telefono }}</p>
+                    <p class="text-gray-600"><strong>Email:</strong> {{ $empresa->email }}</p>
+
+                    <h3 class="mt-4 text-lg font-medium text-gray-700">Camiones</h3>
+                    <ul class="space-y-4">
+                        @foreach ($empresa->camiones as $camion)
+                            <li class="p-4 bg-gray-100 rounded-lg shadow-md">
+                                <p class="text-gray-800"><strong>Matrícula:</strong> {{ $camion->matricula }}</p>
+                                <p class="text-gray-800"><strong>Modelo:</strong> {{ $camion->modelo }}</p>
+                                <p class="text-gray-800"><strong>Capacidad:</strong> {{ $camion->capacidad }} kg</p>
+                                <p class="text-gray-800"><strong>Estado:</strong>
+                                    <span
+                                        class="font-semibold {{ $camion->estado == 'Disponible' ? 'text-green-500' : 'text-red-500' }}">
+                                        {{ $camion->estado }}
+                                    </span>
+                                </p>
+                            </li>
+                        @endforeach
+                    </ul>
+
+                    <!-- Botón para abrir el modal de añadir camión -->
+                    <button @click="openCamionModal = true"
+                        class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        + Añadir Camión
+                    </button>
+
+                    <!-- Modal para añadir camión -->
+                    <div x-show="openCamionModal" x-transition x-cloak
+                        class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-50">
+                        <div class="bg-white p-6 rounded-lg w-96">
+                            <h2 class="text-xl font-semibold text-gray-800 mb-4">Añadir Camión</h2>
+                            <form action="{{ route('camiones.store') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="empresa_id" value="{{ $empresa->id }}">
+
+                                <div class="mb-4">
+                                    <label for="matricula" class="block text-gray-700">Matrícula</label>
+                                    <input type="text" id="matricula" name="matricula"
+                                        class="w-full p-2 border border-gray-300 rounded-lg" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="modelo" class="block text-gray-700">Modelo</label>
+                                    <input type="text" id="modelo" name="modelo"
+                                        class="w-full p-2 border border-gray-300 rounded-lg" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="capacidad" class="block text-gray-700">Capacidad (kg)</label>
+                                    <input type="number" id="capacidad" name="capacidad"
+                                        class="w-full p-2 border border-gray-300 rounded-lg" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="estado" class="block text-gray-700">Estado</label>
+                                    <select id="estado" name="estado"
+                                        class="w-full p-2 border border-gray-300 rounded-lg" required>
+                                        <option value="activo">Activo</option>
+                                        <option value="inactivo">Inactivo</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex justify-between">
+                                    <button type="button" @click="openCamionModal = false"
+                                        class="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                        Guardar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
 </x-app-layout>

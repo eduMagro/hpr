@@ -25,7 +25,7 @@ class EmpresaTransporteController extends Controller
     public function store(Request $request)
     {
         EmpresaTransporte::create($request->all());
-        return redirect()->route('empresas-transporte.index');
+        return redirect()->route('empresas-transporte.index')->with('success', 'Empresa añadida con éxito.');
     }
 
     public function show(EmpresaTransporte $empresaTransporte)

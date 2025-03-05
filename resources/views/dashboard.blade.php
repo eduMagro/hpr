@@ -78,8 +78,7 @@
                         <div class="icon-card">
                             <a href="{{ route('empresas-transporte.index') }}">
                                 <img width="100" height="100"
-                                    src="https://img.icons8.com/?size=100&id=HjcUJuI6Siqo&format=png&color=000000"
-                                    alt="terms-and-conditions" />
+                                    src="https://img.icons8.com/dusk/64/interstate-truck.png" alt="Transporte" />
                                 <span>Transporte</span>
                             </a>
                         </div>

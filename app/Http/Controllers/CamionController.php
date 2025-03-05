@@ -21,7 +21,7 @@ class CamionController extends Controller
     public function store(Request $request)
     {
         Camion::create($request->all());
-        return redirect()->route('camiones.index');
+        return redirect()->route('empresas-transporte.index')->with('success', 'Camión añadido con éxito.');
     }
 
     public function show(Camion $camion)
