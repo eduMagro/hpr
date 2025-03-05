@@ -55,4 +55,8 @@ class Paquete extends Model
     {
         return $this->belongsToMany(Salida::class, 'salidas_paquetes', 'paquete_id', 'salida_id');
     }
+    public function salidasPaquetes()
+    {
+        return $this->hasMany(SalidaPaquete::class);
+    }
 }

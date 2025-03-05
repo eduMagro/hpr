@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Elemento;
 use App\Models\Producto;
 use App\Models\Planilla;
+use App\Models\Obra;
+use App\Models\SalidaPaquete;
 
 class EstadisticasController extends Controller
 {
@@ -47,20 +49,28 @@ class EstadisticasController extends Controller
             ->orderBy('diametro')
             ->orderBy('longitud')
             ->get();
+        // Obtener todas las obras
+        $obras = Obra::all();
 
-        // Cálculo del peso entregado a cada obra con Eloquent
-        $pesoEntregadoPorObra = Planilla::with(['elementos' => function ($query) {
-            $query->selectRaw('planilla_id, SUM(peso) AS peso_entregado')
-                ->groupBy('planilla_id');
-        }])
-            ->select('nom_obra')
-            ->get()
-            ->map(function ($planilla) {
-                return [
-                    'nom_obra' => $planilla->nom_obra,
-                    'peso_entregado' => $planilla->elementos->sum('peso_entregado')
-                ];
+        // Calcular el peso entregado por cada obra
+        $pesoEntregadoPorObra = $obras->map(function ($obra) {
+            // Obtener todos los paquetes cuya planilla esté asociada a esta obra
+            $paquetes = SalidaPaquete::whereHas('elementos.planilla', function ($query) use ($obra) {
+                $query->where('nom_obra', $obra->nom_obra);
+            })
+                ->with('elementos')
+                ->get();
+
+            // Sumar el peso de todos los paquetes
+            $pesoTotal = $paquetes->sum(function ($paquete) {
+                return $paquete->peso_total; // Asegúrate de que 'peso_total' es el campo correcto en 'salidas_paquetes'
             });
+
+            return [
+                'obra' => $obra->nom_obra,
+                'peso_total' => $pesoTotal,
+            ];
+        });
         // Pasar los datos a la vista
         return view('estadisticas.index', compact(
             'datosPorPlanilla',
