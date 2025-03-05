@@ -8,6 +8,7 @@ use App\Http\Controllers\VacacionesController;
 
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
+
 use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\MaquinaController;
@@ -51,6 +52,10 @@ Route::middleware('auth')->group(function () {
         5. PUT/PATCH /entradas/{id} --> EntradaController@update  (Actualiza una entrada existente)
         6. DELETE /entradas/{id}  --> EntradaController@destroy (Elimina una entrada) */
     Route::resource('productos', ProductoController::class);
+
+
+    Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
+
     Route::resource('ubicaciones', UbicacionController::class);
 
     //USUARIOS

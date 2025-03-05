@@ -172,6 +172,18 @@ class ProductoController extends Controller
         }
     }
 
+    public function solicitarStock(Request $request)
+    {
+        // Aquí puedes obtener el diámetro o cualquier otro dato necesario de la solicitud
+        $diametro = $request->input('diametro');
+
+        // Lógica para manejar la solicitud (por ejemplo, registrar la solicitud, enviar un correo, etc.)
+        // Ejemplo: registrar la solicitud
+        // Solicitud::create(['diametro' => $diametro, 'estado' => 'pendiente']);
+
+        // Redirigir con un mensaje de éxito
+        return redirect()->back()->with('exito', 'La solicitud ha sido registrada exitosamente.');
+    }
 
 
     //------------------------------------------------------------------------------------ DESTROY

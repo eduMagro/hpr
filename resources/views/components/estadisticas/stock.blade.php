@@ -89,6 +89,27 @@
           // 3. Unir todos los diámetros (encarretado + barras)
           $diametros = $stockEncarretado->pluck('diametro')->merge($stockBarras->pluck('diametro'))->unique()->sort();
       @endphp
+      {{-- Mostrar advertencias de stock insuficiente --}}
+      @if (session('advertencia'))
+          @foreach (session('advertencia') as $mensaje)
+              <div class="alert alert-danger d-flex justify-content-between align-items-center">
+                  <span>{{ $mensaje }}</span>
+                  <form action="{{ route('solicitar.stock') }}" method="POST">
+                      @csrf
+                      <input type="hidden" name="diametro" value="{{ $mensaje }}">
+                      <button type="submit" class="btn btn-warning btn-sm">Solicitar</button>
+                  </form>
+              </div>
+          @endforeach
+      @endif
+
+      {{-- Mostrar mensaje de éxito --}}
+      @if (session('exito'))
+          <div class="alert alert-success">
+              {{ session('exito') }}
+          </div>
+      @endif
+
 
       <div class="p-4">
           <div class="overflow-x-auto">

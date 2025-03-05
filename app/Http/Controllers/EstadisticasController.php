@@ -11,66 +11,20 @@ use App\Models\SalidaPaquete;
 
 class EstadisticasController extends Controller
 {
-
     public function index()
     {
-        // Datos agrupados por planilla y diámetro (pendiente)
-        $datosPorPlanilla = Elemento::whereHas('planilla', function ($query) {
-            $query->where('estado', 'pendiente');
-        })
-            ->selectRaw('diametro, planilla_id, SUM(peso) AS peso_por_planilla')
-            ->groupBy('diametro', 'planilla_id')
-            ->orderBy('diametro')
-            ->orderBy('planilla_id')
-            ->get();
-
-        // Datos agrupados por diámetro (peso total requerido para pendientes)
-        $pesoTotalPorDiametro = Elemento::whereHas('planilla', function ($query) {
-            $query->where('estado', 'pendiente');
-        })
-            ->selectRaw('diametro, SUM(peso) AS peso_total')
-            ->groupBy('diametro')
-            ->orderBy('diametro')
-            ->get();
-
-        // Stock de productos "encarretado" por diámetro (estado "almacenado")
-        $stockEncarretado = Producto::where('estado', 'almacenado')
-            ->where('tipo', 'encarretado')
-            ->selectRaw('diametro, SUM(peso_stock) AS stock')
-            ->groupBy('diametro')
-            ->orderBy('diametro')
-            ->get();
-
-        // Stock de productos "barras" por diámetro y longitud (estado "almacenado")
-        $stockBarras = Producto::where('estado', 'almacenado')
-            ->where('tipo', 'barra')
-            ->selectRaw('diametro, longitud, SUM(peso_stock) AS stock')
-            ->groupBy('diametro', 'longitud')
-            ->orderBy('diametro')
-            ->orderBy('longitud')
-            ->get();
-
-        // Obtener todas las salidas de paquetes con estado 'completada'
-        $salidasPaquetes = SalidaPaquete::with('paquete.planilla')
-            ->join('salidas', 'salidas.id', '=', 'salidas_paquetes.salida_id') // Asegúrate de que 'salida_id' sea la clave foránea correcta
-            ->where('salidas.estado', 'completada') // Filtrar por estado 'completada' en la tabla salidas
-            ->get();
-
-        // Agrupar los paquetes por nom_obra y sumar el peso de los paquetes
-        $pesoPorObra = $salidasPaquetes->groupBy(function ($salidaPaquete) {
-            // Acceder al paquete y su planilla
-            $planilla = $salidaPaquete->paquete->planilla;
-
-            // Si no tiene planilla, retornar un valor predeterminado
-            return $planilla ? $planilla->nom_obra : 'Sin obra asociada';
-        })->map(function ($salidas) {
-            // Sumar el peso de todos los paquetes asociados a esa obra
-            return $salidas->sum(function ($salidaPaquete) {
-                return $salidaPaquete->paquete->peso;
-            });
-        });
-
-
+        $datosPorPlanilla = $this->getDatosPorPlanilla();
+        $pesoTotalPorDiametro = $this->getPesoTotalPorDiametro();
+        $stockEncarretado = $this->getStockEncarretado();
+        $stockBarras = $this->getStockBarras();
+        $mensajeDeAdvertencia = $this->compararStockConPeso($pesoTotalPorDiametro, $stockEncarretado, $stockBarras);
+        // Calcular peso suministrado a cada obra
+        $salidasPaquetes = $this->getSalidasPaquetesCompletadas();
+        $pesoPorObra = $this->agruparPaquetesPorObra($salidasPaquetes);
+        // Obtener el peso importado por cada usuario
+        $pesoPorPlanillero = $this->getPesoPorUsuario();
+        // Pasar los mensajes a la sesión
+        $this->handleSessionMessages($mensajeDeAdvertencia);
 
         // Pasar los datos a la vista
         return view('estadisticas.index', compact(
@@ -78,7 +32,110 @@ class EstadisticasController extends Controller
             'pesoTotalPorDiametro',
             'stockEncarretado',
             'stockBarras',
-            'pesoPorObra'
+            'pesoPorObra',
+            'pesoPorPlanillero'
         ));
+    }
+    // ---------------------------------------------------------------- Funciones para calcular el stockaje
+    private function getDatosPorPlanilla()
+    {
+        return Elemento::whereHas('planilla', function ($query) {
+            $query->where('estado', 'pendiente');
+        })
+            ->selectRaw('diametro, planilla_id, SUM(peso) AS peso_por_planilla')
+            ->groupBy('diametro', 'planilla_id')
+            ->orderBy('diametro')
+            ->orderBy('planilla_id')
+            ->get();
+    }
+
+    private function getPesoTotalPorDiametro()
+    {
+        return Elemento::whereHas('planilla', function ($query) {
+            $query->where('estado', 'pendiente');
+        })
+            ->selectRaw('diametro, SUM(peso) AS peso_total')
+            ->groupBy('diametro')
+            ->orderBy('diametro')
+            ->get();
+    }
+
+    private function getStockEncarretado()
+    {
+        return Producto::where('estado', 'almacenado')
+            ->where('tipo', 'encarretado')
+            ->selectRaw('diametro, SUM(peso_stock) AS stock')
+            ->groupBy('diametro')
+            ->orderBy('diametro')
+            ->get();
+    }
+
+    private function getStockBarras()
+    {
+        return Producto::where('estado', 'almacenado')
+            ->where('tipo', 'barra')
+            ->selectRaw('diametro, longitud, SUM(peso_stock) AS stock')
+            ->groupBy('diametro', 'longitud')
+            ->orderBy('diametro')
+            ->orderBy('longitud')
+            ->get();
+    }
+
+    private function compararStockConPeso($pesoTotalPorDiametro, $stockEncarretado, $stockBarras)
+    {
+        $mensajeDeAdvertencia = [];
+
+        foreach ($pesoTotalPorDiametro as $pesoDiametro) {
+            // Buscar stock por diámetro en las categorías de "encarretado" y "barra"
+            $stockEncarretadoPorDiametro = $stockEncarretado->firstWhere('diametro', $pesoDiametro->diametro);
+            $stockBarrasPorDiametro = $stockBarras->where('diametro', $pesoDiametro->diametro)->sum('stock');
+
+            // Calcular el stock total disponible
+            $stockTotalDisponible = ($stockEncarretadoPorDiametro ? $stockEncarretadoPorDiametro->stock : 0) + $stockBarrasPorDiametro;
+
+            // Comparar si el stock disponible es menor que el peso total requerido
+            if ($stockTotalDisponible < $pesoDiametro->peso_total) {
+                $mensajeDeAdvertencia[] = "Advertencia: El stock disponible para el diámetro {$pesoDiametro->diametro} es insuficiente. Faltan " . ($pesoDiametro->peso_total - $stockTotalDisponible) . " kg.";
+            }
+        }
+
+        return $mensajeDeAdvertencia;
+    }
+    private function handleSessionMessages($mensajeDeAdvertencia)
+    {
+        if (!empty($mensajeDeAdvertencia)) {
+            session()->flash('advertencia', $mensajeDeAdvertencia);
+        } else {
+            session()->flash('exito', 'Todo el stock requerido está disponible.');
+        }
+    }
+    // ---------------------------------------------------------------- Funciones para calcular peso suministrado a obras
+    private function getSalidasPaquetesCompletadas()
+    {
+        return SalidaPaquete::with('paquete.planilla')
+            ->join('salidas', 'salidas.id', '=', 'salidas_paquetes.salida_id')
+            ->where('salidas.estado', 'completada')
+            ->get();
+    }
+
+    private function agruparPaquetesPorObra($salidasPaquetes)
+    {
+        return $salidasPaquetes->groupBy(function ($salidaPaquete) {
+            $planilla = $salidaPaquete->paquete->planilla;
+            return $planilla ? $planilla->nom_obra : 'Sin obra asociada';
+        })->map(function ($salidas) {
+            return $salidas->sum(function ($salidaPaquete) {
+                return $salidaPaquete->paquete->peso;
+            });
+        });
+    }
+    // ---------------------------------------------------------------- Estadisticas de usuarios
+    private function getPesoPorUsuario()
+    {
+        // Consulta para obtener el peso total por usuario
+        return Planilla::select('users_id', DB::raw('SUM(peso_total) AS peso_importado'))
+            ->groupBy('users_id')
+            ->orderBy('users_id')  // Opcional: ordena por el ID del usuario
+            ->get();
     }
 }
