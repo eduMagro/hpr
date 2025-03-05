@@ -22,7 +22,7 @@ class EstadisticasController extends Controller
         $salidasPaquetes = $this->getSalidasPaquetesCompletadas();
         $pesoPorObra = $this->agruparPaquetesPorObra($salidasPaquetes);
         // Obtener el peso importado por cada usuario
-        $pesoPorPlanillero = $this->getPesoPorUsuario();
+        $pesoPorPlanillero = $this->getPesoPorPlanillero();
         // Pasar los mensajes a la sesión
         $this->handleSessionMessages($mensajeDeAdvertencia);
 
@@ -130,12 +130,15 @@ class EstadisticasController extends Controller
         });
     }
     // ---------------------------------------------------------------- Estadisticas de usuarios
-    private function getPesoPorUsuario()
+    private function getPesoPorPlanillero()
     {
-        // Consulta para obtener el peso total por usuario
-        return Planilla::select('users_id', DB::raw('SUM(peso_total) AS peso_importado'))
-            ->groupBy('users_id')
-            ->orderBy('users_id')  // Opcional: ordena por el ID del usuario
-            ->get();
+        // Obtener los pesos por usuario, incluyendo el nombre del usuario
+        $pesoPorPlanillero = Planilla::select('planillas.users_id', 'users.name', DB::raw('SUM(planillas.peso_total) as peso_importado'))
+            ->join('users', 'users.id', '=', 'planillas.users_id')  // Unir la tabla de usuarios
+            ->where('planillas.estado', 'pendiente')  // Solo incluir planillas pendientes
+            ->groupBy('planillas.users_id', 'users.name')  // Agrupar por id de usuario y nombre de usuario
+            ->get();  // Obtener el nombre y el peso total importado
+
+        return $pesoPorPlanillero;
     }
 }

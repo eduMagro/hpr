@@ -37,7 +37,7 @@
         <!-- Sección Peso Planilleros -->
         <div x-show="mostrarPesoPlanilleros">
             <!-- Componente de Estadísticas Completo -->
-            <x-estadisticas.obras :pesoPorObra="$pesoPorObra" />
+            <x-estadisticas.pesoPlanilleros :pesoPorPlanillero="$pesoPorPlanillero" />
         </div>
     </div>
 </x-app-layout>
