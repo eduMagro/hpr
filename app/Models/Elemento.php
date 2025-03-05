@@ -33,8 +33,8 @@ class Elemento extends Model
         'maquina_id_3',
         'producto_id',
         'producto_id_2',
+        'producto_id_3',
         'paquete_id',
-        'ubicacion_id',
         'figura',
         'fila',
         'marca',
@@ -45,12 +45,8 @@ class Elemento extends Model
         'dobles_barra',
         'peso',
         'dimensiones',
-        'fecha_inicio',
-        'fecha_finalizacion',
         'tiempo_fabricacion',
-        'estado',
-        'suelta',
-        'subido'
+        'estado'
     ];
 
     protected $appends = ['id_el', 'longitud_cm', 'longitud_m', 'peso_kg', 'diametro_mm'];
@@ -174,9 +170,5 @@ class Elemento extends Model
         $segundos = $this->tiempo_fabricacion % 60;
 
         return sprintf('%02d:%02d:%02d', $horas, $minutos, $segundos);
-    }
-    public function getSueltaAttribute($value)
-    {
-        return $value ? 'Si' : 'No';
     }
 }

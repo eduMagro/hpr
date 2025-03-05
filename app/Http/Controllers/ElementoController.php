@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class ElementoController extends Controller
 {
@@ -20,7 +21,6 @@ class ElementoController extends Controller
             'planilla',
             'subpaquetes',
             'etiquetaRelacion',
-            'ubicacion',
             'maquina',
             'maquina_2',
             'maquina_3',
@@ -38,6 +38,12 @@ class ElementoController extends Controller
         // Aplicar paginación y mantener filtros en la URL
         $elementos = $query->paginate(10)->appends($request->query());
 
+        // Asegurar que etiquetaRelacion siempre tenga un objeto válido
+        $elementos->getCollection()->transform(function ($elemento) {
+            $elemento->etiquetaRelacion = $elemento->etiquetaRelacion ?? (object) ['id' => '', 'nombre' => ''];
+            return $elemento;
+        });
+
         return view('elementos.index', compact('elementos'));
     }
 
@@ -49,7 +55,7 @@ class ElementoController extends Controller
         if ($request->filled('id')) {
             $query->where('id', $request->input('id'));
         }
-    
+
         if ($request->filled('estado')) {
             if ($request->estado === '.') {
                 $query->whereNull('estado');
@@ -57,7 +63,7 @@ class ElementoController extends Controller
                 $query->where('estado', $request->estado);
             }
         }
-    
+
         if ($request->filled('fecha_inicio') && $request->filled('fecha_finalizacion')) {
             $query->whereBetween('created_at', [$request->fecha_inicio, $request->fecha_finalizacion]);
         } elseif ($request->filled('fecha_inicio')) {
@@ -65,7 +71,7 @@ class ElementoController extends Controller
         } elseif ($request->filled('fecha_finalizacion')) {
             $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
         }
-    
+
         if ($request->filled('codigo_planilla')) {
             if ($request->codigo_planilla === '.') {
                 $query->whereDoesntHave('planilla');
@@ -75,7 +81,7 @@ class ElementoController extends Controller
                 });
             }
         }
-    
+
         if ($request->filled('usuario1')) {
             if ($request->usuario1 === '.') {
                 $query->whereDoesntHave('user');
@@ -85,7 +91,7 @@ class ElementoController extends Controller
                 });
             }
         }
-    
+
         if ($request->filled('etiqueta')) {
             if ($request->etiqueta === '.') {
                 $query->whereDoesntHave('etiquetaRelacion');
@@ -95,7 +101,7 @@ class ElementoController extends Controller
                 });
             }
         }
-    
+
         if ($request->filled('maquina')) {
             if ($request->maquina === '.') {
                 $query->whereDoesntHave('maquina');
@@ -105,7 +111,7 @@ class ElementoController extends Controller
                 });
             }
         }
-    
+
         if ($request->filled('producto1')) {
             if ($request->producto1 === '.') {
                 $query->whereDoesntHave('producto');
@@ -115,7 +121,7 @@ class ElementoController extends Controller
                 });
             }
         }
-    
+
         if ($request->filled('producto2')) {
             if ($request->producto2 === '.') {
                 $query->whereDoesntHave('producto');
@@ -125,7 +131,7 @@ class ElementoController extends Controller
                 });
             }
         }
-    
+
         if ($request->filled('figura')) {
             if ($request->figura === '.') {
                 $query->whereNull('figura');
@@ -133,10 +139,10 @@ class ElementoController extends Controller
                 $query->where('figura', 'like', '%' . $request->figura . '%');
             }
         }
-    
+
         return $query;
     }
-    
+
 
 
     /**
@@ -473,15 +479,36 @@ class ElementoController extends Controller
     {
         $elemento = Elemento::findOrFail($id);
 
-        // Asegurar que se recibe JSON correctamente
         $data = $request->json()->all();
+        Log::info('Datos antes de actualizar:', ['data' => $data]);
 
-        $elemento->update($data);
+        $elemento->update([
+            'users_id' => $data['users_id'] ?? null,
+            'users_id_2' => $data['users_id_2'] ?? null,
+            'planilla_id' => $data['planilla_id'] ?? null,
+            'etiqueta_id' => $data['etiqueta_id'] ?? null,
+            'paquete_id' => $data['paquete_id'] ?? null,
+            'maquina_id' => $data['maquina_id'] ?? null,
+            'maquina_id_2' => $data['maquina_id_2'] ?? null,
+            'maquina_id_3' => $data['maquina_id_3'] ?? null,
+            'producto_id' => $data['producto_id'] ?? null,
+            'producto_id_2' => $data['producto_id_2'] ?? null,
+            'producto_id_3' => $data['producto_id_3'] ?? null,
+            'figura' => $data['figura'] ?? null,
+            'fila' => $data['fila'] ?? null,
+            'marca' => $data['marca'] ?? null,
+            'etiqueta' => $data['etiqueta'] ?? null,
+            'diametro' => $data['diametro'] ?? null,
+            'estado' => $data['estado'] ?? null,
+        ]);
+
+
+        Log::info('Elemento después de actualizar:', ['elemento' => $elemento->toArray()]);
 
         return response()->json([
             'success' => true,
             'message' => 'Elemento actualizado correctamente',
-            'data' => $elemento
+
         ]);
     }
 }
