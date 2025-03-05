@@ -180,6 +180,6 @@ class Planilla extends Model
     }
     public function salidas()
     {
-        return $this->belongsToMany(Salida::class, 'planilla_salida');
+        return $this->belongsToMany(Salida::class, 'salidas_paquetes', 'planilla_id', 'salida_id');
     }
 }

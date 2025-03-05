@@ -49,35 +49,36 @@ class EstadisticasController extends Controller
             ->orderBy('diametro')
             ->orderBy('longitud')
             ->get();
-        // Obtener todas las obras
-        $obras = Obra::all();
 
-        // Calcular el peso entregado por cada obra
-        $pesoEntregadoPorObra = $obras->map(function ($obra) {
-            // Obtener todos los paquetes cuya planilla esté asociada a esta obra
-            $paquetes = SalidaPaquete::whereHas('elementos.planilla', function ($query) use ($obra) {
-                $query->where('nom_obra', $obra->nom_obra);
-            })
-                ->with('elementos')
-                ->get();
+        // Obtener todas las salidas de paquetes con estado 'completada'
+        $salidasPaquetes = SalidaPaquete::with('paquete.planilla')
+            ->join('salidas', 'salidas.id', '=', 'salidas_paquetes.salida_id') // Asegúrate de que 'salida_id' sea la clave foránea correcta
+            ->where('salidas.estado', 'completada') // Filtrar por estado 'completada' en la tabla salidas
+            ->get();
 
-            // Sumar el peso de todos los paquetes
-            $pesoTotal = $paquetes->sum(function ($paquete) {
-                return $paquete->peso_total; // Asegúrate de que 'peso_total' es el campo correcto en 'salidas_paquetes'
+        // Agrupar los paquetes por nom_obra y sumar el peso de los paquetes
+        $pesoPorObra = $salidasPaquetes->groupBy(function ($salidaPaquete) {
+            // Acceder al paquete y su planilla
+            $planilla = $salidaPaquete->paquete->planilla;
+
+            // Si no tiene planilla, retornar un valor predeterminado
+            return $planilla ? $planilla->nom_obra : 'Sin obra asociada';
+        })->map(function ($salidas) {
+            // Sumar el peso de todos los paquetes asociados a esa obra
+            return $salidas->sum(function ($salidaPaquete) {
+                return $salidaPaquete->paquete->peso;
             });
-
-            return [
-                'obra' => $obra->nom_obra,
-                'peso_total' => $pesoTotal,
-            ];
         });
+
+
+
         // Pasar los datos a la vista
         return view('estadisticas.index', compact(
             'datosPorPlanilla',
             'pesoTotalPorDiametro',
             'stockEncarretado',
             'stockBarras',
-            'pesoEntregadoPorObra'
+            'pesoPorObra'
         ));
     }
 }

@@ -37,7 +37,7 @@
                                         {{ $planilla->fecha_estimada_entrega }}</span>
                                 </div>
                                 <p class="text-gray-700">Cliente: {{ $planilla->cliente }}</p>
-                                <p class="text-gray-700">Obra: {{ $planilla->obra }}</p>
+                                <p class="text-gray-700">Obra: {{ $planilla->nom_obra }}</p>
                                 <p class="text-gray-700">Sección: {{ $planilla->seccion }}</p>
                                 <p class="text-gray-700">Descripción: {{ $planilla->descripcion }}</p>
 

@@ -9,11 +9,14 @@
     <div class="w-full px-6 py-4" x-data="{ mostrarStock: false, mostrarPesoEntregadoObras: false }">
         <!-- Botones para mostrar/ocultar las secciones -->
         <div class="mb-4">
-            <button @click="mostrarStock = !mostrarStock" class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">Ver
-                Stock</button>
+            <button @click="mostrarStock = !mostrarStock" class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
+                <span x-text="mostrarStock ? '❌ Cerrar Stock' : 'Ver Stock'"></span>
+            </button>
+
             <button @click="mostrarPesoEntregadoObras = !mostrarPesoEntregadoObras"
-                class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">Ver
-                Peso Obras</button>
+                class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
+                <span x-text="mostrarPesoEntregadoObras ? '❌ Cerrar Peso Obras' : 'Ver Peso Obras'"></span>
+            </button>
         </div>
 
         <!-- Sección Stock -->
@@ -24,7 +27,7 @@
         <!-- Sección Peso Obras -->
         <div x-show="mostrarPesoEntregadoObras">
             <!-- Componente de Estadísticas Completo -->
-            <x-estadisticas.obras :pesoEntregadoPorObra="$pesoEntregadoPorObra" />
+            <x-estadisticas.obras :pesoPorObra="$pesoPorObra" />
         </div>
     </div>
 </x-app-layout>

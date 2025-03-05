@@ -6,15 +6,15 @@
         <table class="w-full border border-gray-300 rounded-lg">
             <thead class="bg-green-500 text-white">
                 <tr>
-                    <th class="px-4 py-3 border text-center">Obra</th>
-                    <th class="px-4 py-3 border text-center">Peso Entregado (kg)</th>
+                    <th class="px-2 py-3 border text-center">Obra</th>
+                    <th class="px-2 py-3 border text-center">Peso Entregado (kg)</th>
                 </tr>
             </thead>
             <tbody class="text-gray-700">
-                @foreach ($pesoEntregadoPorObra as $entrega)
-                    <tr>
-                        <td class="px-4 py-3 text-center border">{{ $entrega['nom_obra'] }}</td>
-                        <td class="px-4 py-3 text-center border">{{ number_format($entrega['peso_entregado'], 2) }}</td>
+                @foreach ($pesoPorObra as $nomObra => $pesoTotal)
+                    <tr class="border-b hover:bg-gray-100">
+                        <td class="px-2 py-4 text-center">{{ $nomObra }}</td>
+                        <td class="px-2 py-4 text-center">{{ number_format($pesoTotal, 2, ',', '.') }} kg</td>
                     </tr>
                 @endforeach
             </tbody>
