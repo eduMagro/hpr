@@ -432,7 +432,8 @@
         </div>
 
         <div class="mt-4 flex justify-center">
-            {{ $elementos->links() }}
+            {{ $elementos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+
         </div>
         <!-- Modal -->
         <div id="modal-dibujo"

@@ -146,11 +146,9 @@
         </div>
 
         <!-- Paginación -->
-        @if (isset($registrosProductos) && $registrosProductos instanceof \Illuminate\Pagination\LengthAwarePaginator)
-            {{ $registrosProductos->appends(request()->except('page'))->links() }}
-        @endif
-    </div>
-    <!-- SCRIPT PARA IMPRIMIR QR -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
+        <div class="mt-4 flex justify-center">{{ $productos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+        </div>
+        <!-- SCRIPT PARA IMPRIMIR QR -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+        <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
 </x-app-layout>

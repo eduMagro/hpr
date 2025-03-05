@@ -62,7 +62,8 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="categoria" class="block text-sm font-semibold">Destinatarios particulares</label>
+                            <label for="categoria" class="block text-sm font-semibold">Destinatarios
+                                particulares</label>
                             <select id="categoria" name="categoria" class="w-full border rounded-lg p-2"
                                 x-model="categoria" @change="categoria = ''">
                                 <option value="">-- Seleccionar una Categoría --</option>
@@ -234,7 +235,8 @@
 
             <!-- Paginación -->
             <div class="mt-4 flex justify-center">
-                {{ $alertas->links() }}
+                {{ $alertas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+
             </div>
-        </div>    
+        </div>
 </x-app-layout>

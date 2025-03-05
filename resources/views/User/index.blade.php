@@ -190,11 +190,11 @@
                                     <select x-show="editando" x-model="usuario.categoria" class="form-input w-full">
                                         <option value="">Selecciona cat.</option>
                                         @foreach ($categorias as $categoria)
-                                    <option value="{{ $categoria }}"
-                                        {{ request('categoria') == $categoria ? 'selected' : '' }}>
-                                        {{ ucfirst($categoria) }}
-                                    </option>
-                                @endforeach
+                                            <option value="{{ $categoria }}"
+                                                {{ request('categoria') == $categoria ? 'selected' : '' }}>
+                                                {{ ucfirst($categoria) }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </td>
 
@@ -206,11 +206,11 @@
                                         class="form-input w-full">
                                         <option value="">Selecciona esp.</option>
                                         @foreach ($especialidades as $nombre)
-                                    <option value="{{ $nombre }}"
-                                        {{ request('especialidad') == $nombre ? 'selected' : '' }}>
-                                        {{ ucfirst($nombre) }}
-                                    </option>
-                                @endforeach
+                                            <option value="{{ $nombre }}"
+                                                {{ request('especialidad') == $nombre ? 'selected' : '' }}>
+                                                {{ ucfirst($nombre) }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </td>
 
@@ -259,7 +259,8 @@
                 </table>
             </div>
             <div class="mt-4 flex justify-center">
-                {{ $registrosUsuarios->links() }}
+                {{ $elementos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+
             </div>
         </div>
     @else
@@ -272,12 +273,14 @@
             </select>
         </div>
         <div class="flex justify-between items-center w-full gap-4 p-4">
-            <button onclick="registrarFichaje('entrada')" class="w-full py-2 px-4 bg-green-600 text-white rounded-md btn-cargando">
+            <button onclick="registrarFichaje('entrada')"
+                class="w-full py-2 px-4 bg-green-600 text-white rounded-md btn-cargando">
                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                 <span class="texto">Entrada</span>
             </button>
-            
-            <button onclick="registrarFichaje('salida')" class="w-full py-2 px-4 bg-red-600 text-white rounded-md btn-cargando">
+
+            <button onclick="registrarFichaje('salida')"
+                class="w-full py-2 px-4 bg-red-600 text-white rounded-md btn-cargando">
                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                 <span class="texto">Salida</span>
             </button>

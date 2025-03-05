@@ -46,74 +46,81 @@
                         @endforeach
                     </tbody>
                 </table>
-            </div>
-        @elseif (auth()->user()->categoria == 'gruista')
-            <div class="bg-white shadow-lg rounded-lg p-4 sm:p-6">
-                @foreach ($salidas as $salida)
-                    <div x-data="{ paquetesVerificados: 0, totalPaquetes: {{ count($salida->paquetes) }} }">
-                        <div class="mb-6" x-data="{ open: false }">
-                            <div class="bg-gray-100 py-4 px-4 sm:px-6 rounded-lg shadow-md">
-                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        <p class="text-lg font-semibold">{{ $salida->codigo_salida }}</p>
-                                        <p class="text-sm text-gray-500">{{ $salida->created_at->format('d/m/Y H:i') }}
-                                        </p>
-                                    </div>
-                                    <div class="mt-2 sm:mt-0">
-                                        <p class="py-2">{{ $salida->empresaTransporte->nombre }}</p>
-                                        <p class="py-2">{{ $salida->camion->modelo }} -
-                                            {{ $salida->camion->matricula }}</p>
-                                    </div>
-                                    <button
-                                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mt-2 sm:mt-0"
-                                        @click="open = !open">
-                                        <span x-text="open ? '❌' : 'Ver'"></span>
-                                    </button>
-                                </div>
-
-                                <!-- Detalles de la salida (paquetes asociados) -->
-                                <div x-show="open" x-transition class="mt-4 p-2 sm:p-4">
-                                    <h4 class="text-md font-semibold text-gray-700">Paquetes asociados:</h4>
-                                    <ul class="list-disc pl-5">
-                                        @foreach ($salida->paquetes as $paquete)
-                                            <li class="text-sm flex items-center space-x-2" x-data="{ idIngresado: '', paqueteVerificado: false, paqueteId: '{{ $paquete->id }}' }"
-                                                x-init="$watch('paqueteVerificado', value => {
-                                                    if (value) paquetesVerificados++
-                                                    else paquetesVerificados--;
-                                                })">
-                                                <span>{{ $paquete->ubicacion->nombre }} (ID:
-                                                    {{ $paquete->id }})</span>
-                                                <input type="text" placeholder="QR Paquete"
-                                                    class="border mb-2 px-2 py-1 rounded-md w-20 sm:w-auto max-w-full"
-                                                    x-model="idIngresado"
-                                                    @input="paqueteVerificado = (idIngresado == paqueteId);">
-                                                <span x-show="paqueteVerificado" class="text-green-500">&#10004;</span>
-                                                <span x-show="!paqueteVerificado && idIngresado"
-                                                    class="text-red-500">&#10008;</span>
-                                                <button onclick="mostrarDibujo({{ $paquete->id }})"
-                                                    class="text-blue-500 hover:underline ml-2">
-                                                    Ver
-                                                </button>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-
-                                    <!-- Botón para actualizar estado -->
-                                    <div class="mt-4 text-center">
+                <div class="mt-4 flex justify-center">
+                    {{ $salidas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+                </div>
+            @elseif (auth()->user()->categoria == 'gruista')
+                <div class="bg-white shadow-lg rounded-lg p-4 sm:p-6">
+                    @foreach ($salidas as $salida)
+                        <div x-data="{ paquetesVerificados: 0, totalPaquetes: {{ count($salida->paquetes) }} }">
+                            <div class="mb-6" x-data="{ open: false }">
+                                <div class="bg-gray-100 py-4 px-4 sm:px-6 rounded-lg shadow-md">
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p class="text-lg font-semibold">{{ $salida->codigo_salida }}</p>
+                                            <p class="text-sm text-gray-500">
+                                                {{ $salida->created_at->format('d/m/Y H:i') }}
+                                            </p>
+                                        </div>
+                                        <div class="mt-2 sm:mt-0">
+                                            <p class="py-2">{{ $salida->empresaTransporte->nombre }}</p>
+                                            <p class="py-2">{{ $salida->camion->modelo }} -
+                                                {{ $salida->camion->matricula }}</p>
+                                        </div>
                                         <button
-                                            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300"
-                                            :disabled="paquetesVerificados !== totalPaquetes"
-                                            @click="actualizarEstado({{ $salida->id }})">
-                                            Marcar como Completada
+                                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mt-2 sm:mt-0"
+                                            @click="open = !open">
+                                            <span x-text="open ? '❌' : 'Ver'"></span>
                                         </button>
+                                    </div>
+
+                                    <!-- Detalles de la salida (paquetes asociados) -->
+                                    <div x-show="open" x-transition class="mt-4 p-2 sm:p-4">
+                                        <h4 class="text-md font-semibold text-gray-700">Paquetes asociados:</h4>
+                                        <ul class="list-disc pl-5">
+                                            @foreach ($salida->paquetes as $paquete)
+                                                <li class="text-sm flex items-center space-x-2" x-data="{ idIngresado: '', paqueteVerificado: false, paqueteId: '{{ $paquete->id }}' }"
+                                                    x-init="$watch('paqueteVerificado', value => {
+                                                        if (value) paquetesVerificados++
+                                                        else paquetesVerificados--;
+                                                    })">
+                                                    <span>{{ $paquete->ubicacion->nombre }} (ID:
+                                                        {{ $paquete->id }})</span>
+                                                    <input type="text" placeholder="QR Paquete"
+                                                        class="border mb-2 px-2 py-1 rounded-md w-20 sm:w-auto max-w-full"
+                                                        x-model="idIngresado"
+                                                        @input="paqueteVerificado = (idIngresado == paqueteId);">
+                                                    <span x-show="paqueteVerificado"
+                                                        class="text-green-500">&#10004;</span>
+                                                    <span x-show="!paqueteVerificado && idIngresado"
+                                                        class="text-red-500">&#10008;</span>
+                                                    <button onclick="mostrarDibujo({{ $paquete->id }})"
+                                                        class="text-blue-500 hover:underline ml-2">
+                                                        Ver
+                                                    </button>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+
+                                        <!-- Botón para actualizar estado -->
+                                        <div class="mt-4 text-center">
+                                            <button
+                                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300"
+                                                :disabled="paquetesVerificados !== totalPaquetes"
+                                                @click="actualizarEstado({{ $salida->id }})">
+                                                Marcar como Completada
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    @endforeach
+                    <div class="mt-4 flex justify-center">
+                        {{ $salidas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
                     </div>
-                @endforeach
-            </div>
         @endif
+
     </div>
 
     <!-- Modal -->

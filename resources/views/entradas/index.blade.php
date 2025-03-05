@@ -98,10 +98,11 @@
                 @endforelse
             </div>
 
-            <div class="flex justify-center mt-4">
-                {{ $entradas->appends(request()->except('page'))->links() }}
+
+            <div class="mt-4 flex justify-center">
+                {{ $entradas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
             </div>
-        </div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-        <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
+
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+            <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
     </x-app-layout>

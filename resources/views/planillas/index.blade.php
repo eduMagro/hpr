@@ -324,51 +324,51 @@
             </table>
         </div>
 
-        <div class="mt-4 flex justify-center">{{ $planillas->appends(request()->except('page'))->links() }}</div>
-    </div>
-    <script src="//unpkg.com/alpinejs" defer></script>
-    <script>
-        function guardarCambios(planilla) {
-            fetch(`/planillas/${planilla.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify(planilla)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Planilla actualizada",
-                            text: "La planilla se ha actualizado con éxito.",
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.reload(); // Recarga la página tras el mensaje
-                        });
-                    } else {
+        <div class="mt-4 flex justify-center">{{ $planillas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+        </div>
+        <script src="//unpkg.com/alpinejs" defer></script>
+        <script>
+            function guardarCambios(planilla) {
+                fetch(`/planillas/${planilla.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify(planilla)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: "success",
+                                title: "Planilla actualizada",
+                                text: "La planilla se ha actualizado con éxito.",
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.reload(); // Recarga la página tras el mensaje
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error al actualizar",
+                                text: data.message || "Ha ocurrido un error inesperado.",
+                                confirmButtonText: "OK"
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
                         Swal.fire({
                             icon: "error",
-                            title: "Error al actualizar",
-                            text: data.message || "Ha ocurrido un error inesperado.",
+                            title: "Error de conexión",
+                            text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
                             confirmButtonText: "OK"
                         });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error de conexión",
-                        text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
-                        confirmButtonText: "OK"
                     });
-                });
-        }
-    </script>
+            }
+        </script>
 
 
 </x-app-layout>
