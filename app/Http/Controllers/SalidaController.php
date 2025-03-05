@@ -14,22 +14,25 @@ use Illuminate\Support\Facades\DB;
 
 class SalidaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Verificar si el usuario es administrador
         if (auth()->user()->categoria == 'administrador') {
             // Si es administrador, mostrar todas las salidas con sus paquetes, subpaquetes y elementos
-            $salidas = Salida::with(['paquetes.subpaquetes', 'paquetes.elementos'])->get();
+            $query = Salida::with(['paquetes.subpaquetes', 'paquetes.elementos']);
         } else {
             // Si no es administrador, mostrar solo las salidas con estado pendiente
-            $salidas = Salida::where('estado', 'pendiente')
-                ->with(['paquetes.subpaquetes', 'paquetes.elementos'])  // Cargar subpaquetes y elementos para cada paquete
-                ->get();
+            $query = Salida::where('estado', 'pendiente')
+                ->with(['paquetes.subpaquetes', 'paquetes.elementos']);  // Cargar relaciones
         }
+
+        // Aplicar paginación y mantener filtros en la URL
+        $salidas = $query->paginate(10)->appends($request->query());
 
         // Pasar las salidas a la vista
         return view('salidas.index', compact('salidas'));
     }
+
 
 
     public function show($id)

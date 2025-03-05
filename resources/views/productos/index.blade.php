@@ -146,7 +146,8 @@
         </div>
 
         <!-- Paginación -->
-        <div class="mt-4 flex justify-center">{{ $productos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+        <div class="mt-4 flex justify-center">
+            {{ $registrosProductos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
         </div>
         <!-- SCRIPT PARA IMPRIMIR QR -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

@@ -146,7 +146,7 @@
         </div>
 
         <!-- Paginación -->
-        <div class="mt-4 flex justify-center">{{ $obras->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+        <div class="mt-4 flex justify-center">{{ $paquetes->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
         </div>
         <!-- Modal con Canvas para Dibujar las Dimensiones -->
         <div id="modal-dibujo"

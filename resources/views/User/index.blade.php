@@ -259,7 +259,7 @@
                 </table>
             </div>
             <div class="mt-4 flex justify-center">
-                {{ $elementos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+                {{ $registrosUsuarios->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
 
             </div>
         </div>
