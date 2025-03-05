@@ -5,17 +5,17 @@ function guardarCambios(elemento) {
         id: elemento.id,
 
         // Relaciones: se envían los id (si no están disponibles, se usa null)
-        planilla_id: elemento.planilla.id ?? null,
-        users_id: elemento.user.id ?? null,
-        users_id_2: elemento.user2.id ?? null,
-        etiqueta_id: elemento.etiquetaRelacion.id ?? null,
+        planilla_id: elemento.planilla?.id ?? null,
+        users_id: elemento.user?.id ?? null,
+        users_id_2: elemento.user2?.id ?? null,
+        etiqueta_id: elemento.etiquetaRelacion?.id ?? null,
         paquete_id: elemento.paquete_id ?? null,
-        maquina_id: elemento.maquina_id ?? null,
-        maquina_id_2: elemento.maquina_2.id ?? null,
-        maquina_id_3: elemento.maquina_3.id ?? null,
-        producto_id: elemento.producto.id ?? null,
-        producto_id_2: elemento.producto2.id ?? null,
-        producto_id_3: elemento.producto3.id ?? null,
+        maquina_id: elemento.maquina?.id ?? null,
+        maquina_id_2: elemento.maquina_2?.id ?? null,
+        maquina_id_3: elemento.maquina_3?.id ?? null,
+        producto_id: elemento.producto?.id ?? null,
+        producto_id_2: elemento.producto2?.id ?? null,
+        producto_id_3: elemento.producto3?.id ?? null,
 
         // Otros campos
         figura: elemento.figura || null,

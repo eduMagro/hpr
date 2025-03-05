@@ -52,186 +52,134 @@
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-top h-full">
                                 <span class="self-center">ID</span>
-                                <!-- Formulario de búsqueda por ID -->
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="id"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Planilla</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="codigo_planilla"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Op. 1</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="usuario1"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Op. 2</span>
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
+                                    <input type="text" name="usuario2"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Buscar">
+                                </form>
+                            </div>
+                        </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Etiqueta</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="etiqueta"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Paquete</span>
-
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="paquete_id"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
-
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Maq. 1</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="maquina"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Maq. 2</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="maquina2"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Maq. 3</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="maquina3"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">M. Prima 1</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="producto1"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">M. Prima 2</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="producto2"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">M. Prima 3</span>
-                                <form method="GET" action="{{ route('elementos.index') }}"
-                                    class="mt-2 flex space-x-2">
-                                    <input type="text" name="producto2"
-                                        class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
+                                    <input type="text" name="producto3"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
-                                    <button type="submit"
-                                        class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                        Filtrar
-                                    </button>
                                 </form>
                             </div>
                         </th>
-                        <th class="py-3 border text-center">Figura
-                            <form method="GET" action="{{ route('elementos.index') }}"
-                                class="mt-2 flex space-x-2">
-                                <input type="text" name="figura"
-                                    class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Buscar">
-                                <button type="submit"
-                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                    Filtrar
-                                </button>
-                            </form>
+                        <th class="py-3 border text-center">
+                            <div class="flex flex-col items-end h-full">
+                                <span class="self-center">Figura</span>
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
+                                    <input type="text" name="figura"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Buscar">
+                                </form>
+                            </div>
                         </th>
+
                         <th class="py-3 border text-center">Peso (kg)</th>
                         <th class="py-3 border text-center">Diámetro (mm)</th>
                         <th class="py-3 border text-center">Longitud (m)</th>
