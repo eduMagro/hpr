@@ -120,7 +120,7 @@
                             <input type="date" name="fecha_fin" id="fecha_fin" class="form-control"
                                 value="{{ request('fecha_fin') }}">
                         </div>
-                        @if (auth()->user()->categoria == 'administrador')
+                        @if (auth()->user()->rol == 'oficina')
                             <div class="col-md-2">
                                 <label for="rol" class="font-semibold">Filtrar por roles:</label>
                                 <select id="rol" name="rol" class="w-full border rounded-lg p-2"
