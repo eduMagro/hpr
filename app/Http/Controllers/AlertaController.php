@@ -148,11 +148,10 @@ class AlertaController extends Controller
     {
         // Validar los datos de la alerta asegurando que SOLO uno (rol o categoría) sea seleccionado
         $request->validate([
-            'mensaje' => 'required|string|max:255',
+            'mensaje' => 'required|string',
             'rol' => [
                 'nullable',
                 'string',
-                'max:255',
                 function ($attribute, $value, $fail) use ($request) {
                     if (!empty($value) && !empty($request->categoria)) {
                         $fail('No puedes seleccionar tanto destino como destinatario. Debes elegir solo uno.');
@@ -162,12 +161,10 @@ class AlertaController extends Controller
             'categoria' => [
                 'nullable',
                 'string',
-                'max:255'
             ],
             'user_id_2' => 'nullable|exists:users,id'
         ], [
             'mensaje.required' => 'El mensaje es obligatorio.',
-            'mensaje.max' => 'Máximo 255 caracteres',
             'rol.max' => 'Máximo 255 caracteres',
             'categoria.max' => 'Máximo 255 caracteres',
             'user_id_2.exists' => 'El usuario 2 no existe',

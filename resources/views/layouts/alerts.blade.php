@@ -7,7 +7,7 @@
         });
     </script>
 @endif
-<!-- Mostrar mensajes de error y éxito -->
+
 @if ($errors->any())
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -15,11 +15,18 @@
                 icon: 'error',
                 title: 'Errores encontrados',
                 html: '<ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>',
-                confirmButtonColor: '#d33'
+                confirmButtonColor: '#d33',
+                showCancelButton: true,
+                cancelButtonText: "Reportar a Programador"
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    notificarProgramador("Se han detectado errores en la validación de datos.");
+                }
             });
         });
     </script>
 @endif
+
 @if (session('error'))
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -27,7 +34,13 @@
                 icon: 'error',
                 title: 'Error',
                 text: '{{ session('error') }}',
-                confirmButtonColor: '#d33'
+                confirmButtonColor: '#d33',
+                showCancelButton: true,
+                cancelButtonText: "Reportar a Programador"
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    notificarProgramador("{{ session('error') }}");
+                }
             });
         });
     </script>
@@ -45,10 +58,10 @@
     </script>
 @endif
 
-@if(session('warnings'))
+@if (session('warnings'))
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            @foreach(session('warnings') as $warning)
+        document.addEventListener('DOMContentLoaded', function() {
+            @foreach (session('warnings') as $warning)
                 Swal.fire({
                     icon: 'warning',
                     title: 'Atención',
@@ -60,3 +73,36 @@
         });
     </script>
 @endif
+
+
+<!-- Función para reportar errores a programadores -->
+<script>
+    function notificarProgramador(mensaje) {
+        Swal.fire({
+            title: "Notificación enviada",
+            text: "El programador ha sido notificado.",
+            icon: "success"
+        });
+
+        fetch('/alertas/store', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    mensaje: mensaje,
+                    destinatario: "programador" // 🔹 Se asigna el destinatario como "programador"
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("✅ Alerta enviada correctamente al programador");
+                } else {
+                    console.error("⚠️ Error al enviar la alerta:", data.error);
+                }
+            })
+            .catch(error => console.error("⚠️ Error inesperado:", error));
+    }
+</script>

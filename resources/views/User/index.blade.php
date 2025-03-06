@@ -236,13 +236,14 @@
                                     @endif
                                 </td>
                                 <td class="px-2 py-3 text-center border">
-                                    <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST"
-                                        style="display:inline">
+                                    <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST">
                                         @csrf
-                                        <button type="submit">Generar Turnos</button>
+                                        <button type="submit"
+                                            class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-1 px-1 rounded">
+                                            Generar Turnos
+                                        </button>
                                     </form>
                                 </td>
-
                                 <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
                                     <a href="{{ route('users.show', $user->id) }}"
                                         class="text-green-500 hover:underline">Ver</a>
