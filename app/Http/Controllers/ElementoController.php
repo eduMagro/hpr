@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
+use Exception;
 
 class ElementoController extends Controller
 {
@@ -448,20 +451,6 @@ class ElementoController extends Controller
             ], 500);
         }
     }
-    /**
-     * Obtiene la ubicación según el código de máquina.
-     */
-    private function obtenerUbicacionPorCodigoMaquina($codigoMaquina)
-    {
-        try {
-            return Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener ubicación de la máquina: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 
     /**
      * Elimina un elemento existente de la base de datos.
@@ -477,38 +466,105 @@ class ElementoController extends Controller
 
     public function update(Request $request, $id)
     {
-        $elemento = Elemento::findOrFail($id);
+        try {
+            Log::info('Datos antes de validar:', ['data' => $request]);
 
-        $data = $request->json()->all();
-        Log::info('Datos antes de actualizar:', ['data' => $data]);
+            // Validar los datos recibidos con mensajes personalizados
+            $validatedData = $request->validate([
+                'users_id'      => 'nullable|integer|exists:users,id',
+                'users_id_2'    => 'nullable|integer|exists:users,id',
+                'planilla_id'   => 'nullable|integer|exists:planillas,id',
+                'etiqueta_id'   => 'nullable|integer|exists:etiquetas,id',
+                'paquete_id'    => 'nullable|integer|exists:paquetes,id',
+                'maquina_id'    => 'nullable|integer|exists:maquinas,id',
+                'maquina_id_2'  => 'nullable|integer|exists:maquinas,id',
+                'maquina_id_3'  => 'nullable|integer|exists:maquinas,id',
+                'producto_id'   => 'nullable|integer|exists:productos,id',
+                'producto_id_2' => 'nullable|integer|exists:productos,id',
+                'producto_id_3' => 'nullable|integer|exists:productos,id',
+                'figura'        => 'nullable|string|max:255',
+                'fila'          => 'nullable|string|max:255',
+                'marca'         => 'nullable|string|max:255',
+                'etiqueta'      => 'nullable|string|max:255',
+                'diametro'      => 'nullable|numeric',
+                'peso'      => 'nullable|numeric',
+                'longitud'      => 'nullable|numeric',
+                'estado'        => 'nullable|string|max:50'
+            ], [
+                'users_id.integer'      => 'El campo users_id debe ser un número entero.',
+                'users_id.exists'       => 'El usuario especificado en users_id no existe.',
+                'users_id_2.integer'    => 'El campo users_id_2 debe ser un número entero.',
+                'users_id_2.exists'     => 'El usuario especificado en users_id_2 no existe.',
+                'planilla_id.integer'   => 'El campo planilla_id debe ser un número entero.',
+                'planilla_id.exists'    => 'La planilla especificada en planilla_id no existe.',
+                'etiqueta_id.integer'   => 'El campo etiqueta_id debe ser un número entero.',
+                'etiqueta_id.exists'    => 'La etiqueta especificada en etiqueta_id no existe.',
+                'paquete_id.integer'    => 'El campo paquete_id debe ser un número entero.',
+                'paquete_id.exists'     => 'El paquete especificado en paquete_id no existe.',
+                'maquina_id.integer'    => 'El campo maquina_id debe ser un número entero.',
+                'maquina_id.exists'     => 'La máquina especificada en maquina_id no existe.',
+                'maquina_id_2.integer'  => 'El campo maquina_id_2 debe ser un número entero.',
+                'maquina_id_2.exists'   => 'La máquina especificada en maquina_id_2 no existe.',
+                'maquina_id_3.integer'  => 'El campo maquina_id_3 debe ser un número entero.',
+                'maquina_id_3.exists'   => 'La máquina especificada en maquina_id_3 no existe.',
+                'producto_id.integer'   => 'El campo producto_id debe ser un número entero.',
+                'producto_id.exists'    => 'El producto especificado en producto_id no existe.',
+                'producto_id_2.integer' => 'El campo producto_id_2 debe ser un número entero.',
+                'producto_id_2.exists'  => 'El producto especificado en producto_id_2 no existe.',
+                'producto_id_3.integer' => 'El campo producto_id_3 debe ser un número entero.',
+                'producto_id_3.exists'  => 'El producto especificado en producto_id_3 no existe.',
+                'figura.string'         => 'El campo figura debe ser una cadena de texto.',
+                'figura.max'            => 'El campo figura no debe tener más de 255 caracteres.',
+                'fila.string'           => 'El campo fila debe ser una cadena de texto.',
+                'fila.max'              => 'El campo fila no debe tener más de 255 caracteres.',
+                'marca.string'          => 'El campo marca debe ser una cadena de texto.',
+                'marca.max'             => 'El campo marca no debe tener más de 255 caracteres.',
+                'etiqueta.string'       => 'El campo etiqueta debe ser una cadena de texto.',
+                'etiqueta.max'          => 'El campo etiqueta no debe tener más de 255 caracteres.',
+                'diametro.numeric'      => 'El campo diametro debe ser un número.',
+                'peso.numeric'      => 'El campo peso debe ser un número.',
+                'longitud.numeric'      => 'El campo longitud debe ser un número.',
+                'estado.string'         => 'El campo estado debe ser una cadena de texto.',
+                'estado.max'            => 'El campo estado no debe tener más de 50 caracteres.',
+            ]);
 
-        $elemento->update([
-            'users_id' => $data['users_id'] ?? null,
-            'users_id_2' => $data['users_id_2'] ?? null,
-            'planilla_id' => $data['planilla_id'] ?? null,
-            'etiqueta_id' => $data['etiqueta_id'] ?? null,
-            'paquete_id' => $data['paquete_id'] ?? null,
-            'maquina_id' => $data['maquina_id'] ?? null,
-            'maquina_id_2' => $data['maquina_id_2'] ?? null,
-            'maquina_id_3' => $data['maquina_id_3'] ?? null,
-            'producto_id' => $data['producto_id'] ?? null,
-            'producto_id_2' => $data['producto_id_2'] ?? null,
-            'producto_id_3' => $data['producto_id_3'] ?? null,
-            'figura' => $data['figura'] ?? null,
-            'fila' => $data['fila'] ?? null,
-            'marca' => $data['marca'] ?? null,
-            'etiqueta' => $data['etiqueta'] ?? null,
-            'diametro' => $data['diametro'] ?? null,
-            'estado' => $data['estado'] ?? null,
-        ]);
 
+            // Registrar los datos validados antes de actualizar
+            Log::info('Datos antes de actualizar:', ['data' => $validatedData]);
 
-        Log::info('Elemento después de actualizar:', ['elemento' => $elemento->toArray()]);
+            // Buscar el elemento a actualizar, o lanzar una excepción si no se encuentra
+            $elemento = Elemento::findOrFail($id);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Elemento actualizado correctamente',
+            // Actualizar el registro con los datos validados
+            $elemento->update($validatedData);
 
-        ]);
+            // Registrar el estado del elemento después de actualizar
+            Log::info('Elemento después de actualizar:', ['data' => $elemento->toArray()]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Elemento actualizado correctamente',
+                'data'    => $elemento
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            Log::error("Elemento con ID {$id} no encontrado", ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Elemento no encontrado'
+            ], 404);
+        } catch (ValidationException $e) {
+            Log::error('Error de validación', ['errors' => $e->errors()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (Exception $e) {
+            Log::error("Error al actualizar el elemento con ID {$id}", ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el elemento. Intente nuevamente.'
+            ], 500);
+        }
     }
 }

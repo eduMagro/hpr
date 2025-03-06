@@ -222,6 +222,7 @@
                                     this.elemento.peso = this.elemento.peso || 0;
                                     this.elemento.diametro = this.elemento.diametro || 0;
                                     this.elemento.longitud = this.elemento.longitud || 0;
+                                    this.elemento.maquina = this.elemento.maquina || { nombre: 'N/A' };
                                     this.elemento.maquina_2 = this.elemento.maquina_2 || { nombre: 'N/A' };
                                     this.elemento.maquina3 = this.elemento.maquina3 || { nombre: 'N/A' };
                                 }
@@ -248,22 +249,21 @@
                             <!-- USUARIO 1 -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <a href="{{ route('users.index', ['id' => $elemento->user?->id ?? '#']) }}"
+                                    <a href="{{ route('users.index', ['id' => $elemento->user->id ?? '#']) }}"
                                         class="text-blue-500 hover:underline">
-                                        {{ $elemento->user?->name ?? 'N/A' }}
+                                        {{ $elemento->user->name ?? 'N/A' }}
                                     </a>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.users_id"
                                     class="form-input w-full">
                             </td>
-
                             <!-- USUARIO 2 -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <a href="{{ route('users.index', ['id' => $elemento->user2?->id ?? '#']) }}"
+                                    <a href="{{ route('users.index', ['id' => $elemento->user2->id ?? '#']) }}"
                                         class="text-blue-500 hover:underline">
-                                        {{ $elemento->user2?->name ?? 'N/A' }}
+                                        {{ $elemento->user2->name ?? 'N/A' }}
                                     </a>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
@@ -298,7 +298,7 @@
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
                                     <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.maquina?.nombre || 'N/A'"></span>
+                                    <span x-text="elemento.maquina.nombre || 'N/A'"></span>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.maquina_id"
@@ -308,7 +308,7 @@
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
                                     <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.maquina_2?.nombre || 'N/A'"></span>
+                                    <span x-text="elemento.maquina_2.nombre || 'N/A'"></span>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.maquina_id_2"
@@ -319,7 +319,7 @@
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
                                     <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.maquina3?.nombre || 'N/A'"></span>
+                                    <span x-text="elemento.maquina_3.nombre || 'N/A'"></span>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.maquina_id_3"
@@ -334,7 +334,7 @@
                                         {{ $elemento->producto_id ?? 'N/A' }}
                                     </a>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.producto.id"
+                                <input x-show="editando" type="text" x-model="elemento.producto_id"
                                     class="form-input w-full">
                             </td>
                             <!-- PRODUCTO 2 -->
@@ -345,7 +345,7 @@
                                         {{ $elemento->producto_id_2 ?? 'N/A' }}
                                     </a>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.producto2.id"
+                                <input x-show="editando" type="text" x-model="elemento.producto_id_2"
                                     class="form-input w-full">
                             </td>
                             <!-- PRODUCTO 3 -->
@@ -356,7 +356,7 @@
                                         {{ $elemento->producto_id_3 ?? 'N/A' }}
                                     </a>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.producto3.id"
+                                <input x-show="editando" type="text" x-model="elemento.producto_id_3"
                                     class="form-input w-full">
                             </td>
                             <!-- FIGURA -->
@@ -407,7 +407,6 @@
                             </td>
                             <!-- Botones -->
                             <td class="px-1 py-3 text-center border flex flex-col gap-2">
-
                                 <a href="#" class="text-blue-500 hover:text-blue-700 abrir-modal-dibujo"
                                     data-id="{{ $elemento->id }}" data-dimensiones="{{ $elemento->dimensiones }}"
                                     data-peso="{{ $elemento->peso_kg }}">
@@ -449,7 +448,7 @@
             </div>
         </div>
     </div>
-    <script src="//unpkg.com/alpinejs" defer></script>
+
     <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
     <script>

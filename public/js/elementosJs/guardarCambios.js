@@ -1,4 +1,5 @@
 function guardarCambios(elemento) {
+    console.log("Elemento recibido:", elemento.maquina_2_id ?? "nada");
     // Construir el objeto con los campos que se desean actualizar
     const datosActualizar = {
         // Aunque 'id' no suele actualizarse, lo incluimos para referencia.
@@ -6,16 +7,16 @@ function guardarCambios(elemento) {
 
         // Relaciones: se envían los id (si no están disponibles, se usa null)
         planilla_id: elemento.planilla?.id ?? null,
-        users_id: elemento.user?.id ?? null,
-        users_id_2: elemento.user2?.id ?? null,
+        users_id: elemento.users_id ?? null,
+        users_id_2: Number(elemento.users_id_2) || null,
         etiqueta_id: elemento.etiquetaRelacion?.id ?? null,
         paquete_id: elemento.paquete_id ?? null,
-        maquina_id: elemento.maquina?.id ?? null,
-        maquina_id_2: elemento.maquina_2?.id ?? null,
-        maquina_id_3: elemento.maquina_3?.id ?? null,
-        producto_id: elemento.producto?.id ?? null,
-        producto_id_2: elemento.producto2?.id ?? null,
-        producto_id_3: elemento.producto3?.id ?? null,
+        maquina_id: Number(elemento.maquina_id) || null,
+        maquina_id_2: Number(elemento.maquina_id_2) || null,
+        maquina_id_3: Number(elemento.maquina_id_3) || null,
+        producto_id: Number(elemento.producto_id) || null,
+        producto_id_2: Number(elemento.producto_id_2) || null,
+        producto_id_3: Number(elemento.producto_id_3) || null,
 
         // Otros campos
         figura: elemento.figura || null,
@@ -49,10 +50,16 @@ function guardarCambios(elemento) {
                     window.location.reload(); // Recarga la página tras el mensaje
                 });
             } else {
+                let errorMsg =
+                    data.message || "Ha ocurrido un error inesperado.";
+                // Si existen errores de validación, concatenarlos
+                if (data.errors) {
+                    errorMsg = Object.values(data.errors).flat().join(" "); // O puedes usar '\n' para saltos de línea
+                }
                 Swal.fire({
                     icon: "error",
                     title: "Error al actualizar",
-                    text: data.message || "Ha ocurrido un error inesperado.",
+                    text: errorMsg,
                     confirmButtonText: "OK",
                 });
             }
