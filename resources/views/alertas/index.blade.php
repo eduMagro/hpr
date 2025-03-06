@@ -91,8 +91,6 @@
                 </div>
             @endif
 
-
-
             <!-- Botón para mostrar filtros avanzados -->
             <div class="mb-4 flex items-center space-x-4">
                 <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
@@ -175,7 +173,7 @@
                                     </button>
                                 </form>
                             </th>
-                            <th class="py-3 border text-center">Usuario 1
+                            <th class="py-3 border text-center">Emisor 1
                                 <form method="GET" action="{{ route('alertas.index') }}" class="mt-2">
                                     <input type="text" name="usuario1"
                                         class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -186,7 +184,7 @@
                                     </button>
                                 </form>
                             </th>
-                            <th class="py-3 border text-center">Usuario 2
+                            <th class="py-3 border text-center">Emisor 2
                                 <form method="GET" action="{{ route('alertas.index') }}" class="mt-2">
                                     <input type="text" name="usuario2"
                                         class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -197,9 +195,9 @@
                                     </button>
                                 </form>
                             </th>
-                            <th class="py-3 border text-center">Destino
+                            <th class="py-3 border text-center">Receptor General
                             </th>
-                            <th class="py-3 border text-center">Destinatario
+                            <th class="py-3 border text-center">Receptor Específico
                             </th>
                             <th class="py-3 border text-center">Mensaje
                                 <form method="GET" action="{{ route('alertas.index') }}" class="mt-2">
