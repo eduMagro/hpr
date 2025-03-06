@@ -30,13 +30,12 @@
         <div class="d-none flex-sm-fill d-sm-flex align-items-sm-center justify-content-sm-between">
             <div class="mr-5">
                 <p class="small text-muted">
-                    {!! __('Mostrando') !!}
                     <span class="fw-semibold">{{ $paginator->firstItem() }}</span>
-                    {!! __('a') !!}
+                    {!! __('al') !!}
                     <span class="fw-semibold">{{ $paginator->lastItem() }}</span>
                     {!! __('de') !!}
                     <span class="fw-semibold">{{ $paginator->total() }}</span>
-                    {!! __('resultados') !!}
+                    {!! __('registros') !!}
                 </p>
             </div>
 

@@ -19,7 +19,7 @@
                     @csrf
                     <button type="submit" class="btn btn-primary btn-cargando">
                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        <span class="texto">Generar Turnos</span>
+                        <span class="texto">Generar Turnos Globales</span>
                     </button>
                 </form>
             </div>
@@ -145,6 +145,7 @@
                             <th class="py-3 px-2 border text-center">Especialidad</th>
                             <th class="py-3 px-2 border text-center">Turno</th>
                             <th class="py-3 px-2 border text-center">Estado</th>
+                            <th class="py-3 px-2 border text-center">Generar Turnos</th>
                             <th class="py-3 px-2 border text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -234,6 +235,13 @@
                                         <span class="text-gray-500">Desconectado</span>
                                     @endif
                                 </td>
+                                <td class="px-2 py-3 text-center border">
+                                    <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST"
+                                        style="display:inline">
+                                        @csrf
+                                        <button type="submit">Generar Turnos</button>
+                                    </form>
+                                </td>
 
                                 <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
                                     <a href="{{ route('users.show', $user->id) }}"
@@ -310,6 +318,7 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
     <script>
+        // ---------------------------------------------------- CALENDARIO 
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendario');
 
@@ -333,10 +342,7 @@
 
             calendar.render();
         });
-    </script>
-
-    <script src="//unpkg.com/alpinejs" defer></script>
-    <script>
+        // ---------------------------------------------------- REGISTRAR FICHAJE
         function registrarFichaje(tipo) {
 
             let obraId = document.getElementById("obraSeleccionada").value;
@@ -450,9 +456,7 @@
                 }
             );
         }
-    </script>
-
-    <script>
+        // ---------------------------------------------------- GUARDAR CAMBIOS
         function guardarCambios(usuario) {
             fetch(`/actualizar-usuario/${usuario.id}`, {
                     method: 'PUT',

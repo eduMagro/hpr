@@ -68,7 +68,7 @@ Route::middleware('auth')->group(function () {
         Artisan::call('turnos:generar-anuales');
         return back()->with('success', '✅ Turnos generados correctamente.');
     })->name('generar-turnos');
-
+    Route::post('/profile/generar-turnos/{user}', [ProfileController::class, 'generarTurnos'])->name('profile.generar.turnos');
 
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);

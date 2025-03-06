@@ -382,6 +382,45 @@ class ProfileController extends Controller
         }
     }
 
+    public function generarTurnos(User $user)
+    {
+        // Obtener los IDs de los turnos
+        $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
+        $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
+        $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
+
+        // Definir el inicio y fin del año actual
+        $inicio = Carbon::now()->startOfYear();
+        $fin = Carbon::now()->endOfYear();
+
+        // Determinar el turno asignado según el tipo de turno del usuario
+        if ($user->turno == 'diurno') {
+            $turnoAsignado = ($user->turno_actual == 1) ? $turnoMañanaId : $turnoTardeId;
+        } elseif ($user->turno == 'nocturno') {
+            $turnoAsignado = $turnoNocheId;
+        } else {
+            return redirect()->back()->with('error', 'El usuario no tiene un turno asignado.');
+        }
+
+        // Recorrer las fechas del año y asignar turnos (excluyendo sábados y domingos)
+        for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
+            if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                continue;
+            }
+
+            AsignacionTurno::updateOrCreate(
+                ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
+                ['turno_id' => $turnoAsignado, 'asignacion_manual' => false, 'modificado' => false]
+            );
+
+            // Si es diurno, cambiar el turno el viernes para mantener la rotación
+            if ($user->turno == 'diurno' && $fecha->dayOfWeek == Carbon::FRIDAY) {
+                $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+            }
+        }
+
+        return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}.");
+    }
 
     public function destroy(Request $request, $id)
     {
