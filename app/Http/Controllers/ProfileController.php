@@ -105,50 +105,11 @@ class ProfileController extends Controller
         // Obtener el usuario autenticado
         $user = auth()->user();
 
-        // **Asignación fija de colores a los turnos**
-        $coloresTurnos = [
-            'mañana' => ['bg' => '#FFD700', 'border' => $this->darkenColor('#FFD700')],  // Dorado
-            'tarde' => ['bg' => '#f87171', 'border' => $this->darkenColor('#f87171')],   // Rojo claro
-            'noche' => ['bg' => '#1E90FF', 'border' => $this->darkenColor('#1E90FF')],   // Azul
-            'baja' => ['bg' => '#32CD32', 'border' => $this->darkenColor('#32CD32')],    // Verde lima
-            'vacaciones' => ['bg' => '#FF8C00', 'border' => $this->darkenColor('#FF8C00')], // Naranja
-            'falta_justificada' => ['bg' => '#6366f1', 'border' => $this->darkenColor('#6366f1')], // Azul violáceo
-            'falta_injustificada' => ['bg' => '#FF69B4', 'border' => $this->darkenColor('#FF69B4')], // Rosa
-            'media_falta_justificada' => ['bg' => '#A52A2A', 'border' => $this->darkenColor('#A52A2A')], // Marrón
-            'media_falta_injustificada' => ['bg' => '#8A2BE2', 'border' => $this->darkenColor('#8A2BE2')], // Violeta
-        ];
-
+        $coloresTurnos = $this->getColoresTurnos();
         // **Eventos de fichajes**
-        $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
-            return [
-                [
-                    'title' => 'Entrada: ' . Carbon::parse($fichaje->entrada)->format('H:i'),
-                    'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
-                    'color' => '#28a745', // Verde para entradas
-                    'allDay' => false
-                ],
-                $fichaje->salida ? [
-                    'title' => 'Salida: ' . Carbon::parse($fichaje->salida)->format('H:i'),
-                    'start' => Carbon::parse($fichaje->salida)->toIso8601String(),
-                    'color' => '#dc3545', // Rojo para salidas
-                    'allDay' => false
-                ] : null
-            ];
-        })->filter();
+        $eventosFichajes = $this->getEventosFichajes($user);
 
-        // **Eventos de turnos asignados**
-        $eventosTurnos = $user->asignacionesTurnos->map(function ($asignacion) use ($coloresTurnos) {
-            $color = $coloresTurnos[$asignacion->turno->nombre] ?? ['bg' => '#808080', 'border' => '#606060']; // Gris por defecto
-
-            return [
-                'title' => ucfirst($asignacion->turno->nombre),
-                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
-                'backgroundColor' => $color['bg'],
-                'borderColor' => $color['border'],
-                'textColor' => 'white',
-                'allDay' => true
-            ];
-        });
+        $eventosTurnos = $this->getEventosTurnos($user);
 
         // **Combinar eventos**
         $eventos = $eventosFichajes->merge($eventosTurnos);
@@ -177,57 +138,12 @@ class ProfileController extends Controller
         // **Obtener todos los turnos de la base de datos**
         $turnos = Turno::all();
 
-        // **Asignación fija de colores a los turnos**
-        $coloresTurnos = [
-            'mañana'              => ['bg' => '#008000', 'border' => $this->darkenColor('#008000')],  // Verde
-            'tarde'               => ['bg' => '#0000FF', 'border' => $this->darkenColor('#0000FF')],  // Azul
-            'noche'               => ['bg' => '#FFFF00', 'border' => $this->darkenColor('#FFFF00')],  // Amarillo
-            'baja'                => ['bg' => '#D3D3D3', 'border' => $this->darkenColor('#D3D3D3')],  // Gris claro
-            'vacaciones'          => ['bg' => '#FFD700', 'border' => $this->darkenColor('#FFD700')],  // Dorado
-            'falta_justificada'   => ['bg' => '#808080', 'border' => $this->darkenColor('#808080')],  // Gris 
-            'falta_injustificada' => ['bg' => '#000000', 'border' => $this->darkenColor('#000000')],  // Negro
-        ];
-
-        // Uso en el código
-        $coloresAsignados = $turnos->mapWithKeys(function ($turno) use ($coloresTurnos) {
-            return [
-                $turno->nombre => $coloresTurnos[$turno->nombre] ?? ['bg' => '#708090', 'border' => $this->darkenColor('#708090')] // Gris oscuro si no está definido
-            ];
-        });
-
-
+        $coloresTurnos = $this->getColoresTurnos();
 
         // **Eventos de fichajes (entradas y salidas)**
-        $eventosFichajes = $user->registrosFichajes->flatMap(function ($fichaje) {
-            return [
-                [
-                    'title' => 'Entrada: ' . Carbon::parse($fichaje->entrada)->format('H:i'),
-                    'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
-                    'color' => '#28a745', // Verde
-                    'allDay' => false
-                ],
-                $fichaje->salida ? [
-                    'title' => 'Salida: ' . Carbon::parse($fichaje->salida)->format('H:i'),
-                    'start' => Carbon::parse($fichaje->salida)->toIso8601String(),
-                    'color' => '#dc3545', // Rojo
-                    'allDay' => false
-                ] : null
-            ];
-        })->filter();
+        $eventosFichajes = $this->getEventosFichajes($user);
 
-        // **Eventos de turnos asignados**
-        $eventosTurnos = $user->asignacionesTurnos->map(function ($asignacion) use ($coloresTurnos) {
-            $color = $coloresTurnos[$asignacion->turno->nombre] ?? ['bg' => '#808080', 'border' => '#606060']; // Gris por defecto
-
-            return [
-                'title' => ucfirst($asignacion->turno->nombre),
-                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
-                'backgroundColor' => $color['bg'],
-                'borderColor' => $color['border'],
-                'textColor' => 'white',
-                'allDay' => true
-            ];
-        });
+        $eventosTurnos = $this->getEventosTurnos($user);
 
         // **Combinar eventos**
         $eventos = $eventosFichajes->merge($eventosTurnos);
@@ -241,6 +157,103 @@ class ProfileController extends Controller
             'faltasJustificadas',
             'diasBaja'
         ));
+    }
+    protected function getColoresTurnos()
+    {
+        // Definir colores base para cada tipo de turno
+        $coloresBase = [
+            'mañana' => [
+                'bg' => '#008000',
+                'border' => $this->darkenColor('#008000'),
+                'text' => '#FFFFFF'
+            ],
+            'tarde' => [
+                'bg' => '#0000FF',
+                'border' => $this->darkenColor('#0000FF'),
+                'text' => '#FFFFFF'
+            ],
+            'noche' => [
+                'bg' => '#FFFF00',
+                'border' => $this->darkenColor('#FFFF00'),
+                'text' => '#000000'
+            ],
+            'baja' => [
+                'bg' => '#D3D3D3',
+                'border' => $this->darkenColor('#D3D3D3'),
+                'text' => '#000000'
+            ],
+            'vacaciones' => [
+                'bg' => '#FFD700',
+                'border' => $this->darkenColor('#FFD700'),
+                'text' => '#000000'
+            ],
+            'falta_justificada' => [
+                'bg' => '#808080',
+                'border' => $this->darkenColor('#808080'),
+                'text' => '#FFFFFF'
+            ],
+            'falta_injustificada' => [
+                'bg' => '#000000',
+                'border' => $this->darkenColor('#000000'),
+                'text' => '#FFFFFF'
+            ],
+        ];
+
+        // Obtener turnos desde la base de datos y asignar colores
+        $turnos = Turno::all();
+
+        $coloresAsignados = $turnos->mapWithKeys(function ($turno) use ($coloresBase) {
+            return [
+                $turno->nombre => $coloresBase[$turno->nombre] ?? [
+                    'bg' => '#708090', // Gris oscuro si el turno no está en la lista base
+                    'border' => $this->darkenColor('#708090'),
+                    'text' => '#FFFFFF'
+                ]
+            ];
+        });
+
+        return $coloresAsignados;
+    }
+    protected function getEventosTurnos($user)
+    {
+        $coloresTurnos = $this->getColoresTurnos(); // Obtener colores predefinidos
+
+        return $user->asignacionesTurnos->map(function ($asignacion) use ($coloresTurnos) {
+            $color = $coloresTurnos[$asignacion->turno->nombre] ?? [
+                'bg' => '#808080', // Gris por defecto si no está en la lista
+                'border' => '#606060',
+                'text' => '#FFFFFF'
+            ];
+
+            return [
+                'title' => ucfirst($asignacion->turno->nombre),
+                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
+                'backgroundColor' => $color['bg'],
+                'borderColor' => $color['border'],
+                'textColor' => $color['text'], // Usar el color de texto asignado
+                'allDay' => true
+            ];
+        });
+    }
+
+    protected function getEventosFichajes($user)
+    {
+        return $user->registrosFichajes->flatMap(function ($fichaje) {
+            return [
+                [
+                    'title' => 'Entrada: ' . Carbon::parse($fichaje->entrada)->format('H:i'),
+                    'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
+                    'color' => '#28a745', // Verde para entradas
+                    'allDay' => false
+                ],
+                $fichaje->salida ? [
+                    'title' => 'Salida: ' . Carbon::parse($fichaje->salida)->format('H:i'),
+                    'start' => Carbon::parse($fichaje->salida)->toIso8601String(),
+                    'color' => '#dc3545', // Rojo para salidas
+                    'allDay' => false
+                ] : null
+            ];
+        })->filter();
     }
 
     /**
