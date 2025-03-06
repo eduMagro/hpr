@@ -4,13 +4,13 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __(auth()->user()->name) }}
         </h2>
-        @if (Auth::check() && Auth::user()->categoria == 'administrador')
+        @if (Auth::check() && Auth::user()->rol == 'oficina')
             <p class="text-green-600">Usuarios conectados:
                 <strong>{{ $usuariosConectados }}</strong>
             </p>
         @endif
     </x-slot>
-    @if (Auth::check() && Auth::user()->categoria == 'administrador')
+    @if (Auth::check() && Auth::user()->rol == 'oficina')
         <div class="container mx-auto px-4 py-6">
             <div class="mb-4 flex items-center space-x-4">
                 <a href="{{ route('register') }}" class="btn btn-primary">Registrar Usuario</a>
