@@ -30,9 +30,6 @@
                 data-bs-target="#filtrosBusqueda">
                 🔍 Filtros Avanzados
             </button>
-            <a href="{{ route('planillas.create') }}" class="btn btn-primary">
-                Importar Planilla
-            </a>
 
             <!-- Formulario de importación -->
             <form method="post" action="{{ route('planillas.import') }}" enctype="multipart/form-data"
