@@ -1,18 +1,18 @@
 <!-- Reporte de Pesos por Usuario (Planillero) -->
 <div class="bg-white shadow-lg rounded-lg mb-6">
     <div class="bg-blue-600 text-white text-center p-4 rounded-t-lg">
-        <h3 class="text-lg font-semibold">Reporte de Pesos por Usuario (Planillero)</h3>
+        <h3 class="text-lg font-semibold">Reporte de Pesos por Planillero</h3>
     </div>
 
     <div class="p-4">
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-2 rounded-md">
-            Peso Total Importado por Usuario
+            Peso Total Importado por Planillero
         </h4>
         <div class="overflow-x-auto">
             <table class="w-full border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr>
-                        <th class="px-4 py-3 border text-center">Usuario ID</th>
+                        <th class="px-4 py-3 border text-center">Trabajador</th>
                         <th class="px-4 py-3 border text-center">Peso Total Importado (kg)</th>
                     </tr>
                 </thead>
@@ -41,7 +41,7 @@
 
     <div class="p-4">
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-2 rounded-md mt-6">
-            Gráfica de Peso Total Importado por Usuario
+            Gráfica Mensual Peso/Planillero
         </h4>
         <div class="overflow-x-auto">
             <canvas id="pesoPorUsuarioChart" class="w-full h-64"></canvas>
@@ -76,6 +76,7 @@
 
         // Agrupar los datos por usuario y fecha
         let datosUsuarios = {};
+        let usuariosUnicos = new Set();
 
         pesoPorUsuarioData.forEach(planillero => {
             if (!planillero.fecha) {
@@ -85,6 +86,7 @@
 
             const fecha = planillero.fecha;
             const usuario = planillero.name;
+            usuariosUnicos.add(usuario); // Guardar usuarios únicos
 
             if (!datosUsuarios[usuario]) {
                 datosUsuarios[usuario] = {};
@@ -92,36 +94,44 @@
             if (!datosUsuarios[usuario][fecha]) {
                 datosUsuarios[usuario][fecha] = 0;
             }
-            datosUsuarios[usuario][fecha] += planillero.peso_importado;
+            datosUsuarios[usuario][fecha] += parseFloat(planillero.peso_importado);
         });
 
-        console.log("Datos agrupados:", datosUsuarios);
+        console.log("Datos agrupados por usuario:", datosUsuarios);
 
         if (Object.keys(datosUsuarios).length === 0) {
             console.warn("No hay datos procesables para la gráfica.");
             return;
         }
 
-        // Función para generar colores con más contraste
-        function getRandomColor() {
-            const letters = '0123456789ABCDEF';
-            let color = '#';
-            for (let i = 0; i < 6; i++) {
-                color += letters[Math.floor(Math.random() * 12)]; // Evita colores demasiado claros
+        // Función para generar colores únicos basados en un usuario
+        function getColorForUser(username) {
+            const colors = [
+                '#FF5733', '#33FF57', '#3357FF', '#F39C12', '#9B59B6',
+                '#1ABC9C', '#E74C3C', '#D35400', '#C0392B', '#7F8C8D'
+            ];
+            let hash = 0;
+            for (let i = 0; i < username.length; i++) {
+                hash = username.charCodeAt(i) + ((hash << 5) - hash);
             }
-            return color;
+            const index = Math.abs(hash % colors.length);
+            return colors[index];
         }
 
-        // Preparar los datasets para Chart.js
-        const datasets = Object.keys(datosUsuarios).map(usuario => {
-            let dataValues = fechas.map(fecha => datosUsuarios[usuario][fecha] || 0);
+        // Preparar los datasets para Chart.js con acumulación de peso
+        const datasets = Array.from(usuariosUnicos).map(usuario => {
+            let acumulado = 0;
+            let dataValues = fechas.map(fecha => {
+                acumulado += (datosUsuarios[usuario][fecha] || 0);
+                return acumulado; // Se acumula el peso día a día
+            });
 
-            console.log(`Usuario: ${usuario}, Datos:`, dataValues);
+            console.log(`Usuario: ${usuario}, Datos acumulados:`, dataValues);
 
             return {
                 label: usuario,
                 data: dataValues,
-                borderColor: getRandomColor(),
+                borderColor: getColorForUser(usuario),
                 backgroundColor: 'transparent',
                 borderWidth: 2,
                 fill: false,
@@ -129,7 +139,7 @@
             };
         });
 
-        console.log("Datasets:", datasets);
+        console.log("Datasets para Chart.js:", datasets);
 
         // Configurar la gráfica
         new Chart(ctx, {
@@ -157,7 +167,7 @@
                         suggestedMax: 50000,
                         title: {
                             display: true,
-                            text: 'Peso Total Importado (kg)'
+                            text: 'Peso Acumulado Importado (kg)'
                         }
                     }
                 }

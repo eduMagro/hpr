@@ -13,6 +13,10 @@ class EstadisticasController extends Controller
 {
     public function index()
     {
+        if (auth()->user()->rol !== 'oficina') {
+            return redirect()->route('dashboard')->with('abort', 'No tienes los permisos necesarios.');
+        }
+
         $datosPorPlanilla = $this->getDatosPorPlanilla();
         $pesoTotalPorDiametro = $this->getPesoTotalPorDiametro();
         $stockEncarretado = $this->getStockEncarretado();
@@ -29,7 +33,7 @@ class EstadisticasController extends Controller
 
         // Pasar los mensajes a la sesión
         $this->handleSessionMessages($mensajeDeAdvertencia);
-        dd($pesoPorPlanilleroPorDia); // Verifica si los datos existen
+
         // Pasar los datos a la vista
         return view('estadisticas.index', compact(
             'datosPorPlanilla',
