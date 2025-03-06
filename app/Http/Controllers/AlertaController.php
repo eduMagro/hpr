@@ -21,7 +21,7 @@ class AlertaController extends Controller
         $query->orderBy('id', 'desc');
 
         // Filtrar por destino (rol) o destinatario (categoría), excepto administradores
-        if ($usuario->caegoria !== 'programador') {
+        if ($usuario->categoria !== 'programador') {
             $query->where(function ($q) use ($usuario) {
                 $q->where('destino', $usuario->rol)
                     ->orWhere('destinatario', $usuario->categoria);
