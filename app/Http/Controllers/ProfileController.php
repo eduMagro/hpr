@@ -171,12 +171,6 @@ class ProfileController extends Controller
         $faltasJustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_justificada')
             ->where('fecha', '>=', $inicioAño)->count();
 
-        $mediaFaltasJustificadas = $user->asignacionesTurnos->where('turno.nombre', 'media_falta_justificada')
-            ->where('fecha', '>=', $inicioAño)->count();
-
-        $mediaFaltasInjustificadas = $user->asignacionesTurnos->where('turno.nombre', 'media_falta_injustificada')
-            ->where('fecha', '>=', $inicioAño)->count();
-
         $diasBaja = $user->asignacionesTurnos->where('turno.nombre', 'baja')
             ->where('fecha', '>=', $inicioAño)->count();
 
@@ -185,15 +179,13 @@ class ProfileController extends Controller
 
         // **Asignación fija de colores a los turnos**
         $coloresTurnos = [
-            'mañana' => ['bg' => '#FFD700', 'border' => $this->darkenColor('#FFD700')],  // Dorado
-            'tarde' => ['bg' => '#f87171', 'border' => $this->darkenColor('#f87171')],   // Rojo claro
-            'noche' => ['bg' => '#1E90FF', 'border' => $this->darkenColor('#1E90FF')],   // Azul
-            'baja' => ['bg' => '#32CD32', 'border' => $this->darkenColor('#32CD32')],    // Verde lima
-            'vacaciones' => ['bg' => '#FF8C00', 'border' => $this->darkenColor('#FF8C00')], // Naranja
-            'falta_justificada' => ['bg' => '#6366f1', 'border' => $this->darkenColor('#6366f1')], // Azul violáceo
-            'falta_injustificada' => ['bg' => '#FF69B4', 'border' => $this->darkenColor('#FF69B4')], // Rosa
-            'media_falta_justificada' => ['bg' => '#A52A2A', 'border' => $this->darkenColor('#A52A2A')], // Marrón
-            'media_falta_injustificada' => ['bg' => '#8A2BE2', 'border' => $this->darkenColor('#8A2BE2')], // Violeta
+            'mañana'              => ['bg' => '#008000', 'border' => $this->darkenColor('#008000')],  // Verde
+            'tarde'               => ['bg' => '#0000FF', 'border' => $this->darkenColor('#0000FF')],  // Azul
+            'noche'               => ['bg' => '#FFFF00', 'border' => $this->darkenColor('#FFFF00')],  // Amarillo
+            'baja'                => ['bg' => '#D3D3D3', 'border' => $this->darkenColor('#D3D3D3')],  // Gris claro
+            'vacaciones'          => ['bg' => '#FFD700', 'border' => $this->darkenColor('#FFD700')],  // Dorado
+            'falta_justificada'   => ['bg' => '#808080', 'border' => $this->darkenColor('#808080')],  // Gris 
+            'falta_injustificada' => ['bg' => '#000000', 'border' => $this->darkenColor('#000000')],  // Negro
         ];
 
         // Uso en el código

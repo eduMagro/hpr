@@ -7,54 +7,138 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Turno;
 use App\Models\AsignacionTurno;
+use Carbon\Carbon;
 
 class AsignacionTurnoController extends Controller
 {
     public function store(Request $request)
     {
         try {
+            // // Si se envía un rango de fechas (selección múltiple)
+            // if ($request->has('fecha_inicio') && $request->has('fecha_fin')) {
             $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'fecha' => 'required|date',
-                'tipo' => 'required|exists:turnos,nombre', // Asegurar que el turno existe
+                'user_id'     => 'required|exists:users,id',
+                'fecha_inicio' => 'required|date',
+                'fecha_fin'   => 'required|date|after_or_equal:fecha_inicio',
+                'tipo'        => 'required|exists:turnos,nombre',
+            ], [
+                'user_id.required'     => 'El usuario es obligatorio.',
+                'user_id.exists'       => 'El usuario seleccionado no existe.',
+                'fecha_inicio.required' => 'La fecha de inicio es obligatoria.',
+                'fecha_inicio.date'    => 'La fecha de inicio debe ser una fecha válida.',
+                'fecha_fin.required'   => 'La fecha fin es obligatoria.',
+                'fecha_fin.date'       => 'La fecha fin debe ser una fecha válida.',
+                'fecha_fin.after_or_equal' => 'La fecha fin debe ser igual o posterior a la fecha de inicio.',
+                'tipo.required'        => 'El tipo de turno es obligatorio.',
+                'tipo.exists'          => 'El tipo de turno seleccionado no existe.',
             ]);
 
-            $user = User::findOrFail($request->user_id);
-            $turno = Turno::where('nombre', $request->tipo)->firstOrFail(); // Obtener el turno por nombre
+            $user  = User::findOrFail($request->user_id);
+            $turno = Turno::where('nombre', $request->tipo)->firstOrFail();
 
-            // Buscar si ya existe un turno asignado en esa fecha
-            $asignacion = AsignacionTurno::where('user_id', $user->id)
-                ->where('fecha', $request->fecha)
-                ->first();
+            $fechaInicio = Carbon::parse($request->fecha_inicio);
+            $fechaFin    = Carbon::parse($request->fecha_fin);
+            $currentDate = $fechaInicio->copy();
 
-            if ($asignacion) {
-                // Si el turno existente es "vacaciones", y el nuevo turno NO es "vacaciones", devolver el día
-                if ($asignacion->turno->nombre === 'vacaciones' && $turno->nombre !== 'vacaciones') {
-                    $user->increment('dias_vacaciones'); // Devolver el día de vacaciones
+            // Iterar desde la fecha de inicio hasta la fecha fin (incluyendo ésta última)
+            while ($currentDate->lte($fechaFin)) {
+                // Omitir sábados y domingos, si así se requiere
+                if (in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                    $currentDate->addDay();
+                    continue;
                 }
 
-                // Si el nuevo turno es "vacaciones" y el usuario tiene días disponibles, restar uno
-                if ($turno->nombre === 'vacaciones') {
-                    if ($user->dias_vacaciones <= 0) {
-                        return response()->json(['error' => 'No tiene más días de vacaciones disponibles.'], 400);
+                $dateStr = $currentDate->toDateString();
+                $asignacion = AsignacionTurno::where('user_id', $user->id)
+                    ->where('fecha', $dateStr)
+                    ->first();
+
+                if ($asignacion) {
+                    // Si el turno actual es "vacaciones" y se cambia a otro, se devuelve el día
+                    if ($asignacion->turno->nombre === 'vacaciones' && $turno->nombre !== 'vacaciones') {
+                        $user->increment('dias_vacaciones');
                     }
-                    $user->decrement('dias_vacaciones'); // Restar un día de vacaciones
+                    // Si el nuevo turno es "vacaciones", verificar disponibilidad y restar un día
+                    if ($turno->nombre === 'vacaciones') {
+                        if ($user->dias_vacaciones <= 0) {
+                            return response()->json(['error' => "No tiene más días de vacaciones disponibles para la fecha {$dateStr}."], 400);
+                        }
+                        $user->decrement('dias_vacaciones');
+                    }
+                    $asignacion->update([
+                        'turno_id' => $turno->id,
+                    ]);
+                    return response()->json(['success' => 'Turno actualizado correctamente.']);
+                } else {
+                    // Si se asigna un turno de vacaciones, verificar disponibilidad
+                    if ($turno->nombre === 'vacaciones') {
+                        if ($user->dias_vacaciones <= 0) {
+                            return response()->json(['error' => "No tiene más días de vacaciones disponibles para la fecha {$dateStr}."], 400);
+                        }
+                        $user->decrement('dias_vacaciones');
+                    }
+                    AsignacionTurno::create([
+                        'user_id'  => $user->id,
+                        'turno_id' => $turno->id,
+                        'fecha'    => $dateStr,
+                    ]);
                 }
 
-                // Actualizar el turno
-                $asignacion->update([
-                    'turno_id' => $turno->id,
-                ]);
-                return response()->json(['success' => 'Turno actualizado correctamente.']);
-            } else {
-                // Si no existe, crear un nuevo registro
-                AsignacionTurno::create([
-                    'user_id' => $user->id,
-                    'turno_id' => $turno->id,
-                    'fecha' => $request->fecha,
-                ]);
-                return response()->json(['success' => 'Turno registrado correctamente.']);
+                $currentDate->addDay();
             }
+
+            return response()->json(['success' => 'Asignación completada con éxito.']);
+            // } else {
+            //     // Si se envía una única fecha (selección de un solo día)
+            //     $request->validate([
+            //         'user_id' => 'required|exists:users,id',
+            //         'fecha'   => 'required|date',
+            //         'tipo'    => 'required|exists:turnos,nombre',
+            //     ], [
+            //         'user_id.required' => 'El usuario es obligatorio.',
+            //         'user_id.exists'   => 'El usuario seleccionado no existe.',
+            //         'fecha.required'   => 'La fecha es obligatoria.',
+            //         'fecha.date'       => 'La fecha debe ser una fecha válida.',
+            //         'tipo.required'    => 'El tipo de turno es obligatorio.',
+            //         'tipo.exists'      => 'El tipo de turno seleccionado no existe.',
+            //     ]);
+
+            //     $user  = User::findOrFail($request->user_id);
+            //     $turno = Turno::where('nombre', $request->tipo)->firstOrFail();
+
+            //     $asignacion = AsignacionTurno::where('user_id', $user->id)
+            //         ->where('fecha', $request->fecha)
+            //         ->first();
+
+            //     if ($asignacion) {
+            //         if ($asignacion->turno->nombre === 'vacaciones' && $turno->nombre !== 'vacaciones') {
+            //             $user->increment('dias_vacaciones');
+            //         }
+            //         if ($turno->nombre === 'vacaciones') {
+            //             if ($user->dias_vacaciones <= 0) {
+            //                 return response()->json(['error' => 'No tiene más días de vacaciones disponibles.'], 400);
+            //             }
+            //             $user->decrement('dias_vacaciones');
+            //         }
+            //         $asignacion->update([
+            //             'turno_id' => $turno->id,
+            //         ]);
+            //         return response()->json(['success' => 'Turno actualizado correctamente.']);
+            //     } else {
+            //         if ($turno->nombre === 'vacaciones') {
+            //             if ($user->dias_vacaciones <= 0) {
+            //                 return response()->json(['error' => 'No tiene más días de vacaciones disponibles.'], 400);
+            //             }
+            //             $user->decrement('dias_vacaciones');
+            //         }
+            //         AsignacionTurno::create([
+            //             'user_id'  => $user->id,
+            //             'turno_id' => $turno->id,
+            //             'fecha'    => $request->fecha,
+            //         ]);
+            //         return response()->json(['success' => 'Turno registrado correctamente.']);
+            //     }
+            // }
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al registrar el turno: ' . $e->getMessage()], 500);
         }

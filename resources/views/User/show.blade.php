@@ -14,7 +14,8 @@
         <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto mb-6 border border-gray-200">
             <!-- Encabezado con avatar -->
             <div class="flex items-center space-x-4 border-b pb-4 mb-4">
-                <div class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700">
+                <div
+                    class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700">
                     {{ strtoupper(substr($user->name, 0, 1)) }}
                 </div>
                 <div>
@@ -22,7 +23,7 @@
                     <p class="text-gray-500 text-sm">{{ $user->rol }}</p>
                 </div>
             </div>
-        
+
             <!-- Contenido en dos columnas -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Información del usuario -->
@@ -35,21 +36,25 @@
                         <strong>Vacaciones restantes:</strong> {{ $user->dias_vacaciones }}
                     </p>
                 </div>
-        
+
                 <!-- Resumen de asistencias -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">Asistencias</h3>
                     <div class="bg-gray-100 p-3 rounded-lg">
-                        <p><strong>Faltas injustificadas:</strong> <span class="text-red-600">{{ $faltasInjustificadas }}</span></p>
-                        <p><strong>Faltas justificadas:</strong> <span class="text-green-600">{{ $faltasJustificadas }}</span></p>
-                        <p><strong>Medias faltas justificadas:</strong> <span class="text-yellow-600">{{ $mediaFaltasJustificadas }}</span></p>
-                        <p><strong>Medias faltas injustificadas:</strong> <span class="text-orange-600">{{ $mediaFaltasInjustificadas }}</span></p>
+                        <p><strong>Faltas injustificadas:</strong> <span
+                                class="text-red-600">{{ $faltasInjustificadas }}</span></p>
+                        <p><strong>Faltas justificadas:</strong> <span
+                                class="text-green-600">{{ $faltasJustificadas }}</span></p>
+                        <p><strong>Medias faltas justificadas:</strong> <span
+                                class="text-yellow-600">{{ $mediaFaltasJustificadas }}</span></p>
+                        <p><strong>Medias faltas injustificadas:</strong> <span
+                                class="text-orange-600">{{ $mediaFaltasInjustificadas }}</span></p>
                         <p><strong>Días de baja:</strong> <span class="text-purple-600">{{ $diasBaja }}</span></p>
                     </div>
                 </div>
             </div>
         </div>
-        
+
 
         <div class="bg-white rounded-lg shadow-lg">
             <div id="calendario"></div>
@@ -66,28 +71,42 @@
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendario');
 
-            // Cargar eventos directamente desde Laravel
+            // Cargar eventos y colores desde el backend
             var eventosDesdeLaravel = {!! json_encode($eventos) !!};
-            var coloresTurnos = {!! json_encode($coloresTurnos) !!}; // Colores desde el backend
+            var coloresTurnos = {!! json_encode($coloresTurnos) !!};
 
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 height: 'auto',
+                selectable: true,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 },
-                selectable: true,
-                events: eventosDesdeLaravel, // Usar eventos enviados desde el backend
+                events: eventosDesdeLaravel,
                 select: function(info) {
-                    var fechaSeleccionada = info.startStr;
+                    // Obtener fechas inicial y final
+                    let fechaInicio = info.startStr;
+                    let fechaFinObj = new Date(info.end);
+                    fechaFinObj.setDate(fechaFinObj.getDate()); // Ajuste para que sea inclusiva
+                    let fechaFin = fechaFinObj.toISOString().split('T')[0];
+
+                    // Generar HTML condicionalmente según si se selecciona un solo día o un rango
+                    let mensajeFecha = '';
+                    if (fechaInicio === fechaFin) {
+                        mensajeFecha = `<p>${fechaInicio}</p>`;
+                    } else {
+                        mensajeFecha = `<p>Desde: ${fechaInicio}</p>
+                        <p>Hasta: ${fechaFin}</p>`;
+                    }
 
                     Swal.fire({
-                        title: "Elige turno para ese día",
+                        title: "Selecciona un turno",
                         html: `
-                           <select id="tipo-dia" class="swal2-select">
+                            ${mensajeFecha}
+                            <select id="tipo-dia" class="swal2-select">
                                 @foreach ($turnos as $turno)
                                     <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
                                 @endforeach
@@ -111,7 +130,8 @@
                                     },
                                     body: JSON.stringify({
                                         user_id: "{{ $user->id }}",
-                                        fecha: fechaSeleccionada,
+                                        fecha_inicio: fechaInicio,
+                                        fecha_fin: fechaFin,
                                         tipo: tipoSeleccionado
                                     })
                                 })
@@ -126,24 +146,32 @@
                                             showConfirmButton: false
                                         });
 
-                                        // Obtener colores desde el backend
-                                        let color = coloresTurnos[tipoSeleccionado] || {
-                                            bg: '#808080',
-                                            border: '#606060'
-                                        };
-
-                                        // Agregar el nuevo evento sin recargar la página
-                                        calendar.addEvent({
-                                            title: tipoSeleccionado.charAt(0)
-                                                .toUpperCase() + tipoSeleccionado
-                                                .slice(1),
-                                            start: fechaSeleccionada,
-                                            backgroundColor: color.bg,
-                                            borderColor: color.border,
-                                            textColor: 'white',
-                                            allDay: true
-                                        });
-
+                                        // Agregar cada día (excepto fines de semana, si es el caso) al calendario
+                                        let currentDate = new Date(fechaInicio);
+                                        let endDate = new Date(fechaFin);
+                                        while (currentDate <= endDate) {
+                                            // Opcional: omitir sábados (6) y domingos (0)
+                                            if (currentDate.getDay() !== 0 && currentDate
+                                                .getDay() !== 6) {
+                                                let color = coloresTurnos[
+                                                    tipoSeleccionado] || {
+                                                    bg: '#808080',
+                                                    border: '#606060'
+                                                };
+                                                calendar.addEvent({
+                                                    title: tipoSeleccionado.charAt(
+                                                            0).toUpperCase() +
+                                                        tipoSeleccionado.slice(1),
+                                                    start: currentDate.toISOString()
+                                                        .split('T')[0],
+                                                    backgroundColor: color.bg,
+                                                    borderColor: color.border,
+                                                    textColor: 'white',
+                                                    allDay: true
+                                                });
+                                            }
+                                            currentDate.setDate(currentDate.getDate() + 1);
+                                        }
                                     } else {
                                         Swal.fire({
                                             title: "Error",
@@ -156,7 +184,7 @@
                                     console.error("Error:", error);
                                     Swal.fire({
                                         title: "Error",
-                                        text: "Ocurrió un problema al registrar el día.",
+                                        text: "Ocurrió un problema al registrar los turnos.",
                                         icon: "error"
                                     });
                                 });
@@ -168,7 +196,6 @@
             calendar.render();
         });
     </script>
-
 
 
 </x-app-layout>
