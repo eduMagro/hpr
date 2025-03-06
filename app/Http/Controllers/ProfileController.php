@@ -239,8 +239,6 @@ class ProfileController extends Controller
             'turnos',
             'faltasInjustificadas',
             'faltasJustificadas',
-            'mediaFaltasJustificadas',
-            'mediaFaltasInjustificadas',
             'diasBaja'
         ));
     }
