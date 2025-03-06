@@ -43,8 +43,8 @@
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-2 rounded-md mt-6">
             Gráfica Mensual Peso/Planillero
         </h4>
-        <div class="overflow-x-auto">
-            <canvas id="pesoPorUsuarioChart" class="w-full h-64"></canvas>
+        <div class="relative w-full overflow-x-auto">
+            <canvas id="pesoPorUsuarioChart" class="w-full h-full" style="max-height: 400px;"></canvas>
         </div>
     </div>
 </div>
@@ -150,6 +150,7 @@
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false, // Permite que la gráfica se adapte a diferentes pantallas
                 scales: {
                     x: {
                         type: 'category',
