@@ -78,11 +78,11 @@
 <!-- Función para reportar errores a programadores -->
 <script>
     function notificarProgramador(mensaje) {
-        Swal.fire({
-            title: "Notificación enviada",
-            text: "El programador ha sido notificado.",
-            icon: "success"
-        });
+        const urlActual = window.location.href;
+        const mensajeCompleto = `
+         🔗 **URL:** ${urlActual}
+        📜 **Mensaje:** ${mensaje}
+    `;
 
         fetch('/alertas/store', {
                 method: 'POST',
@@ -91,14 +91,18 @@
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
                 body: JSON.stringify({
-                    mensaje: mensaje,
-                    destinatario: "programador" // 🔹 Se asigna el destinatario como "programador"
+                    mensaje: mensajeCompleto,
+                    categoria: "programador" // 🔹 Se asigna el destinatario como "programador"
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log("✅ Alerta enviada correctamente al programador");
+                    Swal.fire({
+                        title: "Notificación enviada",
+                        text: "El programador ha sido notificado.",
+                        icon: "success"
+                    });
                 } else {
                     console.error("⚠️ Error al enviar la alerta:", data.error);
                 }

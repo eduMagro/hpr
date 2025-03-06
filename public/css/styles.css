@@ -93,13 +93,13 @@
     background: #f44336;
     color: white;
 }
-/* BOTON DE CARGA */
+/* Ocultar el spinner por defecto */
 .btn-cargando .spinner-border {
-    display: none; /* Ocultar spinner por defecto */
+    display: none;
 }
 
-/* Mostrar spinner cuando el formulario está en proceso de envío */
-.form-cargando:focus-within .btn-cargando .spinner-border {
+/* Mostrar el spinner cuando el botón de submit tiene el foco */
+.btn-cargando:focus .spinner-border {
     display: inline-block;
 }
 
@@ -107,20 +107,19 @@
 #calendario {
     max-width: 100%;
     overflow-x: auto;
-	padding: 20px;
+    padding: 20px;
 }
 
 /* 📌 Reducir el tamaño de los botones en pantallas pequeñas */
 @media (max-width: 600px) {
-	
-	#contenedorCalendario{
-	padding: 0;
-		margin: 0;
-	}
-	#calendario{
-		padding: 0;	
-		margin: 0;
-	}
+    #contenedorCalendario {
+        padding: 0;
+        margin: 0;
+    }
+    #calendario {
+        padding: 0;
+        margin: 0;
+    }
 
     .fc-button {
         font-size: 12px !important;
@@ -131,13 +130,13 @@
         /* Ajustar la altura */
         min-width: 50px !important;
         /* Ajustar el ancho mínimo */
-		padding: 4px !important;
+        padding: 4px !important;
     }
 
     .fc-toolbar-title {
         font-size: 14px !important;
         /* Reducir el tamaño del título */
-		padding: 4px !important;
+        padding: 4px !important;
     }
 }
 /* Responsive tweaks */
@@ -173,17 +172,17 @@
     .icon-card span {
         font-size: 13px;
     }
-	
-		#contenedorCalendario{
-	padding: 0 !important;
-		margin: auto !important;
-			width: 100% !important;
-	}
-	#calendario{
-		padding: 0 !important;	
-		margin: 0 !important;
-		width: 100%;
-	}
+
+    #contenedorCalendario {
+        padding: 0 !important;
+        margin: auto !important;
+        width: 100% !important;
+    }
+    #calendario {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100%;
+    }
 }
 
 @media (max-width: 480px) {

@@ -25,8 +25,7 @@
 
     <div class="w-full px-6 py-4">
         <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
-        <div class="flex flex-wrap gap-4 mb-4">
-
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
             <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
                 data-bs-target="#filtrosBusqueda">
                 🔍 Filtros Avanzados
@@ -34,8 +33,19 @@
             <a href="{{ route('planillas.create') }}" class="btn btn-primary">
                 Importar Planilla
             </a>
-        </div>
 
+            <!-- Formulario de importación -->
+            <form method="post" action="{{ route('planillas.import') }}" enctype="multipart/form-data"
+                class="form-cargando flex items-center gap-x-2">
+                @csrf
+                <input type="file" name="file" id="file" class="form-control file:mr-2">
+
+                <button type="submit" class="btn btn-primary btn-cargando flex items-center gap-x-2">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span class="texto">IMPORTAR</span>
+                </button>
+            </form>
+        </div>
 
         <div id="filtrosBusqueda" class="collapse">
             <form method="GET" action="{{ route('planillas.index') }}" class="card card-body shadow-sm">
@@ -88,7 +98,8 @@
                     <div class="col-md-4">
                         <select name="sort_by" class="form-control">
                             <option value="">Elige un ítem para ordenar</option>
-                            <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Fecha
+                            <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>
+                                Fecha
                                 Creación</option>
                             <option value="codigo" {{ request('sort_by') == 'codigo' ? 'selected' : '' }}>Código
                             </option>
