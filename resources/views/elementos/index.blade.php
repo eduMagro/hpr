@@ -224,7 +224,7 @@
                                     this.elemento.longitud = this.elemento.longitud || 0;
                                     this.elemento.maquina = this.elemento.maquina || { nombre: 'N/A' };
                                     this.elemento.maquina_2 = this.elemento.maquina_2 || { nombre: 'N/A' };
-                                    this.elemento.maquina3 = this.elemento.maquina3 || { nombre: 'N/A' };
+                                    this.elemento.maquina_3 = this.elemento.maquina_3 || { nombre: 'N/A' };
                                 }
                             }" x-init="inicializar()">
                             <!-- ID -->
