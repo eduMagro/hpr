@@ -64,11 +64,11 @@ class SalidaController extends Controller
 
 
             return response()->json([
-                'message' => 'Todas las etiquetas están completas.'
+                'message' => 'Salida completada con éxito.'
             ]);
         } catch (\Exception $e) {
             // Capturamos cualquier error y retornamos un mensaje
-            return response()->json(['message' => 'Hubo un error al actualizar el estado de la salida. ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Hubo un error al completar la salida. ' . $e->getMessage()], 500);
         }
     }
 
@@ -119,7 +119,20 @@ class SalidaController extends Controller
                 'paquete_ids.array' => 'Los paquetes seleccionados no son válidos.',
                 'paquete_ids.*.exists' => 'Uno o más paquetes seleccionados no existen en el sistema.',
             ]);
+            // Comprobar si los paquetes seleccionados ya están asociados a alguna salida
+            $paquetesRepetidos = DB::table('salidas_paquetes')
+                ->whereIn('paquete_id', $request->paquete_ids)  // Paquetes seleccionados
+                ->whereNotNull('salida_id')  // Asegurarse de que estén asociados a alguna salida
+                ->pluck('paquete_id')  // Extraer solo los IDs
+                ->toArray();  // Convertir el resultado a un array
 
+            // Encontrar los paquetes repetidos
+            $repetidos = array_intersect($request->paquete_ids, $paquetesRepetidos);
+
+            // Si hay paquetes repetidos, devolver el error
+            if ($repetidos) {
+                return back()->withErrors(['paquete_ids' => 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $repetidos)]);
+            }
             $camion = Camion::find($request->camion_id);
             $empresa = $camion->empresaTransporte;  // Accede a la empresa del camión
 
@@ -141,22 +154,6 @@ class SalidaController extends Controller
             foreach ($request->paquete_ids as $paquete_id) {
                 // Asociar el paquete existente a la salida
                 $salida->paquetes()->attach($paquete_id);
-            }
-
-
-            // Comprobar si los paquetes seleccionados ya están asociados a alguna salida
-            $paquetesRepetidos = DB::table('salidas_paquetes')
-                ->whereIn('paquete_id', $request->paquete_ids)  // Paquetes seleccionados
-                ->whereNotNull('salida_id')  // Asegurarse de que estén asociados a alguna salida
-                ->pluck('paquete_id')  // Extraer solo los IDs
-                ->toArray();  // Convertir el resultado a un array
-
-            // Encontrar los paquetes repetidos
-            $repetidos = array_intersect($request->paquete_ids, $paquetesRepetidos);
-
-            // Si hay paquetes repetidos, devolver el error
-            if ($repetidos) {
-                return back()->withErrors(['paquete_ids' => 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $repetidos)]);
             }
 
             // Retornar una respuesta de éxito
