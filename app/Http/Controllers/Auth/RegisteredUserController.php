@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 use Carbon\Carbon;
+
 class RegisteredUserController extends Controller
 {
     /**
@@ -20,7 +21,7 @@ class RegisteredUserController extends Controller
      */
     public function create()
     {
-        if (auth()->user()->categoria !== 'administrador') {
+        if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
         }
 
@@ -84,7 +85,7 @@ class RegisteredUserController extends Controller
         // Calcular los días de vacaciones disponibles
         $diasVacaciones = $this->calcularVacaciones();
         $turno_actual = Turno::where('nombre', $request->turno_actual)->value('id');
-       
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -92,7 +93,7 @@ class RegisteredUserController extends Controller
             'categoria' => $request->categoria,
             'turno' => $request->turno,
             'turno_actual' => $turno_actual,
-            'dias_vacaciones'=> $diasVacaciones,
+            'dias_vacaciones' => $diasVacaciones,
             'password' => Hash::make($request->password),
         ]);
 
@@ -118,5 +119,4 @@ class RegisteredUserController extends Controller
 
         return max($diasVacacionesRestantes, 0); // Asegura que nunca sea negativo
     }
-
 }

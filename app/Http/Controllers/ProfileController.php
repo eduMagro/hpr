@@ -125,7 +125,8 @@ class ProfileController extends Controller
         // Fecha de inicio (1 de enero del año actual)
         $inicioAño = Carbon::now()->startOfYear();
 
-        // Contar asignaciones de turnos específicos desde el 1 de enero
+
+        // Calculamos ciertas variables
         $faltasInjustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_injustificada')
             ->where('fecha', '>=', $inicioAño)->count();
 
@@ -134,6 +135,7 @@ class ProfileController extends Controller
 
         $diasBaja = $user->asignacionesTurnos->where('turno.nombre', 'baja')
             ->where('fecha', '>=', $inicioAño)->count();
+
 
         // **Obtener todos los turnos de la base de datos**
         $turnos = Turno::all();
@@ -183,10 +185,11 @@ class ProfileController extends Controller
                 'text' => '#000000'
             ],
             'vacaciones' => [
-                'bg' => '#FFD700',
-                'border' => $this->darkenColor('#FFD700'),
-                'text' => '#000000'
+                'bg' => '#FFC0CB', // Rosa claro
+                'border' => $this->darkenColor('#FFC0CB'),
+                'text' => '#000000' // Texto negro para mejor visibilidad
             ],
+
             'falta_justificada' => [
                 'bg' => '#808080',
                 'border' => $this->darkenColor('#808080'),
@@ -241,13 +244,13 @@ class ProfileController extends Controller
         return $user->registrosFichajes->flatMap(function ($fichaje) {
             return [
                 [
-                    'title' => 'Entrada: ' . Carbon::parse($fichaje->entrada)->format('H:i'),
+
                     'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
                     'color' => '#28a745', // Verde para entradas
                     'allDay' => false
                 ],
                 $fichaje->salida ? [
-                    'title' => 'Salida: ' . Carbon::parse($fichaje->salida)->format('H:i'),
+
                     'start' => Carbon::parse($fichaje->salida)->toIso8601String(),
                     'color' => '#dc3545', // Rojo para salidas
                     'allDay' => false

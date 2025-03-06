@@ -54,7 +54,7 @@ class MaquinaController extends Controller
         $usuario1 = auth()->user();
         $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null;
 
-        
+
         // Decodificar nombres de usuario
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
         if ($usuario2) {
@@ -138,7 +138,7 @@ class MaquinaController extends Controller
 
     public function create()
     {
-        if (auth()->user()->categoria !== 'administrador') {
+        if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         return view('maquinas.create');
@@ -228,7 +228,7 @@ class MaquinaController extends Controller
 
     public function edit($id)
     {
-        if (auth()->user()->categoria !== 'administrador') {
+        if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         // Buscar la máquina por su ID
@@ -291,7 +291,7 @@ class MaquinaController extends Controller
 
     public function destroy($id)
     {
-        if (auth()->user()->categoria !== 'administrador') {
+        if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         DB::beginTransaction();
