@@ -23,70 +23,75 @@
         @endif
         <div x-data="{ mostrarModal: false }">
             <!-- Botón para abrir el modal -->
-            <button @click="mostrarModal = true"
-                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 mb-2 rounded-lg">
-                ➕ Nueva Alerta
-            </button>
-            <!-- Modal -->
-            <div x-show="mostrarModal"
-                class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50"
-                x-transition.opacity>
-                <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
-                    <!-- Botón de cerrar -->
-                    <button @click="mostrarModal = false"
-                        class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-                        ✖
-                    </button>
+            @if (auth()->user()->rol == 'oficina')
+                <button @click="mostrarModal = true"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 mb-2 rounded-lg">
+                    ➕ Nueva Alerta
+                </button>
+                <!-- Modal -->
+                <div x-show="mostrarModal"
+                    class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50"
+                    x-transition.opacity>
+                    <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
+                        <!-- Botón de cerrar -->
+                        <button @click="mostrarModal = false"
+                            class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+                            ✖
+                        </button>
 
-                    <h2 class="text-lg font-semibold mb-4">📢 Crear Nueva Alerta</h2>
+                        <h2 class="text-lg font-semibold mb-4">📢 Crear Nueva Alerta</h2>
 
-                    <!-- Formulario -->
-                    <form method="POST" action="{{ route('alertas.store') }}">
-                        @csrf
-                        <div class="mb-4">
-                            <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
-                            <textarea id="mensaje" name="mensaje" rows="3"
-                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
-                        </div>
+                        <!-- Formulario -->
+                        <form method="POST" action="{{ route('alertas.store') }}">
+                            @csrf
+                            <div class="mb-4">
+                                <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
+                                <textarea id="mensaje" name="mensaje" rows="3"
+                                    class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
+                            </div>
 
 
-                        <div class="mb-4">
-                            <label for="rol" class="block text-sm font-semibold">Destinatarios Generales</label>
-                            <select id="rol" name="rol" class="w-full border rounded-lg p-2" x-model="rol"
-                                @change="rol = ''">
-                                <option value="">-- Seleccionar un Rol --</option>
-                                @foreach ($roles as $rol)
-                                    <option value="{{ $rol }}">{{ ucfirst($rol) }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <div class="mb-4">
+                                <label for="rol" class="block text-sm font-semibold">Destinatarios
+                                    Generales</label>
+                                <select id="rol" name="rol" class="w-full border rounded-lg p-2"
+                                    x-model="rol" @change="rol = ''">
+                                    <option value="">-- Seleccionar un Rol --</option>
+                                    @foreach ($roles as $rol)
+                                        <option value="{{ $rol }}">{{ ucfirst($rol) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        <div class="mb-4">
-                            <label for="categoria" class="block text-sm font-semibold">Destinatarios
-                                particulares</label>
-                            <select id="categoria" name="categoria" class="w-full border rounded-lg p-2"
-                                x-model="categoria" @change="categoria = ''">
-                                <option value="">-- Seleccionar una Categoría --</option>
-                                @foreach ($categorias as $categoria)
-                                    <option value="{{ $categoria }}">{{ ucfirst($categoria) }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <div class="mb-4">
+                                <label for="categoria" class="block text-sm font-semibold">Destinatarios
+                                    particulares</label>
+                                <select id="categoria" name="categoria" class="w-full border rounded-lg p-2"
+                                    x-model="categoria" @change="categoria = ''">
+                                    <option value="">-- Seleccionar una Categoría --</option>
+                                    @foreach ($categorias as $categoria)
+                                        <option value="{{ $categoria }}">{{ ucfirst($categoria) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                        <!-- Botones -->
-                        <div class="flex justify-end space-x-2">
-                            <button type="button" @click="mostrarModal = false"
-                                class="bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-lg">
-                                Cancelar
-                            </button>
-                            <button type="submit"
-                                class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
-                                Guardar
-                            </button>
-                        </div>
-                    </form>
+                            <!-- Botones -->
+                            <div class="flex justify-end space-x-2">
+                                <button type="button" @click="mostrarModal = false"
+                                    class="bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-lg">
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                    class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
+                                    Guardar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </div>
+            @endif
+
+
 
             <!-- Botón para mostrar filtros avanzados -->
             <div class="mb-4 flex items-center space-x-4">

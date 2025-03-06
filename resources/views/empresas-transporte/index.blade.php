@@ -12,7 +12,7 @@
         <div class="flex justify-between mb-6">
             <button @click="openEmpresaModal = true"
                 class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                + Añadir Empresa
+                ➕ Añadir Empresa
             </button>
         </div>
 
@@ -89,7 +89,7 @@
                     <!-- Botón para abrir el modal de añadir camión -->
                     <button @click="openCamionModal = true"
                         class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        + Añadir Camión
+                        ➕ Añadir Camión
                     </button>
 
                     <!-- Modal para añadir camión -->
