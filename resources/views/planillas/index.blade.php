@@ -27,7 +27,7 @@
         <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
         <div class="flex flex-wrap gap-4 mb-4">
 
-            <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse"
+            <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
                 data-bs-target="#filtrosBusqueda">
                 🔍 Filtros Avanzados
             </button>

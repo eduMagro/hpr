@@ -139,7 +139,7 @@
             @endif
         </div>
         <div class="mt-4 flex justify-center">
-            {{ $registrosMaquinas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+            {{ $registrosMaquina->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
         </div>
         <!-- SCRIPT PARA IMPRIMIR QR -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

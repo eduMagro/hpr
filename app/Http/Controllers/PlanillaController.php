@@ -18,7 +18,8 @@ class PlanillaController extends Controller
 {
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
-        $estribo = $doblesPorBarra >= 5;
+        // Si usas PHP 8 o superior, puedes utilizar str_starts_with
+        $estribo = $doblesPorBarra >= 5 && !str_starts_with($figura, 'V');
         $maquinas = collect(); // Inicializar con una colección vacía de Laravel
 
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
@@ -200,7 +201,7 @@ class PlanillaController extends Controller
             'paquetes.ubicacion:id,nombre',
             'paquetes.subpaquetes:id,paquete_id,elemento_id,peso',
             'paquetes.subpaquetes.elemento:id,planilla_id,estado,peso',
-            'elementos:id,planilla_id,estado,peso,diametro,ubicacion_id,paquete_id,maquina_id',
+            'elementos:id,planilla_id,estado,peso,diametro,paquete_id,maquina_id',
             'elementos.ubicacion:id,nombre',
             'elementos.maquina:id,nombre',
             'etiquetas:id'
