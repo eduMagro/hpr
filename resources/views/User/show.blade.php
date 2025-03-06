@@ -45,10 +45,6 @@
                                 class="text-red-600">{{ $faltasInjustificadas }}</span></p>
                         <p><strong>Faltas justificadas:</strong> <span
                                 class="text-green-600">{{ $faltasJustificadas }}</span></p>
-                        <p><strong>Medias faltas justificadas:</strong> <span
-                                class="text-yellow-600">{{ $mediaFaltasJustificadas }}</span></p>
-                        <p><strong>Medias faltas injustificadas:</strong> <span
-                                class="text-orange-600">{{ $mediaFaltasInjustificadas }}</span></p>
                         <p><strong>Días de baja:</strong> <span class="text-purple-600">{{ $diasBaja }}</span></p>
                     </div>
                 </div>
