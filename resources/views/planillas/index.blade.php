@@ -175,7 +175,7 @@
                                 <template x-if="!editando">
                                     <span x-text="planilla.codigo_limpio"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.codigo_limpio"
+                                <input x-show="editando" type="text" x-model="planilla.codigo"
                                     class="form-input w-full">
                             </td>
 
@@ -245,7 +245,7 @@
                             <!-- Peso Fabricado -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="planilla.suma_peso_completados ?? 0"></span> kg
+                                    <span x-text="planilla.suma_peso_completados || 0"></span> kg
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.suma_peso_completados"
                                     class="form-input w-full">
@@ -326,9 +326,9 @@
 
         <div class="mt-4 flex justify-center">{{ $planillas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
         </div>
-        <script src="//unpkg.com/alpinejs" defer></script>
         <script>
             function guardarCambios(planilla) {
+
                 fetch(`/planillas/${planilla.id}`, {
                         method: 'PUT',
                         headers: {
@@ -350,11 +350,18 @@
                                 window.location.reload(); // Recarga la página tras el mensaje
                             });
                         } else {
+                            let errorMsg =
+                                data.message || "Ha ocurrido un error inesperado.";
+                            // Si existen errores de validación, concatenarlos
+                            if (data.errors) {
+                                errorMsg = Object.values(data.errors).flat().join(
+                                    " "); // O puedes usar '\n' para saltos de línea
+                            }
                             Swal.fire({
                                 icon: "error",
                                 title: "Error al actualizar",
-                                text: data.message || "Ha ocurrido un error inesperado.",
-                                confirmButtonText: "OK"
+                                text: errorMsg,
+                                confirmButtonText: "OK",
                             });
                         }
                     })

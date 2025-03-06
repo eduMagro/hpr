@@ -11,8 +11,10 @@ use App\Models\Etiqueta;
 use Illuminate\Support\Facades\DB;
 use App\Imports\PlanillaImport;
 use Maatwebsite\Excel\Facades\Excel;
-use Exception;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
+use Exception;
 
 class PlanillaController extends Controller
 {
@@ -490,14 +492,93 @@ class PlanillaController extends Controller
 
     public function update(Request $request, $id)
     {
-        $planilla = Planilla::findOrFail($id);
+        try {
+            // Buscar la planilla o lanzar excepción si no se encuentra
+            $planilla = Planilla::findOrFail($id);
 
-        // Asegurar que se recibe JSON correctamente
-        $data = $request->json()->all();
+            // Validar los datos recibidos con mensajes personalizados
+            $validatedData = $request->validate([
+                'codigo'             => 'required|string|max:50',
+                'cod_cliente'     => 'nullable|string|max:50',
+                'cliente'            => 'required|string|max:50',
+                'cod_obra'        => 'nullable|string|max:50',
+                'nom_obra'               => 'required|string|max:100',
+                'seccion'            => 'nullable|string|max:100',
+                'descripcion'        => 'nullable|string',
+                'ensamblado'         => 'nullable|string|max:100',
+                'peso_fabricado'     => 'nullable|numeric',
+                'peso_total'         => 'nullable|numeric',
+                'estado'             => 'nullable|string|in:pendiente,fabricando,completado',
+                'fecha_inicio'       => 'nullable|date',
+                'fecha_finalizacion' => 'nullable|date',
+                'fecha_importacion'  => 'nullable|date',
+                'usuario'            => 'nullable|string|max:100'
+            ], [
+                'codigo.required'             => 'El campo Código es obligatorio.',
+                'codigo.string'               => 'El campo Código debe ser una cadena de texto.',
+                'codigo.max'                  => 'El campo Código no debe exceder 50 caracteres.',
 
-        $planilla->update($data);
+                'cod_cliente.string'       => 'El campo Código Cliente debe ser una cadena de texto.',
+                'cod_cliente.max'          => 'El campo Código Cliente no debe exceder 50 caracteres.',
 
-        return response()->json(['success' => true, 'message' => 'Planilla actualizada correctamente']);
+                'cliente.required'            => 'El campo Cliente es obligatorio.',
+                'cliente.string'              => 'El campo Cliente debe ser una cadena de texto.',
+                'cliente.max'                 => 'El campo Cliente no debe exceder 50 caracteres.',
+
+                'cod_obra.string'          => 'El campo Código Obra debe ser una cadena de texto.',
+                'cod_obra.max'             => 'El campo Código Obra no debe exceder 50 caracteres.',
+
+                'nom_obra.required'               => 'El campo Obra es obligatorio.',
+                'nom_obra.string'                 => 'El campo Obra debe ser una cadena de texto.',
+                'nom_obra.max'                    => 'El campo Obra no debe exceder 100 caracteres.',
+
+                'seccion.string'              => 'El campo Sección debe ser una cadena de texto.',
+                'seccion.max'                 => 'El campo Sección no debe exceder 100 caracteres.',
+
+                'descripcion.string'          => 'El campo Descripción debe ser una cadena de texto.',
+
+                'ensamblado.string'           => 'El campo Ensamblado debe ser una cadena de texto.',
+                'ensamblado.max'              => 'El campo Ensamblado no debe exceder 100 caracteres.',
+
+                'peso_fabricado.numeric'      => 'El campo Peso Fabricado debe ser un número.',
+                'peso_total.numeric'          => 'El campo Peso Total debe ser un número.',
+
+                'estado.in'                 => 'El campo Estado debe ser: pendiente, fabricando o completado.',
+
+                'fecha_inicio.date'           => 'El campo Fecha Inicio debe ser una fecha válida.',
+                'fecha_finalizacion.date'     => 'El campo Fecha Finalización debe ser una fecha válida.',
+                'fecha_importacion.date'      => 'El campo Fecha Importación debe ser una fecha válida.',
+
+                'usuario.string'              => 'El campo Usuario debe ser una cadena de texto.',
+                'usuario.max'                 => 'El campo Usuario no debe exceder 100 caracteres.'
+            ]);
+
+            // Actualizar la planilla con los datos validados
+            $planilla->update($validatedData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Planilla actualizada correctamente',
+                'data'    => $planilla
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Planilla no encontrada'
+            ], 404);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error("Error al actualizar la planilla con ID {$id}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la planilla. Intente nuevamente.'
+            ], 500);
+        }
     }
 
 

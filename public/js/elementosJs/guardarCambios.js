@@ -1,5 +1,4 @@
 function guardarCambios(elemento) {
-    console.log("Elemento recibido:", elemento.maquina_2_id ?? "nada");
     // Construir el objeto con los campos que se desean actualizar
     const datosActualizar = {
         // Aunque 'id' no suele actualizarse, lo incluimos para referencia.
