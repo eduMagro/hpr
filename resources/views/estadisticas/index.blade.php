@@ -37,7 +37,7 @@
         <!-- Sección Peso Planilleros -->
         <div x-show="mostrarPesoPlanilleros">
             <!-- Componente de Estadísticas Completo -->
-            <x-estadisticas.pesoPlanilleros :pesoPorPlanillero="$pesoPorPlanillero" />
+            <x-estadisticas.pesoPlanilleros :pesoPorPlanillero="$pesoPorPlanillero" :pesoPorPlanilleroPorDia="$pesoPorPlanilleroPorDia" />
         </div>
     </div>
 </x-app-layout>

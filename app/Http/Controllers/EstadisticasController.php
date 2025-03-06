@@ -18,14 +18,18 @@ class EstadisticasController extends Controller
         $stockEncarretado = $this->getStockEncarretado();
         $stockBarras = $this->getStockBarras();
         $mensajeDeAdvertencia = $this->compararStockConPeso($pesoTotalPorDiametro, $stockEncarretado, $stockBarras);
+
         // Calcular peso suministrado a cada obra
         $salidasPaquetes = $this->getSalidasPaquetesCompletadas();
         $pesoPorObra = $this->agruparPaquetesPorObra($salidasPaquetes);
+
         // Obtener el peso importado por cada usuario
         $pesoPorPlanillero = $this->getPesoPorPlanillero();
+        $pesoPorPlanilleroPorDia = $this->getPesoPorPlanilleroPorDia();
+
         // Pasar los mensajes a la sesión
         $this->handleSessionMessages($mensajeDeAdvertencia);
-
+        dd($pesoPorPlanilleroPorDia); // Verifica si los datos existen
         // Pasar los datos a la vista
         return view('estadisticas.index', compact(
             'datosPorPlanilla',
@@ -33,7 +37,8 @@ class EstadisticasController extends Controller
             'stockEncarretado',
             'stockBarras',
             'pesoPorObra',
-            'pesoPorPlanillero'
+            'pesoPorPlanillero',
+            'pesoPorPlanilleroPorDia'
         ));
     }
     // ---------------------------------------------------------------- Funciones para calcular el stockaje
@@ -132,13 +137,38 @@ class EstadisticasController extends Controller
     // ---------------------------------------------------------------- Estadisticas de usuarios
     private function getPesoPorPlanillero()
     {
-        // Obtener los pesos por usuario, incluyendo el nombre del usuario
-        $pesoPorPlanillero = Planilla::select('planillas.users_id', 'users.name', DB::raw('SUM(planillas.peso_total) as peso_importado'))
-            ->join('users', 'users.id', '=', 'planillas.users_id')  // Unir la tabla de usuarios
-            ->where('planillas.estado', 'pendiente')  // Solo incluir planillas pendientes
-            ->groupBy('planillas.users_id', 'users.name')  // Agrupar por id de usuario y nombre de usuario
-            ->get();  // Obtener el nombre y el peso total importado
+        return Planilla::where('estado', 'pendiente') // Filtrar solo planillas pendientes
+            ->with('user:id,name') // Cargar el usuario con su nombre
+            ->select('users_id', DB::raw('SUM(peso_total) as peso_importado')) // Agrupar por usuario
+            ->groupBy('users_id')
+            ->get()
+            ->map(function ($planilla) {
+                return (object)[
+                    'users_id' => $planilla->users_id,
+                    'name' => $planilla->user->name,
+                    'peso_importado' => $planilla->peso_importado
+                ];
+            });
+    }
+    private function getPesoPorPlanilleroPorDia()
+    {
+        $primerDiaMes = now()->startOfMonth();
+        $ultimoDiaMes = now()->endOfMonth();
 
-        return $pesoPorPlanillero;
+        return Planilla::where('estado', 'pendiente')
+            ->whereBetween('created_at', [$primerDiaMes, $ultimoDiaMes]) // Filtrar solo el mes actual
+            ->with('user:id,name') // Cargar la relación con los usuarios
+            ->select('users_id', DB::raw('DATE(created_at) as fecha'), DB::raw('SUM(peso_total) as peso_importado'))
+            ->groupBy('users_id', 'fecha')
+            ->orderBy('fecha', 'asc')
+            ->get()
+            ->map(function ($planilla) {
+                return (object) [ // Convertimos en objeto para evitar que sea un array
+                    'users_id' => $planilla->users_id,
+                    'name' => optional($planilla->user)->name, // Evitar errores si no hay usuario
+                    'fecha' => $planilla->fecha,
+                    'peso_importado' => $planilla->peso_importado
+                ];
+            });
     }
 }

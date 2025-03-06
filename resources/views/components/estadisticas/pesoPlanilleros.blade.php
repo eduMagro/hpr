@@ -48,67 +48,113 @@
         </div>
     </div>
 </div>
+
 <script>
-    const ctx = document.getElementById('pesoPorUsuarioChart').getContext('2d');
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('pesoPorUsuarioChart').getContext('2d');
 
-    // Asegurarse de que los datos están correctamente pasados
-    const pesoPorUsuarioData = @json($pesoPorPlanillero);
+        // Datos importados desde Laravel
+        const pesoPorUsuarioData = @json($pesoPorPlanilleroPorDia);
 
-    // Verificar los datos en la consola
-    console.log(pesoPorUsuarioData);
+        console.log("Datos recibidos:", pesoPorUsuarioData);
 
-    if (!pesoPorUsuarioData || pesoPorUsuarioData.length === 0) {
-        console.error('No hay datos para la gráfica');
-    } else {
-        // Asegurarnos de que las fechas están en el formato correcto
-        // Convertir las fechas `created_at` a formato ISO 8601 (si es necesario)
-        const fechas = [...new Set(pesoPorUsuarioData.map(planillero => new Date(planillero.created_at)
-    .toISOString()))];
-        const usuarios = [...new Set(pesoPorUsuarioData.map(planillero => planillero.name))];
+        if (!pesoPorUsuarioData || pesoPorUsuarioData.length === 0) {
+            console.error('No hay datos para la gráfica');
+            return;
+        }
 
-        // Inicializar los datasets para cada usuario
-        const datasets = usuarios.map(usuario => {
+        // Obtener la fecha del primer y último día del mes actual
+        const hoy = new Date();
+        const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+        const ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+
+        // Crear una lista con todas las fechas del mes
+        let fechas = [];
+        for (let d = new Date(primerDiaMes); d <= ultimoDiaMes; d.setDate(d.getDate() + 1)) {
+            fechas.push(d.toISOString().split('T')[0]); // YYYY-MM-DD
+        }
+
+        // Agrupar los datos por usuario y fecha
+        let datosUsuarios = {};
+
+        pesoPorUsuarioData.forEach(planillero => {
+            if (!planillero.fecha) {
+                console.warn("Registro con fecha inválida:", planillero);
+                return;
+            }
+
+            const fecha = planillero.fecha;
+            const usuario = planillero.name;
+
+            if (!datosUsuarios[usuario]) {
+                datosUsuarios[usuario] = {};
+            }
+            if (!datosUsuarios[usuario][fecha]) {
+                datosUsuarios[usuario][fecha] = 0;
+            }
+            datosUsuarios[usuario][fecha] += planillero.peso_importado;
+        });
+
+        console.log("Datos agrupados:", datosUsuarios);
+
+        if (Object.keys(datosUsuarios).length === 0) {
+            console.warn("No hay datos procesables para la gráfica.");
+            return;
+        }
+
+        // Función para generar colores con más contraste
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 12)]; // Evita colores demasiado claros
+            }
+            return color;
+        }
+
+        // Preparar los datasets para Chart.js
+        const datasets = Object.keys(datosUsuarios).map(usuario => {
+            let dataValues = fechas.map(fecha => datosUsuarios[usuario][fecha] || 0);
+
+            console.log(`Usuario: ${usuario}, Datos:`, dataValues);
+
             return {
                 label: usuario,
-                data: fechas.map(fecha => {
-                    const entry = pesoPorUsuarioData.find(planillero => planillero.name === usuario &&
-                        new Date(planillero.created_at).toISOString() === fecha);
-                    return entry ? entry.peso_importado : 0;
-                }),
-                borderColor: '#' + Math.floor(Math.random() * 16777215).toString(
-                16), // Color aleatorio para cada línea
+                data: dataValues,
+                borderColor: getRandomColor(),
                 backgroundColor: 'transparent',
                 borderWidth: 2,
-                fill: false
+                fill: false,
+                tension: 0.3 // Hace la línea más suave
             };
         });
 
+        console.log("Datasets:", datasets);
+
         // Configurar la gráfica
         new Chart(ctx, {
-            type: 'line', // Usar tipo "line"
+            type: 'line',
             data: {
-                labels: fechas, // Etiquetas de las fechas
+                labels: fechas,
                 datasets: datasets
             },
             options: {
                 responsive: true,
                 scales: {
                     x: {
-                        type: 'time', // Especificar que el eje X es de tipo tiempo
-                        time: {
-                            unit: 'day', // Ajusta el tipo de unidad de tiempo (puede ser 'day', 'month', etc.)
-                            tooltipFormat: 'll', // Formato para la visualización en el tooltip
-                            displayFormats: {
-                                day: 'MMM D, YYYY', // Formato de las fechas en el gráfico
-                            }
-                        },
+                        type: 'category',
                         title: {
                             display: true,
                             text: 'Fecha'
+                        },
+                        ticks: {
+                            autoSkip: true,
+                            maxTicksLimit: 10
                         }
                     },
                     y: {
                         beginAtZero: true,
+                        suggestedMax: 50000,
                         title: {
                             display: true,
                             text: 'Peso Total Importado (kg)'
@@ -117,5 +163,5 @@
                 }
             }
         });
-    }
+    });
 </script>
