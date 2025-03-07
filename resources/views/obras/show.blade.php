@@ -1,42 +1,77 @@
 <x-app-layout>
-    <x-slot name="title">Detalles de la Obra - {{ $obra->obra }}</x-slot>
+    <x-slot name="title">Detalles de Obra - {{ $obra->obra }}</x-slot>
+    <x-slot name="header">
+        <h2 class="text-lg font-semibold text-gray-800">
+            <a href="{{ route('clientes.show', $obra->cliente_id) }}" class="text-blue-600 hover:underline">
+                {{ __('Cliente') }}
+            </a>
+            <span class="mx-2">/</span>
+            {{ __('Obra: ') }} {{ $obra->obra }}
+        </h2>
+    </x-slot>
 
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
-        <h2 class="text-xl font-bold mb-4">{{ $obra->obra }}</h2>
-
-        <p><strong>Código de Obra:</strong> {{ $obra->cod_obra }}</p>
-        <p><strong>Cliente:</strong> {{ $obra->cliente }}</p>
-        <p><strong>Código Cliente:</strong> {{ $obra->cod_cliente ?? 'N/A' }}</p>
-
-        <p><strong>Latitud:</strong> {{ $obra->latitud }}</p>
-        <p><strong>Longitud:</strong> {{ $obra->longitud }}</p>
-
-        <!-- Mapa de Google -->
-        <div class="mt-4">
-            <h3 class="text-lg font-semibold">Ubicación en Google Maps</h3>
-            <iframe 
-                width="100%" 
-                height="300" 
-                style="border:0;" 
-                loading="lazy" 
-                allowfullscreen 
-                referrerpolicy="no-referrer-when-downgrade"
-                src="https://www.google.com/maps/embed/v1/place?key=TU_API_KEY&q={{ $obra->latitud }},{{ $obra->longitud }}">
-            </iframe>
+    <div class="container mx-auto px-4 py-6">
+        <!-- Información de la Obra -->
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Información de la Obra</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm text-gray-700">
+                <div><span class="font-semibold">Código:</span> {{ $obra->cod_obra }}</div>
+                <div><span class="font-semibold">Ciudad:</span> {{ $obra->ciudad }}</div>
+                <div><span class="font-semibold">Dirección:</span> {{ $obra->direccion }}</div>
+                <div><span class="font-semibold">Estado:</span>
+                    <span class="{{ $obra->completada ? 'text-green-500' : 'text-red-500' }}">
+                        {{ $obra->completada ? 'Completada' : 'Pendiente' }}
+                    </span>
+                </div>
+            </div>
         </div>
 
-        <div class="mt-4">
-            <a href="https://www.google.com/maps?q={{ $obra->latitud }},{{ $obra->longitud }}" 
-               target="_blank" 
-               class="text-blue-500 hover:underline">
-                Abrir en Google Maps
-            </a>
-        </div>
+        <!-- LISTADO DE PLANILLAS -->
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-4">Planillas de la Obra</h3>
 
-        <div class="mt-6 flex justify-end">
-            <a href="{{ route('obras.index') }}" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">
-                Volver
-            </a>
+            @if ($planillas->isEmpty())
+                <p class="text-gray-500">No hay planillas registradas para esta obra.</p>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="w-full border border-gray-300 rounded-lg text-sm">
+                        <thead class="bg-blue-500 text-white">
+                            <tr class="text-left uppercase">
+                                <th class="py-3 px-2 border text-center">ID</th>
+                                <th class="px-2 py-3 text-center border">Fecha</th>
+                                <th class="px-2 py-3 text-center border">Peso Total</th>
+                                <th class="px-2 py-3 text-center border">Estado</th>
+                                <th class="px-2 py-3 text-center border">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-700">
+                            @foreach ($planillas as $planilla)
+                                <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer">
+                                    <td class="px-2 py-3 text-center border">{{ $planilla->id }}</td>
+                                    <td class="px-2 py-3 text-center border">{{ $planilla->fecha }}</td>
+                                    <td class="px-2 py-3 text-center border">
+                                        {{ number_format($planilla->peso_total, 2) }} kg</td>
+                                    <td class="px-2 py-3 text-center border">
+                                        <span
+                                            class="{{ $planilla->estado == 'completada' ? 'text-green-500' : 'text-red-500' }}">
+                                            {{ ucfirst($planilla->estado) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-2 py-3 text-center border">
+                                        <a href="{{ route('planillas.show', $planilla->id) }}"
+                                            class="text-blue-500 hover:underline">Ver</a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                <div class="mt-4">
+                    {{ $planillas->links() }}
+                </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

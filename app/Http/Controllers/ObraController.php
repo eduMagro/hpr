@@ -46,20 +46,25 @@ class ObraController extends Controller
     //     return view('obras.index', compact('obras'));
     // }
 
+    public function show(Obra $obra)
+    {
+        // Cargar la obra con sus planillas asociadas
+        $planillas = $obra->planillas()->paginate(10); // Paginación de 10 planillas por página
 
+        return view('obras.show', compact('obra', 'planillas'));
+    }
     public function create()
     {
         return view('obras.create');
     }
 
-    use App\Models\Obra;
-    use Illuminate\Http\Request;
 
-    public function store(Request $request, $cliente_id)
+    public function store(Request $request)
     {
         $request->validate([
             'obra' => 'required|string|max:255',
             'cod_obra' => 'required|string|max:50|unique:obras,cod_obra',
+            'cliente_id' => 'required|exists:clientes,id', // Validamos que el cliente exista
             'ciudad' => 'nullable|string|max:255',
             'direccion' => 'nullable|string|max:255',
             'latitud' => 'nullable|numeric',
@@ -75,6 +80,9 @@ class ObraController extends Controller
             'cod_obra.max' => 'El código de obra no puede tener más de 50 caracteres.',
             'cod_obra.unique' => 'El código de obra ya está en uso.',
 
+            'cliente_id.required' => 'El cliente es obligatorio.',
+            'cliente_id.exists' => 'El cliente seleccionado no existe.',
+
             'ciudad.string' => 'La ciudad debe ser un texto.',
             'ciudad.max' => 'La ciudad no puede tener más de 255 caracteres.',
 
@@ -87,11 +95,11 @@ class ObraController extends Controller
             'distancia.integer' => 'La distancia debe ser un número entero.',
         ]);
 
-        // Crear la obra con cliente_id automático y completada por defecto en 0
+        // Crear la obra con cliente_id desde el input oculto y completada por defecto en 0
         Obra::create([
             'obra' => $request->obra,
             'cod_obra' => $request->cod_obra,
-            'cliente_id' => $cliente_id, // Se obtiene directamente de la URL
+            'cliente_id' => $request->cliente_id, // Se obtiene del input hidden en el formulario
             'ciudad' => $request->ciudad,
             'direccion' => $request->direccion,
             'latitud' => $request->latitud,
@@ -100,8 +108,9 @@ class ObraController extends Controller
             'completada' => 0, // Siempre será 0 por defecto
         ]);
 
-        return redirect()->route('clientes.show', $cliente_id)->with('success', 'Obra creada correctamente.');
+        return redirect()->route('clientes.show', $request->cliente_id)->with('success', 'Obra creada correctamente.');
     }
+
 
     public function edit(Obra $obra)
     {
@@ -156,6 +165,6 @@ class ObraController extends Controller
     public function destroy(Obra $obra)
     {
         $obra->delete();
-        return redirect()->route('obras.index')->with('success', 'Obra eliminada correctamente.');
+        return redirect()->route('clientes.show')->with('success', 'Obra eliminada correctamente.');
     }
 }

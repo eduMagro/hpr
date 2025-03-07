@@ -45,8 +45,8 @@
                                 <th class="py-3 px-2 border text-center">ID</th>
                                 <th class="px-2 py-3 text-center border">Nombre</th>
                                 <th class="px-2 py-3 text-center border">Código</th>
-                                <th class="px-2 py-3 text-center border">Dirección</th>
                                 <th class="px-2 py-3 text-center border">Ciudad</th>
+                                <th class="px-2 py-3 text-center border">Dirección</th>
                                 <th class="px-2 py-3 text-center border">Fecha Inicio</th>
                                 <th class="px-2 py-3 text-center border">Peso Entregado</th>
                                 <th class="px-2 py-3 text-center border">Estado</th>
@@ -59,8 +59,8 @@
                                     <td class="px-2 py-3 text-center border">{{ $obra->id }}</td>
                                     <td class="px-2 py-3 text-center border">{{ $obra->obra }}</td>
                                     <td class="px-2 py-3 text-center border">{{ $obra->cod_obra }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->direccion }}</td>
                                     <td class="px-2 py-3 text-center border">{{ $obra->ciudad }}</td>
+                                    <td class="px-2 py-3 text-center border">{{ $obra->direccion }}</td>
                                     <td class="px-2 py-3 text-center border">{{ $obra->fecha_inicio }}</td>
                                     <td class="px-2 py-3 text-center border">
                                         {{ number_format($obra->peso_entregado, 2) }} kg
@@ -73,6 +73,7 @@
                                     <td class="px-2 py-3 text-center border">
                                         <a href="{{ route('obras.show', $obra->id) }}"
                                             class="text-blue-500 hover:underline">Ver</a>
+                                        <x-boton-eliminar :action="route('obras.destroy', $obra->id)" />
                                     </td>
                                 </tr>
                             @endforeach
@@ -84,52 +85,67 @@
 
         <!-- MODAL PARA CREAR OBRA -->
         <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" x-show="modalObra"
-            x-transition>
-            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <h3 class="text-xl font-semibold mb-4 text-center">Crear Nueva Obra</h3>
+            x-transition.opacity>
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all scale-95"
+                x-show="modalObra" x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-90">
+
+                <h3 class="text-2xl font-bold mb-6 text-center text-gray-800">Crear Nueva Obra</h3>
 
                 <form action="{{ route('obras.store') }}" method="POST">
                     @csrf
                     <input type="hidden" name="cliente_id" value="{{ $cliente->id }}">
 
                     <!-- Formulario en dos columnas -->
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 gap-6">
                         <div>
-                            <label class="block text-gray-700">Nombre de la Obra</label>
-                            <input type="text" name="obra" class="form-input w-full" required>
+                            <label class="block text-gray-700 font-semibold">Nombre de la Obra</label>
+                            <input type="text" name="obra" class="form-input w-full p-2 border rounded-lg"
+                                required>
                         </div>
                         <div>
-                            <label class="block text-gray-700">Código</label>
-                            <input type="text" name="cod_obra" class="form-input w-full" required>
+                            <label class="block text-gray-700 font-semibold">Código</label>
+                            <input type="text" name="cod_obra" class="form-input w-full p-2 border rounded-lg"
+                                required>
                         </div>
                         <div>
-                            <label class="block text-gray-700">Ciudad</label>
-                            <input type="text" name="ciudad" class="form-input w-full">
+                            <label class="block text-gray-700 font-semibold">Ciudad</label>
+                            <input type="text" name="ciudad" class="form-input w-full p-2 border rounded-lg">
                         </div>
                         <div>
-                            <label class="block text-gray-700">Dirección</label>
-                            <input type="text" name="direccion" class="form-input w-full">
+                            <label class="block text-gray-700 font-semibold">Dirección</label>
+                            <input type="text" name="direccion" class="form-input w-full p-2 border rounded-lg">
                         </div>
                         <div>
-                            <label class="block text-gray-700">Latitud</label>
-                            <input type="text" name="latitud" class="form-input w-full">
+                            <label class="block text-gray-700 font-semibold">Latitud</label>
+                            <input type="text" name="latitud" class="form-input w-full p-2 border rounded-lg">
                         </div>
                         <div>
-                            <label class="block text-gray-700">Longitud</label>
-                            <input type="text" name="longitud" class="form-input w-full">
+                            <label class="block text-gray-700 font-semibold">Longitud</label>
+                            <input type="text" name="longitud" class="form-input w-full p-2 border rounded-lg">
                         </div>
-                        <div>
-                            <label class="block text-gray-700">Radio</label>
-                            <input type="text" name="radio" class="form-input w-full">
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 font-semibold">Radio</label>
+                            <input type="text" name="radio" class="form-input w-full p-2 border rounded-lg">
                         </div>
                     </div>
 
-                    <div class="flex justify-end gap-2 mt-4">
-                        <button type="button" class="btn btn-secondary" @click="modalObra = false">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button"
+                            class="btn bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2 px-4 rounded-lg"
+                            @click="modalObra = false">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="btn bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">
+                            Guardar
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
+
     </div>
 </x-app-layout>
