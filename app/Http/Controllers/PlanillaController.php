@@ -8,6 +8,7 @@ use App\Models\Planilla;
 use App\Models\Elemento;
 use App\Models\Maquina;
 use App\Models\Etiqueta;
+use App\Models\Obra;
 use Illuminate\Support\Facades\DB;
 use App\Imports\PlanillaImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Exception;
+use Illuminate\Support\Str;
 
 class PlanillaController extends Controller
 {
@@ -302,6 +304,23 @@ class PlanillaController extends Controller
                     return $carry + (float) ($row[34] ?? 0);
                 }, 0);
 
+                // Tomar el nom_obra de la primera fila de la planilla (todas son iguales)
+                $nomObra = trim(Str::lower($rows[0][3] ?? ''));
+
+                // Buscar la obra solo una vez por código
+                $obra = Obra::all()->sortByDesc(function ($obra) use ($nomObra) {
+                    similar_text(Str::lower($obra->obra), $nomObra, $percent);
+                    return $percent;
+                })->first();
+
+                // Si no encuentra una obra con un mínimo de 80% de coincidencia, registrar error y saltar la planilla
+                if (!$obra || $obra->obra && similar_text(Str::lower($obra->obra), $nomObra, $percent) < 80) {
+                    DB::rollBack();
+
+                    return redirect()->route('planillas.index')
+                        ->with('error', "La obra '{$rows[0][3]}' no coincide con ninguna obra registrada. Verifica el nombre en el Excel.");
+                }
+
                 // Crear el registro de planilla
                 $planilla = Planilla::create([
                     'users_id' => auth()->id(),
@@ -309,6 +328,7 @@ class PlanillaController extends Controller
                     'cod_cliente' => $rows[0][0] ?? null,
                     'cliente' => $rows[0][1] ?? null,
                     'nom_obra' => $rows[0][3] ?? null,
+                    'obra_id' => $obra->id,
                     'seccion' => $rows[0][7] ?? null,
                     'descripcion' => $rows[0][12] ?? null,
                     'ensamblado' => $rows[0][4] ?? null,

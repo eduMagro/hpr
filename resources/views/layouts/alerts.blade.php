@@ -33,7 +33,7 @@
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: '{{ session('error') }}',
+                text: `{!! session('error') !!}`,
                 confirmButtonColor: '#d33',
                 showCancelButton: true,
                 cancelButtonText: "Reportar a Programador"

@@ -3,7 +3,7 @@
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             <a href="{{ route('clientes.show', $obra->cliente_id) }}" class="text-blue-600 hover:underline">
-                {{ __('Cliente') }}
+                {{ $obra->cliente->empresa }}
             </a>
             <span class="mx-2">/</span>
             {{ __('Obra: ') }} {{ $obra->obra }}
