@@ -38,7 +38,13 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'dni' => ['required', 'string', 'max:9', 'regex:/^\d{8}[A-Z]$/', 'unique:' . User::class], // Validación para DNI
+            'dni' => [
+                'required',
+                'string',
+                'max:9',
+                'regex:/^(?:\d{8}[A-Z]|[XYZ]\d{7}[A-Z])$/', // Soporta DNI y NIE
+                'unique:' . User::class
+            ],
             'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'], // Campo rol
 
             'categoria' => ['string', 'max:255'],

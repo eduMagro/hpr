@@ -397,7 +397,7 @@ class ProfileController extends Controller
         $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
 
         // Definir el inicio y fin del año actual
-        $inicio = Carbon::now()->startOfYear();
+        $inicio = Carbon::now()->addDay()->startOfDay();
         $fin = Carbon::now()->endOfYear();
 
         // Determinar el turno inicial según el tipo de turno del usuario
@@ -424,7 +424,7 @@ class ProfileController extends Controller
 
             AsignacionTurno::updateOrCreate(
                 ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
-                ['turno_id' => $turnoAsignado, 'asignacion_manual' => false, 'modificado' => false]
+                ['turno_id' => $turnoAsignado,]
             );
 
             // Si es diurno, cambiar el turno el viernes para mantener la rotación

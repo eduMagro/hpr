@@ -236,15 +236,18 @@
                                 </td>
                                 <td class="px-2 py-3 text-center border">
                                     <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST"
-                                        id="form-generar-turnos">
+                                        id="form-generar-turnos-{{ $user->id }}">
                                         @csrf
-                                        <button type="submit"
+                                        <input type="hidden" name="turno_inicio"
+                                            id="turno_inicio_{{ $user->id }}">
+                                        <input type="hidden" id="usuario_turno_{{ $user->id }}"
+                                            value="{{ $user->turno }}">
+                                        <button type="button"
                                             class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-1 px-1 rounded"
-                                            onclick="confirmarGenerarTurnos()">
+                                            onclick="confirmarGenerarTurnos({{ $user->id }})">
                                             Generar Turnos
                                         </button>
                                     </form>
-
                                 </td>
                                 <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
                                     <a href="{{ route('users.show', $user->id) }}"
@@ -502,28 +505,35 @@
                 });
         }
         // ---------------------------------------------------- GENERAR TURNOS SWEETALERT
-        function confirmarGenerarTurnos() {
-            Swal.fire({
-                title: "Selecciona el turno inicial",
-                text: "¿Cuál es su primer turno?",
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonText: "Mañana",
-                cancelButtonText: "Tarde",
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33"
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    document.getElementById("turno_inicio").value = "mañana";
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    document.getElementById("turno_inicio").value = "tarde";
-                } else {
-                    return;
-                }
 
-                // Enviar el formulario con la opción seleccionada
-                document.getElementById("form-generar-turnos").submit();
-            });
+        function confirmarGenerarTurnos(userId) {
+            let usuarioTurno = document.getElementById("usuario_turno_" + userId).value;
+
+            if (usuarioTurno === "diurno") {
+                Swal.fire({
+                    title: "Selecciona el turno inicial",
+                    text: "¿Con qué turno quieres comenzar para el turno diurno?",
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Mañana",
+                    cancelButtonText: "Tarde",
+                    confirmButtonColor: "#3085d6",
+                    cancelButtonColor: "#d33"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        document.getElementById("turno_inicio_" + userId).value = "mañana";
+                    } else if (result.dismiss === Swal.DismissReason.cancel) {
+                        document.getElementById("turno_inicio_" + userId).value = "tarde";
+                    } else {
+                        return;
+                    }
+
+                    document.getElementById("form-generar-turnos-" + userId).submit();
+                });
+            } else {
+                // Si el turno no es diurno, simplemente envía el formulario sin preguntar
+                document.getElementById("form-generar-turnos-" + userId).submit();
+            }
         }
     </script>
 </x-app-layout>
