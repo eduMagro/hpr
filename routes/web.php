@@ -24,6 +24,7 @@ use App\Http\Controllers\ObraController;
 use App\Http\Controllers\AsignacionTurnoController;
 use App\Http\Controllers\CamionController;
 use App\Http\Controllers\EmpresaTransporteController;
+use App\Http\Controllers\ClienteController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 
@@ -38,6 +39,10 @@ Route::middleware('auth')->group(function () {
 
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/users/{id}', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+
+
+    Route::resource('clientes', ClienteController::class);
 
 
     // Rutas para el controlador de entradas

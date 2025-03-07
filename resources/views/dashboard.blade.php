@@ -68,11 +68,11 @@
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('obras.index') }}">
+                            <a href="{{ route('clientes.index') }}">
                                 <img width="100" height="100"
                                     src="https://img.icons8.com/?size=100&id=HjcUJuI6Siqo&format=png&color=000000"
                                     alt="terms-and-conditions" />
-                                <span>Obras</span>
+                                <span>Clientes</span>
                             </a>
                         </div>
                         <div class="icon-card">
