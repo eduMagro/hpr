@@ -14,50 +14,49 @@ class UbicacionController extends Controller
     public function index(Request $request)
     {
         try {
-            // Obtener todas las ubicaciones y ordenarlas por sector (descendente) y por ubicación (ascendente)
-            $ubicaciones = Ubicacion::with('productos')
-                ->orderBy('sector', 'desc') // Sectores en orden descendente
-                ->orderBy('ubicacion', 'asc') // Ubicaciones dentro del sector en orden ascendente
+            // Obtener ubicaciones con productos y paquetes, ordenadas por sector y ubicación
+            $ubicaciones = Ubicacion::with(['productos', 'paquetes'])
+                ->orderBy('sector', 'desc')
+                ->orderBy('ubicacion', 'asc')
                 ->get();
 
             // Agrupar por sector
             $ubicacionesPorSector = $ubicaciones->groupBy('sector');
 
-            // Inicializar arrays para los totales
-            $pesoEncarretadoPorDiametro = [];
-            $pesoBarrasPorLongitud = [];
+            // // Inicializar arrays para los totales de productos
+            // $pesoEncarretadoPorDiametro = [];
+            // $pesoBarrasPorLongitud = [];
 
-            // Calcular los pesos totales por tipo de producto
-            foreach ($ubicaciones as $ubicacion) {
-                foreach ($ubicacion->productos as $producto) {
-                    if ($producto->tipo === 'encarretado') {
-                        // Acumular peso por diámetro
-                        if (!isset($pesoEncarretadoPorDiametro[$producto->diametro])) {
-                            $pesoEncarretadoPorDiametro[$producto->diametro] = 0;
-                        }
-                        $pesoEncarretadoPorDiametro[$producto->diametro] += $producto->peso_inicial;
-                    } elseif ($producto->tipo === 'barras') {
-                        // Acumular peso por longitud
-                        if (!isset($pesoBarrasPorLongitud[$producto->longitud])) {
-                            $pesoBarrasPorLongitud[$producto->longitud] = 0;
-                        }
-                        $pesoBarrasPorLongitud[$producto->longitud] += $producto->peso_inicial;
-                    }
-                }
-            }
-            // Ordenar los arrays por clave (menor a mayor)
-            ksort($pesoEncarretadoPorDiametro);
-            ksort($pesoBarrasPorLongitud);
-            // Pasar datos a la vista
+            // // Calcular pesos totales por tipo de producto (materia prima)
+            // foreach ($ubicaciones as $ubicacion) {
+            //     foreach ($ubicacion->productos as $producto) {
+            //         if ($producto->tipo === 'encarretado') {
+            //             if (!isset($pesoEncarretadoPorDiametro[$producto->diametro])) {
+            //                 $pesoEncarretadoPorDiametro[$producto->diametro] = 0;
+            //             }
+            //             $pesoEncarretadoPorDiametro[$producto->diametro] += $producto->peso_inicial;
+            //         } elseif ($producto->tipo === 'barras') {
+            //             if (!isset($pesoBarrasPorLongitud[$producto->longitud])) {
+            //                 $pesoBarrasPorLongitud[$producto->longitud] = 0;
+            //             }
+            //             $pesoBarrasPorLongitud[$producto->longitud] += $producto->peso_inicial;
+            //         }
+            //     }
+            // }
+
+            // // Ordenar los arrays por clave (menor a mayor)
+            // ksort($pesoEncarretadoPorDiametro);
+            // ksort($pesoBarrasPorLongitud);
+
+            // Pasar todos los datos necesarios a la vista
             return view('ubicaciones.index', [
-                'ubicacionesPorSector' => $ubicacionesPorSector,
-                'pesoEncarretadoPorDiametro' => $pesoEncarretadoPorDiametro,
-                'pesoBarrasPorLongitud' => $pesoBarrasPorLongitud,
+                'ubicacionesPorSector' => $ubicacionesPorSector
             ]);
         } catch (Exception $e) {
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
     //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
@@ -129,12 +128,13 @@ class UbicacionController extends Controller
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
     {
-        // Encuentra la planilla por ID y carga las relaciones necesarias (elementos y sus máquinas)
-        $ubicacion = Ubicacion::findOrFail($id);
+        // Encuentra la ubicación por ID con relaciones 'productos' y 'paquetes'
+        $ubicacion = Ubicacion::with(['productos', 'paquetes'])->findOrFail($id);
 
-        // Retorna la vista con la planilla y sus elementos
+        // Retorna la vista con la ubicación y sus relaciones
         return view('ubicaciones.show', compact('ubicacion'));
     }
+
 
     // Mostrar el formulario para editar una ubicación existente
     public function edit($id)

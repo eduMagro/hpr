@@ -14,7 +14,6 @@ use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\MaquinaController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\PlanillaController;
-use App\Http\Controllers\ConjuntoController;
 use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\EtiquetaController;
@@ -57,6 +56,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
 
     Route::resource('ubicaciones', UbicacionController::class);
+    Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
 
     //USUARIOS
     Route::resource('users', ProfileController::class);
@@ -80,7 +80,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');
-    Route::resource('conjuntos', ConjuntoController::class);
+
     Route::resource('elementos', ElementoController::class);
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
         ->name('elementosEtiquetas');

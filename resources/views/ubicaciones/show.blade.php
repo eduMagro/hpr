@@ -12,18 +12,20 @@
         <h4 class="text-xl text-gray-700 text-center mb-6">{{ $ubicacion->codigo }}</h4>
 
         <div class="bg-white shadow-md rounded-lg p-6">
-            <p class="mb-4">
 
-                <button onclick="generateAndPrintQR('{{ $ubicacion->id }}', '{{ $ubicacion->nombre }}', 'UBICACIÓN')"
-                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                    QR
-                </button>
+            <button onclick="generateAndPrintQR('{{ $ubicacion->id }}', '{{ $ubicacion->nombre }}', 'UBICACIÓN')"
+                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                QR
+            </button>
 
             <div id="qrCanvas" style="display:none;"></div>
-            <h3 class="text-xl font-semibold mb-3">Productos en esta Ubicación</h3>
+
+            <h3 class="text-xl font-semibold mb-3">Materia prima en esta Ubicación</h3>
 
             @if ($ubicacion->productos->isEmpty())
-                <p class="text-gray-500 italic">No hay productos en esta ubicación.</p>
+                <p class="text-gray-500 italic">
+                    No hay materia prima en esta ubicación.
+                </p>
             @else
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     @foreach ($ubicacion->productos as $producto)
@@ -46,7 +48,28 @@
                             </a>
                         </div>
                     @endforeach
+                </div>
+            @endif
 
+            <h3 class="text-xl font-semibold mb-3 mt-6">Paquetes en esta Ubicación</h3>
+
+            @if ($ubicacion->paquetes->isEmpty())
+                <p class="text-gray-500 italic">
+                    No hay paquetes en esta ubicación.
+                </p>
+            @else
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    @foreach ($ubicacion->paquetes as $paquete)
+                        <div class="bg-gray-100 p-4 rounded-lg shadow">
+                            <h3 class="font-bold text-lg text-gray-700">ID Paquete: {{ $paquete->id }}</h3>
+                            <p><strong>Planilla:</strong> {{ $paquete->planilla->codigo_limpio }}</p>
+                            <p><strong>Peso:</strong> {{ number_format($paquete->peso, 2) }} kg</p>
+                            <a href="{{ route('paquetes.index', ['id' => $paquete->id ?? '#']) }}"
+                                class="mt-2 inline-block bg-green-500 text-white text-xs px-3 py-1 rounded-md hover:bg-green-600 transition">
+                                Ver
+                            </a>
+                        </div>
+                    @endforeach
                 </div>
             @endif
         </div>
@@ -56,6 +79,7 @@
                 class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition">Volver</a>
         </div>
     </div>
+
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="{{ asset('js/imprimirQr.js') }}"></script>

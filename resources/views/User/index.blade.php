@@ -421,6 +421,8 @@
                                             text: mensaje,
                                             icon: data.warning ? "warning" : "success",
                                             showConfirmButton: true
+                                        }).then(() => {
+                                            window.location.reload();
                                         });
                                     } else {
                                         let errorMessage = data.error;
