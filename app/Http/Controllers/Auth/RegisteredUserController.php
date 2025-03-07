@@ -41,11 +41,9 @@ class RegisteredUserController extends Controller
             'dni' => ['required', 'string', 'max:9', 'regex:/^\d{8}[A-Z]$/', 'unique:' . User::class], // Validación para DNI
             'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'], // Campo rol
 
-            'categoria' => ['required', 'string', 'max:255'],
+            'categoria' => ['string', 'max:255'],
 
-            'turno' => ['required', 'string', 'max:255', 'in:diurno,nocturno,mañana,flexible'], // Campo turno añadido
-
-            'turno_actual' => ['nullable', 'string', 'max:50', 'in:mañana,tarde'], // Campo turno añadido
+            'turno' => ['string', 'max:255', 'in:diurno,nocturno,mañana,flexible'], // Campo turno añadido
 
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
@@ -71,26 +69,20 @@ class RegisteredUserController extends Controller
             'rol.max' => 'El rol no puede superar los 255 caracteres.',
             'rol.in' => 'El rol debe ser uno de los siguientes: operario, oficina o visitante.',
 
-            'categoria.required' => 'La categoría es obligatoria.',
             'categoria.string' => 'La categoría debe ser un texto válido.',
             'categoria.max' => 'La categoría no puede superar los 255 caracteres.',
 
-            'turno.required' => 'El turno es obligatorio.',
             'turno.string' => 'El turno debe ser un texto válido.',
             'turno.max' => 'El turno no puede superar los 255 caracteres.',
             'turno.in' => 'El turno debe ser uno de los siguientes: diurno, nocturno, mañana o flexible.',
-
-            'turno_actual.string' => 'El turno debe ser un texto válido.',
-            'turno_actual.max' => 'El turno no puede superar los 50 caracteres.',
-            'turno_actual.in' => 'El turno debe ser uno de los siguientes: mañana o tarde.',
 
             'password.required' => 'La contraseña es obligatoria.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
         // Calcular los días de vacaciones disponibles
-        $diasVacaciones = $this->calcularVacaciones();
-        $turno_actual = Turno::where('nombre', $request->turno_actual)->value('id');
+        // $diasVacaciones = $this->calcularVacaciones();
+        $diasVacaciones = 28;
 
         $user = User::create([
             'name' => $request->name,
@@ -99,7 +91,6 @@ class RegisteredUserController extends Controller
             'rol' => $request->rol,
             'categoria' => $request->categoria,
             'turno' => $request->turno,
-            'turno_actual' => $turno_actual,
             'dias_vacaciones' => $diasVacaciones,
             'password' => Hash::make($request->password),
         ]);

@@ -101,6 +101,7 @@ class ProfileController extends Controller
         // Aplicar filtros
         $query = $this->aplicarFiltros($request);
 
+
         $registrosUsuarios = $query->paginate(10)->appends($request->except('page'));
         // Obtener el usuario autenticado
         $user = auth()->user();
@@ -337,9 +338,9 @@ class ProfileController extends Controller
                 'name' => 'required|string|max:50',
                 'email' => 'required|email|max:255|unique:users,email,' . $id,
                 'rol' => 'required|string|max:50',
-                'categoria' => 'required|string|max:50',
+                'categoria' => 'nullable|string|max:50',
                 'especialidad' => 'nullable|string|max:15',
-                'turno' => 'nullable|string|in:nocturno,diurno,flexible'
+                'turno' => 'nullable|string|in:nocturno,diurno,flexible',
             ], [
                 'name.required' => 'El nombre es obligatorio.',
                 'name.string' => 'El nombre debe ser un texto válido.',
@@ -354,14 +355,13 @@ class ProfileController extends Controller
                 'rol.string' => 'El rol debe ser un texto válido.',
                 'rol.max' => 'El rol no puede superar los 50 caracteres.',
 
-                'categoria.required' => 'La categoría es obligatoria.',
                 'categoria.string' => 'La categoría debe ser un texto válido.',
                 'categoria.max' => 'La categoría no puede superar los 255 caracteres.',
 
                 'especialidad.string' => 'La especialidad debe ser un texto válido.',
 
                 'turno.string' => 'El turno debe ser un texto válido.',
-                'turno.in' => 'El turno debe ser "mañana", "tarde", "noche" o "flexible".'
+                'turno.in' => 'El turno debe ser "mañana", "tarde", "noche" o "flexible".',
             ]);
 
             // Buscar el usuario
@@ -377,7 +377,8 @@ class ProfileController extends Controller
                 'rol' => $request->rol,
                 'categoria' => $request->categoria,
                 'especialidad' => $request->especialidad,
-                'turno' => $request->turno
+                'turno' => $request->turno,
+
             ]);
 
             return response()->json(['success' => 'Usuario actualizado correctamente.']);
@@ -399,9 +400,14 @@ class ProfileController extends Controller
         $inicio = Carbon::now()->startOfYear();
         $fin = Carbon::now()->endOfYear();
 
-        // Determinar el turno asignado según el tipo de turno del usuario
+        // Determinar el turno inicial según el tipo de turno del usuario
         if ($user->turno == 'diurno') {
-            $turnoAsignado = ($user->turno_actual == 1) ? $turnoMañanaId : $turnoTardeId;
+            // Preguntar con qué turno quiere comenzar
+            $turnoInicial = request()->input('turno_inicio');
+            if (!in_array($turnoInicial, ['mañana', 'tarde'])) {
+                return redirect()->back()->with('error', 'Debe seleccionar un turno válido para comenzar (mañana o tarde).');
+            }
+            $turnoAsignado = ($turnoInicial == 'mañana') ? $turnoMañanaId : $turnoTardeId;
         } elseif ($user->turno == 'nocturno') {
             $turnoAsignado = $turnoNocheId;
         } elseif ($user->turno == 'mañana') {
@@ -429,6 +435,7 @@ class ProfileController extends Controller
 
         return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}.");
     }
+
 
     public function destroy(Request $request, $id)
     {

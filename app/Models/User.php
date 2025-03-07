@@ -63,10 +63,10 @@ class User extends Authenticatable
     public function alertasLeidas()
     {
         return $this->belongsToMany(Alerta::class, 'alertas_users')
-                    ->withPivot('leida_en')
-                    ->withTimestamps();
+            ->withPivot('leida_en')
+            ->withTimestamps();
     }
-    
+
 
     // Relación: Un usuario tiene muchas entradas
     public function entradas()

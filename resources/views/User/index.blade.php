@@ -227,7 +227,6 @@
                                         <option value="flexible">Flexible</option>
                                     </select>
                                 </td>
-
                                 <td class="px-2 py-3 text-center border">
                                     @if ($user->isOnline())
                                         <span class="text-green-600">En línea</span>
@@ -236,13 +235,16 @@
                                     @endif
                                 </td>
                                 <td class="px-2 py-3 text-center border">
-                                    <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST">
+                                    <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST"
+                                        id="form-generar-turnos">
                                         @csrf
                                         <button type="submit"
-                                            class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-1 px-1 rounded">
+                                            class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-1 px-1 rounded"
+                                            onclick="confirmarGenerarTurnos()">
                                             Generar Turnos
                                         </button>
                                     </form>
+
                                 </td>
                                 <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
                                     <a href="{{ route('users.show', $user->id) }}"
@@ -498,6 +500,30 @@
                         confirmButtonText: "OK"
                     });
                 });
+        }
+        // ---------------------------------------------------- GENERAR TURNOS SWEETALERT
+        function confirmarGenerarTurnos() {
+            Swal.fire({
+                title: "Selecciona el turno inicial",
+                text: "¿Cuál es su primer turno?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Mañana",
+                cancelButtonText: "Tarde",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById("turno_inicio").value = "mañana";
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    document.getElementById("turno_inicio").value = "tarde";
+                } else {
+                    return;
+                }
+
+                // Enviar el formulario con la opción seleccionada
+                document.getElementById("form-generar-turnos").submit();
+            });
         }
     </script>
 </x-app-layout>
