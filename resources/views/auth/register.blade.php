@@ -19,6 +19,14 @@
                 <x-input-error :messages="$errors->get('name')" class="mt-2 text-red-500 text-sm" />
             </div>
 
+            <!-- DNI -->
+            <div>
+                <label for="dni" class="block text-gray-700 font-semibold">DNI</label>
+                <input id="dni" type="text" name="dni"
+                    class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 py-3 px-4 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200"
+                    value="{{ old('dni') }}" required autocomplete="dni">
+                <x-input-error :messages="$errors->get('dni')" class="mt-2 text-red-500 text-sm" />
+            </div>
             <!-- Correo Electrónico -->
             <div>
                 <label for="email" class="block text-gray-700 font-semibold">Correo Electrónico</label>
@@ -98,7 +106,8 @@
 
             <!-- Confirmar Contraseña -->
             <div>
-                <label for="password_confirmation" class="block text-gray-700 font-semibold">Confirmar Contraseña</label>
+                <label for="password_confirmation" class="block text-gray-700 font-semibold">Confirmar
+                    Contraseña</label>
                 <input id="password_confirmation" type="password" name="password_confirmation"
                     class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 py-3 px-4 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200"
                     required autocomplete="new-password">

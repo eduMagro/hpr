@@ -43,7 +43,7 @@ class RegisteredUserController extends Controller
 
             'categoria' => ['required', 'string', 'max:255'],
 
-            'turno' => ['required', 'string', 'max:255', 'in:diurno,nocturno,flexible'], // Campo turno añadido
+            'turno' => ['required', 'string', 'max:255', 'in:diurno,nocturno,mañana,flexible'], // Campo turno añadido
 
             'turno_actual' => ['nullable', 'string', 'max:50', 'in:mañana,tarde'], // Campo turno añadido
 
@@ -72,7 +72,7 @@ class RegisteredUserController extends Controller
             'turno.required' => 'El turno es obligatorio.',
             'turno.string' => 'El turno debe ser un texto válido.',
             'turno.max' => 'El turno no puede superar los 255 caracteres.',
-            'turno.in' => 'El turno debe ser uno de los siguientes: diurno, nocturno o flexible.',
+            'turno.in' => 'El turno debe ser uno de los siguientes: diurno, nocturno, mañana o flexible.',
 
             'turno_actual.string' => 'El turno debe ser un texto válido.',
             'turno_actual.max' => 'El turno no puede superar los 50 caracteres.',
@@ -89,6 +89,7 @@ class RegisteredUserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'dni' => $request->dni,
             'rol' => $request->rol,
             'categoria' => $request->categoria,
             'turno' => $request->turno,

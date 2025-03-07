@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -18,7 +19,7 @@ class GenerarTurnosAnuales extends Command
         foreach ($usuarios as $user) {
             $this->generarTurnos($user);
         }
-        
+
         $this->info("✅ Turnos generados correctamente respetando la rotación individual de cada trabajador.");
     }
 
@@ -30,11 +31,13 @@ class GenerarTurnosAnuales extends Command
 
         $inicio = Carbon::now()->startOfYear();
         $fin = Carbon::now()->endOfYear();
-        
+
         if ($user->turno == 'diurno') {
             $turnoAsignado = ($user->turno_actual == 1) ? $turnoMañanaId : $turnoTardeId;
         } elseif ($user->turno == 'nocturno') {
             $turnoAsignado = $turnoNocheId;
+        } elseif ($user->turno == 'mañana') {
+            $turnoAsignado = $turnoMañanaId;
         } else {
             return; // No asignar turno si no es diurno o nocturno
         }

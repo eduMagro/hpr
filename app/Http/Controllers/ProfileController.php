@@ -404,6 +404,8 @@ class ProfileController extends Controller
             $turnoAsignado = ($user->turno_actual == 1) ? $turnoMañanaId : $turnoTardeId;
         } elseif ($user->turno == 'nocturno') {
             $turnoAsignado = $turnoNocheId;
+        } elseif ($user->turno == 'mañana') {
+            $turnoAsignado = $turnoMañanaId;
         } else {
             return redirect()->back()->with('error', 'El usuario no tiene un turno asignado.');
         }
