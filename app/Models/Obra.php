@@ -15,6 +15,8 @@ class Obra extends Model
         'obra',
         'cod_obra',
         'cliente_id',
+        'ciudad',
+        'direccion',
         'completada',
         'latitud',
         'longitud',

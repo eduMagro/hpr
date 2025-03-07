@@ -3,10 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\SalidaPaquete;
+use Illuminate\Support\Collection;
+
+use App\Models\Obra;
 use Illuminate\Http\Request;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+
 
 class ClienteController extends Controller
 {
@@ -80,10 +86,32 @@ class ClienteController extends Controller
         return redirect()->route('clientes.index')->with('success', 'Cliente creado correctamente.');
     }
 
+
+    private function getPesoEntregadoPorObra($clienteId): Collection
+    {
+        return SalidaPaquete::whereHas('paquete.planilla.obra', function ($query) use ($clienteId) {
+            $query->where('cliente_id', $clienteId);
+        })
+            ->with('paquete.planilla.obra') // Cargar la relación hasta obra
+            ->get()
+            ->groupBy('paquete.planilla.obra_id') // Agrupar por obra
+            ->map(fn($salidas) => $salidas->sum('peso_total')); // Sumar el peso entregado por obra
+    }
     public function show(Cliente $cliente)
     {
-        return view('clientes.show', compact('cliente'));
+        // Obtener el peso total entregado por cada obra del cliente
+        $pesoPorObra = $this->getPesoEntregadoPorObra($cliente->id);
+
+        // Cargar las obras del cliente y añadir el peso entregado
+        $obras = $cliente->obras->map(function ($obra) use ($pesoPorObra) {
+            $obra->peso_entregado = $pesoPorObra[$obra->id] ?? 0;
+            return $obra;
+        });
+
+        return view('clientes.show', compact('cliente', 'obras'));
     }
+
+
 
     public function edit(Cliente $cliente)
     {

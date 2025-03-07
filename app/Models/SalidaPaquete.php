@@ -15,7 +15,6 @@ class SalidaPaquete extends Model
     // Si esta tabla es de relación muchos a muchos, no necesitamos definir "fillable" si no se insertan directamente
     protected $fillable = [
         'salida_id',
-        'planilla_id',
         'paquete_id',
     ];
 
@@ -23,10 +22,6 @@ class SalidaPaquete extends Model
     public function salida()
     {
         return $this->belongsTo(Salida::class);
-    }
-    public function planilla()
-    {
-        return $this->belongsTo(Planilla::class);
     }
 
     public function paquete()

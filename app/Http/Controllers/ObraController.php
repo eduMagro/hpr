@@ -52,13 +52,16 @@ class ObraController extends Controller
         return view('obras.create');
     }
 
-    public function store(Request $request)
+    use App\Models\Obra;
+    use Illuminate\Http\Request;
+
+    public function store(Request $request, $cliente_id)
     {
         $request->validate([
             'obra' => 'required|string|max:255',
             'cod_obra' => 'required|string|max:50|unique:obras,cod_obra',
-            'cliente' => 'required|string|max:255',
-            'cod_cliente' => 'nullable|string|max:50',
+            'ciudad' => 'nullable|string|max:255',
+            'direccion' => 'nullable|string|max:255',
             'latitud' => 'nullable|numeric',
             'longitud' => 'nullable|numeric',
             'distancia' => 'nullable|integer',
@@ -72,12 +75,11 @@ class ObraController extends Controller
             'cod_obra.max' => 'El código de obra no puede tener más de 50 caracteres.',
             'cod_obra.unique' => 'El código de obra ya está en uso.',
 
-            'cliente.required' => 'El nombre del cliente es obligatorio.',
-            'cliente.string' => 'El nombre del cliente debe ser un texto.',
-            'cliente.max' => 'El nombre del cliente no puede tener más de 255 caracteres.',
+            'ciudad.string' => 'La ciudad debe ser un texto.',
+            'ciudad.max' => 'La ciudad no puede tener más de 255 caracteres.',
 
-            'cod_cliente.string' => 'El código del cliente debe ser un texto.',
-            'cod_cliente.max' => 'El código del cliente no puede tener más de 50 caracteres.',
+            'direccion.string' => 'La dirección debe ser un texto.',
+            'direccion.max' => 'La dirección no puede tener más de 255 caracteres.',
 
             'latitud.numeric' => 'La latitud debe ser un valor numérico.',
             'longitud.numeric' => 'La longitud debe ser un valor numérico.',
@@ -85,9 +87,20 @@ class ObraController extends Controller
             'distancia.integer' => 'La distancia debe ser un número entero.',
         ]);
 
+        // Crear la obra con cliente_id automático y completada por defecto en 0
+        Obra::create([
+            'obra' => $request->obra,
+            'cod_obra' => $request->cod_obra,
+            'cliente_id' => $cliente_id, // Se obtiene directamente de la URL
+            'ciudad' => $request->ciudad,
+            'direccion' => $request->direccion,
+            'latitud' => $request->latitud,
+            'longitud' => $request->longitud,
+            'distancia' => $request->distancia,
+            'completada' => 0, // Siempre será 0 por defecto
+        ]);
 
-        Obra::create($request->all());
-        return redirect()->route('obras.index')->with('success', 'Obra creada correctamente.');
+        return redirect()->route('clientes.show', $cliente_id)->with('success', 'Obra creada correctamente.');
     }
 
     public function edit(Obra $obra)
