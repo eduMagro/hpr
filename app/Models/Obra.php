@@ -14,8 +14,7 @@ class Obra extends Model
     protected $fillable = [
         'obra',
         'cod_obra',
-        'cliente',
-        'cod_cliente',
+        'cliente_id',
         'completada',
         'latitud',
         'longitud',
@@ -25,5 +24,10 @@ class Obra extends Model
     public function planillas()
     {
         return $this->hasMany(Planilla::class);
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class, 'cliente_id');
     }
 }

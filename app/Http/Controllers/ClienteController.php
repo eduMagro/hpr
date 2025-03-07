@@ -4,15 +4,62 @@ namespace App\Http\Controllers;
 
 use App\Models\Cliente;
 use Illuminate\Http\Request;
+use Exception;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class ClienteController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Obtener clientes con sus obras relacionadas
-        $clientes = Cliente::with('obras')->get();
+        // Obtener clientes aplicando filtros
+        $clientes = $this->aplicarFiltros($request);
 
-        return view('obras.index', compact('clientes'));
+        return view('clientes.index', compact('clientes'));
+    }
+
+    /**
+     * Aplica filtros a la consulta de clientes según los parámetros de la solicitud.
+     */
+    private function aplicarFiltros(Request $request)
+    {
+        // Iniciar la consulta con las relaciones necesarias
+        $query = Cliente::with('obras');
+
+        // Aplicar filtros si están presentes en la solicitud
+        if ($request->filled('empresa')) {
+            $query->where('empresa', 'like', '%' . $request->empresa . '%');
+        }
+        if ($request->filled('codigo')) {
+            $query->where('codigo', 'like', '%' . $request->codigo . '%');
+        }
+        if ($request->filled('telefono')) {
+            $query->where('contacto1_telefono', 'like', '%' . $request->telefono . '%');
+        }
+        if ($request->filled('email')) {
+            $query->where('contacto1_email', 'like', '%' . $request->email . '%');
+        }
+        if ($request->filled('ciudad')) {
+            $query->where('ciudad', 'like', '%' . $request->ciudad . '%');
+        }
+        if ($request->filled('provincia')) {
+            $query->where('provincia', 'like', '%' . $request->provincia . '%');
+        }
+        if ($request->filled('pais')) {
+            $query->where('pais', 'like', '%' . $request->pais . '%');
+        }
+        if ($request->filled('cif_nif')) {
+            $query->where('cif_nif', 'like', '%' . $request->cif_nif . '%');
+        }
+        if ($request->filled('activo')) {
+            $query->where('activo', $request->activo);
+        }
+
+        // Obtener número de registros por página, por defecto 10
+        $perPage = $request->get('per_page', 10);
+
+        // Devolver clientes paginados con los filtros aplicados
+        return $query->paginate($perPage);
     }
 
 
@@ -45,16 +92,34 @@ class ClienteController extends Controller
 
     public function update(Request $request, Cliente $cliente)
     {
-        $request->validate([
-            'empresa' => 'required|max:255|unique:clientes,empresa,' . $cliente->id,
-            'codigo' => 'required|max:50|unique:clientes,codigo,' . $cliente->id,
-        ]);
+        try {
+            $request->validate([
+                'empresa' => 'required|max:255|unique:clientes,empresa,' . $cliente->id,
+                'codigo' => 'required|max:50|unique:clientes,codigo,' . $cliente->id,
+                'contacto1_nombre' => 'nullable|max:255',
+                'contacto1_telefono' => 'nullable|max:20',
+                'contacto1_email' => 'nullable|email|max:255',
+                'contacto2_nombre' => 'nullable|max:255',
+                'contacto2_telefono' => 'nullable|max:20',
+                'contacto2_email' => 'nullable|email|max:255',
+                'direccion' => 'nullable|max:255',
+                'ciudad' => 'nullable|max:100',
+                'provincia' => 'nullable|max:100',
+                'pais' => 'nullable|max:100',
+                'cif_nif' => 'nullable|max:50|unique:clientes,cif_nif,' . $cliente->id,
+                'activo' => 'required|boolean',
+            ]);
 
-        $cliente->update($request->all());
+            // Actualizar los datos del cliente
+            $cliente->update($request->all());
 
-        return redirect()->route('clientes.index')->with('success', 'Cliente actualizado correctamente.');
+            return response()->json(['success' => 'Usuario actualizado correctamente.']);
+        } catch (ValidationException $e) {
+            return response()->json(['error' => $e->errors()], 422);
+        } catch (Exception $e) {
+            return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
+        }
     }
-
     public function destroy(Cliente $cliente)
     {
         $cliente->delete();
