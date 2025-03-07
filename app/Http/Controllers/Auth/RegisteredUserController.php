@@ -38,7 +38,7 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-
+            'dni' => ['required', 'string', 'max:9', 'regex:/^\d{8}[A-Z]$/', 'unique:' . User::class], // Validación para DNI
             'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'], // Campo rol
 
             'categoria' => ['required', 'string', 'max:255'],
@@ -59,6 +59,12 @@ class RegisteredUserController extends Controller
             'email.email' => 'Debe ingresar un correo electrónico válido.',
             'email.max' => 'El correo electrónico no puede superar los 255 caracteres.',
             'email.unique' => 'Este correo electrónico ya está registrado.',
+
+            'dni.required' => 'El DNI es obligatorio.',
+            'dni.string' => 'El DNI debe ser un texto válido.',
+            'dni.max' => 'El DNI no puede superar los 9 caracteres.',
+            'dni.regex' => 'El DNI debe tener el formato correcto (8 números seguidos de una letra).',
+            'dni.unique' => 'Este DNI ya está registrado.',
 
             'rol.required' => 'El rol es obligatorio.',
             'rol.string' => 'El rol debe ser un texto válido.',
