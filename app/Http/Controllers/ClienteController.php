@@ -36,6 +36,13 @@ class ClienteController extends Controller
         if ($request->filled('empresa')) {
             $query->where('empresa', 'like', '%' . $request->empresa . '%');
         }
+        // Filtrar por obra (buscando en la relación 'obras')
+        if ($request->filled('obra')) {
+            $query->whereHas('obras', function ($q) use ($request) {
+                $q->where('obra', 'like', '%' . $request->obra . '%');
+            });
+        }
+
         if ($request->filled('codigo')) {
             $query->where('codigo', 'like', '%' . $request->codigo . '%');
         }

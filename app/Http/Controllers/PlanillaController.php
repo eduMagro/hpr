@@ -307,19 +307,19 @@ class PlanillaController extends Controller
                 // Tomar el nom_obra de la primera fila de la planilla (todas son iguales)
                 $nomObra = trim(Str::lower($rows[0][3] ?? ''));
 
-                // Buscar la obra solo una vez por código
-                $obra = Obra::all()->sortByDesc(function ($obra) use ($nomObra) {
-                    similar_text(Str::lower($obra->obra), $nomObra, $percent);
-                    return $percent;
-                })->first();
+                // Buscar la obra ignorando mayúsculas/minúsculas y espacios extras
+                $obra = Obra::whereRaw('LOWER(TRIM(obra)) = ?', [$nomObra])->first();
 
-                // Si no encuentra una obra con un mínimo de 80% de coincidencia, registrar error y saltar la planilla
-                if (!$obra || $obra->obra && similar_text(Str::lower($obra->obra), $nomObra, $percent) < 80) {
+                // Log para verificar la comparación
+                Log::info("Comparando: '$nomObra' con '" . ($obra ? $obra->obra : 'Ninguna obra encontrada') . "'");
+
+                // Si no encuentra la obra, cancelar la importación
+                if (!$obra) {
                     DB::rollBack();
-
                     return redirect()->route('planillas.index')
                         ->with('error', "La obra '{$rows[0][3]}' no coincide con ninguna obra registrada. Verifica el nombre en el Excel.");
                 }
+
 
                 // Crear el registro de planilla
                 $planilla = Planilla::create([

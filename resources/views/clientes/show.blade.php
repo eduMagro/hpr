@@ -47,6 +47,9 @@
                                 <th class="px-2 py-3 text-center border">Código</th>
                                 <th class="px-2 py-3 text-center border">Ciudad</th>
                                 <th class="px-2 py-3 text-center border">Dirección</th>
+                                <th class="px-2 py-3 text-center border">Latitud</th>
+                                <th class="px-2 py-3 text-center border">Longitud</th>
+                                <th class="px-2 py-3 text-center border">Radio</th>
                                 <th class="px-2 py-3 text-center border">Fecha Inicio</th>
                                 <th class="px-2 py-3 text-center border">Peso Entregado</th>
                                 <th class="px-2 py-3 text-center border">Estado</th>
@@ -61,6 +64,9 @@
                                     <td class="px-2 py-3 text-center border">{{ $obra->cod_obra }}</td>
                                     <td class="px-2 py-3 text-center border">{{ $obra->ciudad }}</td>
                                     <td class="px-2 py-3 text-center border">{{ $obra->direccion }}</td>
+                                    <td class="px-2 py-3 text-center border">{{ $obra->latitud }}</td>
+                                    <td class="px-2 py-3 text-center border">{{ $obra->longitud }}</td>
+                                    <td class="px-2 py-3 text-center border">{{ $obra->distancia }}</td>
                                     <td class="px-2 py-3 text-center border">{{ $obra->fecha_inicio }}</td>
                                     <td class="px-2 py-3 text-center border">
                                         {{ number_format($obra->peso_entregado, 2) }} kg

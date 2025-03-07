@@ -26,6 +26,11 @@
                             value="{{ request('empresa') }}">
                     </div>
                     <div class="col-md-3">
+                        <!-- Filtro: Obra -->
+                        <input type="text" name="obra" class="form-control" placeholder="Buscar por obra"
+                            value="{{ request('obra') }}">
+                    </div>
+                    <div class="col-md-3">
                         <!-- Filtro: Código -->
                         <input type="text" name="codigo" class="form-control" placeholder="Buscar por código"
                             value="{{ request('codigo') }}">
