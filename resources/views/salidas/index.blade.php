@@ -7,7 +7,7 @@
     </x-slot>
 
     <div class="container mx-auto p-4 sm:p-6">
-        @if (auth()->user()->categoria == 'administrador')
+        @if (auth()->user()->rol == 'oficina')
             <!-- Botón para crear nueva salida -->
             <div class="mb-4 flex justify-end">
                 <a href="{{ route('salidas.create') }}"
