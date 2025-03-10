@@ -340,7 +340,7 @@ class ProfileController extends Controller
                 'rol' => 'required|string|max:50',
                 'categoria' => 'nullable|string|max:50',
                 'especialidad' => 'nullable|string|max:15',
-                'turno' => 'nullable|string|in:nocturno,diurno,flexible',
+                'turno' => 'nullable|string|in:nocturno,diurno,mañana,flexible',
             ], [
                 'name.required' => 'El nombre es obligatorio.',
                 'name.string' => 'El nombre debe ser un texto válido.',
