@@ -2,6 +2,10 @@
     <x-slot name="title">Crear Usuario - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-2xl text-gray-800 leading-tight">
+            <a href="{{ route('users.index') }}" class="text-blue-600">
+                {{ __('Usuarios') }}
+            </a>
+            <span class="mx-2">/</span>
             {{ __('Crear Usuario') }}
         </h2>
     </x-slot>
