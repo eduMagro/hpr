@@ -149,6 +149,5 @@
             const csrfToken = '{{ csrf_token() }}';
             const guardarSesionUrl = '{{ route('maquinas.sesion.guardar') }}';
         </script>
-        <script src="{{ asset('js/seleccionarCompañero.js') }}"></script>
-
+        <script src="{{ asset('js/seleccionarCompa.js') }}"></script>¡'
 </x-app-layout>
