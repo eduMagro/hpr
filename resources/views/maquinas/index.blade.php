@@ -144,9 +144,11 @@
         <!-- SCRIPT PARA IMPRIMIR QR -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script src="{{ asset('js/imprimirQr.js') }}"></script>
-        <script src="{{ asset('js/maquinaJs/selecccionarCompañero.js') }}"></script>
         <script>
             const usuarios = @json($usuarios);
+            const csrfToken = '{{ csrf_token() }}';
+            const guardarSesionUrl = '{{ route('maquinas.sesion.guardar') }}';
         </script>
+        <script src="{{ asset('js/seleccionarCompañero.js') }}"></script>
 
 </x-app-layout>
