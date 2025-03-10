@@ -5,35 +5,37 @@
         </h2>
 
     </x-slot>
-
+    @php
+        $esOperario = auth()->user()->rol == 'operario';
+    @endphp
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="icon-container">
                         <div class="icon-card">
-                            <a href="{{ route('productos.index') }}">
+                            <a href="{{ route('productos.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/?size=100&id=nY1AjCB9y7SY&format=png&color=000000"
                                     alt="Materiales">
                                 <span>Materiales</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('ubicaciones.index') }}">
+                            <a href="{{ route('ubicaciones.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/?size=100&id=n4PINSDv4htA&format=png&color=000000"
                                     alt="Ubicaciones">
                                 <span>Ubicaciones</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('entradas.index') }}">
+                            <a href="{{ route('entradas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/?size=100&id=45Nxpks5EYHE&format=png&color=000000"
                                     alt="Entradas">
                                 <span>Entradas</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('salidas.index') }}">
+                            <a href="{{ route('salidas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/?size=100&id=rGLEtwiD51Dw&format=png&color=000000"
                                     alt="Salidas">
                                 <span>Salidas</span>
@@ -48,19 +50,20 @@
                         </div>
 
                         <div class="icon-card">
-                            <a href="{{ route('movimientos.index') }}">
+                            <a href="{{ route('movimientos.index') }}"
+                                class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/color/96/swap.png" alt="Movimientos">
                                 <span>Movimientos</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('maquinas.index') }}">
+                            <a href="{{ route('maquinas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/arcade/100/cnc-machine.png" alt="Máquinas" />
                                 <span>Máquinas</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('planillas.index') }}">
+                            <a href="{{ route('planillas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img width="100" height="100"
                                     src="https://img.icons8.com/arcade/64/terms-and-conditions.png"
                                     alt="terms-and-conditions" />
@@ -68,7 +71,7 @@
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('clientes.index') }}">
+                            <a href="{{ route('clientes.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img width="100" height="100"
                                     src="https://img.icons8.com/?size=100&id=HjcUJuI6Siqo&format=png&color=000000"
                                     alt="terms-and-conditions" />
@@ -76,26 +79,29 @@
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('empresas-transporte.index') }}">
+                            <a href="{{ route('empresas-transporte.index') }}"
+                                class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img width="100" height="100"
                                     src="https://img.icons8.com/dusk/64/interstate-truck.png" alt="Transporte" />
                                 <span>Transporte</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="{{ route('estadisticas.index') }}">
+                            <a href="{{ route('estadisticas.index') }}"
+                                class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/color/96/graph.png" alt="Reportes">
                                 <span>Estadísticas</span>
                             </a>
                         </div>
                         <div class="icon-card">
-                            <a href="#">
+                            <a href="#" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/color/96/settings.png" alt="Configuración">
                                 <span>Mantenimiento</span>
                             </a>
                         </div>
                         <div class="icon-card relative">
-                            <a href="{{ route('alertas.index') }}" class="relative">
+                            <a href="{{ route('alertas.index') }}"
+                                class="relative {{ $esOperario ? 'disabled-link' : '' }}">
                                 <img src="https://img.icons8.com/?size=100&id=xaInJjDQEige&format=png&color=000000"
                                     alt="Alertas">
                                 <img id="notificacion-alertas-icono"
