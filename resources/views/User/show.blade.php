@@ -90,24 +90,21 @@
                     let fechaFin = fechaFinObj.toISOString().split('T')[0];
 
                     // Generar HTML condicionalmente según si se selecciona un solo día o un rango
-                    let mensajeFecha = '';
-                    if (fechaInicio === fechaFin) {
-                        mensajeFecha = `<p>${fechaInicio}</p>`;
-                    } else {
-                        mensajeFecha = `<p>Desde: ${fechaInicio}</p>
-                        <p>Hasta: ${fechaFin}</p>`;
-                    }
+                    let mensajeFecha = fechaInicio === fechaFin ?
+                        `<p>${fechaInicio}</p>` :
+                        `<p>Desde: ${fechaInicio}</p><p>Hasta: ${fechaFin}</p>`;
 
                     Swal.fire({
                         title: "Selecciona un turno",
                         html: `
-                            ${mensajeFecha}
-                            <select id="tipo-dia" class="swal2-select">
-                                @foreach ($turnos as $turno)
-                                    <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
-                                @endforeach
-                            </select>
-                        `,
+                    ${mensajeFecha}
+                    <select id="tipo-dia" class="swal2-select">
+                        <option value="ninguno">❌ No asignar</option>
+                        @foreach ($turnos as $turno)
+                            <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
+                        @endforeach
+                    </select>
+                `,
                         showCancelButton: true,
                         confirmButtonText: "Registrar",
                         cancelButtonText: "Cancelar",
@@ -118,72 +115,130 @@
                         if (result.isConfirmed) {
                             let tipoSeleccionado = result.value;
 
-                            fetch("{{ route('asignaciones-turnos.store') }}", {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                                    },
-                                    body: JSON.stringify({
-                                        user_id: "{{ $user->id }}",
-                                        fecha_inicio: fechaInicio,
-                                        fecha_fin: fechaFin,
-                                        tipo: tipoSeleccionado
+                            if (tipoSeleccionado === "ninguno") {
+                                // Petición para eliminar turnos
+                                fetch("{{ route('asignaciones-turnos.destroy') }}", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                        },
+                                        body: JSON.stringify({
+                                            user_id: "{{ $user->id }}",
+                                            fecha_inicio: fechaInicio,
+                                            fecha_fin: fechaFin
+                                        })
                                     })
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        Swal.fire({
-                                            title: "Registrado",
-                                            text: data.success,
-                                            icon: "success",
-                                            timer: 2000,
-                                            showConfirmButton: false
-                                        });
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            Swal.fire({
+                                                title: "Turno eliminado",
+                                                text: data.success,
+                                                icon: "success",
+                                                timer: 2000,
+                                                showConfirmButton: false
+                                            });
 
-                                        // Agregar cada día (excepto fines de semana, si es el caso) al calendario
-                                        let currentDate = new Date(fechaInicio);
-                                        let endDate = new Date(fechaFin);
-                                        while (currentDate <= endDate) {
-                                            // Opcional: omitir sábados (6) y domingos (0)
-                                            if (currentDate.getDay() !== 0 && currentDate
-                                                .getDay() !== 6) {
-                                                let color = coloresTurnos[
-                                                    tipoSeleccionado] || {
-                                                    bg: '#808080',
-                                                    border: '#606060'
-                                                };
-                                                calendar.addEvent({
-                                                    title: tipoSeleccionado.charAt(
-                                                            0).toUpperCase() +
-                                                        tipoSeleccionado.slice(1),
-                                                    start: currentDate.toISOString()
-                                                        .split('T')[0],
-                                                    backgroundColor: color.bg,
-                                                    borderColor: color.border,
-                                                    textColor: 'white',
-                                                    allDay: true
+                                            // Eliminar eventos en ese rango de fechas
+                                            let eventsToRemove = calendar.getEvents()
+                                                .filter(event => {
+                                                    let eventDate = event.startStr;
+                                                    return eventDate >= fechaInicio &&
+                                                        eventDate <= fechaFin;
                                                 });
-                                            }
-                                            currentDate.setDate(currentDate.getDate() + 1);
+
+                                            eventsToRemove.forEach(event => event.remove());
+                                        } else {
+                                            Swal.fire({
+                                                title: "Error",
+                                                text: data.error,
+                                                icon: "error"
+                                            });
                                         }
-                                    } else {
+                                    })
+                                    .catch(error => {
+                                        console.error("Error:", error);
                                         Swal.fire({
                                             title: "Error",
-                                            text: data.error,
+                                            text: "Ocurrió un problema al eliminar los turnos.",
                                             icon: "error"
                                         });
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error("Error:", error);
-                                    Swal.fire({
-                                        title: "Error",
-                                        text: "Ocurrió un problema al registrar los turnos.",
-                                        icon: "error"
                                     });
-                                });
+
+                            } else {
+                                // Petición para asignar turno
+                                fetch("{{ route('asignaciones-turnos.store') }}", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                        },
+                                        body: JSON.stringify({
+                                            user_id: "{{ $user->id }}",
+                                            fecha_inicio: fechaInicio,
+                                            fecha_fin: fechaFin,
+                                            tipo: tipoSeleccionado
+                                        })
+                                    })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            Swal.fire({
+                                                title: "Registrado",
+                                                text: data.success,
+                                                icon: "success",
+                                                timer: 2000,
+                                                showConfirmButton: false
+                                            });
+
+                                            // Agregar eventos al calendario
+                                            let currentDate = new Date(fechaInicio);
+                                            let endDate = new Date(fechaFin);
+                                            while (currentDate <= endDate) {
+                                                // Opcional: omitir sábados (6) y domingos (0)
+                                                if (currentDate.getDay() !== 0 &&
+                                                    currentDate.getDay() !== 6) {
+                                                    let color = coloresTurnos[
+                                                        tipoSeleccionado] || {
+                                                        bg: '#808080',
+                                                        border: '#606060'
+                                                    };
+                                                    calendar.addEvent({
+                                                        title: tipoSeleccionado
+                                                            .charAt(0)
+                                                        .toUpperCase() +
+                                                            tipoSeleccionado.slice(
+                                                                1),
+                                                        start: currentDate
+                                                            .toISOString().split(
+                                                                'T')[0],
+                                                        backgroundColor: color.bg,
+                                                        borderColor: color.border,
+                                                        textColor: 'white',
+                                                        allDay: true
+                                                    });
+                                                }
+                                                currentDate.setDate(currentDate.getDate() +
+                                                    1);
+                                            }
+                                        } else {
+                                            Swal.fire({
+                                                title: "Error",
+                                                text: data.error,
+                                                icon: "error"
+                                            });
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error("Error:", error);
+                                        Swal.fire({
+                                            title: "Error",
+                                            text: "Ocurrió un problema al registrar los turnos.",
+                                            icon: "error"
+                                        });
+                                    });
+                            }
                         }
                     });
                 }

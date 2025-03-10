@@ -19,7 +19,7 @@ use App\Models\Obra;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-
+use Illuminate\Support\Facades\Http;
 
 class ProfileController extends Controller
 {
@@ -112,13 +112,15 @@ class ProfileController extends Controller
 
         $eventosTurnos = $this->getEventosTurnos($user);
 
-        // **Combinar eventos**
-        $eventos = $eventosFichajes->merge($eventosTurnos);
+        // **Obtener los festivos usando el método**
+        $festivos = $this->getFestivos();
+
+        // **Combinar eventos (Fichajes, Turnos y Festivos)**
+        $eventos = array_merge($eventosFichajes->toArray(), $eventosTurnos->toArray(), $festivos);
 
         // Pasar datos a la vista
         return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'eventos', 'coloresTurnos', 'categorias', 'especialidades', 'roles', 'turnosHoy'));
     }
-
     public function show($id)
     {
         $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno'])->findOrFail($id);
@@ -126,8 +128,7 @@ class ProfileController extends Controller
         // Fecha de inicio (1 de enero del año actual)
         $inicioAño = Carbon::now()->startOfYear();
 
-
-        // Calculamos ciertas variables
+        // **Calculamos ciertas variables**
         $faltasInjustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_injustificada')
             ->where('fecha', '>=', $inicioAño)->count();
 
@@ -137,19 +138,19 @@ class ProfileController extends Controller
         $diasBaja = $user->asignacionesTurnos->where('turno.nombre', 'baja')
             ->where('fecha', '>=', $inicioAño)->count();
 
-
         // **Obtener todos los turnos de la base de datos**
         $turnos = Turno::all();
-
         $coloresTurnos = $this->getColoresTurnos();
 
         // **Eventos de fichajes (entradas y salidas)**
         $eventosFichajes = $this->getEventosFichajes($user);
-
         $eventosTurnos = $this->getEventosTurnos($user);
 
-        // **Combinar eventos**
-        $eventos = $eventosFichajes->merge($eventosTurnos);
+        // **Obtener festivos reutilizando el método**
+        $festivos = $this->getFestivos();
+
+        // **Combinar eventos (Fichajes, Turnos y Festivos)**
+        $eventos = $eventosFichajes->merge($eventosTurnos)->merge($festivos);
 
         return view('User.show', compact(
             'user',
@@ -161,6 +162,8 @@ class ProfileController extends Controller
             'diasBaja'
         ));
     }
+
+
     protected function getColoresTurnos()
     {
         // Definir colores base para cada tipo de turno
@@ -239,7 +242,6 @@ class ProfileController extends Controller
             ];
         });
     }
-
     protected function getEventosFichajes($user)
     {
         return $user->registrosFichajes->flatMap(function ($fichaje) {
@@ -259,7 +261,6 @@ class ProfileController extends Controller
             ];
         })->filter();
     }
-
     /**
      * Función para oscurecer un color en hexadecimal.
      */
@@ -278,7 +279,6 @@ class ProfileController extends Controller
 
         return sprintf("#%02X%02X%02X", $rgb[0], $rgb[1], $rgb[2]);
     }
-
     /**
      * Display the user's profile form.
      */
@@ -297,9 +297,6 @@ class ProfileController extends Controller
 
         return view('profile.edit', compact('user'));
     }
-
-
-
     /**
      * Update the user's profile information.
      */
@@ -400,9 +397,11 @@ class ProfileController extends Controller
         $inicio = Carbon::now()->addDay()->startOfDay();
         $fin = Carbon::now()->endOfYear();
 
+        // Obtener festivos desde el método getFestivos()
+        $festivos = $this->getFestivos();
+
         // Determinar el turno inicial según el tipo de turno del usuario
         if ($user->turno == 'diurno') {
-            // Preguntar con qué turno quiere comenzar
             $turnoInicial = request()->input('turno_inicio');
             if (!in_array($turnoInicial, ['mañana', 'tarde'])) {
                 return redirect()->back()->with('error', 'Debe seleccionar un turno válido para comenzar (mañana o tarde).');
@@ -415,26 +414,28 @@ class ProfileController extends Controller
         } else {
             return redirect()->back()->with('error', 'El usuario no tiene un turno asignado.');
         }
+        $festivosArray = collect($festivos)->pluck('start')->toArray();
 
-        // Recorrer las fechas del año y asignar turnos (excluyendo sábados y domingos)
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
-            if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+            // **Excluye sábados, domingos y festivos**
+            if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) || in_array($fecha->toDateString(), $festivosArray)) {
                 continue;
             }
 
             AsignacionTurno::updateOrCreate(
                 ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
-                ['turno_id' => $turnoAsignado,]
+                ['turno_id' => $turnoAsignado]
             );
 
-            // Si es diurno, cambiar el turno el viernes para mantener la rotación
+            // Alternar turnos cada viernes para trabajadores diurnos
             if ($user->turno == 'diurno' && $fecha->dayOfWeek == Carbon::FRIDAY) {
                 $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
             }
         }
 
-        return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}.");
+        return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}, excluyendo los festivos.");
     }
+
 
 
     public function destroy(Request $request, $id)
@@ -456,5 +457,32 @@ class ProfileController extends Controller
         } catch (Exception $e) {
             return redirect()->route('users.index')->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
         }
+    }
+
+    private function getFestivos()
+    {
+        $response = Http::get("https://date.nager.at/api/v3/PublicHolidays/" . date('Y') . "/ES");
+
+        if ($response->failed()) {
+            return []; // Si la API falla, devolvemos un array vacío
+        }
+
+        return collect($response->json())->filter(function ($holiday) {
+            // Si no tiene 'counties', es un festivo NACIONAL
+            if (!isset($holiday['counties'])) {
+                return true;
+            }
+            // Si el festivo pertenece a Andalucía
+            return in_array('ES-AN', $holiday['counties']);
+        })->map(function ($holiday) {
+            return [
+                'title' => $holiday['localName'], // Nombre del festivo
+                'start' => Carbon::parse($holiday['date'])->toDateString(), // Fecha formateada correctamente
+                'backgroundColor' => '#ff0000', // Rojo para festivos
+                'borderColor' => '#b91c1c',
+                'textColor' => 'white',
+                'allDay' => true
+            ];
+        })->values()->toArray(); // Asegurar que sea un array de valores sin claves
     }
 }

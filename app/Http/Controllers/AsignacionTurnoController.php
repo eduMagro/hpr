@@ -90,4 +90,25 @@ class AsignacionTurnoController extends Controller
             return response()->json(['error' => 'Error al registrar el turno: ' . $e->getMessage()], 500);
         }
     }
+
+    public function destroy(Request $request)
+    {
+        try {
+            // Validar los datos de entrada
+            $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'fecha_inicio' => 'required|date',
+                'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            ]);
+
+            // Eliminar los turnos usando Eloquent
+            \App\Models\AsignacionTurno::where('user_id', $request->user_id)
+                ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
+                ->delete();
+
+            return response()->json(['success' => 'Turnos eliminados correctamente.']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al eliminar los turnos.'], 500);
+        }
+    }
 }

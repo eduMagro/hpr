@@ -69,6 +69,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('vacaciones', VacacionesController::class);
     Route::resource('registros-fichaje', RegistroFichajeController::class);
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);
+    Route::post('/asignaciones-turnos/destroy', [AsignacionTurnoController::class, 'destroy'])
+        ->name('asignaciones-turnos.destroy');
+
     Route::post('/generar-turnos', function (Request $request) {
         Artisan::call('turnos:generar-anuales');
         return back()->with('success', '✅ Turnos generados correctamente.');
