@@ -13,23 +13,22 @@ class MaquinaController extends Controller
 {
     public function index(Request $request)
     {
-        // Obtener las ubicaciones con sus productos asociados
-        $maquinas = Maquina::with('productos');
-        $usuarios = User::where('id', '!=', auth()->id())->get(); // Excluye al usuario autenticado
+        // Obtener los usuarios excluyendo al autenticado
+        $usuarios = User::where('id', '!=', auth()->id())->get();
 
-        $query = Maquina::query();
-        // $query = $this->aplicarFiltros($query, $request);
+        // Construcción de la consulta para obtener máquinas
+        $query = Maquina::with('productos')
+            ->withCount('elementos'); // Contar los elementos asociados a cada máquina
 
-        // Aplicar filtro por código si se pasa como parámetro en la solicitud
+        // Aplicar filtro por nombre si se pasa como parámetro en la solicitud
         if ($request->has('nombre')) {
             $nombre = $request->input('nombre');
             $query->where('nombre', 'like', '%' . $nombre . '%');
         }
-        // Ordenar
-        $sortBy = $request->input('sort_by', 'created_at');  // Primer criterio de ordenación (nombre)
-        $order = $request->input('order', 'desc');        // Orden del primer criterio (asc o desc)
 
-        // Aplicar ordenamiento por múltiples columnas
+        // Ordenar por un campo dinámico
+        $sortBy = $request->input('sort_by', 'created_at');
+        $order = $request->input('order', 'desc');
         $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
 
         // Paginación
@@ -39,6 +38,7 @@ class MaquinaController extends Controller
         // Pasar las ubicaciones y productos a la vista
         return view('maquinas.index', compact('registrosMaquina', 'usuarios'));
     }
+
 
 
     //------------------------------------------------------------------------------------ SHOW

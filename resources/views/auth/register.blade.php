@@ -78,9 +78,9 @@
                 <select id="turno" name="turno"
                     class="mt-1 w-full rounded-lg border border-gray-300 bg-gray-50 py-3 px-4 text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200">
                     <option value="" disabled selected>Selecciona un turno</option>
-                    <option value="diurno">Diurno</option>
                     <option value="nocturno">Nocturno</option>
-                    <option value="flexible">Flexible</option>
+                    <option value="diurno">Diurno</option>
+                    <option value="mañana">Mañana</option>
                 </select>
                 <x-input-error :messages="$errors->get('turno')" class="mt-2 text-red-500 text-sm" />
             </div>

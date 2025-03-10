@@ -224,7 +224,7 @@
                                         <option value="">Selecciona turno</option>
                                         <option value="nocturno">Nocturno</option>
                                         <option value="diurno">Diurno</option>
-                                        <option value="flexible">Flexible</option>
+                                        <option value="mañana">Mañana</option>
                                     </select>
                                 </td>
                                 <td class="px-2 py-3 text-center border">

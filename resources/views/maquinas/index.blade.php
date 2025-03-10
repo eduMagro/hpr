@@ -45,8 +45,12 @@
 
                         <p><strong>Diámetros aceptados:
                             </strong>{{ $maquina->diametro_min . ' - ' . $maquina->diametro_max }}</p>
-                        <p><strong>Pesos bobinas:
-                            </strong>{{ $maquina->peso_min && $maquina->peso_max ? $maquina->peso_min . ' - ' . $maquina->peso_max : 'Barras' }}
+                        <p><strong>Estado: </strong>
+                            @if ($maquina->elementos_count > 0)
+                                <span class="text-success">En producción</span>
+                            @else
+                                <span class="text-danger">Sin trabajo</span>
+                            @endif
                         </p>
                         <!-- Mostrar los productos que contiene esta ubicación -->
                         <h4 class="mt-4 font-semibold">Productos en máquina:</h4>
@@ -149,5 +153,5 @@
             const csrfToken = '{{ csrf_token() }}';
             const guardarSesionUrl = '{{ route('maquinas.sesion.guardar') }}';
         </script>
-        <script src="{{ asset('js/seleccionarCompa.js') }}"></script>¡'
+        <script src="{{ asset('js/maquinaJS/seleccionarCompa.js') }}" defer></script>
 </x-app-layout>
