@@ -111,6 +111,7 @@
             <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
 
                 @php
+
                     function debeSerExcluido($elemento)
                     {
                         // Verificar si el elemento tiene un paquete directo
@@ -164,6 +165,10 @@
                             })
                             ->groupBy('etiqueta_id');
                     }
+                    // Ordenar los grupos por la fecha_estimada_entrega de la planilla sin alterar el orden interno
+                    $elementosAgrupados = $elementosAgrupados->sortBy(
+                        fn($grupo) => optional($grupo->first()->planilla)->fecha_estimada_entrega,
+                    );
 
                     $elementosAgrupadosScript = $elementosAgrupados
                         ->map(function ($grupo) {
@@ -266,6 +271,13 @@
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }}
                                         -
                                         <strong>Dm:</strong> {{ $elemento->diametro_mm }}
+                                        <!-- Botón para Subpaquetar -->
+                                        @if ($elemento->peso > 500 || $elemento->barras > 30)
+                                            <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
+                                                class="p-1 ml-4 bg-blue-500 text-white rounded hover:bg-blue-700">
+                                                ➕ Subpaquetar
+                                            </button>
+                                        @endif
                                     </p>
                                     {{-- @if ($tieneElementosEnOtrasMaquinas)
                                          <p class="text-gray-600 text-sm">
@@ -313,13 +325,7 @@
                                             </ul>
                                         </div>
                                     @endif
-                                    <!-- Botón para Subpaquetar -->
-                                    @if ($elemento->peso > 500)
-                                        <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
-                                            class="p-1 bg-purple-500 text-white rounded hover:bg-purple-700 mt-2">
-                                            ➕ Subpaquetar
-                                        </button>
-                                    @endif
+
 
 
                                 </div>
@@ -367,7 +373,7 @@
                                 Cancelar
                             </button>
                             <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded">
-                                Guardar
+                                Crear
                             </button>
                         </div>
                     </form>
@@ -474,31 +480,37 @@
             <div id="modalIncidencia"
                 class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
                 <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+
+                    <!-- Formulario -->
                     <form method="POST" action="{{ route('alertas.store') }}">
                         @csrf
+                        <div class="mb-4">
+                            <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
+                            <textarea id="mensaje" name="mensaje" rows="3"
+                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
+                        </div>
 
-                        <!-- Destinatario -->
-                        <label for="destinatario"
-                            class="block text-sm font-medium text-gray-700 mb-1">Destinatario</label>
-                        <select name="destinatario" id="destinatario" class="w-full border rounded p-2 mb-4"
-                            required>
-                            <option value="administracion">Administración</option>
-                            <option value="mecanico">Mecánico</option>
-                            <option value="desarrollador">Desarrollador</option>
-                        </select>
+                        <div class="mb-4">
+                            <label for="categoria" class="block text-sm font-semibold">Destinatarios
+                                particulares</label>
+                            <select id="categoria" name="categoria" class="w-full border rounded-lg p-2">
+                                <option value="">-- Seleccionar una Categoría --</option>
+                                <option value="administracion">Administración</option>
+                                <option value="mecanico">Mecánico</option>
+                                <option value="programador">Programador</option>
+                            </select>
+                        </div>
 
-                        <!-- Mensaje de incidencia -->
-                        <label for="mensaje" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                        <textarea name="mensaje" id="mensaje" class="w-full border rounded p-2 mb-4" rows="3"
-                            placeholder="Describe el problema..." required></textarea>
-                        <input type="hidden" name="user_id_2" value="{{ session('compañero_id') }}">
-
-                        <div class="flex justify-end mt-4">
-                            <button onclick="document.getElementById('modalIncidencia').classList.add('hidden')"
-                                class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
+                        <!-- Botones -->
+                        <div class="flex justify-end space-x-2">
+                            <button type="button"
+                                class="bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-lg">
                                 Cancelar
                             </button>
-                            <button class="px-4 py-2 bg-red-600 text-white rounded">Enviar</button>
+                            <button type="submit"
+                                class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
+                                Guardar
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -555,13 +567,18 @@
             document.getElementById('subpaquete_elemento_id').value = elementoId;
             document.getElementById('modalSubpaquete').classList.remove('hidden');
         }
-    </script>
-    <script>
+
         const maquinaId = @json($maquina->id);
         const ubicacionId = @json(optional($ubicacion)->id); // Esto puede ser null si no se encontró
-    </script>
 
-    <script>
+        window.etiquetasData =
+            @json($etiquetasData); // Ej.: [{ codigo: "3718", elementos: [27906,27907,...], pesoTotal: 155.55 }, ...]
+        window.pesosElementos = @json($pesosElementos); // Ej.: { "27906": "77.81", "27907": "3.87", ... }
+        window.subpaquetesData = @json($subpaquetesData); // Ej.: { "sub001": 27906, "sub002": 27907, ... }
+        console.log("Datos precargados de etiquetas:", window.etiquetasData);
+        console.log("Pesos precargados de elementos:", window.pesosElementos);
+        console.log("Datos precargados de subpaquetes:", window.subpaquetesData);
+
         let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
         let etiquetasEnUnaSolaMaquina = @json($etiquetasEnUnaSolaMaquina);
     </script>

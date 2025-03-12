@@ -301,8 +301,12 @@
                                     <span x-text="elemento.maquina.nombre || 'N/A'"></span>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
-                                <input x-show="editando" type="text" x-model="elemento.maquina_id"
-                                    class="form-input w-full">
+                                <select x-show="editando" x-model="elemento.maquina_id" class="form-input w-full">
+                                    <option value="">Seleccionar máquina</option>
+                                    @foreach ($maquinas as $maquina)
+                                        <option value="{{ $maquina->id }}">{{ $maquina->codigo }}</option>
+                                    @endforeach
+                                </select>
                             </td>
                             <!-- MAQUINA 2 -->
                             <td class="px-1 py-3 text-center border">

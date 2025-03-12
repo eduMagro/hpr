@@ -28,6 +28,10 @@ class Etiqueta extends Model
         'peso',
         'fecha_inicio',
         'fecha_finalizacion',
+        'fecha_inicio_ensamblado',
+        'fecha_finalizacion_ensamblado',
+        'fecha_inicio_soldadura',
+        'fecha_finalizacion_soldadura',
         'estado',
     ];
 
@@ -113,6 +117,5 @@ class Etiqueta extends Model
     public function ensamblador2Relacion()
     {
         return $this->belongsTo(User::class, 'ensamblador2');
-
     }
 }

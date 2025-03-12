@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Maquina;
+use App\Models\Etiqueta;
 use App\Models\Elemento;
+use App\Models\Subpaquete;
 use App\Models\User;
 use App\Models\Ubicacion;
 use Illuminate\Support\Facades\DB;
@@ -121,6 +123,35 @@ class MaquinaController extends Controller
             $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)->get();
             $elementosEnUnaSolaMaquina = $elementosEnUnaSolaMaquina->merge($elementosExtra);
         }
+        $pesosElementos = $elementosMaquina->map(function ($item) {
+            return [
+                'id'   => $item->id,
+                'peso' => $item->peso,
+            ];
+        })->values()->toArray();
+
+        // Obtener los IDs de los elementos que pertenecen a la máquina (incluyendo los fusionados)
+        $elementoIds = $elementosMaquina->pluck('id')->toArray();
+        // Buscar los subpaquetes cuyos 'elemento_id' estén en los elementos de la máquina
+        $subpaquetes = Subpaquete::whereIn('elemento_id', $elementoIds)->get();
+        $subpaquetesData = $subpaquetes->map(function ($subpaquete) {
+            return [
+                'id'   => $subpaquete->id,
+                'peso' => $subpaquete->peso, // Uso directo del campo "peso" del subpaquete
+            ];
+        })->values();
+
+
+        $etiquetasData = $elementosMaquina
+            ->groupBy('etiqueta_id')
+            ->map(function ($grupo, $etiquetaId) {
+                return [
+                    'codigo' => $etiquetaId,
+                    // Aquí puedes definir cómo obtener los elementos. Por ejemplo:
+                    'elementos' => $grupo->pluck('id')->toArray(),
+                    'pesoTotal' => $grupo->sum('peso')
+                ];
+            })->values(); // values() para reiniciar los índices y obtener un arreglo
 
         return view('maquinas.show', [
             'maquina' => $maquina,
@@ -131,6 +162,9 @@ class MaquinaController extends Controller
             'etiquetasEnUnaSolaMaquina' => $etiquetasEnUnaSolaMaquina,
             'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
             'elementosMaquina' => $elementosMaquina, // ✅ Ahora incluye los elementos de otras máquinas con maquina_id_2 = IDEA 5
+            'pesosElementos'            => $pesosElementos,
+            'etiquetasData'             => $etiquetasData,
+            'subpaquetesData'           => $subpaquetesData,
         ]);
     }
 

@@ -91,8 +91,12 @@
                             </th>
                             {{-- <th class="px-4 py-3 border">Ubicación</th> --}}
                             <th class="px-4 py-3 border">Peso (kg)</th>
-                            <th class="px-4 py-3 border">Fecha Inicio</th>
-                            <th class="px-4 py-3 border">Fecha Finalización</th>
+                            <th class="px-4 py-3 border">Inicio Fabricación</th>
+                            <th class="px-4 py-3 border">Final Fabricación</th>
+                            <th class="px-4 py-3 border">Inicio Ensamblado</th>
+                            <th class="px-4 py-3 border">Final Ensamblado</th>
+                            <th class="px-4 py-3 border">Inicio Soldadura</th>
+                            <th class="px-4 py-3 border">Final Soldadura</th>
                             <th class="px-4 py-3 border">Estado</th>
                             <th class="px-4 py-3 border">Acciones</th>
                         </tr>
@@ -141,6 +145,14 @@
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->peso_kg }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_inicio ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}
+                                <td class="px-4 py-3 text-center border">
+                                    {{ $etiqueta->fecha_inicio_ensamblado ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-center border">
+                                    {{ $etiqueta->fecha_finalizacion_ensamblado ?? 'N/A' }}
+                                <td class="px-4 py-3 text-center border">
+                                    {{ $etiqueta->fecha_inicio_soldadura ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-center border">
+                                    {{ $etiqueta->fecha_finalizacion_soldadura ?? 'N/A' }}
                                 </td>
                                 <td class="px-4 py-3 text-center border">{{ ucfirst($etiqueta->estado) }}</td>
                                 <td class="px-4 py-3 text-center border flex flex-col gap-2">

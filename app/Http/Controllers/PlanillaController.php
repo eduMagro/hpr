@@ -23,7 +23,7 @@ class PlanillaController extends Controller
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
         // Si usas PHP 8 o superior, puedes utilizar str_starts_with
-        $estribo = $doblesPorBarra >= 5 && !str_starts_with($figura, 'V');
+        $estribo = $doblesPorBarra >= 5;
         $maquinas = collect(); // Inicializar con una colección vacía de Laravel
 
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
@@ -515,6 +515,12 @@ class PlanillaController extends Controller
         try {
             // Buscar la planilla o lanzar excepción si no se encuentra
             $planilla = Planilla::findOrFail($id);
+            $request->merge([
+                'fecha_inicio' => $request->fecha_inicio ? $request->fecha_inicio : null,
+                'fecha_estimada_entrega' => $request->fecha_estimada_entrega ? $request->fecha_estimada_entrega : null,
+                'fecha_finalizacion' => $request->fecha_finalizacion ? $request->fecha_finalizacion : null,
+                'fecha_importacion' => $request->fecha_importacion ? $request->fecha_importacion : null,
+            ]);
 
             // Validar los datos recibidos con mensajes personalizados
             $validatedData = $request->validate([
@@ -530,6 +536,7 @@ class PlanillaController extends Controller
                 'peso_total'         => 'nullable|numeric',
                 'estado'             => 'nullable|string|in:pendiente,fabricando,completado',
                 'fecha_inicio'       => 'nullable|date',
+                'fecha_estimada_entrega'       => 'nullable|date',
                 'fecha_finalizacion' => 'nullable|date',
                 'fecha_importacion'  => 'nullable|date',
                 'usuario'            => 'nullable|string|max:100'
@@ -566,6 +573,7 @@ class PlanillaController extends Controller
                 'estado.in'                 => 'El campo Estado debe ser: pendiente, fabricando o completado.',
 
                 'fecha_inicio.date'           => 'El campo Fecha Inicio debe ser una fecha válida.',
+                'fecha_estimada_entrega.date'           => 'El campo Fecha Inicio debe ser una fecha válida.',
                 'fecha_finalizacion.date'     => 'El campo Fecha Finalización debe ser una fecha válida.',
                 'fecha_importacion.date'      => 'El campo Fecha Importación debe ser una fecha válida.',
 

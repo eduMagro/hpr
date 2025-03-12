@@ -56,7 +56,8 @@
                         </th>
                         <th class="px-2 py-3 border">Ubicación</th>
                         <th class="px-2 py-3 border">Elementos</th>
-                        <th class="px-2 py-3 border">Creación Paquete</th>
+                        <th class="px-2 py-3 border">Peso (Kg)</th>
+                        <th class="px-2 py-3 border">Fecha Creación</th>
                         <th class="px-2 py-3 border">Fecha Límite Reparto</th>
                         <th class="px-2 py-3 border text-center">Acciones</th>
                     </tr>
@@ -117,6 +118,8 @@
                                 @else
                                     <span class="text-gray-500">Vacío</span>
                                 @endif
+                            </td>
+                            <td class="px-2 py-3 text-center border">{{ $paquete->peso }} Kg
                             </td>
                             <td class="px-2 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}
                             </td>

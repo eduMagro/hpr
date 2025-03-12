@@ -1,5 +1,5 @@
-// Espera a que el DOM se cargue completamente
 document.addEventListener("DOMContentLoaded", () => {
+    /*** PROCESO ETIQUETA ***/
     const procesoEtiqueta = document.getElementById("procesoEtiqueta");
     const maquinaInfo = document.getElementById("maquina-info");
 
@@ -30,8 +30,6 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const etiquetaIdNum = parseInt(etiquetaId, 10);
-
         // Verificar el estado actual de la etiqueta en el DOM
         const estadoElemento = document.getElementById(`estado-${etiquetaId}`);
         if (
@@ -53,178 +51,248 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             actualizarEtiqueta(etiquetaId, maquinaId);
         }
-
         e.target.value = ""; // Limpiar input tras procesar
     });
-});
 
-/**
- * Envía la solicitud PUT para actualizar la etiqueta en el servidor.
- */
-async function actualizarEtiqueta(id, maquinaId) {
-    const url = `/actualizar-etiqueta/${id}/maquina/${maquinaId}`;
-    const csrfToken = document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute("content");
+    /**
+     * Envía la solicitud PUT para actualizar la etiqueta en el servidor.
+     */
+    async function actualizarEtiqueta(id, maquinaId) {
+        const url = `/actualizar-etiqueta/${id}/maquina/${maquinaId}`;
+        const csrfToken = document
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute("content");
 
-    try {
-        const response = await fetch(url, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-                "X-CSRF-TOKEN": csrfToken,
-            },
-            body: JSON.stringify({ id }),
-        });
+        try {
+            const response = await fetch(url, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json",
+                    "X-CSRF-TOKEN": csrfToken,
+                },
+                body: JSON.stringify({ id }),
+            });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(
-                errorData.error ||
-                    `Error HTTP ${response.status}: ${response.statusText}`
-            );
-        }
-
-        const data = await response.json();
-        if (data.success) {
-            if (data.warnings && data.warnings.length > 0) {
-                Swal.fire({
-                    icon: "warning",
-                    title: "Atención",
-                    html: data.warnings.join("<br>"),
-                    confirmButtonText: "OK"
-                }).then(() => {
-                    // Después de cerrar el modal de warnings, actualiza el DOM o muestra el éxito.
-                    actualizarDOMEtiqueta(id, data);
-                });
-            } else {
-                actualizarDOMEtiqueta(id, data);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(
+                    errorData.error ||
+                        `Error HTTP ${response.status}: ${response.statusText}`
+                );
             }
-            
-            
-        } else {
+
+            const data = await response.json();
+            if (data.success) {
+                if (data.warnings && data.warnings.length > 0) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Atención",
+                        html: data.warnings.join("<br>"),
+                        confirmButtonText: "OK",
+                    }).then(() => {
+                        // Actualiza el DOM y, si corresponde, agrega la etiqueta a la lista.
+                        actualizarDOMEtiqueta(id, data);
+                    });
+                } else {
+                    actualizarDOMEtiqueta(id, data);
+                }
+            } else {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: data.error || "Ocurrió un error inesperado.",
+                });
+            }
+        } catch (error) {
             Swal.fire({
                 icon: "error",
                 title: "Error",
-                text: data.error || "Ocurrió un error inesperado.",
+                text: error.message || "Ocurrió un error en la actualización.",
             });
         }
-    } catch (error) {
-        Swal.fire({
-            icon: "error",
-            title: "Error",
-            text: error.message || "Ocurrió un error en la actualización.",
-        });
-    }
-}
-
-/**
- * Actualiza el DOM según los datos devueltos por el servidor.
- */
-function actualizarDOMEtiqueta(id, data) {
-    const estadoEtiqueta = document.getElementById(`estado-${id}`);
-    const inicioEtiqueta = document.getElementById(`inicio-${id}`);
-    const finalEtiqueta = document.getElementById(`final-${id}`);
-
-    if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
-    if (inicioEtiqueta) inicioEtiqueta.textContent = data.fecha_inicio || "N/A";
-    if (finalEtiqueta)
-        finalEtiqueta.textContent = data.fecha_finalizacion || "N/A";
-
-    // Verificar que el estado no sea `undefined` antes de procesarlo
-    if (!data.estado) {
-        console.warn(`Estado de etiqueta no válido para ID ${id}:`, data);
-        return;
     }
 
-    // Actualizar el DOM según el estado devuelto
-    switch (data.estado.toLowerCase()) {
-        case "completada":
+    /**
+     * Actualiza el DOM según los datos devueltos por el servidor.
+     * Si el estado indica que la etiqueta está completada, se agrega automáticamente a la lista.
+     */
+    function actualizarDOMEtiqueta(id, data) {
+        const estadoEtiqueta = document.getElementById(`estado-${id}`);
+        const inicioEtiqueta = document.getElementById(`inicio-${id}`);
+        const finalEtiqueta = document.getElementById(`final-${id}`);
+
+        if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
+        if (inicioEtiqueta)
+            inicioEtiqueta.textContent = data.fecha_inicio || "N/A";
+        if (finalEtiqueta)
+            finalEtiqueta.textContent = data.fecha_finalizacion || "N/A";
+
+        if (!data.estado) {
+            console.warn(`Estado de etiqueta no válido para ID ${id}:`, data);
+            return;
+        }
+
+        function showAlert(icon, title, text, timer = 2000) {
             Swal.fire({
-                icon: "success",
-                title: "Etiqueta completada",
-                text: "Hemos terminado de fabricar la etiqueta.",
-                timer: 2000,
+                icon: icon,
+                title: title,
+                text: text,
+                timer: timer,
                 showConfirmButton: false,
             });
-            break;
-        case "fabricando":
-            Swal.fire({
-                icon: "info",
-                title: "Fabricando",
-                text: "Estamos fabricando los elementos.",
-                timer: 2000,
-                showConfirmButton: false,
+        }
+
+        switch (data.estado.toLowerCase()) {
+            case "completada":
+                showAlert(
+                    "success",
+                    "Etiqueta completada",
+                    "Hemos terminado de fabricar la etiqueta."
+                );
+                break;
+            case "fabricando":
+                showAlert(
+                    "info",
+                    "Fabricando",
+                    "Estamos fabricando los elementos."
+                );
+                break;
+            case "parcialmente_completada":
+                showAlert(
+                    "warning",
+                    "Etiqueta parcialmente completada",
+                    "Algunos elementos aún están en proceso en otras máquinas.",
+                    3000
+                );
+                break;
+            case "ensamblando":
+                showAlert(
+                    "info",
+                    "Ensamblando",
+                    "El paquete ha sido enviado a la ensambladora."
+                );
+                break;
+            case "ensamblada":
+                showAlert(
+                    "success",
+                    "Etiqueta ensamblada",
+                    "El proceso de ensamblado ha finalizado correctamente."
+                );
+                break;
+            case "soldando":
+                showAlert(
+                    "info",
+                    "Soldando",
+                    "La etiqueta está en proceso de soldadura."
+                );
+                break;
+            case "soldada":
+                showAlert(
+                    "success",
+                    "Etiqueta soldada",
+                    "El proceso de soldadura ha finalizado correctamente."
+                );
+                break;
+            default:
+                console.warn(
+                    `Estado no manejado para etiqueta ${id}: ${data.estado}`
+                );
+                showAlert(
+                    "warning",
+                    "Estado desconocido",
+                    `El estado recibido (${data.estado}) no está reconocido.`,
+                    3000
+                );
+        }
+
+        // Si la etiqueta se encuentra en estado completada o fabricada, agregarla automáticamente a la lista.
+        if (data.estado.toLowerCase() === "completada") {
+            agregarItemEtiqueta(id, data);
+        }
+
+        // Si hay información de productos afectados, actualiza sus datos en el DOM.
+        if (data.productos_afectados && data.productos_afectados.length > 0) {
+            data.productos_afectados.forEach((producto) => {
+                let pesoStockElemento = document.getElementById(
+                    `peso-stock-${producto.id}`
+                );
+                let progresoTexto = document.getElementById(
+                    `progreso-texto-${producto.id}`
+                );
+                let progresoBarra = document.getElementById(
+                    `progreso-barra-${producto.id}`
+                );
+
+                if (pesoStockElemento) {
+                    pesoStockElemento.textContent = `${producto.peso_stock} kg`;
+                }
+                if (progresoTexto) {
+                    progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
+                }
+                if (progresoBarra) {
+                    let progresoPorcentaje =
+                        (producto.peso_stock / producto.peso_inicial) * 100;
+                    progresoBarra.style.height = `${progresoPorcentaje}%`;
+                }
             });
-            break;
-        case "pendiente":
-            Swal.fire({
-                icon: "info",
-                title: "Etiqueta reiniciada",
-                text: "Hemos reiniciado la etiqueta.",
-                timer: 2000,
-                showConfirmButton: false,
-            });
-            break;
-        case "soldando":
-            Swal.fire({
-                icon: "info",
-                title: "Etiqueta Ensamblada",
-                text: "Ensamblado terminado, enviamos a soldadura",
-                timer: 2000,
-                showConfirmButton: false,
-            });
-            break;
-        case "ensamblando":
-            Swal.fire({
-                icon: "info",
-                title: "Etiqueta fabricada",
-                text: "Hemos mandado el paquete a la ensambladora",
-                timer: 2000,
-                showConfirmButton: false,
-            });
-            break;
-        default:
+        } else {
             console.warn(
-                `Estado no manejado para etiqueta ${id}:`,
-                data.estado
+                "No se encontraron productos afectados en la respuesta."
             );
-            Swal.fire({
-                icon: "warning",
-                title: "Estado desconocido",
-                text: `El estado recibido (${data.estado}) no está reconocido.`,
-                timer: 3000,
-                showConfirmButton: false,
-            });
+        }
     }
-    if (data.productos_afectados && data.productos_afectados.length > 0) {
-        data.productos_afectados.forEach((producto) => {
-            let pesoStockElemento = document.getElementById(
-                `peso-stock-${producto.id}`
-            );
-            let progresoTexto = document.getElementById(
-                `progreso-texto-${producto.id}`
-            );
-            let progresoBarra = document.getElementById(
-                `progreso-barra-${producto.id}`
-            );
 
-            if (pesoStockElemento) {
-                pesoStockElemento.textContent = `${producto.peso_stock} kg`;
-            }
+    // Actualiza la función para recibir el id conocido de la etiqueta
+    function agregarItemEtiqueta(etiquetaId, data) {
+        // Si data.id no está definido, usamos el id pasado como argumento (etiquetaId)
+        const id = data.id || etiquetaId;
+        if (items.some((item) => item.id === id)) {
+            console.warn("Etiqueta ya agregada:", id);
+            return;
+        }
+        // Se agrega también el peso, que se extrae de data (o se asigna 0 si no existe)
+        const newItem = { id: id, type: "etiqueta", peso: data.peso || 0 };
+        items.push(newItem);
+        console.log("Etiqueta agregada automáticamente a la lista:", newItem);
+        actualizarLista();
+    }
 
-            if (progresoTexto) {
-                progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
-            }
+    function actualizarLista() {
+        console.log("Actualizando la lista visual de items");
+        const itemsList = document.getElementById("itemsList");
+        if (!itemsList) {
+            console.error("No se encontró el elemento con id 'itemsList'");
+            return;
+        }
+        itemsList.innerHTML = ""; // Limpiar la lista
 
-            if (progresoBarra) {
-                let progresoPorcentaje =
-                    (producto.peso_stock / producto.peso_inicial) * 100;
-                progresoBarra.style.height = `${progresoPorcentaje}%`;
-            }
+        // Mostrar cada item en la lista
+        items.forEach((item) => {
+            const listItem = document.createElement("li");
+            listItem.textContent = `${item.type}: ${item.id} - Peso: ${item.peso} kg`;
+            listItem.dataset.code = item.id;
+
+            const removeButton = document.createElement("button");
+            removeButton.textContent = "❌";
+            removeButton.className = "ml-2 text-red-600 hover:text-red-800";
+            removeButton.onclick = () => eliminarItem(item.id);
+
+            listItem.appendChild(removeButton);
+            itemsList.appendChild(listItem);
         });
-    } else {
-        console.warn("No se encontraron productos afectados en la respuesta.");
+
+        // Calcular sumatorio de pesos de todas las etiquetas en la lista
+        const sumatorio = items.reduce(
+            (acc, item) => acc + (parseFloat(item.peso) || 0),
+            0
+        );
+        const sumatorioFormateado = sumatorio.toFixed(2); // Ajusta a dos decimales
+
+        // Crear un elemento para mostrar el total de peso
+        const sumatorioItem = document.createElement("li");
+        sumatorioItem.textContent = `Total de peso: ${sumatorioFormateado} kg`;
+        sumatorioItem.style.fontWeight = "bold";
+        itemsList.appendChild(sumatorioItem);
     }
-}
+});

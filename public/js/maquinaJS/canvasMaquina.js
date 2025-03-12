@@ -12,11 +12,7 @@ const minSlotHeight = 100;
 // Accede a la variable global que inyectamos en el HTML
 const elementos = window.elementosAgrupadosScript;
 
-
-
 elementos.forEach((grupo) => {
-    console.log(`Procesando grupo con etiqueta ID: ${grupo.etiqueta?.id}`);
-    console.log("Elementos en este grupo:", grupo.elementos);
     const canvas = document.getElementById(
         `canvas-etiqueta-${grupo.etiqueta?.id}`
     );
@@ -26,15 +22,17 @@ elementos.forEach((grupo) => {
         );
         return;
     }
-    const clickableIDs = []; // Declarar variable 
+    const clickableIDs = []; // Declarar variable
     const parent = canvas.parentElement;
     // Ajusta el ancho del canvas al ancho del div padre
     const canvasWidth = parent.clientWidth;
-    
+
     // Calcula la altura del canvas dinámicamente según el número de elementos
     const numElementos = grupo.elementos.length;
     const canvasHeight =
-        marginY * 2 + numElementos * minSlotHeight + (numElementos - 1) * gapSpacing;
+        marginY * 2 +
+        numElementos * minSlotHeight +
+        (numElementos - 1) * gapSpacing;
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
 
@@ -44,7 +42,8 @@ elementos.forEach((grupo) => {
     // Se reparte la altura disponible en "slots" para cada figura,
     // descontando los márgenes y el espacio entre recuadros.
     const availableSlotHeight =
-        (canvasHeight - 2 * marginY - (numElementos - 1) * gapSpacing) / numElementos;
+        (canvasHeight - 2 * marginY - (numElementos - 1) * gapSpacing) /
+        numElementos;
     const availableWidth = canvasWidth - 2 * marginX;
 
     grupo.elementos.forEach((elemento, index) => {
@@ -113,15 +112,14 @@ elementos.forEach((grupo) => {
                 centerX + availableWidth / 2 + 15,
                 centerY + 5
             );
-              // Guarda la posición del ID para hacerla clickeable
-        clickableIDs.push({
-            id: elemento.id,
-            x: labelX,
-            y: labelY - 14, // Ajuste por tamaño de texto
-            width: 40, // Aproximado del tamaño del texto
-            height: 20
-        });
-
+            // Guarda la posición del ID para hacerla clickeable
+            clickableIDs.push({
+                id: elemento.id,
+                x: labelX,
+                y: labelY - 14, // Ajuste por tamaño de texto
+                width: 40, // Aproximado del tamaño del texto
+                height: 20,
+            });
         } else {
             // CASO: FIGURA COMPUESTA (varias dimensiones)
             // 1. Calcular el bounding box de la figura en sus coordenadas locales
@@ -225,19 +223,19 @@ elementos.forEach((grupo) => {
             ctx.font = "14px Arial";
             ctx.fillStyle = "#FF0000";
             ctx.fillText(`#${elemento.id}`, labelX, labelY);
-              // Agregar a la lista de clickeables
-              clickableIDs.push({
+            // Agregar a la lista de clickeables
+            clickableIDs.push({
                 id: elemento.id,
                 x: labelX,
                 y: labelY - 14,
                 width: 40,
-                height: 20
+                height: 20,
             });
         }
     });
 
-      // Agregar evento de clic al canvas
-      canvas.addEventListener("click", function (event) {
+    // Agregar evento de clic al canvas
+    canvas.addEventListener("click", function (event) {
         console.log("Canvas clickeado");
 
         const rect = canvas.getBoundingClientRect();
@@ -246,7 +244,6 @@ elementos.forEach((grupo) => {
         console.log(`Clic detectado en: X=${mouseX}, Y=${mouseY}`);
 
         clickableIDs.forEach((item) => {
-          
             if (
                 mouseX >= item.x &&
                 mouseX <= item.x + item.width &&
@@ -262,7 +259,10 @@ elementos.forEach((grupo) => {
 function agregarItemDesdeCanvas(itemCode) {
     const itemType = "elemento"; // Puedes cambiarlo si hay diferentes tipos
 
-    console.log("Intentando agregar item desde canvas:", { itemCode, itemType });
+    console.log("Intentando agregar item desde canvas:", {
+        itemCode,
+        itemType,
+    });
 
     if (items.some((i) => i.id === itemCode)) {
         console.log("Item duplicado:", itemCode);

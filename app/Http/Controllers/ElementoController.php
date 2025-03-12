@@ -47,7 +47,11 @@ class ElementoController extends Controller
             return $elemento;
         });
 
-        return view('elementos.index', compact('elementos'));
+        // Obtener todas las máquinas de la tabla "maquinas"
+        $maquinas = Maquina::all();
+
+        // Pasar las variables a la vista
+        return view('elementos.index', compact('elementos', 'maquinas'));
     }
 
     /**

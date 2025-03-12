@@ -173,10 +173,7 @@ class AlertaController extends Controller
         // Verificar que al menos uno (destino o destinatario) esté presente
         if (empty($request->rol) && empty($request->categoria)) {
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Debes seleccionar un destino o un destinatario.'
-            ]);
+            return redirect()->back()->with(['error' => 'Debes elegir un destino o un destinatario'], 500);
         }
 
         try {
@@ -190,11 +187,11 @@ class AlertaController extends Controller
                 'leida' => false,
             ]);
 
-            return response()->json(['success' => 'Alerta enviada correctamente.']);
+            return redirect()->back()->with('success', 'Alerta enviada correctamente.');
         } catch (ValidationException $e) {
-            return response()->json(['error' => $e->errors()], 422);
+            return redirect()->back()->with(['error' => $e->errors()], 422);
         } catch (Exception $e) {
-            return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
+            return redirect()->back()->with(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }
     }
 }

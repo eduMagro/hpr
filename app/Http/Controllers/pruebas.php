@@ -18,55 +18,11 @@ use Illuminate\Support\Facades\Log;
 
 class etiquetaController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Etiqueta::with([
-            'planilla',
-            'elementos',
-            'paquete',
-            'producto',
-            'producto2',
-            'soldador1',
-            'soldador2',
-            'ensambladorRelacion',
-            'ensamblador2Relacion'
-        ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
-
-        // Filtrar por ID si está presente
-        $query->when($request->filled('id'), function ($q) use ($request) {
-            $q->where('id', $request->id);
-        });
-
-        // Filtrar por Estado si está presente
-        $query->when($request->filled('estado'), function ($q) use ($request) {
-            $q->where('estado', $request->estado);
-        });
-
-        // Filtrar por Código de Planilla con búsqueda parcial (LIKE)
-        if ($request->filled('codigo_planilla')) {
-            $planillas = Planilla::where('codigo', 'LIKE', '%' . $request->codigo_planilla . '%')->pluck('id');
-
-            if ($planillas->isNotEmpty()) {
-                $query->whereIn('planilla_id', $planillas);
-            } else {
-                return redirect()->back()->with('error', 'No se encontraron planillas con ese código.');
-            }
-        }
-
-        // Paginación de la tabla
-        $etiquetas = $query->paginate(10)->appends($request->query());
-
-        // Obtener todas las etiquetas con elementos (sin paginar) para JavaScript
-        $etiquetasJson = Etiqueta::with('elementos')->get();
-
-        return view('etiquetas.index', compact('etiquetas', 'etiquetasJson'));
-    }
 
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
         DB::beginTransaction();
         try {
-            $warnings = []; // Array para acumular mensajes de alerta
             // Obtener la etiqueta y su planilla asociada
             $etiqueta = Etiqueta::with('elementos.planilla')->findOrFail($id);
             $planilla_id = $etiqueta->planilla_id;
@@ -81,11 +37,7 @@ class etiquetaController extends Controller
                         ->orWhere('maquina_id_2', $maquina_id);
                 })
                 ->get();
-            // Suma total de los pesos de los elementos en la máquina
-            $pesoTotalMaquina = $elementosEnMaquina->sum('peso');
-            $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'completado')->count();
-            // Número total de elementos asociados a la etiqueta
-            $numeroElementosTotalesEnEtiqueta = $etiqueta->elementos()->count();
+            $elementosCompletados = $elementosEnMaquina->where('estado', 'completado')->count();
             // Verificar si la etiqueta está repartida en diferentes máquinas
             $enOtrasMaquinas = $etiqueta->elementos()
                 ->where('maquina_id', '!=', $maquina_id)
@@ -199,11 +151,19 @@ class etiquetaController extends Controller
                     break;
                 // -------------------------------------------- ESTADO FABRICANDO --------------------------------------------
                 case 'fabricando':
+
+                    // -------------- ACTUALIZAMOS ELEMENTOS
+                    foreach ($elementosEnMaquina as $elemento) {
+                        $elemento->users_id = Auth::id();
+                        $elemento->users_id_2 = session()->get('compañero_id', null);
+                        $elemento->save();
+                    }
+
                     //Comprobamos si ya estan todos los elementos en la maquina completados.
                     if (
                         isset($elementosEnMaquina) &&
                         $elementosEnMaquina->count() > 0 &&
-                        $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count() &&
+                        $elementosCompletados >= $elementosEnMaquina->count() &&
                         in_array($maquina->tipo, ['cortadora_dobladora', 'estribadora'])
                     ) {
                         DB::rollBack();
@@ -212,15 +172,6 @@ class etiquetaController extends Controller
                             'error' => "Todos los elementos en la máquina ya han sido completados.",
                         ], 400);
                     }
-                    // -------------- ACTUALIZAMOS ELEMENTOS
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->estado = "completado";
-                        $elemento->users_id = Auth::id();
-                        $elemento->users_id_2 = session()->get('compañero_id', null);
-                        $elemento->save();
-                    }
-                    $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'completado')->count();
-
                     // -------------- CONSUMOS
                     $consumos = [];
 
@@ -332,16 +283,18 @@ class etiquetaController extends Controller
                             throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
                         }
                         // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+                        if ($elementosEnMaquina->count() > 0 && $elementosCompletados >= $elementosEnMaquina->count()) {
                             // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
                             if ($enOtrasMaquinas) {
                                 $etiqueta->estado = 'parcialmente_completada';
+                                $message = "Etiqueta parcialmente completada en esta máquina, pero existen elementos en otras máquinas.";
                             } else {
                                 // Si no hay elementos en otras máquinas, se marca como fabricada/completada
                                 $etiqueta->estado = 'fabricada';
                                 $etiqueta->fecha_finalizacion = now();
+                                $message = "Etiqueta fabricada completamente en esta máquina.";
                             }
-
+                            $warnings[] = $message;
                             $etiqueta->save();
                         }
                     } elseif (str_contains($ensambladoText, 'carcasas')) {
@@ -360,66 +313,27 @@ class etiquetaController extends Controller
                             // Si la máquina no es estribadora, puedes incluir otra lógica o dejarlo sin cambios.
                         }
                         // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+                        if ($elementosEnMaquina->count() > 0 && $elementosCompletados >= $elementosEnMaquina->count()) {
                             // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
                             if ($enOtrasMaquinas) {
                                 $etiqueta->estado = 'parcialmente_completada';
+                                $message = "Etiqueta parcialmente completada en esta máquina, pero existen elementos en otras máquinas.";
                             } else {
                                 // Si no hay elementos en otras máquinas, se marca como fabricada/completada
                                 $etiqueta->estado = 'fabricada';
                                 $etiqueta->fecha_finalizacion = now();
+                                $message = "Etiqueta fabricada completamente en esta máquina.";
                             }
-
+                            $warnings[] = $message;
                             $etiqueta->save();
                         }
                     } else {
-                        // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-
-                            Log::info("Todos los elementos de la máquina están completados.", [
-                                'elementosEnMaquina_count' => $elementosEnMaquina->count(),
-                                'numeroElementosCompletadosEnMaquina' => $numeroElementosCompletadosEnMaquina,
-                                'etiqueta_id' => $etiqueta->id,
-                            ]);
-
-                            // Número de elementos completados en la etiqueta (asumiendo que 'completado' es el estado que indica que el elemento está terminado)
-                            $numeroElementosCompletadosEnEtiqueta = $etiqueta->elementos()->where('estado', 'completado')->count();
-                            Log::info("Número de elementos completados en la etiqueta.", [
-                                'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                            ]);
-
-                            // Verificar si la etiqueta tiene elementos en otras máquinas y no todos los elementos de la etiqueta están completos
-                            if ($enOtrasMaquinas && $numeroElementosCompletadosEnEtiqueta < $numeroElementosTotalesEnEtiqueta) {
-                                Log::info("Etiqueta tiene elementos en otras máquinas y aún hay pendientes en la etiqueta.", [
-                                    'enOtrasMaquinas' => $enOtrasMaquinas,
-                                    'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                    'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                                ]);
-
-                                $etiqueta->estado = 'parcialmente_completada';
-                            } else {
-                                Log::info("No hay elementos en otras máquinas o todos los elementos de la etiqueta están completados.", [
-                                    'enOtrasMaquinas' => $enOtrasMaquinas,
-                                    'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                    'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                                ]);
-
-                                // O bien no hay elementos en otras máquinas, o todos los elementos de la etiqueta están completados
-                                $etiqueta->estado = 'completada';
-                                $etiqueta->fecha_finalizacion = now();
-                            }
-
-
-
-
+                        // Verificar si TODOS los elementos de la etiqueta están en estado "completado"
+                        $todosElementosCompletos = $etiqueta->elementos()->where('estado', '!=', 'completado')->doesntExist();
+                        if ($todosElementosCompletos) {
+                            $etiqueta->estado = 'completada';
+                            $etiqueta->fecha_finalizacion = now();
                             $etiqueta->save();
-                        } else {
-                            Log::info("La condición de completado de la máquina no se cumple.", [
-                                'elementosEnMaquina_count' => $elementosEnMaquina->count(),
-                                'numeroElementosCompletadosEnMaquina' => $numeroElementosCompletadosEnMaquina,
-                                'etiqueta_id' => $etiqueta->id,
-                            ]);
                         }
                     }
 
@@ -433,12 +347,18 @@ class etiquetaController extends Controller
                     break;
                 // -------------------------------------------- ESTADO PARCIALMENTE COMPLETADA --------------------------------------------
                 case 'parcialmente_completada':
+                    // -------------- ACTUALIZAMOS ELEMENTOS
+                    foreach ($elementosEnMaquina as $elemento) {
+                        $elemento->users_id = Auth::id();
+                        $elemento->users_id_2 = session()->get('compañero_id', null);
+                        $elemento->save();
+                    }
 
                     //Comprobamos si ya estan todos los elementos en la maquina completados.
                     if (
                         isset($elementosEnMaquina) &&
                         $elementosEnMaquina->count() > 0 &&
-                        $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count() &&
+                        $elementosCompletados >= $elementosEnMaquina->count() &&
                         in_array($maquina->tipo, ['cortadora_dobladora', 'estribadora'])
                     ) {
                         DB::rollBack();
@@ -447,16 +367,6 @@ class etiquetaController extends Controller
                             'error' => "Todos los elementos en la máquina ya han sido completados.",
                         ], 400);
                     }
-                    // -------------- ACTUALIZAMOS ELEMENTOS
-                    foreach ($elementosEnMaquina as $elemento) {
-                        Log::info("Entra en el condicional par acompletar elementos");
-                        $elemento->estado = "completado";
-                        $elemento->users_id = Auth::id();
-                        $elemento->users_id_2 = session()->get('compañero_id', null);
-                        $elemento->save();
-                    }
-                    $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'completado')->count();
-
                     // -------------- CONSUMOS
                     $consumos = [];
 
@@ -569,16 +479,18 @@ class etiquetaController extends Controller
                             throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
                         }
                         // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+                        if ($elementosEnMaquina->count() > 0 && $elementosCompletados >= $elementosEnMaquina->count()) {
                             // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
                             if ($enOtrasMaquinas) {
                                 $etiqueta->estado = 'parcialmente_completada';
+                                $message = "Etiqueta parcialmente completada en esta máquina, pero existen elementos en otras máquinas.";
                             } else {
                                 // Si no hay elementos en otras máquinas, se marca como fabricada/completada
                                 $etiqueta->estado = 'fabricada';
                                 $etiqueta->fecha_finalizacion = now();
+                                $message = "Etiqueta fabricada completamente en esta máquina.";
                             }
-
+                            $warnings[] = $message;
                             $etiqueta->save();
                         }
                     } elseif (str_contains($ensambladoText, 'carcasas')) {
@@ -597,63 +509,27 @@ class etiquetaController extends Controller
                             // Si la máquina no es estribadora, puedes incluir otra lógica o dejarlo sin cambios.
                         }
                         // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+                        if ($elementosEnMaquina->count() > 0 && $elementosCompletados >= $elementosEnMaquina->count()) {
                             // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
                             if ($enOtrasMaquinas) {
                                 $etiqueta->estado = 'parcialmente_completada';
+                                $message = "Etiqueta parcialmente completada en esta máquina, pero existen elementos en otras máquinas.";
                             } else {
                                 // Si no hay elementos en otras máquinas, se marca como fabricada/completada
                                 $etiqueta->estado = 'fabricada';
                                 $etiqueta->fecha_finalizacion = now();
+                                $message = "Etiqueta fabricada completamente en esta máquina.";
                             }
-
+                            $warnings[] = $message;
                             $etiqueta->save();
                         }
                     } else {
-                        // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-
-                            Log::info("Todos los elementos de la máquina están completados.", [
-                                'elementosEnMaquina_count' => $elementosEnMaquina->count(),
-                                'numeroElementosCompletadosEnMaquina' => $numeroElementosCompletadosEnMaquina,
-                                'etiqueta_id' => $etiqueta->id,
-                            ]);
-
-                            // Número de elementos completados en la etiqueta (asumiendo que 'completado' es el estado que indica que el elemento está terminado)
-                            $numeroElementosCompletadosEnEtiqueta = $etiqueta->elementos()->where('estado', 'completado')->count();
-                            Log::info("Número de elementos completados en la etiqueta.", [
-                                'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                            ]);
-
-                            // Verificar si la etiqueta tiene elementos en otras máquinas y no todos los elementos de la etiqueta están completos
-                            if ($enOtrasMaquinas && $numeroElementosCompletadosEnEtiqueta < $numeroElementosTotalesEnEtiqueta) {
-                                Log::info("Etiqueta tiene elementos en otras máquinas y aún hay pendientes en la etiqueta.", [
-                                    'enOtrasMaquinas' => $enOtrasMaquinas,
-                                    'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                    'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                                ]);
-
-                                $etiqueta->estado = 'parcialmente_completada';
-                            } else {
-                                Log::info("No hay elementos en otras máquinas o todos los elementos de la etiqueta están completados.", [
-                                    'enOtrasMaquinas' => $enOtrasMaquinas,
-                                    'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                    'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                                ]);
-
-                                // O bien no hay elementos en otras máquinas, o todos los elementos de la etiqueta están completados
-                                $etiqueta->estado = 'completada';
-                                $etiqueta->fecha_finalizacion = now();
-                            }
-
+                        // Verificar si TODOS los elementos de la etiqueta están en estado "completado"
+                        $todosElementosCompletos = $etiqueta->elementos()->where('estado', '!=', 'completado')->doesntExist();
+                        if ($todosElementosCompletos) {
+                            $etiqueta->estado = 'completada';
+                            $etiqueta->fecha_finalizacion = now();
                             $etiqueta->save();
-                        } else {
-                            Log::info("La condición de completado de la máquina no se cumple.", [
-                                'elementosEnMaquina_count' => $elementosEnMaquina->count(),
-                                'numeroElementosCompletadosEnMaquina' => $numeroElementosCompletadosEnMaquina,
-                                'etiqueta_id' => $etiqueta->id,
-                            ]);
                         }
                     }
                     // Si todos los elementos de la planilla están completados, actualizar la planilla
@@ -877,15 +753,11 @@ class etiquetaController extends Controller
                     throw new \Exception("Estado desconocido de la etiqueta.");
             }
 
-
             DB::commit();
             return response()->json([
                 'success' => true,
-                'estado' => $etiqueta->estado,
-                'peso' => $pesoTotalMaquina,
-                'fecha_inicio' => $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
-                'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
-                'warnings' => $warnings // Incluir los warnings en la respuesta
+                'message' => 'Proceso completo de la etiqueta ejecutado correctamente.',
+                'etiqueta' => $etiqueta,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -894,29 +766,5 @@ class etiquetaController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
-    }
-
-    public function verificarEtiquetas(Request $request)
-    {
-        $etiquetas = $request->input('etiquetas', []);
-
-        // Buscar etiquetas que no estén en estado "completado"
-        $etiquetasIncompletas = Etiqueta::whereIn('id', $etiquetas)
-            ->where('estado', '!=', 'completado')
-            ->pluck('id') // Solo obtiene los IDs de las etiquetas incompletas
-            ->toArray();
-
-        if (!empty($etiquetasIncompletas)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Algunas etiquetas no están completas.',
-                'etiquetas_incompletas' => $etiquetasIncompletas,
-            ], 400);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Todas las etiquetas están completas.'
-        ]);
     }
 }

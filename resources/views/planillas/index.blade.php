@@ -169,6 +169,7 @@
                         <th class="px-4 py-3 border">Fecha Inicio</th>
                         <th class="px-4 py-3 border">Fecha Finalización</th>
                         <th class="px-4 py-3 border">Fecha Importación</th>
+                        <th class="px-4 py-3 border">Fecha Entrega</th>
                         <th class="px-4 py-3 border">Usuario</th>
                         <th class="px-4 py-3 border text-center">Acciones</th>
                     </tr>
@@ -303,9 +304,20 @@
                                 <span x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
                             </td>
 
+                            <!-- Fecha Entrega -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.fecha_estimada_entrega"></span>
+                                </template>
+                                <input x-show="editando" type="date" x-model="planilla.fecha_estimada_entrega"
+                                    class="form-input w-full">
+
+                            </td>
+
                             <!-- Usuario -->
                             <td class="px-4 py-3 text-center border">
                                 <span x-text="planilla.user?.name ?? 'Desconocido'"></span>
+
                             </td>
 
                             <!-- Botones -->
