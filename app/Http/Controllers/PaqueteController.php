@@ -32,7 +32,7 @@ class PaqueteController extends Controller
 
             $query->where(function ($q) use ($planillaInput) {
                 $q->where('planilla_id', $planillaInput) // Buscar por ID en la tabla paquetes
-                    ->orWhereHas('planilla_id', function ($subQuery) use ($planillaInput) {
+                    ->orWhereHas('planilla', function ($subQuery) use ($planillaInput) {
                         $subQuery->where('codigo', 'like', '%' . $planillaInput . '%'); // Buscar por código en planillas
                     });
             });
@@ -139,7 +139,7 @@ class PaqueteController extends Controller
             $pesoTotal = $todosElementos->sum('peso') + $subpaquetes->sum('peso');
 
             // Verificar si el peso total supera el límite
-            if ($pesoTotal > 1200) {
+            if ($pesoTotal > 1300) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,

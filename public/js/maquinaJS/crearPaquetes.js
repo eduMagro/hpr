@@ -264,13 +264,17 @@ function crearPaquete() {
                     html: `Paquete creado con éxito. ID: <strong>${data.paquete_id}</strong> <br>
                        <button onclick="generateAndPrintQR('${data.paquete_id}', '${data.codigo_planilla}', 'PAQUETE')"
                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">QR</button>`,
-                }).then(() => {
-                    items.length = 0;
-                    document.getElementById("itemsList").innerHTML = "";
-                    console.log(
-                        "Lista de items reiniciada después de crear el paquete."
-                    );
-                });
+                })
+                    .then(() => {
+                        items.length = 0;
+                        document.getElementById("itemsList").innerHTML = "";
+                        console.log(
+                            "Lista de items reiniciada después de crear el paquete."
+                        );
+                    })
+                    .then(() => {
+                        window.location.reload(); // Recarga la página tras el mensaje
+                    });
             } else {
                 throw new Error(
                     data.message || "Error desconocido al crear el paquete."

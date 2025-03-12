@@ -46,12 +46,17 @@
                         <p><strong>Diámetros aceptados:
                             </strong>{{ $maquina->diametro_min . ' - ' . $maquina->diametro_max }}</p>
                         <p><strong>Estado: </strong>
-                            @if ($maquina->elementos_count > 0)
-                                <span class="text-success">En producción</span>
-                            @else
-                                <span class="text-danger">Sin trabajo</span>
-                            @endif
+                            @php
+                                $enProduccion =
+                                    $maquina->tipo === 'ensambladora'
+                                        ? $maquina->elementos_ensambladora > 0
+                                        : $maquina->elementos_count > 0;
+                            @endphp
+                            <span class="{{ $enProduccion ? 'text-success' : 'text-danger' }}">
+                                {{ $enProduccion ? 'En producción' : 'Sin trabajo' }}
+                            </span>
                         </p>
+
                         <!-- Mostrar los productos que contiene esta ubicación -->
                         <h4 class="mt-4 font-semibold">Productos en máquina:</h4>
                         @if ($maquina->productos->isEmpty())

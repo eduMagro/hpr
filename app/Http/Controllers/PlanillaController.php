@@ -146,18 +146,27 @@ class PlanillaController extends Controller
         if ($request->has('planilla_id')) {
             $query->where('id', $request->planilla_id);
         }
+        // 📌 Filtrar por codigo de planilla si está presente
+        if ($request->has('codigo') && $request->codigo) {
+            $query->where('codigo', 'like', "%{$request->codigo}%");
+        }
 
         // 🛠️ Filtrar por estado de fabricación
         if ($request->has('estado') && $request->estado) {
             $query->where('estado', 'like', "%{$request->estado}%");
         }
-
         // 🏷️ Ordenar los resultados
-        if ($request->has('sort_by') && $request->has('order')) {
-            $sortBy = $request->input('sort_by');
-            $order = $request->input('order') == 'desc' ? 'desc' : 'asc'; // Default to 'asc' if no 'order' value
-            $query->orderBy($sortBy, $order);
-        }
+        $allowedSortColumns = ['created_at', 'codigo', 'cliente', 'nom_obra']; // Lista de columnas permitidas
+
+        $sortBy = $request->filled('sort_by') && in_array($request->input('sort_by'), $allowedSortColumns)
+            ? $request->input('sort_by')
+            : 'created_at'; // Default seguro
+
+        $order = $request->filled('order') && in_array($request->input('order'), ['asc', 'desc'])
+            ? $request->input('order')
+            : 'desc'; // Default seguro
+
+        $query->orderBy($sortBy, $order);
 
         return $query;
     }
@@ -170,26 +179,40 @@ class PlanillaController extends Controller
         try {
             $query = Planilla::with(['user', 'elementos']);
 
-
             // Aplicar filtros
             $query = $this->aplicarFiltros($query, $request);
 
-            // 📌 Ordenación segura
+            // 📌 Columnas permitidas para ordenar
             $allowedSortColumns = ['created_at', 'codigo', 'cliente', 'nom_obra'];
-            $sortBy = in_array($request->input('sort_by'), $allowedSortColumns) ? $request->input('sort_by') : 'created_at';
-            $order = in_array($request->input('order'), ['asc', 'desc']) ? $request->input('order') : 'desc';
 
-            $query->orderBy($sortBy, $order);
+            // 📌 Si no se envía un `sort_by` válido, usar 'created_at' por defecto
+            $sortBy = $request->filled('sort_by') && in_array($request->input('sort_by'), $allowedSortColumns)
+                ? $request->input('sort_by')
+                : 'created_at';
+
+            // 📌 Si no se envía `order`, usar 'desc' por defecto
+            $order = $request->filled('order') && in_array($request->input('order'), ['asc', 'desc'])
+                ? $request->input('order')
+                : 'desc';
+
+            // 📌 Verifica que `sort_by` no esté vacío antes de ordenar
+            if (!empty($sortBy)) {
+                $query->orderBy($sortBy, $order);
+            } else {
+                $query->orderBy('created_at', 'desc'); // Default seguro
+            }
 
             // 📌 Paginación
             $perPage = $request->input('per_page', 10);
             $planillas = $query->paginate($perPage)->appends($request->except('page'));
 
+            // 📌 Cargar suma de peso completado
             $planillas->loadSum([
                 'elementos as suma_peso_completados' => function ($query) {
                     $query->where('estado', 'completado');
                 }
             ], 'peso');
+
             // Retornar vista con los datos
             return view('planillas.index', compact('planillas'));
         } catch (Exception $e) {

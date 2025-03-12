@@ -30,27 +30,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Verificar el estado actual de la etiqueta en el DOM
-        const estadoElemento = document.getElementById(`estado-${etiquetaId}`);
-        if (
-            estadoElemento &&
-            estadoElemento.textContent.trim().toLowerCase() === "completado"
-        ) {
-            Swal.fire({
-                title: "¿Estás seguro?",
-                text: "La etiqueta se reiniciará a estado pendiente y se revertirá el consumo. ¿Desea continuar?",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Sí, reiníciala",
-                cancelButtonText: "Cancelar",
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    actualizarEtiqueta(etiquetaId, maquinaId);
-                }
-            });
-        } else {
-            actualizarEtiqueta(etiquetaId, maquinaId);
-        }
+        actualizarEtiqueta(etiquetaId, maquinaId);
+
         e.target.value = ""; // Limpiar input tras procesar
     });
 
@@ -207,7 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Si la etiqueta se encuentra en estado completada o fabricada, agregarla automáticamente a la lista.
-        if (data.estado.toLowerCase() === "completada") {
+        if (
+            data.estado.toLowerCase() === "completada" ||
+            data.estado.toLowerCase() === "parcialmente_completada"
+        ) {
             agregarItemEtiqueta(id, data);
         }
 

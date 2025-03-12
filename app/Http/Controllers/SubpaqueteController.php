@@ -20,7 +20,7 @@ class SubpaqueteController extends Controller
             })
             ->when($request->planilla, function ($query, $planilla) {
                 return $query->whereHas('planilla', function ($q) use ($planilla) {
-                    $q->where('codigo_limpio', 'like', "%{$planilla}%");
+                    $q->where('codigo', 'like', "%{$planilla}%"); // ✅ Buscar por la columna real en la BD
                 });
             })
             ->when($request->paquete, function ($query, $paquete) {
@@ -50,17 +50,17 @@ class SubpaqueteController extends Controller
             'cantidad' => 'required|integer|min:1', // Asegurar que la cantidad es requerida y válida
             'descripcion' => 'nullable|string',
         ]);
-    
+
         // Obtener el elemento y su planilla_id
         $elemento = Elemento::findOrFail($request->elemento_id);
         $pesoDisponible = $elemento->peso - $elemento->subpaquetes->sum('peso');
-    
+
         // Validar que el peso total de los subpaquetes no exceda el peso disponible
         $pesoTotal = $request->peso * $request->cantidad;
         if ($pesoTotal > $pesoDisponible) {
             return back()->with('error', 'El peso total de los subpaquetes no puede superar el peso disponible del elemento (' . $elemento->peso . ').');
         }
-    
+
         // Crear los subpaquetes según la cantidad especificada
         for ($i = 0; $i < $request->cantidad; $i++) {
             Subpaquete::create([
@@ -72,10 +72,10 @@ class SubpaqueteController extends Controller
                 'descripcion' => $request->descripcion,
             ]);
         }
-    
+
         return back()->with('success', 'Se han creado ' . $request->cantidad . ' subpaquetes correctamente.');
     }
-    
+
     public function destroy(Subpaquete $subpaquete)
     {
         try {

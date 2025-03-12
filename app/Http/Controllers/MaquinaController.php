@@ -10,6 +10,8 @@ use App\Models\Subpaquete;
 use App\Models\User;
 use App\Models\Ubicacion;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
 
 class MaquinaController extends Controller
 {
@@ -20,10 +22,20 @@ class MaquinaController extends Controller
 
         // Construcción de la consulta para obtener máquinas
         $query = Maquina::with('productos')
-            ->withCount('elementos'); // Contar los elementos asociados a cada máquina
+            ->withCount([
+                'elementos' => function ($query) {
+                    $query->where('estado', '!=', 'completado'); // Contar elementos no completados
+                },
+                'elementos as elementos_ensambladora' => function ($query) {
+                    $query->where('estado', '!=', 'completado')
+                        ->whereHas('maquina_2', function ($subquery) {
+                            $subquery->where('tipo', 'ensambladora'); // Solo contar si maquina_id_2 es ensambladora
+                        });
+                }
+            ]);
 
         // Aplicar filtro por nombre si se pasa como parámetro en la solicitud
-        if ($request->has('nombre')) {
+        if ($request->filled('nombre')) {
             $nombre = $request->input('nombre');
             $query->where('nombre', 'like', '%' . $nombre . '%');
         }
@@ -31,15 +43,20 @@ class MaquinaController extends Controller
         // Ordenar por un campo dinámico
         $sortBy = $request->input('sort_by', 'created_at');
         $order = $request->input('order', 'desc');
-        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
+
+        // Validar que el campo de ordenación existe en la base de datos para evitar inyección SQL
+        if (Schema::hasColumn('maquinas', $sortBy)) {
+            $query->orderBy($sortBy, $order);
+        }
 
         // Paginación
         $perPage = $request->input('per_page', 10);
         $registrosMaquina = $query->paginate($perPage)->appends($request->except('page'));
 
-        // Pasar las ubicaciones y productos a la vista
+        // Pasar las máquinas y usuarios a la vista
         return view('maquinas.index', compact('registrosMaquina', 'usuarios'));
     }
+
 
 
 

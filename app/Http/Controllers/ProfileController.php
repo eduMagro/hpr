@@ -424,24 +424,33 @@ class ProfileController extends Controller
 
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
-            // Excluir sábados, domingos, festivos y días con turno de vacaciones
-            if (
-                in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
-                in_array($fecha->toDateString(), $festivosArray) ||
-                in_array($fecha->toDateString(), $diasVacaciones)
-            ) {
-                continue;
-            }
+            for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
+                // Guardar el turno del viernes antes de saltarlo si es festivo o vacaciones
+                $esViernes = $fecha->dayOfWeek == Carbon::FRIDAY;
 
+                // Excluir sábados, domingos, festivos y días con turno de vacaciones
+                if (
+                    in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
+                    in_array($fecha->toDateString(), $festivosArray) ||
+                    in_array($fecha->toDateString(), $diasVacaciones)
+                ) {
+                    // Si es viernes, cambiar turno aunque no se registre en la base de datos
+                    if ($user->turno == 'diurno' && $esViernes) {
+                        $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                    }
+                    continue;
+                }
 
-            AsignacionTurno::updateOrCreate(
-                ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
-                ['turno_id' => $turnoAsignado]
-            );
+                // Registrar el turno en la base de datos
+                AsignacionTurno::updateOrCreate(
+                    ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
+                    ['turno_id' => $turnoAsignado]
+                );
 
-            // Alternar turnos cada viernes para trabajadores diurnos
-            if ($user->turno == 'diurno' && $fecha->dayOfWeek == Carbon::FRIDAY) {
-                $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                // Si es viernes, cambiar turno para la próxima semana
+                if ($user->turno == 'diurno' && $esViernes) {
+                    $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                }
             }
         }
 
@@ -479,7 +488,7 @@ class ProfileController extends Controller
             return []; // Si la API falla, devolvemos un array vacío
         }
 
-        return collect($response->json())->filter(function ($holiday) {
+        $festivos = collect($response->json())->filter(function ($holiday) {
             // Si no tiene 'counties', es un festivo NACIONAL
             if (!isset($holiday['counties'])) {
                 return true;
@@ -495,6 +504,29 @@ class ProfileController extends Controller
                 'textColor' => 'white',
                 'allDay' => true
             ];
-        })->values()->toArray(); // Asegurar que sea un array de valores sin claves
+        });
+
+        // Añadir festivos locales de Los Palacios y Villafranca
+        $festivosLocales = collect([
+            [
+                'title' => 'Festividad de Nuestra Señora de las Nieves',
+                'start' => date('Y') . '-08-05',
+                'backgroundColor' => '#ff0000',
+                'borderColor' => '#b91c1c',
+                'textColor' => 'white',
+                'allDay' => true
+            ],
+            [
+                'title' => 'Feria Los Palacios y Vfca',
+                'start' => date('Y') . '-09-25',
+                'backgroundColor' => '#ff0000',
+                'borderColor' => '#b91c1c',
+                'textColor' => 'white',
+                'allDay' => true
+            ]
+        ]);
+
+        // Combinar festivos nacionales, autonómicos y locales
+        return $festivos->merge($festivosLocales)->values()->toArray();
     }
 }

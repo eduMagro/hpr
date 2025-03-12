@@ -504,6 +504,7 @@
                         <!-- Botones -->
                         <div class="flex justify-end space-x-2">
                             <button type="button"
+                                onclick="document.getElementById('modalIncidencia').classList.add('hidden')"
                                 class="bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-lg">
                                 Cancelar
                             </button>
