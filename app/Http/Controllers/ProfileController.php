@@ -392,6 +392,7 @@ class ProfileController extends Controller
         $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
         $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
         $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
+        $turnoVacacionesId = Turno::where('nombre', 'vacaciones')->value('id'); // Obtener dinámicamente el ID de vacaciones
 
         // Definir el inicio y fin del año actual
         $inicio = Carbon::now()->addDay()->startOfDay();
@@ -399,6 +400,12 @@ class ProfileController extends Controller
 
         // Obtener festivos desde el método getFestivos()
         $festivos = $this->getFestivos();
+        $festivosArray = collect($festivos)->pluck('start')->toArray();
+        // Obtener los días donde ya hay una asignación de vacaciones (turno_id = 10)
+        $diasVacaciones = AsignacionTurno::where('user_id', $user->id)
+            ->where('turno_id', $turnoVacacionesId)
+            ->pluck('fecha')
+            ->toArray();
 
         // Determinar el turno inicial según el tipo de turno del usuario
         if ($user->turno == 'diurno') {
@@ -414,13 +421,18 @@ class ProfileController extends Controller
         } else {
             return redirect()->back()->with('error', 'El usuario no tiene un turno asignado.');
         }
-        $festivosArray = collect($festivos)->pluck('start')->toArray();
+
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
-            // **Excluye sábados, domingos y festivos**
-            if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) || in_array($fecha->toDateString(), $festivosArray)) {
+            // Excluir sábados, domingos, festivos y días con turno de vacaciones
+            if (
+                in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
+                in_array($fecha->toDateString(), $festivosArray) ||
+                in_array($fecha->toDateString(), $diasVacaciones)
+            ) {
                 continue;
             }
+
 
             AsignacionTurno::updateOrCreate(
                 ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
