@@ -22,9 +22,9 @@
                     <thead>
                         <tr class="bg-gray-100 text-left text-sm font-medium text-gray-700">
                             <th class="py-2 px-4 border-b">Salida</th>
-                            <th class="py-2 px-4 border-b">Fecha</th>
                             <th class="py-2 px-4 border-b">Empresa</th>
                             <th class="py-2 px-4 border-b">Camión</th>
+                            <th class="py-2 px-4 border-b">Fecha</th>
                             <th class="py-2 px-4 border-b">Estado</th>
                             <th class="py-2 px-4 border-b">Acciones</th>
                         </tr>
@@ -33,10 +33,11 @@
                         @foreach ($salidas as $salida)
                             <tr class="hover:bg-gray-50 text-sm">
                                 <td class="py-2 px-4 border-b">{{ $salida->codigo_salida }}</td>
-                                <td class="py-2 px-4 border-b">{{ $salida->created_at->format('d/m/Y H:i') }}</td>
+
                                 <td class="py-2 px-4 border-b">{{ $salida->empresaTransporte->nombre }}</td>
                                 <td class="py-2 px-4 border-b">{{ $salida->camion->modelo }} -
                                     {{ $salida->camion->matricula }}</td>
+                                <td class="py-2 px-4 border-b">{{ $salida->fecha_salida ?? null }}</td>
                                 <td class="py-2 px-4 border-b">{{ ucfirst($salida->estado) }}</td>
                                 <td class="py-2 px-4 border-b">
                                     <a href="{{ route('salidas.show', $salida->id) }}"

@@ -17,7 +17,7 @@ class SalidaController extends Controller
     public function index(Request $request)
     {
         // Verificar si el usuario es administrador
-        if (auth()->user()->categoria == 'administrador') {
+        if (auth()->user()->rol == 'oficina') {
             // Si es administrador, mostrar todas las salidas con sus paquetes, subpaquetes y elementos
             $query = Salida::with(['paquetes.subpaquetes', 'paquetes.elementos']);
         } else {

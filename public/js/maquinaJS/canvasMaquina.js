@@ -10,7 +10,7 @@ const ELEMENT_TEXT_COLOR = "blue"; // Color del texto del elemento (ID)
 const marginX = 50; // Margen horizontal interno
 const marginY = 50; // Margen vertical interno
 const gapSpacing = 25; // Espacio extra entre slots
-const minSlotHeight = 200; // Altura mínima para cada slot
+const minSlotHeight = 80; // Altura mínima para cada slot
 
 // =======================
 // Función drawDimensionLine (Mayoría de Figuras)

@@ -163,7 +163,7 @@
                                 return $item->etiqueta_id . '-' . $item->marca;
                             });
                     } else {
-                        $elementosAgrupados = $maquina->elementos
+                        $elementosAgrupados = $elementosMaquina
                             ->filter(function ($elemento) {
                                 return !debeSerExcluido($elemento);
                             })

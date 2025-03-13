@@ -63,83 +63,134 @@ class MaquinaController extends Controller
     //------------------------------------------------------------------------------------ SHOW
     public function show($id)
     {
+        // 1) Cargar la máquina y sus relaciones
         $maquina = Maquina::with([
             'elementos.planilla',
             'elementos.etiquetaRelacion',
             'productos'
         ])->findOrFail($id);
+
         $ubicacion = Ubicacion::where('descripcion', 'like', '%' . $maquina->codigo . '%')->first();
 
         $usuario1 = auth()->user();
         $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null;
 
-
-        // Decodificar nombres de usuario
+        // Decodificar nombres (por tu lógica)
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
         if ($usuario2) {
             $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
         }
 
-        // Obtener la máquina "IDEA 5"
-        $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = LOWER(?)', ['idea 5'])->first();
+        // 2) Verificar si la máquina es "IDEA 5" (o ID=5 con ese nombre)
+        $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = ?', ['idea 5'])->first();
 
-        // Obtener los elementos de esta máquina
+        // 3) Cargar la colección base de elementos para ESTA máquina
         $elementosMaquina = $maquina->elementos;
 
-        // Si la máquina actual es "IDEA 5" o la 7, incluir también los elementos con maquina_id_2 asignado
+        // 4) Si estamos en "IDEA 5", fusionar elementos que tengan maquina_id_2 = Idea5 (y otra maquina principal)
         if ($maquinaIdea5 && $maquina->id == $maquinaIdea5->id) {
             $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)
-                ->where('maquina_id', '!=', $maquinaIdea5->id) // ✅ Solo los que están en otras máquinas
+                ->where('maquina_id', '!=', $maquinaIdea5->id)
                 ->get();
-
-            // Fusionar elementos en la máquina con los elementos extra
             $elementosMaquina = $elementosMaquina->merge($elementosExtra);
         }
 
-        // 🔹 Agregar elementos con maquina_id_2 = 7 cuando la máquina sea la 7
+        // 5) Si la máquina es la 7, fusionar también los que tengan maquina_id_2 = 7
         if ($maquina->id == 7) {
             $elementosExtra = Elemento::where('maquina_id_2', 7)
-                ->where('maquina_id', '!=', 7) // ✅ Solo los que están en otras máquinas
+                ->where('maquina_id', '!=', 7)
                 ->get();
-
             $elementosMaquina = $elementosMaquina->merge($elementosExtra);
         }
 
+        // ---------------------------------------------------------------
+        // A) AGRUPAR POR PLANILLA LOS ELEMENTOS DE ESTA MÁQUINA
+        //    (solo se agrupan planillas que de verdad tienen elementos en esta máquina).
+        // ---------------------------------------------------------------
+        $elementosPorPlanilla = $elementosMaquina
+            ->groupBy('planilla_id')
+            ->sortBy(function ($grupo) {
+                // Ordenar por fecha_estimada_entrega de la planilla
+                return optional($grupo->first()->planilla)->fecha_estimada_entrega;
+            });
 
-        // Obtener las etiquetas de estos elementos
+        // ---------------------------------------------------------------
+        // B) SELECCIONAR LA PRIMERA PLANILLA "NO COMPLETADA" CON ELEMENTOS PENDIENTES
+        //    Esto significa: planilla->estado != 'Completada'
+        //    (o tu propia lógica) y que haya al menos un elemento sin completar
+        // ---------------------------------------------------------------
+        $planillaActiva = null;
+        foreach ($elementosPorPlanilla as $planillaId => $grupo) {
+            $planilla = $grupo->first()->planilla;
+
+            // Aquí asumes que si planilla->estado != 'Completada' => No está terminada
+            // (Ajusta según tu DB: 'Pendiente', 'En proceso', etc.)
+            if ($planilla && $planilla->estado !== 'Completada') {
+                // Opcional: verifica si en ese grupo hay AL MENOS un elemento sin estado 'completado'
+                // (si no quieres filtrar por elemento, quita esta parte)
+                $hayElementosPendientes = $grupo->contains(function ($elem) {
+                    return strtolower($elem->estado) !== 'completado';
+                });
+
+                if ($hayElementosPendientes) {
+                    $planillaActiva = $planilla;
+                    break; // la primera que encontramos
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // C) QUEDARNOS SOLO CON LOS ELEMENTOS DE ESTA PLANILLA ACTIVA
+        //    (si no hay planilla activa, quedará vacío)
+        // ---------------------------------------------------------------
+        if ($planillaActiva) {
+            $elementosMaquina = $elementosMaquina->filter(function ($elem) use ($planillaActiva) {
+                return $elem->planilla_id == $planillaActiva->id;
+            });
+        } else {
+            // No hay planilla pendiente para esta máquina => sin elementos
+            $elementosMaquina = collect();
+        }
+
+        // El resto de la lógica parte ya de LOS ELEMENTOS de la planilla activa
+        // ---------------------------------------------------------------
+
+        // 6) Recolectar etiquetas
         $etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
 
-        // Obtener elementos de otras máquinas con las mismas etiquetas
+        // 7) Otros elementos (siempre que necesites mostrarlos, ajusta tu lógica)
         $otrosElementos = Elemento::with('maquina')
             ->whereIn('etiqueta_id', $etiquetasIds)
             ->where('maquina_id', '!=', $maquina->id);
 
+        // Si la máquina actual es la Idea5, excluimos los de maquina_id_2 = Idea5
         if ($maquinaIdea5) {
             $otrosElementos = $otrosElementos->where(function ($query) use ($maquinaIdea5) {
                 $query->where('maquina_id_2', '!=', $maquinaIdea5->id)
                     ->orWhereNull('maquina_id_2');
             });
         }
-
         $otrosElementos = $otrosElementos->get()->groupBy('etiqueta_id');
 
-        // Buscar etiquetas cuyos elementos están todos en una misma máquina
+        // 8) Etiquetas con elementos en una sola máquina
         $etiquetasEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasIds)
             ->selectRaw('etiqueta_id, COUNT(DISTINCT maquina_id) as total_maquinas')
             ->groupBy('etiqueta_id')
             ->having('total_maquinas', 1)
             ->pluck('etiqueta_id');
 
-        // Obtener los elementos de esas etiquetas
+        // 9) Elementos de esas etiquetas
         $elementosEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasEnUnaSolaMaquina)
             ->with('maquina')
             ->get();
 
-        // Fusionar con elementos de maquina_id_2 = IDEA 5
+        // Fusionar con elementos de maquina_id_2 = Idea5
         if ($maquinaIdea5) {
             $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)->get();
             $elementosEnUnaSolaMaquina = $elementosEnUnaSolaMaquina->merge($elementosExtra);
         }
+
+        // 10) Preparar datos de pesos
         $pesosElementos = $elementosMaquina->map(function ($item) {
             return [
                 'id'   => $item->id,
@@ -147,38 +198,38 @@ class MaquinaController extends Controller
             ];
         })->values()->toArray();
 
-        // Obtener los IDs de los elementos que pertenecen a la máquina (incluyendo los fusionados)
+        // 11) Subpaquetes
         $elementoIds = $elementosMaquina->pluck('id')->toArray();
-        // Buscar los subpaquetes cuyos 'elemento_id' estén en los elementos de la máquina
         $subpaquetes = Subpaquete::whereIn('elemento_id', $elementoIds)->get();
         $subpaquetesData = $subpaquetes->map(function ($subpaquete) {
             return [
                 'id'   => $subpaquete->id,
-                'peso' => $subpaquete->peso, // Uso directo del campo "peso" del subpaquete
+                'peso' => $subpaquete->peso,
             ];
         })->values();
 
-
+        // 12) Información de etiquetas
         $etiquetasData = $elementosMaquina
             ->groupBy('etiqueta_id')
             ->map(function ($grupo, $etiquetaId) {
                 return [
-                    'codigo' => $etiquetaId,
-                    // Aquí puedes definir cómo obtener los elementos. Por ejemplo:
+                    'codigo'    => $etiquetaId,
                     'elementos' => $grupo->pluck('id')->toArray(),
-                    'pesoTotal' => $grupo->sum('peso')
+                    'pesoTotal' => $grupo->sum('peso'),
                 ];
-            })->values(); // values() para reiniciar los índices y obtener un arreglo
+            })
+            ->values();
 
+        // 13) Retornar la vista (asegúrate de usar `$elementosMaquina` en la vista)
         return view('maquinas.show', [
-            'maquina' => $maquina,
-            'ubicacion' => $ubicacion,
-            'usuario1' => $usuario1,
-            'usuario2' => $usuario2,
-            'otrosElementos' => $otrosElementos,
+            'maquina'                   => $maquina,
+            'ubicacion'                 => $ubicacion,
+            'usuario1'                  => $usuario1,
+            'usuario2'                  => $usuario2,
+            'otrosElementos'            => $otrosElementos,
             'etiquetasEnUnaSolaMaquina' => $etiquetasEnUnaSolaMaquina,
             'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
-            'elementosMaquina' => $elementosMaquina, // ✅ Ahora incluye los elementos de otras máquinas con maquina_id_2 = IDEA 5
+            'elementosMaquina'          => $elementosMaquina, // Ya está filtrado a la planilla activa
             'pesosElementos'            => $pesosElementos,
             'etiquetasData'             => $etiquetasData,
             'subpaquetesData'           => $subpaquetesData,
