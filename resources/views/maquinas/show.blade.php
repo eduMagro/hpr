@@ -58,6 +58,10 @@
                                         <a href="{{ route('productos.index', ['id' => $producto->id]) }}"
                                             class="btn btn-sm btn-primary mb-2">Ver</a>
                                     </div>
+                                    <div class="flex flex-col">
+                                        <a href="{{ route('productos.index', ['id' => $producto->id]) }}"
+                                            class="btn btn-sm btn-primary mb-2">Consumir</a>
+                                    </div>
 
                                     @if (strtoupper($producto->tipo == 'ENCARRETADO'))
                                         <div id="progreso-container-{{ $producto->id }}"
@@ -270,7 +274,7 @@
                                         <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }} -
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }}
                                         -
-                                        <strong>Dm:</strong> {{ $elemento->diametro_mm }}
+                                        <strong>Ø</strong> {{ $elemento->diametro_mm }}
                                         <!-- Botón para Subpaquetar -->
                                         @if ($elemento->peso > 500 || $elemento->barras > 30)
                                             <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"

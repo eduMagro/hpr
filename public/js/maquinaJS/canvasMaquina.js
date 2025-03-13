@@ -1,448 +1,183 @@
-// Márgenes internos para delimitar el área de dibujo
-const marginX = 50; // margen horizontal
-const marginY = 25; // margen vertical
+// =======================
+// Configuración Global
+// =======================
+const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)"; // Color de la línea de la figura
+const LINEA_COTA_COLOR = "rgba(255, 0, 0, 0.5)"; // Color de la línea y cabeza de flechas de las cotas
+const VALOR_COTA_COLOR = "red"; // Color del valor de las cotas
+const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)"; // Color del texto del número de piezas
+const ELEMENT_TEXT_COLOR = "blue"; // Color del texto del elemento (ID)
 
-// Espacio extra entre cada slot (recuadro)
-// Se redujo de 10 a 5 para disminuir el espacio entre figuras.
-const gapSpacing = 10;
+const marginX = 50; // Margen horizontal interno
+const marginY = 50; // Margen vertical interno
+const gapSpacing = 25; // Espacio extra entre slots
+const minSlotHeight = 200; // Altura mínima para cada slot
 
-// Altura mínima para cada slot (puedes ajustar según tus necesidades)
-const minSlotHeight = 100;
+// =======================
+// Función drawDimensionLine (Mayoría de Figuras)
+// =======================
+function drawDimensionLine(ctx, pt1, pt2, text, offset = 10) {
+    const dx = pt2.x - pt1.x;
+    const dy = pt2.y - pt1.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len === 0) return;
+    const ux = -dy / len;
+    const uy = dx / len;
+    const p1 = { x: pt1.x + ux * offset, y: pt1.y + uy * offset };
+    const p2 = { x: pt2.x + ux * offset, y: pt2.y + uy * offset };
 
-// Accede a la variable global que inyectamos en el HTML
-const elementos = window.elementosAgrupadosScript;
-
-elementos.forEach((grupo) => {
-    const canvas = document.getElementById(
-        `canvas-etiqueta-${grupo.etiqueta?.id}`
-    );
-    if (!canvas) {
-        console.warn(
-            `Canvas no encontrado para etiqueta ID: ${grupo.etiqueta?.id}`
-        );
-        return;
-    }
-    const clickableIDs = []; // Declarar variable
-    const parent = canvas.parentElement;
-    // Ajusta el ancho del canvas al ancho del div padre
-    const canvasWidth = parent.clientWidth;
-
-    // Calcula la altura del canvas dinámicamente según el número de elementos
-    const numElementos = grupo.elementos.length;
-    const canvasHeight =
-        marginY * 2 +
-        numElementos * minSlotHeight +
-        (numElementos - 1) * gapSpacing;
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Se reparte la altura disponible en "slots" para cada figura,
-    // descontando los márgenes y el espacio entre recuadros.
-    const availableSlotHeight =
-        (canvasHeight - 2 * marginY - (numElementos - 1) * gapSpacing) /
-        numElementos;
-    const availableWidth = canvasWidth - 2 * marginX;
-
-    grupo.elementos.forEach((elemento, index) => {
-        // Extraer longitudes, ángulos y, en su caso, datos de circunferencia a partir del string.
-        // Ejemplos:
-        // - Línea simple: "400"
-        // - Figura compuesta: "15 90d 85 ..."
-        // - Circunferencia o arco: "500r 90d"
-        const dimensionesStr = elemento.dimensiones || "";
-        const { longitudes, angulos, radio, arcAngle } =
-            extraerDimensiones(dimensionesStr);
-        const barras = elemento.barras || 0; // Si no tiene valor, asumir 0
-
-        // Centro del slot asignado:
-        // Se calcula el centro vertical considerando el gapSpacing:
-        const centerX = marginX + availableWidth / 2;
-        const centerY =
-            marginY +
-            availableSlotHeight / 2 +
-            index * (availableSlotHeight + gapSpacing);
-
-        // Si se detecta un radio, dibujamos una circunferencia (o arco)
-        if (radio !== null) {
-            // Calcular la escala para que la circunferencia se ajuste en el espacio disponible
-            // Se considera el diámetro = 2 * radio
-            const scale = Math.min(
-                availableWidth / (2 * radio),
-                availableSlotHeight / (2 * radio)
-            );
-            const effectiveRadius = radio * scale;
-            // Convertir el ángulo del arco a radianes; si no se proporciona, se dibuja la circunferencia completa
-            const angleRad =
-                arcAngle !== null ? (arcAngle * Math.PI) / 180 : 2 * Math.PI;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, effectiveRadius, 0, angleRad, false);
-            ctx.strokeStyle = "#0000FF";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Acotación: mostrar el valor del radio en la posición media del arco
-            const midAngle = angleRad / 2;
-            const offset = 10;
-            const textX =
-                centerX + (effectiveRadius + offset) * Math.cos(midAngle);
-            const textY =
-                centerY + (effectiveRadius + offset) * Math.sin(midAngle);
-            ctx.font = "12px Arial";
-            ctx.fillStyle = "red";
-            ctx.fillText(radio.toString() + "r", textX, textY);
-
-            // Mostrar el valor de barras
-            ctx.fillText(
-                `x${barras}`,
-                centerX + availableWidth / 2 + 15,
-                centerY + 5
-            );
-
-            // Colocar el label en la esquina inferior derecha del slot
-            const slotBottom =
-                marginY +
-                availableSlotHeight +
-                index * (availableSlotHeight + gapSpacing);
-            const labelX = marginX + availableWidth - 10;
-            const labelY = slotBottom - 5;
-            ctx.font = "14px Arial";
-            ctx.fillStyle = "#FF0000";
-            ctx.fillText(`#${elemento.id}`, labelX, labelY);
-            clickableIDs.push({
-                id: elemento.id,
-                x: labelX,
-                y: labelY - 14,
-                width: 40,
-                height: 20,
-            });
-        } else if (longitudes.length === 1) {
-            // CASO: ÚNICA DIMENSIÓN (línea horizontal)
-            const length = longitudes[0];
-            // Se usa el availableWidth para escalar la figura
-            const scale = availableWidth / Math.abs(length);
-            const lineLength = Math.abs(length) * scale;
-
-            ctx.strokeStyle = "#0000FF";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(centerX - lineLength / 2, centerY);
-            ctx.lineTo(centerX + lineLength / 2, centerY);
-            ctx.stroke();
-
-            // Acotación (en rojo)
-            const pt1 = { x: centerX - lineLength / 2, y: centerY };
-            const pt2 = { x: centerX + lineLength / 2, y: centerY };
-            const midX = (pt1.x + pt2.x) / 2;
-            const midY = (pt1.y + pt2.y) / 2;
-            // Para una línea horizontal el ángulo es 0
-            const angle = Math.atan2(pt2.y - pt1.y, pt2.x - pt1.x);
-            const offset = 10;
-            const offsetX = offset * Math.cos(angle - Math.PI / 2);
-            const offsetY = offset * Math.sin(angle - Math.PI / 2);
-
-            ctx.strokeStyle = "#0000FF";
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(pt1.x, pt1.y);
-            ctx.lineTo(pt2.x, pt2.y);
-            ctx.stroke();
-
-            ctx.font = "12px Arial";
-            ctx.fillStyle = "red";
-            ctx.fillText(length.toString(), midX + offsetX, midY + offsetY);
-
-            // Colocar el label en la esquina inferior derecha del slot
-            const slotBottom =
-                marginY +
-                availableSlotHeight +
-                index * (availableSlotHeight + gapSpacing);
-            const labelX = marginX + availableWidth - 10;
-            const labelY = slotBottom - 5;
-            ctx.font = "14px Arial";
-            ctx.fillStyle = "#FF0000";
-            ctx.fillText(`#${elemento.id}`, labelX, labelY);
-            ctx.fillText(
-                `x${barras}`,
-                centerX + availableWidth / 2 + 15,
-                centerY + 5
-            );
-            clickableIDs.push({
-                id: elemento.id,
-                x: labelX,
-                y: labelY - 14,
-                width: 40,
-                height: 20,
-            });
-        } else {
-            // CASO: FIGURA COMPUESTA (varias dimensiones)
-            // 1. Calcular el bounding box de la figura en sus coordenadas locales
-            const { minX, maxX, minY, maxY } = calcularBoundingBox(
-                longitudes,
-                angulos
-            );
-            const figWidth = maxX - minX;
-            const figHeight = maxY - minY;
-
-            // 2. Determinar si la figura debe rotarse para que su lado mayor quede horizontal.
-            //    Si el ancho es menor que la altura, se rota 90° (por -90°).
-            let rotate = false;
-            if (figWidth < figHeight) {
-                rotate = true;
-            }
-            // Las dimensiones "efectivas" son:
-            const effectiveWidth = rotate ? figHeight : figWidth;
-            const effectiveHeight = rotate ? figWidth : figHeight;
-            const figCenterX = (minX + maxX) / 2;
-            const figCenterY = (minY + maxY) / 2;
-
-            // 3. Calcular la escala para ajustar la figura al espacio disponible
-            const scale = Math.min(
-                availableWidth / effectiveWidth,
-                availableSlotHeight / effectiveHeight
-            );
-
-            // 4. Aplicar las transformaciones: trasladar, (rotar si es necesario), escalar y centrar.
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            if (rotate) {
-                ctx.rotate(-Math.PI / 2);
-            }
-            ctx.scale(scale, scale);
-            // Para centrar la figura en sus coordenadas locales se traslada su centro.
-            ctx.translate(-figCenterX, -figCenterY);
-
-            ctx.strokeStyle = "#0000FF"; // Celeste clásico
-            ctx.lineWidth = 2 / scale; // Mantener grosor constante
-            ctx.lineCap = "round";
-            ctx.lineJoin = "round";
-            dibujarFiguraPath(ctx, longitudes, angulos);
-            ctx.restore();
-
-            // 5. Calcular y dibujar las acotaciones de cada segmento
-            const pointsLocal = computePoints(longitudes, angulos);
-            const pointsCanvas = pointsLocal.map((pt) =>
-                transformPoint(
-                    pt.x,
-                    pt.y,
-                    centerX,
-                    centerY,
-                    scale,
-                    rotate,
-                    figCenterX,
-                    figCenterY
-                )
-            );
-
-            for (let i = 0; i < pointsCanvas.length - 1; i++) {
-                const pt1 = pointsCanvas[i];
-                const pt2 = pointsCanvas[i + 1];
-                const midX = (pt1.x + pt2.x) / 2;
-                const midY = (pt1.y + pt2.y) / 2;
-                const dxLocal = pointsLocal[i + 1].x - pointsLocal[i].x;
-                const dyLocal = pointsLocal[i + 1].y - pointsLocal[i].y;
-                const angleLocal = Math.atan2(dyLocal, dxLocal);
-                // Si la figura se rota, el ángulo en el canvas se ajusta restando 90°.
-                const angleCanvas = rotate
-                    ? angleLocal - Math.PI / 2
-                    : angleLocal;
-                const offset = 10;
-                const offsetX = offset * Math.cos(angleCanvas - Math.PI / 2);
-                const offsetY = offset * Math.sin(angleCanvas - Math.PI / 2);
-
-                ctx.strokeStyle = "#0000FF"; // Celeste clásico
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(pt1.x, pt1.y);
-                ctx.lineTo(pt2.x, pt2.y);
-                ctx.stroke();
-
-                ctx.font = "12px Arial";
-                ctx.fillStyle = "#FF0000";
-                const text = longitudes[i].toString();
-                ctx.fillText(text, midX + offsetX, midY + offsetY);
-            }
-            ctx.fillText(
-                `x${barras}`,
-                centerX + availableWidth / 2 + 15,
-                centerY + 5
-            );
-            // Colocar el label en la esquina inferior derecha del slot
-            const slotBottom =
-                marginY +
-                availableSlotHeight +
-                index * (availableSlotHeight + gapSpacing);
-            const labelX = marginX + availableWidth - 10;
-            const labelY = slotBottom - 5;
-            ctx.font = "14px Arial";
-            ctx.fillStyle = "#FF0000";
-            ctx.fillText(`#${elemento.id}`, labelX, labelY);
-            clickableIDs.push({
-                id: elemento.id,
-                x: labelX,
-                y: labelY - 14,
-                width: 40,
-                height: 20,
-            });
-        }
-    });
-
-    // Agregar evento de clic al canvas
-    canvas.addEventListener("click", function (event) {
-        console.log("Canvas clickeado");
-
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-        console.log(`Clic detectado en: X=${mouseX}, Y=${mouseY}`);
-
-        clickableIDs.forEach((item) => {
-            if (
-                mouseX >= item.x &&
-                mouseX <= item.x + item.width &&
-                mouseY >= item.y &&
-                mouseY <= item.y + item.height
-            ) {
-                console.log(`Elemento ${item.id} clickeado`);
-                agregarItemDesdeCanvas(item.id);
-            }
-        });
-    });
-});
-function agregarItemDesdeCanvas(itemCode) {
-    const itemType = "elemento"; // Puedes cambiarlo si hay diferentes tipos
-
-    console.log("Intentando agregar item desde canvas:", {
-        itemCode,
-        itemType,
-    });
-
-    if (items.some((i) => i.id === itemCode)) {
-        console.log("Item duplicado:", itemCode);
-        Swal.fire({
-            icon: "error",
-            title: "Item Duplicado",
-            text: "Este item ya ha sido agregado.",
-            confirmButtonColor: "#d33",
-        });
-        return;
-    }
-
-    const newItem = { id: itemCode, type: itemType };
-    items.push(newItem);
-    console.log("Item agregado. Lista actualizada:", items);
-
-    actualizarLista(); // Actualizar la lista en el DOM
-}
-
-/* Función que calcula el bounding box de la figura en coordenadas locales.
-   Se recorre cada segmento acumulando posiciones (origen en 0,0). */
-function calcularBoundingBox(longitudes, angulos) {
-    let currentX = 0,
-        currentY = 0,
-        currentAngle = 0;
-    let minX = 0,
-        maxX = 0,
-        minY = 0,
-        maxY = 0;
-    longitudes.forEach((longitud, i) => {
-        const angleIncrement = angulos[i] || 0;
-        const newX =
-            currentX + longitud * Math.cos((currentAngle * Math.PI) / 180);
-        const newY =
-            currentY + longitud * Math.sin((currentAngle * Math.PI) / 180);
-        minX = Math.min(minX, newX);
-        maxX = Math.max(maxX, newX);
-        minY = Math.min(minY, newY);
-        maxY = Math.max(maxY, newY);
-        currentX = newX;
-        currentY = newY;
-        currentAngle += angleIncrement;
-    });
-    return { minX, maxX, minY, maxY };
-}
-
-/* Función que dibuja la figura (el path) en el canvas usando el sistema de coordenadas natural.
-   Se asume que ya se aplicaron las transformaciones (traslación, rotación y escala). */
-function dibujarFiguraPath(ctx, longitudes, angulos) {
     ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.strokeStyle = LINEA_COTA_COLOR;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const arrowSize = 5;
+    drawArrowhead(ctx, p1, p2, arrowSize);
+    drawArrowhead(ctx, p2, p1, arrowSize);
+
+    const midX = (p1.x + p2.x) / 2 + ux * 10;
+    const midY = (p1.y + p2.y) / 2 + uy * 10;
+    ctx.font = "12px Arial";
+    ctx.fillStyle = VALOR_COTA_COLOR;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, midX, midY);
+}
+
+// =======================
+// Función que dibuja cabeza de flechas para todas las figuras
+// =======================
+function drawArrowhead(ctx, from, to, size) {
+    ctx.save();
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(
+        from.x + size * Math.cos(angle + Math.PI / 6),
+        from.y + size * Math.sin(angle + Math.PI / 6)
+    );
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(
+        from.x + size * Math.cos(angle - Math.PI / 6),
+        from.y + size * Math.sin(angle - Math.PI / 6)
+    );
+    // Establecemos estilos para las cabezas de flechas
+    ctx.strokeStyle = LINEA_COTA_COLOR;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+}
+
+// =======================
+// Función que dibuja una cota (línea de dimensión con flechas y texto)
+// para figuras con más de 7 segmentos
+// =======================
+function drawSimpleDimension(
+    ctx,
+    pt1,
+    pt2,
+    text,
+    horizontal = true,
+    offset = 10
+) {
+    ctx.save();
+    ctx.strokeStyle = LINEA_COTA_COLOR;
+    ctx.lineWidth = 1;
+
+    // Clonar los puntos para no modificarlos
+    let dpt1 = { x: pt1.x, y: pt1.y };
+    let dpt2 = { x: pt2.x, y: pt2.y };
+
+    // Desplazar la línea de cota en una dirección fija (vertical u horizontal)
+    if (horizontal) {
+        dpt1.y -= offset;
+        dpt2.y -= offset;
+    } else {
+        dpt1.x += offset;
+        dpt2.x += offset;
+    }
+
+    // Dibujar la línea de cota
+    ctx.beginPath();
+    ctx.moveTo(dpt1.x, dpt1.y);
+    ctx.lineTo(dpt2.x, dpt2.y);
+    ctx.stroke();
+
+    // Calcular la distancia y el vector director de la línea
+    const dx = dpt2.x - dpt1.x;
+    const dy = dpt2.y - dpt1.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const arrowSize = Math.max(3, Math.min(10, distance * 0.05));
+
+    // Dibujar las flechas en ambos extremos
+    drawArrowhead(ctx, dpt1, dpt2, arrowSize);
+    drawArrowhead(ctx, dpt2, dpt1, arrowSize);
+
+    // Calcular el vector unitario perpendicular a la línea
+    const ux = -dy / distance;
+    const uy = dx / distance;
+    const textOffset = 10; // Desplazamiento adicional para el texto
+
+    // Calcular el punto medio desplazado perpendicularmente
+    const midX = (dpt1.x + dpt2.x) / 2 + ux * textOffset;
+    const midY = (dpt1.y + dpt2.y) / 2 + uy * textOffset;
+
+    // Dibujar el texto de la cota en la posición calculada
+    ctx.font = "12px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = VALOR_COTA_COLOR;
+    ctx.fillText(text, midX, midY);
+
+    ctx.restore();
+}
+
+// =======================
+// Función que computa segmentos para tokens "line" a partir de dims
+// =======================
+function computeLineSegments(dims) {
+    let segments = [];
     let currentX = 0,
         currentY = 0,
         currentAngle = 0;
-    ctx.moveTo(currentX, currentY);
-    longitudes.forEach((longitud, i) => {
-        const angleIncrement = angulos[i] || 0;
-        const newX =
-            currentX + longitud * Math.cos((currentAngle * Math.PI) / 180);
-        const newY =
-            currentY + longitud * Math.sin((currentAngle * Math.PI) / 180);
-        ctx.lineTo(newX, newY);
-        currentX = newX;
-        currentY = newY;
-        currentAngle += angleIncrement;
-    });
-    ctx.stroke();
-}
-
-/* Función que extrae longitudes, ángulos y datos de circunferencia a partir de un string de dimensiones.
-Se asume que:
-- Las longitudes vienen sin sufijo.
-- Los ángulos llevan la "d" (ej.: "15 90d 85 ...").
-- Las circunferencias se especifican con un radio seguido de "r" (ej.: "500r")
-  y opcionalmente un ángulo de arco seguido de "d" (ej.: "90d").
-*/
-function extraerDimensiones(dimensiones) {
-    const longitudes = [];
-    const angulos = [];
-    let radio = null;
-    let arcAngle = null;
-    const tokens = dimensiones.split(/\s+/).filter((token) => token.length > 0);
-    tokens.forEach((token) => {
-        if (token.includes("r")) {
-            const num = parseFloat(token.replace("r", ""));
-            radio = isNaN(num) ? 50 : num;
-        } else if (token.includes("d")) {
-            const num = parseFloat(token.replace("d", ""));
-            // Si ya se detectó un radio y aún no se ha asignado arcAngle, asignarlo
-            if (radio !== null && arcAngle === null) {
-                arcAngle = isNaN(num) ? 0 : num;
-            } else {
-                angulos.push(isNaN(num) ? 0 : num);
-            }
-        } else {
-            const num = parseFloat(token);
-            longitudes.push(isNaN(num) ? 50 : num);
+    dims.forEach((d) => {
+        if (d.type === "line") {
+            let start = { x: currentX, y: currentY };
+            let end = {
+                x:
+                    currentX +
+                    d.length * Math.cos((currentAngle * Math.PI) / 180),
+                y:
+                    currentY +
+                    d.length * Math.sin((currentAngle * Math.PI) / 180),
+            };
+            segments.push({ start, end, length: d.length });
+            currentX = end.x;
+            currentY = end.y;
+        } else if (d.type === "turn") {
+            currentAngle += d.angle;
+        } else if (d.type === "arc") {
+            let centerX =
+                currentX +
+                d.radius * Math.cos(((currentAngle + 90) * Math.PI) / 180);
+            let centerY =
+                currentY +
+                d.radius * Math.sin(((currentAngle + 90) * Math.PI) / 180);
+            let startAngle = Math.atan2(currentY - centerY, currentX - centerX);
+            let sweep = (d.arcAngle * Math.PI) / 180;
+            let endAngle = startAngle + sweep;
+            currentX = centerX + d.radius * Math.cos(endAngle);
+            currentY = centerY + d.radius * Math.sin(endAngle);
+            currentAngle += d.arcAngle;
         }
     });
-    return { longitudes, angulos, radio, arcAngle };
+    return segments;
 }
 
-/* Función que computa la lista de puntos (en coordenadas locales) de la figura.
-Comienza en (0,0) y acumula la posición de cada segmento. */
-function computePoints(longitudes, angulos) {
-    const points = [];
-    let cx = 0,
-        cy = 0,
-        ca = 0;
-    points.push({ x: cx, y: cy });
-    for (let i = 0; i < longitudes.length; i++) {
-        const newX = cx + longitudes[i] * Math.cos((ca * Math.PI) / 180);
-        const newY = cy + longitudes[i] * Math.sin((ca * Math.PI) / 180);
-        points.push({ x: newX, y: newY });
-        cx = newX;
-        cy = newY;
-        ca += angulos[i] || 0;
-    }
-    return points;
-}
-
-/* Función que transforma un punto de coordenadas locales a coordenadas del canvas.
-   Aplica la misma transformación que en el dibujo de la figura:
-     - Si no se rota: global = center + scale * ((x,y) - (figCenterX, figCenterY))
-     - Si se rota 90° (por -90°): global = center + scale * ((y - figCenterY), -(x - figCenterX))
-*/
+// =======================
+// Función que transforma un punto de coordenadas locales a globales
+// =======================
 function transformPoint(
     x,
     y,
@@ -464,4 +199,461 @@ function transformPoint(
             y: centerY + scale * (y - figCenterY),
         };
     }
+}
+
+// =======================
+// Función que dibuja la figura a partir de dims (path)
+// =======================
+function dibujarFiguraPath(ctx, dims) {
+    ctx.beginPath();
+    let currentX = 0,
+        currentY = 0,
+        currentAngle = 0;
+    ctx.moveTo(currentX, currentY);
+    dims.forEach((d) => {
+        if (d.type === "line") {
+            currentX += d.length * Math.cos((currentAngle * Math.PI) / 180);
+            currentY += d.length * Math.sin((currentAngle * Math.PI) / 180);
+            ctx.lineTo(currentX, currentY);
+        } else if (d.type === "turn") {
+            currentAngle += d.angle;
+        } else if (d.type === "arc") {
+            let centerX =
+                currentX +
+                d.radius * Math.cos(((currentAngle + 90) * Math.PI) / 180);
+            let centerY =
+                currentY +
+                d.radius * Math.sin(((currentAngle + 90) * Math.PI) / 180);
+            let startAngle = Math.atan2(currentY - centerY, currentX - centerX);
+            let sweep = (d.arcAngle * Math.PI) / 180;
+            ctx.arc(
+                centerX,
+                centerY,
+                d.radius,
+                startAngle,
+                startAngle + sweep,
+                false
+            );
+            let endAngle = startAngle + sweep;
+            currentX = centerX + d.radius * Math.cos(endAngle);
+            currentY = centerY + d.radius * Math.sin(endAngle);
+            currentAngle += d.arcAngle;
+            ctx.lineTo(currentX, currentY);
+        }
+    });
+    ctx.strokeStyle = FIGURE_LINE_COLOR;
+    ctx.stroke();
+}
+
+// =======================
+// Función que extrae dimensiones (tokens) desde el string
+// =======================
+function extraerDimensiones(dimensiones) {
+    const tokens = dimensiones.split(/\s+/).filter((token) => token.length > 0);
+    const dims = [];
+    let i = 0;
+    while (i < tokens.length) {
+        const token = tokens[i];
+        if (token.endsWith("r")) {
+            const radius = parseFloat(token.slice(0, -1));
+            let arcAngle = 360;
+            if (i + 1 < tokens.length && tokens[i + 1].endsWith("d")) {
+                arcAngle = parseFloat(tokens[i + 1].slice(0, -1));
+                i++;
+            }
+            dims.push({ type: "arc", radius, arcAngle });
+        } else if (token.endsWith("d")) {
+            const angle = parseFloat(token.slice(0, -1));
+            dims.push({ type: "turn", angle });
+        } else {
+            const length = parseFloat(token);
+            dims.push({ type: "line", length });
+        }
+        i++;
+    }
+    return dims;
+}
+
+// =======================
+// Función que computa la lista de puntos (para bounding box)
+// =======================
+function computePathPoints(dims) {
+    let points = [];
+    let currentX = 0,
+        currentY = 0,
+        currentAngle = 0;
+    points.push({ x: currentX, y: currentY });
+    dims.forEach((d) => {
+        if (d.type === "line") {
+            currentX += d.length * Math.cos((currentAngle * Math.PI) / 180);
+            currentY += d.length * Math.sin((currentAngle * Math.PI) / 180);
+            points.push({ x: currentX, y: currentY });
+        } else if (d.type === "turn") {
+            currentAngle += d.angle;
+        } else if (d.type === "arc") {
+            let centerX =
+                currentX +
+                d.radius * Math.cos(((currentAngle + 90) * Math.PI) / 180);
+            let centerY =
+                currentY +
+                d.radius * Math.sin(((currentAngle + 90) * Math.PI) / 180);
+            let startAngle = Math.atan2(currentY - centerY, currentX - centerX);
+            let sweep = (d.arcAngle * Math.PI) / 180;
+            let endAngle = startAngle + sweep;
+            currentX = centerX + d.radius * Math.cos(endAngle);
+            currentY = centerY + d.radius * Math.sin(endAngle);
+            currentAngle += d.arcAngle;
+            points.push({ x: currentX, y: currentY });
+        }
+    });
+    return points;
+}
+
+// =======================
+// Script principal
+// =======================
+document.addEventListener("DOMContentLoaded", () => {
+    const elementos = window.elementosAgrupadosScript;
+    if (!elementos) {
+        console.error(
+            "La variable 'elementosAgrupadosScript' no está definida."
+        );
+        return;
+    }
+
+    elementos.forEach((grupo) => {
+        const canvas = document.getElementById(
+            `canvas-etiqueta-${grupo.etiqueta?.id}`
+        );
+        if (!canvas) {
+            console.warn(
+                `Canvas no encontrado para etiqueta ID: ${grupo.etiqueta?.id}`
+            );
+            return;
+        }
+        const clickableIDs = [];
+        const parent = canvas.parentElement;
+        const canvasWidth = parent.clientWidth;
+
+        const numElementos = grupo.elementos.length;
+        const canvasHeight =
+            marginY * 2 +
+            numElementos * minSlotHeight +
+            (numElementos - 1) * gapSpacing;
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const availableSlotHeight =
+            (canvasHeight - 2 * marginY - (numElementos - 1) * gapSpacing) /
+            numElementos;
+        const availableWidth = canvasWidth - 2 * marginX;
+
+        grupo.elementos.forEach((elemento, index) => {
+            const dimensionesStr = elemento.dimensiones || "";
+            const dims = extraerDimensiones(dimensionesStr);
+            const barras = elemento.barras || 0;
+
+            const centerX = marginX + availableWidth / 2;
+            const centerY =
+                marginY +
+                availableSlotHeight / 2 +
+                index * (availableSlotHeight + gapSpacing);
+
+            // CASO 1: ARC único
+            if (dims.length === 1 && dims[0].type === "arc") {
+                const arc = dims[0];
+                const scale = Math.min(
+                    availableWidth / (2 * arc.radius),
+                    availableSlotHeight / (2 * arc.radius)
+                );
+                const effectiveRadius = arc.radius * scale;
+                const angleRad = ((arc.arcAngle || 360) * Math.PI) / 180;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, effectiveRadius, 0, angleRad, false);
+                ctx.strokeStyle = FIGURE_LINE_COLOR;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Acotación simple del radio (flecha y valor)
+                const midAngle = angleRad / 2;
+                const offset = 10;
+                const textX =
+                    centerX + (effectiveRadius + offset) * Math.cos(midAngle);
+                const textY =
+                    centerY + (effectiveRadius + offset) * Math.sin(midAngle);
+                ctx.font = "12px Arial";
+                ctx.fillStyle = VALOR_COTA_COLOR;
+                ctx.fillText(arc.radius.toString() + "r", textX, textY);
+
+                // Texto de barras
+                ctx.font = "14px Arial";
+                ctx.fillStyle = VALOR_COTA_COLOR;
+                ctx.fillText(
+                    `x${barras}`,
+                    centerX + availableWidth / 2 + 15,
+                    centerY + 5
+                );
+
+                const slotBottom =
+                    marginY +
+                    availableSlotHeight +
+                    index * (availableSlotHeight + gapSpacing);
+                const labelX = marginX + availableWidth - 10;
+                const labelY = slotBottom - 5;
+                // Label (ID) en azul
+                ctx.font = "14px Arial";
+                ctx.fillStyle = ELEMENT_TEXT_COLOR;
+                ctx.fillText(`#${elemento.id}`, labelX, labelY);
+                clickableIDs.push({
+                    id: elemento.id,
+                    x: labelX,
+                    y: labelY - 14,
+                    width: 40,
+                    height: 20,
+                });
+            }
+            // CASO 2: Línea única
+            else if (dims.length === 1 && dims[0].type === "line") {
+                const line = dims[0];
+                const scale = availableWidth / Math.abs(line.length);
+                const lineLength = Math.abs(line.length) * scale;
+                ctx.strokeStyle = FIGURE_LINE_COLOR;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX - lineLength / 2, centerY);
+                ctx.lineTo(centerX + lineLength / 2, centerY);
+                ctx.stroke();
+
+                // Acotación de la línea (flechas y valor)
+                const pt1 = { x: centerX - lineLength / 2, y: centerY };
+                const pt2 = { x: centerX + lineLength / 2, y: centerY };
+                drawDimensionLine(ctx, pt1, pt2, line.length.toString(), 10);
+
+                const slotBottom =
+                    marginY +
+                    availableSlotHeight +
+                    index * (availableSlotHeight + gapSpacing);
+                const labelX = marginX + availableWidth - 10;
+                const labelY = slotBottom - 5;
+                ctx.font = "14px Arial";
+                ctx.fillStyle = ELEMENT_TEXT_COLOR;
+                ctx.fillText(`#${elemento.id}`, labelX, labelY);
+                ctx.font = "14px Arial";
+                ctx.fillStyle = BARS_TEXT_COLOR;
+                ctx.fillText(
+                    `x${barras}`,
+                    centerX + availableWidth / 2 + 15,
+                    centerY + 5
+                );
+                clickableIDs.push({
+                    id: elemento.id,
+                    x: labelX,
+                    y: labelY - 14,
+                    width: 40,
+                    height: 20,
+                });
+            }
+            // CASO 3: Figura compuesta
+            else {
+                // 1. Calcular bounding box en coords locales
+                const points = computePathPoints(dims);
+                let minX = Infinity,
+                    maxX = -Infinity,
+                    minY = Infinity,
+                    maxY = -Infinity;
+                points.forEach((pt) => {
+                    if (pt.x < minX) minX = pt.x;
+                    if (pt.x > maxX) maxX = pt.x;
+                    if (pt.y < minY) minY = pt.y;
+                    if (pt.y > maxY) maxY = pt.y;
+                });
+                const figWidth = maxX - minX;
+                const figHeight = maxY - minY;
+
+                // Calculamos segmentos
+                const segments = computeLineSegments(dims);
+
+                // Definimos rotación sólo si la figura es más alta que ancha y tiene ≤ 7 segmentos
+                let rotate = false;
+                if (figWidth < figHeight && segments.length <= 7) {
+                    rotate = true;
+                }
+
+                // Ajuste de dimensiones efectivas considerando la rotación
+                const effectiveWidth = rotate ? figHeight : figWidth;
+                const effectiveHeight = rotate ? figWidth : figHeight;
+
+                // Centro de la figura en coords locales
+                const figCenterX = (minX + maxX) / 2;
+                const figCenterY = (minY + maxY) / 2;
+
+                // Escala para encajar en el slot
+                const scale = Math.min(
+                    availableWidth / effectiveWidth,
+                    availableSlotHeight / effectiveHeight
+                );
+
+                // 2. Dibujar la figura con transformaciones
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                if (rotate) {
+                    ctx.rotate(-Math.PI / 2);
+                }
+                ctx.scale(scale, scale);
+                ctx.translate(-figCenterX, -figCenterY);
+                ctx.lineWidth = 2 / scale;
+                dibujarFiguraPath(ctx, dims);
+                ctx.restore();
+
+                // 3. Acotaciones
+                if (segments.length > 7) {
+                    // Si la figura tiene más de 7 longitudes, sólo acotamos el bounding box
+                    function transformLocalToGlobal(x, y) {
+                        if (!rotate) {
+                            return {
+                                x: centerX + (x - figCenterX) * scale,
+                                y: centerY + (y - figCenterY) * scale,
+                            };
+                        } else {
+                            let dx = y - figCenterY;
+                            let dy = -(x - figCenterX);
+                            return {
+                                x: centerX + dx * scale,
+                                y: centerY + dy * scale,
+                            };
+                        }
+                    }
+                    const c1 = transformLocalToGlobal(minX, minY);
+                    const c2 = transformLocalToGlobal(minX, maxY);
+                    const c3 = transformLocalToGlobal(maxX, minY);
+                    const c4 = transformLocalToGlobal(maxX, maxY);
+
+                    const globalMinX = Math.min(c1.x, c2.x, c3.x, c4.x);
+                    const globalMaxX = Math.max(c1.x, c2.x, c3.x, c4.x);
+                    const globalMinY = Math.min(c1.y, c2.y, c3.y, c4.y);
+                    const globalMaxY = Math.max(c1.y, c2.y, c3.y, c4.y);
+
+                    const totalWidth = (maxX - minX).toFixed(0);
+                    const totalHeight = (maxY - minY).toFixed(0);
+
+                    // Cota horizontal (arriba de la figura)
+                    const yOffset = -15;
+                    drawSimpleDimension(
+                        ctx,
+                        { x: globalMinX, y: globalMinY + yOffset },
+                        { x: globalMaxX, y: globalMinY + yOffset },
+                        totalWidth,
+                        true,
+                        0
+                    );
+                    // Cota vertical (a la izquierda de la figura)
+                    const xOffset = -20;
+                    drawSimpleDimension(
+                        ctx,
+                        { x: globalMinX + xOffset, y: globalMinY },
+                        { x: globalMinX + xOffset, y: globalMaxY },
+                        totalHeight,
+                        false,
+                        0
+                    );
+                } else {
+                    // Acotar cada segmento
+                    segments.forEach((seg) => {
+                        const p1 = transformPoint(
+                            seg.start.x,
+                            seg.start.y,
+                            centerX,
+                            centerY,
+                            scale,
+                            rotate,
+                            figCenterX,
+                            figCenterY
+                        );
+                        const p2 = transformPoint(
+                            seg.end.x,
+                            seg.end.y,
+                            centerX,
+                            centerY,
+                            scale,
+                            rotate,
+                            figCenterX,
+                            figCenterY
+                        );
+                        drawDimensionLine(
+                            ctx,
+                            p1,
+                            p2,
+                            seg.length.toString(),
+                            10
+                        );
+                    });
+                }
+
+                // 4. Dibujar texto "x{barras}" y label en global
+                ctx.font = "14px Arial";
+                ctx.fillStyle = BARS_TEXT_COLOR;
+                ctx.fillText(
+                    `x${barras}`,
+                    centerX + availableWidth / 2 + 15,
+                    centerY + 5
+                );
+
+                const slotBottom =
+                    marginY +
+                    availableSlotHeight +
+                    index * (availableSlotHeight + gapSpacing);
+                const labelX = marginX + availableWidth - 10;
+                const labelY = slotBottom - 5;
+                ctx.font = "14px Arial";
+                ctx.fillStyle = ELEMENT_TEXT_COLOR;
+                ctx.fillText(`#${elemento.id}`, labelX, labelY);
+
+                clickableIDs.push({
+                    id: elemento.id,
+                    x: labelX,
+                    y: labelY - 14,
+                    width: 40,
+                    height: 20,
+                });
+            }
+        });
+
+        canvas.addEventListener("click", function (event) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            clickableIDs.forEach((item) => {
+                if (
+                    mouseX >= item.x &&
+                    mouseX <= item.x + item.width &&
+                    mouseY >= item.y &&
+                    mouseY <= item.y + item.height
+                ) {
+                    agregarItemDesdeCanvas(item.id);
+                }
+            });
+        });
+    });
+});
+
+// =======================
+// Función para agregar ítems desde el canvas
+// =======================
+function agregarItemDesdeCanvas(itemCode) {
+    const itemType = "elemento";
+    if (items.some((i) => i.id === itemCode)) {
+        Swal.fire({
+            icon: "error",
+            title: "Item Duplicado",
+            text: "Este item ya ha sido agregado.",
+            confirmButtonColor: "#d33",
+        });
+        return;
+    }
+    const newItem = { id: itemCode, type: itemType };
+    items.push(newItem);
+    actualizarLista();
 }
