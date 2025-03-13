@@ -47,9 +47,14 @@ elementos.forEach((grupo) => {
     const availableWidth = canvasWidth - 2 * marginX;
 
     grupo.elementos.forEach((elemento, index) => {
-        // Extraer longitudes y ángulos del string (ej.: "400" o "15 90d 85 ..." )
+        // Extraer longitudes, ángulos y, en su caso, datos de circunferencia a partir del string.
+        // Ejemplos:
+        // - Línea simple: "400"
+        // - Figura compuesta: "15 90d 85 ..."
+        // - Circunferencia o arco: "500r 90d"
         const dimensionesStr = elemento.dimensiones || "";
-        const { longitudes, angulos } = extraerDimensiones(dimensionesStr);
+        const { longitudes, angulos, radio, arcAngle } =
+            extraerDimensiones(dimensionesStr);
         const barras = elemento.barras || 0; // Si no tiene valor, asumir 0
 
         // Centro del slot asignado:
@@ -60,9 +65,61 @@ elementos.forEach((grupo) => {
             availableSlotHeight / 2 +
             index * (availableSlotHeight + gapSpacing);
 
-        if (longitudes.length === 1) {
-            // CASO: ÚNICA DIMENSIÓN
-            // Se dibuja una línea horizontal.
+        // Si se detecta un radio, dibujamos una circunferencia (o arco)
+        if (radio !== null) {
+            // Calcular la escala para que la circunferencia se ajuste en el espacio disponible
+            // Se considera el diámetro = 2 * radio
+            const scale = Math.min(
+                availableWidth / (2 * radio),
+                availableSlotHeight / (2 * radio)
+            );
+            const effectiveRadius = radio * scale;
+            // Convertir el ángulo del arco a radianes; si no se proporciona, se dibuja la circunferencia completa
+            const angleRad =
+                arcAngle !== null ? (arcAngle * Math.PI) / 180 : 2 * Math.PI;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, effectiveRadius, 0, angleRad, false);
+            ctx.strokeStyle = "#0000FF";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Acotación: mostrar el valor del radio en la posición media del arco
+            const midAngle = angleRad / 2;
+            const offset = 10;
+            const textX =
+                centerX + (effectiveRadius + offset) * Math.cos(midAngle);
+            const textY =
+                centerY + (effectiveRadius + offset) * Math.sin(midAngle);
+            ctx.font = "12px Arial";
+            ctx.fillStyle = "red";
+            ctx.fillText(radio.toString() + "r", textX, textY);
+
+            // Mostrar el valor de barras
+            ctx.fillText(
+                `x${barras}`,
+                centerX + availableWidth / 2 + 15,
+                centerY + 5
+            );
+
+            // Colocar el label en la esquina inferior derecha del slot
+            const slotBottom =
+                marginY +
+                availableSlotHeight +
+                index * (availableSlotHeight + gapSpacing);
+            const labelX = marginX + availableWidth - 10;
+            const labelY = slotBottom - 5;
+            ctx.font = "14px Arial";
+            ctx.fillStyle = "#FF0000";
+            ctx.fillText(`#${elemento.id}`, labelX, labelY);
+            clickableIDs.push({
+                id: elemento.id,
+                x: labelX,
+                y: labelY - 14,
+                width: 40,
+                height: 20,
+            });
+        } else if (longitudes.length === 1) {
+            // CASO: ÚNICA DIMENSIÓN (línea horizontal)
             const length = longitudes[0];
             // Se usa el availableWidth para escalar la figura
             const scale = availableWidth / Math.abs(length);
@@ -112,12 +169,11 @@ elementos.forEach((grupo) => {
                 centerX + availableWidth / 2 + 15,
                 centerY + 5
             );
-            // Guarda la posición del ID para hacerla clickeable
             clickableIDs.push({
                 id: elemento.id,
                 x: labelX,
-                y: labelY - 14, // Ajuste por tamaño de texto
-                width: 40, // Aproximado del tamaño del texto
+                y: labelY - 14,
+                width: 40,
                 height: 20,
             });
         } else {
@@ -223,7 +279,6 @@ elementos.forEach((grupo) => {
             ctx.font = "14px Arial";
             ctx.fillStyle = "#FF0000";
             ctx.fillText(`#${elemento.id}`, labelX, labelY);
-            // Agregar a la lista de clickeables
             clickableIDs.push({
                 id: elemento.id,
                 x: labelX,
@@ -331,27 +386,41 @@ function dibujarFiguraPath(ctx, longitudes, angulos) {
     ctx.stroke();
 }
 
-/* Función que extrae longitudes y ángulos a partir de un string de dimensiones.
-   Se asume que las longitudes vienen sin sufijo y que los ángulos llevan la "d"
-   (ej.: "15 90d 85 ..."). */
+/* Función que extrae longitudes, ángulos y datos de circunferencia a partir de un string de dimensiones.
+Se asume que:
+- Las longitudes vienen sin sufijo.
+- Los ángulos llevan la "d" (ej.: "15 90d 85 ...").
+- Las circunferencias se especifican con un radio seguido de "r" (ej.: "500r")
+  y opcionalmente un ángulo de arco seguido de "d" (ej.: "90d").
+*/
 function extraerDimensiones(dimensiones) {
     const longitudes = [];
     const angulos = [];
+    let radio = null;
+    let arcAngle = null;
     const tokens = dimensiones.split(/\s+/).filter((token) => token.length > 0);
     tokens.forEach((token) => {
-        if (token.includes("d")) {
+        if (token.includes("r")) {
+            const num = parseFloat(token.replace("r", ""));
+            radio = isNaN(num) ? 50 : num;
+        } else if (token.includes("d")) {
             const num = parseFloat(token.replace("d", ""));
-            angulos.push(isNaN(num) ? 0 : num);
+            // Si ya se detectó un radio y aún no se ha asignado arcAngle, asignarlo
+            if (radio !== null && arcAngle === null) {
+                arcAngle = isNaN(num) ? 0 : num;
+            } else {
+                angulos.push(isNaN(num) ? 0 : num);
+            }
         } else {
             const num = parseFloat(token);
             longitudes.push(isNaN(num) ? 50 : num);
         }
     });
-    return { longitudes, angulos };
+    return { longitudes, angulos, radio, arcAngle };
 }
 
 /* Función que computa la lista de puntos (en coordenadas locales) de la figura.
-   Comienza en (0,0) y acumula la posición de cada segmento. */
+Comienza en (0,0) y acumula la posición de cada segmento. */
 function computePoints(longitudes, angulos) {
     const points = [];
     let cx = 0,

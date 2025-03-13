@@ -154,9 +154,9 @@ function actualizarLista() {
 
     items.forEach((item) => {
         const listItem = document.createElement("li");
-        listItem.textContent = `${item.type}: ${item.id} - Peso: ${(
-            parseFloat(item.peso) || 0
-        ).toFixed(2)} kg`;
+        listItem.textContent = `${item.type.toUpperCase()}: ${
+            item.id
+        } - Peso: ${(parseFloat(item.peso) || 0).toFixed(2)} kg`;
         listItem.dataset.code = item.id;
 
         const removeButton = document.createElement("button");
@@ -174,7 +174,7 @@ function actualizarLista() {
         0
     );
     const totalItem = document.createElement("li");
-    totalItem.textContent = `Total de peso: ${totalPeso.toFixed(2)} kg`;
+    totalItem.textContent = `Total: ${totalPeso.toFixed(2)} kg`;
     totalItem.style.fontWeight = "bold";
     itemsList.appendChild(totalItem);
 }
