@@ -67,6 +67,8 @@ class etiquetaController extends Controller
         DB::beginTransaction();
         try {
             $warnings = []; // Array para acumular mensajes de alerta
+            // Array para almacenar los productos consumidos y su stock actualizado
+            $productosAfectados = [];
             // Obtener la etiqueta y su planilla asociada
             $etiqueta = Etiqueta::with('elementos.planilla')->findOrFail($id);
             $planilla_id = $etiqueta->planilla_id;
@@ -199,7 +201,7 @@ class etiquetaController extends Controller
                     break;
                 // -------------------------------------------- ESTADO FABRICANDO --------------------------------------------
                 case 'fabricando':
-                    //Comprobamos si ya estan todos los elementos en la maquina completados.
+                    // Verificamos si ya todos los elementos en la máquina han sido completados
                     if (
                         isset($elementosEnMaquina) &&
                         $elementosEnMaquina->count() > 0 &&
@@ -212,229 +214,29 @@ class etiquetaController extends Controller
                             'error' => "Todos los elementos en la máquina ya han sido completados.",
                         ], 400);
                     }
-                    // -------------- ACTUALIZAMOS ELEMENTOS
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->estado = "completado";
-                        $elemento->users_id = Auth::id();
-                        $elemento->users_id_2 = session()->get('compañero_id', null);
-                        $elemento->save();
-                    }
-                    $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'completado')->count();
 
-                    // -------------- CONSUMOS
-                    $consumos = [];
+                    // ✅ Pasamos `$productosAfectados` y `$planilla` como referencia
+                    $productosAfectados = [];
+                    $resultado = $this->actualizarElementosYConsumos(
+                        $elementosEnMaquina,
+                        $maquina,
+                        $etiqueta,
+                        $warnings,
+                        $numeroElementosCompletadosEnMaquina,
+                        $enOtrasMaquinas,
+                        $productosAfectados,
+                        $planilla
+                    );
 
-                    foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
-                        // Si la máquina es ID 7, solo permitir diámetro 5
-                        if ($maquina->tipo == 'ensambladora' && $diametro != 5) {
-                            continue; // Saltar cualquier otro diámetro
-                        }
-
-                        $productosPorDiametro = $maquina->productos()
-                            ->where('diametro', $diametro)
-                            ->orderBy('peso_stock')
-                            ->get();
-
-                        if ($productosPorDiametro->isEmpty()) {
-                            return response()->json([
-                                'success' => false,
-                                'error' => "No se encontraron materias primas para el diámetro {$diametro} en la máquina.",
-                            ], 400);
-                        }
-
-                        $consumos[$diametro] = [];
-
-                        foreach ($productosPorDiametro as $producto) {
-                            if ($pesoNecesarioTotal <= 0) {
-                                break;
-                            }
-                            if ($producto->peso_stock > 0) {
-                                $restar = min($producto->peso_stock, $pesoNecesarioTotal);
-                                $producto->peso_stock -= $restar;
-                                $pesoNecesarioTotal -= $restar;
-                                if ($producto->peso_stock == 0) {
-                                    $producto->estado = "consumido";
-                                    $producto->ubicacion_id = NULL;
-                                    $producto->maquina_id = NULL;
-                                }
-                                $producto->save();
-
-                                // Registrar cuánto se consumió de este producto para este diámetro
-                                $consumos[$diametro][] = [
-                                    'producto_id' => $producto->id,
-                                    'consumido' => $restar,
-                                ];
-                            }
-                        }
-
-                        // Si aún queda peso pendiente, no hay suficiente materia prima
-                        if ($pesoNecesarioTotal > 0) {
-                            return response()->json([
-                                'success' => false,
-                                'error' => "No hay suficiente materia prima para el diámetro {$diametro}.",
-                            ], 400);
-                        }
-                    }
-                    // -------------- ASIGNAMOS LOS PRODUCTOS A SUS ELEMENTOS
-
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $pesoRestanteElemento = $elemento->peso;
-                        // Obtener los registros de consumo para el diámetro del elemento
-                        $consumosDisponibles = $consumos[$elemento->diametro] ?? [];
-                        $productosAsignados = [];
-
-                        // Mientras el elemento requiera peso y existan registros de consumo
-                        while ($pesoRestanteElemento > 0 && count($consumosDisponibles) > 0) {
-                            // Tomar el primer registro de consumo
-                            $consumo = &$consumosDisponibles[0];
-
-                            if ($consumo['consumido'] <= $pesoRestanteElemento) {
-                                // Se usa totalmente este consumo para el elemento
-                                $productosAsignados[] = $consumo['producto_id'];
-                                $pesoRestanteElemento -= $consumo['consumido'];
-                                array_shift($consumosDisponibles);
-                            } else {
-                                // Solo se consume parcialmente este registro
-                                $productosAsignados[] = $consumo['producto_id'];
-                                $consumo['consumido'] -= $pesoRestanteElemento;
-                                $pesoRestanteElemento = 0;
-                            }
-                        }
-
-                        // Asignar hasta dos productos al elemento según lo requerido
-                        $elemento->producto_id = $productosAsignados[0] ?? null;
-                        $elemento->producto_id_2 = $productosAsignados[1] ?? null;
-                        $elemento->producto_id_3 = $productosAsignados[2] ?? null;
-
-                        $elemento->estado = "completado";
-                    }
-
-                    // -------------- ¿TALLER O CARCASAS?
-                    if (str_contains($ensambladoText, 'taller')) {
-                        // Lógica para "taller"
-                        // Por ejemplo, se puede asignar una máquina de soldar a cada elemento.
-                        $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                            ->whereDoesntHave('elementos')
-                            ->first();
-                        if (!$maquinaSoldarDisponible) {
-                            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                                ->whereHas('elementos', function ($query) {
-                                    $query->orderBy('created_at');
-                                })
-                                ->first();
-                        }
-                        if ($maquinaSoldarDisponible) {
-                            foreach ($elementosEnMaquina as $elemento) {
-                                $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-                                $elemento->save();
-                            }
-                        } else {
-                            throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
-                        }
-                        // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-                            // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                            if ($enOtrasMaquinas) {
-                                $etiqueta->estado = 'parcialmente_completada';
-                            } else {
-                                // Si no hay elementos en otras máquinas, se marca como fabricada/completada
-                                $etiqueta->estado = 'fabricada';
-                                $etiqueta->fecha_finalizacion = now();
-                            }
-
-                            $etiqueta->save();
-                        }
-                    } elseif (str_contains($ensambladoText, 'carcasas')) {
-                        // Lógica para "carcasas"
-                        // Si la máquina actual es de tipo "estribadora", asignamos a cada elemento una máquina de tipo ensambladora en maquina_id_2
-                        if ($maquina->tipo === 'estribadora') {
-                            $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
-                            if (!$maquinaEnsambladora) {
-                                throw new \Exception("No se encontró una máquina ensambladora disponible.");
-                            }
-                            foreach ($elementosEnMaquina as $elemento) {
-                                $elemento->maquina_id_2 = $maquinaEnsambladora->id;
-                                $elemento->save();
-                            }
-                        } else {
-                            // Si la máquina no es estribadora, puedes incluir otra lógica o dejarlo sin cambios.
-                        }
-                        // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-                            // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                            if ($enOtrasMaquinas) {
-                                $etiqueta->estado = 'parcialmente_completada';
-                            } else {
-                                // Si no hay elementos en otras máquinas, se marca como fabricada/completada
-                                $etiqueta->estado = 'fabricada';
-                                $etiqueta->fecha_finalizacion = now();
-                            }
-
-                            $etiqueta->save();
-                        }
-                    } else {
-                        // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-
-                            Log::info("Todos los elementos de la máquina están completados.", [
-                                'elementosEnMaquina_count' => $elementosEnMaquina->count(),
-                                'numeroElementosCompletadosEnMaquina' => $numeroElementosCompletadosEnMaquina,
-                                'etiqueta_id' => $etiqueta->id,
-                            ]);
-
-                            // Número de elementos completados en la etiqueta (asumiendo que 'completado' es el estado que indica que el elemento está terminado)
-                            $numeroElementosCompletadosEnEtiqueta = $etiqueta->elementos()->where('estado', 'completado')->count();
-                            Log::info("Número de elementos completados en la etiqueta.", [
-                                'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                            ]);
-
-                            // Verificar si la etiqueta tiene elementos en otras máquinas y no todos los elementos de la etiqueta están completos
-                            if ($enOtrasMaquinas && $numeroElementosCompletadosEnEtiqueta < $numeroElementosTotalesEnEtiqueta) {
-                                Log::info("Etiqueta tiene elementos en otras máquinas y aún hay pendientes en la etiqueta.", [
-                                    'enOtrasMaquinas' => $enOtrasMaquinas,
-                                    'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                    'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                                ]);
-
-                                $etiqueta->estado = 'parcialmente_completada';
-                            } else {
-                                Log::info("No hay elementos en otras máquinas o todos los elementos de la etiqueta están completados.", [
-                                    'enOtrasMaquinas' => $enOtrasMaquinas,
-                                    'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                    'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                                ]);
-
-                                // O bien no hay elementos en otras máquinas, o todos los elementos de la etiqueta están completados
-                                $etiqueta->estado = 'completada';
-                                $etiqueta->fecha_finalizacion = now();
-                            }
-
-
-
-
-                            $etiqueta->save();
-                        } else {
-                            Log::info("La condición de completado de la máquina no se cumple.", [
-                                'elementosEnMaquina_count' => $elementosEnMaquina->count(),
-                                'numeroElementosCompletadosEnMaquina' => $numeroElementosCompletadosEnMaquina,
-                                'etiqueta_id' => $etiqueta->id,
-                            ]);
-                        }
-                    }
-
-                    // Si todos los elementos de la planilla están completados, actualizar la planilla
-                    $todosElementosPlanillaCompletos = $planilla->elementos()->where('estado', '!=', 'completado')->doesntExist();
-                    if ($todosElementosPlanillaCompletos) {
-                        $planilla->fecha_finalizacion = now();
-                        $planilla->estado = 'completada';
-                        $planilla->save();
+                    if ($resultado instanceof \Illuminate\Http\JsonResponse) {
+                        DB::rollBack();
+                        return $resultado;
                     }
                     break;
                 // -------------------------------------------- ESTADO PARCIALMENTE COMPLETADA --------------------------------------------
                 case 'parcialmente_completada':
 
-                    //Comprobamos si ya estan todos los elementos en la maquina completados.
+                    // Verificamos si ya todos los elementos en la máquina han sido completados
                     if (
                         isset($elementosEnMaquina) &&
                         $elementosEnMaquina->count() > 0 &&
@@ -447,224 +249,25 @@ class etiquetaController extends Controller
                             'error' => "Todos los elementos en la máquina ya han sido completados.",
                         ], 400);
                     }
-                    // -------------- ACTUALIZAMOS ELEMENTOS
-                    foreach ($elementosEnMaquina as $elemento) {
-                        Log::info("Entra en el condicional par acompletar elementos");
-                        $elemento->estado = "completado";
-                        $elemento->users_id = Auth::id();
-                        $elemento->users_id_2 = session()->get('compañero_id', null);
-                        $elemento->save();
-                    }
-                    $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'completado')->count();
 
-                    // -------------- CONSUMOS
-                    $consumos = [];
+                    // ✅ Pasamos `$productosAfectados` y `$planilla` como referencia
+                    $productosAfectados = [];
+                    $resultado = $this->actualizarElementosYConsumos(
+                        $elementosEnMaquina,
+                        $maquina,
+                        $etiqueta,
+                        $warnings,
+                        $numeroElementosCompletadosEnMaquina,
+                        $enOtrasMaquinas,
+                        $productosAfectados,
+                        $planilla
+                    );
 
-                    foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
-                        // Si la máquina es ID 7, solo permitir diámetro 5
-                        if ($maquina->tipo == 'ensambladora' && $diametro != 5) {
-                            continue; // Saltar cualquier otro diámetro
-                        }
-
-                        $productosPorDiametro = $maquina->productos()
-                            ->where('diametro', $diametro)
-                            ->orderBy('peso_stock')
-                            ->get();
-
-                        if ($productosPorDiametro->isEmpty()) {
-                            return response()->json([
-                                'success' => false,
-                                'error' => "No se encontraron materias primas para el diámetro {$diametro} en la máquina.",
-                            ], 400);
-                        }
-
-                        $consumos[$diametro] = [];
-
-                        foreach ($productosPorDiametro as $producto) {
-                            if ($pesoNecesarioTotal <= 0) {
-                                break;
-                            }
-                            if ($producto->peso_stock > 0) {
-                                $restar = min($producto->peso_stock, $pesoNecesarioTotal);
-                                $producto->peso_stock -= $restar;
-                                $pesoNecesarioTotal -= $restar;
-                                if ($producto->peso_stock == 0) {
-                                    $producto->estado = "consumido";
-                                    $producto->ubicacion_id = NULL;
-                                    $producto->maquina_id = NULL;
-                                }
-                                $producto->save();
-
-                                // Registrar cuánto se consumió de este producto para este diámetro
-                                $consumos[$diametro][] = [
-                                    'producto_id' => $producto->id,
-                                    'consumido' => $restar,
-                                ];
-                            }
-                        }
-
-                        // Si aún queda peso pendiente, no hay suficiente materia prima
-                        if ($pesoNecesarioTotal > 0) {
-                            return response()->json([
-                                'success' => false,
-                                'error' => "No hay suficiente materia prima para el diámetro {$diametro}.",
-                            ], 400);
-                        }
-                    }
-                    // -------------- ASIGNAMOS LOS PRODUCTOS A SUS ELEMENTOS
-
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $pesoRestanteElemento = $elemento->peso;
-                        // Obtener los registros de consumo para el diámetro del elemento
-                        $consumosDisponibles = $consumos[$elemento->diametro] ?? [];
-                        $productosAsignados = [];
-
-                        // Mientras el elemento requiera peso y existan registros de consumo
-                        while ($pesoRestanteElemento > 0 && count($consumosDisponibles) > 0) {
-                            // Tomar el primer registro de consumo
-                            $consumo = &$consumosDisponibles[0];
-
-                            if ($consumo['consumido'] <= $pesoRestanteElemento) {
-                                // Se usa totalmente este consumo para el elemento
-                                $productosAsignados[] = $consumo['producto_id'];
-                                $pesoRestanteElemento -= $consumo['consumido'];
-                                array_shift($consumosDisponibles);
-                            } else {
-                                // Solo se consume parcialmente este registro
-                                $productosAsignados[] = $consumo['producto_id'];
-                                $consumo['consumido'] -= $pesoRestanteElemento;
-                                $pesoRestanteElemento = 0;
-                            }
-                        }
-
-                        // Asignar hasta dos productos al elemento según lo requerido
-                        $elemento->producto_id = $productosAsignados[0] ?? null;
-                        $elemento->producto_id_2 = $productosAsignados[1] ?? null;
-                        $elemento->producto_id_3 = $productosAsignados[2] ?? null;
-
-                        $elemento->estado = "completado";
-                    }
-
-
-                    // -------------- ¿TALLER O CARCASAS?
-                    if (str_contains($ensambladoText, 'taller')) {
-                        // Lógica para "taller"
-                        // Por ejemplo, se puede asignar una máquina de soldar a cada elemento.
-                        $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                            ->whereDoesntHave('elementos')
-                            ->first();
-                        if (!$maquinaSoldarDisponible) {
-                            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                                ->whereHas('elementos', function ($query) {
-                                    $query->orderBy('created_at');
-                                })
-                                ->first();
-                        }
-                        if ($maquinaSoldarDisponible) {
-                            foreach ($elementosEnMaquina as $elemento) {
-                                $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-                                $elemento->save();
-                            }
-                        } else {
-                            throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
-                        }
-                        // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-                            // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                            if ($enOtrasMaquinas) {
-                                $etiqueta->estado = 'parcialmente_completada';
-                            } else {
-                                // Si no hay elementos en otras máquinas, se marca como fabricada/completada
-                                $etiqueta->estado = 'fabricada';
-                                $etiqueta->fecha_finalizacion = now();
-                            }
-
-                            $etiqueta->save();
-                        }
-                    } elseif (str_contains($ensambladoText, 'carcasas')) {
-                        // Lógica para "carcasas"
-                        // Si la máquina actual es de tipo "estribadora", asignamos a cada elemento una máquina de tipo ensambladora en maquina_id_2
-                        if ($maquina->tipo === 'estribadora') {
-                            $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
-                            if (!$maquinaEnsambladora) {
-                                throw new \Exception("No se encontró una máquina ensambladora disponible.");
-                            }
-                            foreach ($elementosEnMaquina as $elemento) {
-                                $elemento->maquina_id_2 = $maquinaEnsambladora->id;
-                                $elemento->save();
-                            }
-                        } else {
-                            // Si la máquina no es estribadora, puedes incluir otra lógica o dejarlo sin cambios.
-                        }
-                        // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-                            // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                            if ($enOtrasMaquinas) {
-                                $etiqueta->estado = 'parcialmente_completada';
-                            } else {
-                                // Si no hay elementos en otras máquinas, se marca como fabricada/completada
-                                $etiqueta->estado = 'fabricada';
-                                $etiqueta->fecha_finalizacion = now();
-                            }
-
-                            $etiqueta->save();
-                        }
-                    } else {
-                        // Verificar si TODOS los elementos de la máquina actual están completados
-                        if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-
-                            Log::info("Todos los elementos de la máquina están completados.", [
-                                'elementosEnMaquina_count' => $elementosEnMaquina->count(),
-                                'numeroElementosCompletadosEnMaquina' => $numeroElementosCompletadosEnMaquina,
-                                'etiqueta_id' => $etiqueta->id,
-                            ]);
-
-                            // Número de elementos completados en la etiqueta (asumiendo que 'completado' es el estado que indica que el elemento está terminado)
-                            $numeroElementosCompletadosEnEtiqueta = $etiqueta->elementos()->where('estado', 'completado')->count();
-                            Log::info("Número de elementos completados en la etiqueta.", [
-                                'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                            ]);
-
-                            // Verificar si la etiqueta tiene elementos en otras máquinas y no todos los elementos de la etiqueta están completos
-                            if ($enOtrasMaquinas && $numeroElementosCompletadosEnEtiqueta < $numeroElementosTotalesEnEtiqueta) {
-                                Log::info("Etiqueta tiene elementos en otras máquinas y aún hay pendientes en la etiqueta.", [
-                                    'enOtrasMaquinas' => $enOtrasMaquinas,
-                                    'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                    'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                                ]);
-
-                                $etiqueta->estado = 'parcialmente_completada';
-                            } else {
-                                Log::info("No hay elementos en otras máquinas o todos los elementos de la etiqueta están completados.", [
-                                    'enOtrasMaquinas' => $enOtrasMaquinas,
-                                    'numeroElementosCompletadosEnEtiqueta' => $numeroElementosCompletadosEnEtiqueta,
-                                    'numeroElementosTotalesEnEtiqueta' => $numeroElementosTotalesEnEtiqueta,
-                                ]);
-
-                                // O bien no hay elementos en otras máquinas, o todos los elementos de la etiqueta están completados
-                                $etiqueta->estado = 'completada';
-                                $etiqueta->fecha_finalizacion = now();
-                            }
-
-                            $etiqueta->save();
-                        } else {
-                            Log::info("La condición de completado de la máquina no se cumple.", [
-                                'elementosEnMaquina_count' => $elementosEnMaquina->count(),
-                                'numeroElementosCompletadosEnMaquina' => $numeroElementosCompletadosEnMaquina,
-                                'etiqueta_id' => $etiqueta->id,
-                            ]);
-                        }
-                    }
-                    // Si todos los elementos de la planilla están completados, actualizar la planilla
-                    $todosElementosPlanillaCompletos = $planilla->elementos()->where('estado', '!=', 'completado')->doesntExist();
-                    if ($todosElementosPlanillaCompletos) {
-                        $planilla->fecha_finalizacion = now();
-                        $planilla->estado = 'completada';
-                        $planilla->save();
+                    if ($resultado instanceof \Illuminate\Http\JsonResponse) {
+                        DB::rollBack();
+                        return $resultado;
                     }
                     break;
-
                 // -------------------------------------------- ESTADO FABRICADA --------------------------------------------
                 case 'fabricada':
                     // La etiqueta está fabricada, lo que significa que ya se asignó una máquina secundaria (maquina_id_2)
@@ -883,6 +486,7 @@ class etiquetaController extends Controller
                 'success' => true,
                 'estado' => $etiqueta->estado,
                 'peso' => $pesoTotalMaquina,
+                'productos_afectados' => $productosAfectados,
                 'fecha_inicio' => $etiqueta->fecha_inicio ? Carbon::parse($etiqueta->fecha_inicio)->format('d/m/Y H:i:s') : 'No asignada',
                 'fecha_finalizacion' => $etiqueta->fecha_finalizacion ? Carbon::parse($etiqueta->fecha_finalizacion)->format('d/m/Y H:i:s') : 'No asignada',
                 'warnings' => $warnings // Incluir los warnings en la respuesta
@@ -894,6 +498,194 @@ class etiquetaController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function actualizarElementosYConsumos($elementosEnMaquina, $maquina, &$etiqueta, &$warnings, &$numeroElementosCompletadosEnMaquina, $enOtrasMaquinas, &$productosAfectados, &$planilla)
+    {
+
+        foreach ($elementosEnMaquina as $elemento) {
+            Log::info("Entra en el condicional para completar elementos");
+            $elemento->estado = "completado";
+            $elemento->users_id = Auth::id();
+            $elemento->users_id_2 = session()->get('compañero_id', null);
+            $elemento->save();
+        }
+
+        // ✅ ACTUALIZAR EL CONTADOR DE ELEMENTOS COMPLETADOS
+        $numeroElementosCompletadosEnMaquina = $elementosEnMaquina->where('estado', 'completado')->count();
+
+        // -------------- CONSUMOS
+        $consumos = [];
+        foreach ($elementosEnMaquina->groupBy('diametro') as $diametro => $elementos) {
+            $pesoNecesarioTotal = $elementos->sum('peso');
+
+            $productosPorDiametro = $maquina->productos()
+                ->where('diametro', $diametro)
+                ->orderBy('peso_stock')
+                ->get();
+
+            if ($productosPorDiametro->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => "No se encontraron materias primas para el diámetro {$diametro} en la máquina.",
+                ], 400);
+            }
+
+            $consumos[$diametro] = [];
+            foreach ($productosPorDiametro as $producto) {
+                if ($pesoNecesarioTotal <= 0) {
+                    break;
+                }
+
+                $pesoInicial = $producto->peso_inicial ?? $producto->peso_stock;
+
+                $restar = min($producto->peso_stock, $pesoNecesarioTotal);
+                $producto->peso_stock -= $restar;
+                $pesoNecesarioTotal -= $restar;
+
+                if ($producto->peso_stock == 0) {
+                    $producto->estado = "consumido";
+                    $producto->ubicacion_id = NULL;
+                    $producto->maquina_id = NULL;
+                }
+                $producto->save();
+
+                $productosAfectados[] = [
+                    'id' => $producto->id,
+                    'peso_stock' => $producto->peso_stock,
+                    'peso_inicial' => $pesoInicial,
+                ];
+
+                $consumos[$diametro][] = [
+                    'producto_id' => $producto->id,
+                    'consumido' => $restar,
+                ];
+            }
+
+            if ($pesoNecesarioTotal > 0) {
+                return response()->json([
+                    'success' => false,
+                    'error' => "No hay suficiente materia prima para el diámetro {$diametro}.",
+                ], 400);
+            }
+        }
+
+        // ✅ Asignar productos consumidos a los elementos
+        foreach ($elementosEnMaquina as $elemento) {
+            $pesoRestanteElemento = $elemento->peso;
+            $consumosDisponibles = $consumos[$elemento->diametro] ?? [];
+            $productosAsignados = [];
+
+            while ($pesoRestanteElemento > 0 && count($consumosDisponibles) > 0) {
+                $consumo = &$consumosDisponibles[0];
+
+                if ($consumo['consumido'] <= $pesoRestanteElemento) {
+                    $productosAsignados[] = $consumo['producto_id'];
+                    $pesoRestanteElemento -= $consumo['consumido'];
+                    array_shift($consumosDisponibles);
+                } else {
+                    $productosAsignados[] = $consumo['producto_id'];
+                    $consumo['consumido'] -= $pesoRestanteElemento;
+                    $pesoRestanteElemento = 0;
+                }
+            }
+
+            $elemento->producto_id = $productosAsignados[0] ?? null;
+            $elemento->producto_id_2 = $productosAsignados[1] ?? null;
+            $elemento->producto_id_3 = $productosAsignados[2] ?? null;
+            $elemento->save();
+        }
+
+        // ✅ Lógica de "TALLER" y "CARCASAS"
+        $ensambladoText = strtolower($etiqueta->planilla->ensamblado ?? '');
+
+        if (str_contains($ensambladoText, 'taller')) {
+
+            // Verificar si TODOS los elementos de la máquina actual están completados
+            if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+                // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
+                if ($enOtrasMaquinas) {
+                    $etiqueta->estado = 'parcialmente_completada';
+                } else {
+                    // Si no hay elementos en otras máquinas, se marca como fabricada/completada
+                    $etiqueta->estado = 'fabricada';
+                    $etiqueta->fecha_finalizacion = now();
+                }
+
+                $etiqueta->save();
+            }
+            // Buscar una máquina de soldar disponible
+            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
+                ->whereDoesntHave('elementos')
+                ->first();
+
+            if (!$maquinaSoldarDisponible) {
+                $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
+                    ->whereHas('elementos', function ($query) {
+                        $query->orderBy('created_at');
+                    })
+                    ->first();
+            }
+
+            if ($maquinaSoldarDisponible) {
+                foreach ($elementosEnMaquina as $elemento) {
+                    $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
+                    $elemento->save();
+                }
+            } else {
+                throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
+            }
+        } elseif (str_contains($ensambladoText, 'carcasas')) {
+
+            // Verificar si TODOS los elementos de la máquina actual están completados
+            if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+                // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
+                if ($enOtrasMaquinas) {
+                    $etiqueta->estado = 'parcialmente_completada';
+                } else {
+                    // Si no hay elementos en otras máquinas, se marca como fabricada/completada
+                    $etiqueta->estado = 'fabricada';
+                    $etiqueta->fecha_finalizacion = now();
+                }
+
+                $etiqueta->save();
+            }
+            // Si la máquina actual es de tipo "estribadora", asignamos una ensambladora
+            if ($maquina->tipo === 'estribadora') {
+                $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
+                if (!$maquinaEnsambladora) {
+                    throw new \Exception("No se encontró una máquina ensambladora disponible.");
+                }
+                foreach ($elementosEnMaquina as $elemento) {
+                    $elemento->maquina_id_2 = $maquinaEnsambladora->id;
+                    $elemento->save();
+                }
+            }
+        } else {
+            // Verificar si TODOS los elementos de la máquina actual están completados
+            if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+                // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
+                if ($enOtrasMaquinas) {
+                    $etiqueta->estado = 'parcialmente_completada';
+                } else {
+                    // Si no hay elementos en otras máquinas, se marca como fabricada/completada
+                    $etiqueta->estado = 'completada';
+                    $etiqueta->fecha_finalizacion = now();
+                }
+
+                $etiqueta->save();
+            }
+        }
+
+        // ✅ Si todos los elementos de la planilla están completados, actualizar la planilla
+        $todosElementosPlanillaCompletos = $planilla->elementos()->where('estado', '!=', 'completado')->doesntExist();
+        if ($todosElementosPlanillaCompletos) {
+            $planilla->fecha_finalizacion = now();
+            $planilla->estado = 'completada';
+            $planilla->save();
+        }
+
+        return true;
     }
 
     public function verificarEtiquetas(Request $request)
