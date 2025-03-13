@@ -59,8 +59,8 @@
                                             class="btn btn-sm btn-primary mb-2">Ver</a>
                                     </div>
                                     <div class="flex flex-col">
-                                        <a href="{{ route('productos.index', ['id' => $producto->id]) }}"
-                                            class="btn btn-sm btn-primary mb-2">Consumir</a>
+                                        <a href="{{ route('productos.consumir', $producto->id) }}"
+                                            class="btn btn-sm btn-primary mb-2">❌</a>
                                     </div>
 
                                     @if (strtoupper($producto->tipo == 'ENCARRETADO'))

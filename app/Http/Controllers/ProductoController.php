@@ -185,6 +185,22 @@ class ProductoController extends Controller
         return redirect()->back()->with('exito', 'La solicitud ha sido registrada exitosamente.');
     }
 
+    public function consumir($id)
+    {
+        // 1. Buscar el producto
+        $producto = Producto::findOrFail($id);
+
+        // 2. Actualizar estado y limpiar ubicaciones
+        $producto->estado        = 'consumido';
+        $producto->ubicacion_id  = null;
+        $producto->maquina_id    = null;
+
+        // 3. Guardar cambios
+        $producto->save();
+
+        // 4. Regresar o redirigir con un mensaje (opcional)
+        return redirect()->back()->with('success', 'Producto marcado como consumido');
+    }
 
     //------------------------------------------------------------------------------------ DESTROY
     public function destroy(Producto $producto)

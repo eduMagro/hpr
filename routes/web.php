@@ -84,7 +84,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('etiquetas', EtiquetaController::class);
     Route::resource('obras', ObraController::class);
 
-    Route::get('/productos/{id}/origen', [ProductoController::class, 'obtenerOrigen'])->name('productos.obtenerOrigen');
+    Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])
+        ->name('productos.consumir');
 
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');

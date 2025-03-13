@@ -4,6 +4,8 @@
             icon: 'error',
             title: 'Acceso denegado',
             text: "{{ session('abort') }}",
+        }).then(() => {
+            window.location.reload(); // Recarga la página tras el mensaje
         });
     </script>
 @endif
@@ -22,6 +24,8 @@
                 if (result.dismiss === Swal.DismissReason.cancel) {
                     notificarProgramador("Se han detectado errores en la validación de datos.");
                 }
+            }).then(() => {
+                window.location.reload(); // Recarga la página tras el mensaje
             });
         });
     </script>
@@ -41,6 +45,8 @@
                 if (result.dismiss === Swal.DismissReason.cancel) {
                     notificarProgramador("{{ session('error') }}");
                 }
+            }).then(() => {
+                window.location.reload(); // Recarga la página tras el mensaje
             });
         });
     </script>
@@ -54,6 +60,8 @@
                 text: '{{ session('success') }}',
                 confirmButtonColor: '#28a745'
             });
+        }).then(() => {
+            window.location.reload(); // Recarga la página tras el mensaje
         });
     </script>
 @endif
@@ -68,6 +76,8 @@
                     text: "{{ $warning }}",
                     timer: 5000,
                     showConfirmButton: false
+                }).then(() => {
+                    window.location.reload(); // Recarga la página tras el mensaje
                 });
             @endforeach
         });
