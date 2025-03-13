@@ -59,8 +59,18 @@
                                             class="btn btn-sm btn-primary mb-2">Ver</a>
                                     </div>
                                     <div class="flex flex-col">
-                                        <a href="{{ route('productos.consumir', $producto->id) }}"
-                                            class="btn btn-sm btn-primary mb-2">❌</a>
+                                        <!-- Botón para consumir el producto (con confirmación) -->
+                                        <button type="button" class="btn btn-danger"
+                                            onclick="confirmarEliminacion('{{ route('productos.consumir', $producto->id) }}')">
+                                            ❌
+                                        </button>
+
+                                        <!-- Formulario oculto que se enviará tras la confirmación -->
+                                        <form id="formulario-eliminar" action="" method="POST"
+                                            style="display: none;">
+                                            @csrf
+                                            @method('PUT') <!-- Ojo: coincide con Route::put(...) -->
+                                        </form>
                                     </div>
 
                                     @if (strtoupper($producto->tipo == 'ENCARRETADO'))
@@ -571,6 +581,25 @@
         function mostrarModalSubpaquete(elementoId) {
             document.getElementById('subpaquete_elemento_id').value = elementoId;
             document.getElementById('modalSubpaquete').classList.remove('hidden');
+        }
+
+        function confirmarEliminacion(actionUrl) {
+            Swal.fire({
+                title: '¿Quieres deshecharlo?',
+                text: "¡No podrás revertir esta acción!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33', // Color del botón de confirmar
+                cancelButtonColor: '#3085d6', // Color del botón de cancelar
+                confirmButtonText: 'Sí, deshechar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formulario = document.getElementById('formulario-eliminar');
+                    formulario.action = actionUrl; // Asigna la ruta de consumir
+                    formulario.submit(); // Envía el formulario
+                }
+            });
         }
 
         const maquinaId = @json($maquina->id);

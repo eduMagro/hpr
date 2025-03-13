@@ -59,9 +59,9 @@
                 icon: 'success',
                 text: '{{ session('success') }}',
                 confirmButtonColor: '#28a745'
+            }).then(() => {
+                window.location.reload(); // Recarga la página tras el mensaje
             });
-        }).then(() => {
-            window.location.reload(); // Recarga la página tras el mensaje
         });
     </script>
 @endif
