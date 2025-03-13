@@ -555,6 +555,7 @@ class PlanillaController extends Controller
                 'seccion'            => 'nullable|string|max:100',
                 'descripcion'        => 'nullable|string',
                 'ensamblado'         => 'nullable|string|max:100',
+                'comentario'         => 'nullable|string|max:255',
                 'peso_fabricado'     => 'nullable|numeric',
                 'peso_total'         => 'nullable|numeric',
                 'estado'             => 'nullable|string|in:pendiente,fabricando,completado',
@@ -589,6 +590,9 @@ class PlanillaController extends Controller
 
                 'ensamblado.string'           => 'El campo Ensamblado debe ser una cadena de texto.',
                 'ensamblado.max'              => 'El campo Ensamblado no debe exceder 100 caracteres.',
+
+                'comentario.string'           => 'El campo Comentario debe ser una cadena de texto.',
+                'comentario.max'              => 'El campo Comentario no debe exceder 255 caracteres.',
 
                 'peso_fabricado.numeric'      => 'El campo Peso Fabricado debe ser un número.',
                 'peso_total.numeric'          => 'El campo Peso Total debe ser un número.',

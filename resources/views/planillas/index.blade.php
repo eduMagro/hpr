@@ -163,6 +163,7 @@
                         <th class="px-4 py-3 border">Sección</th>
                         <th class="px-4 py-3 border">Descripción</th>
                         <th class="px-4 py-3 border">Ensamblado</th>
+                        <th class="px-4 py-3 border">Comentario</th>
                         <th class="px-4 py-3 border">Peso Fabricado</th>
                         <th class="px-4 py-3 border">Peso Total</th>
                         <th class="px-4 py-3 border">Estado</th>
@@ -248,6 +249,15 @@
                                     <span x-text="planilla.ensamblado ?? 'Sin datos'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.ensamblado"
+                                    class="form-input w-full">
+                            </td>
+
+                            <!-- Comentario -->
+                            <td class="px-4 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.comentario ?? ' '"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.comentario"
                                     class="form-input w-full">
                             </td>
 

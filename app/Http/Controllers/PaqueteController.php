@@ -8,6 +8,7 @@ use App\Models\Etiqueta;
 use App\Models\Ubicacion;
 use App\Models\Elemento;
 use App\Models\Subpaquete;
+use App\Models\Maquina;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -72,16 +73,9 @@ class PaqueteController extends Controller
             $subpaquetesIds = collect($request->items)->where('type', 'subpaquete')->pluck('id')->toArray();
 
             $maquinaId = $request->input('maquina_id');
-            $maquina = DB::table('maquinas')->where('id', $maquinaId)->first();
+            $maquina = Maquina::where('id', $maquinaId)->first();
             $nombreMaquina = $maquina->nombre; // ✅ Obtener el nombre de la máquina
             $codigoMaquina = $maquina->codigo; // ✅ Obtener el nombre de la máquina
-
-            // Verificar disponibilidad de etiquetas, elementos y subpaquetes
-            if ($mensajeError = $this->verificarDisponibilidad($elementosIds, $subpaquetesIds)) {
-                DB::rollBack();
-                return response()->json(array_merge(['success' => false], $mensajeError), 400);
-            }
-
 
             // Obtener los elementos y subpaquetes asociados
             $etiquetas = Etiqueta::whereIn('id', $etiquetasIds)->with(['elementos', 'planilla'])->get();
@@ -108,6 +102,12 @@ class PaqueteController extends Controller
             }
             // **Siempre** añadir los elementos directos a `$elementosIdsDesdeEtiquetas`
             $elementosIdsDesdeEtiquetas = array_unique(array_merge($elementosIdsDesdeEtiquetas, $elementosIds));
+
+            // Verificar disponibilidad de etiquetas, elementos y subpaquetes
+            if ($mensajeError = $this->verificarDisponibilidad($elementosIdsDesdeEtiquetas, $subpaquetesIds)) {
+                DB::rollBack();
+                return response()->json(array_merge(['success' => false], $mensajeError), 400);
+            }
 
             // Obtener la lista de todos los elementos a procesar
             $todosElementos = Elemento::whereIn('id', $elementosIdsDesdeEtiquetas)->get();

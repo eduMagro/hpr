@@ -609,9 +609,9 @@
             @json($etiquetasData); // Ej.: [{ codigo: "3718", elementos: [27906,27907,...], pesoTotal: 155.55 }, ...]
         window.pesosElementos = @json($pesosElementos); // Ej.: { "27906": "77.81", "27907": "3.87", ... }
         window.subpaquetesData = @json($subpaquetesData); // Ej.: { "sub001": 27906, "sub002": 27907, ... }
-        console.log("Datos precargados de etiquetas:", window.etiquetasData);
-        console.log("Pesos precargados de elementos:", window.pesosElementos);
-        console.log("Datos precargados de subpaquetes:", window.subpaquetesData);
+        // console.log("Datos precargados de etiquetas:", window.etiquetasData);
+        // console.log("Pesos precargados de elementos:", window.pesosElementos);
+        // console.log("Datos precargados de subpaquetes:", window.subpaquetesData);
 
         let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
         let etiquetasEnUnaSolaMaquina = @json($etiquetasEnUnaSolaMaquina);
