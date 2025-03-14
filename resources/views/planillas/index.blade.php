@@ -395,7 +395,7 @@
                                 html: errorMsg,
                                 confirmButtonText: "OK",
                                 showCancelButton: true,
-                                cancelButtonText: "Reportar a Programador"
+                                cancelButtonText: "Reportar Error"
                             }).then((result) => {
                                 if (result.dismiss === Swal.DismissReason.cancel) {
                                     notificarProgramador(errorMsg);

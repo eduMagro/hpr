@@ -19,7 +19,7 @@
                 html: '<ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>',
                 confirmButtonColor: '#d33',
                 showCancelButton: true,
-                cancelButtonText: "Reportar a Programador"
+                cancelButtonText: "Reportar Error"
             }).then((result) => {
                 if (result.dismiss === Swal.DismissReason.cancel) {
                     notificarProgramador("Se han detectado errores en la validación de datos.");
@@ -40,7 +40,7 @@
                 text: `{!! session('error') !!}`,
                 confirmButtonColor: '#d33',
                 showCancelButton: true,
-                cancelButtonText: "Reportar a Programador"
+                cancelButtonText: "Reportar Error"
             }).then((result) => {
                 if (result.dismiss === Swal.DismissReason.cancel) {
                     notificarProgramador("{{ session('error') }}");
@@ -110,7 +110,7 @@
                 if (data.success) {
                     Swal.fire({
                         title: "Notificación enviada",
-                        text: "El programador ha sido notificado.",
+                        text: "El Departamento ha sido notificado.",
                         icon: "success"
                     });
                 } else {
