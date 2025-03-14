@@ -108,6 +108,7 @@ Route::middleware('auth')->group(function () {
         ->name('maquinas.sesion.guardar');
 
     Route::resource('salidas', SalidaController::class);
+    Route::get('/salidas/export/{mes}', [\App\Http\Controllers\SalidaController::class, 'export'])->name('salidas.export');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaController::class, 'actualizarEstado']);
     // Rutas para la gestión de camiones
     Route::resource('camiones', CamionController::class);

@@ -267,20 +267,6 @@ class ElementoController extends Controller
     }
 
 
-    /**
-     * Muestra el formulario para editar un elemento existente.
-     *
-     * @param  \App\Models\Elemento  $elemento
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Elemento $elemento)
-    {
-        $conjuntos = Conjunto::with('planilla')->get();
-        return view('elementos.edit', compact('elemento', 'conjuntos'));
-    }
-
-
-
     public function actualizarElemento(Request $request, $id, $maquina_id)
     {
         // Iniciar una transacción para asegurar la integridad de los datos

@@ -11,6 +11,8 @@ use App\Models\Elemento;
 use App\Models\EmpresaTransporte;
 use App\Models\Camion;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SalidaController extends Controller
 {
@@ -18,20 +20,50 @@ class SalidaController extends Controller
     {
         // Verificar si el usuario es administrador
         if (auth()->user()->rol == 'oficina') {
-            // Si es administrador, mostrar todas las salidas con sus paquetes, subpaquetes y elementos
-            $query = Salida::with(['paquetes.subpaquetes', 'paquetes.elementos']);
+            // Administrador: Mostrar todas las salidas con todas sus relaciones
+            $query = Salida::with(['paquetes.subpaquetes', 'paquetes.elementos', 'paquetes.planilla']);
         } else {
-            // Si no es administrador, mostrar solo las salidas con estado pendiente
+            // Usuario normal: Mostrar solo salidas con estado "pendiente"
             $query = Salida::where('estado', 'pendiente')
-                ->with(['paquetes.subpaquetes', 'paquetes.elementos']);  // Cargar relaciones
+                ->with(['paquetes.subpaquetes', 'paquetes.elementos']);
         }
 
-        // Aplicar paginación y mantener filtros en la URL
-        $salidas = $query->paginate(10)->appends($request->query());
+        // Obtener los datos paginados
+        $salidas = $query->get(); // No usamos paginate para agrupar correctamente
+        // Procesar cada salida para extraer planillas únicas, clientes y obras sin duplicados
+        foreach ($salidas as $salida) {
+            // Obtener planillas únicas asociadas a la salida
+            $salida->planillasUnicas = $salida->paquetes
+                ->pluck('planilla')
+                ->unique()
+                ->filter()
+                ->values();
 
-        // Pasar las salidas a la vista
-        return view('salidas.index', compact('salidas'));
+            // Extraer clientes únicos a nivel de salida
+            $salida->clientesUnicos = $salida->planillasUnicas
+                ->map(fn($planilla) => $planilla->cliente)
+                ->unique()
+                ->filter()
+                ->values();
+
+            // Extraer obras únicas a nivel de salida
+            $salida->obrasUnicas = $salida->planillasUnicas
+                ->map(fn($planilla) => $planilla->nom_obra)
+                ->unique()
+                ->filter()
+                ->values();
+        }
+
+        // Agrupar por mes
+        $salidasPorMes = $salidas->groupBy(function ($salida) {
+            return \Carbon\Carbon::parse($salida->fecha_salida)->translatedFormat('F Y'); // Ejemplo: "Marzo 2025"
+        });
+
+        // Pasar los datos a la vista
+        return view('salidas.index', compact('salidasPorMes', 'salidas'));
     }
+
+
 
 
 
@@ -164,6 +196,141 @@ class SalidaController extends Controller
         }
     }
 
+    public function update(Request $request, $id)
+    {
+        try {
+            $salida = Salida::findOrFail($id);
+
+
+            $field = $request->input('field');
+            $value = $request->input('value');
+
+            // Solo se permiten actualizar estos campos en línea
+            $allowedFields = ['importe', 'paralizacion', 'horas', 'horas_almacen', 'fecha_salida', 'estado'];
+
+            if (!in_array($field, $allowedFields)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El campo especificado no es editable en línea.'
+                ], 422);
+            }
+
+            // Reglas y mensajes de validación para el inline update
+            $rules = [
+                'camion_id'     => 'required|integer|exists:camiones,id',
+                'empresa_id'    => 'required|integer|exists:empresas,id',
+                'importe'        => 'nullable|numeric',
+                'paralizacion'        => 'nullable|numeric',
+                'horas'          => 'nullable|numeric',
+                'horas_almacen'  => 'nullable|numeric',
+                'fecha_salida'   => 'nullable|date',
+                'estado'         => 'nullable|string|max:50',
+            ];
+            $messages = [
+                'camion_id.required'   => 'El campo camion_id es obligatorio.',
+                'camion_id.integer'    => 'El campo camion_id debe ser un número entero.',
+                'camion_id.exists'     => 'El camión especificado no existe.',
+                'empresa_id.required'  => 'El campo empresa_id es obligatorio.',
+                'empresa_id.integer'   => 'El campo empresa_id debe ser un número entero.',
+                'empresa_id.exists'    => 'La empresa especificada no existe.',
+                'importe.numeric'       => 'El campo importe debe ser un número.',
+                'paralizacion.numeric'       => 'El campo paralización debe ser un número.',
+                'horas.numeric'         => 'El campo horas debe ser un número.',
+                'horas_almacen.numeric' => 'El campo horas/almacén debe ser un número.',
+                'fecha_salida.date'     => 'El campo fecha debe ser una fecha válida.',
+                'estado.string'         => 'El campo estado debe ser una cadena de texto.',
+                'estado.max'            => 'El campo estado no debe tener más de 50 caracteres.',
+            ];
+
+            // Validar el valor para el campo específico
+            $request->validate([
+                $field => $rules[$field]
+            ], [
+                $field . '.numeric' => $messages[$field . '.numeric'] ?? '',
+                $field . '.date'    => $messages[$field . '.date'] ?? '',
+                $field . '.string'  => $messages[$field . '.string'] ?? '',
+                $field . '.max'     => $messages[$field . '.max'] ?? '',
+            ]);
+
+            // Si es fecha, convertir el formato
+            if ($field === 'fecha_salida' && !empty($value)) {
+                try {
+                    $value = Carbon::parse($value)->format('Y-m-d');
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Formato de fecha no válido.'
+                    ], 422);
+                }
+            }
+
+            $salida->$field = $value;
+            $salida->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salida actualizada correctamente.',
+                'data'    => $salida
+            ]);
+
+
+            // Si se envía fecha_salida, convertir el formato
+            if (!empty($validatedData['fecha_salida'])) {
+                try {
+                    $validatedData['fecha_salida'] = Carbon::parse($validatedData['fecha_salida'])->format('Y-m-d');
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Formato de fecha no válido.'
+                    ], 422);
+                }
+            }
+
+            $salida->update($validatedData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salida actualizada correctamente.',
+                'data'    => $salida
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la salida.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function export($mes)
+    {
+        // Filtra las salidas del mes correspondiente
+        $salidas = Salida::whereMonth('fecha_salida', Carbon::parse($mes)->month)
+            ->whereYear('fecha_salida', Carbon::parse($mes)->year)
+            ->get();
+
+        // Procesa el resumen por cliente, similar a la vista.
+        $clientSummary = [];
+        foreach ($salidas as $salida) {
+            $importe = $salida->importe ?? 0;
+            foreach ($salida->clientesUnicos as $cliente) {
+                if ($cliente) {
+                    if (!isset($clientSummary[$cliente])) {
+                        $clientSummary[$cliente] = 0;
+                    }
+                    $clientSummary[$cliente] += $importe;
+                }
+            }
+        }
+
+        // Usa Excel::download() para generar y retornar el archivo
+        return Excel::download(new SalidasExport($salidas, $clientSummary), 'salidas_' . $mes . '.xlsx');
+    }
 
     public function marcarSubido(Request $request)
     {

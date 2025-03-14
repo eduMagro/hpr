@@ -12,6 +12,11 @@ class Salida extends Model
     protected $fillable = [
         'camion_id',
         'empresa_id',
+        'importe',
+        'paralizacion',
+        'horas',
+        'horas_almacen',
+        'estado',
         'fecha_salida',
         'observaciones'
     ];
