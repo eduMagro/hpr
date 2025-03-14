@@ -49,7 +49,7 @@
                                     <tr class="hover:bg-gray-50 text-sm">
                                         <td class="py-2 px-4 border-b">{{ $salida->codigo_salida }}</td>
                                         <td class="py-2 px-4 border-b">
-                                            @foreach ($salida->clientesUnicos as $cliente)
+                                            @foreach ($salida->clientesUnicos ?? [] as $cliente)
                                                 <span class="block mb-2">{{ $cliente ?? 'N/A' }}</span>
                                             @endforeach
                                         </td>

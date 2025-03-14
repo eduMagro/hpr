@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Planilla;
 use App\Models\Salida;
+use App\Models\SalidasExport;
 use App\Models\Paquete;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
@@ -309,6 +310,26 @@ class SalidaController extends Controller
 
     public function export($mes)
     {
+
+        $meses = [
+            'enero'      => 'January',
+            'febrero'    => 'February',
+            'marzo'      => 'March',
+            'abril'      => 'April',
+            'mayo'       => 'May',
+            'junio'      => 'June',
+            'julio'      => 'July',
+            'agosto'     => 'August',
+            'septiembre' => 'September',
+            'octubre'    => 'October',
+            'noviembre'  => 'November',
+            'diciembre'  => 'December',
+        ];
+
+        // Convertir el mes en español a inglés (convertir a minúsculas para evitar problemas de mayúsculas/minúsculas)
+        foreach ($meses as $esp => $eng) {
+            $mes = str_replace($esp, $eng, strtolower($mes));
+        }
         // Filtra las salidas del mes correspondiente
         $salidas = Salida::whereMonth('fecha_salida', Carbon::parse($mes)->month)
             ->whereYear('fecha_salida', Carbon::parse($mes)->year)
@@ -318,12 +339,15 @@ class SalidaController extends Controller
         $clientSummary = [];
         foreach ($salidas as $salida) {
             $importe = $salida->importe ?? 0;
-            foreach ($salida->clientesUnicos as $cliente) {
-                if ($cliente) {
-                    if (!isset($clientSummary[$cliente])) {
-                        $clientSummary[$cliente] = 0;
+            if (is_null($salida->clientesUnicos)) {
+                $salida->clientesUnicos = collect();
+                foreach ($salida->clientesUnicos as $cliente) {
+                    if ($cliente) {
+                        if (!isset($clientSummary[$cliente])) {
+                            $clientSummary[$cliente] = 0;
+                        }
+                        $clientSummary[$cliente] += $importe;
                     }
-                    $clientSummary[$cliente] += $importe;
                 }
             }
         }
