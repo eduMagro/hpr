@@ -60,7 +60,7 @@
                                     </div>
                                     <div class="flex flex-col">
                                         <!-- Botón para consumir el producto (con confirmación) -->
-                                        <button type="button" class="btn btn-danger"
+                                        <button class="bg-gray-200 hover:bg-gray-300 text-black py-2 px-4 rounded"
                                             onclick="confirmarEliminacion('{{ route('productos.consumir', $producto->id) }}')">
                                             ❌
                                         </button>

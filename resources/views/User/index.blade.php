@@ -438,6 +438,8 @@
                                             icon: 'error',
                                             title: 'Error',
                                             text: errorMessage,
+                                        }).then(() => {
+                                            window.location.reload();
                                         });
                                     }
                                 })

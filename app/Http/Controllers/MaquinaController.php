@@ -17,8 +17,9 @@ class MaquinaController extends Controller
 {
     public function index(Request $request)
     {
-        // Obtener los usuarios excluyendo al autenticado
-        $usuarios = User::where('id', '!=', auth()->id())->get();
+        $usuarios = User::where('id', '!=', auth()->id())
+            ->where('rol', 'operario')
+            ->get();
 
         // Construcción de la consulta para obtener máquinas
         $query = Maquina::with('productos')
