@@ -290,14 +290,15 @@
                                     <option value="completada">Completada</option>
                                 </select>
                             </td>
-
                             <!-- Fecha Inicio -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
+                                    <!-- Se muestra tal cual venga de la BD (ej: 13/03/2025 22:29) -->
                                     <span x-text="planilla.fecha_inicio"></span>
                                 </template>
-                                <input x-show="editando" type="datetime" x-model="planilla.fecha_inicio"
-                                    class="form-input w-full">
+                                <!-- Input de texto, para que el usuario pueda escribir/editar en formato DD/MM/YYYY HH:mm -->
+                                <input x-show="editando" type="text" x-model="planilla.fecha_inicio"
+                                    class="form-input w-full" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Fecha Finalización -->
@@ -305,12 +306,14 @@
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_finalizacion"></span>
                                 </template>
-                                <input x-show="editando" type="datetime" x-model="planilla.fecha_finalizacion"
-                                    class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="planilla.fecha_finalizacion"
+                                    class="form-input w-full" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Fecha Importación -->
                             <td class="px-4 py-3 text-center border">
+                                <!-- Supongo que la fecha de importación la muestras sin edición,
+         transformándola con new Date().toLocaleDateString() (formato local del navegador) -->
                                 <span x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
                             </td>
 
@@ -319,9 +322,9 @@
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_estimada_entrega"></span>
                                 </template>
-                                <input x-show="editando" type="date" x-model="planilla.fecha_estimada_entrega"
-                                    class="form-input w-full">
-
+                                <!-- Input de texto para DD/MM/YYYY -->
+                                <input x-show="editando" type="text" x-model="planilla.fecha_estimada_entrega"
+                                    class="form-input w-full" placeholder="DD/MM/YYYY">
                             </td>
 
                             <!-- Usuario -->
@@ -373,9 +376,8 @@
                             Swal.fire({
                                 icon: "success",
                                 title: "Planilla actualizada",
-                                text: "La planilla se ha actualizado con éxito.",
-                                timer: 2000,
-                                showConfirmButton: false
+                                text: data.message + ' ' + data.data,
+                                showConfirmButton: true
                             }).then(() => {
                                 window.location.reload(); // Recarga la página tras el mensaje
                             });
@@ -385,13 +387,21 @@
                             // Si existen errores de validación, concatenarlos
                             if (data.errors) {
                                 errorMsg = Object.values(data.errors).flat().join(
-                                    " "); // O puedes usar '\n' para saltos de línea
+                                    "<br>"); // O puedes usar '\n' para saltos de línea
                             }
                             Swal.fire({
                                 icon: "error",
                                 title: "Error al actualizar",
-                                text: errorMsg,
+                                html: errorMsg,
                                 confirmButtonText: "OK",
+                                showCancelButton: true,
+                                cancelButtonText: "Reportar a Programador"
+                            }).then((result) => {
+                                if (result.dismiss === Swal.DismissReason.cancel) {
+                                    notificarProgramador(errorMsg);
+                                }
+                            }).then(() => {
+                                window.location.reload(); // Recarga la página tras el mensaje
                             });
                         }
                     })

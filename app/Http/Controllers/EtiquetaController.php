@@ -601,39 +601,43 @@ class etiquetaController extends Controller
 
         if (str_contains($ensambladoText, 'taller')) {
 
-            // Verificar si TODOS los elementos de la máquina actual están completados
-            if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
-                // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                if ($enOtrasMaquinas) {
-                    $etiqueta->estado = 'parcialmente_completada';
-                } else {
-                    // Si no hay elementos en otras máquinas, se marca como fabricada/completada
-                    $etiqueta->estado = 'fabricada';
-                    $etiqueta->fecha_finalizacion = now();
-                }
-
-                $etiqueta->save();
-            }
-            // Buscar una máquina de soldar disponible
-            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                ->whereDoesntHave('elementos')
-                ->first();
-
-            if (!$maquinaSoldarDisponible) {
-                $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                    ->whereHas('elementos', function ($query) {
-                        $query->orderBy('created_at');
-                    })
-                    ->first();
-            }
-
-            if ($maquinaSoldarDisponible) {
-                foreach ($elementosEnMaquina as $elemento) {
-                    $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-                    $elemento->save();
-                }
+            if (str_contains($planilla->comentario, 'amarrado')) {
+            } elseif (str_contains($planilla->comentario, 'ensamblado amarrado')) {
             } else {
-                throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
+                // Verificar si TODOS los elementos de la máquina actual están completados
+                if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+                    // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
+                    if ($enOtrasMaquinas) {
+                        $etiqueta->estado = 'parcialmente_completada';
+                    } else {
+                        // Si no hay elementos en otras máquinas, se marca como fabricada/completada
+                        $etiqueta->estado = 'fabricada';
+                        $etiqueta->fecha_finalizacion = now();
+                    }
+
+                    $etiqueta->save();
+                }
+                // Buscar una máquina de soldar disponible
+                $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
+                    ->whereDoesntHave('elementos')
+                    ->first();
+
+                if (!$maquinaSoldarDisponible) {
+                    $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
+                        ->whereHas('elementos', function ($query) {
+                            $query->orderBy('created_at');
+                        })
+                        ->first();
+                }
+
+                if ($maquinaSoldarDisponible) {
+                    foreach ($elementosEnMaquina as $elemento) {
+                        $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
+                        $elemento->save();
+                    }
+                } else {
+                    throw new \Exception("No se encontró una máquina de soldar disponible para taller.");
+                }
             }
         } elseif (str_contains($ensambladoText, 'carcasas')) {
 

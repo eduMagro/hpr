@@ -146,6 +146,7 @@ class AlertaController extends Controller
     }
     public function store(Request $request)
     {
+
         // Validar los datos de la alerta asegurando que SOLO uno (rol o categoría) sea seleccionado
         $request->validate([
             'mensaje' => 'required|string',
@@ -162,12 +163,10 @@ class AlertaController extends Controller
                 'nullable',
                 'string',
             ],
-            'user_id_2' => 'nullable|exists:users,id'
         ], [
             'mensaje.required' => 'El mensaje es obligatorio.',
             'rol.max' => 'Máximo 255 caracteres',
             'categoria.max' => 'Máximo 255 caracteres',
-            'user_id_2.exists' => 'El usuario 2 no existe',
         ]);
 
         // Verificar que al menos uno (destino o destinatario) esté presente
@@ -189,7 +188,8 @@ class AlertaController extends Controller
 
             return redirect()->back()->with('success', 'Alerta enviada correctamente.');
         } catch (ValidationException $e) {
-            return redirect()->back()->with(['error' => $e->errors()], 422);
+            return redirect()->back()
+                ->withErrors($e->errors());
         } catch (Exception $e) {
             return redirect()->back()->with(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }

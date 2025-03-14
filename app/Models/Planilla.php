@@ -32,6 +32,7 @@ class Planilla extends Model
         'obra_id',
         'seccion',
         'descripcion',
+        'comentario',
         'ensamblado',
         'codigo', // Asegúrate de que este campo esté aquí
         'peso_total',

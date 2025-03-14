@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Exception;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class PlanillaController extends Controller
 {
@@ -538,83 +539,103 @@ class PlanillaController extends Controller
         try {
             // Buscar la planilla o lanzar excepción si no se encuentra
             $planilla = Planilla::findOrFail($id);
+
+            // Si los campos de fecha vienen vacíos, forzar null
             $request->merge([
-                'fecha_inicio' => $request->fecha_inicio ? $request->fecha_inicio : null,
-                'fecha_estimada_entrega' => $request->fecha_estimada_entrega ? $request->fecha_estimada_entrega : null,
-                'fecha_finalizacion' => $request->fecha_finalizacion ? $request->fecha_finalizacion : null,
-                'fecha_importacion' => $request->fecha_importacion ? $request->fecha_importacion : null,
+                'fecha_inicio'           => $request->fecha_inicio ?: null,
+                'fecha_estimada_entrega' => $request->fecha_estimada_entrega ?: null,
+                'fecha_finalizacion'     => $request->fecha_finalizacion ?: null,
+                'fecha_importacion'      => $request->fecha_importacion ?: null,
             ]);
 
             // Validar los datos recibidos con mensajes personalizados
             $validatedData = $request->validate([
-                'codigo'             => 'required|string|max:50',
-                'cod_cliente'     => 'nullable|string|max:50',
-                'cliente'            => 'required|string|max:50',
-                'cod_obra'        => 'nullable|string|max:50',
+                'codigo'                 => 'required|string|max:50',
+                'cod_cliente'            => 'nullable|string|max:50',
+                'cliente'                => 'required|string|max:50',
+                'cod_obra'               => 'nullable|string|max:50',
                 'nom_obra'               => 'required|string|max:100',
-                'seccion'            => 'nullable|string|max:100',
-                'descripcion'        => 'nullable|string',
-                'ensamblado'         => 'nullable|string|max:100',
-                'comentario'         => 'nullable|string|max:255',
-                'peso_fabricado'     => 'nullable|numeric',
-                'peso_total'         => 'nullable|numeric',
-                'estado'             => 'nullable|string|in:pendiente,fabricando,completado',
-                'fecha_inicio'       => 'nullable|date',
-                'fecha_estimada_entrega'       => 'nullable|date',
-                'fecha_finalizacion' => 'nullable|date',
-                'fecha_importacion'  => 'nullable|date',
-                'usuario'            => 'nullable|string|max:100'
+                'seccion'                => 'nullable|string|max:100',
+                'descripcion'            => 'nullable|string',
+                'ensamblado'             => 'nullable|string|max:100',
+                'comentario'             => 'nullable|string|max:255',
+                'peso_fabricado'         => 'nullable|numeric',
+                'peso_total'             => 'nullable|numeric',
+                'estado'                 => 'nullable|string|in:pendiente,fabricando,completada',
+                'fecha_inicio'           => 'nullable|date_format:d/m/Y H:i',
+                'fecha_finalizacion'     => 'nullable|date_format:d/m/Y H:i',
+                'fecha_estimada_entrega' => 'nullable|date_format:d/m/Y',
+                'fecha_importacion'      => 'nullable|date_format:d/m/Y',
+
+                'usuario'                => 'nullable|string|max:100'
             ], [
-                'codigo.required'             => 'El campo Código es obligatorio.',
-                'codigo.string'               => 'El campo Código debe ser una cadena de texto.',
-                'codigo.max'                  => 'El campo Código no debe exceder 50 caracteres.',
+                'codigo.required'     => 'El campo Código es obligatorio.',
+                'codigo.string'       => 'El campo Código debe ser una cadena de texto.',
+                'codigo.max'          => 'El campo Código no debe exceder 50 caracteres.',
 
-                'cod_cliente.string'       => 'El campo Código Cliente debe ser una cadena de texto.',
-                'cod_cliente.max'          => 'El campo Código Cliente no debe exceder 50 caracteres.',
+                'cod_cliente.string'  => 'El campo Código Cliente debe ser una cadena de texto.',
+                'cod_cliente.max'     => 'El campo Código Cliente no debe exceder 50 caracteres.',
 
-                'cliente.required'            => 'El campo Cliente es obligatorio.',
-                'cliente.string'              => 'El campo Cliente debe ser una cadena de texto.',
-                'cliente.max'                 => 'El campo Cliente no debe exceder 50 caracteres.',
+                'cliente.required'    => 'El campo Cliente es obligatorio.',
+                'cliente.string'      => 'El campo Cliente debe ser una cadena de texto.',
+                'cliente.max'         => 'El campo Cliente no debe exceder 50 caracteres.',
 
-                'cod_obra.string'          => 'El campo Código Obra debe ser una cadena de texto.',
-                'cod_obra.max'             => 'El campo Código Obra no debe exceder 50 caracteres.',
+                'cod_obra.string'     => 'El campo Código Obra debe ser una cadena de texto.',
+                'cod_obra.max'        => 'El campo Código Obra no debe exceder 50 caracteres.',
 
-                'nom_obra.required'               => 'El campo Obra es obligatorio.',
-                'nom_obra.string'                 => 'El campo Obra debe ser una cadena de texto.',
-                'nom_obra.max'                    => 'El campo Obra no debe exceder 100 caracteres.',
+                'nom_obra.required'   => 'El campo Obra es obligatorio.',
+                'nom_obra.string'     => 'El campo Obra debe ser una cadena de texto.',
+                'nom_obra.max'        => 'El campo Obra no debe exceder 100 caracteres.',
 
-                'seccion.string'              => 'El campo Sección debe ser una cadena de texto.',
-                'seccion.max'                 => 'El campo Sección no debe exceder 100 caracteres.',
+                'seccion.string'      => 'El campo Sección debe ser una cadena de texto.',
+                'seccion.max'         => 'El campo Sección no debe exceder 100 caracteres.',
 
-                'descripcion.string'          => 'El campo Descripción debe ser una cadena de texto.',
+                'descripcion.string'  => 'El campo Descripción debe ser una cadena de texto.',
 
-                'ensamblado.string'           => 'El campo Ensamblado debe ser una cadena de texto.',
-                'ensamblado.max'              => 'El campo Ensamblado no debe exceder 100 caracteres.',
+                'ensamblado.string'   => 'El campo Ensamblado debe ser una cadena de texto.',
+                'ensamblado.max'      => 'El campo Ensamblado no debe exceder 100 caracteres.',
 
-                'comentario.string'           => 'El campo Comentario debe ser una cadena de texto.',
-                'comentario.max'              => 'El campo Comentario no debe exceder 255 caracteres.',
+                'comentario.string'   => 'El campo Comentario debe ser una cadena de texto.',
+                'comentario.max'      => 'El campo Comentario no debe exceder 255 caracteres.',
 
-                'peso_fabricado.numeric'      => 'El campo Peso Fabricado debe ser un número.',
-                'peso_total.numeric'          => 'El campo Peso Total debe ser un número.',
+                'peso_fabricado.numeric' => 'El campo Peso Fabricado debe ser un número.',
+                'peso_total.numeric'     => 'El campo Peso Total debe ser un número.',
 
-                'estado.in'                 => 'El campo Estado debe ser: pendiente, fabricando o completado.',
+                'estado.in'             => 'El campo Estado debe ser: pendiente, fabricando o completada.',
 
-                'fecha_inicio.date'           => 'El campo Fecha Inicio debe ser una fecha válida.',
-                'fecha_estimada_entrega.date'           => 'El campo Fecha Inicio debe ser una fecha válida.',
-                'fecha_finalizacion.date'     => 'El campo Fecha Finalización debe ser una fecha válida.',
-                'fecha_importacion.date'      => 'El campo Fecha Importación debe ser una fecha válida.',
+                // Se modifican los mensajes para referir a cada campo.
+                'fecha_inicio.date_format'           => 'El campo Fecha Inicio no corresponde al formato DD/MM/YYYY HH:mm.',
+                'fecha_finalizacion.date_format'     => 'El campo Fecha Finalización no corresponde al formato DD/MM/YYYY HH:mm.',
+                'fecha_estimada_entrega.date_format' => 'El campo Fecha Estimada de Entrega no corresponde al formato DD/MM/YYYY.',
+                'fecha_importacion.date_format'           => 'El campo Fecha Estimada de Entrega no corresponde al formato DD/MM/YYYY.',
 
-                'usuario.string'              => 'El campo Usuario debe ser una cadena de texto.',
-                'usuario.max'                 => 'El campo Usuario no debe exceder 100 caracteres.'
+                'usuario.string'        => 'El campo Usuario debe ser una cadena de texto.',
+                'usuario.max'           => 'El campo Usuario no debe exceder 100 caracteres.'
             ]);
+            // 1) Convertir fecha_inicio si existe
+            if (!empty($validatedData['fecha_inicio'])) {
+                $validatedData['fecha_inicio'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_inicio'])
+                    ->format('Y-m-d H:i:s');
+            }
 
+            // 2) Convertir fecha_finalizacion si existe
+            if (!empty($validatedData['fecha_finalizacion'])) {
+                $validatedData['fecha_finalizacion'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_finalizacion'])
+                    ->format('Y-m-d H:i:s');
+            }
+
+            // 3) Convertir fecha_estimada_entrega si existe (si la recibes con día/mes/año)
+            if (!empty($validatedData['fecha_estimada_entrega'])) {
+                $validatedData['fecha_estimada_entrega'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_estimada_entrega'])
+                    ->format('Y-m-d');
+            }
             // Actualizar la planilla con los datos validados
             $planilla->update($validatedData);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Planilla actualizada correctamente',
-                'data'    => $planilla
+                'data'    => $planilla->codigo_limpio
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
@@ -628,10 +649,9 @@ class PlanillaController extends Controller
                 'errors'  => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            Log::error("Error al actualizar la planilla con ID {$id}: " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar la planilla. Intente nuevamente.'
+                'message' => 'Error al actualizar la planilla. Intente nuevamente. ' . $e->getMessage()
             ], 500);
         }
     }
