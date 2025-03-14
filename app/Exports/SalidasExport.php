@@ -21,8 +21,14 @@ class SalidasExport implements FromCollection, WithHeadings
         return $this->salidas->map(function ($salida) {
             return [
                 'Código Salida'      => $salida->codigo_salida,
-                'Cliente(s)'         => implode(', ', $salida->clientesUnicos),
-                'Obra(s)'            => implode(', ', $salida->obrasUnicas),
+                'Cliente(s)'         => implode(', ', $salida->clientesUnicos->toArray()),
+                'Obra(s)' => is_string($salida->obrasUnicas)
+                    ? $salida->obrasUnicas
+                    : ($salida->obrasUnicas
+                        ? implode(', ', is_array($salida->obrasUnicas)
+                            ? $salida->obrasUnicas
+                            : $salida->obrasUnicas->toArray())
+                        : ''),
                 'Empresa'            => $salida->empresaTransporte->nombre,
                 'Camión'             => $salida->camion->modelo . ' - ' . $salida->camion->matricula,
                 'Importe'            => $salida->importe,

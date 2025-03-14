@@ -18,12 +18,17 @@
 
             @if (!empty($salidasPorMes) && count($salidasPorMes) > 0)
                 @foreach ($salidasPorMes as $mes => $salidas)
-                    <div class="mb-4 flex items-center justify-between">
-                        <h2 class="text-xl font-semibold text-gray-900 mt-6">{{ ucfirst($mes) }}</h2>
+                    <div class="mb-4 flex items-center gap-20">
+                        <h2 class="text-xl font-semibold text-gray-900">{{ ucfirst($mes) }}</h2>
                         <a href="{{ route('salidas.export', ['mes' => $mes]) }}"
-                            class="bg-blue-600 text-white py-1 px-3 rounded hover:bg-blue-700 transition duration-300">
-                            Exportar Excel
+                            class="inline-flex items-center bg-gray-400 text-white py-1 px-3 rounded-lg shadow-lg hover:bg-gray-700 transition duration-300">
+                            <!-- Icono de Excel -->
+                            <img width="28" height="28"
+                                src="https://img.icons8.com/fluency/48/microsoft-excel-2019.png"
+                                alt="microsoft-excel-2019" />
+                            Excel
                         </a>
+
                     </div>
 
                     <div class="bg-white shadow-lg rounded-lg p-4 sm:p-6 mt-4 overflow-x-auto">
@@ -182,7 +187,8 @@
                                                     class="border mb-2 px-2 py-1 rounded-md w-20 sm:w-auto max-w-full"
                                                     x-model="idIngresado"
                                                     @input="paqueteVerificado = (idIngresado == paqueteId);">
-                                                <span x-show="paqueteVerificado" class="text-green-500">&#10004;</span>
+                                                <span x-show="paqueteVerificado"
+                                                    class="text-green-500">&#10004;</span>
                                                 <span x-show="!paqueteVerificado && idIngresado"
                                                     class="text-red-500">&#10008;</span>
                                                 <button onclick="mostrarDibujo({{ $paquete->id }})"

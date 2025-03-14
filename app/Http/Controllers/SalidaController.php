@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Planilla;
 use App\Models\Salida;
-use App\Models\SalidasExport;
+use App\Exports\SalidasExport;
 use App\Models\Paquete;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
@@ -41,14 +41,14 @@ class SalidaController extends Controller
                 ->values();
 
             // Extraer clientes únicos a nivel de salida
-            $salida->clientesUnicos = $salida->planillasUnicas
+            $salida->clientesUnicos = collect($salida->planillasUnicas ?? [])
                 ->map(fn($planilla) => $planilla->cliente)
                 ->unique()
                 ->filter()
                 ->values();
 
             // Extraer obras únicas a nivel de salida
-            $salida->obrasUnicas = $salida->planillasUnicas
+            $salida->obrasUnicas = collect($salida->planillasUnicas ?? [])
                 ->map(fn($planilla) => $planilla->nom_obra)
                 ->unique()
                 ->filter()
@@ -60,13 +60,8 @@ class SalidaController extends Controller
             return \Carbon\Carbon::parse($salida->fecha_salida)->translatedFormat('F Y'); // Ejemplo: "Marzo 2025"
         });
 
-        // Pasar los datos a la vista
         return view('salidas.index', compact('salidasPorMes', 'salidas'));
     }
-
-
-
-
 
     public function show($id)
     {
@@ -325,35 +320,40 @@ class SalidaController extends Controller
             'noviembre'  => 'November',
             'diciembre'  => 'December',
         ];
+        try {
+            // Convertir el mes en español a inglés (convertir a minúsculas para evitar problemas de mayúsculas/minúsculas)
+            foreach ($meses as $esp => $eng) {
+                $mes = str_replace($esp, $eng, strtolower($mes));
+            }
+            // Filtra las salidas del mes correspondiente
+            $salidas = Salida::whereMonth('fecha_salida', Carbon::parse($mes)->month)
+                ->whereYear('fecha_salida', Carbon::parse($mes)->year)
+                ->get();
 
-        // Convertir el mes en español a inglés (convertir a minúsculas para evitar problemas de mayúsculas/minúsculas)
-        foreach ($meses as $esp => $eng) {
-            $mes = str_replace($esp, $eng, strtolower($mes));
-        }
-        // Filtra las salidas del mes correspondiente
-        $salidas = Salida::whereMonth('fecha_salida', Carbon::parse($mes)->month)
-            ->whereYear('fecha_salida', Carbon::parse($mes)->year)
-            ->get();
-
-        // Procesa el resumen por cliente, similar a la vista.
-        $clientSummary = [];
-        foreach ($salidas as $salida) {
-            $importe = $salida->importe ?? 0;
-            if (is_null($salida->clientesUnicos)) {
-                $salida->clientesUnicos = collect();
-                foreach ($salida->clientesUnicos as $cliente) {
-                    if ($cliente) {
-                        if (!isset($clientSummary[$cliente])) {
-                            $clientSummary[$cliente] = 0;
+            // Procesa el resumen por cliente, similar a la vista.
+            $clientSummary = [];
+            foreach ($salidas as $salida) {
+                $importe = $salida->importe ?? 0;
+                if (is_null($salida->clientesUnicos)) {
+                    $salida->clientesUnicos = collect();
+                    foreach ($salida->clientesUnicos as $cliente) {
+                        if ($cliente) {
+                            if (!isset($clientSummary[$cliente])) {
+                                $clientSummary[$cliente] = 0;
+                            }
+                            $clientSummary[$cliente] += $importe;
                         }
-                        $clientSummary[$cliente] += $importe;
                     }
                 }
             }
-        }
 
-        // Usa Excel::download() para generar y retornar el archivo
-        return Excel::download(new SalidasExport($salidas, $clientSummary), 'salidas_' . $mes . '.xlsx');
+            DB::commit(); // Confirmar la transacción
+            // Usa Excel::download() para generar y retornar el archivo
+            return Excel::download(new SalidasExport($salidas, $clientSummary), 'salidas_' . $mes . '.xlsx');
+        } catch (\Exception $e) {
+            DB::rollBack(); // Revertir cambios en caso de error
+            return redirect()->route('salidas.index')->with('error', 'Hubo un problema al exportar las salidas: ' . $e->getMessage());
+        }
     }
 
     public function marcarSubido(Request $request)
