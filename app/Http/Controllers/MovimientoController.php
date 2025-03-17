@@ -50,8 +50,17 @@ class MovimientoController extends Controller
     //------------------------------------------------ INDEX() --------------------------------------------------------
     public function index(Request $request)
     {
+        // Obtener el usuario autenticado
+        $usuario = auth()->user();
+
         // Base query con relaciones necesarias
         $query = Movimiento::with(['producto', 'usuario', 'ubicacionOrigen', 'ubicacionDestino', 'maquinaOrigen', 'maquina']);
+
+        // Filtrar según el rol del usuario
+        if ($usuario->rol === 'operario') {
+            $query->where('users_id', $usuario->id);
+        }
+        // Si es 'oficina', no aplicamos restricciones y puede ver todos los movimientos
 
         // Aplicar filtros utilizando el método 'aplicarFiltros'
         $query = $this->aplicarFiltros($query, $request);
@@ -69,6 +78,7 @@ class MovimientoController extends Controller
         // Retornar vista con los datos paginados
         return view('movimientos.index', compact('registrosMovimientos'));
     }
+
     //------------------------------------------------ CREATE() --------------------------------------------------------
 
     public function create()

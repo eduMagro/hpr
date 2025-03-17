@@ -6,7 +6,7 @@
         </h2>
     </x-slot>
 
-    <div class="container mx-auto px-4 py-6">
+    <div class="w-full px-6 py-4">
         <!-- Botón para crear un nuevo movimiento con estilo Bootstrap -->
         <div class="mb-4">
             <a href="{{ route('movimientos.create') }}" class="btn btn-primary">
