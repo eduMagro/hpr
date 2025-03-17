@@ -9,6 +9,7 @@ class Etiqueta extends Model
 {
     use HasFactory;
 
+
     protected $table = 'etiquetas';
 
     protected $fillable = [

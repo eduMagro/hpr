@@ -15,6 +15,7 @@ use App\Models\Camion;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Log;
 
 class SalidaController extends Controller
 {
@@ -148,63 +149,104 @@ class SalidaController extends Controller
     public function store(Request $request)
     {
         try {
-
-
             $request->validate([
-                'camion_id' => 'required|exists:camiones,id',
+                'camion_id'   => 'required|exists:camiones,id',
                 'paquete_ids' => 'required|array',
                 'paquete_ids.*' => 'exists:paquetes,id',
             ], [
-                'camion_id.required' => 'Por favor, seleccione un camión.',
-                'camion_id.exists' => 'El camión seleccionado no existe en el sistema.',
+                'camion_id.required'   => 'Por favor, seleccione un camión.',
+                'camion_id.exists'     => 'El camión seleccionado no existe en el sistema.',
                 'paquete_ids.required' => 'Debe seleccionar al menos un paquete.',
-                'paquete_ids.array' => 'Los paquetes seleccionados no son válidos.',
+                'paquete_ids.array'    => 'Los paquetes seleccionados no son válidos.',
                 'paquete_ids.*.exists' => 'Uno o más paquetes seleccionados no existen en el sistema.',
             ]);
-            // Comprobar si los paquetes seleccionados ya están asociados a alguna salida
+
+            // Comprobar si alguno de los paquetes seleccionados ya está asociado a una salida
             $paquetesRepetidos = DB::table('salidas_paquetes')
-                ->whereIn('paquete_id', $request->paquete_ids)  // Paquetes seleccionados
-                ->whereNotNull('salida_id')  // Asegurarse de que estén asociados a alguna salida
-                ->pluck('paquete_id')  // Extraer solo los IDs
-                ->toArray();  // Convertir el resultado a un array
+                ->whereIn('paquete_id', $request->paquete_ids)
+                ->whereNotNull('salida_id')
+                ->pluck('paquete_id')
+                ->toArray();
 
-            // Encontrar los paquetes repetidos
             $repetidos = array_intersect($request->paquete_ids, $paquetesRepetidos);
-
-            // Si hay paquetes repetidos, devolver el error
             if ($repetidos) {
                 return back()->withErrors(['paquete_ids' => 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $repetidos)]);
             }
+
+            // Obtener el camión y la empresa de transporte asociada
             $camion = Camion::find($request->camion_id);
-            $empresa = $camion->empresaTransporte;  // Accede a la empresa del camión
+            $empresa = $camion->empresaTransporte;
 
             // Crear la salida
             $salida = Salida::create([
-                'empresa_id' => $empresa->id,
-                'camion_id' => $request->camion_id,
+                'empresa_id'   => $empresa->id,
+                'camion_id'    => $request->camion_id,
                 'fecha_salida' => null,
-                'estado' => 'pendiente', // Estado por defecto, puedes cambiarlo si es necesario
+                'estado'       => 'pendiente', // Estado por defecto
             ]);
-            // Generar el código de salida
-            $codigo_salida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
 
-            // Asignar el código de salida
+            // Generar el código de salida y asignarlo
+            $codigo_salida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
             $salida->codigo_salida = $codigo_salida;
             $salida->save();
 
-            // Asociar los paquetes a la salida
+            // Asociar los paquetes a la salida (se llenará la tabla salidas_paquetes)
             foreach ($request->paquete_ids as $paquete_id) {
-                // Asociar el paquete existente a la salida
                 $salida->paquetes()->attach($paquete_id);
             }
 
-            // Retornar una respuesta de éxito
-            return redirect()->route('salidas.create')->with('success', 'Salida creada con éxito');
+            /*
+             * Para la asociación salida_cliente:
+             * Se recorre cada paquete seleccionado y se carga la relación anidada:
+             * planilla.obra.cliente.
+             * Si se encuentra el cliente, se añade a un arreglo de IDs únicos.
+             */
+            // Asociar los paquetes a la salida (se llenará la tabla salidas_paquetes)
+            foreach ($request->paquete_ids as $paquete_id) {
+                $salida->paquetes()->attach($paquete_id);
+            }
+
+            // Obtener los clientes de la planilla (ya que planilla tiene cliente_id)
+            $uniqueClientIds = [];
+            foreach ($request->paquete_ids as $paquete_id) {
+                // Cargamos la relación anidada para tener acceso a la planilla
+                $paquete = \App\Models\Paquete::with('planilla')->find($paquete_id);
+                if (!$paquete) {
+                    Log::info("Paquete {$paquete_id} no encontrado");
+                } elseif (!$paquete->planilla) {
+                    Log::info("Paquete {$paquete_id} no tiene planilla");
+                } elseif (!$paquete->planilla->cliente_id) {
+                    Log::info("Paquete {$paquete_id} tiene planilla, pero no tiene cliente asociado");
+                } else {
+                    Log::info("Paquete {$paquete_id} OK: Cliente ID " . $paquete->planilla->cliente_id);
+                    $uniqueClientIds[$paquete->planilla->cliente_id] = true;
+                }
+            }
+
+            $clientIds = array_keys($uniqueClientIds);
+            Log::info('Unique client IDs: ' . implode(', ', $clientIds));
+
+            // Si se han obtenido clientes, asociarlos en la tabla pivote salida_cliente
+            if (!empty($clientIds)) {
+                $salida->clientes()->attach($clientIds, [
+                    'horas_paralizacion'   => 0,
+                    'importe_paralizacion' => 0,
+                    'horas_grua'           => 0,
+                    'importe_grua'         => 0,
+                    'horas_almacen'        => 0,
+                    'importe'              => 0,
+                ]);
+            } else {
+                Log::warning('No se encontraron clientes para asociar a la salida.');
+            }
+
+
+            return redirect()->route('salidas.index')->with('success', 'Salida creada con éxito');
         } catch (\Exception $e) {
-            // Capturar cualquier excepción y retornar un error general
             return back()->withErrors(['error' => 'Hubo un problema al crear la salida: ' . $e->getMessage()]);
         }
     }
+
 
     public function update(Request $request, $id)
     {

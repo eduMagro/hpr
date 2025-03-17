@@ -165,6 +165,6 @@ class ObraController extends Controller
     public function destroy(Obra $obra)
     {
         $obra->delete();
-        return redirect()->route('clientes.show')->with('success', 'Obra eliminada correctamente.');
+        return redirect()->back()->with('success', 'Obra eliminada correctamente.');
     }
 }

@@ -37,13 +37,13 @@
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: `{!! session('error') !!}`,
+                text: {!! json_encode(session('error')) !!}, // Esto evita errores de comillas
                 confirmButtonColor: '#d33',
                 showCancelButton: true,
                 cancelButtonText: "Reportar Error"
             }).then((result) => {
                 if (result.dismiss === Swal.DismissReason.cancel) {
-                    notificarProgramador("{{ session('error') }}");
+                    notificarProgramador({!! json_encode(session('error')) !!});
                 }
             }).then(() => {
                 window.location.reload(); // Recarga la página tras el mensaje

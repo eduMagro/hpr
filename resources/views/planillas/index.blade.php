@@ -152,14 +152,12 @@
 
         <!-- TABLA DE PLANILLAS -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-            <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
+            <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm uppercase">
                         <th class="px-4 py-3 border">Código</th>
                         <th class="px-4 py-3 border">Código Cliente</th>
-                        <th class="px-4 py-3 border">Cliente</th>
                         <th class="px-4 py-3 border">Código Obra</th>
-                        <th class="px-4 py-3 border">Obra</th>
                         <th class="px-4 py-3 border">Sección</th>
                         <th class="px-4 py-3 border">Descripción</th>
                         <th class="px-4 py-3 border">Ensamblado</th>
@@ -192,37 +190,35 @@
                             <!-- Código Cliente -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="planilla.cod_cliente ?? 'No asignado'"></span>
+                                    <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $planilla->cliente->empresa ?? 'N/A' }}
+                                    </a>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.cod_cliente"
-                                    class="form-input w-full">
-                            </td>
-
-                            <!-- Cliente -->
-                            <td class="px-4 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="planilla.cliente ?? 'Desconocido'"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="planilla.cliente"
-                                    class="form-input w-full">
+                                <!-- En modo edición, se edita el id del cliente -->
+                                <select x-show="editando" x-model="planilla.cliente_id" class="form-input w-full">
+                                    <option value="">Seleccionar máquina</option>
+                                    @foreach ($clientes as $cliente)
+                                        <option value="{{ $cliente->id }}">{{ $cliente->empresa }}</option>
+                                    @endforeach
+                                </select>
                             </td>
 
                             <!-- Código Obra -->
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="planilla.cod_obra ?? 'No asignado'"></span>
+                                    <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $planilla->obra->obra ?? 'N/A' }}
+                                    </a>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.cod_obra"
-                                    class="form-input w-full">
-                            </td>
-
-                            <!-- Obra -->
-                            <td class="px-4 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="planilla.nom_obra ?? 'No especificado'"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="planilla.nom_obra"
-                                    class="form-input w-full">
+                                <!-- En modo edición, se edita el id del obra -->
+                                <select x-show="editando" x-model="planilla.obra_id" class="form-input w-full">
+                                    <option value="">Seleccionar obra</option>
+                                    @foreach ($obras as $obra)
+                                        <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                    @endforeach
+                                </select>
                             </td>
 
                             <!-- Sección -->

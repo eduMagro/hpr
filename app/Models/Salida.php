@@ -64,6 +64,7 @@ class Salida extends Model
             ->withTimestamps();
     }
 
+
     public function planillas()
     {
         return $this->belongsToMany(Planilla::class, 'salidas_paquetes', 'salida_id', 'planilla_id');

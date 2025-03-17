@@ -34,6 +34,10 @@ class Cliente extends Model
     {
         return $this->hasMany(Obra::class, 'cliente_id');
     }
+    public function planillas()
+    {
+        return $this->hasMany(Cliente::class);
+    }
     public function salidas()
     {
         return $this->belongsToMany(Salida::class, 'salida_cliente')

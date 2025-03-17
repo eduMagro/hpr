@@ -26,8 +26,9 @@ class Planilla extends Model
 
         'users_id',
         'cod_obra',
-        'cod_cliente',
         'cliente',
+        'cod_cliente',
+        'cliente_id',
         'nom_obra',
         'obra_id',
         'seccion',
@@ -67,7 +68,11 @@ class Planilla extends Model
 
     public function obra()
     {
-        return $this->belongsTo(Obra::class);
+        return $this->belongsTo(Obra::class, 'obra_id');
+    }
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class, 'cliente_id');
     }
     public function paquetes()
     {

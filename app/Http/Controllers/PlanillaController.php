@@ -9,6 +9,7 @@ use App\Models\Elemento;
 use App\Models\Maquina;
 use App\Models\Etiqueta;
 use App\Models\Obra;
+use App\Models\Cliente;
 use Illuminate\Support\Facades\DB;
 use App\Imports\PlanillaImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -23,8 +24,9 @@ class PlanillaController extends Controller
 {
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
-        // Si usas PHP 8 o superior, puedes utilizar str_starts_with
-        $estribo = $doblesPorBarra >= 5;
+
+        $estribo = $doblesPorBarra >= 5 && $diametro < 20;
+
         $maquinas = collect(); // Inicializar con una colección vacía de Laravel
 
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
@@ -147,6 +149,7 @@ class PlanillaController extends Controller
         if ($request->has('planilla_id')) {
             $query->where('id', $request->planilla_id);
         }
+
         // 📌 Filtrar por codigo de planilla si está presente
         if ($request->has('codigo') && $request->codigo) {
             $query->where('codigo', 'like', "%{$request->codigo}%");
@@ -178,7 +181,7 @@ class PlanillaController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Planilla::with(['user', 'elementos']);
+            $query = Planilla::with(['user', 'elementos', 'cliente', 'obra']);
 
             // Aplicar filtros
             $query = $this->aplicarFiltros($query, $request);
@@ -213,9 +216,10 @@ class PlanillaController extends Controller
                     $query->where('estado', 'completado');
                 }
             ], 'peso');
-
+            $clientes = Cliente::where('activo', 1)->get();
+            $obras = Obra::where('completada', 0)->get();
             // Retornar vista con los datos
-            return view('planillas.index', compact('planillas'));
+            return view('planillas.index', compact('planillas', 'clientes', 'obras'));
         } catch (Exception $e) {
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
@@ -330,12 +334,17 @@ class PlanillaController extends Controller
 
                 // Tomar el nom_obra de la primera fila de la planilla (todas son iguales)
                 $nomObra = trim(Str::lower($rows[0][3] ?? ''));
+                // Tomar el nomCliente de la primera fila de la planilla (todas son iguales)
+                $nomCliente = trim(Str::lower($rows[0][1] ?? ''));
 
                 // Buscar la obra ignorando mayúsculas/minúsculas y espacios extras
                 $obra = Obra::whereRaw('LOWER(TRIM(obra)) = ?', [$nomObra])->first();
+                // Buscar el cliente ignorando mayúsculas/minúsculas y espacios extras
+                $cliente = Cliente::whereRaw('LOWER(TRIM(empresa)) = ?', [$nomCliente])->first();
 
                 // Log para verificar la comparación
                 Log::info("Comparando: '$nomObra' con '" . ($obra ? $obra->obra : 'Ninguna obra encontrada') . "'");
+                Log::info("Comparando: '$nomCliente' con '" . ($cliente ? $cliente->empresa : 'Ningun cliente encontrado') . "'");
 
                 // Si no encuentra la obra, cancelar la importación
                 if (!$obra) {
@@ -343,15 +352,18 @@ class PlanillaController extends Controller
                     return redirect()->route('planillas.index')
                         ->with('error', "La obra '{$rows[0][3]}' no coincide con ninguna obra registrada. Verifica el nombre en el Excel.");
                 }
+                // Si no encuentra el cliente, cancelar la importación
+                if (!$cliente) {
+                    DB::rollBack();
+                    return redirect()->route('planillas.index')
+                        ->with('error', "El cliente '{$rows[0][1]}' no coincide con ningún cliente registrado. Verifica el nombre en el Excel.");
+                }
 
 
                 // Crear el registro de planilla
                 $planilla = Planilla::create([
                     'users_id' => auth()->id(),
-                    'cod_obra' => $rows[0][2] ?? null,
-                    'cod_cliente' => $rows[0][0] ?? null,
-                    'cliente' => $rows[0][1] ?? null,
-                    'nom_obra' => $rows[0][3] ?? null,
+                    'cliente_id' => $cliente->id,
                     'obra_id' => $obra->id,
                     'seccion' => $rows[0][7] ?? null,
                     'descripcion' => $rows[0][12] ?? null,
@@ -551,10 +563,8 @@ class PlanillaController extends Controller
             // Validar los datos recibidos con mensajes personalizados
             $validatedData = $request->validate([
                 'codigo'                 => 'required|string|max:50',
-                'cod_cliente'            => 'nullable|string|max:50',
-                'cliente'                => 'required|string|max:50',
-                'cod_obra'               => 'nullable|string|max:50',
-                'nom_obra'               => 'required|string|max:100',
+                'cliente_id'             => 'nullable|integer|exists:clientes,id',
+                'obra_id'               => 'nullable|integer|exists:obras,id',
                 'seccion'                => 'nullable|string|max:100',
                 'descripcion'            => 'nullable|string',
                 'ensamblado'             => 'nullable|string|max:100',
@@ -573,19 +583,10 @@ class PlanillaController extends Controller
                 'codigo.string'       => 'El campo Código debe ser una cadena de texto.',
                 'codigo.max'          => 'El campo Código no debe exceder 50 caracteres.',
 
-                'cod_cliente.string'  => 'El campo Código Cliente debe ser una cadena de texto.',
-                'cod_cliente.max'     => 'El campo Código Cliente no debe exceder 50 caracteres.',
-
-                'cliente.required'    => 'El campo Cliente es obligatorio.',
-                'cliente.string'      => 'El campo Cliente debe ser una cadena de texto.',
-                'cliente.max'         => 'El campo Cliente no debe exceder 50 caracteres.',
-
-                'cod_obra.string'     => 'El campo Código Obra debe ser una cadena de texto.',
-                'cod_obra.max'        => 'El campo Código Obra no debe exceder 50 caracteres.',
-
-                'nom_obra.required'   => 'El campo Obra es obligatorio.',
-                'nom_obra.string'     => 'El campo Obra debe ser una cadena de texto.',
-                'nom_obra.max'        => 'El campo Obra no debe exceder 100 caracteres.',
+                'cliente_id.integer'    => 'El campo cliente_id debe ser un número entero.',
+                'cliente_id.exists'     => 'El cliente especificaoa en cliente_id no existe.',
+                'obra_id.integer'  => 'El campo obra_id debe ser un número entero.',
+                'obra_id.exists'     => 'La obra especificada en obra_id no existe.',
 
                 'seccion.string'      => 'El campo Sección debe ser una cadena de texto.',
                 'seccion.max'         => 'El campo Sección no debe exceder 100 caracteres.',
@@ -612,6 +613,17 @@ class PlanillaController extends Controller
                 'usuario.string'        => 'El campo Usuario debe ser una cadena de texto.',
                 'usuario.max'           => 'El campo Usuario no debe exceder 100 caracteres.'
             ]);
+
+            // ✅ Validación personalizada: Comprobar que la obra seleccionada pertenece al cliente seleccionado
+            if (!empty($validatedData['obra_id']) && !empty($validatedData['cliente_id'])) {
+                $obra = Obra::find($validatedData['obra_id']);
+                if ($obra && $obra->cliente_id != $validatedData['cliente_id']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'La obra seleccionada no pertenece al cliente seleccionado.'
+                    ], 422);
+                }
+            }
             // 1) Convertir fecha_inicio si existe
             if (!empty($validatedData['fecha_inicio'])) {
                 $validatedData['fecha_inicio'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_inicio'])

@@ -219,7 +219,8 @@
                 </tbody>
             </table>
         </div>
-
+        <div class="mt-4 flex justify-center">{{ $clientes->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+        </div>
         <!-- Modal para crear cliente -->
 
         <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" x-show="modalObra"

@@ -68,7 +68,7 @@
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
                             <td class="px-2 py-3 text-center border">{{ $paquete->id }}</td>
                             <td class="px-2 py-3 text-center border">
-                                <a href="{{ route('planillas.index', ['id' => $paquete->planilla->id]) }}"
+                                <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}"
                                     class="text-blue-500 hover:underline">
                                     {{ $paquete->planilla->codigo_limpio }}
                                 </a>

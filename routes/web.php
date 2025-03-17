@@ -5,10 +5,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RegistroFichajeController;
 use App\Http\Controllers\VacacionesController;
-
+use App\Http\Controllers\PapeleraController;
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
-
 use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\MaquinaController;
@@ -123,6 +122,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 
     Route::post('/escaneo', [SalidaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
+
+
+    Route::get('/papelera', [PapeleraController::class, 'index'])->name('papelera.index');
+    Route::put('/papelera/restore/{model}/{id}', [PapeleraController::class, 'restore'])->name('papelera.restore');
 });
 
 
