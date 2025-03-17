@@ -34,6 +34,19 @@ class Cliente extends Model
     {
         return $this->hasMany(Obra::class, 'cliente_id');
     }
+    public function salidas()
+    {
+        return $this->belongsToMany(Salida::class, 'salida_cliente')
+            ->withPivot(
+                'horas_paralizacion',
+                'importe_paralizacion',
+                'horas_grua',
+                'importe_grua',
+                'horas_almacen',
+                'importe'
+            )
+            ->withTimestamps();
+    }
 
     // Método para saber si el cliente está activo
     public function isActive()

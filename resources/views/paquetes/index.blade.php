@@ -23,7 +23,7 @@
             </a>
         </h2>
     </x-slot>
-    <div class="w-full px-6 py-4">
+    <div class="w-full p-4 sm:p-6">
 
         <!-- Contenedor de la tabla -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">

@@ -24,7 +24,7 @@
         </h2>
     </x-slot>
 
-    <div class="w-full px-6 py-4">
+    <div class="w-full p-4">
         <!-- TABLA DE SUBPAQUETES -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">

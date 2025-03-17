@@ -6,7 +6,7 @@
 
     </x-slot>
     @php
-        $esOperario = auth()->user()->rol == 'operario';
+        // $esOperario = auth()->user()->rol == 'operario';
     @endphp
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">

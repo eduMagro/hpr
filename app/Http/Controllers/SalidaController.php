@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Planilla;
 use App\Models\Salida;
+use App\Models\SalidaCliente;
 use App\Exports\SalidasExport;
 use App\Models\Paquete;
 use App\Models\Etiqueta;
@@ -19,19 +20,28 @@ class SalidaController extends Controller
 {
     public function index(Request $request)
     {
-        // Verificar si el usuario es administrador
+        // Cargar relaciones según el rol del usuario, incluyendo la relación 'clientes'
         if (auth()->user()->rol == 'oficina') {
-            // Administrador: Mostrar todas las salidas con todas sus relaciones
-            $query = Salida::with(['paquetes.subpaquetes', 'paquetes.elementos', 'paquetes.planilla']);
+            $salidas = Salida::with([
+                'paquetes.subpaquetes',
+                'paquetes.elementos',
+                'paquetes.planilla',
+                'empresaTransporte',
+                'camion',
+                'clientes'  // Relación many-to-many a través de la tabla pivote
+            ])->get();
         } else {
-            // Usuario normal: Mostrar solo salidas con estado "pendiente"
-            $query = Salida::where('estado', 'pendiente')
-                ->with(['paquetes.subpaquetes', 'paquetes.elementos']);
+            $salidas = Salida::where('estado', 'pendiente')
+                ->with([
+                    'paquetes.subpaquetes',
+                    'paquetes.elementos',
+                    'empresaTransporte',
+                    'camion',
+                    'clientes'
+                ])->get();
         }
 
-        // Obtener los datos paginados
-        $salidas = $query->get(); // No usamos paginate para agrupar correctamente
-        // Procesar cada salida para extraer planillas únicas, clientes y obras sin duplicados
+        // Procesar cada salida para extraer planillas, clientes y obras (como hacías originalmente)
         foreach ($salidas as $salida) {
             // Obtener planillas únicas asociadas a la salida
             $salida->planillasUnicas = $salida->paquetes
@@ -40,7 +50,7 @@ class SalidaController extends Controller
                 ->filter()
                 ->values();
 
-            // Extraer clientes únicos a nivel de salida
+            // Extraer clientes únicos a nivel de salida (por ejemplo, a partir de planillas)
             $salida->clientesUnicos = collect($salida->planillasUnicas ?? [])
                 ->map(fn($planilla) => $planilla->cliente)
                 ->unique()
@@ -55,12 +65,16 @@ class SalidaController extends Controller
                 ->values();
         }
 
-        // Agrupar por mes
+        // Agrupar las salidas por mes para la tabla principal
         $salidasPorMes = $salidas->groupBy(function ($salida) {
-            return \Carbon\Carbon::parse($salida->fecha_salida)->translatedFormat('F Y'); // Ejemplo: "Marzo 2025"
+            return \Carbon\Carbon::parse($salida->fecha_salida)->translatedFormat('F Y');
         });
 
-        return view('salidas.index', compact('salidasPorMes', 'salidas'));
+        // Obtener los registros de la tabla pivote usando Eloquent
+        // Con el modelo SalidaCliente ya podemos traer la relación con salida y cliente.
+        $salidaClientes = SalidaCliente::with(['salida', 'cliente'])->get();
+
+        return view('salidas.index', compact('salidasPorMes', 'salidas', 'salidaClientes'));
     }
 
     public function show($id)
@@ -195,14 +209,24 @@ class SalidaController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            // Se busca la salida por ID
             $salida = Salida::findOrFail($id);
 
-
+            // Se obtiene el campo y el valor enviado desde la petición (inline edit)
             $field = $request->input('field');
             $value = $request->input('value');
 
             // Solo se permiten actualizar estos campos en línea
-            $allowedFields = ['importe', 'paralizacion', 'horas', 'horas_almacen', 'fecha_salida', 'estado'];
+            $allowedFields = [
+                'importe',
+                'horas_paralizacion',
+                'importe_paralizacion',
+                'horas_grua',
+                'importe_grua',
+                'horas_almacen',
+                'fecha_salida',
+                'estado'
+            ];
 
             if (!in_array($field, $allowedFields)) {
                 return response()->json([
@@ -211,34 +235,32 @@ class SalidaController extends Controller
                 ], 422);
             }
 
-            // Reglas y mensajes de validación para el inline update
+            // Reglas de validación para cada campo editable
             $rules = [
-                'camion_id'     => 'required|integer|exists:camiones,id',
-                'empresa_id'    => 'required|integer|exists:empresas,id',
-                'importe'        => 'nullable|numeric',
-                'paralizacion'        => 'nullable|numeric',
-                'horas'          => 'nullable|numeric',
-                'horas_almacen'  => 'nullable|numeric',
-                'fecha_salida'   => 'nullable|date',
-                'estado'         => 'nullable|string|max:50',
-            ];
-            $messages = [
-                'camion_id.required'   => 'El campo camion_id es obligatorio.',
-                'camion_id.integer'    => 'El campo camion_id debe ser un número entero.',
-                'camion_id.exists'     => 'El camión especificado no existe.',
-                'empresa_id.required'  => 'El campo empresa_id es obligatorio.',
-                'empresa_id.integer'   => 'El campo empresa_id debe ser un número entero.',
-                'empresa_id.exists'    => 'La empresa especificada no existe.',
-                'importe.numeric'       => 'El campo importe debe ser un número.',
-                'paralizacion.numeric'       => 'El campo paralización debe ser un número.',
-                'horas.numeric'         => 'El campo horas debe ser un número.',
-                'horas_almacen.numeric' => 'El campo horas/almacén debe ser un número.',
-                'fecha_salida.date'     => 'El campo fecha debe ser una fecha válida.',
-                'estado.string'         => 'El campo estado debe ser una cadena de texto.',
-                'estado.max'            => 'El campo estado no debe tener más de 50 caracteres.',
+                'importe'              => 'nullable|numeric',
+                'horas_paralizacion'   => 'nullable|numeric',
+                'importe_paralizacion' => 'nullable|numeric',
+                'horas_grua'           => 'nullable|numeric',
+                'importe_grua'         => 'nullable|numeric',
+                'horas_almacen'        => 'nullable|numeric',
+                'fecha_salida'         => 'nullable|date',
+                'estado'               => 'nullable|string|max:50',
             ];
 
-            // Validar el valor para el campo específico
+            // Mensajes de error personalizados para cada regla
+            $messages = [
+                'importe.numeric'              => 'El campo importe debe ser un número.',
+                'horas_paralizacion.numeric'   => 'El campo horas de paralización debe ser un número.',
+                'importe_paralizacion.numeric' => 'El campo importe de paralización debe ser un número.',
+                'horas_grua.numeric'           => 'El campo horas de grua debe ser un número.',
+                'importe_grua.numeric'         => 'El campo importe de grua debe ser un número.',
+                'horas_almacen.numeric'        => 'El campo horas/almacén debe ser un número.',
+                'fecha_salida.date'            => 'El campo fecha debe ser una fecha válida.',
+                'estado.string'                => 'El campo estado debe ser una cadena de texto.',
+                'estado.max'                   => 'El campo estado no debe tener más de 50 caracteres.',
+            ];
+
+            // Se valida el valor enviado para el campo específico
             $request->validate([
                 $field => $rules[$field]
             ], [
@@ -248,7 +270,7 @@ class SalidaController extends Controller
                 $field . '.max'     => $messages[$field . '.max'] ?? '',
             ]);
 
-            // Si es fecha, convertir el formato
+            // Si el campo es 'fecha_salida' y se envía un valor, se convierte el formato a 'Y-m-d'
             if ($field === 'fecha_salida' && !empty($value)) {
                 try {
                     $value = Carbon::parse($value)->format('Y-m-d');
@@ -260,29 +282,9 @@ class SalidaController extends Controller
                 }
             }
 
+            // Se asigna el nuevo valor al campo y se guarda la salida
             $salida->$field = $value;
             $salida->save();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Salida actualizada correctamente.',
-                'data'    => $salida
-            ]);
-
-
-            // Si se envía fecha_salida, convertir el formato
-            if (!empty($validatedData['fecha_salida'])) {
-                try {
-                    $validatedData['fecha_salida'] = Carbon::parse($validatedData['fecha_salida'])->format('Y-m-d');
-                } catch (\Exception $e) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Formato de fecha no válido.'
-                    ], 422);
-                }
-            }
-
-            $salida->update($validatedData);
 
             return response()->json([
                 'success' => true,

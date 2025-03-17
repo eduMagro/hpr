@@ -23,7 +23,7 @@
 
         </x-slot>
 
-        <div class="container mx-auto p-4 sm:p-6">
+        <div class="w-full p-4 sm:p-2">
             <!-- Formulario de Filtros -->
             <form method="GET" action="{{ route('etiquetas.index') }}"
                 class="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-2 md:gap-4 p-2">
@@ -52,7 +52,7 @@
             </form>
 
             <!-- Tabla con formularios de búsqueda -->
-            <div class="bg-white shadow-lg rounded-lg p-4 sm:p-6 mt-6 overflow-x-auto">
+            <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
                 <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white">
                         <tr class="text-left text-sm uppercase">

@@ -12,10 +12,12 @@ class Salida extends Model
     protected $fillable = [
         'camion_id',
         'empresa_id',
-        'importe',
-        'paralizacion',
-        'horas',
+        'horas_paralizacion',
+        'importe_paralizacion',
+        'horas_grua',
+        'importe_grua',
         'horas_almacen',
+        'importe',
         'estado',
         'fecha_salida',
         'observaciones'
@@ -48,6 +50,20 @@ class Salida extends Model
     {
         return $this->hasMany(SalidaPaquete::class);
     }
+    public function clientes()
+    {
+        return $this->belongsToMany(Cliente::class, 'salida_cliente')
+            ->withPivot(
+                'horas_paralizacion',
+                'importe_paralizacion',
+                'horas_grua',
+                'importe_grua',
+                'horas_almacen',
+                'importe'
+            )
+            ->withTimestamps();
+    }
+
     public function planillas()
     {
         return $this->belongsToMany(Planilla::class, 'salidas_paquetes', 'salida_id', 'planilla_id');
