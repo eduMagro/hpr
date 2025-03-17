@@ -12,12 +12,12 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 class SalidasExport implements FromCollection, WithHeadings, WithEvents
 {
     protected $salidas;
-    protected $clientSummary;
+    protected $empresaSummary;
 
-    public function __construct(Collection $salidas, array $clientSummary)
+    public function __construct(Collection $salidas, array $empresaSummary)
     {
         $this->salidas = $salidas;
-        $this->clientSummary = $clientSummary;
+        $this->empresaSummary = $empresaSummary;
     }
 
     public function collection()
@@ -27,43 +27,50 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
         // 🔹 Generar las filas principales de la tabla de salidas
         $mainRows = $this->salidas->flatMap(function ($salida) {
             return $salida->clientes->map(function ($cliente) use ($salida) {
+                // 🔹 Asegurar que `obrasUnicas` es una colección válida
+                $obras = collect($cliente->obrasUnicas ?? []);
+                $obrasTexto = $obras->isNotEmpty() ? $obras->implode(', ') : 'N/A';
+
+                // 🔹 Asegurar que `empresaTransporte` no sea null
+                $empresaTransporte = $salida->empresaTransporte->nombre ?? 'Desconocida';
+
                 return [
-                    $salida->codigo_salida, // Código de salida
+                    $salida->codigo_salida,
                     $cliente->empresa, // Cliente
-                    $cliente->obrasUnicas->implode(', ') ?? 'N/A', // 🔹 Usar obrasUnicas correctamente
-                    $salida->empresaTransporte->nombre, // Empresa de transporte
-                    $salida->camion->modelo . ' - ' . $salida->camion->matricula, // Modelo y matrícula del camión
-                    $cliente->pivot->horas_paralizacion ?? 0, // 🔹 Horas de paralización
-                    number_format($cliente->pivot->importe_paralizacion ?? 0, 2) . ' €', // 🔹 Importe paralización
-                    $cliente->pivot->horas_grua ?? 0, // 🔹 Horas grúa
-                    number_format($cliente->pivot->importe_grua ?? 0, 2) . ' €', // 🔹 Importe grúa
-                    $cliente->pivot->horas_almacen ?? 0, // 🔹 Horas almacén
-                    number_format($cliente->pivot->importe ?? 0, 2) . ' €', // 🔹 Importe total
-                    $salida->fecha_salida ?? 'Sin fecha', // Fecha de salida
-                    ucfirst($salida->estado), // Estado de la salida
+                    $obrasTexto, // Obras únicas del cliente
+                    $empresaTransporte, // Empresa de transporte
+                    $salida->camion->modelo . ' - ' . $salida->camion->matricula,
+                    $cliente->pivot->horas_paralizacion ?? 0,
+                    number_format($cliente->pivot->importe_paralizacion ?? 0, 2) . ' €',
+                    $cliente->pivot->horas_grua ?? 0,
+                    number_format($cliente->pivot->importe_grua ?? 0, 2) . ' €',
+                    $cliente->pivot->horas_almacen ?? 0,
+                    number_format($cliente->pivot->importe ?? 0, 2) . ' €',
+                    $salida->fecha_salida ?? 'Sin fecha',
+                    ucfirst($salida->estado),
                 ];
             });
         })->toArray();
 
-        // 🔹 Construcción del resumen por cliente
+        // 🔹 Construcción del resumen por empresa de transporte
         $blankRow = array_fill(0, $numColumns, ''); // Fila en blanco
-        $titleRow = array_pad(['Resumen por Cliente'], $numColumns, ''); // Título del resumen
+        $titleRow = array_pad(['Resumen por Empresa de Transporte'], $numColumns, ''); // Título del resumen
         $summaryHeader = array_pad([
-            'Cliente',
+            'Empresa de Transporte',
             'Horas Paralización',
-            'Total Importe Paralización',
+            'Importe Paralización',
             'Horas Grúa',
-            'Total Importe Grúa',
+            'Importe Grúa',
             'Horas Almacén',
-            'Total Importe',
-            'Total Cliente'
+            'Importe',
+            'Total Empresa'
         ], $numColumns, '');
 
         $summaryRows = [];
-        foreach ($this->clientSummary as $cliente => $data) {
+        foreach ($this->empresaSummary as $empresa => $data) {
             $summaryRows[] = array_pad([
-                $cliente,
-                $data['horas_paralizacion'] ?? 0, // 🔹 Convertir valores null en 0
+                $empresa,
+                $data['horas_paralizacion'] ?? 0,
                 number_format($data['importe_paralizacion'] ?? 0, 2) . ' €',
                 number_format($data['horas_grua'] ?? 0, 2),
                 number_format($data['importe_grua'] ?? 0, 2) . ' €',
@@ -79,14 +86,13 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
         return collect($allRows);
     }
 
-
     public function headings(): array
     {
         return [
             'Salida',
             'Cliente',
             'Obra',
-            'Empresa',
+            'Empresa de Transporte',
             'Camión',
             'Horas Paralización',
             'Importe Paralización',
@@ -117,7 +123,7 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                     ],
                 ];
 
-                // 🔹 Aplicar estilo a la cabecera principal (A1:M1)
+                // 🔹 Aplicar estilo a la cabecera principal
                 $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
 
                 // 🔹 Calcular fila del título del resumen
@@ -128,7 +134,7 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                 // 🔹 Aplicar negrita al título del resumen
                 $sheet->getStyle("A{$summaryTitleRow}")->applyFromArray(['font' => ['bold' => true]]);
 
-                // 🔹 Aplicar negrita al encabezado del resumen por cliente
+                // 🔹 Aplicar negrita al encabezado del resumen por empresa de transporte
                 $sheet->getStyle("A{$summaryHeaderRow}:H{$summaryHeaderRow}")->applyFromArray([
                     'font' => ['bold' => true],
                     'fill' => [

@@ -6,7 +6,7 @@
         </h2>
     </x-slot>
 
-    <div class="w-full p-4 sm:p-6">
+    <div class="w-full p-4 sm:p-4">
         {{-- Botón para crear nueva salida (solo rol oficina) --}}
         @if (auth()->user()->rol == 'oficina')
             <div class="mb-4 flex justify-end">
@@ -39,7 +39,7 @@
                                     <th class="py-2 px-4 border-b">Salida</th>
                                     <th class="py-2 px-4 border-b">Cliente</th>
                                     <th class="py-2 px-4 border-b">Obra</th>
-                                    <th class="py-2 px-4 border-b">Empresa</th>
+                                    <th class="py-2 px-4 border-b">E. Transporte</th>
                                     <th class="py-2 px-4 border-b">Camión</th>
                                     <th class="py-2 px-4 border-b">Horas paralización</th>
                                     <th class="py-2 px-4 border-b">Importe paralización</th>
@@ -126,7 +126,7 @@
                             <table class="w-full border-collapse">
                                 <thead>
                                     <tr class="bg-gray-200 text-left text-sm font-medium text-gray-700">
-                                        <th class="py-2 px-4 border-b">Cliente</th>
+                                        <th class="py-2 px-4 border-b">E.Transporte</th>
                                         <th class="py-2 px-4 border-b">Horas Paralización</th>
                                         <th class="py-2 px-4 border-b">Importe Paralización</th>
                                         <th class="py-2 px-4 border-b">Horas Grúa</th>
@@ -177,11 +177,11 @@
                 @endforeach
             @endif
         @elseif (auth()->user()->categoria == 'gruista')
-            <div class="bg-white shadow-lg rounded-lg p-4 sm:p-6">
+            <div class="bg-white shadow-lg rounded-lg p-2 sm:p-4">
                 @foreach ($salidas as $salida)
                     <div x-data="{ paquetesVerificados: 0, totalPaquetes: {{ count($salida->paquetes) }} }">
                         <div class="mb-6" x-data="{ open: false }">
-                            <div class="bg-gray-100 py-4 px-4 sm:px-6 rounded-lg shadow-md">
+                            <div class="bg-gray-100 py-4 px- sm:p-4 rounded-lg shadow-md">
                                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <p class="text-lg font-semibold">{{ $salida->codigo_salida }}</p>
@@ -247,15 +247,30 @@
                     </div>
                 @endforeach
             </div>
+            <!-- Modal con Canvas para Dibujar las Dimensiones -->
+            <div id="modal-dibujo"
+                class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
+                <div
+                    class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
+                    <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
+                        ✖
+                    </button>
+
+                    <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
+                    <!-- Contenedor desplazable -->
+                    <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
+                        <canvas id="canvas-dibujo" width="800" height="600"
+                            class="border max-w-full h-auto"></canvas>
+                    </div>
+                </div>
+            </div>
         @endif
     </div>
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
     <script src="{{ asset('js/salidasJs/salida.js') }}" defer></script>
-
+    <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
     <script>
-        window.paquetes = @json($salidas->pluck('paquetes')->flatten());
-        console.log(window.paquetes);
+        window.paquetes = @json($paquetes);
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -283,7 +298,7 @@
                         if (!value) {
                             alert(
                                 "Formato de fecha inválido. Usa DD/MM/YYYY HH:MM o YYYY-MM-DD HH:MM:SS."
-                                );
+                            );
                             return;
                         }
                     }
@@ -338,6 +353,82 @@
                         .catch(error => console.error('Error:', error));
                 });
             });
+            /**
+             * 🔹 Actualiza el resumen de clientes cuando cambia un valor en la tabla de salidas.
+             */
+            function actualizarResumen(clienteId, field, newValue) {
+                const resumenRow = document.querySelector(`tr[data-resumen-cliente="${clienteId}"]`);
+                if (!resumenRow) return;
+
+                // Seleccionar la celda del resumen que coincide con el campo actualizado
+                const resumenField = resumenRow.querySelector(`[data-resumen-field="${field}"]`);
+                if (resumenField) {
+                    resumenField.innerText = formatearValor(field, newValue);
+                }
+
+                // 🔹 Si es un campo monetario o de horas, actualizar el total correspondiente
+                if (esCampoMonetario(field) || esCampoHoras(field)) {
+                    actualizarTotalResumen(resumenRow);
+                }
+            }
+
+            /**
+             * 🔹 Recalcula el total de cada cliente en el resumen.
+             */
+            function actualizarTotalResumen(resumenRow) {
+                let totalEuros = 0;
+                let totalHoras = 0;
+
+                // Sumar valores de euros y horas por separado
+                ['importe_paralizacion', 'importe_grua', 'importe'].forEach(field => {
+                    let cell = resumenRow.querySelector(`[data-resumen-field="${field}"]`);
+                    if (cell) {
+                        totalEuros += parseFloat(cell.innerText.replace('€', '').trim()) || 0;
+                    }
+                });
+
+                ['horas_paralizacion', 'horas_grua', 'horas_almacen'].forEach(field => {
+                    let cell = resumenRow.querySelector(`[data-resumen-field="${field}"]`);
+                    if (cell) {
+                        totalHoras += parseFloat(cell.innerText.trim()) || 0;
+                    }
+                });
+
+                // Actualizar el campo total en euros del cliente en el resumen
+                let totalEurosCell = resumenRow.querySelector(`[data-resumen-total]`);
+                if (totalEurosCell) {
+                    totalEurosCell.innerText = `${totalEuros.toFixed(2)} €`;
+                }
+
+                // Actualizar el campo total en horas si hay un campo específico para eso
+                let totalHorasCell = resumenRow.querySelector(`[data-resumen-horas-total]`);
+                if (totalHorasCell) {
+                    totalHorasCell.innerText = `${totalHoras.toFixed(2)} h`;
+                }
+            }
+
+            /**
+             * 🔹 Comprueba si el campo es monetario o de horas.
+             */
+            function esCampoMonetario(field) {
+                return ['importe_paralizacion', 'importe_grua', 'importe'].includes(field);
+            }
+
+            function esCampoHoras(field) {
+                return ['horas_paralizacion', 'horas_grua', 'horas_almacen'].includes(field);
+            }
+
+            /**
+             * 🔹 Formatea correctamente el valor dependiendo de si es dinero o tiempo.
+             */
+            function formatearValor(field, value) {
+                if (esCampoMonetario(field)) {
+                    return `${parseFloat(value).toFixed(2)} €`;
+                } else if (esCampoHoras(field)) {
+                    return `${parseFloat(value).toFixed(2)} h`;
+                }
+                return value; // Para otros valores
+            }
 
             /**
              * 🔹 Convierte una fecha con hora de DD/MM/YYYY HH:MM a YYYY-MM-DD HH:MM:SS.
