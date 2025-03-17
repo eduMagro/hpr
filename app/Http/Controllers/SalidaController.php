@@ -23,59 +23,84 @@ class SalidaController extends Controller
     {
         // Cargar relaciones según el rol del usuario, incluyendo la relación 'clientes'
         if (auth()->user()->rol == 'oficina') {
-            $salidas = Salida::with([
-                'paquetes.subpaquetes',
-                'paquetes.elementos',
-                'paquetes.planilla',
-                'empresaTransporte',
-                'camion',
-                'clientes'  // Relación many-to-many a través de la tabla pivote
-            ])->get();
+            // Obtener todas las salidas con sus clientes asociados
+            $salidas = Salida::with(['clientes', 'paquetes.planilla.obra', 'empresaTransporte', 'camion']) // Cargar relaciones necesarias
+                ->orderBy('created_at', 'desc')
+                ->get();
         } else {
             $salidas = Salida::where('estado', 'pendiente')
                 ->with([
+                    'paquetes' => function ($query) {
+                        $query->distinct();
+                    },
                     'paquetes.subpaquetes',
                     'paquetes.elementos',
                     'empresaTransporte',
                     'camion',
                     'clientes'
-                ])->get();
+                ])
+                ->get();
         }
-
-        // Procesar cada salida para extraer planillas, clientes y obras (como hacías originalmente)
-        foreach ($salidas as $salida) {
-            // Obtener planillas únicas asociadas a la salida
-            $salida->planillasUnicas = $salida->paquetes
-                ->pluck('planilla')
-                ->unique()
-                ->filter()
-                ->values();
-
-            // Extraer clientes únicos a nivel de salida (por ejemplo, a partir de planillas)
-            $salida->clientesUnicos = collect($salida->planillasUnicas ?? [])
-                ->map(fn($planilla) => $planilla->cliente)
-                ->unique()
-                ->filter()
-                ->values();
-
-            // Extraer obras únicas a nivel de salida
-            $salida->obrasUnicas = collect($salida->planillasUnicas ?? [])
-                ->map(fn($planilla) => $planilla->nom_obra)
-                ->unique()
-                ->filter()
-                ->values();
-        }
-
+        // 🔹 Asignar obras específicas para cada cliente en cada salida
+        $salidas->each(function ($salida) {
+            // 🔹 Para cada cliente en la salida, filtrar solo las obras de sus paquetes
+            $salida->clientes->each(function ($cliente) use ($salida) {
+                $cliente->obrasUnicas = $salida->paquetes
+                    ->where('planilla.cliente_id', $cliente->id) // 🔹 Filtrar solo las obras del cliente
+                    ->pluck('planilla.obra.obra')
+                    ->unique()
+                    ->filter()
+                    ->values();
+            });
+        });
         // Agrupar las salidas por mes para la tabla principal
         $salidasPorMes = $salidas->groupBy(function ($salida) {
             return \Carbon\Carbon::parse($salida->fecha_salida)->translatedFormat('F Y');
         });
+        // Crear un array para almacenar los resúmenes de cada mes
+        $resumenMensual = [];
 
-        // Obtener los registros de la tabla pivote usando Eloquent
-        // Con el modelo SalidaCliente ya podemos traer la relación con salida y cliente.
-        $salidaClientes = SalidaCliente::with(['salida', 'cliente'])->get();
+        foreach ($salidasPorMes as $mes => $salidasGrupo) {
+            $clientSummary = [];
 
-        return view('salidas.index', compact('salidasPorMes', 'salidas', 'salidaClientes'));
+            foreach ($salidasGrupo as $salida) {
+                foreach ($salida->clientes as $cliente) {
+                    // Asegurar que el nombre del cliente no esté vacío
+                    $nombreCliente = trim($cliente->empresa) ?: "Cliente desconocido";
+
+                    if (!isset($clientSummary[$nombreCliente])) {
+                        $clientSummary[$nombreCliente] = [
+                            'horas_paralizacion'   => 0,
+                            'importe_paralizacion' => 0,
+                            'horas_grua'           => 0,
+                            'importe_grua'         => 0,
+                            'horas_almacen'        => 0,
+                            'importe'              => 0,
+                            'total'                => 0,
+                        ];
+                    }
+
+                    // Acumular valores por cliente
+                    $clientSummary[$nombreCliente]['horas_paralizacion']   += $cliente->pivot->horas_paralizacion ?? 0;
+                    $clientSummary[$nombreCliente]['importe_paralizacion'] += $cliente->pivot->importe_paralizacion ?? 0;
+                    $clientSummary[$nombreCliente]['horas_grua']           += $cliente->pivot->horas_grua ?? 0;
+                    $clientSummary[$nombreCliente]['importe_grua']         += $cliente->pivot->importe_grua ?? 0;
+                    $clientSummary[$nombreCliente]['horas_almacen']        += $cliente->pivot->horas_almacen ?? 0;
+                    $clientSummary[$nombreCliente]['importe']              += $cliente->pivot->importe ?? 0;
+
+                    // Calcular el total sumando todos los importes
+                    $clientSummary[$nombreCliente]['total'] =
+                        $clientSummary[$nombreCliente]['importe_paralizacion'] +
+                        $clientSummary[$nombreCliente]['importe_grua'] +
+                        $clientSummary[$nombreCliente]['importe'];
+                }
+            }
+
+            // Guardamos el resumen en un array asociado a cada mes
+            $resumenMensual[$mes] = $clientSummary;
+        }
+
+        return view('salidas.index', compact('salidasPorMes', 'salidas', 'resumenMensual'));
     }
 
     public function show($id)
@@ -251,33 +276,33 @@ class SalidaController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            // Se busca la salida por ID
+            // Buscar la salida por ID
             $salida = Salida::findOrFail($id);
 
-            // Se obtiene el campo y el valor enviado desde la petición (inline edit)
+            // Obtener campo y valor desde la petición
             $field = $request->input('field');
             $value = $request->input('value');
+            $clienteId = $request->input('cliente_id'); // Para actualización en salida_cliente
 
-            // Solo se permiten actualizar estos campos en línea
-            $allowedFields = [
+            // Definir campos para cada tabla
+            $salidaFields = ['fecha_salida', 'estado'];
+            $salidaClienteFields = [
                 'importe',
                 'horas_paralizacion',
                 'importe_paralizacion',
                 'horas_grua',
                 'importe_grua',
-                'horas_almacen',
-                'fecha_salida',
-                'estado'
+                'horas_almacen'
             ];
 
-            if (!in_array($field, $allowedFields)) {
+            if (!in_array($field, array_merge($salidaFields, $salidaClienteFields))) {
                 return response()->json([
                     'success' => false,
                     'message' => 'El campo especificado no es editable en línea.'
                 ], 422);
             }
 
-            // Reglas de validación para cada campo editable
+            // Validaciones
             $rules = [
                 'importe'              => 'nullable|numeric',
                 'horas_paralizacion'   => 'nullable|numeric',
@@ -289,30 +314,9 @@ class SalidaController extends Controller
                 'estado'               => 'nullable|string|max:50',
             ];
 
-            // Mensajes de error personalizados para cada regla
-            $messages = [
-                'importe.numeric'              => 'El campo importe debe ser un número.',
-                'horas_paralizacion.numeric'   => 'El campo horas de paralización debe ser un número.',
-                'importe_paralizacion.numeric' => 'El campo importe de paralización debe ser un número.',
-                'horas_grua.numeric'           => 'El campo horas de grua debe ser un número.',
-                'importe_grua.numeric'         => 'El campo importe de grua debe ser un número.',
-                'horas_almacen.numeric'        => 'El campo horas/almacén debe ser un número.',
-                'fecha_salida.date'            => 'El campo fecha debe ser una fecha válida.',
-                'estado.string'                => 'El campo estado debe ser una cadena de texto.',
-                'estado.max'                   => 'El campo estado no debe tener más de 50 caracteres.',
-            ];
+            $request->validate([$field => $rules[$field]]);
 
-            // Se valida el valor enviado para el campo específico
-            $request->validate([
-                $field => $rules[$field]
-            ], [
-                $field . '.numeric' => $messages[$field . '.numeric'] ?? '',
-                $field . '.date'    => $messages[$field . '.date'] ?? '',
-                $field . '.string'  => $messages[$field . '.string'] ?? '',
-                $field . '.max'     => $messages[$field . '.max'] ?? '',
-            ]);
-
-            // Si el campo es 'fecha_salida' y se envía un valor, se convierte el formato a 'Y-m-d'
+            // Si el campo es 'fecha_salida', formatear la fecha correctamente
             if ($field === 'fecha_salida' && !empty($value)) {
                 try {
                     $value = Carbon::parse($value)->format('Y-m-d');
@@ -324,9 +328,37 @@ class SalidaController extends Controller
                 }
             }
 
-            // Se asigna el nuevo valor al campo y se guarda la salida
-            $salida->$field = $value;
-            $salida->save();
+            // **Actualizar en la tabla 'salidas'**
+            if (in_array($field, $salidaFields)) {
+                $salida->$field = $value;
+                $salida->save();
+                Log::info("Salida {$salida->id} actualizada: {$field} -> {$value}");
+            }
+            // **Actualizar en la tabla 'salida_cliente'**
+            elseif (in_array($field, $salidaClienteFields)) {
+                if (!$clienteId) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Falta el ID del cliente para actualizar el campo.'
+                    ], 422);
+                }
+
+                // Verificar si la relación existe antes de actualizar
+                $updated = DB::table('salida_cliente')
+                    ->where('salida_id', $salida->id)
+                    ->where('cliente_id', $clienteId)
+                    ->update([$field => $value]);
+
+                if ($updated) {
+                    Log::info("Salida_cliente actualizada: salida_id={$salida->id}, cliente_id={$clienteId}, {$field} -> {$value}");
+                } else {
+                    Log::warning("Intento fallido de actualización en salida_cliente: salida_id={$salida->id}, cliente_id={$clienteId}, campo={$field}");
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No se pudo actualizar el campo en salida_cliente.'
+                    ], 422);
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -349,7 +381,6 @@ class SalidaController extends Controller
 
     public function export($mes)
     {
-
         $meses = [
             'enero'      => 'January',
             'febrero'    => 'February',
@@ -364,41 +395,99 @@ class SalidaController extends Controller
             'noviembre'  => 'November',
             'diciembre'  => 'December',
         ];
+
         try {
-            // Convertir el mes en español a inglés (convertir a minúsculas para evitar problemas de mayúsculas/minúsculas)
-            foreach ($meses as $esp => $eng) {
-                $mes = str_replace($esp, $eng, strtolower($mes));
+            // 🔹 Extraer solo el nombre del mes (eliminar el año si está presente)
+            preg_match('/([a-zA-Záéíóú]+)/', $mes, $matches);
+            $mesSolo = strtolower($matches[1] ?? '');
+
+            // 🔹 Validar si el mes está en el array
+            if (!isset($meses[$mesSolo])) {
+                return redirect()->route('salidas.index')->with('error', "Mes no válido: $mes");
             }
-            // Filtra las salidas del mes correspondiente
-            $salidas = Salida::whereMonth('fecha_salida', Carbon::parse($mes)->month)
-                ->whereYear('fecha_salida', Carbon::parse($mes)->year)
+
+            $mesIngles = $meses[$mesSolo];
+
+            // 🔹 Extraer el año de la variable `$mes`
+            preg_match('/(\d{4})/', $mes, $yearMatch);
+            $anio = $yearMatch[1] ?? Carbon::now()->year;
+
+            // 🔹 Obtener el número del mes con Carbon
+            $numeroMes = Carbon::parse("1 $mesIngles")->month;
+
+            // 🔹 Obtener salidas con sus relaciones
+            $salidas = Salida::whereMonth('fecha_salida', $numeroMes)
+                ->whereYear('fecha_salida', $anio)
+                ->with([
+                    'clientes',
+                    'empresaTransporte',
+                    'camion',
+                    'paquetes.planilla.obra' // 🔹 Cargar la relación de obras
+                ])
                 ->get();
 
-            // Procesa el resumen por cliente, similar a la vista.
+            if ($salidas->isEmpty()) {
+                return redirect()->route('salidas.index')->with('error', "No hay salidas registradas en $mesSolo $anio.");
+            }
+
+            // 🔹 Generar resumen por cliente y obras
             $clientSummary = [];
+
             foreach ($salidas as $salida) {
-                $importe = $salida->importe ?? 0;
-                if (is_null($salida->clientesUnicos)) {
-                    $salida->clientesUnicos = collect();
-                    foreach ($salida->clientesUnicos as $cliente) {
-                        if ($cliente) {
-                            if (!isset($clientSummary[$cliente])) {
-                                $clientSummary[$cliente] = 0;
-                            }
-                            $clientSummary[$cliente] += $importe;
-                        }
+                foreach ($salida->clientes as $cliente) {
+                    $nombreCliente = trim($cliente->empresa) ?: "Cliente desconocido";
+
+                    if (!isset($clientSummary[$nombreCliente])) {
+                        $clientSummary[$nombreCliente] = [
+                            'obras'                => collect(),
+                            'horas_paralizacion'   => 0,
+                            'importe_paralizacion' => 0,
+                            'horas_grua'           => 0,
+                            'importe_grua'         => 0,
+                            'horas_almacen'        => 0,
+                            'importe'              => 0,
+                            'total'                => 0,
+                        ];
                     }
+
+                    // 🔹 Filtrar solo las obras del cliente
+                    $obrasCliente = $salida->paquetes
+                        ->where('planilla.cliente_id', $cliente->id)
+                        ->pluck('planilla.obra.nombre')
+                        ->unique()
+                        ->filter()
+                        ->values();
+
+                    // 🔹 Acumular las obras del cliente
+                    $clientSummary[$nombreCliente]['obras'] = $clientSummary[$nombreCliente]['obras']->merge($obrasCliente)->unique();
+
+                    // 🔹 Acumular valores del cliente
+                    $clientSummary[$nombreCliente]['horas_paralizacion']   += $cliente->pivot->horas_paralizacion ?? 0;
+                    $clientSummary[$nombreCliente]['importe_paralizacion'] += $cliente->pivot->importe_paralizacion ?? 0;
+                    $clientSummary[$nombreCliente]['horas_grua']           += $cliente->pivot->horas_grua ?? 0;
+                    $clientSummary[$nombreCliente]['importe_grua']         += $cliente->pivot->importe_grua ?? 0;
+                    $clientSummary[$nombreCliente]['horas_almacen']        += $cliente->pivot->horas_almacen ?? 0;
+                    $clientSummary[$nombreCliente]['importe']              += $cliente->pivot->importe ?? 0;
+
+                    // 🔹 Calcular el total sumando todos los importes
+                    $clientSummary[$nombreCliente]['total'] =
+                        $clientSummary[$nombreCliente]['importe_paralizacion'] +
+                        $clientSummary[$nombreCliente]['importe_grua'] +
+                        $clientSummary[$nombreCliente]['importe'];
                 }
             }
 
-            DB::commit(); // Confirmar la transacción
-            // Usa Excel::download() para generar y retornar el archivo
-            return Excel::download(new SalidasExport($salidas, $clientSummary), 'salidas_' . $mes . '.xlsx');
+            // 🔹 Convertir las obras en cadenas de texto para exportar correctamente
+            foreach ($clientSummary as $cliente => &$data) {
+                $data['obras'] = $data['obras']->implode(', ');
+            }
+
+            return Excel::download(new SalidasExport($salidas, $clientSummary), "salidas_{$mesSolo}_{$anio}.xlsx");
         } catch (\Exception $e) {
-            DB::rollBack(); // Revertir cambios en caso de error
             return redirect()->route('salidas.index')->with('error', 'Hubo un problema al exportar las salidas: ' . $e->getMessage());
         }
     }
+
 
     public function marcarSubido(Request $request)
     {
