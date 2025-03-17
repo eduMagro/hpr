@@ -67,9 +67,11 @@ class SalidaController extends Controller
                 foreach ($salida->clientes as $cliente) {
                     // Asegurar que el nombre del cliente no esté vacío
                     $nombreCliente = trim($cliente->empresa) ?: "Cliente desconocido";
+                    $clienteId = $cliente->id; // 🔹 ID del cliente
 
                     if (!isset($clientSummary[$nombreCliente])) {
                         $clientSummary[$nombreCliente] = [
+                            'cliente_id'           => $clienteId,
                             'horas_paralizacion'   => 0,
                             'importe_paralizacion' => 0,
                             'horas_grua'           => 0,
@@ -453,11 +455,17 @@ class SalidaController extends Controller
                     // 🔹 Filtrar solo las obras del cliente
                     $obrasCliente = $salida->paquetes
                         ->where('planilla.cliente_id', $cliente->id)
-                        ->pluck('planilla.obra.nombre')
+                        ->pluck('planilla.obra.obra')
                         ->unique()
                         ->filter()
                         ->values();
+                    // 🔹 Guardar las obras como un array
+                    $cliente->obrasUnicas = $obrasCliente;
 
+                    // 🔹 Acumular las obras del cliente
+                    $clientSummary[$nombreCliente]['obras'] = $clientSummary[$nombreCliente]['obras']
+                        ->merge($obrasCliente)
+                        ->unique();
                     // 🔹 Acumular las obras del cliente
                     $clientSummary[$nombreCliente]['obras'] = $clientSummary[$nombreCliente]['obras']->merge($obrasCliente)->unique();
 

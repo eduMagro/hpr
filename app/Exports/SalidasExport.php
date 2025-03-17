@@ -24,36 +24,38 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
     {
         $numColumns = 14; // Número total de columnas en la tabla principal
 
-        // Construir las filas principales de la tabla de salidas
-        $mainRows = $this->salidas->map(function ($salida) {
-            return [
-                $salida->codigo_salida,                                     // Código de salida
-                implode(', ', $salida->clientes->pluck('empresa')->toArray()), // Cliente(s)
-                $cliente->obrasUnicas ?? 'N/A', // Obra(s)
-                $salida->empresaTransporte->nombre,                         // Empresa de transporte
-                $salida->camion->modelo . ' - ' . $salida->camion->matricula, // Modelo y matrícula del camión
-                $salida->clientes->sum('pivot.horas_paralizacion') ?? '0',  // Horas de paralización
-                $salida->clientes->sum('pivot.importe_paralizacion') ?? '0', // Importe paralización
-                $salida->clientes->sum('pivot.horas_grua') ?? '0',          // Horas grúa
-                $salida->clientes->sum('pivot.importe_grua') ?? '0',        // Importe grúa
-                $salida->clientes->sum('pivot.horas_almacen') ?? '0',       // Horas almacén
-                $salida->clientes->sum('pivot.importe') ?? '0',             // Importe total
-                $salida->fecha_salida ?? 'Sin fecha',                       // Fecha de salida
-                ucfirst($salida->estado)                                    // Estado de la salida
-            ];
+        // 🔹 Generar las filas principales de la tabla de salidas
+        $mainRows = $this->salidas->flatMap(function ($salida) {
+            return $salida->clientes->map(function ($cliente) use ($salida) {
+                return [
+                    $salida->codigo_salida, // Código de salida
+                    $cliente->empresa, // Cliente
+                    $cliente->obrasUnicas->implode(', ') ?? 'N/A', // 🔹 Usar obrasUnicas correctamente
+                    $salida->empresaTransporte->nombre, // Empresa de transporte
+                    $salida->camion->modelo . ' - ' . $salida->camion->matricula, // Modelo y matrícula del camión
+                    $cliente->pivot->horas_paralizacion ?? 0, // 🔹 Horas de paralización
+                    number_format($cliente->pivot->importe_paralizacion ?? 0, 2) . ' €', // 🔹 Importe paralización
+                    $cliente->pivot->horas_grua ?? 0, // 🔹 Horas grúa
+                    number_format($cliente->pivot->importe_grua ?? 0, 2) . ' €', // 🔹 Importe grúa
+                    $cliente->pivot->horas_almacen ?? 0, // 🔹 Horas almacén
+                    number_format($cliente->pivot->importe ?? 0, 2) . ' €', // 🔹 Importe total
+                    $salida->fecha_salida ?? 'Sin fecha', // Fecha de salida
+                    ucfirst($salida->estado), // Estado de la salida
+                ];
+            });
         })->toArray();
 
-        // Construcción del resumen por cliente
+        // 🔹 Construcción del resumen por cliente
         $blankRow = array_fill(0, $numColumns, ''); // Fila en blanco
         $titleRow = array_pad(['Resumen por Cliente'], $numColumns, ''); // Título del resumen
         $summaryHeader = array_pad([
             'Cliente',
             'Horas Paralización',
-            'Importe Paralización',
+            'Total Importe Paralización',
             'Horas Grúa',
-            'Importe Grúa',
+            'Total Importe Grúa',
             'Horas Almacén',
-            'Importe Almacén',
+            'Total Importe',
             'Total Cliente'
         ], $numColumns, '');
 
@@ -61,21 +63,22 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
         foreach ($this->clientSummary as $cliente => $data) {
             $summaryRows[] = array_pad([
                 $cliente,
-                $data['horas_paralizacion'],
-                number_format($data['importe_paralizacion'], 2) . ' €',
-                $data['horas_grua'],
-                number_format($data['importe_grua'], 2) . ' €',
-                $data['horas_almacen'],
-                number_format($data['importe'], 2) . ' €',
-                number_format($data['total'], 2) . ' €'
+                $data['horas_paralizacion'] ?? 0, // 🔹 Convertir valores null en 0
+                number_format($data['importe_paralizacion'] ?? 0, 2) . ' €',
+                number_format($data['horas_grua'] ?? 0, 2),
+                number_format($data['importe_grua'] ?? 0, 2) . ' €',
+                number_format($data['horas_almacen'] ?? 0, 2),
+                number_format($data['importe'] ?? 0, 2) . ' €',
+                number_format($data['total'] ?? 0, 2) . ' €'
             ], $numColumns, '');
         }
 
-        // Combinar las tablas en un solo array
+        // 🔹 Combinar la tabla de salidas con el resumen
         $allRows = array_merge($mainRows, [$blankRow, $titleRow, $summaryHeader], $summaryRows);
 
         return collect($allRows);
     }
+
 
     public function headings(): array
     {
@@ -100,7 +103,9 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-                // Definir estilo de cabecera (fondo azul claro)
+                $sheet = $event->sheet->getDelegate();
+
+                // 🔹 Definir estilo de cabecera (fondo azul claro y negrita)
                 $headerStyle = [
                     'font' => [
                         'bold'  => true,
@@ -112,13 +117,25 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                     ],
                 ];
 
-                // Aplicar estilo a la cabecera principal (A1:M1)
-                $event->sheet->getDelegate()->getStyle('A1:M1')->applyFromArray($headerStyle);
+                // 🔹 Aplicar estilo a la cabecera principal (A1:M1)
+                $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
 
-                // Aplicar estilo al título del resumen por cliente
-                $mainRowsCount = count($this->salidas);
-                $summaryTitleRow = $mainRowsCount + 3;
-                $event->sheet->getDelegate()->getStyle("A{$summaryTitleRow}")->applyFromArray($headerStyle);
+                // 🔹 Calcular fila del título del resumen
+                $mainRowsCount = count($this->salidas) + 2; // Sumamos la cabecera y el espacio en blanco
+                $summaryTitleRow = $mainRowsCount + 1;
+                $summaryHeaderRow = $summaryTitleRow + 1;
+
+                // 🔹 Aplicar negrita al título del resumen
+                $sheet->getStyle("A{$summaryTitleRow}")->applyFromArray(['font' => ['bold' => true]]);
+
+                // 🔹 Aplicar negrita al encabezado del resumen por cliente
+                $sheet->getStyle("A{$summaryHeaderRow}:H{$summaryHeaderRow}")->applyFromArray([
+                    'font' => ['bold' => true],
+                    'fill' => [
+                        'fillType'   => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => 'ADD8E6'],
+                    ],
+                ]);
             },
         ];
     }

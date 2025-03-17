@@ -96,10 +96,12 @@
                                                 data-field="importe">
                                                 {{ number_format($cliente->pivot->importe, 2) }}
                                             </td>
-                                            <td class="py-2 px-4 border-b">
+                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                                data-id="{{ $salida->id }}" data-field="fecha_salida">
                                                 {{ $salida->fecha_salida ?? 'Sin fecha' }}
                                             </td>
-                                            <td class="py-2 px-4 border-b">
+                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                                data-id="{{ $salida->id }}" data-field="estado">
                                                 {{ ucfirst($salida->estado) }}
                                             </td>
                                             <td class="py-2 px-4 border-b">
@@ -118,7 +120,7 @@
                     @endphp
 
                     @if (!empty($clientSummary))
-                        <div class="mt-6 px-20">
+                        <div class="mt-6 px-20 mb-20">
                             <h3 class="text-lg font-semibold text-gray-800">Resumen por Cliente - {{ ucfirst($mes) }}
                             </h3>
                             <table class="w-full border-collapse">
@@ -130,33 +132,47 @@
                                         <th class="py-2 px-4 border-b">Horas Grúa</th>
                                         <th class="py-2 px-4 border-b">Importe Grúa</th>
                                         <th class="py-2 px-4 border-b">Horas Almacén</th>
-                                        <th class="py-2 px-4 border-b">Importe Almacén</th>
+                                        <th class="py-2 px-4 border-b">Importe</th>
                                         <th class="py-2 px-4 border-b">Total Cliente</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($clientSummary as $cliente => $data)
-                                        <tr class="text-sm hover:bg-gray-50">
+                                        <tr class="text-sm hover:bg-gray-50"
+                                            data-resumen-cliente="{{ $data['cliente_id'] ?? 'N/A' }}">
                                             <td class="py-2 px-4 border-b font-semibold">{{ $cliente }}</td>
-                                            <td class="py-2 px-4 border-b text-center">
-                                                {{ $data['horas_paralizacion'] }}
+                                            <td class="py-2 px-4 border-b text-center"
+                                                data-resumen-field="horas_paralizacion">
+                                                {{ $data['horas_paralizacion'] ?? 0 }}
                                             </td>
-                                            <td class="py-2 px-4 border-b text-right">
-                                                {{ number_format($data['importe_paralizacion'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-center">{{ $data['horas_grua'] }}</td>
-                                            <td class="py-2 px-4 border-b text-right">
-                                                {{ number_format($data['importe_grua'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-center">{{ $data['horas_almacen'] }}
+                                            <td class="py-2 px-4 border-b text-right"
+                                                data-resumen-field="importe_paralizacion">
+                                                {{ number_format($data['importe_paralizacion'] ?? 0, 2) }} €
                                             </td>
-                                            <td class="py-2 px-4 border-b text-right">
-                                                {{ number_format($data['importe'], 2) }} €</td>
-                                            <td class="py-2 px-4 border-b text-right font-bold">
-                                                {{ number_format($data['total'], 2) }} €</td>
+                                            <td class="py-2 px-4 border-b text-center" data-resumen-field="horas_grua">
+                                                {{ $data['horas_grua'] ?? 0 }}
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right"
+                                                data-resumen-field="importe_grua">
+                                                {{ number_format($data['importe_grua'] ?? 0, 2) }} €
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-center"
+                                                data-resumen-field="horas_almacen">
+                                                {{ $data['horas_almacen'] ?? 0 }}
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right" data-resumen-field="importe">
+                                                {{ number_format($data['importe'] ?? 0, 2) }} €
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right font-bold" data-resumen-total>
+                                                {{ number_format($data['total'] ?? 0, 2) }} €
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
+
                             </table>
                         </div>
+                        <hr class="m-10 border-gray-300">
                     @endif
                 @endforeach
             @endif
@@ -230,83 +246,117 @@
                         </div>
                     </div>
                 @endforeach
-
+            </div>
         @endif
+    </div>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
+    <script src="{{ asset('js/salidasJs/salida.js') }}" defer></script>
 
-        <!-- Scripts -->
-        <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
-        <script src="{{ asset('js/salidasJs/salida.js') }}" defer></script>
-        <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
-        <script>
-            window.paquetes = @json($salidas->pluck('paquetes')->flatten());
-            console.log(window.paquetes);
-        </script>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const editableCells = document.querySelectorAll('.editable');
+    <script>
+        window.paquetes = @json($salidas->pluck('paquetes')->flatten());
+        console.log(window.paquetes);
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editableCells = document.querySelectorAll('.editable');
 
-                editableCells.forEach(cell => {
-                    // Detectar "Enter" para guardar y salir
-                    cell.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            cell.blur();
+            editableCells.forEach(cell => {
+                // Detectar "Enter" para guardar y salir
+                cell.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        cell.blur();
+                    }
+                });
+
+                // Detectar cambio de valor y actualizar en tiempo real
+                cell.addEventListener('blur', function() {
+                    const id = this.dataset.id;
+                    const clienteId = this.dataset.cliente;
+                    const field = this.dataset.field;
+                    let value = this.innerText.trim();
+
+                    // 🔹 Si es una fecha con hora, formatearla correctamente
+                    if (field === 'fecha_salida') {
+                        value = convertirFechaHora(value);
+                        if (!value) {
+                            alert(
+                                "Formato de fecha inválido. Usa DD/MM/YYYY HH:MM o YYYY-MM-DD HH:MM:SS."
+                                );
+                            return;
                         }
-                    });
+                    }
+                    // 🔹 Si es el estado, asegurarnos de que es un string válido
+                    else if (field === 'estado') {
+                        value = value.charAt(0).toUpperCase() + value.slice(1)
+                            .toLowerCase(); // Capitalizar la primera letra
+                        if (!value) {
+                            alert("El estado no puede estar vacío.");
+                            return;
+                        }
+                    }
+                    // 🔹 Si es un número, asegurarse de que se envía correctamente
+                    else {
+                        value = parseFloat(value) || 0;
+                    }
 
-                    // Detectar cambio de valor
-                    cell.addEventListener('blur', function() {
-                        const id = this.dataset.id;
-                        const clienteId = this.dataset.cliente;
-                        const field = this.dataset.field;
-                        const value = this.innerText.trim();
-
-                        // Evitar peticiones innecesarias si el valor no ha cambiado
-                        if (!value) return;
-
-                        fetch(`/salidas/${id}`, {
-                                method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': document.querySelector(
-                                        'meta[name="csrf-token"]').getAttribute('content')
-                                },
-                                body: JSON.stringify({
-                                    id,
-                                    cliente_id: clienteId,
-                                    field,
-                                    value
-                                })
+                    fetch(`/salidas/${id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({
+                                id,
+                                cliente_id: clienteId,
+                                field,
+                                value
                             })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    console.log('Actualizado correctamente');
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                console.log('Actualizado correctamente');
+                                if (field !== 'fecha_salida' && field !== 'estado') {
+                                    actualizarResumen(clienteId, field, value);
                                 } else {
-                                    let errorMsg = data.message ||
-                                        "Ha ocurrido un error inesperado.";
-                                    if (data.errors) {
-                                        errorMsg = Object.values(data.errors).flat().join("<br>");
-                                    }
-                                    console.error('Error al actualizar', errorMsg);
-                                    Swal.fire({
-                                        icon: "error",
-                                        title: "Error al actualizar",
-                                        html: errorMsg,
-                                        confirmButtonText: "OK",
-                                        showCancelButton: true,
-                                        cancelButtonText: "Reportar Error"
-                                    }).then((result) => {
-                                        if (result.dismiss === Swal.DismissReason.cancel) {
-                                            notificarProgramador(errorMsg);
-                                        }
-                                    });
+                                    this.innerText =
+                                        value; // 🔹 Asegurar que se muestre correctamente en la tabla
                                 }
-                            })
-                            .catch(error => console.error('Error:', error));
-                    });
+                            } else {
+                                console.error('Error al actualizar', data.message);
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Error al actualizar",
+                                    html: data.message,
+                                    confirmButtonText: "OK"
+                                });
+                            }
+                        })
+                        .catch(error => console.error('Error:', error));
                 });
             });
-        </script>
+
+            /**
+             * 🔹 Convierte una fecha con hora de DD/MM/YYYY HH:MM a YYYY-MM-DD HH:MM:SS.
+             */
+            function convertirFechaHora(fecha) {
+                let regexDMY = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{2}):(\d{2})$/; // Formato: 17/03/2025 14:30
+                let regexYMD =
+                    /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):?(\d{2})?$/; // Formato: 2025-03-17 14:30:00
+
+                if (regexDMY.test(fecha)) {
+                    let [, day, month, year, hours, minutes] = fecha.match(regexDMY);
+                    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${hours}:${minutes}:00`;
+                } else if (regexYMD.test(fecha)) {
+                    return fecha; // Ya está en el formato correcto
+                }
+
+                return null; // No es un formato válido
+            }
+        });
+    </script>
 
 </x-app-layout>
