@@ -467,12 +467,9 @@ class etiquetaController extends Controller
                     break;
                 // -------------------------------------------- ESTADO COMPLETADA --------------------------------------------
                 case 'completada':
-                    // Si la etiqueta ya está completada, se retorna un error
-                    DB::commit();
                     return response()->json([
                         'success' => false,
-                        'message' => 'La etiqueta ya se encuentra completada.',
-                        'etiqueta' => $etiqueta,
+                        'error' => "Etiqueta ya completada.",
                     ], 400);
                     break;
 
@@ -666,18 +663,21 @@ class etiquetaController extends Controller
                 }
             }
         } else {
-            // Verificar si TODOS los elementos de la máquina actual están completados
-            if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+
+            // Verificar si todos los elementos de la etiqueta están en estado "completado"
+            $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'completado')->doesntExist();
+
+            if ($elementosEtiquetaCompletos) {
+                $etiqueta->estado = 'completada';
+                $etiqueta->fecha_finalizacion = now();
+                $etiqueta->save();
+            } else {
+
                 // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
                 if ($enOtrasMaquinas) {
                     $etiqueta->estado = 'parcialmente_completada';
-                } else {
-                    // Si no hay elementos en otras máquinas, se marca como fabricada/completada
-                    $etiqueta->estado = 'completada';
-                    $etiqueta->fecha_finalizacion = now();
+                    $etiqueta->save();
                 }
-
-                $etiqueta->save();
             }
         }
 

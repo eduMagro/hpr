@@ -106,7 +106,10 @@ class PaqueteController extends Controller
             // Verificar disponibilidad de etiquetas, elementos y subpaquetes
             if ($mensajeError = $this->verificarDisponibilidad($elementosIdsDesdeEtiquetas, $subpaquetesIds)) {
                 DB::rollBack();
-                return response()->json(array_merge(['success' => false], $mensajeError), 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => $mensajeError
+                ], 400);
             }
 
             // Obtener la lista de todos los elementos a procesar
@@ -208,21 +211,6 @@ class PaqueteController extends Controller
     }
 
     /**
-     * Obtiene la ubicación según el código de máquina.
-     */
-    private function obtenerUbicacionPorCodigoMaquina($codigoMaquina)
-    {
-        try {
-            return Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al obtener ubicación de la máquina: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
      * Crea un nuevo paquete.
      */
     private function crearPaquete($planillaId, $ubicacionId, $pesoTotal)
@@ -235,7 +223,11 @@ class PaqueteController extends Controller
             ]);
         } catch (Exception $e) {
             Log::error('Error al crear paquete: ' . $e->getMessage()); // ✅ Guarda el error en logs
-            throw new \Exception('No se pudo crear el paquete: ' . $e->getMessage()); // ✅ Lanza la excepción para que `store()` la maneje
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo crear el paquete: ' . $e->getMessage()
+            ], 500);
         }
     }
 

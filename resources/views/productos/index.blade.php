@@ -128,14 +128,17 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-center border">
-                                    <a href="{{ route('productos.show', $producto->id) }}"
-                                        class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
-                                    <a href="{{ route('productos.edit', $producto->id) }}"
-                                        class="text-blue-500 hover:text-blue-700 text-sm ml-2">Editar</a>
-                                    <a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
-                                        class="text-green-500 hover:text-green-700 text-sm ml-2">Mover</a>
-                                    <x-boton-eliminar :action="route('productos.destroy', $producto->id)" class="ml-2" />
+                                    <div class="flex flex-col space-y-2 items-center">
+                                        <a href="{{ route('productos.show', $producto->id) }}"
+                                            class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
+                                        <a href="{{ route('productos.edit', $producto->id) }}"
+                                            class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+                                        <a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
+                                            class="text-green-500 hover:text-green-700 text-sm">Mover</a>
+                                        <x-boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                                    </div>
                                 </td>
+
                             </tr>
                         @empty
                             <tr>
@@ -184,7 +187,7 @@
                         <p class="text-gray-600 mt-2">{{ $producto->created_at->format('d/m/Y H:i') }}</p>
 
                         <hr class="my-2 border-gray-300">
-                        <div class="mt-2 flex flex-col space-y-2 items-start">
+                        <div class="mt-2 flex justify-between">
                             <x-boton-eliminar :action="route('productos.destroy', $producto->id)" />
                             <a href="{{ route('productos.edit', $producto->id) }}"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>

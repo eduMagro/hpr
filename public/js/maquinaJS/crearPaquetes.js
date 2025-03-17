@@ -207,31 +207,37 @@ function crearPaquete() {
             return response.json();
         })
         .then((data) => {
-            console.log("Datos recibidos de /verificar-items:", data);
             if (!data.success) {
-                let mensajeError = "Los siguientes ítems no están completos:\n";
-                if (data.etiquetas_incompletas?.length) {
-                    mensajeError += `- Etiquetas: ${data.etiquetas_incompletas.join(
+                let mensajeError =
+                    "<strong>Los siguientes ítems no están completos:</strong><br><br>";
+
+                if (
+                    Array.isArray(data.elementos_incompletos) &&
+                    data.elementos_incompletos.length > 0
+                ) {
+                    mensajeError += `- <strong>Elementos:</strong> ${data.elementos_incompletos.join(
                         ", "
-                    )}\n`;
+                    )}<br>`;
                 }
-                if (data.elementos_incompletos?.length) {
-                    mensajeError += `- Elementos: ${data.elementos_incompletos.join(
+                if (
+                    Array.isArray(data.subpaquetes_incompletos) &&
+                    data.subpaquetes_incompletos.length > 0
+                ) {
+                    mensajeError += `- <strong>Subpaquetes:</strong> ${data.subpaquetes_incompletos.join(
                         ", "
-                    )}\n`;
+                    )}<br>`;
                 }
-                if (data.subpaquetes_incompletos?.length) {
-                    mensajeError += `- Subpaquetes: ${data.subpaquetes_incompletos.join(
-                        ", "
-                    )}\n`;
-                }
+
                 Swal.fire({
                     icon: "error",
                     title: "Error",
-                    text: mensajeError.trim() || "Error desconocido.",
+                    html: mensajeError.trim(), // ⚠️ Usa `html`, NO `text`
                     confirmButtonColor: "#d33",
                 });
-                return;
+                throw new Error(
+                    "Se encontraron ítems incompletos.",
+                    mensajeError
+                );
             }
 
             // Suponiendo que maquinaId y ubicacionId están definidos en otro lugar
@@ -253,7 +259,12 @@ function crearPaquete() {
         })
         .then((response) => {
             console.log("Respuesta de /paquetes:", response);
-            return response.json();
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            return response.json(); // Aquí puede estar fallando
         })
         .then((data) => {
             console.log("Datos recibidos de /paquetes:", data);

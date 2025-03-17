@@ -33,15 +33,22 @@ class GenerarTurnosAnuales extends Command
         $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
         $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
         $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
-
+        $turnoVacacionesId = Turno::where('nombre', 'vacaciones')->value('id'); // Obtener dinámicamente el ID de vacaciones
 
         // Definir el inicio y fin del año actual
         $inicio = Carbon::now()->addDay()->startOfDay();
         $fin = Carbon::now()->endOfYear();
 
-        if ($user->turno == 'diurno') {
-            $turnoAsignado = ($user->turno_actual == 1) ? $turnoMañanaId : $turnoTardeId;
-        } elseif ($user->turno == 'nocturno') {
+        // Obtener festivos desde el método getFestivos()
+        $festivos = $this->getFestivos();
+        $festivosArray = collect($festivos)->pluck('start')->toArray();
+        // Obtener los días donde ya hay una asignación de vacaciones (turno_id = 10)
+        $diasVacaciones = AsignacionTurno::where('user_id', $user->id)
+            ->where('turno_id', $turnoVacacionesId)
+            ->pluck('fecha')
+            ->toArray();
+
+        if ($user->turno == 'nocturno') {
             $turnoAsignado = $turnoNocheId;
         } elseif ($user->turno == 'mañana') {
             $turnoAsignado = $turnoMañanaId;
@@ -50,19 +57,33 @@ class GenerarTurnosAnuales extends Command
         }
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
-            // **Excluye sábados, domingos y festivos**
-            if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) || in_array($fecha->toDateString(), $festivos)) {
-                continue;
-            }
+            for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
+                // Guardar el turno del viernes antes de saltarlo si es festivo o vacaciones
+                $esViernes = $fecha->dayOfWeek == Carbon::FRIDAY;
 
-            AsignacionTurno::updateOrCreate(
-                ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
-                ['turno_id' => $turnoAsignado]
-            );
+                // Excluir sábados, domingos, festivos y días con turno de vacaciones
+                if (
+                    in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
+                    in_array($fecha->toDateString(), $festivosArray) ||
+                    in_array($fecha->toDateString(), $diasVacaciones)
+                ) {
+                    // Si es viernes, cambiar turno aunque no se registre en la base de datos
+                    if ($user->turno == 'diurno' && $esViernes) {
+                        $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                    }
+                    continue;
+                }
 
-            // Alternar turnos cada viernes para trabajadores diurnos
-            if ($user->turno == 'diurno' && $fecha->dayOfWeek == Carbon::FRIDAY) {
-                $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                // Registrar el turno en la base de datos
+                AsignacionTurno::updateOrCreate(
+                    ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
+                    ['turno_id' => $turnoAsignado]
+                );
+
+                // Si es viernes, cambiar turno para la próxima semana
+                if ($user->turno == 'diurno' && $esViernes) {
+                    $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                }
             }
         }
     }
