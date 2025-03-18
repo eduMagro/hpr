@@ -117,7 +117,10 @@
                                             <td class="py-2 px-4 border-b">
                                                 <a href="{{ route('salidas.show', $salida->id) }}"
                                                     class="text-blue-600 hover:text-blue-800">Ver</a>
-                                                <x-boton-eliminar :action="route('salidas.destroy', $salida->id)" />
+                                                @if (auth()->user()->categoria === 'programador' || strtolower(auth()->user()->name) === 'alberto mayo martin')
+                                                    <x-boton-eliminar :action="route('salidas.destroy', $salida->id)" />
+                                                @endif
+
                                             </td>
                                         </tr>
                                     @endforeach
@@ -133,7 +136,7 @@
 
                     @if (!empty($clientSummary))
                         <div class="mt-6 px-20 mb-20">
-                            <h3 class="text-lg font-semibold text-gray-800">Resumen por Empresa Trnansporte -
+                            <h3 class="text-lg font-semibold text-gray-800">Resumen por Empresa Transporte -
                                 {{ ucfirst($mes) }}
                             </h3>
                             <table class="w-full border-collapse">
