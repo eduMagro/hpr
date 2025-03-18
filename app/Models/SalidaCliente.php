@@ -28,4 +28,8 @@ class SalidaCliente extends Model
     {
         return $this->belongsTo(Cliente::class);
     }
+    public function obra()
+    {
+        return $this->belongsTo(Obra::class);
+    }
 }

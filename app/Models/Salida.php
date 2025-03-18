@@ -50,18 +50,9 @@ class Salida extends Model
     {
         return $this->hasMany(SalidaPaquete::class);
     }
-    public function clientes()
+    public function salidaClientes()
     {
-        return $this->belongsToMany(Cliente::class, 'salida_cliente')
-            ->withPivot(
-                'horas_paralizacion',
-                'importe_paralizacion',
-                'horas_grua',
-                'importe_grua',
-                'horas_almacen',
-                'importe'
-            )
-            ->withTimestamps();
+        return $this->hasMany(SalidaCliente::class);
     }
 
 

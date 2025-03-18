@@ -23,7 +23,13 @@ class SalidaController extends Controller
     {
         // Cargar relaciones según el rol del usuario
         if (auth()->user()->rol == 'oficina') {
-            $salidas = Salida::with(['clientes', 'paquetes.planilla.obra', 'empresaTransporte', 'camion'])
+            $salidas = Salida::with([
+                'salidaClientes.cliente',
+                'salidaClientes.obra',
+                'paquetes.planilla.obra',
+                'empresaTransporte',
+                'camion'
+            ])
                 ->orderBy('created_at', 'desc')
                 ->get();
         } else {
@@ -36,40 +42,28 @@ class SalidaController extends Controller
                     'paquetes.elementos',
                     'empresaTransporte',
                     'camion',
-                    'clientes'
+                    // No cargamos 'clientes', sino la relación de salidaClientes
+                    'salidaClientes.cliente',
+                    'salidaClientes.obra',
                 ])
                 ->get();
         }
-        // 🔹 Extraer todos los paquetes de las salidas
+
+        // Extraer todos los paquetes de las salidas
         $paquetes = $salidas->pluck('paquetes')->flatten();
-        // 🔹 Asignar obras únicas a cada cliente en cada salida
-        $salidas->each(function ($salida) {
-            $salida->clientes->each(function ($cliente) use ($salida) {
-                $cliente->obrasUnicas = $salida->paquetes
-                    ->where('planilla.cliente_id', $cliente->id)
-                    ->pluck('planilla.obra.obra')
-                    ->unique()
-                    ->filter()
-                    ->values();
-            });
-        });
 
         // Agrupar las salidas por mes
         $salidasPorMes = $salidas->groupBy(function ($salida) {
             return \Carbon\Carbon::parse($salida->fecha_salida)->translatedFormat('F Y');
         });
 
-        // 🔹 Crear un array para almacenar los resúmenes por empresa de transporte
+        // Crear un resumen mensual (si sigue siendo necesario, puedes ajustarlo para que agrupe por empresa y obra si lo deseas)
         $resumenMensual = [];
-
         foreach ($salidasPorMes as $mes => $salidasGrupo) {
             $empresaSummary = [];
-
             foreach ($salidasGrupo as $salida) {
-                // Obtener el nombre de la empresa de transporte
                 $nombreEmpresa = trim($salida->empresaTransporte->nombre) ?: "Empresa desconocida";
                 $empresaId = $salida->empresaTransporte->id;
-
                 if (!isset($empresaSummary[$nombreEmpresa])) {
                     $empresaSummary[$nombreEmpresa] = [
                         'empresa_id'          => $empresaId,
@@ -82,29 +76,25 @@ class SalidaController extends Controller
                         'total'               => 0,
                     ];
                 }
-
-                // 🔹 Sumar valores de cada cliente dentro de la empresa de transporte
-                foreach ($salida->clientes as $cliente) {
-                    $empresaSummary[$nombreEmpresa]['horas_paralizacion']   += $cliente->pivot->horas_paralizacion ?? 0;
-                    $empresaSummary[$nombreEmpresa]['importe_paralizacion'] += $cliente->pivot->importe_paralizacion ?? 0;
-                    $empresaSummary[$nombreEmpresa]['horas_grua']           += $cliente->pivot->horas_grua ?? 0;
-                    $empresaSummary[$nombreEmpresa]['importe_grua']         += $cliente->pivot->importe_grua ?? 0;
-                    $empresaSummary[$nombreEmpresa]['horas_almacen']        += $cliente->pivot->horas_almacen ?? 0;
-                    $empresaSummary[$nombreEmpresa]['importe']              += $cliente->pivot->importe ?? 0;
+                // Ahora se suma desde cada registro en salidaClientes
+                foreach ($salida->salidaClientes as $registro) {
+                    $empresaSummary[$nombreEmpresa]['horas_paralizacion']   += $registro->horas_paralizacion ?? 0;
+                    $empresaSummary[$nombreEmpresa]['importe_paralizacion'] += $registro->importe_paralizacion ?? 0;
+                    $empresaSummary[$nombreEmpresa]['horas_grua']           += $registro->horas_grua ?? 0;
+                    $empresaSummary[$nombreEmpresa]['importe_grua']         += $registro->importe_grua ?? 0;
+                    $empresaSummary[$nombreEmpresa]['horas_almacen']        += $registro->horas_almacen ?? 0;
+                    $empresaSummary[$nombreEmpresa]['importe']              += $registro->importe ?? 0;
                 }
             }
-
-            // 🔹 Calcular el total correctamente
             foreach ($empresaSummary as $nombreEmpresa => &$data) {
                 $data['total'] = $data['importe_paralizacion'] + $data['importe_grua'] + $data['importe'];
             }
-
-            // Guardar el resumen en el array del mes
             $resumenMensual[$mes] = $empresaSummary;
         }
 
         return view('salidas.index', compact('salidasPorMes', 'salidas', 'resumenMensual', 'paquetes'));
     }
+
 
     public function show($id)
     {
@@ -218,56 +208,67 @@ class SalidaController extends Controller
             $salida->codigo_salida = $codigo_salida;
             $salida->save();
 
-            // Asociar los paquetes a la salida (se llenará la tabla salidas_paquetes)
+            // Asociar los paquetes a la salida (tabla salidas_paquetes)
             foreach ($request->paquete_ids as $paquete_id) {
                 $salida->paquetes()->attach($paquete_id);
             }
 
             /*
-             * Para la asociación salida_cliente:
+             * Para la asociación en salida_cliente (ahora con obra_id):
              * Se recorre cada paquete seleccionado y se carga la relación anidada:
-             * planilla.obra.cliente.
-             * Si se encuentra el cliente, se añade a un arreglo de IDs únicos.
+             * planilla.obra, para obtener tanto el cliente como la obra.
+             * Se arma un array de combinaciones únicas [cliente_id, obra_id] para insertar
+             * un registro por cada combinación en la tabla pivote.
              */
-            // Asociar los paquetes a la salida (se llenará la tabla salidas_paquetes)
+            $pivotData = [];
             foreach ($request->paquete_ids as $paquete_id) {
-                $salida->paquetes()->attach($paquete_id);
-            }
-
-            // Obtener los clientes de la planilla (ya que planilla tiene cliente_id)
-            $uniqueClientIds = [];
-            foreach ($request->paquete_ids as $paquete_id) {
-                // Cargamos la relación anidada para tener acceso a la planilla
-                $paquete = \App\Models\Paquete::with('planilla')->find($paquete_id);
+                // Cargar la relación planilla y dentro de ella la obra
+                $paquete = Paquete::with('planilla.obra')->find($paquete_id);
                 if (!$paquete) {
                     Log::info("Paquete {$paquete_id} no encontrado");
-                } elseif (!$paquete->planilla) {
+                    continue;
+                }
+                if (!$paquete->planilla) {
                     Log::info("Paquete {$paquete_id} no tiene planilla");
-                } elseif (!$paquete->planilla->cliente_id) {
+                    continue;
+                }
+                if (!$paquete->planilla->cliente_id) {
                     Log::info("Paquete {$paquete_id} tiene planilla, pero no tiene cliente asociado");
-                } else {
-                    Log::info("Paquete {$paquete_id} OK: Cliente ID " . $paquete->planilla->cliente_id);
-                    $uniqueClientIds[$paquete->planilla->cliente_id] = true;
+                    continue;
+                }
+                if (!$paquete->planilla->obra) {
+                    Log::info("Paquete {$paquete_id} tiene planilla, pero no tiene obra asociada");
+                    continue;
+                }
+
+                $cliente_id = $paquete->planilla->cliente_id;
+                $obra_id = $paquete->planilla->obra->id;
+                // Usamos una clave compuesta para evitar duplicados
+                $clave = $cliente_id . '_' . $obra_id;
+                // Solo se añade si no existe ya
+                if (!isset($pivotData[$clave])) {
+                    $pivotData[$clave] = [
+                        'salida_id'            => $salida->id,
+                        'cliente_id'           => $cliente_id,
+                        'obra_id'              => $obra_id,
+                        'horas_paralizacion'   => 0,
+                        'importe_paralizacion' => 0,
+                        'horas_grua'           => 0,
+                        'importe_grua'         => 0,
+                        'horas_almacen'        => 0,
+                        'importe'              => 0,
+                        'created_at'           => now(),
+                        'updated_at'           => now(),
+                    ];
                 }
             }
 
-            $clientIds = array_keys($uniqueClientIds);
-            Log::info('Unique client IDs: ' . implode(', ', $clientIds));
-
-            // Si se han obtenido clientes, asociarlos en la tabla pivote salida_cliente
-            if (!empty($clientIds)) {
-                $salida->clientes()->attach($clientIds, [
-                    'horas_paralizacion'   => 0,
-                    'importe_paralizacion' => 0,
-                    'horas_grua'           => 0,
-                    'importe_grua'         => 0,
-                    'horas_almacen'        => 0,
-                    'importe'              => 0,
-                ]);
+            // Insertar en la tabla pivote salida_cliente
+            if (!empty($pivotData)) {
+                DB::table('salida_cliente')->insert(array_values($pivotData));
             } else {
-                Log::warning('No se encontraron clientes para asociar a la salida.');
+                Log::warning('No se encontraron combinaciones de cliente y obra para asociar a la salida.');
             }
-
 
             return redirect()->route('salidas.index')->with('success', 'Salida creada con éxito');
         } catch (\Exception $e) {
