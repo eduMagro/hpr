@@ -24,7 +24,8 @@ class AlertaController extends Controller
         if ($usuario->categoria !== 'programador') {
             $query->where(function ($q) use ($usuario) {
                 $q->where('destino', $usuario->rol)
-                    ->orWhere('destinatario', $usuario->categoria);
+                    ->orWhere('destinatario', $usuario->categoria)
+                    ->orWhere('destinatario_id', $usuario->id);
             });
         } elseif (request()->filled('categoria') && request('categoria') !== 'todos') {
             // Si el administrador ha seleccionado un destinatario específico
@@ -88,19 +89,28 @@ class AlertaController extends Controller
             $categorias = User::distinct()->pluck('categoria')->filter()->values();
             // Obtener todos los usuarios para el select del modal (puedes ajustar el orden o el filtro según necesites)
             $usuarios = User::orderBy('name')->get();
-            // Obtener TODAS las alertas no leídas antes de aplicar paginación
-            $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
-                $q->where('user_id', $usuario->id);
-            })
-                ->when($usuario->categoria !== 'programador', function ($q) use ($usuario) {
-                    $q->where(function ($query) use ($usuario) {
-                        $query->where('destino', $usuario->rol)
-                            ->orWhere('destinatario', $usuario->categoria)
-                            ->orWhere('destinatario_id', $usuario->id);
-                    });
+            if ($usuario->categoria === 'programador') {
+                // Los programadores ven todas las alertas (menos las que ya han leído)
+                $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
+                    $q->where('user_id', $usuario->id);
                 })
-                ->orderBy('created_at', 'desc')
-                ->get();
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+            } else {
+                // Los demás usuarios ven alertas donde:
+                // - el destinatario_id es su ID, o
+                // - la alerta está dirigida a su rol o categoría
+                $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
+                    $q->where('user_id', $usuario->id);
+                })
+                    ->where(function ($query) use ($usuario) {
+                        $query->where('destinatario_id', $usuario->id)
+                            ->orWhere('destino', $usuario->rol)
+                            ->orWhere('destinatario', $usuario->categoria);
+                    })
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+            }
 
             // Registrar la lectura SOLO para las alertas que cumplen la condición de destinatario destino o destinatario_id
             foreach ($alertasNoLeidas as $alerta) {
