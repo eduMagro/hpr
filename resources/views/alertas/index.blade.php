@@ -75,6 +75,17 @@
                                 </select>
                             </div>
 
+                            <div class="mb-4">
+                                <label for="destinatario_id" class="block text-sm font-semibold">Destinatario
+                                    Específico</label>
+                                <select id="destinatario_id" name="destinatario_id" class="w-full border rounded-lg p-2"
+                                    x-model="destinatario_id" @change="rol = ''; categoria = ''">
+                                    <option value="">-- Seleccionar un Usuario --</option>
+                                    @foreach ($usuarios as $usuario)
+                                        <option value="{{ $usuario->id }}">{{ $usuario->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <!-- Botones -->
                             <div class="flex justify-end space-x-2">
                                 <button type="button" @click="mostrarModal = false"

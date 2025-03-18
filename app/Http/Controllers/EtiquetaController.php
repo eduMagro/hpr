@@ -180,7 +180,7 @@ class etiquetaController extends Controller
                                         'mensaje'      => "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
                                         'destinatario_id' => $gruista->id, // El destinatario es el gruista en turno
                                         'user_id_1'    => Auth::id(),   // Emisor de la alerta
-                                        'user_id_2'    => null,         // No se asigna compañero en este caso
+                                        'user_id_2'    => session()->get('compañero_id', null),
                                         'leida'        => false,
                                     ]);
                                 }

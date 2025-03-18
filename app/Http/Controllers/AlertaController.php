@@ -86,7 +86,8 @@ class AlertaController extends Controller
             // Obtener todos los roles y categorías únicas desde la tabla users
             $roles = User::distinct()->pluck('rol')->filter()->values();
             $categorias = User::distinct()->pluck('categoria')->filter()->values();
-
+            // Obtener todos los usuarios para el select del modal (puedes ajustar el orden o el filtro según necesites)
+            $usuarios = User::orderBy('name')->get();
             // Obtener TODAS las alertas no leídas antes de aplicar paginación
             $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
                 $q->where('user_id', $usuario->id);
@@ -114,7 +115,7 @@ class AlertaController extends Controller
 
             DB::commit();
 
-            return view('alertas.index', compact('alertas', 'alertasNoLeidas', 'roles', 'categorias'));
+            return view('alertas.index', compact('alertas', 'alertasNoLeidas', 'roles', 'categorias', 'usuarios'));
         } catch (Exception $e) {
             DB::rollBack();
             return redirect()->route('alertas.index')->with('error', 'Ocurrió un error al cargar las alertas.');
@@ -147,52 +148,81 @@ class AlertaController extends Controller
     }
     public function store(Request $request)
     {
-
-        // Validar los datos de la alerta asegurando que SOLO uno (rol o categoría) sea seleccionado
+        // Validar que se proporcione solo un destino: rol, categoría o destinatario_id
         $request->validate([
             'mensaje' => 'required|string',
             'rol' => [
                 'nullable',
                 'string',
                 function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($value) && !empty($request->categoria)) {
-                        $fail('No puedes seleccionar tanto destino como destinatario. Debes elegir solo uno.');
+                    if (!empty($value) && (!empty($request->categoria) || !empty($request->destinatario_id))) {
+                        $fail('No puedes seleccionar más de un destino. Elige solo uno entre rol, categoría o destinatario específico.');
                     }
                 }
             ],
             'categoria' => [
                 'nullable',
                 'string',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!empty($value) && (!empty($request->rol) || !empty($request->destinatario_id))) {
+                        $fail('No puedes seleccionar más de un destino. Elige solo uno entre rol, categoría o destinatario específico.');
+                    }
+                }
+            ],
+            'destinatario_id' => [
+                'nullable',
+                'integer',
+                'exists:users,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if (!empty($value) && (!empty($request->rol) || !empty($request->categoria))) {
+                        $fail('No puedes seleccionar un destinatario específico y además otro destino (rol o categoría).');
+                    }
+                }
             ],
         ], [
             'mensaje.required' => 'El mensaje es obligatorio.',
-            'rol.max' => 'Máximo 255 caracteres',
-            'categoria.max' => 'Máximo 255 caracteres',
+            'rol.string' => 'El rol debe ser una cadena de caracteres.',
+            'categoria.string' => 'La categoría debe ser una cadena de caracteres.',
+            'destinatario_id.integer' => 'El destinatario debe ser un número entero.',
+            'destinatario_id.exists' => 'El destinatario seleccionado no existe en la base de datos.',
         ]);
 
-        // Verificar que al menos uno (destino o destinatario) esté presente
-        if (empty($request->rol) && empty($request->categoria)) {
-
-            return redirect()->back()->with(['error' => 'Debes elegir un destino o un destinatario'], 500);
+        // Verificar que se haya seleccionado al menos un destino
+        if (empty($request->rol) && empty($request->categoria) && empty($request->destinatario_id)) {
+            return redirect()->back()->with(['error' => 'Debes elegir un destino: rol, categoría o destinatario específico.'], 500);
         }
 
         try {
-            // Crear una nueva alerta
-            Alerta::create([
-                'mensaje' => $request->mensaje,
-                'destino' => $request->rol,
-                'destinatario' => $request->categoria,
-
+            // Preparar los datos base de la alerta
+            $data = [
+                'mensaje'   => $request->mensaje,
                 'user_id_1' => Auth::id(),
                 'user_id_2' => session()->get('companero_id', null),
-                'leida' => false,
-            ]);
+                'leida'     => false,
+            ];
+
+            // Dependiendo del destino seleccionado, asignar los campos correspondientes.
+            if (!empty($request->rol)) {
+                $data['destino'] = $request->rol;
+                $data['destinatario'] = null;
+                $data['destinatario_id'] = null;
+            } elseif (!empty($request->categoria)) {
+                $data['destinatario'] = $request->categoria;
+                $data['destino'] = null;
+                $data['destinatario_id'] = null;
+            } elseif (!empty($request->destinatario_id)) {
+                $data['destinatario_id'] = $request->destinatario_id;
+                $data['destino'] = null;
+                $data['destinatario'] = null;
+            }
+
+            // Crear la alerta con los datos preparados
+            Alerta::create($data);
 
             return redirect()->back()->with('success', 'Alerta enviada correctamente.');
         } catch (ValidationException $e) {
-            return redirect()->back()
-                ->withErrors($e->errors());
-        } catch (Exception $e) {
+            return redirect()->back()->withErrors($e->errors());
+        } catch (\Exception $e) {
             return redirect()->back()->with(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }
     }
