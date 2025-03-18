@@ -1,25 +1,22 @@
 <x-app-layout>
-    <x-slot name="title">Salida #{{ $salida->id }} - {{ config('app.name') }}</x-slot>
+    <x-slot name="title">{{ $salida->codigo_salida }} - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             <a href="{{ route('salidas.index') }}" class="text-blue-600">
                 {{ __('Salidas') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Detalles de la Salida') }} #{{ $salida->id }}
-        </h2>
+            {{ __('Detalles de la Salida') }} {{ $salida->codigo_salida }}
     </x-slot>
 
     <div class="container mx-auto p-6">
         <!-- Detalles de la salida -->
         <div class="bg-white shadow-lg rounded-lg p-6">
             <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center">
-                    <label class="font-semibold text-lg text-gray-800">
-                        {{ $salida->codigo_salida }}
-                    </label>
-                </div>
-                <span class="text-sm text-gray-600">Fecha: {{ $salida->created_at->format('d/m/Y H:i') }}</span>
+                <span class="text-sm text-gray-600">Fecha Estimada Entrega:
+                    {{ $salida->created_at->format('d/m/Y H:i') }}</span>
+                <span class="text-sm text-gray-600">Fecha Creación Salida:
+                    {{ $salida->created_at->format('d/m/Y H:i') }}</span>
             </div>
 
             <p class="text-gray-700 mt-2">Empresa Transporte: <span
@@ -27,19 +24,32 @@
 
             <p class="text-gray-700 mt-2"> </span>Camión: <span
                     class="font-semibold text-gray-800">{{ $salida->camion->modelo }}
-                    - {{ $salida->camion->matricula }}</span></p>
+                </span></p>
 
             <h3 class="font-semibold text-md text-gray-800 mt-4">Paquetes Asociados:</h3>
-            <div class="space-y-2 mt-2">
-                @foreach ($salida->paquetes as $paquete)
-                    <div class="flex items-center border-b pb-2">
-                        <span class="text-gray-900 font-medium">{{ $paquete->planilla->codigo_limpio }} - </span>
-                        <span class="text-gray-700">Paquete #{{ $paquete->id }} - Peso: {{ $paquete->peso }}
-                            kg</span>
-                        <button onclick="mostrarDibujo({{ $paquete->id }})"
-                            class="text-blue-500 hover:underline ml-2">
-                            Ver
-                        </button>
+            <div class="space-y-4 mt-2">
+                @foreach ($groupedPackagesFormatted as $grupo)
+                    <div class="bg-gray-100 p-2 rounded">
+                        <h4 class="font-semibold text-lg">
+                            Cliente: {{ $grupo['cliente'] }} / Obra: {{ $grupo['obra'] }}
+                        </h4>
+                    </div>
+
+                    <div class="space-y-2">
+                        @foreach ($grupo['paquetes'] as $paquete)
+                            <div class="flex items-center border-b pb-2">
+                                <span class="text-gray-900 font-medium">
+                                    {{ $paquete->planilla->codigo_limpio }} -
+                                </span>
+                                <span class="text-gray-700">
+                                    Paquete #{{ $paquete->id }} - Peso: {{ $paquete->peso }} kg
+                                </span>
+                                <button onclick="mostrarDibujo({{ $paquete->id }})"
+                                    class="text-blue-500 hover:underline ml-2">
+                                    Ver
+                                </button>
+                            </div>
+                        @endforeach
                     </div>
                 @endforeach
             </div>

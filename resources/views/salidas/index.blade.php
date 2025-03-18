@@ -47,7 +47,7 @@
                                     <th class="py-2 px-4 border-b">Importe Grua</th>
                                     <th class="py-2 px-4 border-b">Horas Almacén</th>
                                     <th class="py-2 px-4 border-b">Importe</th>
-                                    <th class="py-2 px-4 border-b">Fecha</th>
+                                    <th class="py-2 px-4 border-b">Fecha Estimada Entrega</th>
                                     <th class="py-2 px-4 border-b">Estado</th>
                                     <th class="py-2 px-4 border-b">Acciones</th>
                                 </tr>
@@ -101,12 +101,19 @@
                                                 data-obra="{{ $registro->obra->id }}" data-field="importe">
                                                 {{ number_format($registro->importe, 2) }}
                                             </td>
-                                            <td class="py-2 px-4 border-b">
+                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}" data-field="fecha_salida">
                                                 {{ $salida->fecha_salida ?? 'Sin fecha' }}
                                             </td>
-                                            <td class="py-2 px-4 border-b">
+                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}" data-field="estado">
                                                 {{ ucfirst($salida->estado) }}
                                             </td>
+
                                             <td class="py-2 px-4 border-b">
                                                 <a href="{{ route('salidas.show', $salida->id) }}"
                                                     class="text-blue-600 hover:text-blue-800">Ver</a>
@@ -155,7 +162,8 @@
                                                 data-resumen-field="importe_paralizacion">
                                                 {{ number_format($data['importe_paralizacion'] ?? 0, 2) }} €
                                             </td>
-                                            <td class="py-2 px-4 border-b text-center" data-resumen-field="horas_grua">
+                                            <td class="py-2 px-4 border-b text-center"
+                                                data-resumen-field="horas_grua">
                                                 {{ $data['horas_grua'] ?? 0 }}
                                             </td>
                                             <td class="py-2 px-4 border-b text-right"
@@ -277,52 +285,79 @@
     <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
     <script>
         window.paquetes = @json($paquetes);
+
+        window.canEdit = @json(auth()->user()->categoria === 'programador' || strtolower(auth()->user()->name) === 'Alberto Mayo Martin');
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+
+            // Formatea las celdas editables en cuanto la página carga
             const editableCells = document.querySelectorAll('.editable');
 
+            // Si no se tiene permiso, remover contenteditable de todas las celdas
+            if (!window.canEdit) {
+                editableCells.forEach(cell => {
+                    cell.removeAttribute('contenteditable');
+                });
+                return; // No se agrega ningún listener
+            }
+
             editableCells.forEach(cell => {
-                // Detectar "Enter" para guardar y salir
+                const field = cell.dataset.field;
+                // Si el campo es numérico (monetario o de horas), se formatea
+                if (esCampoMonetario(field) || esCampoHoras(field)) {
+                    // Se extrae el valor sin sufijos para asegurarse
+                    let rawValue = cell.innerText.trim().replace(/[€h]/g, '').trim();
+                    let numericValue = parseFloat(rawValue) || 0;
+                    cell.innerText = formatearValor(field, numericValue);
+                }
+            });
+            editableCells.forEach(cell => {
+                // Interceptar "Enter" para evitar salto de línea y forzar blur
                 cell.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        cell.blur();
+                        this.blur();
                     }
                 });
-
-                // Detectar cambio de valor y actualizar en tiempo real
                 cell.addEventListener('blur', function() {
                     const id = this.dataset.id;
                     const clienteId = this.dataset.cliente;
                     const obraId = this.dataset.obra;
                     const field = this.dataset.field;
-                    let value = this.innerText.trim();
+                    // Remover símbolos de € y h para obtener el valor limpio
+                    let rawValue = this.innerText.trim().replace(/[€h]/g, '').trim();
 
-                    // 🔹 Si es una fecha con hora, formatearla correctamente
+                    // Formateo específico para fecha y estado
+                    let value;
                     if (field === 'fecha_salida') {
-                        value = convertirFechaHora(value);
+                        value = convertirFechaHora(rawValue);
                         if (!value) {
-                            alert(
-                                "Formato de fecha inválido. Usa DD/MM/YYYY HH:MM o YYYY-MM-DD HH:MM:SS."
-                            );
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error al actualizar",
+                                html: "Formato de fecha inválido. Usa DD/MM/YYYY HH:MM o YYYY-MM-DD HH:MM:SS.",
+                                confirmButtonText: "OK"
+                            });
                             return;
                         }
-                    }
-                    // 🔹 Si es el estado, asegurarnos de que es un string válido
-                    else if (field === 'estado') {
-                        value = value.charAt(0).toUpperCase() + value.slice(1)
-                            .toLowerCase(); // Capitalizar la primera letra
+                    } else if (field === 'estado') {
+                        value = rawValue.charAt(0).toUpperCase() + rawValue.slice(1).toLowerCase();
                         if (!value) {
-                            alert("El estado no puede estar vacío.");
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error al actualizar",
+                                html: "El estado no puede estar vacío",
+                                confirmButtonText: "OK"
+                            });
                             return;
                         }
-                    }
-                    // 🔹 Si es un número, asegurarse de que se envía correctamente
-                    else {
-                        value = parseFloat(value) || 0;
+                    } else {
+                        // Para los campos numéricos, obtener valor numérico
+                        value = parseFloat(rawValue) || 0;
                     }
 
+                    // Enviar actualización
                     fetch(`/salidas/${id}`, {
                             method: 'PUT',
                             headers: {
@@ -342,11 +377,13 @@
                         .then(data => {
                             if (data.success) {
                                 console.log('Actualizado correctamente');
+                                // Reaplicar formato solo para campos numéricos
                                 if (field !== 'fecha_salida' && field !== 'estado') {
+                                    // Actualizamos la celda con el valor formateado
+                                    this.innerText = formatearValor(field, value);
                                     actualizarResumen(clienteId, field, value);
                                 } else {
-                                    this.innerText =
-                                        value; // 🔹 Asegurar que se muestre correctamente en la tabla
+                                    this.innerText = value;
                                 }
                             } else {
                                 console.error('Error al actualizar', data.message);
@@ -361,6 +398,7 @@
                         .catch(error => console.error('Error:', error));
                 });
             });
+
             /**
              * 🔹 Actualiza el resumen de clientes cuando cambia un valor en la tabla de salidas.
              */
@@ -415,27 +453,21 @@
                 }
             }
 
-            /**
-             * 🔹 Comprueba si el campo es monetario o de horas.
-             */
-            function esCampoMonetario(field) {
-                return ['importe_paralizacion', 'importe_grua', 'importe'].includes(field);
-            }
-
-            function esCampoHoras(field) {
-                return ['horas_paralizacion', 'horas_grua', 'horas_almacen'].includes(field);
-            }
-
-            /**
-             * 🔹 Formatea correctamente el valor dependiendo de si es dinero o tiempo.
-             */
             function formatearValor(field, value) {
                 if (esCampoMonetario(field)) {
                     return `${parseFloat(value).toFixed(2)} €`;
                 } else if (esCampoHoras(field)) {
                     return `${parseFloat(value).toFixed(2)} h`;
                 }
-                return value; // Para otros valores
+                return value;
+            }
+
+            function esCampoMonetario(field) {
+                return ['importe_paralizacion', 'importe_grua', 'importe'].includes(field);
+            }
+
+            function esCampoHoras(field) {
+                return ['horas_paralizacion', 'horas_grua', 'horas_almacen'].includes(field);
             }
 
             /**

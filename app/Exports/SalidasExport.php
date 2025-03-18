@@ -22,30 +22,28 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
 
     public function collection()
     {
-        $numColumns = 14; // Número total de columnas en la tabla principal
+        $numColumns = 13; // Número total de columnas en la tabla principal (13 en este caso)
 
-        // 🔹 Generar las filas principales de la tabla de salidas
+        // 🔹 Generar las filas principales de la tabla de salidas usando la relación salidaClientes
         $mainRows = $this->salidas->flatMap(function ($salida) {
-            return $salida->clientes->map(function ($cliente) use ($salida) {
-                // 🔹 Asegurar que `obrasUnicas` es una colección válida
-                $obras = collect($cliente->obrasUnicas ?? []);
-                $obrasTexto = $obras->isNotEmpty() ? $obras->implode(', ') : 'N/A';
-
-                // 🔹 Asegurar que `empresaTransporte` no sea null
+            return $salida->salidaClientes->map(function ($registro) use ($salida) {
+                // Obtenemos el cliente y la obra desde el registro pivote
+                $clienteNombre = $registro->cliente->empresa ?? 'Sin Cliente';
+                $obraNombre    = $registro->obra->obra ?? 'Sin Obra';
                 $empresaTransporte = $salida->empresaTransporte->nombre ?? 'Desconocida';
 
                 return [
                     $salida->codigo_salida,
-                    $cliente->empresa, // Cliente
-                    $obrasTexto, // Obras únicas del cliente
-                    $empresaTransporte, // Empresa de transporte
+                    $clienteNombre,
+                    $obraNombre,
+                    $empresaTransporte,
                     $salida->camion->modelo . ' - ' . $salida->camion->matricula,
-                    $cliente->pivot->horas_paralizacion ?? 0,
-                    number_format($cliente->pivot->importe_paralizacion ?? 0, 2) . ' €',
-                    $cliente->pivot->horas_grua ?? 0,
-                    number_format($cliente->pivot->importe_grua ?? 0, 2) . ' €',
-                    $cliente->pivot->horas_almacen ?? 0,
-                    number_format($cliente->pivot->importe ?? 0, 2) . ' €',
+                    $registro->horas_paralizacion ?? 0,
+                    number_format($registro->importe_paralizacion ?? 0, 2) . ' €',
+                    $registro->horas_grua ?? 0,
+                    number_format($registro->importe_grua ?? 0, 2) . ' €',
+                    $registro->horas_almacen ?? 0,
+                    number_format($registro->importe ?? 0, 2) . ' €',
                     $salida->fecha_salida ?? 'Sin fecha',
                     ucfirst($salida->estado),
                 ];
@@ -59,8 +57,8 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
             'Empresa de Transporte',
             'Horas Paralización',
             'Importe Paralización',
-            'Horas Grúa',
-            'Importe Grúa',
+            'Horas Grua',
+            'Importe Grua',
             'Horas Almacén',
             'Importe',
             'Total Empresa'
@@ -72,15 +70,15 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                 $empresa,
                 $data['horas_paralizacion'] ?? 0,
                 number_format($data['importe_paralizacion'] ?? 0, 2) . ' €',
-                number_format($data['horas_grua'] ?? 0, 2),
+                $data['horas_grua'] ?? 0,
                 number_format($data['importe_grua'] ?? 0, 2) . ' €',
-                number_format($data['horas_almacen'] ?? 0, 2),
+                $data['horas_almacen'] ?? 0,
                 number_format($data['importe'] ?? 0, 2) . ' €',
                 number_format($data['total'] ?? 0, 2) . ' €'
             ], $numColumns, '');
         }
 
-        // 🔹 Combinar la tabla de salidas con el resumen
+        // 🔹 Combinar la tabla principal con el resumen
         $allRows = array_merge($mainRows, [$blankRow, $titleRow, $summaryHeader], $summaryRows);
 
         return collect($allRows);
@@ -111,7 +109,7 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
 
-                // 🔹 Definir estilo de cabecera (fondo azul claro y negrita)
+                // 🔹 Estilo de la cabecera principal: fondo azul claro y negrita
                 $headerStyle = [
                     'font' => [
                         'bold'  => true,
@@ -123,18 +121,22 @@ class SalidasExport implements FromCollection, WithHeadings, WithEvents
                     ],
                 ];
 
-                // 🔹 Aplicar estilo a la cabecera principal
+                // 🔹 Aplicar estilo a la cabecera principal (A1:M1)
                 $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
 
-                // 🔹 Calcular fila del título del resumen
-                $mainRowsCount = count($this->salidas) + 2; // Sumamos la cabecera y el espacio en blanco
-                $summaryTitleRow = $mainRowsCount + 1;
+                // 🔹 Calcular la fila del título del resumen
+                // Se asume que hay 1 fila de cabecera + las filas generadas por las salidas
+                $mainRowsCount = count($this->salidas->flatMap(function ($salida) {
+                    return $salida->salidaClientes;
+                })) + 1;
+                $blankRowNum = $mainRowsCount + 1;
+                $summaryTitleRow = $blankRowNum + 1;
                 $summaryHeaderRow = $summaryTitleRow + 1;
 
                 // 🔹 Aplicar negrita al título del resumen
                 $sheet->getStyle("A{$summaryTitleRow}")->applyFromArray(['font' => ['bold' => true]]);
 
-                // 🔹 Aplicar negrita al encabezado del resumen por empresa de transporte
+                // 🔹 Aplicar estilo al encabezado del resumen por empresa
                 $sheet->getStyle("A{$summaryHeaderRow}:H{$summaryHeaderRow}")->applyFromArray([
                     'font' => ['bold' => true],
                     'fill' => [

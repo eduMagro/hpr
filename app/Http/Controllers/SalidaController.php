@@ -101,11 +101,35 @@ class SalidaController extends Controller
         // Obtener la salida con su ID
         $salida = Salida::findOrFail($id);
 
-        // Obtener los paquetes asociados con los elementos y subpaquetes
-        $paquetes = $salida->paquetes()->with(['elementos', 'subpaquetes'])->get();
+        // Obtener los paquetes asociados con los elementos, subpaquetes y la planilla (incluyendo cliente y obra)
+        $paquetes = $salida->paquetes()->with([
+            'elementos',
+            'subpaquetes',
+            'planilla.cliente',
+            'planilla.obra'
+        ])->get();
 
-        // Pasar la salida y los paquetes a la vista
-        return view('salidas.show', compact('salida', 'paquetes'));
+        // Agrupar los paquetes por combinación de cliente y obra
+        $groupedPackages = $paquetes->groupBy(function ($paquete) {
+            // Obtenemos el nombre del cliente y la obra, o asignamos un valor por defecto
+            $clienteName = $paquete->planilla->cliente->empresa ?? 'Sin Cliente';
+            $obraName = $paquete->planilla->obra->obra ?? 'Sin Obra';
+            return $clienteName . '|' . $obraName;
+        });
+
+        // Opcional: formatear el agrupamiento para facilitar el uso en la vista
+        $groupedPackagesFormatted = [];
+        foreach ($groupedPackages as $key => $group) {
+            list($clienteName, $obraName) = explode('|', $key);
+            $groupedPackagesFormatted[] = [
+                'cliente'  => $clienteName,
+                'obra'     => $obraName,
+                'paquetes' => $group,
+            ];
+        }
+
+        // Pasar la salida, los paquetes y el agrupamiento formateado a la vista
+        return view('salidas.show', compact('salida', 'paquetes', 'groupedPackagesFormatted'));
     }
 
     public function actualizarEstado(Request $request, $salidaId)
@@ -324,7 +348,7 @@ class SalidaController extends Controller
             // Si el campo es 'fecha_salida', formatear la fecha correctamente
             if ($field === 'fecha_salida' && !empty($value)) {
                 try {
-                    $value = \Carbon\Carbon::parse($value)->format('Y-m-d');
+                    $value = Carbon::parse($value)->format('Y-m-d');
                 } catch (\Exception $e) {
                     return response()->json([
                         'success' => false,
@@ -337,7 +361,6 @@ class SalidaController extends Controller
             if (in_array($field, $salidaFields)) {
                 $salida->$field = $value;
                 $salida->save();
-                \Log::info("Salida {$salida->id} actualizada: {$field} -> {$value}");
             }
             // **Actualizar en la tabla 'salida_cliente'**
             elseif (in_array($field, $salidaClienteFields)) {
@@ -355,13 +378,6 @@ class SalidaController extends Controller
                     ->where('cliente_id', $clienteId)
                     ->where('obra_id', $obraId)
                     ->update([$field => $value]);
-
-                if (!$updated) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'No se encontró el registro en salida_cliente para actualizar.'
-                    ], 404);
-                }
             }
 
             return response()->json([
@@ -387,18 +403,18 @@ class SalidaController extends Controller
     public function export($mes)
     {
         $meses = [
-            'enero' => 'January',
-            'febrero' => 'February',
-            'marzo' => 'March',
-            'abril' => 'April',
-            'mayo' => 'May',
-            'junio' => 'June',
-            'julio' => 'July',
-            'agosto' => 'August',
+            'enero'      => 'January',
+            'febrero'    => 'February',
+            'marzo'      => 'March',
+            'abril'      => 'April',
+            'mayo'       => 'May',
+            'junio'      => 'June',
+            'julio'      => 'July',
+            'agosto'     => 'August',
             'septiembre' => 'September',
-            'octubre' => 'October',
-            'noviembre' => 'November',
-            'diciembre' => 'December',
+            'octubre'    => 'October',
+            'noviembre'  => 'November',
+            'diciembre'  => 'December',
         ];
 
         try {
@@ -415,15 +431,22 @@ class SalidaController extends Controller
 
             // 🔹 Extraer el año de la variable `$mes`
             preg_match('/(\d{4})/', $mes, $yearMatch);
-            $anio = $yearMatch[1] ?? Carbon::now()->year;
+            $anio = $yearMatch[1] ?? \Carbon\Carbon::now()->year;
 
             // 🔹 Obtener el número del mes con Carbon
-            $numeroMes = Carbon::parse("1 $mesIngles")->month;
+            $numeroMes = \Carbon\Carbon::parse("1 $mesIngles")->month;
 
-            // 🔹 Obtener salidas con sus relaciones
-            $salidas = Salida::whereMonth('fecha_salida', $numeroMes)
+            // 🔹 Obtener salidas con sus relaciones, usando la nueva relación salidaClientes
+            $salidas = \App\Models\Salida::whereMonth('fecha_salida', $numeroMes)
                 ->whereYear('fecha_salida', $anio)
-                ->with(['clientes', 'empresaTransporte', 'camion', 'paquetes.planilla.obra'])
+                ->with([
+                    'salidaClientes.cliente',
+                    'salidaClientes.obra',
+                    'empresaTransporte',
+                    'camion',
+                    // Si necesitas datos de paquetes también
+                    'paquetes.planilla.obra'
+                ])
                 ->get();
 
             if ($salidas->isEmpty()) {
@@ -434,53 +457,45 @@ class SalidaController extends Controller
             $empresaSummary = [];
 
             foreach ($salidas as $salida) {
-                $empresa = $salida->empresaTransporte; // 🔹 Relación belongsTo (único objeto)
-
-                // 🔹 Validar que la empresa existe antes de continuar
+                $empresa = $salida->empresaTransporte; // Relación belongsTo (único objeto)
                 if (!$empresa) {
                     continue;
                 }
-
                 $nombreEmpresa = trim($empresa->nombre) ?: "Empresa desconocida";
 
                 if (!isset($empresaSummary[$nombreEmpresa])) {
                     $empresaSummary[$nombreEmpresa] = [
-                        'obras' => collect(),
+                        'obras'              => collect(),
                         'horas_paralizacion' => 0,
                         'importe_paralizacion' => 0,
-                        'horas_grua' => 0,
-                        'importe_grua' => 0,
-                        'horas_almacen' => 0,
-                        'importe' => 0,
-                        'total' => 0,
+                        'horas_grua'         => 0,
+                        'importe_grua'       => 0,
+                        'horas_almacen'      => 0,
+                        'importe'            => 0,
+                        'total'              => 0,
                     ];
                 }
 
-                // 🔹 Obtener las obras relacionadas con la empresa de transporte
-                $obrasEmpresa = $salida->paquetes
-                    ->where('planilla.cliente_id', $empresa->id) // 🔹 Verificar si planilla tiene cliente_id
-                    ->pluck('planilla.obra.obra')
+                // 🔹 Obtener las obras de la salida a través de la relación salidaClientes
+                $obrasEmpresa = $salida->salidaClientes
+                    ->pluck('obra.obra')
                     ->unique()
                     ->filter()
                     ->values();
 
-                // 🔹 Acumular las obras de la empresa
                 $empresaSummary[$nombreEmpresa]['obras'] = $empresaSummary[$nombreEmpresa]['obras']
                     ->merge($obrasEmpresa)
                     ->unique();
 
-                // 🔹 Acumular valores de los clientes relacionados
-                foreach ($salida->clientes as $cliente) {
-                    if (!isset($cliente->pivot)) {
-                        continue; // 🔹 Evitar errores si no hay datos en pivot
-                    }
-
-                    $empresaSummary[$nombreEmpresa]['horas_paralizacion'] += $cliente->pivot->horas_paralizacion ?? 0;
-                    $empresaSummary[$nombreEmpresa]['importe_paralizacion'] += $cliente->pivot->importe_paralizacion ?? 0;
-                    $empresaSummary[$nombreEmpresa]['horas_grua'] += $cliente->pivot->horas_grua ?? 0;
-                    $empresaSummary[$nombreEmpresa]['importe_grua'] += $cliente->pivot->importe_grua ?? 0;
-                    $empresaSummary[$nombreEmpresa]['horas_almacen'] += $cliente->pivot->horas_almacen ?? 0;
-                    $empresaSummary[$nombreEmpresa]['importe'] += $cliente->pivot->importe ?? 0;
+                // 🔹 Acumular valores desde la relación salidaClientes
+                foreach ($salida->salidaClientes as $registro) {
+                    // Se asume que cada registro tiene los campos de horas e importes
+                    $empresaSummary[$nombreEmpresa]['horas_paralizacion'] += $registro->horas_paralizacion ?? 0;
+                    $empresaSummary[$nombreEmpresa]['importe_paralizacion'] += $registro->importe_paralizacion ?? 0;
+                    $empresaSummary[$nombreEmpresa]['horas_grua'] += $registro->horas_grua ?? 0;
+                    $empresaSummary[$nombreEmpresa]['importe_grua'] += $registro->importe_grua ?? 0;
+                    $empresaSummary[$nombreEmpresa]['horas_almacen'] += $registro->horas_almacen ?? 0;
+                    $empresaSummary[$nombreEmpresa]['importe'] += $registro->importe ?? 0;
                 }
 
                 // 🔹 Calcular el total de la empresa
@@ -495,7 +510,7 @@ class SalidaController extends Controller
                 $data['obras'] = $data['obras']->implode(', ');
             }
 
-            return Excel::download(new SalidasExport($salidas, $empresaSummary), "salidas_{$mesSolo}_{$anio}.xlsx");
+            return \Excel::download(new \App\Exports\SalidasExport($salidas, $empresaSummary), "salidas_{$mesSolo}_{$anio}.xlsx");
         } catch (\Exception $e) {
             return redirect()->route('salidas.index')->with('error', 'Hubo un problema al exportar las salidas: ' . $e->getMessage());
         }
