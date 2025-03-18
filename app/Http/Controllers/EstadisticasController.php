@@ -131,13 +131,14 @@ class EstadisticasController extends Controller
     {
         return $salidasPaquetes->groupBy(function ($salidaPaquete) {
             $planilla = $salidaPaquete->paquete->planilla;
-            return $planilla ? $planilla->nom_obra : 'Sin obra asociada';
+            return $planilla && $planilla->obra ? $planilla->obra->obra : 'Sin obra asociada';
         })->map(function ($salidas) {
             return $salidas->sum(function ($salidaPaquete) {
                 return $salidaPaquete->paquete->peso;
             });
         });
     }
+
     // ---------------------------------------------------------------- Estadisticas de usuarios
     private function getPesoPorPlanillero()
     {
