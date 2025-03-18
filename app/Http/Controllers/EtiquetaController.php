@@ -8,6 +8,7 @@ use App\Models\Planilla;
 use App\Models\Etiqueta;
 use App\Models\Ubicacion;
 use App\Models\Alerta;
+use App\Models\AsignacionTurno;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -162,19 +163,25 @@ class etiquetaController extends Controller
                         $stockTotal = $productosPorDiametro->sum('peso_stock');
 
                         if ($stockTotal < $pesoNecesario) {
-                            // Acumular el mensaje de alerta
-                            $warnings[] = "El stock para el  {$diametro} es insuficiente. Avisaremos a los gruistas.";
+                            // Acumular el mensaje de alerta para el log
+                            $warnings[] = "El stock para el {$diametro} es insuficiente. Avisaremos a los gruistas en turno.";
 
-                            // Lógica para obtener TODOS los usuarios gruistas y generar una alerta para cada uno
-                            $gruistas = User::where('categoria', 'gruista')->get();
-                            if ($gruistas->isNotEmpty()) {
-                                foreach ($gruistas as $gruista) {
+                            // Obtener solo los gruistas que tienen asignado turno en la fecha actual
+                            $gruistasEnTurno = User::where('categoria', 'gruista')
+                                ->whereHas('asignacionesTurnos', function ($query) {
+                                    $query->where('fecha', Carbon::now()->toDateString());
+                                })
+                                ->get();
+
+                            // Si existen gruistas en turno, se crea una alerta por cada uno
+                            if ($gruistasEnTurno->isNotEmpty()) {
+                                foreach ($gruistasEnTurno as $gruista) {
                                     Alerta::create([
-                                        'mensaje' => "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
-                                        'destinatario' => 'gruista',   // Puedes ajustar este campo según tu lógica de negocio
-                                        'user_id_1' => Auth::id(),  // Usuario que genera la alerta
-                                        'user_id_2' => $gruista->id, // Usuario destinatario (gruista)
-                                        'leida' => false,       // Se marca como no leída por defecto
+                                        'mensaje'      => "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
+                                        'destinatario_id' => $gruista->id, // El destinatario es el gruista en turno
+                                        'user_id_1'    => Auth::id(),   // Emisor de la alerta
+                                        'user_id_2'    => null,         // No se asigna compañero en este caso
+                                        'leida'        => false,
                                     ]);
                                 }
                             }

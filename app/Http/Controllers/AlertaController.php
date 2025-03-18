@@ -94,7 +94,8 @@ class AlertaController extends Controller
                 ->when($usuario->categoria !== 'programador', function ($q) use ($usuario) {
                     $q->where(function ($query) use ($usuario) {
                         $query->where('destino', $usuario->rol)
-                            ->orWhere('destinatario', $usuario->categoria);
+                            ->orWhere('destinatario', $usuario->categoria)
+                            ->orWhere('destinatario_id', $usuario->id);
                     });
                 })
                 ->orderBy('created_at', 'desc')
@@ -181,6 +182,7 @@ class AlertaController extends Controller
                 'mensaje' => $request->mensaje,
                 'destino' => $request->rol,
                 'destinatario' => $request->categoria,
+
                 'user_id_1' => Auth::id(),
                 'user_id_2' => session()->get('companero_id', null),
                 'leida' => false,
