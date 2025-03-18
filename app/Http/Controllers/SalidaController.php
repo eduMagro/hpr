@@ -287,6 +287,7 @@ class SalidaController extends Controller
             $field = $request->input('field');
             $value = $request->input('value');
             $clienteId = $request->input('cliente_id'); // Para actualización en salida_cliente
+            $obraId    = $request->input('obra_id');    // Nuevo: para identificar la obra
 
             // Definir campos para cada tabla
             $salidaFields = ['fecha_salida', 'estado'];
@@ -323,7 +324,7 @@ class SalidaController extends Controller
             // Si el campo es 'fecha_salida', formatear la fecha correctamente
             if ($field === 'fecha_salida' && !empty($value)) {
                 try {
-                    $value = Carbon::parse($value)->format('Y-m-d');
+                    $value = \Carbon\Carbon::parse($value)->format('Y-m-d');
                 } catch (\Exception $e) {
                     return response()->json([
                         'success' => false,
@@ -336,22 +337,31 @@ class SalidaController extends Controller
             if (in_array($field, $salidaFields)) {
                 $salida->$field = $value;
                 $salida->save();
-                Log::info("Salida {$salida->id} actualizada: {$field} -> {$value}");
+                \Log::info("Salida {$salida->id} actualizada: {$field} -> {$value}");
             }
             // **Actualizar en la tabla 'salida_cliente'**
             elseif (in_array($field, $salidaClienteFields)) {
-                if (!$clienteId) {
+                // Validamos que se hayan enviado cliente_id y obra_id
+                if (!$clienteId || !$obraId) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Falta el ID del cliente para actualizar el campo.'
+                        'message' => 'Falta el ID del cliente u obra para actualizar el campo.'
                     ], 422);
                 }
 
-                // Verificar si la relación existe antes de actualizar
+                // Actualizar usando los tres identificadores: salida_id, cliente_id y obra_id
                 $updated = DB::table('salida_cliente')
                     ->where('salida_id', $salida->id)
                     ->where('cliente_id', $clienteId)
+                    ->where('obra_id', $obraId)
                     ->update([$field => $value]);
+
+                if (!$updated) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No se encontró el registro en salida_cliente para actualizar.'
+                    ], 404);
+                }
             }
 
             return response()->json([
@@ -372,6 +382,7 @@ class SalidaController extends Controller
             ], 500);
         }
     }
+
 
     public function export($mes)
     {

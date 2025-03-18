@@ -73,7 +73,6 @@
                     <ul class="space-y-4">
                         @foreach ($empresa->camiones as $camion)
                             <li class="p-4 bg-gray-100 rounded-lg shadow-md">
-                                <p class="text-gray-800"><strong>Matrícula:</strong> {{ $camion->matricula }}</p>
                                 <p class="text-gray-800"><strong>Modelo:</strong> {{ $camion->modelo }}</p>
                                 <p class="text-gray-800"><strong>Capacidad:</strong> {{ $camion->capacidad }} kg</p>
                                 <p class="text-gray-800"><strong>Estado:</strong>
@@ -100,13 +99,6 @@
                             <form action="{{ route('camiones.store') }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="empresa_id" value="{{ $empresa->id }}">
-
-                                <div class="mb-4">
-                                    <label for="matricula" class="block text-gray-700">Matrícula</label>
-                                    <input type="text" id="matricula" name="matricula"
-                                        class="w-full p-2 border border-gray-300 rounded-lg" required>
-                                </div>
-
                                 <div class="mb-4">
                                     <label for="modelo" class="block text-gray-700">Modelo</label>
                                     <input type="text" id="modelo" name="modelo"

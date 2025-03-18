@@ -54,64 +54,69 @@
                             </thead>
                             <tbody>
                                 @foreach ($salidasGrupo as $salida)
-                                    {{-- Por cada salida, iteramos sobre la relación "clientes" para mostrar la información del pivot --}}
-                                    @foreach ($salida->clientes as $cliente)
+                                    {{-- Iteramos sobre los registros del pivot (salidaClientes) para cada salida --}}
+                                    @foreach ($salida->salidaClientes as $registro)
                                         <tr class="hover:bg-gray-50 text-sm">
                                             <td class="py-2 px-4 border-b">{{ $salida->codigo_salida }}</td>
-                                            <td class="py-2 px-4 border-b">{{ $cliente->empresa }}</td>
-                                            <td class="py-2 px-4 border-b">
-                                                {{ $cliente->obrasUnicas->isNotEmpty() ? $cliente->obrasUnicas->implode(', ') : 'N/A' }}
-                                            </td>
+                                            <td class="py-2 px-4 border-b">{{ $registro->cliente->empresa }}</td>
+                                            <td class="py-2 px-4 border-b">{{ $registro->obra->obra ?? 'N/A' }}</td>
                                             <td class="py-2 px-4 border-b">{{ $salida->empresaTransporte->nombre }}</td>
                                             <td class="py-2 px-4 border-b">
-                                                {{ $salida->camion->modelo }} - {{ $salida->camion->matricula }}
+                                                {{ $salida->camion->modelo }}
                                             </td>
                                             <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                data-id="{{ $salida->id }}" data-cliente="{{ $cliente->id }}"
-                                                data-field="horas_paralizacion">
-                                                {{ $cliente->pivot->horas_paralizacion }}
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}" data-field="horas_paralizacion">
+                                                {{ $registro->horas_paralizacion }}
                                             </td>
                                             <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                data-id="{{ $salida->id }}" data-cliente="{{ $cliente->id }}"
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}"
                                                 data-field="importe_paralizacion">
-                                                {{ number_format($cliente->pivot->importe_paralizacion, 2) }}
+                                                {{ number_format($registro->importe_paralizacion, 2) }}
                                             </td>
                                             <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                data-id="{{ $salida->id }}" data-cliente="{{ $cliente->id }}"
-                                                data-field="horas_grua">
-                                                {{ $cliente->pivot->horas_grua }}
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}" data-field="horas_grua">
+                                                {{ $registro->horas_grua }}
                                             </td>
                                             <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                data-id="{{ $salida->id }}" data-cliente="{{ $cliente->id }}"
-                                                data-field="importe_grua">
-                                                {{ number_format($cliente->pivot->importe_grua, 2) }}
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}" data-field="importe_grua">
+                                                {{ number_format($registro->importe_grua, 2) }}
                                             </td>
                                             <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                data-id="{{ $salida->id }}" data-cliente="{{ $cliente->id }}"
-                                                data-field="horas_almacen">
-                                                {{ $cliente->pivot->horas_almacen }}
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}" data-field="horas_almacen">
+                                                {{ $registro->horas_almacen }}
                                             </td>
                                             <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                data-id="{{ $salida->id }}" data-cliente="{{ $cliente->id }}"
-                                                data-field="importe">
-                                                {{ number_format($cliente->pivot->importe, 2) }}
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}" data-field="importe">
+                                                {{ number_format($registro->importe, 2) }}
                                             </td>
-                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                data-id="{{ $salida->id }}" data-field="fecha_salida">
+                                            <td class="py-2 px-4 border-b">
                                                 {{ $salida->fecha_salida ?? 'Sin fecha' }}
                                             </td>
-                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                data-id="{{ $salida->id }}" data-field="estado">
+                                            <td class="py-2 px-4 border-b">
                                                 {{ ucfirst($salida->estado) }}
                                             </td>
                                             <td class="py-2 px-4 border-b">
                                                 <a href="{{ route('salidas.show', $salida->id) }}"
                                                     class="text-blue-600 hover:text-blue-800">Ver</a>
+                                                <x-boton-eliminar :action="route('salidas.destroy', $salida->id)" />
                                             </td>
                                         </tr>
                                     @endforeach
                                 @endforeach
                             </tbody>
+
                         </table>
                     </div>
                     {{-- Resumen de Clientes para este mes --}}
@@ -138,72 +143,38 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach ($salidasGrupo as $salida)
-                                        {{-- Iteramos sobre los registros del pivot (salidaClientes) para cada salida --}}
-                                        @foreach ($salida->salidaClientes as $registro)
-                                            <tr class="hover:bg-gray-50 text-sm">
-                                                <td class="py-2 px-4 border-b">{{ $salida->codigo_salida }}</td>
-                                                <td class="py-2 px-4 border-b">{{ $registro->cliente->empresa }}</td>
-                                                <td class="py-2 px-4 border-b">{{ $registro->obra->obra ?? 'N/A' }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b">{{ $salida->empresaTransporte->nombre }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b">
-                                                    {{ $salida->camion->modelo }} - {{ $salida->camion->matricula }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                    data-id="{{ $salida->id }}"
-                                                    data-cliente="{{ $registro->cliente->id }}"
-                                                    data-obra="{{ $registro->obra->id }}"
-                                                    data-field="horas_paralizacion">
-                                                    {{ $registro->horas_paralizacion }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                    data-id="{{ $salida->id }}"
-                                                    data-cliente="{{ $registro->cliente->id }}"
-                                                    data-obra="{{ $registro->obra->id }}"
-                                                    data-field="importe_paralizacion">
-                                                    {{ number_format($registro->importe_paralizacion, 2) }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                    data-id="{{ $salida->id }}"
-                                                    data-cliente="{{ $registro->cliente->id }}"
-                                                    data-obra="{{ $registro->obra->id }}" data-field="horas_grua">
-                                                    {{ $registro->horas_grua }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                    data-id="{{ $salida->id }}"
-                                                    data-cliente="{{ $registro->cliente->id }}"
-                                                    data-obra="{{ $registro->obra->id }}" data-field="importe_grua">
-                                                    {{ number_format($registro->importe_grua, 2) }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                    data-id="{{ $salida->id }}"
-                                                    data-cliente="{{ $registro->cliente->id }}"
-                                                    data-obra="{{ $registro->obra->id }}" data-field="horas_almacen">
-                                                    {{ $registro->horas_almacen }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b editable" contenteditable="true"
-                                                    data-id="{{ $salida->id }}"
-                                                    data-cliente="{{ $registro->cliente->id }}"
-                                                    data-obra="{{ $registro->obra->id }}" data-field="importe">
-                                                    {{ number_format($registro->importe, 2) }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b">
-                                                    {{ $salida->fecha_salida ?? 'Sin fecha' }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b">
-                                                    {{ ucfirst($salida->estado) }}
-                                                </td>
-                                                <td class="py-2 px-4 border-b">
-                                                    <a href="{{ route('salidas.show', $salida->id) }}"
-                                                        class="text-blue-600 hover:text-blue-800">Ver</a>
-                                                </td>
-                                            </tr>
-                                        @endforeach
+                                    @foreach ($clientSummary as $cliente => $data)
+                                        <tr class="text-sm hover:bg-gray-50"
+                                            data-resumen-cliente="{{ $data['cliente_id'] ?? 'N/A' }}">
+                                            <td class="py-2 px-4 border-b font-semibold">{{ $cliente }}</td>
+                                            <td class="py-2 px-4 border-b text-center"
+                                                data-resumen-field="horas_paralizacion">
+                                                {{ $data['horas_paralizacion'] ?? 0 }}
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right"
+                                                data-resumen-field="importe_paralizacion">
+                                                {{ number_format($data['importe_paralizacion'] ?? 0, 2) }} €
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-center" data-resumen-field="horas_grua">
+                                                {{ $data['horas_grua'] ?? 0 }}
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right"
+                                                data-resumen-field="importe_grua">
+                                                {{ number_format($data['importe_grua'] ?? 0, 2) }} €
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-center"
+                                                data-resumen-field="horas_almacen">
+                                                {{ $data['horas_almacen'] ?? 0 }}
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right" data-resumen-field="importe">
+                                                {{ number_format($data['importe'] ?? 0, 2) }} €
+                                            </td>
+                                            <td class="py-2 px-4 border-b text-right font-bold" data-resumen-total>
+                                                {{ number_format($data['total'] ?? 0, 2) }} €
+                                            </td>
+                                        </tr>
                                     @endforeach
                                 </tbody>
-
 
                             </table>
                         </div>
@@ -227,7 +198,7 @@
                                     <div class="mt-2 sm:mt-0">
                                         <p class="py-2">{{ $salida->empresaTransporte->nombre }}</p>
                                         <p class="py-2">
-                                            {{ $salida->camion->modelo }} - {{ $salida->camion->matricula }}
+                                            {{ $salida->camion->modelo }}
                                         </p>
                                     </div>
                                     <button
@@ -324,6 +295,7 @@
                 cell.addEventListener('blur', function() {
                     const id = this.dataset.id;
                     const clienteId = this.dataset.cliente;
+                    const obraId = this.dataset.obra;
                     const field = this.dataset.field;
                     let value = this.innerText.trim();
 
@@ -361,6 +333,7 @@
                             body: JSON.stringify({
                                 id,
                                 cliente_id: clienteId,
+                                obra_id: obraId,
                                 field,
                                 value
                             })

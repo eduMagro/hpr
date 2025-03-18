@@ -13,7 +13,6 @@ class Camion extends Model
 
     protected $fillable = [
         'empresa_id',
-        'matricula',
         'capacidad',
         'modelo',
         'año',
