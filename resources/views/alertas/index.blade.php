@@ -52,8 +52,7 @@
 
 
                             <div class="mb-4">
-                                <label for="rol" class="block text-sm font-semibold">Destinatarios
-                                    Generales</label>
+                                <label for="rol" class="block text-sm font-semibold">Rol</label>
                                 <select id="rol" name="rol" class="w-full border rounded-lg p-2"
                                     x-model="rol" @change="rol = ''">
                                     <option value="">-- Seleccionar un Rol --</option>
@@ -64,8 +63,7 @@
                             </div>
 
                             <div class="mb-4">
-                                <label for="categoria" class="block text-sm font-semibold">Destinatarios
-                                    particulares</label>
+                                <label for="categoria" class="block text-sm font-semibold">Categoría</label>
                                 <select id="categoria" name="categoria" class="w-full border rounded-lg p-2"
                                     x-model="categoria" @change="categoria = ''">
                                     <option value="">-- Seleccionar una Categoría --</option>
@@ -76,8 +74,8 @@
                             </div>
 
                             <div class="mb-4">
-                                <label for="destinatario_id" class="block text-sm font-semibold">Destinatario
-                                    Específico</label>
+                                <label for="destinatario_id" class="block text-sm font-semibold">Destinatario Personal
+                                </label>
                                 <select id="destinatario_id" name="destinatario_id" class="w-full border rounded-lg p-2"
                                     x-model="destinatario_id" @change="rol = ''; categoria = ''">
                                     <option value="">-- Seleccionar un Usuario --</option>
@@ -206,9 +204,11 @@
                                     </button>
                                 </form>
                             </th>
-                            <th class="py-3 border text-center">Receptor General
+                            <th class="py-3 border text-center">Receptor Rol
                             </th>
-                            <th class="py-3 border text-center">Receptor Específico
+                            <th class="py-3 border text-center">Receptor Categoría
+                            </th>
+                            <th class="py-3 border text-center">Receptor Id
                             </th>
                             <th class="py-3 border text-center">Mensaje
                                 <form method="GET" action="{{ route('alertas.index') }}" class="mt-2">
@@ -232,6 +232,13 @@
                                 <td class="px-2 py-3 text-center border">{{ $alerta->usuario2->name ?? 'N/A' }}</td>
                                 <td class="px-2 py-3 text-center border">{{ ucfirst($alerta->destino) }}</td>
                                 <td class="px-2 py-3 text-center border">{{ ucfirst($alerta->destinatario) }}</td>
+                                <td class="px-2 py-3 text-center border">
+                                    <a href="{{ route('users.index', ['id' => $alerta->destinatario_id ?? '#']) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $alerta->destinatarioUser->name ?? 'N/A' }}
+                                    </a>
+                                </td>
+
                                 <td class="px-2 py-3 text-center border">{{ $alerta->mensaje }}</td>
                                 <td class="px-2 py-3 text-center border">
                                     {{ $alerta->created_at->format('d/m/Y H:i') }}

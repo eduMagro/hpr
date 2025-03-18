@@ -48,6 +48,10 @@ class Alerta extends Model
     {
         return $this->belongsTo(User::class, 'user_id_2');
     }
+    public function destinatarioUser()
+    {
+        return $this->belongsTo(User::class, 'destinatario_id');
+    }
 
     /**
      * Scope para obtener solo las alertas no leídas.

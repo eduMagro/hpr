@@ -102,7 +102,7 @@ class AlertaController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Registrar la lectura SOLO para las alertas que cumplen la condición de destinatario o destino
+            // Registrar la lectura SOLO para las alertas que cumplen la condición de destinatario destino o destinatario_id
             foreach ($alertasNoLeidas as $alerta) {
                 if (!$alerta->usuariosQueLeen()->where('user_id', $usuario->id)->exists()) {
                     $alerta->usuariosQueLeen()->attach($usuario->id, ['leida_en' => now()]);
@@ -139,7 +139,8 @@ class AlertaController extends Controller
             ->when($usuario->categoria !== 'programador', function ($q) use ($usuario) {
                 $q->where(function ($subQuery) use ($usuario) {
                     $subQuery->where('destino', $usuario->rol)  // Coincide con el rol del usuario
-                        ->orWhere('destinatario', $usuario->categoria); // Coincide con la categoría del usuario
+                        ->orWhere('destinatario', $usuario->categoria) // Coincide con la categoría del usuario
+                        ->orWhere('destinatario_id', $usuario->id); // Coincide con la categoría del usuario
                 });
             })
             ->count();
