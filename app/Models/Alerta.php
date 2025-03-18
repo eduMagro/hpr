@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,13 +12,14 @@ class Alerta extends Model
     protected $table = 'alertas'; // Nombre de la tabla
 
     protected $fillable = [
-        'user_id_1', 
-        'user_id_2', 
-        'destino', 
-        'destinatario', 
-        'mensaje', 
-        'leida', 
-        'created_at', 
+        'user_id_1',
+        'user_id_2',
+        'destino',
+        'destinatario',
+        'destinatario_id',
+        'mensaje',
+        'leida',
+        'created_at',
         'updated_at'
     ];
 
@@ -27,10 +29,10 @@ class Alerta extends Model
     public function usuariosQueLeen()
     {
         return $this->belongsToMany(User::class, 'alertas_users')
-                    ->withPivot('leida_en')
-                    ->withTimestamps();
+            ->withPivot('leida_en')
+            ->withTimestamps();
     }
-    
+
     /**
      * Relación con el usuario que genera la alerta.
      */
