@@ -547,4 +547,24 @@ class SalidaController extends Controller
 
         return response()->json(['success' => false, 'mensaje' => 'Código no encontrado.'], 404);
     }
+
+    public function destroy($id)
+    {
+        try {
+            // Buscar la salida o lanzar excepción si no existe
+            $salida = Salida::findOrFail($id);
+
+            // Si existen relaciones (por ejemplo, registros en salidas_paquetes o salida_cliente),
+            // puedes eliminarlas de forma automática si definiste ON DELETE CASCADE en las claves foráneas.
+            // En caso contrario, deberías eliminarlas manualmente antes de eliminar la salida.
+
+            $salida->delete();
+
+            return redirect()->route('salidas.index')
+                ->with('success', 'Salida eliminada correctamente.');
+        } catch (\Exception $e) {
+            return redirect()->route('salidas.index')
+                ->with('error', 'Hubo un problema al eliminar la salida: ' . $e->getMessage());
+        }
+    }
 }
