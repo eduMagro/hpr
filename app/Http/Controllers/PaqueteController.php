@@ -266,11 +266,11 @@ class PaqueteController extends Controller
             $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
             $subpaquetesIds = collect($items)->where('type', 'subpaquete')->pluck('id')->toArray();
 
-            // Buscar elementos incompletos
-            $elementosIncompletos = Elemento::whereIn('id', $elementosIds)
-                ->where('estado', '!=', 'completado')
-                ->pluck('id')
-                ->toArray();
+            // // Buscar elementos incompletos
+            // $elementosIncompletos = Elemento::whereIn('id', $elementosIds)
+            //     ->where('estado', '!=', 'completado')
+            //     ->pluck('id')
+            //     ->toArray();
 
             $subpaquetesIncompletos = []; // No es necesario filtrar, si existe, está completo.
 
@@ -279,7 +279,7 @@ class PaqueteController extends Controller
                 'success' => empty($elementosIncompletos) && empty($subpaquetesIncompletos),
                 'message' => empty($elementosIncompletos) && empty($subpaquetesIncompletos) ?
                     'Todos los ítems están completos.' : 'Algunos ítems no están completos.',
-                'elementos_incompletos' => $elementosIncompletos,
+                // 'elementos_incompletos' => $elementosIncompletos,
                 'subpaquetes_incompletos' => $subpaquetesIncompletos
             ], 200);
         } catch (Exception $e) {

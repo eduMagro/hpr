@@ -147,18 +147,14 @@
 
                     if (stripos($maquina->tipo, 'ensambladora') !== false) {
                         $elementosAgrupados = $elementosMaquina
-                            ->filter(function ($elemento) {
-                                return !debeSerExcluido($elemento);
-                            })
                             ->groupBy('etiqueta_id')
-                            ->map(function ($grupo) {
-                                return $grupo->filter(function ($elemento) {
-                                    return strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') ===
-                                        'ensamblando';
+                            ->filter(function ($grupo) use ($maquina) {
+                                // Retener solo el grupo si contiene al menos un elemento extra,
+                                // es decir, un elemento con maquina_id_2 igual a Idea 5 y
+                                // con maquina_id distinto al de Idea 5.
+                                return $grupo->contains(function ($elemento) use ($maquina) {
+                                    return $elemento->maquina_id_2 == 7 && $elemento->maquina_id != $maquina->id;
                                 });
-                            })
-                            ->filter(function ($grupo) {
-                                return $grupo->isNotEmpty();
                             });
                     } elseif (stripos($maquina->nombre, 'Soldadora') !== false) {
                         $elementosAgrupados = $maquina
@@ -190,9 +186,9 @@
                                 'etiqueta' => $grupo->first()->etiquetaRelacion ?? null,
                                 'planilla' => $grupo->first()->planilla ?? null,
                                 'elementos' => $grupo
-                                    ->filter(function ($elemento) {
-                                        return !debeSerExcluido($elemento);
-                                    })
+                                    // ->filter(function ($elemento) {
+                                    //     return !debeSerExcluido($elemento);
+                                    // })
                                     ->map(function ($elemento) {
                                         return [
                                             'id' => $elemento->id,
@@ -245,16 +241,19 @@
                             <p>
                                 <strong>Fecha Inicio:</strong>
                                 <span id="inicio-{{ $etiqueta->id ?? 'N/A' }}">
-                                    {{ $etiqueta->fecha_inicio ?? 'No asignada' }}
+                                    {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_inicio_ensamblado ?? 'No asignada' : $etiqueta->fecha_inicio ?? 'No asignada' }}
                                 </span>
                                 <strong>Fecha Finalización:</strong>
                                 <span id="final-{{ $etiqueta->id ?? 'N/A' }}">
-                                    {{ $etiqueta->fecha_finalizacion ?? 'No asignada' }}
+                                    {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_finalizacion_ensamblado ?? 'No asignada' : $etiqueta->fecha_finalizacion ?? 'No asignada' }}
                                 </span>
                                 <span id="emoji-{{ $etiqueta->id ?? 'N/A' }}"></span><br>
-                                <strong> Estado: </strong>
-                                <span id="estado-{{ $etiqueta->id ?? 'N/A' }}">{{ $etiqueta->estado ?? 'N/A' }}</span>
+                                <strong>Estado:</strong>
+                                <span id="estado-{{ $etiqueta->id ?? 'N/A' }}">
+                                    {{ $etiqueta->estado ?? 'N/A' }}
+                                </span>
                             </p>
+
                         </div>
 
                         <hr style="border: 1px solid black; margin: 10px 0;">

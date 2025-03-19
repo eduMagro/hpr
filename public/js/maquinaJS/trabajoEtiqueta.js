@@ -139,6 +139,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Estamos fabricando los elementos."
                 );
                 break;
+            case "fabricada":
+                showAlert(
+                    "info",
+                    "Fabricada",
+                    "Los Elementos han sido fabricados y los pasamos a otra máquina."
+                );
+                break;
             case "parcialmente_completada":
                 showAlert(
                     "warning",

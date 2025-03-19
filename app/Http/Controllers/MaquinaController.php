@@ -82,7 +82,7 @@ class MaquinaController extends Controller
             $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
         }
 
-        // 2) Verificar si la máquina es "IDEA 5" (o ID=5 con ese nombre)
+        // 2) Verificar si la máquina es "IDEA 5"
         $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = ?', ['idea 5'])->first();
 
         // 3) Cargar la colección base de elementos para ESTA máquina
@@ -92,14 +92,6 @@ class MaquinaController extends Controller
         if ($maquinaIdea5 && $maquina->id == $maquinaIdea5->id) {
             $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)
                 ->where('maquina_id', '!=', $maquinaIdea5->id)
-                ->get();
-            $elementosMaquina = $elementosMaquina->merge($elementosExtra);
-        }
-
-        // 5) Si la máquina es la 7, fusionar también los que tengan maquina_id_2 = 7
-        if ($maquina->id == 7) {
-            $elementosExtra = Elemento::where('maquina_id_2', 7)
-                ->where('maquina_id', '!=', 7)
                 ->get();
             $elementosMaquina = $elementosMaquina->merge($elementosExtra);
         }
@@ -220,7 +212,7 @@ class MaquinaController extends Controller
                 ];
             })
             ->values();
-
+        dd($elementosMaquina);
         // 13) Retornar la vista (asegúrate de usar `$elementosMaquina` en la vista)
         return view('maquinas.show', [
             'maquina'                   => $maquina,

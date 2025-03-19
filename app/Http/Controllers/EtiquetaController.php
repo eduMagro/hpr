@@ -294,13 +294,80 @@ class etiquetaController extends Controller
                         Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
                     }
                     break;
+                // -------------------------------------------- ESTADO ENSAMBLADA --------------------------------------------
+                case 'ensamblada':
+                    // Verificamos si ya todos los elementos en la máquina han sido completados
+                    if (
+                        isset($elementosEnMaquina) &&
+                        $elementosEnMaquina->count() > 0 &&
+                        $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count() &&
+                        in_array($maquina->tipo, ['cortadora_dobladora', 'estribadora'])
+                    ) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'error' => "Todos los elementos en la máquina ya han sido completados.",
+                        ], 400);
+                    }
+
+                    // ✅ Pasamos `$productosAfectados` y `$planilla` como referencia
+                    $productosAfectados = [];
+                    $resultado = $this->actualizarElementosYConsumos(
+                        $elementosEnMaquina,
+                        $maquina,
+                        $etiqueta,
+                        $warnings,
+                        $numeroElementosCompletadosEnMaquina,
+                        $enOtrasMaquinas,
+                        $productosAfectados,
+                        $planilla
+                    );
+
+                    if ($resultado instanceof \Illuminate\Http\JsonResponse) {
+                        DB::rollBack();
+                        return $resultado;
+                    }
+
+                    if ($maquina->tipo === 'soldadora') {
+                        // Si la máquina es de tipo soldadora, se inicia la fase de soldadura:
+                        $etiqueta->fecha_inicio_soldadura = now();
+                        $etiqueta->estado = 'soldando';
+                        $etiqueta->save();
+                    } else {
+                        // Opcional: Si la máquina no es de los tipos esperados, se puede registrar un warning o dejar el estado sin cambios.
+                        Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
+                    }
+                    break;
 
                 // -------------------------------------------- ESTADO ENSAMBLANDO --------------------------------------------
                 case 'ensamblando':
+
+                    foreach ($elementosEnMaquina as $elemento) {
+                        Log::info("Entra en el condicional para completar elementos");
+                        $elemento->estado = "completado";
+                        $elemento->users_id = Auth::id();
+                        $elemento->users_id_2 = session()->get('compañero_id', null);
+                        $elemento->save();
+                    }
+                    $elementosEtiquetaCompletos = $etiqueta->elementos()
+                        ->where('estado', '!=', 'completado')
+                        ->doesntExist();
+
+                    if ($elementosEtiquetaCompletos) {
+                        $etiqueta->estado = 'completada';
+                        $etiqueta->fecha_finalizacion = now();
+                        $etiqueta->save();
+                    } else {
+                        // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
+                        if ($enOtrasMaquinas) {
+                            $etiqueta->estado = 'ensamblada';
+                            $etiqueta->save();
+                        }
+                    }
+
                     // Finalizar la fase de ensamblado
                     $etiqueta->fecha_finalizacion_ensamblado = now();
-                    $etiqueta->estado = 'ensamblado';
-                    $etiqueta->save();
+
                     // -------------- CONSUMOS
                     $consumos = [];
 
@@ -384,86 +451,15 @@ class etiquetaController extends Controller
                         $elemento->producto_id_3 = $productosAsignados[2] ?? null;
 
                         $elemento->estado = "completado";
-                        $ensamblado = strtoupper($etiqueta->planilla->ensamblado);
 
-                        if (
-                            (strpos($ensamblado, 'TALLER') !== false || strpos($ensamblado, 'CARCASAS') !== false)
-                            && $elementosEnMaquina->count() == $etiqueta->elementos->count()
-                        ) {
-
-                            // Buscar una máquina de soldar disponible
-                            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                                ->whereDoesntHave('elementos') // Verifica si tiene elementos en lugar de etiquetas
-                                ->first();
-
-                            // Si no hay máquinas de soldar libres, seleccionar la que recibió un elemento primero
-                            if (!$maquinaSoldarDisponible) {
-                                $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                                    ->whereHas('elementos', function ($query) {
-                                        $query->orderBy('created_at'); // Seleccionar la que lleva más tiempo trabajando
-                                    })
-                                    ->first();
-                            }
-
-                            if ($maquinaSoldarDisponible) {
-                                $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-                            } else {
-                                return response()->json([
-                                    'success' => false,
-                                    'error' => 'No se encontró ninguna máquina de soldar disponible',
-                                ], 500);
-                            }
-                        }
                         $elemento->save();
-                        $etiqueta->save();
+
                         // Actualizar el registro global de consumos para este diámetro
                         $consumos[$elemento->diametro] = $consumosDisponibles;
                     }
-                    // Diferenciar según el tipo de planilla:
-                    // Si es "carcasas", se finaliza el proceso en ensamblado
-                    if (str_contains($ensambladoText, 'carcasas')) {
-                        $etiqueta->estado = 'completada';
-                        $etiqueta->save();
-                        DB::commit();
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'Proceso completado en la etapa de ensamblado para carcasas.',
-                            'etiqueta' => $etiqueta,
-                        ]);
-                    }
 
-                    // Si es "taller", se continúa con la soldadura
-                    if (str_contains($ensambladoText, 'taller')) {
-                        // Si la máquina es ensambladora, se busca una máquina de soldar disponible
-                        $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                            ->whereDoesntHave('elementos')
-                            ->first();
-                        if (!$maquinaSoldarDisponible) {
-                            $maquinaSoldarDisponible = Maquina::whereRaw('LOWER(nombre) LIKE LOWER(?)', ['%soldadora%'])
-                                ->whereHas('elementos', function ($query) {
-                                    $query->orderBy('created_at');
-                                })
-                                ->first();
-                        }
-                        if ($maquinaSoldarDisponible) {
-                            foreach ($elementosEnMaquina as $elemento) {
-                                $elemento->maquina_id_3 = $maquinaSoldarDisponible->id;
-                                // Se asume que, en este flujo, se quiere marcar el elemento como "completado"
-                                $elemento->estado = 'completado';
-                                $elemento->save();
-                            }
-                        } else {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'error'   => 'No se encontró ninguna máquina de soldar disponible',
-                            ], 500);
-                        }
 
-                        $etiqueta->fecha_inicio_soldadura = now();
-                        $etiqueta->estado = 'soldando';
-                        $etiqueta->save();
-                    }
+
                     break;
                 // -------------------------------------------- ESTADO SOLDANDO --------------------------------------------
                 case 'soldando':
@@ -521,6 +517,10 @@ class etiquetaController extends Controller
         // -------------- CONSUMOS
         $consumos = [];
         foreach ($elementosEnMaquina->groupBy('diametro') as $diametro => $elementos) {
+            // Si la máquina es ID 7, solo permitir diámetro 5
+            if ($maquina->tipo == 'ensambladora' && $diametro != 5) {
+                continue; // Saltar cualquier otro diámetro
+            }
             $pesoNecesarioTotal = $elementos->sum('peso');
 
             $productosPorDiametro = $maquina->productos()
@@ -604,7 +604,8 @@ class etiquetaController extends Controller
         $ensambladoText = strtolower($etiqueta->planilla->ensamblado ?? '');
 
         if (str_contains($ensambladoText, 'taller')) {
-
+            // Verificar si todos los elementos de la etiqueta están en estado "completado"
+            $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'completado')->doesntExist();
             if (str_contains($planilla->comentario, 'amarrado')) {
             } elseif (str_contains($planilla->comentario, 'ensamblado amarrado')) {
             } else {
@@ -644,19 +645,28 @@ class etiquetaController extends Controller
                 }
             }
         } elseif (str_contains($ensambladoText, 'carcasas')) {
+            $elementosEtiquetaCompletos = $etiqueta->elementos()
+                ->where('diametro', '!=', 5)
+                ->where('estado', '!=', 'completado')
+                ->doesntExist();
 
-            // Verificar si TODOS los elementos de la máquina actual están completados
-            if ($elementosEnMaquina->count() > 0 && $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count()) {
+            if ($elementosEtiquetaCompletos) {
+                // Si la máquina actual es de tipo "estribadora", asignamos una ensambladora
+                if ($maquina->tipo === 'estribadora') {
+                    $etiqueta->estado = 'fabricada';
+                    $etiqueta->fecha_finalizacion = now();
+                    $etiqueta->save();
+                } else {
+                    $etiqueta->estado = 'completada';
+                    $etiqueta->fecha_finalizacion = now();
+                    $etiqueta->save();
+                }
+            } else {
                 // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
                 if ($enOtrasMaquinas) {
                     $etiqueta->estado = 'parcialmente_completada';
-                } else {
-                    // Si no hay elementos en otras máquinas, se marca como fabricada/completada
-                    $etiqueta->estado = 'fabricada';
-                    $etiqueta->fecha_finalizacion = now();
+                    $etiqueta->save();
                 }
-
-                $etiqueta->save();
             }
             // Si la máquina actual es de tipo "estribadora", asignamos una ensambladora
             if ($maquina->tipo === 'estribadora') {
