@@ -97,7 +97,7 @@ class PaqueteController extends Controller
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se encontraron datos válidos para crear el paquete.'
+                    'message' => 'No se encontraron datos válidos para crear el paquete..'
                 ], 400);
             }
             // **Siempre** añadir los elementos directos a `$elementosIdsDesdeEtiquetas`
