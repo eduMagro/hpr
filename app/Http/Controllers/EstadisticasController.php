@@ -134,34 +134,50 @@ class EstadisticasController extends Controller
         }
 
         $diasTotales = Carbon::parse($fechaInicio)->diffInDays($fechaFin) ?: 1;
-        $stockDeSeguridad = 1000; // Stock de seguridad predeterminado (puede ajustarse)
-        $tiempoReposicion = 5; // Días que tarda en reponerse la materia prima
-        $mensajes = []; // Array para almacenar mensajes de alerta o confirmación
+        $stockDeSeguridad = 1000; // Stock de seguridad predeterminado (ajustable)
+        $tiempoReposicion = 5; // Tiempo estimado de reposición en días
+        $mensajes = []; // Array para almacenar mensajes de alerta
+
+        // Obtener el stock real desde el método getPesoTotalPorDiametro()
+        $stockReal = $this->getPesoTotalPorDiametro()->keyBy('diametro');
 
         $stockOptimo = Elemento::where('estado', 'completado')
             ->select('diametro')
             ->selectRaw('SUM(peso) / ? as consumo_promedio', [$diasTotales])
             ->groupBy('diametro')
             ->get()
-            ->map(function ($item) use ($stockDeSeguridad, $tiempoReposicion, &$mensajes) {
-                $stockDeseado = $item->consumo_promedio * 14; // Stock necesario para 2 semanas
+            ->map(function ($item) use ($stockDeSeguridad, $tiempoReposicion, $stockReal, &$mensajes) {
+                $stockDeseado = $item->consumo_promedio * 14; // Proyección a 2 semanas
                 $stockOptimo = max(
                     $stockDeseado,
-                    $stockDeSeguridad + ($item->consumo_promedio * $tiempoReposicion) // Cálculo del stock óptimo
+                    $stockDeSeguridad + ($item->consumo_promedio * $tiempoReposicion)
                 );
 
-                // Generar mensajes de alerta según la comparación
+                // Obtener el stock real para el diámetro actual
+                $stockRealPorDiametro = $stockReal->get($item->diametro)?->peso_total ?? 0;
+
+                // Generar mensajes según la comparación
                 if ($stockDeseado > $stockOptimo) {
                     $mensajes[] = "⚠️ Aumento de demanda detectado para el diámetro {$item->diametro}. Stock Deseado ({$stockDeseado} kg) supera al Stock Óptimo ({$stockOptimo} kg). Revisa la reposición de materia prima.";
                 } elseif ($stockOptimo > $stockDeseado) {
                     $mensajes[] = "✅ Stock estable para el diámetro {$item->diametro}. No es necesario un pedido inmediato.";
                 }
 
+                // Comparar con el stock real
+                if ($stockRealPorDiametro < $stockDeseado) {
+                    $mensajes[] = "🔴 Alerta crítica: El stock real ({$stockRealPorDiametro} kg) es INSUFICIENTE para cubrir el Stock Deseado ({$stockDeseado} kg) en el diámetro {$item->diametro}. Se recomienda hacer un pedido urgente.";
+                } elseif ($stockRealPorDiametro < $stockOptimo) {
+                    $mensajes[] = "🟠 Advertencia: El stock real ({$stockRealPorDiametro} kg) está por debajo del Stock Óptimo ({$stockOptimo} kg) en el diámetro {$item->diametro}. Considera un reabastecimiento pronto.";
+                } else {
+                    $mensajes[] = "🟢 Suficiente stock real ({$stockRealPorDiametro} kg) para el diámetro {$item->diametro}. No se requieren acciones inmediatas.";
+                }
+
                 return (object)[
                     'diametro' => $item->diametro,
                     'consumo_promedio' => round($item->consumo_promedio, 2),
                     'stock_optimo' => round($stockOptimo, 2),
-                    'stock_deseado' => round($stockDeseado, 2)
+                    'stock_deseado' => round($stockDeseado, 2),
+                    'stock_real' => round($stockRealPorDiametro, 2)
                 ];
             });
 
