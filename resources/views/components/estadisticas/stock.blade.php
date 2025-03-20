@@ -103,12 +103,6 @@
           @endforeach
       @endif
 
-      {{-- Mostrar mensaje de éxito --}}
-      @if (session('exito'))
-          <div class="alert alert-success">
-              {{ session('exito') }}
-          </div>
-      @endif
 
 
       <div class="p-4">
@@ -175,6 +169,23 @@
           <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-2 rounded-md">
               Stock Deseado
           </h4>
+          {{-- Mostrar mensaje de éxito --}}
+          @if (session('exito'))
+              <div class="alert alert-success">
+                  {{ session('exito') }}
+              </div>
+          @endif
+
+          @if (session('alertas_stock'))
+              <div class="p-4 mb-4">
+                  @foreach (session('alertas_stock') as $mensaje)
+                      <div
+                          class="px-4 py-3 rounded-lg text-white font-semibold {{ Str::contains($mensaje, '⚠️') ? 'bg-red-500' : 'bg-green-500' }}">
+                          {{ $mensaje }}
+                      </div>
+                  @endforeach
+              </div>
+          @endif
           <div class="overflow-x-auto">
               <table class="w-full border border-gray-300 rounded-lg">
                   <thead class="bg-blue-500 text-white">

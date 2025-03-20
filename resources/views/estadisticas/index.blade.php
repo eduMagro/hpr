@@ -28,8 +28,10 @@
         <div x-show="mostrarStock">
             <!-- Componente de Estadísticas Completo -->
             <x-estadisticas.stock :datosPorPlanilla="$datosPorPlanilla" :pesoTotalPorDiametro="$pesoTotalPorDiametro" :stockEncarretado="$stockEncarretado" :stockBarras="$stockBarras"
-                :stockDeseado="$stockDeseado" />
+                :stockOptimo="$stockOptimo" />
+
         </div>
+
         <!-- Sección Peso Obras -->
         <div x-show="mostrarPesoEntregadoObras">
             <!-- Componente de Estadísticas Completo -->

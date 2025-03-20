@@ -123,6 +123,7 @@ class EstadisticasController extends Controller
         }
     }
     // ---------------------------------------------------------------- Función para calcular el stock deseado
+
     private function getStockOptimo()
     {
         $fechaInicio = Elemento::where('estado', 'completado')->min('created_at');
@@ -133,28 +134,43 @@ class EstadisticasController extends Controller
         }
 
         $diasTotales = Carbon::parse($fechaInicio)->diffInDays($fechaFin) ?: 1;
-        $stockDeSeguridad = 1000; // Puedes ajustarlo según tu necesidad
-        $tiempoReposicion = 5; // Ejemplo: 5 días para recibir material del proveedor
+        $stockDeSeguridad = 1000; // Stock de seguridad predeterminado (puede ajustarse)
+        $tiempoReposicion = 5; // Días que tarda en reponerse la materia prima
+        $mensajes = []; // Array para almacenar mensajes de alerta o confirmación
 
-        return Elemento::where('estado', 'completado')
+        $stockOptimo = Elemento::where('estado', 'completado')
             ->select('diametro')
             ->selectRaw('SUM(peso) / ? as consumo_promedio', [$diasTotales])
             ->groupBy('diametro')
             ->get()
-            ->map(function ($item) use ($stockDeSeguridad, $tiempoReposicion) {
+            ->map(function ($item) use ($stockDeSeguridad, $tiempoReposicion, &$mensajes) {
+                $stockDeseado = $item->consumo_promedio * 14; // Stock necesario para 2 semanas
                 $stockOptimo = max(
-                    $item->consumo_promedio * 14, // Stock Deseado (2 semanas)
-                    $stockDeSeguridad + ($item->consumo_promedio * $tiempoReposicion) // Stock Óptimo
+                    $stockDeseado,
+                    $stockDeSeguridad + ($item->consumo_promedio * $tiempoReposicion) // Cálculo del stock óptimo
                 );
+
+                // Generar mensajes de alerta según la comparación
+                if ($stockDeseado > $stockOptimo) {
+                    $mensajes[] = "⚠️ Aumento de demanda detectado para el diámetro {$item->diametro}. Stock Deseado ({$stockDeseado} kg) supera al Stock Óptimo ({$stockOptimo} kg). Revisa la reposición de materia prima.";
+                } elseif ($stockOptimo > $stockDeseado) {
+                    $mensajes[] = "✅ Stock estable para el diámetro {$item->diametro}. No es necesario un pedido inmediato.";
+                }
 
                 return (object)[
                     'diametro' => $item->diametro,
                     'consumo_promedio' => round($item->consumo_promedio, 2),
                     'stock_optimo' => round($stockOptimo, 2),
-                    'stock_deseado' => round($item->consumo_promedio * 14, 2)
+                    'stock_deseado' => round($stockDeseado, 2)
                 ];
             });
+
+        // Guardar los mensajes en la sesión para mostrarlos en la vista
+        session()->flash('alertas_stock', $mensajes);
+
+        return $stockOptimo;
     }
+
 
     // ---------------------------------------------------------------- Funciones para calcular peso suministrado a obras
     private function getSalidasPaquetesCompletadas()
