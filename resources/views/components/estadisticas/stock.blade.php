@@ -180,18 +180,27 @@
               <div class="p-4 mb-4">
                   @foreach (session('alertas_stock') as $mensaje)
                       <div
-                          class="px-4 py-3 rounded-lg text-white font-semibold {{ Str::contains($mensaje, '⚠️') ? 'bg-red-500' : 'bg-green-500' }}">
+                          class="px-4 py-3 rounded-lg text-white font-semibold 
+                      {{ Str::contains($mensaje, '🔴')
+                          ? 'bg-red-600'
+                          : (Str::contains($mensaje, '🟠')
+                              ? 'bg-orange-500'
+                              : (Str::contains($mensaje, '⚠️')
+                                  ? 'bg-yellow-500'
+                                  : 'bg-green-500')) }}">
                           {{ $mensaje }}
                       </div>
                   @endforeach
               </div>
           @endif
+
           <div class="overflow-x-auto">
               <table class="w-full border border-gray-300 rounded-lg">
                   <thead class="bg-blue-500 text-white">
                       <tr>
                           <th class="px-4 py-3 border text-center">Diámetro (mm)</th>
                           <th class="px-4 py-3 border text-center">Consumo Promedio (kg/día)</th>
+                          <th class="px-4 py-3 border text-center">Stock Real (kg)</th>
                           <th class="px-4 py-3 border text-center">Stock Deseado (kg) - 2 Semanas</th>
                           <th class="px-4 py-3 border text-center">Stock Óptimo (kg)</th>
                       </tr>
@@ -202,6 +211,7 @@
                               <td class="px-4 py-3 text-center border">{{ number_format($stock->diametro, 2) }}</td>
                               <td class="px-4 py-3 text-center border">{{ number_format($stock->consumo_promedio, 2) }}
                               </td>
+                              <td class="px-4 py-3 text-center border">{{ number_format($stock->stock_real, 2) }}</td>
                               <td class="px-4 py-3 text-center border">{{ number_format($stock->stock_deseado, 2) }}
                               </td>
                               <td class="px-4 py-3 text-center border">{{ number_format($stock->stock_optimo, 2) }}
@@ -209,7 +219,7 @@
                           </tr>
                       @empty
                           <tr>
-                              <td colspan="4" class="text-red-600 px-4 py-3 text-center">
+                              <td colspan="5" class="text-red-600 px-4 py-3 text-center">
                                   No hay datos disponibles
                               </td>
                           </tr>
@@ -222,6 +232,7 @@
       <div class="text-center text-gray-600 bg-gray-100 py-2 rounded-b-lg">
           Generado el {{ now()->format('d/m/Y H:i') }}
       </div>
+
 
 
   </div>
