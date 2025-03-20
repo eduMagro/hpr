@@ -646,7 +646,7 @@ class etiquetaController extends Controller
             }
         } elseif (str_contains($ensambladoText, 'carcasas')) {
             $elementosEtiquetaCompletos = $etiqueta->elementos()
-                ->where('diametro', '!=', 5)
+                ->where('diametro', '!=', 5.00)
                 ->where('estado', '!=', 'completado')
                 ->doesntExist();
 

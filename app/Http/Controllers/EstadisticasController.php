@@ -8,6 +8,7 @@ use App\Models\Producto;
 use App\Models\Planilla;
 use App\Models\Obra;
 use App\Models\SalidaPaquete;
+use Carbon\Carbon;
 
 class EstadisticasController extends Controller
 {
@@ -16,12 +17,15 @@ class EstadisticasController extends Controller
         if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('dashboard')->with('abort', 'No tienes los permisos necesarios.');
         }
-
+        // Calcular el stockaje
         $datosPorPlanilla = $this->getDatosPorPlanilla();
         $pesoTotalPorDiametro = $this->getPesoTotalPorDiametro();
         $stockEncarretado = $this->getStockEncarretado();
         $stockBarras = $this->getStockBarras();
         $mensajeDeAdvertencia = $this->compararStockConPeso($pesoTotalPorDiametro, $stockEncarretado, $stockBarras);
+
+        // Calcular el stock deseado para dos semanas
+        $stockDeseado = $this->getStockDeseadoParaDosSemanas();
 
         // Calcular peso suministrado a cada obra
         $salidasPaquetes = $this->getSalidasPaquetesCompletadas();
@@ -117,6 +121,30 @@ class EstadisticasController extends Controller
         } else {
             session()->flash('exito', 'Todo el stock requerido está disponible.');
         }
+    }
+    // ---------------------------------------------------------------- Función para calcular el stock deseado
+    private function getStockDeseadoParaDosSemanas()
+    {
+        $fechaInicio = Elemento::where('estado', 'completado')->min('created_at');
+        $fechaFin = Carbon::now();
+
+        if (!$fechaInicio) {
+            return collect(); // Retorna colección vacía si no hay datos
+        }
+
+        $diasTotales = Carbon::parse($fechaInicio)->diffInDays($fechaFin) ?: 1;
+
+        return Elemento::where('estado', 'completado')
+            ->select('diametro')
+            ->selectRaw('SUM(peso) / ? as promedio_diario', [$diasTotales])
+            ->groupBy('diametro')
+            ->get()
+            ->map(function ($item) {
+                return (object)[
+                    'diametro' => $item->diametro,
+                    'stock_deseado' => round($item->promedio_diario * 14, 2)
+                ];
+            });
     }
     // ---------------------------------------------------------------- Funciones para calcular peso suministrado a obras
     private function getSalidasPaquetesCompletadas()

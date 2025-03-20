@@ -153,7 +153,8 @@
                                 // es decir, un elemento con maquina_id_2 igual a Idea 5 y
                                 // con maquina_id distinto al de Idea 5.
                                 return $grupo->contains(function ($elemento) use ($maquina) {
-                                    return $elemento->maquina_id_2 == 7 && $elemento->maquina_id != $maquina->id;
+                                    return $elemento->maquina_id_2 == $maquina->id &&
+                                        $elemento->maquina_id != $maquina->id;
                                 });
                             });
                     } elseif (stripos($maquina->nombre, 'Soldadora') !== false) {

@@ -197,7 +197,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // Si la etiqueta se encuentra en estado completada o fabricada, agregarla automáticamente a la lista.
         if (
             data.estado.toLowerCase() === "completada" ||
-            data.estado.toLowerCase() === "parcialmente_completada"
+            data.estado.toLowerCase() === "parcialmente_completada" ||
+            data.estado.toLowerCase() === "fabricada"
         ) {
             agregarItemEtiqueta(id, data);
         }

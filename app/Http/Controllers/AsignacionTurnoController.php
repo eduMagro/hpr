@@ -38,6 +38,21 @@ class AsignacionTurnoController extends Controller
             $fechaInicio = Carbon::parse($request->fecha_inicio);
             $fechaFin    = Carbon::parse($request->fecha_fin);
             $currentDate = $fechaInicio->copy();
+            // Antes de comenzar la iteración en el método store
+            if ($turno->nombre === 'vacaciones') {
+                $vacacionesExistentes = AsignacionTurno::where('user_id', $user->id)
+                    ->whereBetween('fecha', [$fechaInicio->toDateString(), $fechaFin->toDateString()])
+                    ->whereHas('turno', function ($query) {
+                        $query->where('nombre', 'vacaciones');
+                    })
+                    ->count();
+
+                if ($vacacionesExistentes > 0) {
+                    return response()->json([
+                        'error' => 'Ya existen días asignados como vacaciones en el rango seleccionado.'
+                    ], 400);
+                }
+            }
 
             // Iterar desde la fecha de inicio hasta la fecha fin (incluyendo ésta última)
             while ($currentDate->lte($fechaFin)) {
@@ -99,16 +114,37 @@ class AsignacionTurnoController extends Controller
                 'user_id' => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
                 'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+            ], [
+                'user_id.required' => 'El usuario es obligatorio.',
+                'user_id.exists' => 'El usuario seleccionado no existe.',
+                'fecha_inicio.required' => 'La fecha de inicio es obligatoria.',
+                'fecha_fin.required' => 'La fecha fin es obligatoria.',
+                'fecha_fin.after_or_equal' => 'La fecha fin debe ser igual o posterior a la fecha de inicio.',
             ]);
 
-            // Eliminar los turnos usando Eloquent
-            \App\Models\AsignacionTurno::where('user_id', $request->user_id)
+            $user = User::findOrFail($request->user_id);
+
+            // Obtener asignaciones que sean de tipo "vacaciones"
+            $vacacionesTurno = Turno::where('nombre', 'vacaciones')->first();
+
+            $asignacionesVacaciones = AsignacionTurno::where('user_id', $user->id)
+                ->where('turno_id', $vacacionesTurno->id)
+                ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
+                ->count();
+
+            // Devolver los días de vacaciones al usuario
+            if ($asignacionesVacaciones > 0) {
+                $user->increment('dias_vacaciones', $asignacionesVacaciones);
+            }
+
+            // Eliminar las asignaciones
+            AsignacionTurno::where('user_id', $user->id)
                 ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
                 ->delete();
 
             return response()->json(['success' => 'Turnos eliminados correctamente.']);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al eliminar los turnos.'], 500);
+            return response()->json(['error' => 'Error al eliminar los turnos: ' . $e->getMessage()], 500);
         }
     }
 }
