@@ -24,8 +24,7 @@ class EstadisticasController extends Controller
         $stockBarras = $this->getStockBarras();
         $mensajeDeAdvertencia = $this->compararStockConPeso($pesoTotalPorDiametro, $stockEncarretado, $stockBarras);
 
-        // Calcular el stock deseado para dos semanas
-        $stockDeseado = $this->getStockDeseadoParaDosSemanas();
+        $stockOptimo = $this->getStockOptimo();
 
         // Calcular peso suministrado a cada obra
         $salidasPaquetes = $this->getSalidasPaquetesCompletadas();
@@ -46,7 +45,8 @@ class EstadisticasController extends Controller
             'stockBarras',
             'pesoPorObra',
             'pesoPorPlanillero',
-            'pesoPorPlanilleroPorDia'
+            'pesoPorPlanilleroPorDia',
+            'stockOptimo'
         ));
     }
     // ---------------------------------------------------------------- Funciones para calcular el stockaje
@@ -123,7 +123,7 @@ class EstadisticasController extends Controller
         }
     }
     // ---------------------------------------------------------------- Función para calcular el stock deseado
-    private function getStockDeseadoParaDosSemanas()
+    private function getStockOptimo()
     {
         $fechaInicio = Elemento::where('estado', 'completado')->min('created_at');
         $fechaFin = Carbon::now();
@@ -133,19 +133,29 @@ class EstadisticasController extends Controller
         }
 
         $diasTotales = Carbon::parse($fechaInicio)->diffInDays($fechaFin) ?: 1;
+        $stockDeSeguridad = 1000; // Puedes ajustarlo según tu necesidad
+        $tiempoReposicion = 5; // Ejemplo: 5 días para recibir material del proveedor
 
         return Elemento::where('estado', 'completado')
             ->select('diametro')
-            ->selectRaw('SUM(peso) / ? as promedio_diario', [$diasTotales])
+            ->selectRaw('SUM(peso) / ? as consumo_promedio', [$diasTotales])
             ->groupBy('diametro')
             ->get()
-            ->map(function ($item) {
+            ->map(function ($item) use ($stockDeSeguridad, $tiempoReposicion) {
+                $stockOptimo = max(
+                    $item->consumo_promedio * 14, // Stock Deseado (2 semanas)
+                    $stockDeSeguridad + ($item->consumo_promedio * $tiempoReposicion) // Stock Óptimo
+                );
+
                 return (object)[
                     'diametro' => $item->diametro,
-                    'stock_deseado' => round($item->promedio_diario * 14, 2)
+                    'consumo_promedio' => round($item->consumo_promedio, 2),
+                    'stock_optimo' => round($stockOptimo, 2),
+                    'stock_deseado' => round($item->consumo_promedio * 14, 2)
                 ];
             });
     }
+
     // ---------------------------------------------------------------- Funciones para calcular peso suministrado a obras
     private function getSalidasPaquetesCompletadas()
     {

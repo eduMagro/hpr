@@ -172,24 +172,33 @@
       </div>
 
       <div class="p-4">
+          <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-2 rounded-md">
+              Stock Deseado
+          </h4>
           <div class="overflow-x-auto">
               <table class="w-full border border-gray-300 rounded-lg">
                   <thead class="bg-blue-500 text-white">
                       <tr>
                           <th class="px-4 py-3 border text-center">Diámetro (mm)</th>
+                          <th class="px-4 py-3 border text-center">Consumo Promedio (kg/día)</th>
                           <th class="px-4 py-3 border text-center">Stock Deseado (kg) - 2 Semanas</th>
+                          <th class="px-4 py-3 border text-center">Stock Óptimo (kg)</th>
                       </tr>
                   </thead>
                   <tbody class="text-gray-700">
-                      @forelse($stockDeseado as $stock)
+                      @forelse($stockOptimo as $stock)
                           <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
                               <td class="px-4 py-3 text-center border">{{ number_format($stock->diametro, 2) }}</td>
+                              <td class="px-4 py-3 text-center border">{{ number_format($stock->consumo_promedio, 2) }}
+                              </td>
                               <td class="px-4 py-3 text-center border">{{ number_format($stock->stock_deseado, 2) }}
+                              </td>
+                              <td class="px-4 py-3 text-center border">{{ number_format($stock->stock_optimo, 2) }}
                               </td>
                           </tr>
                       @empty
                           <tr>
-                              <td colspan="2" class="text-red-600 px-4 py-3 text-center">
+                              <td colspan="4" class="text-red-600 px-4 py-3 text-center">
                                   No hay datos disponibles
                               </td>
                           </tr>
@@ -202,5 +211,6 @@
       <div class="text-center text-gray-600 bg-gray-100 py-2 rounded-b-lg">
           Generado el {{ now()->format('d/m/Y H:i') }}
       </div>
+
 
   </div>
