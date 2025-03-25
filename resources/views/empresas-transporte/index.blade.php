@@ -65,19 +65,46 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach ($empresasTransporte as $empresa)
                 <div class="mb-8 p-4 bg-white rounded-lg shadow-sm">
-                    <h2 class="text-xl font-semibold text-blue-600">{{ $empresa->nombre }}</h2>
-                    <p class="text-gray-600"><strong>Teléfono:</strong> {{ $empresa->telefono }}</p>
-                    <p class="text-gray-600"><strong>Email:</strong> {{ $empresa->email }}</p>
+                    <h2 class="text-xl font-semibold text-blue-600 editable" contenteditable="true"
+                        data-id="{{ $empresa->id }}" data-field="nombre">
+                        {{ $empresa->nombre }}
+                    </h2>
+                    <p class="text-gray-600">
+                        <strong>Teléfono:</strong>
+                        <span class="editable" contenteditable="true" data-id="{{ $empresa->id }}"
+                            data-field="telefono">
+                            {{ $empresa->telefono }}
+                        </span>
+                    </p>
+                    <p class="text-gray-600">
+                        <strong>Email:</strong>
+                        <span class="editable" contenteditable="true" data-id="{{ $empresa->id }}" data-field="email">
+                            {{ $empresa->email }}
+                        </span>
+                    </p>
 
                     <h3 class="mt-4 text-lg font-medium text-gray-700">Camiones</h3>
                     <ul class="space-y-4">
                         @foreach ($empresa->camiones as $camion)
                             <li class="p-4 bg-gray-100 rounded-lg shadow-md">
-                                <p class="text-gray-800"><strong>Modelo:</strong> {{ $camion->modelo }}</p>
-                                <p class="text-gray-800"><strong>Capacidad:</strong> {{ $camion->capacidad }} kg</p>
-                                <p class="text-gray-800"><strong>Estado:</strong>
-                                    <span
-                                        class="font-semibold {{ $camion->estado == 'Disponible' ? 'text-green-500' : 'text-red-500' }}">
+                                <p class="text-gray-800">
+                                    <strong>Modelo:</strong>
+                                    <span class="editable" contenteditable="true" data-id="{{ $camion->id }}"
+                                        data-field="modelo">
+                                        {{ $camion->modelo }}
+                                    </span>
+                                </p>
+                                <p class="text-gray-800">
+                                    <strong>Capacidad:</strong>
+                                    <span class="editable" contenteditable="true" data-id="{{ $camion->id }}"
+                                        data-field="capacidad">
+                                        {{ $camion->capacidad }}
+                                    </span> kg
+                                </p>
+                                <p class="text-gray-800">
+                                    <strong>Estado:</strong>
+                                    <span class="editable font-semibold" contenteditable="true"
+                                        data-id="{{ $camion->id }}" data-field="estado">
                                         {{ $camion->estado }}
                                     </span>
                                 </p>
@@ -137,6 +164,72 @@
             @endforeach
         </div>
     </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const editables = document.querySelectorAll('.editable');
 
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
+            editables.forEach(el => {
+                // Evitar que se inserten saltos de línea al presionar Enter.
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        el.blur(); // Finaliza la edición y dispara el evento blur
+                    }
+                });
+
+                // Al salir del campo, se envía la actualización.
+                el.addEventListener('blur', () => {
+                    const id = el.dataset.id;
+                    const field = el.dataset.field;
+                    const value = el.textContent.trim();
+
+                    // Puedes incluir una validación básica según el campo
+                    if (!value) {
+                        console.warn(`El campo ${field} no puede estar vacío.`);
+                        return;
+                    }
+
+                    // Envía la actualización al servidor vía fetch (ajusta la URL y el método según tu API)
+                    fetch('/update-field', {
+                            method: 'POST', // o PUT según la configuración de tu ruta
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').content
+                            },
+                            body: JSON.stringify({
+                                id,
+                                field,
+                                value
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                console.log(
+                                    `Campo ${field} del registro ${id} actualizado correctamente.`
+                                );
+                                document.addEventListener("DOMContentLoaded", function() {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        text: '{{ session('success') }}',
+                                        confirmButtonColor: '#28a745'
+                                    }).then(() => {
+                                        window.location
+                                    .reload(); // Recarga la página tras el mensaje
+                                    });
+                                });
+                            } else {
+                                console.error('Error al actualizar:', data.error);
+                                // Aquí podrías notificar al usuario mediante SweetAlert u otra herramienta.
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error en la solicitud:', error);
+                        });
+                });
+            });
+        });
+    </script>
 </x-app-layout>

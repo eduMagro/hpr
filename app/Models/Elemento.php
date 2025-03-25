@@ -120,14 +120,6 @@ class Elemento extends Model
         return $this->belongsTo(Paquete::class, 'paquete_id');
     }
 
-    public function subpaquetes()
-    {
-        return $this->hasMany(Subpaquete::class, 'elemento_id');
-    }
-    /**
-     * Relación con la tabla 'users'
-     * Un elemento pertenece a un usuario
-     */
     public function user()
     {
         return $this->belongsTo(User::class, 'users_id');  // Relación con User

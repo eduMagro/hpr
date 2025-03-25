@@ -10,6 +10,7 @@ use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\EstadisticasController;
+use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MaquinaController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\PlanillaController;
@@ -17,7 +18,6 @@ use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\AlertaController;
-use App\Http\Controllers\SubpaqueteController;
 use App\Http\Controllers\SalidaController;
 use App\Http\Controllers\ObraController;
 use App\Http\Controllers\AsignacionTurnoController;
@@ -92,12 +92,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('elementos', ElementoController::class);
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
         ->name('elementosEtiquetas');
-    Route::resource('subpaquetes', SubpaqueteController::class);
+    Route::post('/elementos/dividir', [ElementoController::class, 'dividirElemento'])->name('elementos.dividir');
+
     //Actualizar estado de etiquetas
     //Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
     //Route::post('/actualizar-etiqueta/{id}', [EtiquetaController::class, 'actualizarEtiqueta']);
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta']);
-    Route::put('/actualizar-elemento/{id}/maquina/{maquina_id}', [ElementoController::class, 'actualizarElemento']);
 
     Route::post('/verificar-items', [PaqueteController::class, 'verificarItems']);
     // Para elegir un peon en maquinas
@@ -107,13 +107,16 @@ Route::middleware('auth')->group(function () {
         ->name('maquinas.sesion.guardar');
 
     Route::resource('salidas', SalidaController::class);
+    Route::resource('planificacion', PlanificacionController::class);
     Route::get('/salidas/export/{mes}', [\App\Http\Controllers\SalidaController::class, 'export'])->name('salidas.export');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaController::class, 'actualizarEstado']);
+    Route::post('/actualizar-fecha-salida', [SalidaController::class, 'actualizarFechaSalida']);
     // Rutas para la gestión de camiones
     Route::resource('camiones', CamionController::class);
 
     // Rutas para la gestión de empresas de transporte
     Route::resource('empresas-transporte', EmpresaTransporteController::class);
+    Route::post('/update-field', [EmpresaTransporteController::class, 'updateField'])->name('update.field');
 
     Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
@@ -122,7 +125,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
 
     Route::post('/escaneo', [SalidaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
-
 
     Route::get('/papelera', [PapeleraController::class, 'index'])->name('papelera.index');
     Route::put('/papelera/restore/{model}/{id}', [PapeleraController::class, 'restore'])->name('papelera.restore');

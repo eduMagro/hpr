@@ -17,10 +17,6 @@
             <a href="{{ route('elementos.index') }}" class="text-blue-600">
                 {{ __('Elementos') }}
             </a>
-            <span class="mx-2">/</span>
-            <a href="{{ route('subpaquetes.index') }}" class="text-blue-600">
-                {{ __('Subpaquetes') }}
-            </a>
         </h2>
     </x-slot>
     <div class="w-full p-4 sm:p-6">
@@ -107,10 +103,6 @@
                                                     class="text-green-500 hover:underline">
                                                     #{{ $subpaquete->elemento->id }} - FIGURA
                                                     {{ $subpaquete->elemento->figura }}
-                                                </a>
-                                                <a href="{{ route('subpaquetes.index', ['id' => $subpaquete->id]) }}"
-                                                    class="text-red-500 hover:underline">
-                                                    Subpaquete #{{ $subpaquete->id }}
                                                 </a>
                                             </li>
                                         </ul>

@@ -3,7 +3,7 @@
 // =======================
 const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)"; // Color de la línea de la figura
 const LINEA_COTA_COLOR = "rgba(255, 0, 0, 0.5)"; // Color de la línea y cabeza de flechas de las cotas
-const VALOR_COTA_COLOR = "red"; // Color del valor de las cotas
+const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)"; // Color del valor de las cotas
 const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)"; // Color del texto del número de piezas
 const ELEMENT_TEXT_COLOR = "blue"; // Color del texto del elemento (ID)
 
@@ -334,33 +334,102 @@ document.addEventListener("DOMContentLoaded", () => {
         const clickableIDs = [];
         const parent = canvas.parentElement;
         const canvasWidth = parent.clientWidth;
-
+        const textHeight = 60; // Espacio para los textos arriba
+        const buttonHeight = 50; // Espacio para los botones abajo
         const numElementos = grupo.elementos.length;
+
+        // Ajustar altura del canvas dinámicamente
         const canvasHeight =
-            marginY * 2 +
+            textHeight +
             numElementos * minSlotHeight +
-            (numElementos - 1) * gapSpacing;
+            (numElementos - 1) * gapSpacing +
+            buttonHeight;
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
 
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         const availableSlotHeight =
-            (canvasHeight - 2 * marginY - (numElementos - 1) * gapSpacing) /
+            (canvasHeight -
+                textHeight -
+                buttonHeight -
+                (numElementos - 1) * gapSpacing) /
             numElementos;
         const availableWidth = canvasWidth - 2 * marginX;
 
         grupo.elementos.forEach((elemento, index) => {
             const dimensionesStr = elemento.dimensiones || "";
             const dims = extraerDimensiones(dimensionesStr);
-            const barras = elemento.barras || 0;
+            const barras = elemento.barras ?? 0;
+            const diametro = elemento.diametro ?? "N/A";
+            const peso = elemento.peso ?? "N/A";
 
             const centerX = marginX + availableWidth / 2;
             const centerY =
+                textHeight +
+                index * (availableSlotHeight + gapSpacing) +
+                availableSlotHeight / 2;
+
+            // Mostrar datos del elemento a la derecha
+            const dataX = canvasWidth - 10; // Posición alineada a la derecha
+            const dataY = centerY - 40; // Ajuste vertical
+            // 4. Dibujar texto de diametro peso y barras en global
+            ctx.font = "14px Arial";
+            ctx.fillStyle = BARS_TEXT_COLOR;
+            ctx.fillStyle = "#000";
+            ctx.font = "14px Arial";
+            ctx.textAlign = "right";
+            ctx.fillText(`Ø${diametro} | ${peso} | x${barras}`, dataX, dataY);
+
+            const slotBottom =
                 marginY +
-                availableSlotHeight / 2 +
+                availableSlotHeight +
                 index * (availableSlotHeight + gapSpacing);
+            const labelX = marginX + availableWidth + 25;
+            const labelY = slotBottom - 50;
+            ctx.font = "14px Arial";
+            ctx.fillStyle = ELEMENT_TEXT_COLOR;
+            ctx.fillText(`#${elemento.id}`, labelX, labelY);
+
+            // Dibujar botón de dividir debajo de la figura
+            if (elemento.peso > 500 || elemento.barras > 30) {
+                const buttonX = canvas.width - 100;
+                const buttonY = centerY + availableSlotHeight / 2 - 50;
+
+                ctx.fillStyle = "#007bff";
+                ctx.fillRect(buttonX, buttonY, 80, 30);
+                ctx.fillStyle = "#fff";
+                ctx.font = "14px Arial";
+                ctx.fillText("✂️ Dividir", buttonX + 70, buttonY + 20);
+
+                // Guardar posición del botón para detectar clics
+                canvas.addEventListener("click", function (event) {
+                    let rect = canvas.getBoundingClientRect();
+                    let mouseX = event.clientX - rect.left;
+                    let mouseY = event.clientY - rect.top;
+
+                    if (
+                        mouseX >= buttonX &&
+                        mouseX <= buttonX + 80 &&
+                        mouseY >= buttonY &&
+                        mouseY <= buttonY + 30
+                    ) {
+                        abrirModalDividirElemento(elemento.id);
+                    }
+                });
+            }
+            clickableIDs.push({
+                id: elemento.id,
+                x: labelX - 45,
+                y: labelY - 20,
+                width: 50,
+                height: 30,
+            });
 
             // CASO 1: ARC único
             if (dims.length === 1 && dims[0].type === "arc") {
@@ -387,33 +456,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 ctx.font = "12px Arial";
                 ctx.fillStyle = VALOR_COTA_COLOR;
                 ctx.fillText(arc.radius.toString() + "r", textX, textY);
-
-                // Texto de barras
-                ctx.font = "14px Arial";
-                ctx.fillStyle = VALOR_COTA_COLOR;
-                ctx.fillText(
-                    `x${barras}`,
-                    centerX + availableWidth / 2 + 15,
-                    centerY + 5
-                );
-
-                const slotBottom =
-                    marginY +
-                    availableSlotHeight +
-                    index * (availableSlotHeight + gapSpacing);
-                const labelX = marginX + availableWidth - 10;
-                const labelY = slotBottom - 5;
-                // Label (ID) en azul
-                ctx.font = "14px Arial";
-                ctx.fillStyle = ELEMENT_TEXT_COLOR;
-                ctx.fillText(`#${elemento.id}`, labelX, labelY);
-                clickableIDs.push({
-                    id: elemento.id,
-                    x: labelX,
-                    y: labelY - 14,
-                    width: 40,
-                    height: 20,
-                });
             }
             // CASO 2: Línea única
             else if (dims.length === 1 && dims[0].type === "line") {
@@ -431,30 +473,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const pt1 = { x: centerX - lineLength / 2, y: centerY };
                 const pt2 = { x: centerX + lineLength / 2, y: centerY };
                 drawDimensionLine(ctx, pt1, pt2, line.length.toString(), 10);
-
-                const slotBottom =
-                    marginY +
-                    availableSlotHeight +
-                    index * (availableSlotHeight + gapSpacing);
-                const labelX = marginX + availableWidth - 10;
-                const labelY = slotBottom - 5;
-                ctx.font = "14px Arial";
-                ctx.fillStyle = ELEMENT_TEXT_COLOR;
-                ctx.fillText(`#${elemento.id}`, labelX, labelY);
-                ctx.font = "14px Arial";
-                ctx.fillStyle = BARS_TEXT_COLOR;
-                ctx.fillText(
-                    `x${barras}`,
-                    centerX + availableWidth / 2 + 15,
-                    centerY + 5
-                );
-                clickableIDs.push({
-                    id: elemento.id,
-                    x: labelX,
-                    y: labelY - 14,
-                    width: 40,
-                    height: 20,
-                });
             }
             // CASO 3: Figura compuesta
             else {
@@ -591,33 +609,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         );
                     });
                 }
-
-                // 4. Dibujar texto "x{barras}" y label en global
-                ctx.font = "14px Arial";
-                ctx.fillStyle = BARS_TEXT_COLOR;
-                ctx.fillText(
-                    `x${barras}`,
-                    centerX + availableWidth / 2 + 15,
-                    centerY + 5
-                );
-
-                const slotBottom =
-                    marginY +
-                    availableSlotHeight +
-                    index * (availableSlotHeight + gapSpacing);
-                const labelX = marginX + availableWidth - 10;
-                const labelY = slotBottom - 5;
-                ctx.font = "14px Arial";
-                ctx.fillStyle = ELEMENT_TEXT_COLOR;
-                ctx.fillText(`#${elemento.id}`, labelX, labelY);
-
-                clickableIDs.push({
-                    id: elemento.id,
-                    x: labelX,
-                    y: labelY - 14,
-                    width: 40,
-                    height: 20,
-                });
             }
         });
 

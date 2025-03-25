@@ -379,6 +379,14 @@ class SalidaController extends Controller
                     ->where('obra_id', $obraId)
                     ->update([$field => $value]);
             }
+            if ($field === 'fecha_salida') {
+                dd([
+                    'salida_id' => $salida->id,
+                    'valor_recibido' => $value,
+                    'valor_parseado' => Carbon::parse($value)->format('Y-m-d'),
+                    'antes_de_guardar' => $salida->fecha_salida
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -518,34 +526,18 @@ class SalidaController extends Controller
 
 
 
-    public function marcarSubido(Request $request)
+    public function actualizarFechaSalida(Request $request)
     {
-        $codigo = $request->codigo;
+        $request->validate([
+            'id' => 'required|exists:salidas,id',
+            'fecha_salida' => 'required|date'
+        ]);
 
-        // Buscar en paquetes, etiquetas o elementos
-        $paquete = Paquete::where('id', $codigo)->first();
-        $etiqueta = Etiqueta::where('id', $codigo)->first();
-        $elemento = Elemento::where('id', $codigo)->first();
+        $salida = Salida::findOrFail($request->id);
+        $salida->fecha_salida = Carbon::parse($request->fecha_salida);
+        $salida->save();
 
-        if ($paquete) {
-            $paquete->subido = true;
-            $paquete->save();
-            return response()->json(['success' => true, 'mensaje' => 'Paquete marcado como subido.']);
-        }
-
-        if ($etiqueta) {
-            $etiqueta->subido = true;
-            $etiqueta->save();
-            return response()->json(['success' => true, 'mensaje' => 'Etiqueta marcada como subida.']);
-        }
-
-        if ($elemento) {
-            $elemento->subido = true;
-            $elemento->save();
-            return response()->json(['success' => true, 'mensaje' => 'Elemento marcado como subido.']);
-        }
-
-        return response()->json(['success' => false, 'mensaje' => 'Código no encontrado.'], 404);
+        return response()->json(['success' => true]);
     }
 
     public function destroy($id)

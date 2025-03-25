@@ -7,7 +7,6 @@ use App\Models\Paquete;
 use App\Models\Etiqueta;
 use App\Models\Ubicacion;
 use App\Models\Elemento;
-use App\Models\Subpaquete;
 use App\Models\Maquina;
 use Exception;
 use Illuminate\Support\Facades\Log;
@@ -60,7 +59,7 @@ class PaqueteController extends Controller
         $request->validate([
             'items' => 'required|array|min:1', // Debe recibir un array con al menos un item
             'items.*.id' => 'integer|required', // Asegurar que los IDs existen
-            'items.*.type' => 'required|in:etiqueta,elemento,subpaquete', // Tipos permitidos
+            'items.*.type' => 'required|in:etiqueta,elemento', // Tipos permitidos
             'maquina_id' => 'required|integer|exists:maquinas,id'
         ]);
 
@@ -70,7 +69,7 @@ class PaqueteController extends Controller
             // Separar los elementos por tipo
             $etiquetasIds = collect($request->items)->where('type', 'etiqueta')->pluck('id')->toArray();
             $elementosIds = collect($request->items)->where('type', 'elemento')->pluck('id')->toArray();
-            $subpaquetesIds = collect($request->items)->where('type', 'subpaquete')->pluck('id')->toArray();
+
 
             $maquinaId = $request->input('maquina_id');
             $maquina = Maquina::where('id', $maquinaId)->first();
@@ -80,7 +79,7 @@ class PaqueteController extends Controller
             // Obtener los elementos y subpaquetes asociados
             $etiquetas = Etiqueta::whereIn('id', $etiquetasIds)->with(['elementos', 'planilla'])->get();
             $elementos = Elemento::whereIn('id', $elementosIds)->get();
-            $subpaquetes = Subpaquete::whereIn('id', $subpaquetesIds)->get();
+
 
             // Incluir elementos de etiquetas en la lista de elementos a empaquetar
             // $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId) {
@@ -93,7 +92,7 @@ class PaqueteController extends Controller
                 return $etiqueta->elementos->where('maquina_id', $maquinaId)->pluck('id');
             })->unique()->values()->toArray(); // ✅ Elimina duplicados y reindexa el array
 
-            if ($etiquetas->isEmpty() && $elementos->isEmpty() && $subpaquetes->isEmpty()) {
+            if ($etiquetas->isEmpty() && $elementos->isEmpty()) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
@@ -103,8 +102,8 @@ class PaqueteController extends Controller
             // **Siempre** añadir los elementos directos a `$elementosIdsDesdeEtiquetas`
             $elementosIdsDesdeEtiquetas = array_unique(array_merge($elementosIdsDesdeEtiquetas, $elementosIds));
 
-            // Verificar disponibilidad de etiquetas, elementos y subpaquetes
-            if ($mensajeError = $this->verificarDisponibilidad($elementosIdsDesdeEtiquetas, $subpaquetesIds)) {
+            // Verificar disponibilidad de etiquetas, elementos
+            if ($mensajeError = $this->verificarDisponibilidad($elementosIdsDesdeEtiquetas)) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
@@ -116,7 +115,7 @@ class PaqueteController extends Controller
             $todosElementos = Elemento::whereIn('id', $elementosIdsDesdeEtiquetas)->get();
 
             // Si no hay datos válidos, devolver error
-            if ($todosElementos->isEmpty() && $subpaquetes->isEmpty()) {
+            if ($todosElementos->isEmpty()) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
@@ -124,8 +123,8 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-            // Obtener la planilla desde etiquetas, elementos o subpaquetes
-            $planilla = $etiquetas->first()->planilla ?? $todosElementos->first()->planilla ?? $subpaquetes->first()->planilla ?? null;
+            // Obtener la planilla desde etiquetas, elementos 
+            $planilla = $etiquetas->first()->planilla ?? $todosElementos->first()->planilla ?? null;
 
             // Si no hay planilla, error
             if (!$planilla) {
@@ -139,7 +138,7 @@ class PaqueteController extends Controller
             $codigo_planilla = $planilla->codigo_limpio;
 
             // Calcular el peso total recorriendo $todosElementos
-            $pesoTotal = $todosElementos->sum('peso') + $subpaquetes->sum('peso');
+            $pesoTotal = $todosElementos->sum('peso');
 
             // Verificar si el peso total supera el límite
             if ($pesoTotal > 1300) {
@@ -187,17 +186,15 @@ class PaqueteController extends Controller
     /**
      * Verifica si los elementos están disponibles para ser empaquetados.
      */
-    private function verificarDisponibilidad($elementos, $subpaquetes)
+    private function verificarDisponibilidad($elementos)
     {
         try {
             $elementosOcupados = Elemento::whereIn('id', $elementos)->whereNotNull('paquete_id')->pluck('id');
-            $subpaquetesOcupados = Subpaquete::whereIn('id', $subpaquetes)->whereNotNull('paquete_id')->pluck('id');
 
-            if ($elementosOcupados->isNotEmpty() || $subpaquetesOcupados->isNotEmpty()) {
+            if ($elementosOcupados->isNotEmpty()) {
                 return [
                     'message' => 'Algunos elementos ya están asignados a otro paquete.',
-                    'elementos_ocupados' => $elementosOcupados->toArray(),
-                    'subpaquetes_ocupados' => $subpaquetesOcupados->toArray()
+                    'elementos_ocupados' => $elementosOcupados->toArray()
                 ];
             }
 
@@ -233,13 +230,12 @@ class PaqueteController extends Controller
 
 
     /**
-     * Asigna etiquetas, elementos y subpaquetes al paquete.
+     * Asigna etiquetas, elementos al paquete.
      */
-    private function asignarItemsAPaquete($elementos, $subpaquetes, $paqueteId)
+    private function asignarItemsAPaquete($elementos, $paqueteId)
     {
         try {
             Elemento::whereIn('id', $elementos)->update(['paquete_id' => $paqueteId]);
-            Subpaquete::whereIn('id', $subpaquetes)->update(['paquete_id' => $paqueteId]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -262,25 +258,20 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-
             $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
-            $subpaquetesIds = collect($items)->where('type', 'subpaquete')->pluck('id')->toArray();
 
             // // Buscar elementos incompletos
-            // $elementosIncompletos = Elemento::whereIn('id', $elementosIds)
-            //     ->where('estado', '!=', 'completado')
-            //     ->pluck('id')
-            //     ->toArray();
-
-            $subpaquetesIncompletos = []; // No es necesario filtrar, si existe, está completo.
+            $elementosIncompletos = Elemento::whereIn('id', $elementosIds)
+                ->where('estado', '!=', 'completado')
+                ->pluck('id')
+                ->toArray();
 
 
             return response()->json([
                 'success' => empty($elementosIncompletos) && empty($subpaquetesIncompletos),
                 'message' => empty($elementosIncompletos) && empty($subpaquetesIncompletos) ?
                     'Todos los ítems están completos.' : 'Algunos ítems no están completos.',
-                // 'elementos_incompletos' => $elementosIncompletos,
-                'subpaquetes_incompletos' => $subpaquetesIncompletos
+                'elementos_incompletos' => $elementosIncompletos
             ], 200);
         } catch (Exception $e) {
             Log::error('Error en verificarItems(): ' . $e->getMessage());

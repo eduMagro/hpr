@@ -131,18 +131,11 @@
                         // Verificar si el elemento tiene un paquete directo
                         $tienePaqueteDirecto = !is_null($elemento->paquete_id);
 
-                        // Verificar si el elemento tiene subpaquetes y si todos están en un paquete
-                        $tieneTodosLosSubpaquetesEnPaquete =
-                            $elemento->subpaquetes->isNotEmpty() &&
-                            $elemento->subpaquetes->every(function ($subpaquete) {
-                                return !is_null($subpaquete->paquete_id);
-                            });
-
                         // Verificar si el estado es "completado"
                         $estaCompletado = strtolower($elemento->estado) === 'completado';
 
                         // Excluir solo si el elemento tiene un paquete directo O si todos sus subpaquetes están en un paquete Y además está completado
-                        return ($tienePaqueteDirecto || $tieneTodosLosSubpaquetesEnPaquete) && $estaCompletado;
+                        return $tienePaqueteDirecto && $estaCompletado;
                     }
 
                     if (stripos($maquina->tipo, 'ensambladora') !== false) {
@@ -223,59 +216,48 @@
 
                     @endphp
 
-                    <div
-                        class="{{ isset($planilla) && str_contains(strtolower(optional($planilla)->ensamblado ?? ''), 'taller') ? 'bg-red-200' : 'bg-yellow-200' }} p-6 rounded-lg shadow-md mt-4">
-                        <h2 class="text-lg font-semibold text-gray-700">
-                            <strong> {{ optional($planilla)->codigo_limpio }}
-                            </strong>
-                        </h2>
-                        <h3 class="text-lg font-semibold text-gray-800">
-                            {{ $etiqueta->id_et ?? 'N/A' }} {{ $etiqueta->nombre ?? 'Sin nombre' }} -
-                            {{ $etiqueta->marca ?? 'Sin Marca' }}
-                            (Número: {{ $etiqueta->numero_etiqueta ?? 'Sin número' }})
-                            - {{ $etiqueta->peso_kg ?? 'N/A' }}
-                        </h3>
-                        <!-- Contenedor oculto para generar el QR -->
-                        <div id="qrContainer-{{ $etiqueta->id ?? 'N/A' }}" style="display: none;"></div>
+                    <div style="background-color: #fe7f09; border: 1px solid black;" class="boder shadow-md mt-4">
+                        <div class="p-2">
+                            <h2 class="text-lg font-semibold text-gray-900">
+                                <span>{{ $planilla->obra->obra }}</span> -
+                                <span>{{ $planilla->cliente->empresa }}</span><br>
+                                <span> {{ optional($planilla)->codigo_limpio }}
+                                </span> - S:{{ $planilla->seccion }}
+                            </h2>
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                {{ $etiqueta->id_et ?? 'N/A' }} {{ $etiqueta->nombre ?? 'Sin nombre' }} -
 
-                        <div class="mb-4 bg-yellow-100 p-2 rounded-lg">
-                            <p>
-                                <strong>Fecha Inicio:</strong>
-                                <span id="inicio-{{ $etiqueta->id ?? 'N/A' }}">
-                                    {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_inicio_ensamblado ?? 'No asignada' : $etiqueta->fecha_inicio ?? 'No asignada' }}
-                                </span>
-                                <strong>Fecha Finalización:</strong>
-                                <span id="final-{{ $etiqueta->id ?? 'N/A' }}">
-                                    {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_finalizacion_ensamblado ?? 'No asignada' : $etiqueta->fecha_finalizacion ?? 'No asignada' }}
-                                </span>
-                                <span id="emoji-{{ $etiqueta->id ?? 'N/A' }}"></span><br>
-                                <strong>Estado:</strong>
-                                <span id="estado-{{ $etiqueta->id ?? 'N/A' }}">
-                                    {{ $etiqueta->estado ?? 'N/A' }}
-                                </span>
-                            </p>
+                                <span>Cal:B500SD</span>
+                                - {{ $etiqueta->peso_kg ?? 'N/A' }}
+                            </h3>
+                            <!-- Contenedor oculto para generar el QR -->
+                            <div id="qrContainer-{{ $etiqueta->id ?? 'N/A' }}" style="display: none;"></div>
 
+                            <div class="bg-yellow-100 p-2 rounded-lg">
+                                <p>
+                                    <strong>Estado:</strong>
+                                    <span id="estado-{{ $etiqueta->id ?? 'N/A' }}">
+                                        {{ $etiqueta->estado ?? 'N/A' }}
+                                    </span>
+                                    <strong>Fecha Inicio:</strong>
+                                    <span id="inicio-{{ $etiqueta->id ?? 'N/A' }}">
+                                        {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_inicio_ensamblado ?? 'No asignada' : $etiqueta->fecha_inicio ?? 'No asignada' }}
+                                    </span>
+                                    <strong>Fecha Finalización:</strong>
+                                    <span id="final-{{ $etiqueta->id ?? 'N/A' }}">
+                                        {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_finalizacion_ensamblado ?? 'No asignada' : $etiqueta->fecha_finalizacion ?? 'No asignada' }}
+                                    </span>
+
+                                </p>
+
+                            </div>
+                            <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
+                            @if (isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty())
+                                <h4 class="font-semibold text-red-700 p-2">⚠️ Hay elementos en otras máquinas</h4>
+                                <hr style="border: 1px solid black; margin: 10px 0;">
+                            @endif
                         </div>
-
-                        <hr style="border: 1px solid black; margin: 10px 0;">
-                        <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
-                        @if (isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty())
-                            <h4 class="font-semibold text-red-700 mt-6 mb-6">⚠️ Hay elementos en otras máquinas, crea un
-                                paquete con la etiqueta e imprimme QR!!</h4>
-                            {{-- <div class="bg-red-100 p-4 rounded-lg shadow-md">
-                                @foreach ($otrosElementos[$etiqueta->id] as $elementoOtro)
-                                    <p class="text-gray-600">
-                                        <strong>ID:</strong> {{ $elementoOtro->id_el }} |
-                                        <strong>Máquina:</strong> {{ $elementoOtro->maquina->nombre }} |
-                                        <strong>Peso:</strong> {{ $elementoOtro->peso_kg }} kg |
-                                        <strong>Dimensiones:</strong> {{ $elementoOtro->dimensiones ?? 'No asignado' }}
-                                        <strong>Estado:</strong> {{ $elementoOtro->estado }}
-                                    </p>
-                                    <hr class="my-2">
-                                @endforeach
-                            </div> --}}
-                        @endif
-                        <!-- GRID PARA ELEMENTOS -->
+                        {{-- <!-- GRID PARA ELEMENTOS -->
                         <div class="grid grid-cols-1 gap-1">
                             @foreach ($elementos as $elemento)
                                 <div id="elemento-{{ $elemento->id }}"
@@ -285,71 +267,23 @@
                                         <strong>Peso:</strong> {{ $elemento->peso_kg }}
                                         -
                                         <strong>Ø</strong> {{ $elemento->diametro_mm }}
-                                        <!-- Botón para Subpaquetar -->
+                                        <!-- Botón para dividir -->
                                         @if ($elemento->peso > 500 || $elemento->barras > 30)
-                                            <button onclick="mostrarModalSubpaquete({{ $elemento->id }})"
+                                            <button onclick="abrirModalDividirElemento({{ $elemento->id }})"
                                                 class="p-1 ml-4 bg-blue-500 text-white rounded hover:bg-blue-700">
-                                                ➕ Subpaquetar
+                                                ✂️ Dividir
                                             </button>
                                         @endif
                                     </p>
-                                    {{-- @if ($tieneElementosEnOtrasMaquinas)
-                                         <p class="text-gray-600 text-sm">
-                                            <strong>Fecha Inicio:</strong>
-                                            <span id="inicio-{{ $elemento->id }}">
-                                                {{ $elemento->fecha_inicio ?? 'No asignada' }}
-                                            </span>
-                                            <strong>Fecha Finalización:</strong>
-                                            <span id="final-{{ $elemento->id }}">
-                                                {{ $elemento->fecha_finalizacion ?? 'No asignada' }}
-                                            </span>
-                                            <span id="emoji-{{ $elemento->id }}"></span><br>
-                                            <strong> Estado: </strong>
-                                            <span id="estado-{{ $elemento->id }}">{{ $elemento->estado }}</span>
-                                        </p> --}}
-
-                                    <!-- Si el elemento NO tiene subpaquetes, mostrar botón QR del elemento -->
-                                    {{-- @if ($elemento->subpaquetes->isEmpty())
-                                            <button
-                                                onclick="generateAndPrintQR('{{ $elemento->id }}', '{{ $elemento->planilla->codigo_limpio }}', 'ELEMENTO')"
-                                                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                                                QR Elemento
-                                            </button>
-                                        @endif
-                            @endif  --}}
-                                    <!-- SUBPAQUETES RELACIONADOS -->
-                                    @if ($elemento->subpaquetes->isNotEmpty())
-                                        <div class="bg-gray-100 p-3 rounded-lg mt-3 shadow-md">
-                                            <h4 class="font-bold text-gray-700">🔹 Subpaquetes:</h4>
-                                            <ul class="list-none">
-                                                @foreach ($elemento->subpaquetes as $subpaquete)
-                                                    <li class="bg-white p-2 rounded-lg shadow-sm mt-2">
-                                                        <button
-                                                            onclick="generateAndPrintQR('{{ $subpaquete->id }}', '{{ $elemento->planilla->codigo_limpio }}', 'SUBPAQUETE')"
-                                                            class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">
-                                                            QR Subpaquete #{{ $subpaquete->id }}
-                                                        </button>
-                                                        <p><strong>#</strong>{{ $subpaquete->id }}</p>
-                                                        <p><strong>Peso:</strong> {{ $subpaquete->peso }} kg</p>
-                                                        <p><strong>Cantidad:</strong> {{ $subpaquete->cantidad }}</p>
-                                                        <p><strong>Descripción:</strong>
-                                                            {{ $subpaquete->descripcion ?? 'Sin descripción' }}</p>
-                                                    </li>
-                                                @endforeach
-                                            </ul>
-                                        </div>
-                                    @endif
-
-
-
                                 </div>
                             @endforeach
+                        </div> --}}
+                        <div>
+                            <!-- Contenedor para el canvas -->
+                            <div id="canvas-container" style="width: 100%; border-top: 1px solid black;">
+                                <canvas id="canvas-etiqueta-{{ $etiqueta->id ?? 'N/A' }}"></canvas>
+                            </div>
                         </div>
-                        <!-- Contenedor para el canvas -->
-                        <div id="canvas-container" style="width: 100%; border: 1px solid #ccc; border-radius: 8px;">
-                            <canvas id="canvas-etiqueta-{{ $etiqueta->id ?? 'N/A' }}" class="border"></canvas>
-                        </div>
-
                     </div>
                 @empty
                     <div class="col-span-4 text-center py-4 text-gray-600">
@@ -357,43 +291,37 @@
                     </div>
                 @endforelse
             </div>
-            <!-- Modal para Crear Subpaquete -->
-            <div id="modalSubpaquete"
+
+            <!-- Modal para Dividir Elemento -->
+            <div id="modalDividirElemento"
                 class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
                 <div class="bg-white p-6 rounded-lg shadow-lg w-96">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4">➕ Crear Subpaquete</h2>
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">✂️ Dividir Elemento</h2>
 
-                    <form id="formSubpaquete" method="POST" action="{{ route('subpaquetes.store') }}">
+                    <form id="formDividirElemento" method="POST">
                         @csrf
-                        <input type="hidden" name="elemento_id" id="subpaquete_elemento_id">
+                        <input type="hidden" name="elemento_id" id="dividir_elemento_id">
 
-                        <label for="peso" class="block text-sm font-medium text-gray-700 mb-1">Peso</label>
-                        <input type="number" step="0.01" name="peso" id="peso"
-                            class="w-full border rounded p-2 mb-4" placeholder="Peso en kg">
-
-                        <label for="cantidad" class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
-                        <input type="number" name="cantidad" id="cantidad" class="w-full border rounded p-2 mb-4"
-                            value="1">
-
-                        <label for="descripcion"
-                            class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                        <textarea name="descripcion" id="descripcion" class="w-full border rounded p-2 mb-4" rows="3"
-                            placeholder="Detalles del subpaquete"></textarea>
+                        <label for="num_nuevos" class="block text-sm font-medium text-gray-700 mb-1">
+                            ¿Cuántos nuevos grupos de elementos quieres crear?
+                        </label>
+                        <input type="number" name="num_nuevos" id="num_nuevos" class="w-full border rounded p-2 mb-4"
+                            min="1" placeholder="Ej: 2">
 
                         <div class="flex justify-end mt-4">
                             <button type="button"
-                                onclick="document.getElementById('modalSubpaquete').classList.add('hidden')"
+                                onclick="document.getElementById('modalDividirElemento').classList.add('hidden')"
                                 class="mr-2 px-4 py-2 bg-gray-500 text-white rounded">
                                 Cancelar
                             </button>
-                            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded">
-                                Crear
+                            <button type="button" onclick="enviarDivision()"
+                                class="px-4 py-2 bg-purple-600 text-white rounded">
+                                Dividir
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
-
             <!-- --------------------------------------------------------------- GRID PARA OTROS --------------------------------------------------------------- -->
             <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <div class="flex flex-col gap-4">
@@ -414,7 +342,6 @@
                             <select id="itemType" class="border rounded p-2 w-full">
                                 <option value="Etiqueta">Etiqueta</option>
                                 <option value="Elemento">Elemento</option>
-                                <option value="Subpaquete">Subpaquete</option>
                             </select>
                         </div>
                         <div class="mb-2">
@@ -578,9 +505,43 @@
         </div>
     </div>
     <script>
-        function mostrarModalSubpaquete(elementoId) {
-            document.getElementById('subpaquete_elemento_id').value = elementoId;
-            document.getElementById('modalSubpaquete').classList.remove('hidden');
+        function abrirModalDividirElemento(elementoId) {
+            document.getElementById('dividir_elemento_id').value = elementoId;
+            document.getElementById('modalDividirElemento').classList.remove('hidden');
+        }
+
+        function enviarDivision() {
+            let elementoId = document.getElementById('dividir_elemento_id').value;
+            let numNuevos = document.getElementById('num_nuevos').value;
+
+            if (numNuevos < 1) {
+                alert('Debes ingresar al menos 1 nuevo elemento.');
+                return;
+            }
+
+            fetch("{{ route('elementos.dividir') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                    },
+                    body: JSON.stringify({
+                        elemento_id: elementoId,
+                        num_nuevos: numNuevos
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('El elemento se ha dividido correctamente.');
+                        location.reload(); // Recargar la página para ver los cambios
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Hubo un problema con la división: ' + error);
+                });
         }
 
         function confirmarEliminacion(actionUrl) {
@@ -608,10 +569,10 @@
         window.etiquetasData =
             @json($etiquetasData); // Ej.: [{ codigo: "3718", elementos: [27906,27907,...], pesoTotal: 155.55 }, ...]
         window.pesosElementos = @json($pesosElementos); // Ej.: { "27906": "77.81", "27907": "3.87", ... }
-        window.subpaquetesData = @json($subpaquetesData); // Ej.: { "sub001": 27906, "sub002": 27907, ... }
+
         // console.log("Datos precargados de etiquetas:", window.etiquetasData);
         // console.log("Pesos precargados de elementos:", window.pesosElementos);
-        // console.log("Datos precargados de subpaquetes:", window.subpaquetesData);
+
 
         let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
         let etiquetasEnUnaSolaMaquina = @json($etiquetasEnUnaSolaMaquina);

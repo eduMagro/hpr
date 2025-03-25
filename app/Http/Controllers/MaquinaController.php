@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Maquina;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
-use App\Models\Subpaquete;
+
 use App\Models\User;
 use App\Models\Ubicacion;
 use Illuminate\Support\Facades\DB;
@@ -191,16 +191,6 @@ class MaquinaController extends Controller
             ];
         })->values()->toArray();
 
-        // 11) Subpaquetes
-        $elementoIds = $elementosMaquina->pluck('id')->toArray();
-        $subpaquetes = Subpaquete::whereIn('elemento_id', $elementoIds)->get();
-        $subpaquetesData = $subpaquetes->map(function ($subpaquete) {
-            return [
-                'id'   => $subpaquete->id,
-                'peso' => $subpaquete->peso,
-            ];
-        })->values();
-
         // 12) Información de etiquetas
         $etiquetasData = $elementosMaquina
             ->groupBy('etiqueta_id')
@@ -212,7 +202,7 @@ class MaquinaController extends Controller
                 ];
             })
             ->values();
-        dd($elementosMaquina);
+
         // 13) Retornar la vista (asegúrate de usar `$elementosMaquina` en la vista)
         return view('maquinas.show', [
             'maquina'                   => $maquina,
@@ -224,8 +214,7 @@ class MaquinaController extends Controller
             'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
             'elementosMaquina'          => $elementosMaquina, // Ya está filtrado a la planilla activa
             'pesosElementos'            => $pesosElementos,
-            'etiquetasData'             => $etiquetasData,
-            'subpaquetesData'           => $subpaquetesData,
+            'etiquetasData'             => $etiquetasData
         ]);
     }
 

@@ -54,7 +54,7 @@ function seleccionarCompañero(maquinaId) {
         },
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = `/maquinas/${maquinaId}`;
+            window.location.href = `/manager/public/maquinas/${maquinaId}`;
         }
     });
 }

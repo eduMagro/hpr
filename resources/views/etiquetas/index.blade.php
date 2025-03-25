@@ -15,10 +15,6 @@
                 <a href="{{ route('elementos.index') }}" class="text-blue-600">
                     {{ __('Elementos') }}
                 </a>
-                <span class="mx-2">/</span>
-                <a href="{{ route('subpaquetes.index') }}" class="text-blue-600">
-                    {{ __('Subpaquetes') }}
-                </a>
             </h2>
 
         </x-slot>

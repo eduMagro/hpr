@@ -27,9 +27,17 @@ class Obra extends Model
     {
         return $this->hasMany(Planilla::class);
     }
+    public function salidaClientes()
+    {
+        return $this->hasMany(SalidaCliente::class, 'obra_id');
+    }
 
     public function cliente()
     {
         return $this->belongsTo(Cliente::class, 'cliente_id');
+    }
+    public function salidas()
+    {
+        return $this->belongsToMany(Salida::class, 'salida_cliente', 'obra_id', 'salida_id');
     }
 }

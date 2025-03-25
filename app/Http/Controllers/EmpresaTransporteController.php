@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmpresaTransporte;
+use App\Models\Camion;
 use Illuminate\Http\Request;
 
 class EmpresaTransporteController extends Controller
@@ -15,7 +16,31 @@ class EmpresaTransporteController extends Controller
         // Pasar los datos a la vista
         return view('empresas-transporte.index', compact('empresasTransporte'));
     }
+    public function updateField(Request $request)
+    {
+        // Validar que se envíen los datos necesarios
+        $data = $request->validate([
+            'id'    => 'required|integer',
+            'field' => 'required|string',
+            'value' => 'required|string'
+        ]);
 
+        // Determinar a qué modelo pertenece el campo a actualizar.
+        // Aquí se asume que:
+        // - Los campos 'nombre', 'telefono' y 'email' corresponden a EmpresaTransporte.
+        // - Los campos 'modelo', 'capacidad' y 'estado' corresponden a Camion.
+        if (in_array($data['field'], ['nombre', 'telefono', 'email'])) {
+            $registro = EmpresaTransporte::findOrFail($data['id']);
+        } else {
+            $registro = Camion::findOrFail($data['id']);
+        }
+
+        // Actualizar el campo dinámicamente
+        $registro->{$data['field']} = $data['value'];
+        $registro->save();
+
+        return response()->json(['success' => true, 'message' => 'Campo actualizado correctamente.']);
+    }
 
     public function create()
     {
