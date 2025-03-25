@@ -15,7 +15,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Maquina;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
+use Exception;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class etiquetaController extends Controller
 {
@@ -731,5 +735,132 @@ class etiquetaController extends Controller
             'success' => true,
             'message' => 'Todas las etiquetas están completas.'
         ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        try {
+            // Buscar la etiqueta o lanzar excepción si no se encuentra
+            $etiqueta = Etiqueta::findOrFail($id);
+
+            // Si los campos de fecha vienen vacíos, forzar null
+            $request->merge([
+                'fecha_inicio'                => $request->fecha_inicio ?: null,
+                'fecha_finalizacion'          => $request->fecha_finalizacion ?: null,
+                'fecha_inicio_ensamblado'     => $request->fecha_inicio_ensamblado ?: null,
+                'fecha_finalizacion_ensamblado' => $request->fecha_finalizacion_ensamblado ?: null,
+                'fecha_inicio_soldadura'      => $request->fecha_inicio_soldadura ?: null,
+                'fecha_finalizacion_soldadura' => $request->fecha_finalizacion_soldadura ?: null,
+            ]);
+
+            // Validar los datos recibidos con mensajes personalizados
+            $validatedData = $request->validate([
+                'numero_etiqueta'          => 'required|string|max:50',
+                'nombre'                   => 'required|string|max:255',
+                'peso_kg'                  => 'nullable|numeric',
+                'fecha_inicio'             => 'nullable|date_format:d/m/Y',
+                'fecha_finalizacion'       => 'nullable|date_format:d/m/Y',
+                'fecha_inicio_ensamblado'  => 'nullable|date_format:d/m/Y',
+                'fecha_finalizacion_ensamblado' => 'nullable|date_format:d/m/Y',
+                'fecha_inicio_soldadura'   => 'nullable|date_format:d/m/Y',
+                'fecha_finalizacion_soldadura' => 'nullable|date_format:d/m/Y',
+                'estado'                   => 'nullable|string|in:pendiente,fabricando,completada'
+            ], [
+                'numero_etiqueta.required' => 'El campo Número de Etiqueta es obligatorio.',
+                'numero_etiqueta.string'   => 'El campo Número de Etiqueta debe ser una cadena de texto.',
+                'numero_etiqueta.max'      => 'El campo Número de Etiqueta no debe exceder 50 caracteres.',
+
+                'nombre.required'          => 'El campo Nombre es obligatorio.',
+                'nombre.string'            => 'El campo Nombre debe ser una cadena de texto.',
+                'nombre.max'               => 'El campo Nombre no debe exceder 255 caracteres.',
+
+                'peso_kg.numeric'          => 'El campo Peso debe ser un número.',
+
+                'fecha_inicio.date_format'             => 'El campo Fecha Inicio no corresponde al formato DD/MM/YYYY.',
+                'fecha_finalizacion.date_format'       => 'El campo Fecha Finalización no corresponde al formato DD/MM/YYYY.',
+                'fecha_inicio_ensamblado.date_format'    => 'El campo Fecha Inicio Ensamblado no corresponde al formato DD/MM/YYYY.',
+                'fecha_finalizacion_ensamblado.date_format' => 'El campo Fecha Finalización Ensamblado no corresponde al formato DD/MM/YYYY.',
+                'fecha_inicio_soldadura.date_format'     => 'El campo Fecha Inicio Soldadura no corresponde al formato DD/MM/YYYY.',
+                'fecha_finalizacion_soldadura.date_format' => 'El campo Fecha Finalización Soldadura no corresponde al formato DD/MM/YYYY.',
+                'estado.in'              => 'El campo Estado debe ser: pendiente, fabricando o completada.'
+            ]);
+
+            // Convertir las fechas al formato 'Y-m-d' si existen
+            if (!empty($validatedData['fecha_inicio'])) {
+                $validatedData['fecha_inicio'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio'])
+                    ->format('Y-m-d');
+            }
+            if (!empty($validatedData['fecha_finalizacion'])) {
+                $validatedData['fecha_finalizacion'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion'])
+                    ->format('Y-m-d');
+            }
+            if (!empty($validatedData['fecha_inicio_ensamblado'])) {
+                $validatedData['fecha_inicio_ensamblado'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio_ensamblado'])
+                    ->format('Y-m-d');
+            }
+            if (!empty($validatedData['fecha_finalizacion_ensamblado'])) {
+                $validatedData['fecha_finalizacion_ensamblado'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion_ensamblado'])
+                    ->format('Y-m-d');
+            }
+            if (!empty($validatedData['fecha_inicio_soldadura'])) {
+                $validatedData['fecha_inicio_soldadura'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_inicio_soldadura'])
+                    ->format('Y-m-d');
+            }
+            if (!empty($validatedData['fecha_finalizacion_soldadura'])) {
+                $validatedData['fecha_finalizacion_soldadura'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_finalizacion_soldadura'])
+                    ->format('Y-m-d');
+            }
+
+            // Actualizar la etiqueta con los datos validados
+            $etiqueta->update($validatedData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Etiqueta actualizada correctamente',
+                'data'    => $etiqueta->numero_etiqueta
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Etiqueta no encontrada'
+            ], 404);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la etiqueta. Intente nuevamente. ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            // Buscar la etiqueta o lanzar excepción si no se encuentra
+            $etiqueta = Etiqueta::findOrFail($id);
+
+            // Eliminar la etiqueta
+            $etiqueta->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Etiqueta eliminada correctamente'
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Etiqueta no encontrada'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la etiqueta. Intente nuevamente. ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
