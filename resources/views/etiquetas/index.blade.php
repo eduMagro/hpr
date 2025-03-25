@@ -41,7 +41,7 @@
 
                 <!-- Botón Filtrar -->
                 <div class="flex flex-col justify-end">
-                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded w-full md:w-auto">
+                    <button type="submit" class="bg-blue-500 text-white p-2 rounded w-full md:w-auto">
                         Filtrar
                     </button>
                 </div>
@@ -51,34 +51,34 @@
             <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
                 <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white">
-                        <tr class="text-left text-sm uppercase">
-                            <th class="px-4 py-3 border">ID
+                        <tr class="text-left text-xs text-center uppercase">
+                            <th class="p-2 border">ID
                                 <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
                                     <input type="text" name="id"
-                                        class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        class="w-full p-2 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
                                 </form>
                             </th>
-                            <th class="px-4 py-3 border">Planilla
+                            <th class="p-2 border">Planilla
                                 <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
                                     <input type="text" name="codigo_planilla"
                                         class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
                                 </form>
                             </th>
-                            <th class="px-4 py-3 border">Ensamblador 1</th>
-                            <th class="px-4 py-3 border">Ensamblador 2</th>
-                            <th class="px-4 py-3 border">Soldador 1</th>
-                            <th class="px-4 py-3 border">Soldador 2</th>
+                            <th class="p-2 border">Ensamblador 1</th>
+                            <th class="p-2 border">Ensamblador 2</th>
+                            <th class="p-2 border">Soldador 1</th>
+                            <th class="p-2 border">Soldador 2</th>
                             {{-- <th class="px-4 py-3 border">Paquete</th> --}}
-                            <th class="px-4 py-3 border">Número de Etiqueta
+                            <th class="p-2 border">Número de Etiqueta
                                 <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
                                     <input type="text" name="numero_etiqueta"
                                         class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
                                 </form>
                             </th>
-                            <th class="px-4 py-3 border">Nombre
+                            <th class="p-2 border">Nombre
                                 <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
                                     <input type="text" name="nombre"
                                         class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -86,22 +86,25 @@
                                 </form>
                             </th>
                             {{-- <th class="px-4 py-3 border">Ubicación</th> --}}
-                            <th class="px-4 py-3 border">Peso (kg)</th>
-                            <th class="px-4 py-3 border">Inicio Fabricación</th>
-                            <th class="px-4 py-3 border">Final Fabricación</th>
-                            <th class="px-4 py-3 border">Inicio Ensamblado</th>
-                            <th class="px-4 py-3 border">Final Ensamblado</th>
-                            <th class="px-4 py-3 border">Inicio Soldadura</th>
-                            <th class="px-4 py-3 border">Final Soldadura</th>
-                            <th class="px-4 py-3 border">Estado</th>
-                            <th class="px-4 py-3 border">Acciones</th>
+                            <th class="p-2 border">Inicio Fabricación</th>
+                            <th class="p-2 border">Final Fabricación</th>
+                            <th class="p-2 border">Inicio Ensamblado</th>
+                            <th class="p-2 border">Peso (kg)</th>
+                            <th class="p-2 border">Final Ensamblado</th>
+                            <th class="p-2 border">Inicio Soldadura</th>
+                            <th class="p-2 border">Final Soldadura</th>
+                            <th class="p-2 border">Estado</th>
+                            <th class="p-2 border">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="text-gray-700 text-sm">
                         @forelse ($etiquetas as $etiqueta)
-                            <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->id }}</td>
-                                <td class="px-4 py-3 text-center border">
+                            <tr tabindex="0" x-data="{ editando: false, etiqueta: @js($etiqueta) }" @click="if (!editando) { editando = true }"
+                                @keydown.enter.stop="guardarCambios(etiqueta); editando = false"
+                                :class="{ 'bg-yellow-100': editando }"
+                                class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
+                                <td class="p-2 text-center border">{{ $etiqueta->id }}</td>
+                                <td class="p-2 text-center border">
                                     @if ($etiqueta->planilla_id)
                                         <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}"
                                             class="text-blue-500 hover:underline">
@@ -111,7 +114,7 @@
                                         N/A
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="p-2 text-center border">
                                     @if ($etiqueta->ensamblador1)
                                         <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}"
                                             class="text-blue-500 hover:underline">
@@ -121,7 +124,7 @@
                                         N/A
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="p-2 text-center border">
                                     @if ($etiqueta->ensamblador2)
                                         <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}"
                                             class="text-blue-500 hover:underline">
@@ -131,27 +134,27 @@
                                         N/A
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->soldador1 ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->soldador2 ?? 'N/A' }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->soldador1 ?? 'N/A' }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->soldador2 ?? 'N/A' }}</td>
                                 {{-- <td class="px-4 py-3 text-center border">{{ $etiqueta->paquete_id ?? 'N/A' }}</td> --}}
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->numero_etiqueta }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->nombre }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->numero_etiqueta }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->nombre }}</td>
                                 {{-- <td class="px-4 py-3 text-center border">{{ $etiqueta->ubicacion->nombre ?? 'N/A' }}
                                 </td> --}}
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->peso_kg }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_inicio ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}
-                                <td class="px-4 py-3 text-center border">
+                                <td class="p-2 text-center border">{{ $etiqueta->peso_kg }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->fecha_inicio ?? 'N/A' }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}
+                                <td class="p-2 text-center border">
                                     {{ $etiqueta->fecha_inicio_ensamblado ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="p-2 text-center border">
                                     {{ $etiqueta->fecha_finalizacion_ensamblado ?? 'N/A' }}
-                                <td class="px-4 py-3 text-center border">
+                                <td class="p-2 text-center border">
                                     {{ $etiqueta->fecha_inicio_soldadura ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="p-2 text-center border">
                                     {{ $etiqueta->fecha_finalizacion_soldadura ?? 'N/A' }}
                                 </td>
-                                <td class="px-4 py-3 text-center border">{{ ucfirst($etiqueta->estado) }}</td>
-                                <td class="px-4 py-3 text-center border flex flex-col gap-2">
+                                <td class="p-2 text-center border">{{ ucfirst($etiqueta->estado) }}</td>
+                                <td class="p-2 text-center border flex flex-col gap-2">
 
                                     <button onclick="mostrarDibujo({{ $etiqueta->id }})"
                                         class="text-blue-500 hover:underline">
@@ -199,5 +202,61 @@
             <script>
                 window.etiquetasConElementos = @json($etiquetasJson);
             </script>
+            <script>
+                function guardarCambios(etiqueta) {
 
+                    fetch(`/etiquetas/${etiqueta.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify(etiqueta)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Etiqueta actualizada",
+                                    text: data.message + ' ' + data.data,
+                                    showConfirmButton: true
+                                }).then(() => {
+                                    window.location.reload(); // Recarga la página tras el mensaje
+                                });
+                            } else {
+                                let errorMsg =
+                                    data.message || "Ha ocurrido un error inesperado.";
+                                // Si existen errores de validación, concatenarlos
+                                if (data.errors) {
+                                    errorMsg = Object.values(data.errors).flat().join(
+                                        "<br>"); // O puedes usar '\n' para saltos de línea
+                                }
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Error al actualizar",
+                                    html: errorMsg,
+                                    confirmButtonText: "OK",
+                                    showCancelButton: true,
+                                    cancelButtonText: "Reportar Error"
+                                }).then((result) => {
+                                    if (result.dismiss === Swal.DismissReason.cancel) {
+                                        notificarProgramador(errorMsg);
+                                    }
+                                }).then(() => {
+                                    window.location.reload(); // Recarga la página tras el mensaje
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error de conexión",
+                                text: "No se pudo actualizar la etiqueta. Inténtalo nuevamente.",
+                                confirmButtonText: "OK"
+                            });
+                        });
+                }
+            </script>
     </x-app-layout>

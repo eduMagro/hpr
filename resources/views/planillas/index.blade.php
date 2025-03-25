@@ -149,33 +149,47 @@
         <!-- TABLA DE PLANILLAS -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white">
-                    <tr class="text-left text-sm uppercase">
-                        <th class="px-4 py-3 border">Código</th>
-                        <th class="px-4 py-3 border">Código Cliente</th>
-                        <th class="px-4 py-3 border">Código Obra</th>
-                        <th class="px-4 py-3 border">Sección</th>
-                        <th class="px-4 py-3 border">Descripción</th>
-                        <th class="px-4 py-3 border">Ensamblado</th>
-                        <th class="px-4 py-3 border">Comentario</th>
-                        <th class="px-4 py-3 border">Peso Fabricado</th>
-                        <th class="px-4 py-3 border">Peso Total</th>
-                        <th class="px-4 py-3 border">Estado</th>
-                        <th class="px-4 py-3 border">Fecha Inicio</th>
-                        <th class="px-4 py-3 border">Fecha Finalización</th>
-                        <th class="px-4 py-3 border">Fecha Importación</th>
-                        <th class="px-4 py-3 border">Fecha Entrega</th>
-                        <th class="px-4 py-3 border">Usuario</th>
-                        <th class="px-4 py-3 border text-center">Acciones</th>
+                <thead class="bg-blue-500 text-white text-10">
+                    <tr class="text-center text-xs uppercase">
+                        <th class="p-2 border">Código</th>
+                        <th class="p-2 border">Código Cliente</th>
+                        <th class="p-2 border">Código Obra</th>
+                        <th class="p-2 border">Sección</th>
+                        <th class="p-2 border">Descripción</th>
+                        <th class="p-2 border">Ensamblado</th>
+                        <th class="p-2 border">Comentario</th>
+                        <th class="p-2 border">Peso Fabricado</th>
+                        <th class="p-2 border">Peso Total</th>
+                        <th class="p-2 border">Estado</th>
+                        <th class="p-2 border">Fecha Inicio</th>
+                        <th class="p-2 border">Fecha Finalización</th>
+                        <th class="p-2 border">Fecha Importación</th>
+                        <th class="p-2 border">Fecha Entrega</th>
+                        <th class="p-2 border">Usuario</th>
+                        <th class="p-2 border text-center">Acciones</th>
                     </tr>
                 </thead>
-                <tbody class="text-gray-700 text-sm">
+                <tbody class="text-gray-700">
                     @forelse ($planillas as $planilla)
-                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
-                            x-data="{ editando: false, planilla: @js($planilla) }">
+                        <tr tabindex="0" x-data="{
+                            editando: false,
+                            planilla: @js($planilla),
+                            original: JSON.parse(JSON.stringify(@js($planilla)))
+                        }"
+                            @click="if(!$event.target.closest('input')) {
+                              if(!editando) {
+                                editando = true;
+                              } else {
+                                planilla = JSON.parse(JSON.stringify(original));
+                                editando = false;
+                              }
+                            }"
+                            @keydown.enter.stop="guardarCambios(planilla); editando = false"
+                            :class="{ 'bg-yellow-100': editando }"
+                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
 
                             <!-- Código -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.codigo_limpio"></span>
                                 </template>
@@ -184,14 +198,13 @@
                             </td>
 
                             <!-- Código Cliente -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
                                         class="text-blue-500 hover:underline">
                                         {{ $planilla->cliente->empresa ?? 'N/A' }}
                                     </a>
                                 </template>
-                                <!-- En modo edición, se edita el id del cliente -->
                                 <select x-show="editando" x-model="planilla.cliente_id" class="form-input w-full">
                                     <option value="">Seleccionar máquina</option>
                                     @foreach ($clientes as $cliente)
@@ -201,14 +214,13 @@
                             </td>
 
                             <!-- Código Obra -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
                                         class="text-blue-500 hover:underline">
                                         {{ $planilla->obra->obra ?? 'N/A' }}
                                     </a>
                                 </template>
-                                <!-- En modo edición, se edita el id del obra -->
                                 <select x-show="editando" x-model="planilla.obra_id" class="form-input w-full">
                                     <option value="">Seleccionar obra</option>
                                     @foreach ($obras as $obra)
@@ -218,7 +230,7 @@
                             </td>
 
                             <!-- Sección -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.seccion ?? 'No definida'"></span>
                                 </template>
@@ -227,7 +239,7 @@
                             </td>
 
                             <!-- Descripción -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.descripcion ?? 'Sin descripción'"></span>
                                 </template>
@@ -235,8 +247,8 @@
                                     class="form-input w-full">
                             </td>
 
-                            <!-- Estado Ensamblado -->
-                            <td class="px-4 py-3 text-center border">
+                            <!-- Ensamblado -->
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.ensamblado ?? 'Sin datos'"></span>
                                 </template>
@@ -245,7 +257,7 @@
                             </td>
 
                             <!-- Comentario -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.comentario ?? ' '"></span>
                                 </template>
@@ -254,7 +266,7 @@
                             </td>
 
                             <!-- Peso Fabricado -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.suma_peso_completados || 0"></span> kg
                                 </template>
@@ -263,7 +275,7 @@
                             </td>
 
                             <!-- Peso Total -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.peso_total_kg"></span>
                                 </template>
@@ -272,7 +284,7 @@
                             </td>
 
                             <!-- Estado -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.estado.toUpperCase()"></span>
                                 </template>
@@ -282,19 +294,18 @@
                                     <option value="completada">Completada</option>
                                 </select>
                             </td>
+
                             <!-- Fecha Inicio -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <!-- Se muestra tal cual venga de la BD (ej: 13/03/2025 22:29) -->
                                     <span x-text="planilla.fecha_inicio"></span>
                                 </template>
-                                <!-- Input de texto, para que el usuario pueda escribir/editar en formato DD/MM/YYYY HH:mm -->
                                 <input x-show="editando" type="text" x-model="planilla.fecha_inicio"
                                     class="form-input w-full" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Fecha Finalización -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_finalizacion"></span>
                                 </template>
@@ -303,37 +314,29 @@
                             </td>
 
                             <!-- Fecha Importación -->
-                            <td class="px-4 py-3 text-center border">
-                                <!-- Supongo que la fecha de importación la muestras sin edición,
-         transformándola con new Date().toLocaleDateString() (formato local del navegador) -->
+                            <td class="p-2 text-center border">
                                 <span x-text="new Date(planilla.created_at).toLocaleDateString()"></span>
                             </td>
 
                             <!-- Fecha Entrega -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_estimada_entrega"></span>
                                 </template>
-                                <!-- Input de texto para DD/MM/YYYY -->
                                 <input x-show="editando" type="text" x-model="planilla.fecha_estimada_entrega"
                                     class="form-input w-full" placeholder="DD/MM/YYYY">
                             </td>
 
                             <!-- Usuario -->
-                            <td class="px-4 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 <span x-text="planilla.user?.name ?? 'Desconocido'"></span>
-
                             </td>
 
-                            <!-- Botones -->
-                            <td class="px-4 py-3 text-center border">
+                            <!-- Acciones (solo se muestran las opciones de ver y eliminar) -->
+                            <td class="p-2 text-center border">
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
-                                    class="text-green-500 hover:underline">Ver</a><br>
-                                <button @click.stop="editando = !editando">
-                                    <span x-show="!editando">✏️</span>
-                                    <span x-show="editando">✖</span>
-                                    <span x-show="editando" @click.stop="guardarCambios(planilla)">✅</span>
-                                </button><br>
+                                    class="text-green-500 hover:underline">Ver</a>
+                                <br>
                                 <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
                             </td>
                         </tr>

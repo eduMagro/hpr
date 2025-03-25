@@ -30,7 +30,7 @@ class PlanificacionController extends Controller
         $salidas = Salida::with([
             'salidaClientes.obra:id,obra',
             'salidaClientes.cliente:id,empresa',
-            'paquetes.planilla.user' // Relación de paquetes con sus planillas
+            'paquetes.planilla.user'
         ])
             ->whereBetween('fecha_salida', $rangoFechas)
             ->get();

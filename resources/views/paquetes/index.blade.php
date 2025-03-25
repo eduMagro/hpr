@@ -26,7 +26,7 @@
             <table class="w-full min-w-[800px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm text-center uppercase">
-                        <th class="px-2 py-3 border">ID
+                        <th class="p-2 border">ID
                             <!-- Formulario de búsqueda por ID -->
                             <form method="GET" action="{{ route('paquetes.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="id"
@@ -38,7 +38,7 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-2 py-3 border">Planilla
+                        <th class="p-2 border">Planilla
                             <!-- Formulario de búsqueda por ID -->
                             <form method="GET" action="{{ route('paquetes.index') }}" class="mt-2 flex space-x-2">
                                 <input type="text" name="planilla"
@@ -50,28 +50,29 @@
                                 </button>
                             </form>
                         </th>
-                        <th class="px-2 py-3 border">Ubicación</th>
-                        <th class="px-2 py-3 border">Elementos</th>
-                        <th class="px-2 py-3 border">Peso (Kg)</th>
-                        <th class="px-2 py-3 border">Fecha Creación</th>
-                        <th class="px-2 py-3 border">Fecha Límite Reparto</th>
-                        <th class="px-2 py-3 border text-center">Acciones</th>
+                        <th class="p-2 border">Ubicación</th>
+                        <th class="p-2 border">Elementos</th>
+                        <th class="p-2 border">Peso (Kg)</th>
+                        <th class="p-2 border">Fecha Creación</th>
+                        <th class="p-2 border">Fecha Límite Reparto</th>
+                        <th class="p-2 border text-center">Acciones</th>
                     </tr>
                 </thead>
                 </tbody>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($paquetes as $paquete)
+
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-                            <td class="px-2 py-3 text-center border">{{ $paquete->id }}</td>
-                            <td class="px-2 py-3 text-center border">
+                            <td class="p-2 text-center border">{{ $paquete->id }}</td>
+                            <td class="p-2 text-center border">
                                 <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}"
                                     class="text-blue-500 hover:underline">
                                     {{ $paquete->planilla->codigo_limpio }}
                                 </a>
                             </td>
-                            <td class="py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 {{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}</td>
-                            <td class="px-2 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 @if ($paquete->elementos->isNotEmpty())
                                     @foreach ($paquete->elementos as $elemento)
                                         <ul class="text-sm">
@@ -111,17 +112,17 @@
                                     <span class="text-gray-500">Vacío</span>
                                 @endif
                             </td>
-                            <td class="px-2 py-3 text-center border">{{ $paquete->peso }} Kg
+                            <td class="p-2 text-center border">{{ $paquete->peso }} Kg
                             </td>
-                            <td class="px-2 py-3 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}
+                            <td class="p-2 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}
                             </td>
-                            <td class="px-2 py-3 text-center border">
+                            <td class="p-2 text-center border">
                                 {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
                             </td>
-                            <td class="px-2 py-3 text-center border flex flex-row justify-center gap-4">
+                            <td class="p-2 text-center border flex flex-row justify-center gap-4">
                                 <button
                                     onclick="generateAndPrintQR('{{ $paquete->id }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')"
-                                    class="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"><i
+                                    class="p-2 bg-green-500 text-white rounded hover:bg-green-600"><i
                                         class="fas fa-qrcode"></i>
                                 </button>
                                 <button onclick="mostrarDibujo({{ $paquete->id }})"
