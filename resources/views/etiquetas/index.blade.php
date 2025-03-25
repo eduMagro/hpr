@@ -99,11 +99,26 @@
                     </thead>
                     <tbody class="text-gray-700 text-sm">
                         @forelse ($etiquetas as $etiqueta)
-                            <tr tabindex="0" x-data="{ editando: false, etiqueta: @js($etiqueta) }" @click="if (!editando) { editando = true }"
+                            <tr tabindex="0" x-data="{
+                                editando: false,
+                                etiqueta: @js($etiqueta),
+                                original: JSON.parse(JSON.stringify(@js($etiqueta)))
+                            }"
+                                @click="if(!$event.target.closest('input')) {
+                              if(!editando) {
+                                editando = true;
+                              } else {
+                                etiqueta = JSON.parse(JSON.stringify(original));
+                                editando = false;
+                              }
+                            }"
                                 @keydown.enter.stop="guardarCambios(etiqueta); editando = false"
                                 :class="{ 'bg-yellow-100': editando }"
                                 class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
+                                <!-- ID (no editable) -->
                                 <td class="p-2 text-center border">{{ $etiqueta->id }}</td>
+
+                                <!-- Planilla (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->planilla_id)
                                         <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}"
@@ -114,6 +129,8 @@
                                         N/A
                                     @endif
                                 </td>
+
+                                <!-- Ensamblador 1 (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->ensamblador1)
                                         <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}"
@@ -124,6 +141,8 @@
                                         N/A
                                     @endif
                                 </td>
+
+                                <!-- Ensamblador 2 (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->ensamblador2)
                                         <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}"
@@ -134,36 +153,116 @@
                                         N/A
                                     @endif
                                 </td>
-                                <td class="p-2 text-center border">{{ $etiqueta->soldador1 ?? 'N/A' }}</td>
-                                <td class="p-2 text-center border">{{ $etiqueta->soldador2 ?? 'N/A' }}</td>
-                                {{-- <td class="px-4 py-3 text-center border">{{ $etiqueta->paquete_id ?? 'N/A' }}</td> --}}
-                                <td class="p-2 text-center border">{{ $etiqueta->numero_etiqueta }}</td>
-                                <td class="p-2 text-center border">{{ $etiqueta->nombre }}</td>
-                                {{-- <td class="px-4 py-3 text-center border">{{ $etiqueta->ubicacion->nombre ?? 'N/A' }}
-                                </td> --}}
-                                <td class="p-2 text-center border">{{ $etiqueta->peso_kg }}</td>
-                                <td class="p-2 text-center border">{{ $etiqueta->fecha_inicio ?? 'N/A' }}</td>
-                                <td class="p-2 text-center border">{{ $etiqueta->fecha_finalizacion ?? 'N/A' }}
-                                <td class="p-2 text-center border">
-                                    {{ $etiqueta->fecha_inicio_ensamblado ?? 'N/A' }}</td>
-                                <td class="p-2 text-center border">
-                                    {{ $etiqueta->fecha_finalizacion_ensamblado ?? 'N/A' }}
-                                <td class="p-2 text-center border">
-                                    {{ $etiqueta->fecha_inicio_soldadura ?? 'N/A' }}</td>
-                                <td class="p-2 text-center border">
-                                    {{ $etiqueta->fecha_finalizacion_soldadura ?? 'N/A' }}
-                                </td>
-                                <td class="p-2 text-center border">{{ ucfirst($etiqueta->estado) }}</td>
-                                <td class="p-2 text-center border flex flex-col gap-2">
 
+                                <!-- Soldador1 (no editable) -->
+                                <td class="p-2 text-center border">{{ $etiqueta->soldador1 ?? 'N/A' }}</td>
+
+                                <!-- Soldador2 (no editable) -->
+                                <td class="p-2 text-center border">{{ $etiqueta->soldador2 ?? 'N/A' }}</td>
+
+                                <!-- Número de Etiqueta (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.numero_etiqueta"></span>
+                                    </template>
+                                    <input x-show="editando" type="text" x-model="etiqueta.numero_etiqueta"
+                                        class="form-input w-full" @click.stop>
+                                </td>
+
+                                <!-- Nombre (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.nombre"></span>
+                                    </template>
+                                    <input x-show="editando" type="text" x-model="etiqueta.nombre"
+                                        class="form-input w-full" @click.stop>
+                                </td>
+
+                                <!-- Peso (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.peso_kg"></span>
+                                    </template>
+                                    <input x-show="editando" type="text" x-model="etiqueta.peso_kg"
+                                        class="form-input w-full" @click.stop>
+                                </td>
+
+                                <!-- Fecha Inicio (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.fecha_inicio"></span>
+                                    </template>
+                                    <input x-show="editando" type="date" x-model="etiqueta.fecha_inicio"
+                                        class="form-input w-full" @click.stop>
+                                </td>
+
+                                <!-- Fecha Finalización (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.fecha_finalizacion"></span>
+                                    </template>
+                                    <input x-show="editando" type="date" x-model="etiqueta.fecha_finalizacion"
+                                        class="form-input w-full" @click.stop>
+                                </td>
+
+                                <!-- Fecha Inicio Ensamblado (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.fecha_inicio_ensamblado"></span>
+                                    </template>
+                                    <input x-show="editando" type="date"
+                                        x-model="etiqueta.fecha_inicio_ensamblado" class="form-input w-full"
+                                        @click.stop>
+                                </td>
+
+                                <!-- Fecha Finalización Ensamblado (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.fecha_finalizacion_ensamblado"></span>
+                                    </template>
+                                    <input x-show="editando" type="date"
+                                        x-model="etiqueta.fecha_finalizacion_ensamblado" class="form-input w-full"
+                                        @click.stop>
+                                </td>
+
+                                <!-- Fecha Inicio Soldadura (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.fecha_inicio_soldadura"></span>
+                                    </template>
+                                    <input x-show="editando" type="date" x-model="etiqueta.fecha_inicio_soldadura"
+                                        class="form-input w-full" @click.stop>
+                                </td>
+
+                                <!-- Fecha Finalización Soldadura (editable) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.fecha_finalizacion_soldadura"></span>
+                                    </template>
+                                    <input x-show="editando" type="date"
+                                        x-model="etiqueta.fecha_finalizacion_soldadura" class="form-input w-full"
+                                        @click.stop>
+                                </td>
+
+                                <!-- Estado (editable mediante select) -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span
+                                            x-text="etiqueta.estado ? etiqueta.estado.charAt(0).toUpperCase() + etiqueta.estado.slice(1) : ''"></span>
+                                    </template>
+                                    <select x-show="editando" x-model="etiqueta.estado" class="form-select w-full"
+                                        @click.stop>
+                                        <option value="pendiente">Pendiente</option>
+                                        <option value="fabricando">Fabricando</option>
+                                        <option value="completada">Completada</option>
+                                    </select>
+                                </td>
+
+                                <!-- Acciones (no editable) -->
+                                <td class="p-2 text-center border flex flex-col gap-2">
                                     <button onclick="mostrarDibujo({{ $etiqueta->id }})"
                                         class="text-blue-500 hover:underline">
                                         Ver
-                                    </button>
-                                    <button @click.stop="editando = !editando">
-                                        <span x-show="!editando">✏️</span>
-                                        <span x-show="editando" class="mr-2">✖</span>
-                                        <span x-show="editando" @click.stop="guardarCambios(etiqueta)">✅</span>
                                     </button>
                                     <x-boton-eliminar :action="route('etiquetas.destroy', $etiqueta->id)" />
                                 </td>
@@ -216,14 +315,8 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                Swal.fire({
-                                    icon: "success",
-                                    title: "Etiqueta actualizada",
-                                    text: data.message + ' ' + data.data,
-                                    showConfirmButton: true
-                                }).then(() => {
-                                    window.location.reload(); // Recarga la página tras el mensaje
-                                });
+
+                                window.location.reload(); // Recarga la página tras el mensaje
                             } else {
                                 let errorMsg =
                                     data.message || "Ha ocurrido un error inesperado.";
