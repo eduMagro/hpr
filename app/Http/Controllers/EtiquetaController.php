@@ -11,7 +11,6 @@ use App\Models\Alerta;
 use App\Models\AsignacionTurno;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Maquina;
 use Illuminate\Support\Facades\Log;
