@@ -4,35 +4,15 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             <a href="{{ route('maquinas.index') }}" class="text-blue-500">
                 {{ __('Máquinas') }}
-            </a><span> / </span>{{ __('Trabajando en Máquina') }}: <strong>{{ $maquina->nombre }}</strong>
+            </a><span> / </span>{{ __('Trabajando en Máquina') }}: <strong>{{ $maquina->nombre }}</strong>,
+            {{ $usuario1->name }} @if ($usuario2)
+                y {{ $usuario2->name }}
+            @endif
         </h2>
     </x-slot>
 
 
-    <div class="container mx-auto px-4 py-6">
-        <!-- Mostrar los compañeros -->
-        <div class="mb-4">
-            <div class="flex flex-col md:flex-row md:space-x-6">
-                <!-- Usuario principal -->
-                <div class="bg-white border p-3 rounded-lg shadow-md w-full md:w-1/2">
-                    <h4 class="text-gray-600 font-semibold">Operario</h4>
-                    <p class="text-gray-800 font-bold text-lg">{{ $usuario1->name }}</p>
-                </div>
-
-                <!-- Compañero seleccionado -->
-                @if ($usuario2)
-                    <div class="bg-white border p-3 rounded-lg shadow-md w-full md:w-1/2">
-                        <h4 class="text-gray-600 font-semibold">Compañero seleccionado</h4>
-                        <p class="text-gray-800 font-bold text-lg">{{ $usuario2->name }}</p>
-                    </div>
-                @else
-                    <div class="bg-white border p-3 rounded-lg shadow-md w-full md:w-1/2">
-                        <h4 class="text-gray-600 font-semibold">Compañero seleccionado</h4>
-                        <p class="text-red-500 font-bold text-lg">No se ha seleccionado un compañero.</p>
-                    </div>
-                @endif
-            </div>
-        </div>
+    <div class="mx-auto px-4 py-6">
 
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">

@@ -35,18 +35,18 @@
                     <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
                         <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                             <thead>
-                                <tr class="bg-gray-100 text-left text-sm font-medium text-gray-700">
+                                <tr class="bg-gray-100 text-left text-xs font-medium text-center text-gray-700">
                                     <th class="py-2 px-4 border-b">Salida</th>
                                     <th class="py-2 px-4 border-b">Cliente</th>
                                     <th class="py-2 px-4 border-b">Obra</th>
                                     <th class="py-2 px-4 border-b">E. Transporte</th>
                                     <th class="py-2 px-4 border-b">Camión</th>
-                                    <th class="py-2 px-4 border-b">Horas paralización</th>
-                                    <th class="py-2 px-4 border-b">Importe paralización</th>
-                                    <th class="py-2 px-4 border-b">Horas Grua</th>
-                                    <th class="py-2 px-4 border-b">Importe Grua</th>
-                                    <th class="py-2 px-4 border-b">Horas Almacén</th>
-                                    <th class="py-2 px-4 border-b">Importe</th>
+                                    <th class="p-2 border-b">Horas paralización</th>
+                                    <th class="p-2 border-b">Importe paralización</th>
+                                    <th class="p-2 border-b">Horas Grua</th>
+                                    <th class="p-2 border-b">Importe Grua</th>
+                                    <th class="p-2 border-b">Horas Almacén</th>
+                                    <th class="p-2 border-b">Importe</th>
                                     <th class="py-2 px-4 border-b">Fecha Estimada Entrega</th>
                                     <th class="py-2 px-4 border-b">Estado</th>
                                     <th class="py-2 px-4 border-b">Acciones</th>
@@ -56,7 +56,7 @@
                                 @foreach ($salidasGrupo as $salida)
                                     {{-- Iteramos sobre los registros del pivot (salidaClientes) para cada salida --}}
                                     @foreach ($salida->salidaClientes as $registro)
-                                        <tr class="hover:bg-gray-50 text-sm">
+                                        <tr class="hover:bg-gray-50 text-xs text-center">
                                             <td class="py-2 px-4 border-b">{{ $salida->codigo_salida }}</td>
                                             <td class="py-2 px-4 border-b">{{ $registro->cliente->empresa }}</td>
                                             <td class="py-2 px-4 border-b">{{ $registro->obra->obra ?? 'N/A' }}</td>
@@ -64,38 +64,38 @@
                                             <td class="py-2 px-4 border-b">
                                                 {{ $salida->camion->modelo }}
                                             </td>
-                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                            <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="horas_paralizacion">
                                                 {{ $registro->horas_paralizacion }}
                                             </td>
-                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                            <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}"
                                                 data-field="importe_paralizacion">
                                                 {{ number_format($registro->importe_paralizacion, 2) }}
                                             </td>
-                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                            <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="horas_grua">
                                                 {{ $registro->horas_grua }}
                                             </td>
-                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                            <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="importe_grua">
                                                 {{ number_format($registro->importe_grua, 2) }}
                                             </td>
-                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                            <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="horas_almacen">
                                                 {{ $registro->horas_almacen }}
                                             </td>
-                                            <td class="py-2 px-4 border-b editable" contenteditable="true"
+                                            <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
                                                 data-obra="{{ $registro->obra->id }}" data-field="importe">
@@ -141,7 +141,7 @@
                             </h3>
                             <table class="w-full border-collapse">
                                 <thead>
-                                    <tr class="bg-gray-200 text-left text-sm font-medium text-gray-700">
+                                    <tr class="bg-gray-200 text-left text-xs font-medium text-gray-700">
                                         <th class="py-2 px-4 border-b">E.Transporte</th>
                                         <th class="py-2 px-4 border-b">Horas Paralización</th>
                                         <th class="py-2 px-4 border-b">Importe Paralización</th>
@@ -154,7 +154,7 @@
                                 </thead>
                                 <tbody>
                                     @foreach ($clientSummary as $cliente => $data)
-                                        <tr class="text-sm hover:bg-gray-50"
+                                        <tr class="text-xs hover:bg-gray-50"
                                             data-resumen-cliente="{{ $data['cliente_id'] ?? 'N/A' }}">
                                             <td class="py-2 px-4 border-b font-semibold">{{ $cliente }}</td>
                                             <td class="py-2 px-4 border-b text-center"
@@ -201,8 +201,8 @@
                             <div class="bg-gray-100 py-4 px- sm:p-4 rounded-lg shadow-md">
                                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                                     <div>
-                                        <p class="text-lg font-semibold">{{ $salida->codigo_salida }}</p>
-                                        <p class="text-sm text-gray-500">
+                                        <p class="text-xs font-semibold">{{ $salida->codigo_salida }}</p>
+                                        <p class="text-xs text-gray-500">
                                             {{ $salida->created_at->format('d/m/Y H:i') }}
                                         </p>
                                     </div>
