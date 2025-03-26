@@ -131,6 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Etiqueta completada",
                     "Hemos terminado de fabricar la etiqueta."
                 );
+                scrollToNextDiv(id);
                 break;
             case "fabricando":
                 showAlert(
@@ -234,7 +235,23 @@ document.addEventListener("DOMContentLoaded", () => {
             );
         }
     }
+    // Función para hacer scroll al siguiente div
+    function scrollToNextDiv(currentId) {
+        const allDivs = document.querySelectorAll(".proceso"); // Asegúrate de que los divs tienen la clase 'proceso'
+        const currentDiv = document.getElementById(`etiqueta-${currentId}`);
 
+        if (currentDiv) {
+            for (let i = 0; i < allDivs.length; i++) {
+                if (allDivs[i] === currentDiv && i + 1 < allDivs.length) {
+                    allDivs[i + 1].scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
+                    break;
+                }
+            }
+        }
+    }
     // Actualiza la función para recibir el id conocido de la etiqueta
     function agregarItemEtiqueta(etiquetaId, data) {
         // Si data.id no está definido, usamos el id pasado como argumento (etiquetaId)

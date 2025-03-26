@@ -196,7 +196,8 @@
 
                     @endphp
 
-                    <div style="background-color: #fe7f09; border: 1px solid black;" class="boder shadow-md mt-4">
+                    <div id="etiqueta-{{ $etiqueta->id }}" style="background-color: #fe7f09; border: 1px solid black;"
+                        class="proceso boder shadow-md mt-4">
                         <div class="p-2">
                             <h2 class="text-lg font-semibold text-gray-900">
                                 <span>{{ $planilla->obra->obra }}</span> -
@@ -204,8 +205,9 @@
                                 <span> {{ optional($planilla)->codigo_limpio }}
                                 </span> - S:{{ $planilla->seccion }}
                             </h2>
-                            <h3 class="text-lg font-semibold text-gray-800">
-                                {{ $etiqueta->id_et ?? 'N/A' }} {{ $etiqueta->nombre ?? 'Sin nombre' }} -
+                            <h3 class="text-lg font-semibold text-gray-900">
+                                <span class="text-blue-700"> {{ $etiqueta->id ?? 'N/A' }} </span>
+                                {{ $etiqueta->nombre ?? 'Sin nombre' }} -
 
                                 <span>Cal:B500SD</span>
                                 - {{ $etiqueta->peso_kg ?? 'N/A' }}
@@ -213,7 +215,7 @@
                             <!-- Contenedor oculto para generar el QR -->
                             <div id="qrContainer-{{ $etiqueta->id ?? 'N/A' }}" style="display: none;"></div>
 
-                            <div class="bg-yellow-100 p-2 rounded-lg">
+                            <div class="p-2">
                                 <p>
                                     <strong>Estado:</strong>
                                     <span id="estado-{{ $etiqueta->id ?? 'N/A' }}">
@@ -237,27 +239,6 @@
                                 <hr style="border: 1px solid black; margin: 10px 0;">
                             @endif
                         </div>
-                        {{-- <!-- GRID PARA ELEMENTOS -->
-                        <div class="grid grid-cols-1 gap-1">
-                            @foreach ($elementos as $elemento)
-                                <div id="elemento-{{ $elemento->id }}"
-                                    class="bg-white p-2 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-                                    <p class="text-gray-600 text-sm">
-                                        <strong>{{ $loop->iteration }} </strong> {{ $elemento->id_el }} -
-                                        <strong>Peso:</strong> {{ $elemento->peso_kg }}
-                                        -
-                                        <strong>Ø</strong> {{ $elemento->diametro_mm }}
-                                        <!-- Botón para dividir -->
-                                        @if ($elemento->peso > 500 || $elemento->barras > 30)
-                                            <button onclick="abrirModalDividirElemento({{ $elemento->id }})"
-                                                class="p-1 ml-4 bg-blue-500 text-white rounded hover:bg-blue-700">
-                                                ✂️ Dividir
-                                            </button>
-                                        @endif
-                                    </p>
-                                </div>
-                            @endforeach
-                        </div> --}}
                         <div>
                             <!-- Contenedor para el canvas -->
                             <div id="canvas-container" style="width: 100%; border-top: 1px solid black;">

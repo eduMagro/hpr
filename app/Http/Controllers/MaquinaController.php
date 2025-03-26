@@ -21,19 +21,12 @@ class MaquinaController extends Controller
             ->where('rol', 'operario')
             ->get();
 
-        // Construcción de la consulta para obtener máquinas
         $query = Maquina::with('productos')
-            ->withCount([
-                'elementos' => function ($query) {
-                    $query->where('estado', '!=', 'completado'); // Contar elementos no completados
-                },
-                'elementos as elementos_ensambladora' => function ($query) {
-                    $query->where('estado', '!=', 'completado')
-                        ->whereHas('maquina_2', function ($subquery) {
-                            $subquery->where('tipo', 'ensambladora'); // Solo contar si maquina_id_2 es ensambladora
-                        });
-                }
-            ]);
+            ->selectRaw('maquinas.*, (
+                SELECT COUNT(*) FROM elementos 
+                WHERE elementos.maquina_id_2 = maquinas.id
+            ) as elementos_ensambladora')
+            ->withCount('elementos'); // Mantiene el conteo normal de elementos
 
         // Aplicar filtro por nombre si se pasa como parámetro en la solicitud
         if ($request->filled('nombre')) {
@@ -53,6 +46,17 @@ class MaquinaController extends Controller
         // Paginación
         $perPage = $request->input('per_page', 10);
         $registrosMaquina = $query->paginate($perPage)->appends($request->except('page'));
+        // DEPURACION INTERESANTE
+        // $datosDepuracion = $registrosMaquina->map(function ($maquina) {
+        //     return [
+        //         'id' => $maquina->id,
+        //         'nombre' => $maquina->nombre,
+        //         'tipo' => $maquina->tipo,
+        //         'elementos_count' => $maquina->elementos_count,
+        //         'elementos_ensambladora' => $maquina->elementos_ensambladora,
+        //     ];
+        // });
+        // dd($datosDepuracion->toArray());
 
         // Pasar las máquinas y usuarios a la vista
         return view('maquinas.index', compact('registrosMaquina', 'usuarios'));

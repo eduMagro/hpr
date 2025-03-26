@@ -48,7 +48,7 @@
                         <p><strong>Estado: </strong>
                             @php
                                 $enProduccion =
-                                    $maquina->tipo === 'ensambladora'
+                                    $maquina->tipo == 'ensambladora'
                                         ? $maquina->elementos_ensambladora > 0
                                         : $maquina->elementos_count > 0;
                             @endphp

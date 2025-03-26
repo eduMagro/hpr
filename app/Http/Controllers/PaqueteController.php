@@ -76,7 +76,7 @@ class PaqueteController extends Controller
             $nombreMaquina = $maquina->nombre; // ✅ Obtener el nombre de la máquina
             $codigoMaquina = $maquina->codigo; // ✅ Obtener el nombre de la máquina
 
-            // Obtener los elementos y subpaquetes asociados
+            // Obtener los elementos asociados
             $etiquetas = Etiqueta::whereIn('id', $etiquetasIds)->with(['elementos', 'planilla'])->get();
             $elementos = Elemento::whereIn('id', $elementosIds)->get();
 
@@ -164,7 +164,7 @@ class PaqueteController extends Controller
             $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal);
 
             // Asociar elementos al paquete
-            $this->asignarItemsAPaquete($elementosIdsDesdeEtiquetas, $subpaquetesIds, $paquete->id);
+            $this->asignarItemsAPaquete($elementosIdsDesdeEtiquetas, $paquete->id);
 
             DB::commit();
 
@@ -253,8 +253,7 @@ class PaqueteController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'No se recibieron ítems para verificar.',
-                    'elementos_incompletos' => [],
-                    'subpaquetes_incompletos' => []
+                    'elementos_incompletos' => []
                 ], 400);
             }
 
@@ -268,8 +267,8 @@ class PaqueteController extends Controller
 
 
             return response()->json([
-                'success' => empty($elementosIncompletos) && empty($subpaquetesIncompletos),
-                'message' => empty($elementosIncompletos) && empty($subpaquetesIncompletos) ?
+                'success' => empty($elementosIncompletos),
+                'message' => empty($elementosIncompletos) ?
                     'Todos los ítems están completos.' : 'Algunos ítems no están completos.',
                 'elementos_incompletos' => $elementosIncompletos
             ], 200);
@@ -280,8 +279,7 @@ class PaqueteController extends Controller
                 'success' => false,
                 'message' => 'Error al verificar los ítems.',
                 'error' => $e->getMessage(),
-                'elementos_incompletos' => [],
-                'subpaquetes_incompletos' => []
+                'elementos_incompletos' => []
             ], 500);
         }
     }

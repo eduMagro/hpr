@@ -1,8 +1,6 @@
 // Aseguramos que las variables precargadas están disponibles
 const etiquetasData = window.etiquetasData || []; // Ej.: [{ codigo: "7318", elementos: [27906,27907], pesoTotal: 81.68 }, ...]
 const pesosElementos = window.pesosElementos || []; // Ej.: [{ id: 27906, peso: '77.81' }, { id: 27907, peso: '3.87' }, ...]
-const subpaquetesData = window.subpaquetesData || []; // Ej.: [{ id: 'sub001', peso: '77.81' }, { id: 'sub002', peso: '3.87' }, ...]
-
 const items = [];
 
 document
@@ -102,22 +100,6 @@ function agregarItem() {
             });
             return;
         }
-    } else if (itemType === "subpaquete") {
-        // Para subpaquetes, buscamos el objeto en subpaquetesData por su id (código)
-        const subpaqueteObj = subpaquetesData.find(
-            (item) => item.id == itemCode
-        );
-        if (subpaqueteObj) {
-            peso = parseFloat(subpaqueteObj.peso) || 0;
-        } else {
-            Swal.fire({
-                icon: "error",
-                title: "Subpaquete no encontrado",
-                text: "No se encontró el subpaquete o no tiene un peso asociado.",
-                confirmButtonColor: "#d33",
-            });
-            return;
-        }
     } else {
         // Si se requiere otro comportamiento para otros tipos, se podría leer el valor del input
         const itemPesoInput = document.getElementById("itemPeso");
@@ -129,8 +111,8 @@ function agregarItem() {
     console.log("Item agregado. Lista actualizada:", newItem);
 
     qrItem.value = "";
-    // Limpiamos el input de peso solo si es un elemento (no para etiquetas o subpaquetes, cuyo peso se determina automáticamente)
-    if (itemType !== "etiqueta" && itemType !== "subpaquete") {
+    // Limpiamos el input de peso solo si es un elemento (no para etiquetas cuyo peso se determina automáticamente)
+    if (itemType !== "etiqueta") {
         const itemPesoInput = document.getElementById("itemPeso");
         if (itemPesoInput) itemPesoInput.value = "";
     }
@@ -216,14 +198,6 @@ function crearPaquete() {
                     data.elementos_incompletos.length > 0
                 ) {
                     mensajeError += `- <strong>Elementos:</strong> ${data.elementos_incompletos.join(
-                        ", "
-                    )}<br>`;
-                }
-                if (
-                    Array.isArray(data.subpaquetes_incompletos) &&
-                    data.subpaquetes_incompletos.length > 0
-                ) {
-                    mensajeError += `- <strong>Subpaquetes:</strong> ${data.subpaquetes_incompletos.join(
                         ", "
                     )}<br>`;
                 }

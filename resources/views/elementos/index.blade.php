@@ -139,7 +139,7 @@
                             <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Maq. 2</span>
                                 <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="maquina2"
+                                    <input type="text" name="maquina_2"
                                         class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
                                         placeholder="Buscar">
                                 </form>

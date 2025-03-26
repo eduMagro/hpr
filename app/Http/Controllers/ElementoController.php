@@ -83,6 +83,15 @@ class ElementoController extends Controller
                 });
             }
         }
+        if ($request->filled('maquina_2')) {
+            if ($request->maquina === '.') {
+                $query->whereDoesntHave('maquina_2');
+            } else {
+                $query->whereHas('maquina_2', function ($q) use ($request) {
+                    $q->where('nombre', 'like', '%' . $request->maquina . '%');
+                });
+            }
+        }
 
         if ($request->filled('producto1')) {
             if ($request->producto1 === '.') {
