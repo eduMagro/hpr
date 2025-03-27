@@ -1,8 +1,14 @@
-// Aseguramos que las variables precargadas están disponibles
+/***************************************
+ * Variables Globales Precargadas
+ ***************************************/
 const etiquetasData = window.etiquetasData || []; // Ej.: [{ codigo: "7318", elementos: [27906,27907], pesoTotal: 81.68 }, ...]
 const pesosElementos = window.pesosElementos || []; // Ej.: [{ id: 27906, peso: '77.81' }, { id: 27907, peso: '3.87' }, ...]
 const items = [];
 
+/***************************************
+ * Asignación de Eventos
+ ***************************************/
+// Escucha el evento de tecla "Enter" en el input QR
 document
     .getElementById("qrItem")
     .addEventListener("keypress", function (event) {
@@ -13,6 +19,12 @@ document
         }
     });
 
+/***************************************
+ * Función: agregarItem
+ * - Valida el QR y el tipo de item.
+ * - Calcula el peso según sea una etiqueta o un elemento.
+ * - Muestra mensajes de error completos en cada validación.
+ ***************************************/
 function agregarItem() {
     const qrItem = document.getElementById("qrItem");
     const itemCode = qrItem.value.trim();
@@ -24,6 +36,7 @@ function agregarItem() {
 
     console.log("Intentando agregar item:", { itemCode, itemType });
 
+    // Validación: QR vacío
     if (!itemCode) {
         Swal.fire({
             icon: "warning",
@@ -34,6 +47,7 @@ function agregarItem() {
         return;
     }
 
+    // Validación: Evitar duplicados
     if (items.some((i) => i.id === itemCode)) {
         Swal.fire({
             icon: "error",
@@ -45,19 +59,19 @@ function agregarItem() {
         return;
     }
 
+    // Procesamiento según tipo de item
     if (itemType === "etiqueta") {
-        // Buscar la etiqueta en etiquetasData
+        // Buscar la etiqueta en datos precargados
         const etiqueta = etiquetasData.find(
             (e) => String(e.codigo) === String(itemCode)
         );
         if (etiqueta) {
-            // Si la etiqueta tiene un array de elementos, se suman los pesos de cada uno
+            // Si la etiqueta tiene un array de elementos, se calcula el peso sumando cada uno
             if (
                 Array.isArray(etiqueta.elementos) &&
                 etiqueta.elementos.length > 0
             ) {
                 peso = etiqueta.elementos.reduce((total, elementoId) => {
-                    // Convertir ambos a string para comparar de forma consistente
                     const elementoObj = pesosElementos.find(
                         (item) => String(item.id) === String(elementoId)
                     );
@@ -66,6 +80,7 @@ function agregarItem() {
                     );
                 }, 0);
             } else if (etiqueta.pesoTotal) {
+                // Si no hay elementos, se usa el peso total definido en la etiqueta
                 peso = parseFloat(etiqueta.pesoTotal) || 0;
             } else {
                 Swal.fire({
@@ -86,6 +101,7 @@ function agregarItem() {
             return;
         }
     } else if (itemType === "elemento") {
+        // Para tipo 'elemento', se busca el objeto en los datos precargados
         const elementoObj = pesosElementos.find(
             (item) => String(item.id).trim() === String(itemCode).trim()
         );
@@ -101,17 +117,18 @@ function agregarItem() {
             return;
         }
     } else {
-        // Si se requiere otro comportamiento para otros tipos, se podría leer el valor del input
+        // Otros tipos: se utiliza el input de peso manual
         const itemPesoInput = document.getElementById("itemPeso");
         peso = itemPesoInput ? parseFloat(itemPesoInput.value.trim()) : 0;
     }
 
+    // Se crea el nuevo item y se agrega al arreglo
     const newItem = { id: itemCode, type: itemType, peso: peso };
     items.push(newItem);
     console.log("Item agregado. Lista actualizada:", newItem);
 
+    // Reiniciar el valor del input QR y, si corresponde, del input de peso
     qrItem.value = "";
-    // Limpiamos el input de peso solo si es un elemento (no para etiquetas cuyo peso se determina automáticamente)
     if (itemType !== "etiqueta") {
         const itemPesoInput = document.getElementById("itemPeso");
         if (itemPesoInput) itemPesoInput.value = "";
@@ -119,6 +136,10 @@ function agregarItem() {
     actualizarLista();
 }
 
+/***************************************
+ * Función: eliminarItem
+ * - Elimina un item de la lista por su código.
+ ***************************************/
 function eliminarItem(itemCode) {
     console.log("Eliminando item:", itemCode);
     const index = items.findIndex((i) => i.id === itemCode);
@@ -129,6 +150,11 @@ function eliminarItem(itemCode) {
     }
 }
 
+/***************************************
+ * Función: actualizarLista
+ * - Actualiza el DOM para reflejar la lista actual de items.
+ * - Calcula y muestra el peso total.
+ ***************************************/
 function actualizarLista() {
     console.log("Actualizando la lista visual de items");
     const itemsList = document.getElementById("itemsList");
@@ -150,7 +176,6 @@ function actualizarLista() {
         itemsList.appendChild(listItem);
     });
 
-    // Calcular y mostrar el peso total
     const totalPeso = items.reduce(
         (acc, item) => acc + (parseFloat(item.peso) || 0),
         0
@@ -161,6 +186,12 @@ function actualizarLista() {
     itemsList.appendChild(totalItem);
 }
 
+/***************************************
+ * Función: crearPaquete
+ * - Envía la lista de items al servidor para crear el paquete.
+ * - Realiza la verificación previa de ítems y maneja cada respuesta del servidor.
+ * - Muestra mensajes de error o éxito completos.
+ ***************************************/
 function crearPaquete() {
     console.log("Iniciando la creación del paquete con items:", items);
     if (items.length === 0) {
@@ -173,6 +204,7 @@ function crearPaquete() {
         return;
     }
 
+    // Primera llamada: Verificar ítems disponibles
     fetch("/verificar-items", {
         method: "POST",
         headers: {
@@ -190,31 +222,28 @@ function crearPaquete() {
         })
         .then((data) => {
             if (!data.success) {
-                let mensajeError =
-                    "<strong>Los siguientes ítems no están completos:</strong><br><br>";
-
                 if (
                     Array.isArray(data.elementos_incompletos) &&
                     data.elementos_incompletos.length > 0
                 ) {
+                    let mensajeError =
+                        "<strong>Los siguientes ítems no están completos:</strong><br><br>";
                     mensajeError += `- <strong>Elementos:</strong> ${data.elementos_incompletos.join(
                         ", "
                     )}<br>`;
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        html: mensajeError.trim(),
+                        confirmButtonColor: "#d33",
+                    });
                 }
-
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    html: mensajeError.trim(), // ⚠️ Usa `html`, NO `text`
-                    confirmButtonColor: "#d33",
-                });
-                throw new Error(
-                    "Se encontraron ítems incompletos.",
-                    mensajeError
+                // Detener la cadena de promesas lanzando un error
+                return Promise.reject(
+                    new Error("Verificación de ítems fallida")
                 );
             }
-
-            // Suponiendo que maquinaId y ubicacionId están definidos en otro lugar
+            // Se asume que las variables globales maquinaId y ubicacionId están definidas
             return fetch("/paquetes", {
                 method: "POST",
                 headers: {
@@ -233,12 +262,10 @@ function crearPaquete() {
         })
         .then((response) => {
             console.log("Respuesta de /paquetes:", response);
-
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
-
-            return response.json(); // Aquí puede estar fallando
+            return response.json();
         })
         .then((data) => {
             console.log("Datos recibidos de /paquetes:", data);
@@ -247,10 +274,11 @@ function crearPaquete() {
                     icon: "success",
                     title: "Éxito",
                     html: `Paquete creado con éxito. ID: <strong>${data.paquete_id}</strong> <br>
-                       <button onclick="generateAndPrintQR('${data.paquete_id}', '${data.codigo_planilla}', 'PAQUETE')"
-                               class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">QR</button>`,
+                           <button onclick="generateAndPrintQR('${data.paquete_id}', '${data.codigo_planilla}', 'PAQUETE')"
+                                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">QR</button>`,
                 })
                     .then(() => {
+                        // Reiniciar la lista de items tras la creación del paquete
                         items.length = 0;
                         document.getElementById("itemsList").innerHTML = "";
                         console.log(
@@ -258,7 +286,7 @@ function crearPaquete() {
                         );
                     })
                     .then(() => {
-                        window.location.reload(); // Recarga la página tras el mensaje
+                        window.location.reload();
                     });
             } else {
                 throw new Error(
@@ -277,6 +305,11 @@ function crearPaquete() {
         });
 }
 
+/***************************************
+ * Asignación del Evento al Botón
+ * - Se asigna el evento click al botón de "Crear Paquete"
+ *   cuando el DOM esté completamente cargado.
+ ***************************************/
 document.addEventListener("DOMContentLoaded", function () {
     const crearPaqueteBtn = document.getElementById("crearPaqueteBtn");
     if (crearPaqueteBtn) {

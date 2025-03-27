@@ -726,30 +726,6 @@ class etiquetaController extends Controller
         return true;
     }
 
-    public function verificarEtiquetas(Request $request)
-    {
-        $etiquetas = $request->input('etiquetas', []);
-
-        // Buscar etiquetas que no estén en estado "completado"
-        $etiquetasIncompletas = Etiqueta::whereIn('id', $etiquetas)
-            ->where('estado', '!=', 'completado')
-            ->pluck('id') // Solo obtiene los IDs de las etiquetas incompletas
-            ->toArray();
-
-        if (!empty($etiquetasIncompletas)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Algunas etiquetas no están completas.',
-                'etiquetas_incompletas' => $etiquetasIncompletas,
-            ], 400);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Todas las etiquetas están completas.'
-        ]);
-    }
-
     public function update(Request $request, $id)
     {
         try {

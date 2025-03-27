@@ -57,10 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(
-                    errorData.error ||
-                        `Error HTTP ${response.status}: ${response.statusText}`
-                );
+                showErrorAlert(errorData);
             }
 
             const data = await response.json();
@@ -79,18 +76,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     actualizarDOMEtiqueta(id, data);
                 }
             } else {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: data.error || "Ocurrió un error inesperado.",
-                });
+                showErrorAlert(error);
             }
         } catch (error) {
-            Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: error.message || "Ocurrió un error en la actualización.",
-            });
+            showErrorAlert(error);
         }
     }
 
@@ -255,6 +244,19 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     }
+
+    function showErrorAlert(error) {
+        // Se puede extraer el mensaje del error, ya sea error.message o el propio error
+        const mensaje =
+            error.message || error || "Ocurrió un error inesperado.";
+        Swal.fire({
+            icon: "error",
+            title: "Ha ocurrido un error",
+            text: `Ha pasado: ${mensaje}`,
+            footer: "Por favor, inténtalo de nuevo o contacta al soporte si el problema persiste.",
+        });
+    }
+
     // Actualiza la función para recibir el id conocido de la etiqueta
     function agregarItemEtiqueta(etiquetaId, data) {
         // Si data.id no está definido, usamos el id pasado como argumento (etiquetaId)
