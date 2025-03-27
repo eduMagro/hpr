@@ -26,7 +26,10 @@ class MaquinaController extends Controller
                 SELECT COUNT(*) FROM elementos 
                 WHERE elementos.maquina_id_2 = maquinas.id
             ) as elementos_ensambladora')
-            ->withCount('elementos'); // Mantiene el conteo normal de elementos
+            ->withCount(['elementos as elementos_count' => function ($query) {
+                $query->where('estado', '!=', 'completado');
+            }]);
+
 
         // Aplicar filtro por nombre si se pasa como parámetro en la solicitud
         if ($request->filled('nombre')) {
@@ -47,15 +50,15 @@ class MaquinaController extends Controller
         $perPage = $request->input('per_page', 10);
         $registrosMaquina = $query->paginate($perPage)->appends($request->except('page'));
         // DEPURACION INTERESANTE
-        // $datosDepuracion = $registrosMaquina->map(function ($maquina) {
-        //     return [
-        //         'id' => $maquina->id,
-        //         'nombre' => $maquina->nombre,
-        //         'tipo' => $maquina->tipo,
-        //         'elementos_count' => $maquina->elementos_count,
-        //         'elementos_ensambladora' => $maquina->elementos_ensambladora,
-        //     ];
-        // });
+        $datosDepuracion = $registrosMaquina->map(function ($maquina) {
+            return [
+                'id' => $maquina->id,
+                'nombre' => $maquina->nombre,
+                'tipo' => $maquina->tipo,
+                'elementos_count' => $maquina->elementos_count,
+                'elementos_ensambladora' => $maquina->elementos_ensambladora,
+            ];
+        });
         // dd($datosDepuracion->toArray());
 
         // Pasar las máquinas y usuarios a la vista

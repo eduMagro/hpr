@@ -146,14 +146,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Fabricada",
                     "Los Elementos han sido fabricados y los pasamos a otra máquina."
                 );
+                scrollToNextDiv(id);
                 break;
             case "parcialmente_completada":
                 showAlert(
                     "warning",
                     "Etiqueta parcialmente completada",
-                    "Algunos elementos aún están en proceso en otras máquinas.",
-                    3000
+                    "Algunos elementos aún están en proceso en otras máquinas."
                 );
+                scrollToNextDiv(id);
                 break;
             case "ensamblando":
                 showAlert(
@@ -168,6 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Etiqueta ensamblada",
                     "El proceso de ensamblado ha finalizado correctamente."
                 );
+                scrollToNextDiv(id);
                 break;
             case "soldando":
                 showAlert(
@@ -182,6 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Etiqueta soldada",
                     "El proceso de soldadura ha finalizado correctamente."
                 );
+                scrollToNextDiv(id);
                 break;
             default:
                 console.warn(

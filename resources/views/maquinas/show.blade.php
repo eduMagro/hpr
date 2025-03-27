@@ -236,7 +236,6 @@
                             <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                             @if (isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty())
                                 <h4 class="font-semibold text-red-700 p-2">⚠️ Hay elementos en otras máquinas</h4>
-                                <hr style="border: 1px solid black; margin: 10px 0;">
                             @endif
                         </div>
                         <div>

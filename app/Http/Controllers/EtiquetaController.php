@@ -293,6 +293,20 @@ class etiquetaController extends Controller
                         $etiqueta->estado = 'soldando';
                         $etiqueta->save();
                     } else {
+                        // Verificamos si ya todos los elementos en la máquina han sido completados
+                        if (
+                            isset($elementosEnMaquina) &&
+                            $elementosEnMaquina->count() > 0 &&
+                            $numeroElementosCompletadosEnMaquina >= $elementosEnMaquina->count() &&
+                            in_array($maquina->tipo, ['cortadora_dobladora', 'estribadora'])
+                        ) {
+                            DB::rollBack();
+                            return response()->json([
+                                'success' => false,
+                                'error' => "Todos los elementos en la máquina ya han sido completados.",
+                            ], 400);
+                        }
+
                         // Opcional: Si la máquina no es de los tipos esperados, se puede registrar un warning o dejar el estado sin cambios.
                         Log::info("La máquina actual no es ensambladora ni soldadora en el estado 'fabricada'.");
                     }
