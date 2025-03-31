@@ -1,3 +1,6 @@
+// Declarar la variable globalmente para que esté disponible en todo el script
+let etiquetaTimers = {};
+
 document.addEventListener("DOMContentLoaded", () => {
     /*** PROCESO ETIQUETA ***/
     const procesoEtiqueta = document.getElementById("procesoEtiqueta");
@@ -115,19 +118,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
         switch (data.estado.toLowerCase()) {
             case "completada":
-                showAlert(
-                    "success",
-                    "Etiqueta completada",
-                    "Hemos terminado de fabricar la etiqueta."
-                );
+                // Si hay un temporizador iniciado, calcular el tiempo transcurrido
+                if (etiquetaTimers[id]) {
+                    const elapsedTime = Date.now() - etiquetaTimers[id];
+                    // Se puede asignar el valor al objeto data para utilizarlo en el backend o mostrarlo
+                    data.tiempo_fabricacion = elapsedTime;
+                    showAlert(
+                        "success",
+                        "Etiqueta completada",
+                        `Tiempo de fabricación: ${elapsedTime} ms`
+                    );
+                    // Aquí podrías hacer otra petición para guardar el tiempo en la base de datos si lo requieres
+                    // await actualizarTiempoFabricacion(id, elapsedTime);55555555555555555555555555555555555555555555555555
+                    // Una vez calculado, se elimina el temporizador de la etiqueta
+                    delete etiquetaTimers[id];
+                } else {
+                    showAlert(
+                        "success",
+                        "Etiqueta completada",
+                        "Hemos completado la etiqueta."
+                    );
+                }
                 scrollToNextDiv(id);
                 break;
             case "fabricando":
-                showAlert(
-                    "info",
-                    "Fabricando",
-                    "Estamos fabricando los elementos."
-                );
+                // Si no se ha iniciado el temporizador para esta etiqueta, se guarda el instante actual
+                if (!etiquetaTimers[id]) {
+                    etiquetaTimers[id] = Date.now();
+                    showAlert(
+                        "info",
+                        "Fabricando",
+                        "Estamos fabricando los elementos."
+                    );
+                }
                 break;
             case "fabricada":
                 showAlert(

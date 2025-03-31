@@ -334,6 +334,7 @@ class PlanillaController extends Controller
 
                 // Tomar el nom_obra de la primera fila de la planilla (todas son iguales)
                 $nomObra = trim(Str::lower($rows[0][3] ?? ''));
+                Log::info("Encontramos " . ($rows[0][3]));
                 // Tomar el nomCliente de la primera fila de la planilla (todas son iguales)
                 $nomCliente = trim(Str::lower($rows[0][1] ?? ''));
 

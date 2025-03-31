@@ -30,7 +30,7 @@ function seleccionarCompañero(maquinaId) {
             const selectElement = document.getElementById("users_id_2");
             const users_id_2 = selectElement ? selectElement.value : null;
 
-            return fetch(guardarSesionUrl, {
+            return fetch(window.rutas.guardarSesion, {
                 // Usamos la variable global en lugar de Blade
                 method: "POST",
                 headers: {
@@ -54,7 +54,7 @@ function seleccionarCompañero(maquinaId) {
         },
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = `/maquinas/${maquinaId}`;
+            window.location.href = `${window.rutas.base}/maquinas/${maquinaId}`;
         }
     });
 }

@@ -156,7 +156,13 @@
         <script>
             const usuarios = @json($usuarios);
             const csrfToken = '{{ csrf_token() }}';
-            const guardarSesionUrl = '{{ route('maquinas.sesion.guardar') }}';
+
+            window.rutas = {
+                guardarSesion: '{{ route('maquinas.sesion.guardar') }}',
+                base: '{{ url('/') }}' // esta es la clave para que sea flexible
+            };
+        </script>
+
         </script>
         <script src="{{ asset('js/maquinaJS/seleccionarCompa.js') }}" defer></script>
 </x-app-layout>

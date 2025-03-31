@@ -89,25 +89,6 @@
                                             </li>
                                         </ul>
                                     @endforeach
-                                @elseif($paquete->subpaquetes->isNotEmpty())
-                                    {{-- Mostrar subpaquetes si existen --}}
-                                    @foreach ($paquete->subpaquetes as $subpaquete)
-                                        <ul class="text-sm">
-
-                                            <li>
-                                                <a href="{{ route('etiquetas.index', ['id' => $subpaquete->elemento->etiquetaRelacion->id]) }}"
-                                                    class="text-blue-500 hover:underline">
-                                                    {{ $subpaquete->elemento->etiquetaRelacion->nombre }}
-                                                    (#{{ $subpaquete->elemento->etiquetaRelacion->id }})
-                                                </a>
-                                                <a href="{{ route('elementos.index', ['id' => $subpaquete->elemento->id]) }}"
-                                                    class="text-green-500 hover:underline">
-                                                    #{{ $subpaquete->elemento->id }} - FIGURA
-                                                    {{ $subpaquete->elemento->figura }}
-                                                </a>
-                                            </li>
-                                        </ul>
-                                    @endforeach
                                 @else
                                     <span class="text-gray-500">Vacío</span>
                                 @endif

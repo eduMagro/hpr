@@ -204,72 +204,89 @@ function crearPaquete() {
         return;
     }
 
-    // Primera llamada: Verificar ítems disponibles
-    fetch("/verificar-items", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": document
-                .querySelector('meta[name="csrf-token"]')
-                .getAttribute("content"),
-            "X-Requested-With": "XMLHttpRequest",
-        },
-        body: JSON.stringify({ items }),
-    })
+    // Función para enviar la solicitud a /paquetes
+    const enviarSolicitudPaquete = (confirmar = false) => {
+        const bodyData = {
+            items: items.map((item) => ({
+                ...item,
+                id: parseInt(item.id),
+            })),
+            maquina_id: parseInt(maquinaId),
+            ubicacion_id: parseInt(ubicacionId),
+        };
+        if (confirmar) {
+            bodyData.confirmar = true;
+        }
+        return fetch("/paquetes", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": document
+                    .querySelector('meta[name="csrf-token"]')
+                    .getAttribute("content"),
+                "X-Requested-With": "XMLHttpRequest",
+            },
+            body: JSON.stringify(bodyData),
+        });
+    };
+
+    // Se realiza la llamada directamente a /paquetes
+    enviarSolicitudPaquete(false)
         .then((response) => {
-            console.log("Respuesta de /verificar-items:", response);
+            if (!response.ok) {
+                return response.json().then((errData) => {
+                    throw errData;
+                });
+            }
             return response.json();
         })
         .then((data) => {
-            if (!data.success) {
+            if (data.success) {
+                return data;
+            } else if (data.warning) {
+                // Si se recibe warning, se muestra una confirmación al usuario
+                let mensajeAdicional =
+                    data.warning.message ||
+                    "Algunos elementos ya están asignados a otro paquete.";
                 if (
-                    Array.isArray(data.elementos_incompletos) &&
-                    data.elementos_incompletos.length > 0
+                    data.warning.elementos_ocupados &&
+                    data.warning.elementos_ocupados.length > 0
                 ) {
-                    let mensajeError =
-                        "<strong>Los siguientes ítems no están completos:</strong><br><br>";
-                    mensajeError += `- <strong>Elementos:</strong> ${data.elementos_incompletos.join(
+                    mensajeAdicional += `<br><br><strong>Elementos en un paquete:</strong> ${data.warning.elementos_ocupados.join(
                         ", "
-                    )}<br>`;
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error",
-                        html: mensajeError.trim(),
-                        confirmButtonColor: "#d33",
-                    });
+                    )}`;
                 }
-                // Detener la cadena de promesas lanzando un error
-                return Promise.reject(
-                    new Error("Verificación de ítems fallida")
+                return Swal.fire({
+                    icon: "warning",
+                    title: "Advertencia",
+                    html: mensajeAdicional,
+                    showCancelButton: true,
+                    confirmButtonText: "Sí, continuar",
+                    cancelButtonText: "Cancelar",
+                    confirmButtonColor: "#3085d6",
+                    cancelButtonColor: "#d33",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        return enviarSolicitudPaquete(true).then((response) => {
+                            if (!response.ok) {
+                                return response.json().then((errData) => {
+                                    throw errData;
+                                });
+                            }
+                            return response.json();
+                        });
+                    } else {
+                        throw new Error("Operación cancelada por el usuario.");
+                    }
+                });
+            } else {
+                throw new Error(
+                    data.message || "Error desconocido al crear el paquete."
                 );
             }
-            // Se asume que las variables globales maquinaId y ubicacionId están definidas
-            return fetch("/paquetes", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document
-                        .querySelector('meta[name="csrf-token"]')
-                        .getAttribute("content"),
-                    "X-Requested-With": "XMLHttpRequest",
-                },
-                body: JSON.stringify({
-                    items,
-                    maquina_id: maquinaId,
-                    ubicacion_id: ubicacionId,
-                }),
-            });
-        })
-        .then((response) => {
-            console.log("Respuesta de /paquetes:", response);
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.json();
         })
         .then((data) => {
-            console.log("Datos recibidos de /paquetes:", data);
-            if (data?.success) {
+            if (data.success) {
                 Swal.fire({
                     icon: "success",
                     title: "Éxito",
@@ -278,12 +295,9 @@ function crearPaquete() {
                                    class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">QR</button>`,
                 })
                     .then(() => {
-                        // Reiniciar la lista de items tras la creación del paquete
+                        // Reinicia la lista de items
                         items.length = 0;
                         document.getElementById("itemsList").innerHTML = "";
-                        console.log(
-                            "Lista de items reiniciada después de crear el paquete."
-                        );
                     })
                     .then(() => {
                         window.location.reload();
@@ -295,11 +309,12 @@ function crearPaquete() {
             }
         })
         .catch((error) => {
-            console.error("Error en fetch:", error);
             Swal.fire({
                 icon: "error",
                 title: "Error en Controlador",
-                text: `No se pudo conectar con el controlador. Detalles: ${error.message}`,
+                text: `No se pudo crear el paquete. Detalles: ${
+                    error.message || JSON.stringify(error)
+                }`,
                 confirmButtonColor: "#d33",
             });
         });

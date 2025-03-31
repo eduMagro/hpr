@@ -52,13 +52,12 @@ class PaqueteController extends Controller
 
         return view('paquetes.index', compact('paquetes'));
     }
-
     /**
      * Crea un nuevo paquete y asocia las etiquetas y elementos.
      *
      * - Valida la entrada.
      * - Separa los items por tipo (etiqueta o elemento).
-     * - Verifica la disponibilidad de los elementos.
+     * - Verifica la integridad de los items y si alguno ya pertenece a un paquete.
      * - Calcula el peso total y valida que no supere el límite permitido.
      * - Obtiene la ubicación asociada a la máquina.
      * - Crea el paquete y asigna los elementos.
@@ -74,6 +73,15 @@ class PaqueteController extends Controller
             'maquina_id' => 'required|integer|exists:maquinas,id'
         ]);
 
+        // Verificar la integridad de los items (completitud y asignación previa)
+        $warnings = $this->verificarItems($request->items, $request->input('maquina_id'));
+        if ($warnings !== null && !$request->boolean('confirmar')) {
+            // Retornamos HTTP 200 para que el front-end pueda mostrar el warning y dar la opción de continuar
+            return response()->json([
+                'success' => false,
+                'warning' => $warnings
+            ], 200);
+        }
         try {
             DB::beginTransaction();
 
@@ -117,16 +125,6 @@ class PaqueteController extends Controller
             // Combinar los IDs directos con los obtenidos de las etiquetas
             $elementosIdsDesdeEtiquetas = array_unique(array_merge($elementosIdsDesdeEtiquetas, $elementosIds));
 
-            // Verificar la disponibilidad de los elementos
-            $disponibilidad = $this->verificarDisponibilidad($elementosIdsDesdeEtiquetas);
-            if ($disponibilidad !== null && !$request->has('confirmar')) {
-                DB::rollBack();
-                return response()->json([
-                    'success' => false,
-                    'warning' => $disponibilidad // contiene 'message' y 'elementos_ocupados'
-                ], 400);
-            }
-
             // Obtener todos los elementos a procesar
             $todosElementos = Elemento::whereIn('id', $elementosIdsDesdeEtiquetas)->get();
             if ($todosElementos->isEmpty()) {
@@ -159,7 +157,14 @@ class PaqueteController extends Controller
             }
 
             // Obtener la ubicación asociada a la máquina
-            $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
+            if (stripos($maquina->nombre, 'idea 5') !== false) {
+                // Si el nombre de la máquina contiene "idea 5", se busca la ubicación que contenga "Sector Final"
+                $ubicacion = Ubicacion::where('descripcion', 'LIKE', '%Sector Final%')->first();
+            } else {
+                // En caso contrario, se busca la ubicación por el código de la máquina
+                $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
+            }
+
             if (!$ubicacion) {
                 DB::rollBack();
                 return response()->json([
@@ -193,61 +198,85 @@ class PaqueteController extends Controller
     }
 
     /**
-     * Verifica que los ítems enviados estén disponibles.
+     * Verifica que los items enviados estén completos y que ninguno
+     * de los elementos ya pertenezca a otro paquete.
      *
-     * - Valida la entrada.
-     * - Retorna un mensaje de error completo si algunos elementos ya están asignados.
+     * - Para etiquetas: se verifica que exista la planilla y que tenga
+     *   elementos asociados o un pesoTotal definido.
+     * - Para elementos: se comprueba que tenga un valor de peso definido.
+     * - Además, se valida que ninguno de los elementos (ya sea de una etiqueta
+     *   o ingresado directamente) tenga asignado un paquete.
+     *
+     * @param array $items
+     * @param int $maquinaId
+     * @return array|null   Retorna un arreglo de warnings si existen inconsistencias, o null si todo es correcto.
      */
-    public function verificarItems(Request $request)
+    private function verificarItems($items, $maquinaId)
     {
-        $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.id' => 'integer|required',
-            'items.*.type' => 'required|in:etiqueta,elemento'
-        ]);
+        // Separar IDs según tipo
+        $etiquetasIds = collect($items)->where('type', 'etiqueta')->pluck('id')->toArray();
+        $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
 
-        $elementosIds = collect($request->items)->pluck('id')->toArray();
-        $disponibilidad = $this->verificarDisponibilidad($elementosIds);
-
-        if ($disponibilidad !== null) {
-            return response()->json([
-                'success' => false,
-                'elementos_incompletos' => $disponibilidad['elementos_ocupados'] ?? [],
-                'message' => $disponibilidad['message'] ?? 'Verificación de ítems fallida.'
-            ], 400);
+        // Verificar existencia de las etiquetas
+        $etiquetas = Etiqueta::whereIn('id', $etiquetasIds)
+            ->with(['planilla', 'elementos'])
+            ->get();
+        if (count($etiquetas) < count($etiquetasIds)) {
+            $idsEncontrados = $etiquetas->pluck('id')->toArray();
+            $faltantes = array_diff($etiquetasIds, $idsEncontrados);
+            $warnings['etiquetas_no_encontradas'] = array_values($faltantes);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Todos los ítems están disponibles.'
-        ], 200);
-    }
+        // Verificar existencia de los elementos
+        $elementos = Elemento::whereIn('id', $elementosIds)->get();
+        if (count($elementos) < count($elementosIds)) {
+            $idsEncontrados = $elementos->pluck('id')->toArray();
+            $faltantes = array_diff($elementosIds, $idsEncontrados);
+            $warnings['elementos_no_encontrados'] = array_values($faltantes);
+        }
 
-    /**
-     * Verifica la disponibilidad de los elementos para ser empaquetados.
-     *
-     * @param array $elementos
-     * @return array|null
-     */
-    private function verificarDisponibilidad($elementos)
-    {
-        try {
-            $elementosOcupados = Elemento::whereIn('id', $elementos)
-                ->whereNotNull('paquete_id')
-                ->pluck('id');
-            if ($elementosOcupados->isNotEmpty()) {
-                return [
-                    'message' => 'Algunos elementos ya están asignados a otro paquete. ¿Desea continuar y reasignarlos?',
-                    'elementos_ocupados' => $elementosOcupados->toArray()
-                ];
+        // Validar que las etiquetas estén completas
+        foreach ($etiquetas as $etiqueta) {
+            // Verificar que tenga planilla asignada
+            if (!$etiqueta->planilla) {
+                $warnings['etiquetas_incompletas'][] = $etiqueta->id;
             }
-            return null;
-        } catch (Exception $e) {
-            return [
-                'message' => 'Error al verificar disponibilidad: ' . $e->getMessage()
-            ];
+            // Verificar que tenga elementos asociados o un pesoTotal definido
+            if (($etiqueta->elementos->isEmpty()) && !$etiqueta->pesoTotal) {
+                $warnings['etiquetas_incompletas'][] = $etiqueta->id;
+            }
         }
+
+        // Validar que los elementos estén completos (por ejemplo, que tengan definido el peso)
+        foreach ($elementos as $elemento) {
+            if (is_null($elemento->peso)) {
+                $warnings['elementos_incompletos'][] = $elemento->id;
+            }
+        }
+
+        // Obtener los IDs de los elementos asociados a las etiquetas (filtrando por la máquina)
+        $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId) {
+            return $etiqueta->elementos
+                ->where('maquina_id', $maquinaId)
+                ->pluck('id');
+        })->toArray();
+
+        // Combinar los IDs de elementos ingresados directamente y los obtenidos de las etiquetas
+        $todosElementosIds = array_unique(array_merge($elementosIdsDesdeEtiquetas, $elementosIds));
+
+        // Verificar si alguno de estos elementos ya tiene asignado un paquete
+        $elementosOcupados = Elemento::whereIn('id', $todosElementosIds)
+            ->whereNotNull('paquete_id')
+            ->pluck('id')
+            ->toArray();
+
+        if (!empty($elementosOcupados)) {
+            $warnings['elementos_ocupados'] = $elementosOcupados;
+        }
+
+        return !empty($warnings) ? $warnings : null;
     }
+
 
     /**
      * Crea un nuevo paquete.
@@ -284,6 +313,7 @@ class PaqueteController extends Controller
         try {
             Elemento::whereIn('id', $elementos)->update(['paquete_id' => $paqueteId]);
         } catch (Exception $e) {
+            Log::error('Error al asignar paquete: ' . $e->getMessage());
             throw new Exception('Error al asignar items a paquete: ' . $e->getMessage());
         }
     }

@@ -85,11 +85,12 @@
                                         placeholder="Buscar">
                                 </form>
                             </th>
+                            <th class="p-2 border">Peso (kg)</th>
                             {{-- <th class="px-4 py-3 border">Ubicación</th> --}}
                             <th class="p-2 border">Inicio Fabricación</th>
                             <th class="p-2 border">Final Fabricación</th>
                             <th class="p-2 border">Inicio Ensamblado</th>
-                            <th class="p-2 border">Peso (kg)</th>
+
                             <th class="p-2 border">Final Ensamblado</th>
                             <th class="p-2 border">Inicio Soldadura</th>
                             <th class="p-2 border">Final Soldadura</th>
@@ -181,9 +182,9 @@
                                 <!-- Peso (editable) -->
                                 <td class="p-2 text-center border">
                                     <template x-if="!editando">
-                                        <span x-text="etiqueta.peso_kg"></span>
+                                        <span x-text="etiqueta.peso"></span>
                                     </template>
-                                    <input x-show="editando" type="text" x-model="etiqueta.peso_kg"
+                                    <input x-show="editando" type="text" x-model="etiqueta.peso"
                                         class="form-input w-full" @click.stop>
                                 </td>
 

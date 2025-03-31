@@ -475,8 +475,6 @@ class etiquetaController extends Controller
                         $consumos[$elemento->diametro] = $consumosDisponibles;
                     }
 
-
-
                     break;
                 // -------------------------------------------- ESTADO SOLDANDO --------------------------------------------
                 case 'soldando':
@@ -706,7 +704,6 @@ class etiquetaController extends Controller
                 $etiqueta->fecha_finalizacion = now();
                 $etiqueta->save();
             } else {
-
                 // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
                 if ($enOtrasMaquinas) {
                     $etiqueta->estado = 'parcialmente_completada';
