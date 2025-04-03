@@ -42,6 +42,11 @@
                                 value="{{ request('email') }}">
                         </div>
                         <div class="col-md-3">
+                            <!-- Filtro: Empresa -->
+                            <input type="text" name="empresa" class="form-control" placeholder="Buscar por empresa"
+                                value="{{ request('empresa') }}">
+                        </div>
+                        <div class="col-md-3">
                             <!-- Filtro: Rol -->
                             <select name="rol" class="form-control">
                                 <option value="">-- Filtrar por Rol --</option>
@@ -57,12 +62,13 @@
                             <!-- Filtro: Categoría -->
                             <select name="categoria" class="form-control">
                                 <option value="">-- Filtrar por Categoría --</option>
-                                @foreach ($categorias as $nombre)
-                                    <option value="{{ $nombre }}"
-                                        {{ request('categoria') == $nombre ? 'selected' : '' }}>
-                                        {{ ucfirst($nombre) }}
+                                @foreach ($categorias as $categoria)
+                                    <option value="{{ $categoria->id }}"
+                                        {{ request('categoria') == $categoria->id ? 'selected' : '' }}>
+                                        {{ ucfirst($categoria->nombre) }}
                                     </option>
                                 @endforeach
+
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -140,6 +146,7 @@
                             </th>
                             <th class="py-3 px-2 border text-center">Nombre</th>
                             <th class="py-3 px-2 border text-center">Email</th>
+                            <th class="py-3 px-2 border text-center">Empresa</th>
                             <th class="py-3 px-2 border text-center">Rol</th>
                             <th class="py-3 px-2 border text-center">Categoría</th>
                             <th class="py-3 px-2 border text-center">Especialidad</th>
@@ -163,7 +170,6 @@
                                     <input x-show="editando" type="text" x-model="usuario.name"
                                         class="form-input w-full">
                                 </td>
-
                                 <td class="px-2 py-3 text-center border">
                                     <template x-if="!editando">
                                         <span x-text="usuario.email"></span>
@@ -171,7 +177,17 @@
                                     <input x-show="editando" type="text" x-model="usuario.email"
                                         class="form-input w-full">
                                 </td>
-
+                                <td class="px-2 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="usuario.empresa?.nombre ?? 'Sin empresa'"></span>
+                                    </template>
+                                    <select x-show="editando" x-model="usuario.empresa_id" class="form-input w-full">
+                                        <option value="">Selecciona empresa</option>
+                                        @foreach ($empresas as $empresa)
+                                            <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
                                 <td class="px-2 py-3 text-center border">
                                     <template x-if="!editando">
                                         <span x-text="usuario.rol"></span>
@@ -183,22 +199,23 @@
                                         <option value="visitante">Visitante</option>
                                     </select>
                                 </td>
-
                                 <td class="px-2 py-3 text-center border">
+                                    <!-- Mostrar nombre de categoría si no está editando -->
                                     <template x-if="!editando">
-                                        <span x-text="usuario.categoria"></span>
+                                        <span x-text="usuario.categoria?.nombre ?? 'Sin asignar'"></span>
                                     </template>
-                                    <select x-show="editando" x-model="usuario.categoria" class="form-input w-full">
+
+                                    <!-- Select editable con Alpine -->
+                                    <select x-show="editando" x-model="usuario.categoria_id"
+                                        class="form-input w-full">
                                         <option value="">Selecciona cat.</option>
                                         @foreach ($categorias as $categoria)
-                                            <option value="{{ $categoria }}"
-                                                {{ request('categoria') == $categoria ? 'selected' : '' }}>
-                                                {{ ucfirst($categoria) }}
+                                            <option value="{{ $categoria->id }}">
+                                                {{ ucfirst($categoria->nombre) }}
                                             </option>
                                         @endforeach
                                     </select>
                                 </td>
-
                                 <td class="px-2 py-3 text-center border">
                                     <template x-if="!editando">
                                         <span x-text="usuario.especialidad"></span>
@@ -214,7 +231,6 @@
                                         @endforeach
                                     </select>
                                 </td>
-
                                 <td class="px-2 py-3 text-center border">
                                     <template x-if="!editando">
                                         <span
@@ -307,7 +323,7 @@
                 <p><strong>Nombre:</strong> {{ auth()->user()->name }}</p>
                 <p><strong>Correo:</strong> {{ auth()->user()->email }}</p>
                 <p><strong>Puesto:</strong> {{ auth()->user()->rol }}</p>
-                <p><strong>Categoría:</strong> {{ auth()->user()->categoria }}</p>
+                <p><strong>Categoría:</strong> {{ auth()->user()->categoria->nombre }}</p>
                 <p><strong>Especialidad:</strong> {{ auth()->user()->especialidad }}</p>
                 <p><strong>Días de vacaciones restantes:</strong> {{ auth()->user()->dias_vacaciones }}</p>
             </div>
@@ -466,9 +482,9 @@
                 }
             );
         }
-        // ---------------------------------------------------- GUARDAR CAMBIOS
+
         function guardarCambios(usuario) {
-            fetch(`/actualizar-usuario/${usuario.id}`, {
+            fetch(`{{ route('usuarios.actualizar', '') }}/${usuario.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -476,36 +492,39 @@
                     },
                     body: JSON.stringify(usuario)
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Usuario actualizado",
-                            text: "Los cambios se han guardado correctamente.",
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else {
-                        let errores = Object.values(data.error).flat().join('\n'); // Convierte el objeto en texto
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error de validación',
-                            text: errores
-                        });
+                .then(async response => {
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        // Aquí sí muestra el motivo del fallo
+                        let mensaje = data.error || 'Error desconocido';
+                        if (typeof mensaje === 'object') {
+                            mensaje = Object.values(mensaje).flat().join('\n');
+                        }
+
+                        throw new Error(mensaje);
                     }
+
+                    // Si todo fue bien
+                    Swal.fire({
+                        icon: "success",
+                        title: "Usuario actualizado",
+                        text: "Los cambios se han guardado correctamente.",
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.reload();
+                    });
                 })
                 .catch(error => {
                     Swal.fire({
                         icon: "error",
-                        title: "Error de conexión",
-                        text: "No se pudo actualizar el usuario. Inténtalo nuevamente.",
-                        confirmButtonText: "OK"
+                        title: "Error",
+                        text: error.message || 'No se pudo actualizar el usuario. Inténtalo nuevamente.',
                     });
                 });
         }
+
         // ---------------------------------------------------- GENERAR TURNOS SWEETALERT
 
         function confirmarGenerarTurnos(userId) {

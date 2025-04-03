@@ -10,6 +10,7 @@ use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\EstadisticasController;
+use App\Http\Controllers\EmpresaTransportecontroller;
 use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MaquinaController;
 use App\Http\Controllers\MovimientoController;
@@ -22,8 +23,14 @@ use App\Http\Controllers\SalidaController;
 use App\Http\Controllers\ObraController;
 use App\Http\Controllers\AsignacionTurnoController;
 use App\Http\Controllers\CamionController;
-use App\Http\Controllers\EmpresaTransporteController;
 use App\Http\Controllers\ClienteController;
+//nominas
+use App\Http\Controllers\EmpresaController;
+use App\Http\Controllers\IrpfTramoController;
+use App\Http\Controllers\SeguridadSocialController;
+use App\Http\Controllers\NominaController;
+
+
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 
@@ -128,6 +135,14 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/papelera', [PapeleraController::class, 'index'])->name('papelera.index');
     Route::put('/papelera/restore/{model}/{id}', [PapeleraController::class, 'restore'])->name('papelera.restore');
+
+    //NOMINAS
+    Route::resource('empresas', EmpresaController::class);
+    Route::resource('nominas', NominaController::class)->except(['destroy']);
+    Route::get('/generar-nominas', [NominaController::class, 'generarNominasMensuales'])->name('generar.nominas');
+    Route::delete('/nominas/borrar-todas', [NominaController::class, 'borrarTodas'])->name('nominas.borrarTodas');
+    Route::resource('irpf-tramos', IrpfTramoController::class);
+    Route::resource('porcentajes-ss', SeguridadSocialController::class);
 });
 
 

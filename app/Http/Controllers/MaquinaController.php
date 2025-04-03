@@ -210,6 +210,9 @@ class MaquinaController extends Controller
             })
             ->values();
 
+        //Cogemos los elementos reenpaquetados para la ensambladora
+        $elementosReempaquetados = session('elementos_reempaquetados', []);
+
         // 13) Retornar la vista (asegúrate de usar `$elementosMaquina` en la vista)
         return view('maquinas.show', [
             'maquina'                   => $maquina,
@@ -221,7 +224,8 @@ class MaquinaController extends Controller
             'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
             'elementosMaquina'          => $elementosMaquina, // Ya está filtrado a la planilla activa
             'pesosElementos'            => $pesosElementos,
-            'etiquetasData'             => $etiquetasData
+            'etiquetasData'             => $etiquetasData,
+            'elementosReempaquetados'   => $elementosReempaquetados
         ]);
     }
 

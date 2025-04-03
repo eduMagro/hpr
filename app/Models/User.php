@@ -30,9 +30,11 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'empresa_id',
         'password',
+        'dni',
         'rol',
-        'categoria',
+        'categoria_id',
         'especialidad',
         'turno',
         'turno_actual',
@@ -143,5 +145,17 @@ class User extends Authenticatable
     public function turnoActual()
     {
         return $this->hasOne(AsignacionTurno::class, 'user_id')->latest('fecha')->with('turno');
+    }
+    public function categoria()
+    {
+        return $this->belongsTo(Categoria::class, 'categoria_id');
+    }
+    public function convenio()
+    {
+        return $this->belongsTo(Convenio::class, 'categoria_id', 'categoria_id');
+    }
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class);
     }
 }

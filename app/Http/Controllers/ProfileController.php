@@ -11,15 +11,19 @@ use Illuminate\View\View;
 use App\Models\User;
 use App\Models\Maquina;
 use App\Models\Turno;
+use App\Models\Categoria;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Obra;
+use App\Models\Empresa;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Http;
+
+use App\Models\Nomina;
 
 class ProfileController extends Controller
 {
@@ -42,6 +46,10 @@ class ProfileController extends Controller
         if ($request->filled('email')) {
             $query->where('users.email', 'like', '%' . $request->input('email') . '%');
         }
+        // Filtrar por empresa
+        if ($request->filled('empresa')) {
+            $query->where('users.empresa', 'like', '%' . $request->input('empresa') . '%');
+        }
 
         // Filtrar por rol
         if ($request->filled('rol')) {
@@ -50,13 +58,14 @@ class ProfileController extends Controller
 
         // Filtrar por categoría
         if ($request->filled('categoria')) {
-            $query->where('users.categoria', 'like', '%' . $request->input('categoria') . '%');
+            $query->where('categoria_id', $request->input('categoria'));
         }
 
         // Filtrar por especialidad
         if ($request->filled('especialidad')) {
             $query->where('users.especialidad', 'like', '%' . $request->input('especialidad') . '%');
         }
+
         // Obtener la fecha de hoy
         $hoy = Carbon::today()->toDateString();
         // Filtrar por turno de hoy si se selecciona un turno
@@ -86,7 +95,8 @@ class ProfileController extends Controller
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
         $obras = Obra::where('completada', 0)->get();
         // Obtener valores únicos desde la tabla users
-        $categorias = User::distinct()->pluck('categoria')->filter()->sort();
+        $categorias = Categoria::orderBy('nombre')->get();
+
         $especialidades = Maquina::distinct()->pluck('codigo')->filter()->sort();
         $roles = User::distinct()->pluck('rol')->filter()->sort();
         // Obtener la fecha de hoy
@@ -99,10 +109,11 @@ class ProfileController extends Controller
             ->unique()
             ->sort();
         // Aplicar filtros
-        $query = $this->aplicarFiltros($request);
-
+        $query = $this->aplicarFiltros($request)->with('categoria', 'empresa');
+        $empresas = Empresa::orderBy('nombre')->get();
 
         $registrosUsuarios = $query->paginate(10)->appends($request->except('page'));
+
         // Obtener el usuario autenticado
         $user = auth()->user();
 
@@ -119,8 +130,10 @@ class ProfileController extends Controller
         $eventos = array_merge($eventosFichajes->toArray(), $eventosTurnos->toArray(), $festivos);
 
         // Pasar datos a la vista
-        return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'eventos', 'coloresTurnos', 'categorias', 'especialidades', 'roles', 'turnosHoy'));
+        return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'empresas', 'eventos', 'coloresTurnos', 'categorias', 'especialidades', 'roles', 'turnosHoy'));
     }
+
+
     public function show($id)
     {
         $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno'])->findOrFail($id);
@@ -334,8 +347,9 @@ class ProfileController extends Controller
             $request->validate([
                 'name' => 'required|string|max:50',
                 'email' => 'required|email|max:255|unique:users,email,' . $id,
+                'empresa_id' => 'nullable|exists:empresas,id',
                 'rol' => 'required|string|max:50',
-                'categoria' => 'nullable|string|max:50',
+                'categoria_id' => 'nullable|exists:categorias,id',
                 'especialidad' => 'nullable|string|max:15',
                 'turno' => 'nullable|string|in:nocturno,diurno,mañana,flexible',
             ], [
@@ -348,12 +362,13 @@ class ProfileController extends Controller
                 'email.max' => 'El correo no puede superar los 50 caracteres.',
                 'email.unique' => 'Este correo ya está registrado en otro usuario.',
 
+                'empresa_id.exists' => 'La empresa seleccionada no existe.',
+
                 'rol.required' => 'El rol es obligatorio.',
                 'rol.string' => 'El rol debe ser un texto válido.',
                 'rol.max' => 'El rol no puede superar los 50 caracteres.',
 
-                'categoria.string' => 'La categoría debe ser un texto válido.',
-                'categoria.max' => 'La categoría no puede superar los 255 caracteres.',
+                'categoria_id.exists' => 'La categoría no existe.',
 
                 'especialidad.string' => 'La especialidad debe ser un texto válido.',
 
@@ -366,17 +381,19 @@ class ProfileController extends Controller
             if (!$usuario) {
                 return response()->json(['error' => 'Usuario no encontrado.'], 404);
             }
-
-            // Actualizar los datos
-            $usuario->update([
+            $resultado = $usuario->update([
                 'name' => $request->name,
                 'email' => $request->email,
+                'empresa_id' => $request->empresa_id,
                 'rol' => $request->rol,
-                'categoria' => $request->categoria,
+                'categoria_id' => $request->categoria_id,
                 'especialidad' => $request->especialidad,
                 'turno' => $request->turno,
-
             ]);
+
+            if (!$resultado) {
+                return response()->json(['error' => 'No se pudo actualizar el usuario.'], 500);
+            }
 
             return response()->json(['success' => 'Usuario actualizado correctamente.']);
         } catch (ValidationException $e) {
@@ -456,7 +473,6 @@ class ProfileController extends Controller
 
         return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}, excluyendo los festivos.");
     }
-
 
 
     public function destroy(Request $request, $id)

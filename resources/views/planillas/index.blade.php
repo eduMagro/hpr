@@ -145,6 +145,74 @@
             </form>
         </div>
 
+        @php
+            $filtrosActivos = [];
+
+            if (request('buscar')) {
+                $filtrosActivos[] = 'contiene <strong>“' . request('buscar') . '”</strong>';
+            }
+            if (request('codigo')) {
+                $filtrosActivos[] = 'Código de planilla: <strong>' . request('codigo') . '</strong>';
+            }
+            if (request('cod_obra')) {
+                $filtrosActivos[] = 'Código de obra: <strong>' . request('cod_obra') . '</strong>';
+            }
+            if (request('name')) {
+                $filtrosActivos[] = 'Usuario: <strong>' . request('name') . '</strong>';
+            }
+            if (request('cliente')) {
+                $filtrosActivos[] = 'Cliente: <strong>' . request('cliente') . '</strong>';
+            }
+            if (request('nom_obra')) {
+                $filtrosActivos[] = 'Obra: <strong>' . request('nom_obra') . '</strong>';
+            }
+            if (request('ensamblado')) {
+                $filtrosActivos[] = 'Estado ensamblado: <strong>' . request('ensamblado') . '</strong>';
+            }
+
+            if (request('estado')) {
+                $estados = [
+                    'pendiente' => 'Pendiente',
+                    'fabricando' => 'Fabricando',
+                    'completada' => 'Completada',
+                    'montaje' => 'En Montaje',
+                ];
+                $filtrosActivos[] =
+                    'Estado de fabricación: <strong>' .
+                    ($estados[request('estado')] ?? request('estado')) .
+                    '</strong>';
+            }
+
+            if (request('fecha_inicio')) {
+                $filtrosActivos[] = 'Desde: <strong>' . request('fecha_inicio') . '</strong>';
+            }
+            if (request('fecha_finalizacion')) {
+                $filtrosActivos[] = 'Hasta: <strong>' . request('fecha_finalizacion') . '</strong>';
+            }
+
+            if (request('sort_by')) {
+                $sorts = [
+                    'created_at' => 'Fecha de creación',
+                    'codigo' => 'Código',
+                    'cliente' => 'Cliente',
+                ];
+                $orden = request('order') == 'desc' ? 'descendente' : 'ascendente';
+                $filtrosActivos[] =
+                    'Ordenado por <strong>' .
+                    ($sorts[request('sort_by')] ?? request('sort_by')) .
+                    "</strong> en orden <strong>$orden</strong>";
+            }
+
+            if (request('per_page')) {
+                $filtrosActivos[] = 'Mostrando <strong>' . request('per_page') . '</strong> registros por página';
+            }
+        @endphp
+
+        @if (count($filtrosActivos))
+            <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
+                <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
+            </div>
+        @endif
 
         <!-- TABLA DE PLANILLAS -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">

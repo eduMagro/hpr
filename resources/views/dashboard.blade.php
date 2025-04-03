@@ -71,6 +71,14 @@
                             </a>
                         </div>
                         <div class="icon-card">
+                            <a href="{{ route('empresas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
+                                <img width="100" height="100"
+                                    src="https://img.icons8.com/arcade/64/terms-and-conditions.png"
+                                    alt="terms-and-conditions" />
+                                <span>Mi Empresa</span>
+                            </a>
+                        </div>
+                        <div class="icon-card">
                             <a href="{{ route('clientes.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
                                 <img width="100" height="100"
                                     src="https://img.icons8.com/?size=100&id=HjcUJuI6Siqo&format=png&color=000000"

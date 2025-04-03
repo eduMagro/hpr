@@ -105,7 +105,7 @@
             <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
 
                 @php
-
+                    $idsReempaquetados = collect($elementosReempaquetados ?? []);
                     function debeSerExcluido($elemento)
                     {
                         // Verificar si el elemento tiene un paquete directo
@@ -120,11 +120,9 @@
 
                     if (stripos($maquina->tipo, 'ensambladora') !== false) {
                         $elementosAgrupados = $elementosMaquina
+                            ->reject(fn($e) => $idsReempaquetados->contains($e->id))
                             ->groupBy('etiqueta_id')
                             ->filter(function ($grupo) use ($maquina) {
-                                // Retener solo el grupo si contiene al menos un elemento extra,
-                                // es decir, un elemento con maquina_id_2 igual a Idea 5 y
-                                // con maquina_id distinto al de Idea 5.
                                 return $grupo->contains(function ($elemento) use ($maquina) {
                                     return $elemento->maquina_id_2 == $maquina->id &&
                                         $elemento->maquina_id != $maquina->id;

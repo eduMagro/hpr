@@ -106,12 +106,17 @@ class PaqueteController extends Controller
                 ->get();
             $elementos = Elemento::whereIn('id', $elementosIds)->get();
 
-            // Obtener los IDs de los elementos asociados a las etiquetas de la máquina seleccionada
-            $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId) {
-                return $etiqueta->elementos
-                    ->where('maquina_id', $maquinaId)
-                    ->pluck('id');
+            // Obtener los IDs de los elementos asociados a las etiquetas según el tipo de máquina
+            $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId, $maquina) {
+                return $etiqueta->elementos->filter(function ($elemento) use ($maquinaId, $maquina) {
+                    if ($maquina->tipo === 'ensambladora') {
+                        return $elemento->maquina_id == $maquinaId || $elemento->maquina_id_2 == $maquinaId;
+                    } else {
+                        return $elemento->maquina_id == $maquinaId;
+                    }
+                })->pluck('id');
             })->unique()->values()->toArray();
+
 
             // Validar que existan datos válidos para crear el paquete
             if ($etiquetas->isEmpty() && $elementos->isEmpty()) {
@@ -178,6 +183,7 @@ class PaqueteController extends Controller
 
             // Asignar los elementos al paquete
             $this->asignarItemsAPaquete($elementosIdsDesdeEtiquetas, $paquete->id);
+            session(['elementos_reempaquetados' => $elementosIdsDesdeEtiquetas]);
 
             DB::commit();
 
@@ -185,7 +191,7 @@ class PaqueteController extends Controller
                 'success' => true,
                 'message' => 'Paquete creado correctamente.',
                 'paquete_id' => $paquete->id,
-                'codigo_planilla' => $codigo_planilla
+                'codigo_planilla' => $codigo_planilla,
             ], 201);
         } catch (Exception $e) {
             DB::rollBack();
@@ -311,6 +317,15 @@ class PaqueteController extends Controller
     private function asignarItemsAPaquete($elementos, $paqueteId)
     {
         try {
+            $elementosYaAsignados = Elemento::whereIn('id', $elementos)
+                ->whereNotNull('paquete_id')
+                ->pluck('id')
+                ->toArray();
+
+            if (count($elementosYaAsignados) > 0) {
+                Log::warning('Elementos ya asignados a otro paquete: ' . implode(', ', $elementosYaAsignados));
+            }
+
             Elemento::whereIn('id', $elementos)->update(['paquete_id' => $paqueteId]);
         } catch (Exception $e) {
             Log::error('Error al asignar paquete: ' . $e->getMessage());
