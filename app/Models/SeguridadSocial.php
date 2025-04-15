@@ -14,6 +14,7 @@ class SeguridadSocial extends Model
     protected $fillable = [
         'concepto',
         'porcentaje',
+        'aplica',
     ];
 
     public $timestamps = false;

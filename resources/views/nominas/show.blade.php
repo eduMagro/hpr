@@ -17,9 +17,9 @@
             </a>
         </h2>
     </x-slot>
-    <div class="container mx-auto px-4 py-6">
+    <div class="container mx-auto px-4 py-6" style="max-width: 794px;">
         <span>NIF: </span><span> {{ $nomina->empleado->dni ?? 'N/A' }}</span>
-        <div class="bg-white border-2 border-gray-600 shadow-md overflow-hidden">
+        <div class="bg-white border-1 border-gray-800 shadow-md overflow-hidden">
 
             <table class="table-fixed w-full text-sm text-left border-collapse">
 
@@ -68,7 +68,8 @@
 
                         <!-- Contenido -->
                         <div class="grid grid-cols-12 text-xs text-gray-800 text-center">
-                            <div class="p-2 border-r border-gray-400 col-span-3">{{ $nomina->empleado->name }}</div>
+                            <div class="p-2 border-r border-gray-400 col-span-3">
+                                {{ $nomina->empleado->apellidos_nombre }}</div>
                             <div class="p-2 border-r border-gray-400 col-span-3">{{ $nomina->categoria->nombre }}</div>
                             <div class="p-2 border-r border-gray-400 col-span-2">{{ $nomina->empleado->id }}</div>
                             <div class="p-2 border-r border-gray-400 col-span-2">
@@ -127,42 +128,116 @@
                                 <tr>
                                     <td class="border border-gray-400 p-1">{{ $nomina->dias_trabajados }}</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->salario_base, 3, ',', '.') }}</td>
+                                        {{ number_format($nomina->salario_base / $nomina->dias_trabajados, 3, ',', '.') }}
+                                    </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Salario Base</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->salario_base, 2, ',', '.') }}</td>
+                                        {{ number_format($nomina->salario_base, 2, ',', '.') }}
+                                    </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
+
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->plus_actividad, 3, ',', '.') }}</td>
+                                        {{ number_format($nomina->plus_actividad, 3, ',', '.') }}
+                                    </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Actividad</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->plus_actividad, 2, ',', '.') }}</td>
+                                        {{ number_format($nomina->plus_actividad, 2, ',', '.') }}
+                                    </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
+
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1">
-                                        {{ number_format($nomina->prorrateo, 3, ',', '.') }}</td>
+                                        {{ number_format($nomina->plus_asistencia, 3, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Asistencia
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-right">
+                                        {{ number_format($nomina->plus_asistencia, 2, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1"></td>
+                                </tr>
+
+                                <tr>
+                                    <td class="border border-gray-400 p-1">1</td>
+                                    <td class="border border-gray-400 p-1">
+                                        {{ number_format($nomina->plus_transporte, 3, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Transporte
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-right">
+                                        {{ number_format($nomina->plus_transporte, 2, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1"></td>
+                                </tr>
+
+                                <tr>
+                                    <td class="border border-gray-400 p-1">1</td>
+                                    <td class="border border-gray-400 p-1">
+                                        {{ number_format($nomina->plus_dieta, 3, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Dieta</td>
+                                    <td class="border border-gray-400 p-1 text-right">
+                                        {{ number_format($nomina->plus_dieta, 2, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1"></td>
+                                </tr>
+
+                                <tr>
+                                    <td class="border border-gray-400 p-1">1</td>
+                                    <td class="border border-gray-400 p-1">
+                                        {{ number_format($nomina->plus_turnicidad, 3, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus Turnicidad
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-right">
+                                        {{ number_format($nomina->plus_turnicidad, 2, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1"></td>
+                                </tr>
+
+                                <tr>
+                                    <td class="border border-gray-400 p-1">1</td>
+                                    <td class="border border-gray-400 p-1">
+                                        {{ number_format($nomina->plus_productividad, 3, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-left" colspan="2">*Plus
+                                        Productividad</td>
+                                    <td class="border border-gray-400 p-1 text-right">
+                                        {{ number_format($nomina->plus_productividad, 2, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1"></td>
+                                </tr>
+
+                                <tr>
+                                    <td class="border border-gray-400 p-1">1</td>
+                                    <td class="border border-gray-400 p-1">
+                                        {{ number_format($nomina->prorrateo, 3, ',', '.') }}
+                                    </td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">*Prorrata Pagas
                                         Extras</td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->prorrateo, 2, ',', '.') }}</td>
+                                        {{ number_format($nomina->prorrateo, 2, ',', '.') }}
+                                    </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
+
 
                                 {{-- Deducciones ejemplo --}}
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
                                     <td class="border border-gray-400 p-1"></td>
                                     <td class="border border-gray-400 p-1 text-left" colspan="2">TRIBUTACIÓN
-                                        I.R.P.F.
+                                        I.R.P.F. {{ number_format($nomina->irpf_porcentaje, 2, ',', '.') }} %
+
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                     <td class="border border-gray-400 p-1 text-right">
-                                        {{ number_format($nomina->irpf_mensual, 2, ',', '.') }}</td>
+                                        {{ number_format($nomina->irpf_mensual, 2, ',', '.') }} </td>
                                 </tr>
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
@@ -221,9 +296,9 @@
                 cotización
             </td>
         </tr>
-        <!-- BLOQUE FINAL: FECHA / SELLO / RECIBÍ / LÍQUIDO -->
+        <!-- BLOQUE RECIBI: FECHA / SELLO / RECIBÍ / LÍQUIDO -->
         <div
-            class="bg-white border-2 border-gray-600 mt-6 p-4 grid grid-cols-4 gap-4 text-xs font-semibold text-gray-800">
+            class="bg-white border-1 border-gray-800 mt-6 p-4 grid grid-cols-4 gap-4 text-xs font-semibold text-gray-800">
             <!-- Fecha -->
             <div>
                 <span class="block mb-2">FECHA</span>
@@ -244,6 +319,39 @@
             </div>
 
         </div>
+        <!-- Aportaciones empresariales -->
+        <div class="col-span-4 mt-6 bg-white border-1 border-gray-800 bg-white">
+            <div
+                class="grid grid-cols-4 bg-gray-300 text-xs font-bold text-black text-center uppercase border-b border-gray-500">
+                <div class="p-2 border-r border-gray-400">Concepto</div>
+                <div class="p-2 border-r border-gray-400">Base</div>
+                <div class="p-2 border-r border-gray-400">Tipo %</div>
+                <div class="p-2">Aportación</div>
+            </div>
+
+            @foreach ($aportacionesEmpresa as $aportacion)
+                <div class="grid grid-cols-4 text-xs text-gray-800 text-center border-b border-gray-300">
+                    <div class="p-2 border-r border-gray-400">{{ $aportacion->concepto }}</div>
+                    <div class="p-2 border-r border-gray-400">
+                        {{ number_format($nomina->total_devengado, 2, ',', '.') }}
+                    </div>
+                    <div class="p-2 border-r border-gray-400">
+                        {{ number_format($aportacion->porcentaje, 2, ',', '.') }}%
+                    </div>
+                    <div class="p-2">
+                        {{ number_format(($nomina->total_devengado * $aportacion->porcentaje) / 100, 2, ',', '.') }}
+                    </div>
+                </div>
+            @endforeach
+
+            <div class="grid grid-cols-4 text-xs text-right font-semibold text-black bg-yellow-50">
+                <div class="col-span-3 p-2 border-t border-gray-400 border-r text-right">Total Aportación Empresa</div>
+                <div class="p-2 border-t border-gray-400">
+                    {{ number_format($nomina->coste_empresa - $nomina->total_devengado, 2, ',', '.') }}
+                </div>
+            </div>
+        </div>
+
 
     </div>
 </x-app-layout>

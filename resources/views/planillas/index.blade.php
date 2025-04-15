@@ -244,7 +244,7 @@
                             planilla: @js($planilla),
                             original: JSON.parse(JSON.stringify(@js($planilla)))
                         }"
-                            @click="if(!$event.target.closest('input')) {
+                            @dblclick="if(!$event.target.closest('input')) {
                               if(!editando) {
                                 editando = true;
                               } else {
@@ -402,6 +402,12 @@
 
                             <!-- Acciones (solo se muestran las opciones de ver y eliminar) -->
                             <td class="p-2 text-center border">
+                                <template x-if="editando">
+                                    <button @click="guardarCambios(planilla); editando = false"
+                                        class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
+                                        Guardar
+                                    </button>
+                                </template>
                                 <a href="{{ route('planillas.show', $planilla->id) }}"
                                     class="text-green-500 hover:underline">Ver</a>
                                 <br>
@@ -424,8 +430,7 @@
         </div>
         <script>
             function guardarCambios(planilla) {
-
-                fetch(`/planillas/${planilla.id}`, {
+                fetch(`{{ route('planillas.update', '') }}/${planilla.id}`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
@@ -433,20 +438,26 @@
                         },
                         body: JSON.stringify(planilla)
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
+                    .then(async response => {
+                        const contentType = response.headers.get('content-type');
+                        let data = {};
 
-                            window.location.reload(); // Recarga la página tras el mensaje
-
+                        if (contentType && contentType.includes('application/json')) {
+                            data = await response.json();
                         } else {
-                            let errorMsg =
-                                data.message || "Ha ocurrido un error inesperado.";
-                            // Si existen errores de validación, concatenarlos
+                            const text = await response.text();
+                            throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0,
+                                100)); // corta para no saturar
+                        }
+
+                        if (response.ok && data.success) {
+                            window.location.reload();
+                        } else {
+                            let errorMsg = data.message || "Ha ocurrido un error inesperado.";
                             if (data.errors) {
-                                errorMsg = Object.values(data.errors).flat().join(
-                                    "<br>"); // O puedes usar '\n' para saltos de línea
+                                errorMsg = Object.values(data.errors).flat().join("<br>");
                             }
+
                             Swal.fire({
                                 icon: "error",
                                 title: "Error al actualizar",
@@ -458,17 +469,15 @@
                                 if (result.dismiss === Swal.DismissReason.cancel) {
                                     notificarProgramador(errorMsg);
                                 }
-                            }).then(() => {
-                                window.location.reload(); // Recarga la página tras el mensaje
                             });
                         }
                     })
                     .catch(error => {
-                        console.error('Error:', error);
+                        // Este catch ahora captura errores de red y errores de tipo (como HTML no válido)
                         Swal.fire({
                             icon: "error",
                             title: "Error de conexión",
-                            text: "No se pudo actualizar la planilla. Inténtalo nuevamente.",
+                            text: error.message || "No se pudo actualizar la planilla. Inténtalo nuevamente.",
                             confirmButtonText: "OK"
                         });
                     });

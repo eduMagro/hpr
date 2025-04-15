@@ -7,6 +7,10 @@
                 class="inline-block bg-blue-600 hover:bg-blue-900 text-white font-semibold py-2 px-4 rounded shadow transition">
                 ➕ Nóminas
             </a>
+            <a href="{{ route('nomina.simulacion') }}"
+                class="inline-block bg-blue-600 hover:bg-blue-900 text-white font-semibold py-2 px-4 rounded shadow transition">
+                Simulación Nóminas
+            </a>
         </div>
 
         <h3 class="text-lg font-semibold px-4 pt-4 text-gray-800">Listado Empresas</h3>
@@ -120,13 +124,14 @@
             </table>
         </div>
         <h3 class="text-lg font-semibold px-4 pt-4 text-gray-800">Convenios por Categoría</h3>
-        <div class="mt-10 bg-white shadow-md rounded-lg overflow-x-auto">
+        <div class="bg-white shadow-md rounded-lg overflow-x-auto">
             <table class="min-w-full table-auto border border-gray-300">
                 <thead class="bg-gray-100 text-gray-700 text-sm uppercase">
                     <tr>
                         <th class="px-4 py-2 border text-center">ID</th>
                         <th class="px-4 py-2 border">Categoría</th>
                         <th class="px-4 py-2 border text-right">Salario Base</th>
+                        <th class="px-4 py-2 border text-right">Liquido Minimo Pactado</th>
                         <th class="px-4 py-2 border text-right">Plus Asistencia</th>
                         <th class="px-4 py-2 border text-right">Plus Actividad</th>
                         <th class="px-4 py-2 border text-right">Plus Productividad</th>
@@ -141,19 +146,21 @@
                             <td class="px-4 py-2 border text-center">{{ $convenio->id }}</td>
                             <td class="px-4 py-2 border">{{ $convenio->categoria->nombre ?? 'Sin categoría' }}</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($convenio->salario_base, 2, ',', '.') }}</td>
+                                {{ number_format($convenio->salario_base, 2, ',', '.') }} €</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($convenio->plus_asistencia, 2, ',', '.') }}</td>
+                                {{ number_format($convenio->liquido_minimo_pactado, 2, ',', '.') }} €</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($convenio->plus_actividad, 2, ',', '.') }}</td>
+                                {{ number_format($convenio->plus_asistencia, 2, ',', '.') }} €</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($convenio->plus_productividad, 2, ',', '.') }}</td>
+                                {{ number_format($convenio->plus_actividad, 2, ',', '.') }} €</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($convenio->plus_absentismo, 2, ',', '.') }}</td>
+                                {{ number_format($convenio->plus_productividad, 2, ',', '.') }} €</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($convenio->plus_transporte, 2, ',', '.') }}</td>
+                                {{ number_format($convenio->plus_absentismo, 2, ',', '.') }} €</td>
                             <td class="px-4 py-2 border text-right">
-                                {{ number_format($convenio->prorrateo_pagasextras, 2, ',', '.') }}</td>
+                                {{ number_format($convenio->plus_transporte, 2, ',', '.') }} €</td>
+                            <td class="px-4 py-2 border text-right">
+                                {{ number_format($convenio->prorrateo_pagasextras, 2, ',', '.') }} €</td>
                         </tr>
                     @empty
                         <tr>

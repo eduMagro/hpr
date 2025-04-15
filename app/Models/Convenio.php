@@ -14,6 +14,7 @@ class Convenio extends Model
     protected $fillable = [
         'categoria_id',
         'salario_base',
+        'liquido_minimo_pactado',
         'plus_asistencia',
         'plus_actividad',
         'plus_productividad',

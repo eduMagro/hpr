@@ -136,13 +136,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/papelera', [PapeleraController::class, 'index'])->name('papelera.index');
     Route::put('/papelera/restore/{model}/{id}', [PapeleraController::class, 'restore'])->name('papelera.restore');
 
-    //NOMINAS
+    //GENERAR NOMINAS
     Route::resource('empresas', EmpresaController::class);
     Route::resource('nominas', NominaController::class)->except(['destroy']);
-    Route::get('/generar-nominas', [NominaController::class, 'generarNominasMensuales'])->name('generar.nominas');
+    Route::post('/generar-nominas', [NominaController::class, 'generarNominasMensuales'])->name('generar.nominas');
     Route::delete('/nominas/borrar-todas', [NominaController::class, 'borrarTodas'])->name('nominas.borrarTodas');
     Route::resource('irpf-tramos', IrpfTramoController::class);
     Route::resource('porcentajes-ss', SeguridadSocialController::class);
+    //SIMULACION NOMINAS
+    Route::get('/simulacion-irpf', [NominaController::class, 'formularioSimulacion'])->name('nomina.simulacion');
+    Route::post('/simulacion-irpf', [NominaController::class, 'simular'])->name('nomina.simular');
+    //SIMULACION INVERSA
+    Route::get('/simulacion-inversa', [NominaController::class, 'formularioInverso'])->name('nomina.inversa');
+    Route::post('/simulacion-inversa', [NominaController::class, 'simularDesdeNeto'])->name('nomina.inversa.calcular');
 });
 
 

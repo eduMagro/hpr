@@ -157,6 +157,7 @@ class ProfileController extends Controller
 
         // **Eventos de fichajes (entradas y salidas)**
         $eventosFichajes = $this->getEventosFichajes($user);
+        // dd($eventosFichajes);
         $eventosTurnos = $this->getEventosTurnos($user);
 
         // **Obtener festivos reutilizando el método**
@@ -347,6 +348,13 @@ class ProfileController extends Controller
             $request->validate([
                 'name' => 'required|string|max:50',
                 'email' => 'required|email|max:255|unique:users,email,' . $id,
+                'dni' => [
+                    'nullable',
+                    'string',
+                    'size:9',
+                    'regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/',
+                    'unique:users,dni,' . $id,
+                ],
                 'empresa_id' => 'nullable|exists:empresas,id',
                 'rol' => 'required|string|max:50',
                 'categoria_id' => 'nullable|exists:categorias,id',
@@ -384,6 +392,7 @@ class ProfileController extends Controller
             $resultado = $usuario->update([
                 'name' => $request->name,
                 'email' => $request->email,
+                'dni' => $request->dni,
                 'empresa_id' => $request->empresa_id,
                 'rol' => $request->rol,
                 'categoria_id' => $request->categoria_id,

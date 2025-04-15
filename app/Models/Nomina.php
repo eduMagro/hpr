@@ -18,14 +18,20 @@ class Nomina extends Model
         'dias_trabajados',
         'salario_base',
         'plus_actividad',
+        'plus_asistencia',
+        'plus_transporte',
+        'plus_dieta',
+        'plus_turnicidad',
+        'plus_productividad',
         'prorrateo',
-        'plus_varios',
         'horas_extra',
         'valor_hora_extra',
         'total_devengado',
         'total_deducciones_ss',
         'irpf_mensual',
+        'irpf_porcentaje',
         'liquido',
+        'coste_empresa',
         'bruto_anual_estimado',
         'base_irpf_previa',
         'cuota_irpf_anual_sin_minimo',
@@ -33,6 +39,7 @@ class Nomina extends Model
         'cuota_irpf_anual',
         'fecha'
     ];
+
 
     public function empleado()
     {

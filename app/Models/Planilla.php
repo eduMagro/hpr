@@ -33,10 +33,10 @@ class Planilla extends Model
         'obra_id',
         'seccion',
         'descripcion',
-        'comentario',
         'ensamblado',
-        'codigo', // Asegúrate de que este campo esté aquí
+        'comentario',
         'peso_total',
+        'estado',
         'fecha_inicio',
         'fecha_finalizacion',
         'tiempo_fabricacion',
@@ -88,10 +88,7 @@ class Planilla extends Model
     {
         return $this->hasMany(Elemento::class, 'planilla_id');
     }
-    public function subpaquetes()
-    {
-        return $this->hasMany(Subpaquete::class, 'planilla_id');
-    }
+
 
     /**
      * Relación con la tabla 'users'

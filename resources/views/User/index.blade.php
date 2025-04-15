@@ -15,13 +15,13 @@
             <div class="mb-4 flex items-center space-x-4">
                 <a href="{{ route('register') }}" class="btn btn-primary">Registrar Usuario</a>
                 <a href="{{ route('vacaciones.index') }}" class="btn btn-primary">Mostrar Vacaciones Globales</a>
-                <form action="{{ route('generar-turnos') }}" method="POST" class="form-cargando">
+                {{-- <form action="{{ route('generar-turnos') }}" method="POST" class="form-cargando">
                     @csrf
                     <button type="submit" class="btn btn-primary btn-cargando">
                         <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         <span class="texto">Generar Turnos Globales</span>
                     </button>
-                </form>
+                </form> --}}
             </div>
             <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
                 data-bs-target="#filtrosBusqueda">
@@ -146,6 +146,7 @@
                             </th>
                             <th class="py-3 px-2 border text-center">Nombre</th>
                             <th class="py-3 px-2 border text-center">Email</th>
+                            <th class="py-3 px-2 border text-center">DNI</th>
                             <th class="py-3 px-2 border text-center">Empresa</th>
                             <th class="py-3 px-2 border text-center">Rol</th>
                             <th class="py-3 px-2 border text-center">Categoría</th>
@@ -158,8 +159,24 @@
                     </thead>
                     <tbody class="text-gray-700 text-sm">
                         @forelse ($registrosUsuarios as $user)
-                            <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
-                                x-data="{ editando: false, usuario: @js($user) }">
+                            {{-- <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
+                                x-data="{ editando: false, usuario: @js($user) }" @dblclick="editando = true"> --}}
+                            <tr tabindex="0" x-data="{
+                                editando: false,
+                                usuario: @js($user),
+                                original: JSON.parse(JSON.stringify(@js($user)))
+                            }"
+                                @dblclick="if(!$event.target.closest('input')) {
+                                      if(!editando) {
+                                        editando = true;
+                                      } else {
+                                        planilla = JSON.parse(JSON.stringify(original));
+                                        editando = false;
+                                      }
+                                    }"
+                                @keydown.enter.stop="guardarCambios(user); editando = false"
+                                :class="{ 'bg-yellow-100': editando }"
+                                class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
 
                                 <td class="px-2 py-3 text-center border" x-text="usuario.id"></td>
 
@@ -168,20 +185,28 @@
                                         <span x-text="usuario.name"></span>
                                     </template>
                                     <input x-show="editando" type="text" x-model="usuario.name"
-                                        class="form-input w-full">
+                                        class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
                                 </td>
                                 <td class="px-2 py-3 text-center border">
                                     <template x-if="!editando">
                                         <span x-text="usuario.email"></span>
                                     </template>
                                     <input x-show="editando" type="text" x-model="usuario.email"
-                                        class="form-input w-full">
+                                        class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
+                                </td>
+                                <td class="px-2 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="usuario.dni"></span>
+                                    </template>
+                                    <input x-show="editando" type="text" x-model="usuario.dni"
+                                        class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
                                 </td>
                                 <td class="px-2 py-3 text-center border">
                                     <template x-if="!editando">
                                         <span x-text="usuario.empresa?.nombre ?? 'Sin empresa'"></span>
                                     </template>
-                                    <select x-show="editando" x-model="usuario.empresa_id" class="form-input w-full">
+                                    <select x-show="editando" x-model="usuario.empresa_id" class="form-input w-full"
+                                        @keydown.enter.stop="guardarCambios(usuario)">
                                         <option value="">Selecciona empresa</option>
                                         @foreach ($empresas as $empresa)
                                             <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
@@ -266,14 +291,14 @@
                                     </form>
                                 </td>
                                 <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
+                                    <template x-if="editando">
+                                        <button @click="guardarCambios(usuario); editando = false"
+                                            class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
+                                            Guardar
+                                        </button>
+                                    </template>
                                     <a href="{{ route('users.show', $user->id) }}"
                                         class="text-green-500 hover:underline">Ver</a>
-                                    <span> | </span>
-                                    <button @click.stop="editando = !editando">
-                                        <span x-show="!editando">✏️</span>
-                                        <span x-show="editando" class="mr-2">✖</span>
-                                        <span x-show="editando" @click.stop="guardarCambios(usuario)">✅</span>
-                                    </button>
                                     <span> | </span>
                                     <a href="{{ route('users.edit', $user->id) }}"
                                         class="text-green-500 hover:underline">Ajustes</a>
