@@ -48,6 +48,15 @@
                                     class="text-blue-500 hover:underline ml-2">
                                     Ver
                                 </button>
+                                <form action="{{ route('salidas.quitarPaquete', [$salida->id, $paquete->id]) }}"
+                                    method="POST" class="ml-4">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:underline"
+                                        onclick="return confirm('¿Estás seguro de que quieres quitar este paquete de la salida?')">
+                                        Quitar
+                                    </button>
+                                </form>
                             </div>
                         @endforeach
                     </div>

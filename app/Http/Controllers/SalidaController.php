@@ -538,6 +538,45 @@ class SalidaController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function quitarPaquete(Salida $salida, Paquete $paquete)
+    {
+        // 1. Quitar el paquete de la salida
+        $salida->paquetes()->detach($paquete->id);
+
+        // 2. Obtener datos relacionados
+        $planilla = $paquete->planilla;
+        $obra = $planilla?->obra;
+        $clienteId = $planilla?->cliente_id;
+
+        if (!$obra || !$clienteId) {
+            return back()->with('error', 'No se pudo determinar la obra o el cliente del paquete.');
+        }
+
+        // 3. ¿Quedan más paquetes en esa salida para esa obra?
+        $quedanPaquetesMismaObra = $salida->paquetes()
+            ->whereHas('planilla', fn($q) => $q->where('obra_id', $obra->id))
+            ->exists();
+
+        // 4. Si no quedan, borramos la relación en salida_cliente
+        if (!$quedanPaquetesMismaObra) {
+            $salida->salidaClientes()
+                ->where('cliente_id', $clienteId)
+                ->where('obra_id', $obra->id)
+                ->delete();
+        }
+
+        // 5. ¿Quedan paquetes en la salida?
+        $quedanPaquetes = $salida->paquetes()->exists();
+
+        if (!$quedanPaquetes) {
+            $salida->delete();
+            return redirect()->route('planificacion.index')
+                ->with('success', '✅ Paquete quitado y salida eliminada porque no quedaban más paquetes.');
+        }
+
+        return back()->with('success', '✅ Paquete quitado correctamente.');
+    }
+
     public function destroy($id)
     {
         try {

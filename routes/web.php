@@ -114,6 +114,8 @@ Route::middleware('auth')->group(function () {
         ->name('maquinas.sesion.guardar');
 
     Route::resource('salidas', SalidaController::class);
+    Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaController::class, 'quitarPaquete'])
+        ->name('salidas.quitarPaquete');
     Route::resource('planificacion', PlanificacionController::class);
     Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::get('/salidas/export/{mes}', [\App\Http\Controllers\SalidaController::class, 'export'])->name('salidas.export');

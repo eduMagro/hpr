@@ -109,7 +109,7 @@
                                             <td class="py-2 px-4 border-b">
                                                 <a href="{{ route('salidas.show', $salida->id) }}"
                                                     class="text-blue-600 hover:text-blue-800">Ver</a>
-                                                @if (auth()->user()->categoria === 'programador' || strtolower(auth()->user()->name) === 'alberto mayo martin')
+                                                @if (auth()->user()->rol === 'oficina' || strtolower(auth()->user()->name) === 'alberto mayo martin')
                                                     <x-boton-eliminar :action="route('salidas.destroy', $salida->id)" />
                                                 @endif
 
@@ -281,7 +281,7 @@
     <script>
         window.paquetes = @json($paquetes);
 
-        window.canEdit = @json(auth()->user()->categoria === 'programador' || strtolower(auth()->user()->name) === 'Alberto Mayo Martin');
+        window.canEdit = @json(auth()->user()->rol === 'oficina' || strtolower(auth()->user()->name) === 'Alberto Mayo Martin');
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -353,6 +353,7 @@
                     }
 
                     // Enviar actualización
+
                     fetch(`/salidas/${id}`, {
                             method: 'PUT',
                             headers: {
