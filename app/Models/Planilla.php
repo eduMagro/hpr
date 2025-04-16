@@ -17,6 +17,7 @@ class Planilla extends Model
      */
     protected $table = 'planillas';
     protected $dates = ['created_at', 'updated_at']; // Asegura que las fechas sean tratadas correctamente
+
     /**
      * Los atributos que son asignables masivamente.
      *

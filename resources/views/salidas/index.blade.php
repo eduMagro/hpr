@@ -9,14 +9,6 @@
     <div class="w-full p-4 sm:p-4">
         {{-- Botón para crear nueva salida (solo rol oficina) --}}
         @if (auth()->user()->rol == 'oficina')
-            <div class="mb-4 flex justify-end">
-                <a href="{{ route('salidas.create') }}"
-                    class="bg-green-600 text-white py-2 px-4 rounded-lg shadow-lg hover:bg-green-700 transition duration-300">
-                    Crear Nueva Salida
-                </a>
-            </div>
-
-
             {{-- Verificamos que existan salidas --}}
             @if ($salidas->count())
                 {{-- Iteramos por cada grupo de salidas por mes --}}

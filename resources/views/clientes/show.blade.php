@@ -20,11 +20,6 @@
                 <div><span class="font-semibold">Teléfono:</span> {{ $cliente->contacto1_telefono }}</div>
                 <div><span class="font-semibold">Email:</span> {{ $cliente->contacto1_email }}</div>
                 <div><span class="font-semibold">Dirección:</span> {{ $cliente->direccion }}</div>
-                <div><span class="font-semibold">Estado:</span>
-                    <span class="{{ $cliente->activo ? 'text-green-500' : 'text-red-500' }}">
-                        {{ $cliente->activo ? 'Activo' : 'Inactivo' }}
-                    </span>
-                </div>
             </div>
         </div>
 
@@ -72,8 +67,23 @@
                                         {{ number_format($obra->peso_entregado, 2) }} kg
                                     </td>
                                     <td class="px-2 py-3 text-center border">
-                                        <span class="{{ $obra->completada ? 'text-green-500' : 'text-red-500' }}">
-                                            {{ $obra->completada ? 'Completada' : 'Pendiente' }}
+                                        @php
+                                            switch ($obra->estado) {
+                                                case 'activa':
+                                                    $color = 'text-green-500';
+                                                    break;
+                                                case 'completada':
+                                                    $color = 'text-blue-500';
+                                                    break;
+                                                case 'inactiva':
+                                                default:
+                                                    $color = 'text-red-500';
+                                                    break;
+                                            }
+                                        @endphp
+
+                                        <span class="{{ $color }}">
+                                            {{ ucfirst($obra->estado) }}
                                         </span>
                                     </td>
                                     <td class="px-2 py-3 text-center border">

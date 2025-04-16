@@ -19,8 +19,8 @@
                 Planilla: {{ $planilla->codigo_limpio }} (Peso Total: {{ number_format($planilla->peso_total, 2) }} kg)
             </h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 text-black">
-                <p><strong>Cliente:</strong> {{ $planilla->cliente }}</p>
-                <p><strong>Obra:</strong> {{ $planilla->nom_obra }}</p>
+                <p><strong>Cliente:</strong> {{ $planilla->cliente->empresa }}</p>
+                <p><strong>Obra:</strong> {{ $planilla->obra->obra }}</p>
                 <p><strong>Sección:</strong> {{ $planilla->seccion }}</p>
                 <p><strong>Descripción:</strong> {{ $planilla->descripcion }}</p>
             </div>
@@ -52,31 +52,11 @@
                             <ul class="list-disc list-inside ml-4 mt-2">
                                 @foreach ($paquete->elementos as $elemento)
                                     <li class="p-2 rounded-lg {{ $elemento->color }} text-gray-600">
-                                        <strong>ET#</strong>{{ $elemento->etiquetaRelacion->id ?? NULL}} - <strong>Elemento #{{ $elemento->id }}</strong> -
-                                        Peso: {{ number_format($elemento->peso, 2) }} kg
-                                        @if (!is_null($elemento->maquina))
-                                            - Máquina: {{ $elemento->diametro_mm }}
-                                        @endif
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @elseif ($paquete->subpaquetes->isNotEmpty())
-                            <h4 class="text-md font-semibold mt-4 text-gray-800">Subpaquetes dentro del Paquete</h4>
-                            <ul class="list-disc list-inside ml-4 mt-2">
-                                @foreach ($paquete->subpaquetes as $subpaquete)
-                                    <li class="p-2 rounded-lg {{ $subpaquete->color }} text-gray-600">
+                                        <strong>ET#</strong>{{ $elemento->etiquetaRelacion->id ?? null }} -
                                         <strong>Elemento #{{ $elemento->id }}</strong> -
                                         Peso: {{ number_format($elemento->peso, 2) }} kg
                                         @if (!is_null($elemento->maquina))
                                             - Máquina: {{ $elemento->diametro_mm }}
-                                        @endif 
-                                        <strong>Subpaquete #</strong>{{ $subpaquete->id }}</> -
-                                        Peso: {{ number_format($subpaquete->peso, 2) }} kg
-                                        @if (!is_null($subpaquete->maquina))
-                                            - Máquina: {{ $subpaquete->maquina->nombre }}
-                                        @endif
-                                        @if (!is_null($subpaquete->ubicacion))
-                                            - Ubicación: {{ $subpaquete->ubicacion->nombre }}
                                         @endif
                                     </li>
                                 @endforeach
@@ -92,7 +72,7 @@
             <p class="text-gray-500 mt-4">No hay paquetes empaquetados.</p>
         @endif
 
-        @if ($planillaCalculada['elementosSinPaquete']->isNotEmpty())
+        {{-- @if ($planillaCalculada['elementosSinPaquete']->isNotEmpty())
             <h3 class="text-md font-semibold mt-8 text-gray-800">Elementos sin paquete</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                 @foreach ($planillaCalculada['elementosSinPaquete']->reject(fn($e) => $planillaCalculada['subpaquetes']->contains('elemento_id', $e->id)) as $elemento)
@@ -110,6 +90,6 @@
             </div>
         @else
             <p class="text-gray-500 mt-4">No hay elementos sin paquete.</p>
-        @endif
+        @endif --}}
     </div>
 </x-app-layout>

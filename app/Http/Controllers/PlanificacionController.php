@@ -4,64 +4,137 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Planilla;
+use App\Models\Paquete;
 use App\Models\Salida;
 use App\Models\Obra;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class PlanificacionController extends Controller
 {
     public function index()
     {
-        // 🔹 Definir rango de fechas para filtrar las salidas
-        $rangoFechas = [Carbon::now()->startOfDay(), Carbon::now()->addDays(7)->endOfDay()];
-        $rangoFechas = [
-            $rangoFechas[0]->toDateTimeString(),
-            $rangoFechas[1]->toDateTimeString()
-        ];
-
-        // 🔹 Obtener obras con salidas dentro del rango de fechas
-        $obrasConSalidas = Obra::whereHas('salidaClientes.salida', function ($query) use ($rangoFechas) {
-            $query->whereBetween('fecha_salida', $rangoFechas);
-        })->get();
 
         // 🔹 Obtener las salidas con relaciones necesarias
         $salidas = Salida::with([
             'salidaClientes.obra:id,obra',
             'salidaClientes.cliente:id,empresa',
-            'paquetes.planilla.user'
-        ])
-            ->whereBetween('fecha_salida', $rangoFechas)
+            'paquetes.planilla.user',
+            'empresaTransporte:id,nombre'
+        ])->get();
+
+        // 🔹 Obtener todas las obras activas como resources
+        $obras = Obra::with('cliente')->where('estado', 'activa')->get();
+
+        $obrasConSalidasIds = $salidas->pluck('salidaClientes')->flatten()
+            ->pluck('obra_id') // 👈 usamos el ID directamente
+            ->unique()
+            ->filter();
+
+        $obrasConSalidas = Obra::with('cliente')
+            ->whereIn('id', $obrasConSalidasIds)
+            ->orderBy('obra')
             ->get();
 
-        // 🔹 Obtener los festivos
+
+        $obrasConSalidasResources = $obrasConSalidas->map(fn($obra) => [
+            'id' => (string) $obra->id,
+            'title' => $obra->obra,
+            'cliente' => optional($obra->cliente)->empresa,
+        ]);
+
+        $resources = $obras->map(fn($obra) => [
+            'id' => (string) $obra->id,
+            'title' => $obra->obra,
+            'cliente' => optional($obra->cliente)->empresa, // o nombre
+        ]);
+
+        $todasLasObras = $resources; // ✅ guarda el array completo aquí
+
+        // 🔹 Festivos
         $festivos = $this->getFestivos();
 
-        // 🔹 Generar las fechas para el calendario
+        // 🔹 Fechas para el calendario
         $fechas = collect(range(0, 13))->map(fn($i) => [
             'fecha' => now()->addDays($i)->format('Y-m-d'),
             'dia' => now()->addDays($i)->locale('es')->translatedFormat('l')
         ]);
 
-        // 🔹 Convertir cada salida en un evento con el cálculo del peso total optimizado
+        // 🔹 Eventos
         $salidasEventos = $salidas->map(function ($salida) {
             $obra = optional($salida->salidaClientes->first())->obra;
-
+            $empresa = optional($salida->empresaTransporte)->nombre;
             $pesoTotal = $salida->paquetes->sum(fn($paquete) => optional($paquete->planilla)->peso_total ?? 0);
             $pesoTotal = round($pesoTotal, 0);
+            $fechaInicio = Carbon::parse($salida->fecha_salida);
+            $fechaFin = $fechaInicio->copy()->addHours(3); // ⏱ +3 horas
 
             return [
                 'title' => "{$salida->codigo_salida} - {$pesoTotal} kg",
-                'start' => $salida->fecha_salida,
+                'id' => $salida->id,
+                'start' => $fechaInicio->toDateTimeString(),
+                'end' => $fechaFin->toDateTimeString(),
                 'resourceId' => optional($obra)->id,
+                'tipo' => 'salida',
+                'backgroundColor' => '#3B82F6', // azul
+                'borderColor' => '#3B82F6',
+                'extendedProps' => [
+                    'empresa' => $empresa,
+                    'tipo' => 'salida'
+                ]
             ];
         });
 
-        // 🔹 Fusionar eventos fijos + festivos + salidas
-        $eventos = array_values(array_merge($festivos, $salidasEventos->toArray()));
+        $planillas = Planilla::with('obra')
+            ->whereDoesntHave('paquetes.salidas') // 👈 solo si la relación está bien definida
+            ->get();
 
-        return view('planificacion.index', compact('fechas', 'eventos', 'obrasConSalidas'));
+        $eventosPlanillas = $planillas->map(function ($planilla) {
+            $color = match ($planilla->estado) {
+                'completada' => '#4CAF50', // verde
+                'fabricando' => '#6B7280', // gris claro
+                'pendiente' => '#D1D5DB', // blanco
+                default => '#9E9E9E'       // gris por si acaso
+            };
+
+            // 👇 Primero parseamos la fecha correctamente
+            // Como fecha_estimada_entrega ya es un Carbon, no hace falta parsear
+            $fecha = Carbon::createFromFormat('d/m/Y', $planilla->fecha_estimada_entrega)
+                ->setTime(8, 0); // 8:00 AM (hora, minuto)
+
+            return [
+                'title' => "{$planilla->codigo_limpio} ({$planilla->estado})",
+                'id' => $planilla->id,
+                'start' => $fecha->toDateTimeString(),
+                'end' => $fecha->copy()->addHours(2)->toDateTimeString(),
+                'resourceId' => $planilla->obra_id,
+                'backgroundColor' => $color,
+                'borderColor' => $color,
+                'tipo' => 'planilla',
+                'extendedProps' => [
+                    'tipo' => 'planilla'
+                ]
+            ];
+        });
+
+        $eventos = array_values(array_merge(
+            $festivos,
+            $salidasEventos->toArray(),
+            $eventosPlanillas->toArray()
+        ));
+
+
+
+        return view('planificacion.index', compact(
+            'fechas',
+            'eventos',
+            'obrasConSalidas',
+            'obras',
+            'todasLasObras',
+            'obrasConSalidasResources'
+        ));
     }
 
     private function getFestivos()
@@ -86,7 +159,8 @@ class PlanificacionController extends Controller
                 'backgroundColor' => '#ff0000', // Rojo para festivos
                 'borderColor' => '#b91c1c',
                 'textColor' => 'white',
-                'allDay' => true
+                'allDay' => true,
+                'tipo' => 'festivo'
             ];
         });
 
@@ -112,5 +186,42 @@ class PlanificacionController extends Controller
 
         // Combinar festivos nacionales, autonómicos y locales
         return $festivos->merge($festivosLocales)->values()->toArray();
+    }
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'fecha' => 'required|date',
+            'tipo' => 'required|in:salida,planilla'
+        ]);
+
+        $fecha = Carbon::parse($request->fecha)->timezone('Europe/Madrid');
+
+        if ($request->tipo === 'salida') {
+            Log::info('🛠 Actualizando salida', [
+                'id' => $id,
+                'nueva_fecha_salida' => $fecha->toDateTimeString()
+            ]);
+
+            $salida = Salida::findOrFail($id);
+            $salida->fecha_salida = $fecha;
+            $salida->save();
+
+            return response()->json(['success' => true, 'modelo' => 'salida']);
+        }
+
+        if ($request->tipo === 'planilla') {
+            Log::info('🛠 Actualizando planilla', [
+                'id' => $id,
+                'nueva_fecha_estimada' => $fecha->toDateString()
+            ]);
+
+            $planilla = Planilla::findOrFail($id);
+            $planilla->fecha_estimada_entrega = $fecha->toDateString();
+            $planilla->save();
+
+            return response()->json(['success' => true, 'modelo' => 'planilla']);
+        }
+
+        return response()->json(['error' => 'Tipo no válido'], 400);
     }
 }

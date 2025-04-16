@@ -2,8 +2,8 @@
     <x-slot name="title">Crear Salidas - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('salidas.index') }}" class="text-blue-600">
-                {{ __('Salidas') }}
+            <a href="{{ route('planificacion.index') }}" class="text-blue-600">
+                {{ __('Planificación') }}
             </a>
             <span class="mx-2">/</span>
             {{ __('Crear Nuevas Salidas de Camiones') }}

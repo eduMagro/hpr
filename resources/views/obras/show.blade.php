@@ -19,9 +19,25 @@
                 <div><span class="font-semibold">Ciudad:</span> {{ $obra->ciudad }}</div>
                 <div><span class="font-semibold">Dirección:</span> {{ $obra->direccion }}</div>
                 <div><span class="font-semibold">Estado:</span>
-                    <span class="{{ $obra->completada ? 'text-green-500' : 'text-red-500' }}">
-                        {{ $obra->completada ? 'Completada' : 'Pendiente' }}
+                    @php
+                        switch ($obra->estado) {
+                            case 'activa':
+                                $color = 'text-green-500';
+                                break;
+                            case 'completada':
+                                $color = 'text-blue-500';
+                                break;
+                            case 'inactiva':
+                            default:
+                                $color = 'text-red-500';
+                                break;
+                        }
+                    @endphp
+
+                    <span class="{{ $color }}">
+                        {{ ucfirst($obra->estado) }}
                     </span>
+
                 </div>
             </div>
         </div>

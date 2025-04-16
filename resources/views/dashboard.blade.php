@@ -12,117 +12,109 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <div class="icon-container">
-                        <div class="icon-card">
-                            <a href="{{ route('productos.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/?size=100&id=nY1AjCB9y7SY&format=png&color=000000"
-                                    alt="Materiales">
-                                <span>Materiales</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('ubicaciones.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/?size=100&id=n4PINSDv4htA&format=png&color=000000"
-                                    alt="Ubicaciones">
-                                <span>Ubicaciones</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('entradas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/?size=100&id=45Nxpks5EYHE&format=png&color=000000"
-                                    alt="Entradas">
-                                <span>Entradas</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('salidas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/?size=100&id=rGLEtwiD51Dw&format=png&color=000000"
-                                    alt="Salidas">
-                                <span>Salidas</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('users.index') }}">
-                                <img src="https://img.icons8.com/?size=100&id=NzllL1yxqOEc&format=png&color=000000"
-                                    alt="Usuarios">
-                                <span>Usuarios</span>
-                            </a>
-                        </div>
+                    <div class="flex flex-wrap justify-center gap-6 p-6">
+                        @php
+                            $items = [
+                                [
+                                    'route' => 'productos.index',
+                                    'label' => 'Materiales',
+                                    'icon' => asset('imagenes/iconos/materiales.png'),
+                                ],
+                                [
+                                    'route' => 'ubicaciones.index',
+                                    'label' => 'Ubicaciones',
+                                    'icon' => asset('imagenes/iconos/ubicaciones.png'),
+                                ],
+                                [
+                                    'route' => 'entradas.index',
+                                    'label' => 'Entradas',
+                                    'icon' => asset('imagenes/iconos/entradas.png'),
+                                ],
+                                [
+                                    'route' => 'salidas.index',
+                                    'label' => 'Salidas',
+                                    'icon' => asset('imagenes/iconos/salidas.png'),
+                                ],
+                                [
+                                    'route' => 'users.index',
+                                    'label' => 'Usuarios',
+                                    'icon' => asset('imagenes/iconos/usuarios.png'),
+                                ],
+                                [
+                                    'route' => 'movimientos.index',
+                                    'label' => 'Movimientos',
+                                    'icon' => asset('imagenes/iconos/movimientos.png'),
+                                ],
+                                [
+                                    'route' => 'maquinas.index',
+                                    'label' => 'Máquinas',
+                                    'icon' => asset('imagenes/iconos/maquinas.png'),
+                                ],
+                                [
+                                    'route' => 'planillas.index',
+                                    'label' => 'Planillas',
+                                    'icon' => asset('imagenes/iconos/planillas.png'),
+                                ],
+                                [
+                                    'route' => 'planificacion.index',
+                                    'label' => 'Planificación',
+                                    'icon' => asset('imagenes/iconos/planificacion.png'),
+                                ],
+                                [
+                                    'route' => 'empresas.index',
+                                    'label' => 'Mi Empresa',
+                                    'icon' => asset('imagenes/iconos/empresas.png'),
+                                ],
+                                [
+                                    'route' => 'clientes.index',
+                                    'label' => 'Clientes',
+                                    'icon' => asset('imagenes/iconos/clientes.png'),
+                                ],
+                                [
+                                    'route' => 'empresas-transporte.index',
+                                    'label' => 'Transporte',
+                                    'icon' => asset('imagenes/iconos/empresas-transporte.png'),
+                                ],
+                                [
+                                    'route' => 'estadisticas.index',
+                                    'label' => 'Estadísticas',
+                                    'icon' => asset('imagenes/iconos/estadisticas.png'),
+                                ],
+                                [
+                                    'route' => null,
+                                    'label' => 'Mantenimiento',
+                                    'icon' => asset('imagenes/iconos/mantenimiento.png'),
+                                ],
 
-                        <div class="icon-card">
-                            <a href="{{ route('movimientos.index') }}"
-                                class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/color/96/swap.png" alt="Movimientos">
-                                <span>Movimientos</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('maquinas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/arcade/100/cnc-machine.png" alt="Máquinas" />
-                                <span>Máquinas</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('planillas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img width="100" height="100"
-                                    src="https://img.icons8.com/arcade/64/terms-and-conditions.png"
-                                    alt="terms-and-conditions" />
-                                <span>Planillas</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('empresas.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img width="100" height="100"
-                                    src="https://img.icons8.com/arcade/64/terms-and-conditions.png"
-                                    alt="terms-and-conditions" />
-                                <span>Mi Empresa</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('clientes.index') }}" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img width="100" height="100"
-                                    src="https://img.icons8.com/?size=100&id=HjcUJuI6Siqo&format=png&color=000000"
-                                    alt="terms-and-conditions" />
-                                <span>Clientes</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('empresas-transporte.index') }}"
-                                class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img width="100" height="100"
-                                    src="https://img.icons8.com/dusk/64/interstate-truck.png" alt="Transporte" />
-                                <span>Transporte</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="{{ route('estadisticas.index') }}"
-                                class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/color/96/graph.png" alt="Reportes">
-                                <span>Estadísticas</span>
-                            </a>
-                        </div>
-                        <div class="icon-card">
-                            <a href="#" class="{{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/color/96/settings.png" alt="Configuración">
-                                <span>Mantenimiento</span>
-                            </a>
-                        </div>
-                        <div class="icon-card relative">
-                            <a href="{{ route('alertas.index') }}"
-                                class="relative {{ $esOperario ? 'disabled-link' : '' }}">
-                                <img src="https://img.icons8.com/?size=100&id=xaInJjDQEige&format=png&color=000000"
-                                    alt="Alertas">
-                                <img id="notificacion-alertas-icono"
-                                    src="https://img.icons8.com/color/48/high-priority.png" alt="Alerta"
-                                    class="absolute top-0 right-0 w-6 h-6 animate-alerta">
+                                [
+                                    'route' => 'alertas.index',
+                                    'label' => 'Alertas',
+                                    'icon' => asset('imagenes/iconos/alertas.png'),
+                                ],
+                            ];
+                        @endphp
 
-                                <span>Alertas</span>
+                        @foreach ($items as $item)
+                            <a href="{{ $item['route'] ? route($item['route']) : '#' }}"
+                                class="w-36 h-36 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative {{ $esOperario && $item['route'] !== 'users.index' ? 'pointer-events-none opacity-50' : '' }}">
+
+                                {{-- Icono principal --}}
+                                <img src="{{ asset($item['icon']) }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2">
+
+                                {{-- Etiqueta --}}
+                                <span class="text-sm font-medium text-gray-700">{{ $item['label'] }}</span>
+
+                                {{-- Icono de notificación para alertas --}}
+                                @if ($item['route'] === 'alertas.index')
+                                    <img id="notificacion-alertas-icono"
+                                        src="{{ asset('imagenes/iconos/high-priority.png') }}"
+                                        class="absolute top-1 right-1 w-5 h-5 animate-ping hidden" alt="Nueva alerta">
+                                @endif
                             </a>
-                        </div>
-
-
+                        @endforeach
 
                     </div>
+
                 </div>
             </div>
         </div>

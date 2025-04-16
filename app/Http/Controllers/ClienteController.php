@@ -20,7 +20,10 @@ class ClienteController extends Controller
     {
         // Obtener clientes aplicando filtros
         $clientes = $this->aplicarFiltros($request);
-
+        // Agregar campo 'activo' a cada cliente
+        foreach ($clientes as $cliente) {
+            $cliente->activo = $cliente->obras()->where('estado', 'activa')->exists();
+        }
         return view('clientes.index', compact('clientes'));
     }
 

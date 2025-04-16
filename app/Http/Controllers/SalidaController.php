@@ -38,7 +38,6 @@ class SalidaController extends Controller
                     'paquetes' => function ($query) {
                         $query->distinct();
                     },
-                    'paquetes.subpaquetes',
                     'paquetes.elementos',
                     'empresaTransporte',
                     'camion',
@@ -101,10 +100,9 @@ class SalidaController extends Controller
         // Obtener la salida con su ID
         $salida = Salida::findOrFail($id);
 
-        // Obtener los paquetes asociados con los elementos, subpaquetes y la planilla (incluyendo cliente y obra)
+        // Obtener los paquetes asociados con los elementos y la planilla (incluyendo cliente y obra)
         $paquetes = $salida->paquetes()->with([
             'elementos',
-            'subpaquetes',
             'planilla.cliente',
             'planilla.obra'
         ])->get();
@@ -160,12 +158,12 @@ class SalidaController extends Controller
 
     public function create()
     {
-        // Obtener planillas COMPLETADAS con los paquetes, sus elementos y subpaquetes
+        // Obtener planillas COMPLETADAS con los paquetes, sus elementos
         $planillasCompletadas = Planilla::where('estado', 'completada')
             ->with(['paquetes' => function ($query) {
                 // Filtrar solo los paquetes que NO tienen salida asociada
                 $query->whereDoesntHave('salidas');
-            }, 'paquetes.elementos', 'paquetes.subpaquetes'])  // Incluir subpaquetes y elementos
+            }, 'paquetes.elementos'])  // Incluir elementos
             ->whereHas('paquetes', function ($query) {
                 // Asegurarnos de que la planilla tenga al menos un paquete sin salida asociada
                 $query->whereDoesntHave('salidas');
@@ -179,7 +177,7 @@ class SalidaController extends Controller
         // Obtener las empresas con sus camiones
         $empresas = EmpresaTransporte::with('camiones')->get();
 
-        // Pasar planillas, paquetes disponibles, elementos y subpaquetes a la vista
+        // Pasar planillas, paquetes disponibles, elementos a la vista
         return view('salidas.create', [
             'planillasCompletadas' => $planillasCompletadas,
             'paquetes' => $paquetes,
@@ -294,7 +292,7 @@ class SalidaController extends Controller
                 Log::warning('No se encontraron combinaciones de cliente y obra para asociar a la salida.');
             }
 
-            return redirect()->route('salidas.index')->with('success', 'Salida creada con éxito');
+            return redirect()->route('planificacion.index')->with('success', 'Salida creada con éxito');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Hubo un problema al crear la salida: ' . $e->getMessage()]);
         }

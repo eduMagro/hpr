@@ -190,7 +190,9 @@
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="cliente.activo ? 'Sí' : 'No'"></span>
+                                    <span class="{{ $cliente->activo ? 'text-green-500' : 'text-red-500' }}">
+                                        {{ $cliente->activo ? 'Activo' : 'Inactivo' }}
+                                    </span>
                                 </template>
                                 <select x-show="editando" x-model="cliente.activo" class="form-input w-full">
                                     <option value="1">Sí</option>

@@ -93,7 +93,7 @@ class ProfileController extends Controller
     {
         // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-        $obras = Obra::where('completada', 0)->get();
+        $obras = Obra::where('estado', 'pendiente')->get();
         // Obtener valores únicos desde la tabla users
         $categorias = Categoria::orderBy('nombre')->get();
 

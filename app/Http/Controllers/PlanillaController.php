@@ -216,8 +216,11 @@ class PlanillaController extends Controller
                     $query->where('estado', 'completado');
                 }
             ], 'peso');
-            $clientes = Cliente::where('activo', 1)->get();
-            $obras = Obra::where('completada', 0)->get();
+            $clientes = Cliente::whereHas('obras', function ($query) {
+                $query->where('estado', 'activa');
+            })->get();
+
+            $obras = Obra::where('estado', 'activa')->get();
             // Retornar vista con los datos
             return view('planillas.index', compact('planillas', 'clientes', 'obras'));
         } catch (Exception $e) {
@@ -231,8 +234,8 @@ class PlanillaController extends Controller
         $planilla = Planilla::with([
             'paquetes:id,planilla_id,peso,ubicacion_id',
             'paquetes.ubicacion:id,nombre',
-            'paquetes.subpaquetes:id,paquete_id,elemento_id,peso',
-            'paquetes.subpaquetes.elemento:id,planilla_id,estado,peso',
+            'paquetes:id,paquete_id,elemento_id,peso',
+            'paquetes.elementos:id,planilla_id,estado,peso',
             'elementos:id,planilla_id,estado,peso,diametro,paquete_id,maquina_id',
             'elementos.ubicacion:id,nombre',
             'elementos.maquina:id,nombre',
@@ -247,14 +250,13 @@ class PlanillaController extends Controller
         };
 
         $elementos = $planilla->elementos->map(fn($e) => tap($e, fn($e) => $e->color = $getColor($e->estado)));
-        $subpaquetes = $planilla->paquetes->flatMap->subpaquetes->map(fn($s) => tap($s, fn($s) => $s->color = 'bg-green-200'));
+
 
         [$elementosConPaquete, $elementosSinPaquete] = $elementos->partition(fn($e) => !empty($e->paquete_id));
 
-        $paquetes = $planilla->paquetes->map(fn($p) => tap($p, function ($p) use ($elementosConPaquete, $subpaquetes) {
+        $paquetes = $planilla->paquetes->map(fn($p) => tap($p, function ($p) use ($elementosConPaquete) {
             $p->color = 'bg-gray-300';
             $p->elementos = $elementosConPaquete->where('paquete_id', $p->id);
-            $p->subpaquetes = $subpaquetes->where('paquete_id', $p->id);
         }));
 
         return view('planillas.show', [
@@ -262,8 +264,7 @@ class PlanillaController extends Controller
                 'planilla' => $planilla,
                 'progreso' => round(min(100, ($elementos->where('estado', 'completado')->sum('peso') / max(1, $planilla->peso_total)) * 100), 2),
                 'paquetes' => $paquetes,
-                'elementosSinPaquete' => $elementosSinPaquete,
-                'subpaquetes' => $subpaquetes
+                'elementosSinPaquete' => $elementosSinPaquete
             ]
         ]);
     }
