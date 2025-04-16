@@ -137,8 +137,10 @@ class SalidaController extends Controller
 
             // Verificamos que el estado actual sea pendiente antes de cambiarlo a completado
             if ($salida->estado != 'pendiente') {
-                return response()->json(['message' => 'El estado de la salida ya ha sido actualizado.'], 400);
+                return response()->json(['message' => 'La salida ya estaba completada de antes.'], 400);
             }
+            // Asignamos el usuario autenticado (gruista)
+            $salida->user_id = auth()->id();
 
             // Actualizamos el estado
             $salida->estado = 'completada';

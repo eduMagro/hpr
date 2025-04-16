@@ -45,9 +45,6 @@
                         @endif
 
                         @if ($paquete->elementos->isNotEmpty())
-                            <h3>Etiqueta:
-                                {{ optional($paquete->elementos->first()->etiqueta)->descripcion ?? 'Sin etiqueta' }}
-                            </h3>
                             <h4 class="text-md font-semibold mt-4 text-gray-800">Elementos dentro del Paquete</h4>
                             <ul class="list-disc list-inside ml-4 mt-2">
                                 @foreach ($paquete->elementos as $elemento)

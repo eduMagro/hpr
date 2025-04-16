@@ -10,6 +10,7 @@ class Salida extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'camion_id',
         'empresa_id',
         'horas_paralizacion',
@@ -22,6 +23,10 @@ class Salida extends Model
         'fecha_salida',
         'observaciones'
     ];
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
     /**
      * Relación: Una salida pertenece a un camión.

@@ -94,6 +94,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Entrada::class, 'users_id'); // 'users_id' es la clave foránea en la tabla `entradas`
     }
+    public function salidas()
+    {
+        return $this->hasMany(Salida::class, 'user_id');
+    }
 
     // Relación: Un usuario tiene muchos movimientos
     public function movimientos()

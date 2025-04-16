@@ -185,7 +185,7 @@
                     @endif
                 @endforeach
             @endif
-        @elseif (auth()->user()->categoria == 'gruista')
+        @elseif (auth()->user()->rol == 'operario')
             <div class="bg-white shadow-lg rounded-lg p-2 sm:p-4">
                 @foreach ($salidas as $salida)
                     <div x-data="{ paquetesVerificados: 0, totalPaquetes: {{ count($salida->paquetes) }} }">

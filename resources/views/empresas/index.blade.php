@@ -3,13 +3,10 @@
 
     <div class="py-6 px-4">
         <div class="flex justify-end mb-4 px-4">
-            @if (auth()->user()->name === 'Eduardo Magro Lemus')
-                <a href="{{ route('nominas.index') }}"
-                    class="inline-block bg-blue-600 hover:bg-blue-900 text-white font-semibold py-2 px-4 rounded shadow transition">
-                    ➕ Nóminas
-                </a>
-            @endif
-
+            <a href="{{ route('nominas.index') }}"
+                class="inline-block bg-blue-600 hover:bg-blue-900 text-white font-semibold py-2 px-4 rounded shadow transition">
+                ➕ Nóminas
+            </a>
             <a href="{{ route('nomina.simulacion') }}"
                 class="inline-block bg-blue-600 hover:bg-blue-900 text-white font-semibold py-2 px-4 rounded shadow transition">
                 Simulación Nóminas
