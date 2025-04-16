@@ -115,6 +115,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('salidas', SalidaController::class);
     Route::resource('planificacion', PlanificacionController::class);
+    Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::get('/salidas/export/{mes}', [\App\Http\Controllers\SalidaController::class, 'export'])->name('salidas.export');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaController::class, 'actualizarEstado']);
     Route::post('/actualizar-fecha-salida', [SalidaController::class, 'actualizarFechaSalida']);

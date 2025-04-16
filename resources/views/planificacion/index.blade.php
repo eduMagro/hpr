@@ -88,8 +88,6 @@
     <script>
         let calendar; // hacemos la variable accesible desde fuera
 
-
-
         const todasLasObras = @json($todasLasObras);
         const obrasConSalidas = @json($obrasConSalidasResources);
 
@@ -174,13 +172,73 @@
                     };
                 },
                 eventDidMount: function(info) {
-                    if (info.event.extendedProps.empresa && info.event.extendedProps.tipo === 'salida') {
-                        tippy(info.el, {
-                            content: `🚛 ${info.event.extendedProps.empresa}`,
-                            theme: 'light-border',
-                            placement: 'top',
-                            animation: 'shift-away',
-                            arrow: true,
+                    const props = info.event.extendedProps;
+
+                    if (props.tipo === 'salida') {
+                        // 🔹 Tooltip con empresa + comentario
+                        let contenidoTooltip = '';
+
+                        if (props.empresa) {
+                            contenidoTooltip += `🚛 ${props.empresa}<br>`;
+                        }
+
+                        if (props.comentario) {
+                            contenidoTooltip += `📝 ${props.comentario}`;
+                        }
+
+                        if (contenidoTooltip) {
+                            tippy(info.el, {
+                                content: contenidoTooltip,
+                                allowHTML: true,
+                                theme: 'light-border',
+                                placement: 'top',
+                                animation: 'shift-away',
+                                arrow: true,
+                            });
+                        }
+
+                        // 🖱 Clic derecho para editar comentario
+                        info.el.addEventListener('contextmenu', function(e) {
+                            e.preventDefault();
+
+                            Swal.fire({
+                                title: 'Añadir comentario',
+                                input: 'textarea',
+                                inputLabel: 'Comentario para la salida',
+                                inputPlaceholder: 'Escribe tu comentario aquí...',
+                                inputValue: props.comentario || '',
+                                showCancelButton: true,
+                                confirmButtonText: 'Guardar'
+                            }).then(result => {
+                                if (result.isConfirmed) {
+                                    const comentario = result.value;
+
+                                    fetch(`{{ url('/planificacion/comentario') }}/${info.event.id}`, {
+                                            method: 'PUT',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': document.querySelector(
+                                                    'meta[name="csrf-token"]').content
+                                            },
+                                            body: JSON.stringify({
+                                                comentario
+                                            })
+                                        })
+                                        .then(res => {
+                                            if (!res.ok) throw new Error(
+                                                "No se pudo guardar el comentario");
+                                            return res.json();
+                                        })
+                                        .then(() => {
+                                            Swal.fire('✅ Comentario guardado');
+                                            location
+                                        .reload(); // 👈 Recarga para actualizar el tooltip
+                                        })
+                                        .catch(err => {
+                                            Swal.fire('❌ Error', err.message, 'error');
+                                        });
+                                }
+                            });
                         });
                     }
                 },

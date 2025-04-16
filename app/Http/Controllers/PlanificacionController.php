@@ -70,6 +70,8 @@ class PlanificacionController extends Controller
             $pesoTotal = round($pesoTotal, 0);
             $fechaInicio = Carbon::parse($salida->fecha_salida);
             $fechaFin = $fechaInicio->copy()->addHours(3); // ⏱ +3 horas
+            // 👇 Define color según estado
+            $color = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6'; // verde o azul
 
             return [
                 'title' => "{$salida->codigo_salida} - {$pesoTotal} kg",
@@ -78,11 +80,12 @@ class PlanificacionController extends Controller
                 'end' => $fechaFin->toDateTimeString(),
                 'resourceId' => optional($obra)->id,
                 'tipo' => 'salida',
-                'backgroundColor' => '#3B82F6', // azul
-                'borderColor' => '#3B82F6',
+                'backgroundColor' => $color,
+                'borderColor' => $color,
                 'extendedProps' => [
                     'empresa' => $empresa,
-                    'tipo' => 'salida'
+                    'tipo' => 'salida',
+                    'comentario' => $salida->comentario,
                 ]
             ];
         });
@@ -93,10 +96,10 @@ class PlanificacionController extends Controller
 
         $eventosPlanillas = $planillas->map(function ($planilla) {
             $color = match ($planilla->estado) {
-                'completada' => '#4CAF50', // verde
-                'fabricando' => '#6B7280', // gris claro
-                'pendiente' => '#D1D5DB', // blanco
-                default => '#9E9E9E'       // gris por si acaso
+                'completada' => '#374151', // gris oscuro (Tailwind: gray-700)
+                'fabricando' => '#6B7280', // gris medio (Tailwind: gray-500/600)
+                'pendiente' => '#D1D5DB', // blanco/gris claro (Tailwind: gray-300)
+                default => '#9E9E9E'       // gris neutro
             };
 
             // 👇 Primero parseamos la fecha correctamente
@@ -187,6 +190,20 @@ class PlanificacionController extends Controller
         // Combinar festivos nacionales, autonómicos y locales
         return $festivos->merge($festivosLocales)->values()->toArray();
     }
+    public function guardarComentario(Request $request, $id)
+    {
+        $request->validate([
+            'comentario' => 'nullable|string|max:1000'
+        ]);
+
+        $salida = Salida::findOrFail($id);
+        $salida->comentario = $request->comentario;
+        $salida->save();
+
+        return response()->json(['success' => true]);
+    }
+
+
     public function update(Request $request, $id)
     {
         $request->validate([
