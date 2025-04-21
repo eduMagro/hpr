@@ -57,13 +57,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 },
                 body: JSON.stringify({ id }),
             });
+            let data;
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                showErrorAlert(errorData);
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                throw new Error(
+                    "Respuesta del servidor no es JSON válido. Posible error HTML: sesión caducada o ruta incorrecta."
+                );
             }
 
-            const data = await response.json();
+            if (!response.ok) {
+                showErrorAlert(data.error || "Error desconocido.");
+                return;
+            }
+
             if (data.success) {
                 if (data.warnings && data.warnings.length > 0) {
                     Swal.fire({
