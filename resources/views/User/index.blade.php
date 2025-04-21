@@ -348,7 +348,7 @@
                 <p><strong>Nombre:</strong> {{ auth()->user()->name }}</p>
                 <p><strong>Correo:</strong> {{ auth()->user()->email }}</p>
                 <p><strong>Puesto:</strong> {{ auth()->user()->rol }}</p>
-                <p><strong>Categoría:</strong> {{ auth()->user()->categoria->nombre }}</p>
+                <p><strong>Categoría:</strong> {{ auth()->user()->categoria->nombre ?? 'Sin categoría' }}</p>
                 <p><strong>Especialidad:</strong> {{ auth()->user()->especialidad }}</p>
                 <p><strong>Días de vacaciones restantes:</strong> {{ auth()->user()->dias_vacaciones }}</p>
             </div>
