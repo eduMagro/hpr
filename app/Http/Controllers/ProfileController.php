@@ -93,7 +93,7 @@ class ProfileController extends Controller
     {
         // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-        $obras = Obra::where('estado', 'pendiente')->get();
+        $obras = Obra::where('estado', 'activa')->get();
         // Obtener valores únicos desde la tabla users
         $categorias = Categoria::orderBy('nombre')->get();
 
@@ -132,7 +132,6 @@ class ProfileController extends Controller
         // Pasar datos a la vista
         return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'empresas', 'eventos', 'coloresTurnos', 'categorias', 'especialidades', 'roles', 'turnosHoy'));
     }
-
 
     public function show($id)
     {
@@ -176,7 +175,6 @@ class ProfileController extends Controller
             'diasBaja'
         ));
     }
-
 
     protected function getColoresTurnos()
     {
