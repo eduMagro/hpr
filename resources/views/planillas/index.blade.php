@@ -22,11 +22,6 @@
     <div class="w-full px-6 py-4">
         <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-            <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
-                data-bs-target="#filtrosBusqueda">
-                🔍 Filtros Avanzados
-            </button>
-
             <!-- Formulario de importación -->
             <form method="post" action="{{ route('planillas.import') }}" enctype="multipart/form-data"
                 class="form-cargando flex items-center gap-x-2">
@@ -37,111 +32,6 @@
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                     <span class="texto">IMPORTAR</span>
                 </button>
-            </form>
-        </div>
-
-        <div id="filtrosBusqueda" class="collapse">
-            <form method="GET" action="{{ route('planillas.index') }}" class="card card-body shadow-sm">
-                <div class="row g-3">
-
-                    <!-- Filtros de texto -->
-                    <div class="col-md-6">
-                        <input type="text" name="buscar" class="form-control"
-                            placeholder="Buscar en código, cliente, obra..." value="{{ request('buscar') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <input type="text" name="codigo" class="form-control" placeholder="Código de Planilla"
-                            value="{{ request('codigo') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <input type="text" name="cod_obra" class="form-control" placeholder="Código de Obra"
-                            value="{{ request('cod_obra') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="name" class="form-control" placeholder="Nombre de Usuario"
-                            value="{{ request('name') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="cliente" class="form-control" placeholder="Nombre de Cliente"
-                            value="{{ request('cliente') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="nom_obra" class="form-control" placeholder="Nombre de Obra"
-                            value="{{ request('nom_obra') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="ensamblado" class="form-control" placeholder="Estado de Ensamblado"
-                            value="{{ request('ensamblado') }}">
-                    </div>
-
-                    <!-- Filtros de selección -->
-                    <div class="col-md-4">
-                        <select name="estado" class="form-control">
-                            <option value="">Todos los estados de fabricación</option>
-                            <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
-                                Pendiente</option>
-                            <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>
-                                Fabricando</option>
-                            <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>
-                                Completada</option>
-                            <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje
-                            </option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <select name="sort_by" class="form-control">
-                            <option value="">Elige un ítem para ordenar</option>
-                            <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>
-                                Fecha
-                                Creación</option>
-                            <option value="codigo" {{ request('sort_by') == 'codigo' ? 'selected' : '' }}>Código
-                            </option>
-                            <option value="cliente" {{ request('sort_by') == 'cliente' ? 'selected' : '' }}>Cliente
-                            </option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <select name="order" class="form-control">
-                            <option value="asc" {{ request('order') == 'asc' ? 'selected' : '' }}>Ascendente
-                            </option>
-                            <option value="desc" {{ request('order') == 'desc' ? 'selected' : '' }}>Descendente
-                            </option>
-                        </select>
-                    </div>
-
-                    <!-- Filtros de fechas -->
-                    <div class="col-md-4">
-                        <label for="fecha_inicio">Desde:</label>
-                        <input type="date" name="fecha_inicio" class="form-control"
-                            value="{{ request('fecha_inicio') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label for="fecha_finalizacion">Hasta:</label>
-                        <input type="date" name="fecha_finalizacion" class="form-control"
-                            value="{{ request('fecha_finalizacion') }}">
-                    </div>
-
-                    <!-- Registros por página -->
-                    <div class="col-md-4">
-                        <label for="per_page">Mostrar:</label>
-                        <select name="per_page" class="form-control">
-                            <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
-                            <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25</option>
-                            <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
-                        </select>
-                    </div>
-
-                    <!-- Botones -->
-                    <div class="col-12 d-flex justify-content-between mt-3">
-                        <button type="submit" class="btn btn-info">
-                            <i class="fas fa-search"></i> Buscar
-                        </button>
-                        <a href="{{ route('planillas.index') }}" class="btn btn-warning">
-                            <i class="fas fa-undo"></i> Resetear Filtros
-                        </a>
-                    </div>
-
-                </div>
             </form>
         </div>
 
@@ -190,16 +80,27 @@
                 $filtrosActivos[] = 'Hasta: <strong>' . request('fecha_finalizacion') . '</strong>';
             }
 
-            if (request('sort_by')) {
+            if (request('sort')) {
                 $sorts = [
                     'created_at' => 'Fecha de creación',
                     'codigo' => 'Código',
                     'cliente' => 'Cliente',
+                    'cod_obra' => 'Código de Obra',
+                    'nom_obra' => 'Nombre de Obra',
+                    'ensamblado' => 'Ensamblado',
+                    'peso_fabricado' => 'Peso Fabricado',
+                    'peso_total' => 'Peso Total',
+                    'estado' => 'Estado',
+                    'fecha_inicio' => 'Fecha Inicio',
+                    'fecha_finalizacion' => 'Fecha Finalización',
+                    'fecha_importacion' => 'Fecha Importación',
+                    'fecha_entrega' => 'Fecha Entrega',
+                    'name' => 'Usuario',
                 ];
                 $orden = request('order') == 'desc' ? 'descendente' : 'ascendente';
                 $filtrosActivos[] =
                     'Ordenado por <strong>' .
-                    ($sorts[request('sort_by')] ?? request('sort_by')) .
+                    ($sorts[request('sort')] ?? request('sort')) .
                     "</strong> en orden <strong>$orden</strong>";
             }
 
@@ -213,30 +114,109 @@
                 <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
             </div>
         @endif
+        @php
+            function ordenarColumna($columna, $titulo)
+            {
+                $currentSort = request('sort');
+                $currentOrder = request('order');
+                $isSorted = $currentSort === $columna;
+                $nextOrder = $isSorted && $currentOrder === 'asc' ? 'desc' : 'asc';
+                $icon = $isSorted ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down') : 'fas fa-sort';
+                $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+                return '<a href="' .
+                    $url .
+                    '" class="text-white text-decoration-none">' .
+                    $titulo .
+                    ' <i class="' .
+                    $icon .
+                    '"></i></a>';
+            }
+        @endphp
 
         <!-- TABLA DE PLANILLAS -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
+
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">Código</th>
+                        <th class="p-2 border">{!! ordenarColumna('codigo', 'Código') !!}</th>
                         <th class="p-2 border">Código Cliente</th>
-                        <th class="p-2 border">Código Obra</th>
+                        <th class="p-2 border">{!! ordenarColumna('cliente', 'Cliente') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('cod_obra', 'Código Obra') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('nom_obra', 'Obra') !!}</th>
                         <th class="p-2 border">Sección</th>
                         <th class="p-2 border">Descripción</th>
-                        <th class="p-2 border">Ensamblado</th>
+                        <th class="p-2 border">{!! ordenarColumna('ensamblado', 'Ensamblado') !!}</th>
                         <th class="p-2 border">Comentario</th>
-                        <th class="p-2 border">Peso Fabricado</th>
-                        <th class="p-2 border">Peso Total</th>
-                        <th class="p-2 border">Estado</th>
-                        <th class="p-2 border">Fecha Inicio</th>
-                        <th class="p-2 border">Fecha Finalización</th>
-                        <th class="p-2 border">Fecha Importación</th>
-                        <th class="p-2 border">Fecha Entrega</th>
-                        <th class="p-2 border">Usuario</th>
-                        <th class="p-2 border text-center">Acciones</th>
+                        <th class="p-2 border">{!! ordenarColumna('peso_fabricado', 'Peso Fabricado') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('peso_total', 'Peso Total') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('estado', 'Estado') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('fecha_inicio', 'Fecha Inicio') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('fecha_finalizacion', 'Fecha Finalización') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('fecha_importacion', 'Fecha Importación') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('fecha_entrega', 'Fecha Entrega') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('name', 'Usuario') !!}</th>
+                        <th class="p-2 border">Acciones</th>
+                    </tr>
+                    <tr class="text-center text-xs uppercase">
+                        <form method="GET" action="{{ route('planillas.index') }}">
+                            <th class="p-1 border"><input type="text" name="codigo" value="{{ request('codigo') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border"><input type="text" name="codigo_cliente"
+                                    value="{{ request('codigo_cliente') }}" class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border"><input type="text" name="codigo_cliente"
+                                    value="{{ request('cliente') }}" class="form-control form-control-sm" /></th>
+                            <th class="p-1 border"><input type="text" name="codigo_obra"
+                                    value="{{ request('codigo_obra') }}" class="form-control form-control-sm" /></th>
+                            <th class="p-1 border"><input type="text" name="nom_obra"
+                                    value="{{ request('nom_obra') }}" class="form-control form-control-sm" /></th>
+                            <th class="p-1 border"></th> <!-- Sección: sin filtro -->
+                            <th class="p-1 border"></th> <!-- Descripción: sin filtro -->
+                            <th class="p-1 border"><input type="text" name="ensamblado"
+                                    value="{{ request('ensamblado') }}" class="form-control form-control-sm" /></th>
+                            <th class="p-1 border"></th> <!-- Comentario: sin filtro -->
+                            <th class="p-1 border"></th> <!-- Peso Fabricado: sin filtro -->
+                            <th class="p-1 border"></th> <!-- Peso Total: sin filtro -->
+                            <th class="p-1 border">
+                                <select name="estado" class="form-control form-control-sm">
+                                    <option value="">Todos</option>
+                                    <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
+                                        Pendiente</option>
+                                    <option value="fabricando"
+                                        {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando</option>
+                                    <option value="completada"
+                                        {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada</option>
+                                    <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>
+                                        Montaje</option>
+                                </select>
+                            </th>
+                            <th class="p-1 border"><input type="date" name="fecha_inicio"
+                                    value="{{ request('fecha_inicio') }}" class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border"><input type="date" name="fecha_finalizacion"
+                                    value="{{ request('fecha_finalizacion') }}"
+                                    class="form-control form-control-sm" /></th>
+                            <th class="p-1 border"><input type="date" name="fecha_importacion"
+                                    value="{{ request('fecha_importacion') }}"
+                                    class="form-control form-control-sm" /></th>
+                            <th class="p-1 border"><input type="date" name="fecha_entrega"
+                                    value="{{ request('fecha_entrega') }}" class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border"><input type="text" name="name"
+                                    value="{{ request('name') }}" class="form-control form-control-sm" /></th>
+                            <th class="p-1 border text-center">
+                                <button type="submit" class="btn btn-sm btn-info px-2"><i
+                                        class="fas fa-search"></i></button>
+                                <a href="{{ route('planillas.index') }}" class="btn btn-sm btn-warning px-2"><i
+                                        class="fas fa-undo"></i></a>
+                            </th>
+                        </form>
                     </tr>
                 </thead>
+
                 <tbody class="text-gray-700">
                     @forelse ($planillas as $planilla)
                         <tr tabindex="0" x-data="{
@@ -268,6 +248,14 @@
                             <!-- Código Cliente -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
+                                    <span x-text="planilla.cliente.codigo ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.cliente.codigo"
+                                    class="form-input w-full">
+                            </td>
+                            <!-- Cliente -->
+                            <td class="p-2 text-center border">
+                                <template x-if="!editando">
                                     <a href="{{ route('clientes.index', ['id' => $planilla->cliente_id]) }}"
                                         class="text-blue-500 hover:underline">
                                         {{ $planilla->cliente->empresa ?? 'N/A' }}
@@ -282,6 +270,14 @@
                             </td>
 
                             <!-- Código Obra -->
+                            <td class="p-2 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="planilla.obra.cod_obra ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="planilla.obra.cod_obra"
+                                    class="form-input w-full">
+                            </td>
+                            <!-- Obra -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
                                     <a href="{{ route('clientes.show', ['cliente' => $planilla->cliente_id]) }}"
@@ -300,7 +296,7 @@
                             <!-- Sección -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="planilla.seccion ?? 'No definida'"></span>
+                                    <span x-text="planilla.seccion ?? 'N/A'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.seccion"
                                     class="form-input w-full">
@@ -336,7 +332,9 @@
                             <!-- Peso Fabricado -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="planilla.suma_peso_completados || 0"></span> kg
+                                    <span
+                                        x-text="new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(planilla.suma_peso_completados) || 0) + ' KG'"></span>
+
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.suma_peso_completados"
                                     class="form-input w-full">

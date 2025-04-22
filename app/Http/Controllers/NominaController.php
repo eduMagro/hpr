@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Models\Nomina;
 use App\Models\Empresa;
 use App\Models\Modelo145;
-use App\Models\SeguridadSocial;
+use App\Models\TasaSeguridadSocial;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +35,10 @@ class NominaController extends Controller
             $mes = $mes ?? now()->month;
             $anio = $anio ?? now()->year;
         }
+
+        $horas_extra      = 10;
+        $valor_hora_extra = 12;
+        $plus_horas_extra = $horas_extra * $valor_hora_extra;
 
         DB::beginTransaction();
 
@@ -106,7 +110,7 @@ class NominaController extends Controller
                     );
 
                     // Recalcular IRPF base excluyendo el incentivo
-                    $brutoFinal = $brutoBase + $plus_productividad;
+                    $brutoFinal = $brutoBase + $plus_productividad + $plus_horas_extra;
                     $brutoAnualEstimado = $brutoBase * 12; // ¡sin incluir incentivo!
                     $ssAnual = $brutoAnualEstimado * ($porcentajeSS_trabajador / 100);
                     $baseIRPF = max($brutoAnualEstimado - $ssAnual - $minimos, 0);
@@ -121,13 +125,36 @@ class NominaController extends Controller
                     $irpfMensual = $irpf_base_mensual + $irpf_incentivo;
                 }
 
-                // Cálculo final de la nómina
-                $brutoFinal = $brutoBase + $plus_productividad;
-                $ss = $brutoFinal * ($porcentajeSS_trabajador / 100);
-                $netoFinal = $brutoFinal - $ss - $irpfMensual;
+                // Cálculo final de la nómina incluyendo horas extra
+                $brutoFinal   = $brutoBase + $plus_productividad + $plus_horas_extra;
+
+                $ss           = $brutoFinal * ($porcentajeSS_trabajador / 100);
+                $netoFinal    = $brutoFinal - $ss - $irpfMensual;
                 $costeEmpresa = $brutoFinal + ($brutoFinal * ($porcentajeSS_empresa / 100));
                 $porcentajeIRPF = $brutoFinal > 0 ? round(($irpfMensual / $brutoFinal) * 100, 2) : 0;
+                // 1) Proyectamos el bruto de este mes a todo el año
+                $brutoAnualEstimado = $brutoFinal * 12;
 
+                // 2) Calculamos la Seguridad Social anual
+                $ssAnual = $brutoAnualEstimado * ($porcentajeSS_trabajador / 100);
+
+                // 3) Base imponible IRPF anual (restamos SS y mínimos personales y familiares)
+                $baseIRPF = max($brutoAnualEstimado - $ssAnual - $minimos, 0);
+
+                // 4) Cuota IRPF anual según tramos
+                $cuotaIRPFAnual = $this->calcularCuotaIRPF($baseIRPF);
+
+                // 5) Retención fija mensual para equilibrar la renta
+                $irpfMensual = $cuotaIRPFAnual / 12;
+
+                // 6) Porcentaje IRPF efectivo (para informar en la nómina)
+                $porcentajeIRPF = $brutoFinal > 0
+                    ? round(($irpfMensual / $brutoFinal) * 100, 2)
+                    : 0;
+
+                // 7) Ahora sí calculamos SS y neto de la nómina de este mes
+                $ss        = $brutoFinal * ($porcentajeSS_trabajador / 100);
+                $netoFinal = $brutoFinal - $ss - $irpfMensual;
                 // Guardar la nómina
                 Nomina::create([
                     'empleado_id' => $trabajador->id,
@@ -142,8 +169,8 @@ class NominaController extends Controller
                     'plus_turnicidad' => round($pluses['turnicidad'], 2),
                     'plus_productividad' => round($plus_productividad, 2),
                     'prorrateo' => round($pluses['prorrateo'], 2),
-                    'horas_extra' => null,
-                    'valor_hora_extra' => null,
+                    'horas_extra'       => $horas_extra,
+                    'valor_hora_extra'  => $valor_hora_extra,
                     'total_devengado' => round($brutoFinal, 2),
                     'total_deducciones_ss' => round($ss, 2),
                     'irpf_mensual' => round($irpfMensual, 2),
@@ -185,8 +212,8 @@ class NominaController extends Controller
     private function ajustarPlusesHastaMinimoLiquido(array &$pluses, float $salario_base, float $liquidoObjetivo, float $irpfEstimado, float $porcentajeSS): bool
     {
         $limites = [
-            'actividad' => 300,
-            'asistencia' => 300,
+            'actividad' => 200,
+            'asistencia' => 200,
             'transporte' => 200,
             'dieta' => 200,
             'turnicidad' => 200,
@@ -251,12 +278,12 @@ class NominaController extends Controller
 
     private function obtenerTotalCotizacionTrabajador(): float
     {
-        return SeguridadSocial::where('aplica', 'trabajador')->sum('porcentaje');
+        return TasaSeguridadSocial::where('destinatario', 'trabajador')->sum('porcentaje');
     }
 
     private function obtenerTotalCotizacionEmpresa(): float
     {
-        return SeguridadSocial::where('aplica', 'empresa')->sum('porcentaje');
+        return TasaSeguridadSocial::where('destinatario', 'empresa')->sum('porcentaje');
     }
 
     public function calcularMinimosDesdeModelo(Modelo145 $modelo): float
@@ -320,7 +347,7 @@ class NominaController extends Controller
     {
         $nomina = Nomina::findOrFail($id);
         $empresas = Empresa::All();
-        $aportacionesEmpresa = SeguridadSocial::where('aplica', 'empresa')->get();
+        $aportacionesEmpresa = TasaSeguridadSocial::where('destinatario', 'empresa')->get();
 
         return view('nominas.show', compact('nomina', 'empresas', 'aportacionesEmpresa'));
     }

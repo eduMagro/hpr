@@ -212,6 +212,18 @@
                                     </td>
                                     <td class="border border-gray-400 p-1"></td>
                                 </tr>
+                                {{-- … justo después del row de Plus Productividad … --}}
+                                <tr>
+                                    <td class="border border-gray-400 p-1">{{ $nomina->horas_extra }}</td>
+                                    <td class="border border-gray-400 p-1">
+                                        {{ number_format($nomina->valor_hora_extra, 3, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1 text-left" colspan="2">*Horas Extra</td>
+                                    <td class="border border-gray-400 p-1 text-right">
+                                        {{ number_format($nomina->horas_extra * $nomina->valor_hora_extra, 2, ',', '.') }}
+                                    </td>
+                                    <td class="border border-gray-400 p-1"></td>
+                                </tr>
 
                                 <tr>
                                     <td class="border border-gray-400 p-1">1</td>
@@ -331,7 +343,7 @@
 
             @foreach ($aportacionesEmpresa as $aportacion)
                 <div class="grid grid-cols-4 text-xs text-gray-800 text-center border-b border-gray-300">
-                    <div class="p-2 border-r border-gray-400">{{ $aportacion->concepto }}</div>
+                    <div class="p-2 border-r border-gray-400">{{ $aportacion->tipo_aportacion }}</div>
                     <div class="p-2 border-r border-gray-400">
                         {{ number_format($nomina->total_devengado, 2, ',', '.') }}
                     </div>

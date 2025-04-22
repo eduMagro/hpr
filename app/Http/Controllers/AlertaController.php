@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Alerta;
 use App\Models\User;
+use App\Models\Categoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -86,10 +87,11 @@ class AlertaController extends Controller
 
             // Obtener todos los roles y categorías únicas desde la tabla users
             $roles = User::distinct()->pluck('rol')->filter()->values();
-            $categorias = User::distinct()->pluck('categoria')->filter()->values();
+            $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
             // Obtener todos los usuarios para el select del modal (puedes ajustar el orden o el filtro según necesites)
             $usuarios = User::orderBy('name')->get();
             if ($usuario->categoria === 'programador') {
+
                 // Los programadores ven todas las alertas (menos las que ya han leído)
                 $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
                     $q->where('user_id', $usuario->id);
@@ -97,6 +99,7 @@ class AlertaController extends Controller
                     ->orderBy('created_at', 'desc')
                     ->get();
             } else {
+
                 // Los demás usuarios ven alertas donde:
                 // - el destinatario_id es su ID, o
                 // - la alerta está dirigida a su rol o categoría

@@ -13,6 +13,7 @@ class Etiqueta extends Model
     protected $table = 'etiquetas';
 
     protected $fillable = [
+        'etiqueta_sub_id', // Para el caso en que todos los elementos tienen la misma máquina
         'planilla_id',
         'users_id_1',
         'users_id_2',

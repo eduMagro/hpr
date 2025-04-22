@@ -168,7 +168,8 @@
                         <td class="px-4 py-2">{{ number_format($nomina->coste_empresa, 2, ',', '.') }} €</td>
                         <td class="px-4 py-2">{{ \Carbon\Carbon::parse($nomina->fecha)->format('d/m/Y') }}</td>
                         <td class="px-4 py-2">
-                            <a href="{{ route('nominas.show', $nomina->id) }}"
+                            <a href="{{ route('nominas.show', $nomina->id) }}" target="_blank"
+                                rel="noopener noreferrer"
                                 class="inline-block px-3 py-1 text-xs text-white bg-blue-600 hover:bg-blue-700 rounded">
                                 Ver Nómina
                             </a>

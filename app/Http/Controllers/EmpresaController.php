@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Empresa;
-use App\Models\SeguridadSocial;
-use App\Models\IrpfTramo;
+use App\Models\TasaSeguridadSocial;
 use App\Models\Convenio;
+use App\Models\TasaIrpf;
 use Illuminate\Http\Request;
 
 class EmpresaController extends Controller
@@ -13,8 +13,8 @@ class EmpresaController extends Controller
     public function index()
     {
         $empresas = Empresa::all();
-        $porcentajes_ss = SeguridadSocial::all();
-        $tramos = IrpfTramo::all();
+        $porcentajes_ss = TasaSeguridadSocial::all();
+        $tramos = TasaIrpf::all();
         $convenio = Convenio::all();
 
         return view('empresas.index', compact('empresas', 'porcentajes_ss', 'tramos', 'convenio'));

@@ -28,6 +28,7 @@ class Elemento extends Model
         'users_id_2',
         'planilla_id',
         'etiqueta_id',
+        'etiqueta_sub_id',
         'maquina_id',
         'maquina_id_2',
         'maquina_id_3',
@@ -78,6 +79,11 @@ class Elemento extends Model
     public function etiquetaRelacion()
     {
         return $this->belongsTo(Etiqueta::class, 'etiqueta_id');
+    }
+    // Acceso directo a subetiqueta virtual
+    public function getSubetiquetaAttribute()
+    {
+        return $this->etiqueta_sub_id;
     }
     public function ubicacion()
     {

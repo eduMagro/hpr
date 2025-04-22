@@ -117,6 +117,16 @@
                         </th>
                         <th class="py-3 border text-center">
                             <div class="flex flex-col items-end h-full">
+                                <span class="self-center">SubEtiqueta</span>
+                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
+                                    <input type="text" name="etiqueta"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Buscar">
+                                </form>
+                            </div>
+                        </th>
+                        <th class="py-3 border text-center">
+                            <div class="flex flex-col items-end h-full">
                                 <span class="self-center">Paquete</span>
                                 <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
                                     <input type="text" name="paquete_id"
@@ -273,6 +283,19 @@
                                     <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
                                         class="text-blue-500 hover:underline">
                                         {{ $elemento->etiquetaRelacion?->id ?? 'N/A' }}
+                                    </a>
+
+                                </template>
+                                <input x-show="editando" type="text" x-model="elemento.etiquetaRelacion.id"
+                                    class="form-input w-full">
+                            </td>
+
+                            <!-- SUBETIQUETA -->
+                            <td class="px-1 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion?->id ?? '#']) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $elemento->subetiqueta ?? 'N/A' }}
                                     </a>
 
                                 </template>

@@ -74,7 +74,7 @@
                     @forelse ($porcentajes_ss as $registro)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2 border text-center">{{ $registro->id }}</td>
-                            <td class="px-4 py-2 border">{{ $registro->concepto }}</td>
+                            <td class="px-4 py-2 border">{{ $registro->tipo_aportacion }}</td>
                             <td class="px-4 py-2 border text-center">
                                 {{ number_format($registro->porcentaje, 2, ',', '.') }} %</td>
                         </tr>

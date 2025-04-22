@@ -1,10 +1,4 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Bienvenido, :name. Elige una tarea', ['name' => strtok(auth()->user()->name, ' ')]) }}
-        </h2>
-
-    </x-slot>
     @php
         $esOperario = auth()->user()->rol == '';
     @endphp
@@ -13,8 +7,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div
-                        class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 p-6 justify-items-center">
-
+                        class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-6 justify-items-center">
                         @php
                             $items = [
                                 [
@@ -109,7 +102,7 @@
                                 {{-- Icono de notificación para alertas --}}
                                 @if ($item['route'] === 'alertas.index')
                                     <img id="notificacion-alertas-icono"
-                                        src="{{ asset('imagenes/iconos/high-priority.png') }}"
+                                        src="{{ asset('imagenes/iconos/notificacion.png') }}"
                                         class="absolute top-1 right-1 w-5 h-5 animate-ping hidden" alt="Nueva alerta">
                                 @endif
                             </a>

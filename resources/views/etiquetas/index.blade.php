@@ -59,6 +59,13 @@
                                         placeholder="Buscar">
                                 </form>
                             </th>
+                            <th class="p-2 border">SubEtiqueta
+                                <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
+                                    <input type="text" name="id"
+                                        class="w-full p-2 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Buscar">
+                                </form>
+                            </th>
                             <th class="p-2 border">Planilla
                                 <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
                                     <input type="text" name="codigo_planilla"
@@ -118,6 +125,7 @@
                                 class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
                                 <!-- ID (no editable) -->
                                 <td class="p-2 text-center border">{{ $etiqueta->id }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->etiqueta_sub_id }}</td>
 
                                 <!-- Planilla (no editable) -->
                                 <td class="p-2 text-center border">
