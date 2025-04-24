@@ -74,7 +74,7 @@ class etiquetaController extends Controller
             // Array para almacenar los productos consumidos y su stock actualizado
             $productosAfectados = [];
             // Obtener la etiqueta y su planilla asociada
-            $etiqueta = Etiqueta::with('elementos.planilla')->findOrFail($id);
+            $etiqueta = Etiqueta::with('elementos.planilla')->where('etiqueta_sub_id', $id)->firstOrFail();
             $planilla_id = $etiqueta->planilla_id;
             $planilla = Planilla::find($planilla_id);
             // Convertir el campo ensamblado a minúsculas para facilitar comparaciones

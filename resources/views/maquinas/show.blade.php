@@ -121,7 +121,7 @@
                     if (stripos($maquina->tipo, 'ensambladora') !== false) {
                         $elementosAgrupados = $elementosMaquina
                             ->reject(fn($e) => $idsReempaquetados->contains($e->id))
-                            ->groupBy('etiqueta_id')
+                            ->groupBy('etiqueta_sub_id')
                             ->filter(function ($grupo) use ($maquina) {
                                 return $grupo->contains(function ($elemento) use ($maquina) {
                                     return $elemento->maquina_id_2 == $maquina->id &&
@@ -145,7 +145,7 @@
                             ->filter(function ($elemento) {
                                 return !debeSerExcluido($elemento);
                             })
-                            ->groupBy('etiqueta_id');
+                            ->groupBy('etiqueta_sub_id');
                     }
                     // Ordenar los grupos por la fecha_estimada_entrega de la planilla sin alterar el orden interno
                     $elementosAgrupados = $elementosAgrupados->sortBy(
@@ -204,7 +204,7 @@
                                 </span> - S:{{ $planilla->seccion }}
                             </h2>
                             <h3 class="text-lg font-semibold text-gray-900">
-                                <span class="text-blue-700"> {{ $etiqueta->id ?? 'N/A' }} </span>
+                                <span class="text-blue-700"> {{ $etiqueta->etiqueta_sub_id ?? 'N/A' }} </span>
                                 {{ $etiqueta->nombre ?? 'Sin nombre' }} -
 
                                 <span>Cal:B500SD</span>

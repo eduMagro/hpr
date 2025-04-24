@@ -36,8 +36,8 @@ class NominaController extends Controller
             $anio = $anio ?? now()->year;
         }
 
-        $horas_extra      = 10;
-        $valor_hora_extra = 12;
+        $horas_extra      = 0;
+        $valor_hora_extra = 14;
         $plus_horas_extra = $horas_extra * $valor_hora_extra;
 
         DB::beginTransaction();
@@ -70,36 +70,42 @@ class NominaController extends Controller
                 $porcentajeSS_empresa = $this->obtenerTotalCotizacionEmpresa();
                 $minimos = $this->calcularMinimosDesdeModelo($modelo);
 
-                // Calcular IRPF acumulado hasta la fecha
+                // Primer cálculo del IRPF estimado
+                // 1) Calcular bruto inicial y estimar IRPF
+                $brutoBase          = $this->calcularBruto($salario_base, $pluses);
+                $brutoAnualEstimado = $brutoBase * 12;
+                $ssAnual            = $brutoAnualEstimado * ($porcentajeSS_trabajador / 100);
+                $baseIRPF           = max($brutoAnualEstimado - $ssAnual - $minimos, 0);
+                $cuotaIRPFAnual     = $this->calcularCuotaIRPF($baseIRPF);
+
+                // IRPF acumulado en el año
                 $nominasPrevias = Nomina::where('empleado_id', $trabajador->id)
                     ->whereYear('fecha', $anio)
                     ->whereMonth('fecha', '<', $mes)
                     ->get();
-                $acumuladoIRPF = $nominasPrevias->sum('irpf_mensual');
+                $acumuladoIRPF    = $nominasPrevias->sum('irpf_mensual');
+                $mesesRestantes   = 12 - count($nominasPrevias);
+                $irpfMensual      = $mesesRestantes > 0
+                    ? ($cuotaIRPFAnual - $acumuladoIRPF) / $mesesRestantes
+                    : 0;
 
-                // Primer cálculo del IRPF estimado
-                $brutoBase = $this->calcularBruto($salario_base, $pluses, $liquidoDeseado);
-                $brutoAnualEstimado = $brutoBase * 12;
-                $ssAnual = $brutoAnualEstimado * ($porcentajeSS_trabajador / 100);
-                $baseIRPF = max($brutoAnualEstimado - $ssAnual - $minimos, 0);
-                $cuotaIRPFAnual = $this->calcularCuotaIRPF($baseIRPF);
-                $mesesRestantes = 12 - count($nominasPrevias);
-                $irpfMensual = $mesesRestantes > 0 ? ($cuotaIRPFAnual - $acumuladoIRPF) / $mesesRestantes : 0;
+                // 2) Ajustar pluses
+                $ajusteNecesario = $this->ajustarPlusesHastaMinimoLiquido(
+                    $pluses,
+                    $salario_base,
+                    $liquidoDeseado,
+                    $irpfMensual,
+                    $porcentajeSS_trabajador
+                );
 
-                // Ajustar pluses hasta alcanzar el mínimo líquido pactado (sin incentivo)
-                $ajusteNecesario = $this->ajustarPlusesHastaMinimoLiquido($pluses, $salario_base, $liquidoDeseado, $irpfMensual, $porcentajeSS_trabajador);
-                $brutoBase = $this->calcularBruto($salario_base, $pluses, $liquidoDeseado);
-                // Recalcular IRPF con los nuevos pluses ajustados
-                $brutoAnualEstimado = $brutoBase * 12;
-                $ssAnual = $brutoAnualEstimado * ($porcentajeSS_trabajador / 100);
-                $baseIRPF = max($brutoAnualEstimado - $ssAnual - $minimos, 0);
-                $cuotaIRPFAnual = $this->calcularCuotaIRPF($baseIRPF);
-                $irpfMensual = $mesesRestantes > 0 ? ($cuotaIRPFAnual - $acumuladoIRPF) / $mesesRestantes : 0;
-                $netoBase = $this->calcularNeto($brutoBase, $irpfMensual, $porcentajeSS_trabajador);
+                // 3) Recalcular bruto y neto base
+                $brutoBase  = $this->calcularBruto($salario_base, $pluses);
+                $ssMensual  = $brutoBase * ($porcentajeSS_trabajador / 100);
+                $netoBase   = $brutoBase - $ssMensual - $irpfMensual;
 
+                // 4) Incentivo productividad opcional
                 $plus_productividad = 0;
                 if ($aplicaIncentivo) {
-                    // Si hay incentivo, calcular bruto necesario para alcanzar el nuevo neto
                     $liquidoDeseadoConIncentivo = $netoBase + ($convenio->plus_productividad / 12);
                     $plus_productividad = $this->ajustarBrutoParaProductividad(
                         $brutoBase,
@@ -108,51 +114,18 @@ class NominaController extends Controller
                         $irpfMensual,
                         $porcentajeSS_trabajador
                     );
-
-                    // Recalcular IRPF base excluyendo el incentivo
-                    $brutoFinal = $brutoBase + $plus_productividad + $plus_horas_extra;
-                    $brutoAnualEstimado = $brutoBase * 12; // ¡sin incluir incentivo!
-                    $ssAnual = $brutoAnualEstimado * ($porcentajeSS_trabajador / 100);
-                    $baseIRPF = max($brutoAnualEstimado - $ssAnual - $minimos, 0);
-                    $cuotaIRPFAnual = $this->calcularCuotaIRPF($baseIRPF);
-                    $irpf_base_mensual = $mesesRestantes > 0 ? ($cuotaIRPFAnual - $acumuladoIRPF) / $mesesRestantes : 0;
-
-                    // Calcular IRPF separado para el incentivo
-                    $tipo_irpf_incentivo = 0.04; // 4% fijo para este tipo de incentivo ocasional
-                    $irpf_incentivo = $plus_productividad * $tipo_irpf_incentivo;
-
-                    // Sumar ambos para el IRPF total
-                    $irpfMensual = $irpf_base_mensual + $irpf_incentivo;
                 }
 
-                // Cálculo final de la nómina incluyendo horas extra
-                $brutoFinal   = $brutoBase + $plus_productividad + $plus_horas_extra;
-
-                $ss           = $brutoFinal * ($porcentajeSS_trabajador / 100);
-                $netoFinal    = $brutoFinal - $ss - $irpfMensual;
-                $costeEmpresa = $brutoFinal + ($brutoFinal * ($porcentajeSS_empresa / 100));
-                $porcentajeIRPF = $brutoFinal > 0 ? round(($irpfMensual / $brutoFinal) * 100, 2) : 0;
-                // 1) Proyectamos el bruto de este mes a todo el año
-                $brutoAnualEstimado = $brutoFinal * 12;
-
-                // 2) Calculamos la Seguridad Social anual
-                $ssAnual = $brutoAnualEstimado * ($porcentajeSS_trabajador / 100);
-
-                // 3) Base imponible IRPF anual (restamos SS y mínimos personales y familiares)
-                $baseIRPF = max($brutoAnualEstimado - $ssAnual - $minimos, 0);
-
-                // 4) Cuota IRPF anual según tramos
-                $cuotaIRPFAnual = $this->calcularCuotaIRPF($baseIRPF);
-
-                // 5) Retención fija mensual para equilibrar la renta
-                $irpfMensual = $cuotaIRPFAnual / 12;
-
-                // 6) Porcentaje IRPF efectivo (para informar en la nómina)
+                // 5) Cálculo final nómina
+                $brutoFinal    = $brutoBase + $plus_productividad + $plus_horas_extra;
+                $ss            = $brutoFinal * ($porcentajeSS_trabajador / 100);
+                $netoFinal     = $brutoFinal - $ss - $irpfMensual;
+                $costeEmpresa  = $brutoFinal * (1 + ($porcentajeSS_empresa / 100));
                 $porcentajeIRPF = $brutoFinal > 0
                     ? round(($irpfMensual / $brutoFinal) * 100, 2)
                     : 0;
 
-                // 7) Ahora sí calculamos SS y neto de la nómina de este mes
+                // 6) Ahora sí calculamos SS y neto de la nómina de este mes
                 $ss        = $brutoFinal * ($porcentajeSS_trabajador / 100);
                 $netoFinal = $brutoFinal - $ss - $irpfMensual;
                 // Guardar la nómina
@@ -197,11 +170,11 @@ class NominaController extends Controller
         }
     }
 
-    private function calcularBruto(float $salario_base, array $pluses, float $minimo_pactado): float
+    private function calcularBruto(float $salario_base, array $pluses): float
     {
         $bruto = $salario_base + array_sum($pluses);
 
-        return max($bruto, $minimo_pactado);
+        return $bruto;
     }
 
     private function calcularNeto(float $bruto, float $irpf, float $ss): float
@@ -209,59 +182,61 @@ class NominaController extends Controller
         return $bruto - ($bruto * ($ss / 100)) - $irpf;
     }
 
-    private function ajustarPlusesHastaMinimoLiquido(array &$pluses, float $salario_base, float $liquidoObjetivo, float $irpfEstimado, float $porcentajeSS): bool
-    {
+
+
+    private function ajustarPlusesHastaMinimoLiquido(
+        array &$pluses,
+        float $salario_base,
+        float $liquidoObjetivo,
+        float $irpfEstimado,
+        float $porcentajeSS
+    ): bool {
         $limites = [
-            'actividad' => 200,
+            'actividad'  => 200,
             'asistencia' => 200,
             'transporte' => 200,
-            'dieta' => 200,
+            'dieta'      => 200,
             'turnicidad' => 200,
+            'prorrateo'  => 200,
         ];
 
         $maxIntentos = 1000;
-        $intento = 0;
-        $ajustado = false;
+        $intento     = 0;
+        $ajustado    = false;
 
-        do {
-            $intento++;
-            if ($intento > $maxIntentos) break;
-
-            $bruto = $this->calcularBruto($salario_base, $pluses, $liquidoObjetivo);
-            $brutoAnual = $bruto * 12;
-            $ss = $bruto * ($porcentajeSS / 100);
-            $ssAnual = $brutoAnual * ($porcentajeSS / 100);
-
-            // Recalcular IRPF
-            $baseIRPF = max($brutoAnual - $ssAnual - 5550, 0); // usará los mínimos al final
-            $cuotaIRPF = $this->calcularCuotaIRPF($baseIRPF);
-            $irpf = $cuotaIRPF / 12;
-
-            // Calcular neto
-            $neto = $this->calcularNeto($bruto, $irpf, $porcentajeSS);
+        while (++$intento <= $maxIntentos) {
+            $bruto = $this->calcularBruto($salario_base, $pluses);
+            $ss    = $bruto * ($porcentajeSS / 100);
+            $neto  = $bruto - $ss - $irpfEstimado;
             $diferencia = $liquidoObjetivo - $neto;
 
-            // Comprobar si el neto es menor que el salario base (neto sin pluses)
-            $netoBaseSinPluses = $salario_base - ($salario_base * ($porcentajeSS / 100)) - $irpfEstimado;
-            if ($neto < $netoBaseSinPluses) {
-                $ajustado = true;
+            if (abs($diferencia) <= 0.5) {
+                break;
             }
 
-            if ($diferencia <= 1) break;
-
-            foreach ($limites as $clave => $max) {
-                if ($pluses[$clave] < $max) {
-                    $pluses[$clave] += 1;
-                    $ajustado = true;
-                    break;
+            if ($diferencia > 0) {
+                // falta neto → sumar
+                foreach ($limites as $clave => $max) {
+                    if ($pluses[$clave] < $max) {
+                        $pluses[$clave]++;
+                        $ajustado = true;
+                        break;
+                    }
+                }
+            } else {
+                // sobra neto → restar
+                foreach ($pluses as $clave => $valor) {
+                    if ($valor > 0) {
+                        $pluses[$clave]--;
+                        $ajustado = true;
+                        break;
+                    }
                 }
             }
-        } while ($diferencia > 0.5);
+        }
 
         return $ajustado;
     }
-
-
     private function ajustarBrutoParaProductividad(float $brutoBase, float $netoBase, float $liquidoObjetivo, float $irpf, float $ss): float
     {
         $bruto = $brutoBase;
@@ -466,12 +441,12 @@ class NominaController extends Controller
         if ($discapacidad >= 66) $minimos += 9000;
 
         // Simulación inversa
-        $brutoAnual = 10000;
+        $brutoAnualEstimado = 10000;
         $maxIntentos = 100;
         $errorAceptable = 1.00;
 
         while ($maxIntentos--) {
-            $brutoMensual = $brutoAnual / 12;
+            $brutoMensual = $brutoAnualEstimado / 12;
             $estimadoBrutoRestante = $brutoMensual * (12 - $mesActual);
             $estimacionAnual = $acumulado + $estimadoBrutoRestante;
 
@@ -502,12 +477,12 @@ class NominaController extends Controller
                 break;
             }
 
-            $brutoAnual += ($netoDeseado - $netoMensualCalculado) * 20;
+            $brutoAnualEstimado += ($netoDeseado - $netoMensualCalculado) * 20;
         }
 
         return response()->json([
-            'bruto_anual' => round($brutoAnual, 2),
-            'bruto_mensual' => round($brutoAnual / 12, 2),
+            'bruto_anual' => round($brutoAnualEstimado, 2),
+            'bruto_mensual' => round($brutoAnualEstimado / 12, 2),
             'ss_mensual' => round($ss / 12, 2),
             'retencion_mensual' => round($cuota / 12, 2),
             'neto_mensual' => round($netoMensualCalculado, 2),
