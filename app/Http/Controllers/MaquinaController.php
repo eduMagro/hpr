@@ -94,6 +94,7 @@ class MaquinaController extends Controller
 
         // 3) Cargar la colección base de elementos para ESTA máquina
         $elementosMaquina = $maquina->elementos;
+        $elementosMaquina = $elementosMaquina->load('etiquetaRelacion');
 
         // 4) Si estamos en "IDEA 5", fusionar elementos que tengan maquina_id_2 = Idea5 (y otra maquina principal)
         if ($maquinaIdea5 && $maquina->id == $maquinaIdea5->id) {
@@ -198,17 +199,19 @@ class MaquinaController extends Controller
             ];
         })->values()->toArray();
 
-        // 12) Información de etiquetas
         $etiquetasData = $elementosMaquina
             ->groupBy('etiqueta_id')
             ->map(function ($grupo, $etiquetaId) {
+                $etiqueta = optional($grupo->first()->etiqueta); // safe null
                 return [
-                    'codigo'    => $etiquetaId,
+                    'codigo'    => $etiqueta->etiqueta_sub_id ?? 'sin-codigo',
                     'elementos' => $grupo->pluck('id')->toArray(),
                     'pesoTotal' => $grupo->sum('peso'),
                 ];
             })
+            ->filter(fn($data) => $data['codigo'] !== 'sin-codigo') // elimina nulos
             ->values();
+
 
         //Cogemos los elementos reenpaquetados para la ensambladora
         $elementosReempaquetados = session('elementos_reempaquetados', []);

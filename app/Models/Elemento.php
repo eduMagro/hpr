@@ -80,10 +80,12 @@ class Elemento extends Model
     {
         return $this->belongsTo(Etiqueta::class, 'etiqueta_id');
     }
-    public function subEtiquetaRelacion()
+    // En Etiqueta.php
+    public function subetiquetas()
     {
-        return $this->belongsTo(Etiqueta::class, 'etiqueta_sub_id');
+        return $this->hasMany(Etiqueta::class, 'etiqueta_sub_id', 'etiqueta_sub_id');
     }
+
     // Acceso directo a subetiqueta virtual
     public function getSubetiquetaAttribute()
     {
