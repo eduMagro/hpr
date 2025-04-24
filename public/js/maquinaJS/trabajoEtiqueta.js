@@ -99,9 +99,10 @@ document.addEventListener("DOMContentLoaded", () => {
      * Si el estado indica que la etiqueta está completada, se agrega automáticamente a la lista.
      */
     function actualizarDOMEtiqueta(id, data) {
-        const estadoEtiqueta = document.getElementById(`estado-${id}`);
-        const inicioEtiqueta = document.getElementById(`inicio-${id}`);
-        const finalEtiqueta = document.getElementById(`final-${id}`);
+        const safeId = id.replace(/\./g, "-"); // Reemplaza "." por "-" para usarlo en IDs HTML
+        const estadoEtiqueta = document.getElementById(`estado-${safeId}`);
+        const inicioEtiqueta = document.getElementById(`inicio-${safeId}`);
+        const finalEtiqueta = document.getElementById(`final-${safeId}`);
 
         if (estadoEtiqueta) estadoEtiqueta.textContent = data.estado;
         if (inicioEtiqueta)
@@ -261,7 +262,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Función para hacer scroll al siguiente div
     function scrollToNextDiv(currentId) {
         const allDivs = document.querySelectorAll(".proceso"); // Asegúrate de que los divs tienen la clase 'proceso'
-        const currentDiv = document.getElementById(`etiqueta-${currentId}`);
+        const safeId = currentId.replace(/\./g, "-");
+        const currentDiv = document.getElementById(`etiqueta-${safeId}`);
 
         if (currentDiv) {
             for (let i = 0; i < allDivs.length; i++) {
@@ -292,8 +294,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function agregarItemEtiqueta(etiquetaId, data) {
         // Si data.id no está definido, usamos el id pasado como argumento (etiquetaId)
         const id = data.id || etiquetaId;
-        if (items.some((item) => item.id === id)) {
-            console.warn("Etiqueta ya agregada:", id);
+        const safeId = id.replace(/\./g, "-");
+        if (items.some((item) => item.id === safeId)) {
+            console.warn("Etiqueta ya agregada:", safeId);
             return;
         }
         // Se agrega también el peso, que se extrae de data (o se asigna 0 si no existe)
@@ -334,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
         const sumatorioFormateado = sumatorio.toFixed(2); // Ajusta a dos decimales
 
-        // Crear un elemento para mostrar el total de peso
+        // Mostrar el peso total de los elementos en la lista
         const sumatorioItem = document.createElement("li");
         sumatorioItem.textContent = `Total de peso: ${sumatorioFormateado} kg`;
         sumatorioItem.style.fontWeight = "bold";

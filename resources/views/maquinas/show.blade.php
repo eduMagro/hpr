@@ -208,6 +208,7 @@
                                 {{ $etiqueta->nombre ?? 'Sin nombre' }} -
 
                                 <span>Cal:B500SD</span>
+
                                 - {{ $etiqueta->peso_kg ?? 'N/A' }}
                             </h3>
                             <!-- Contenedor oculto para generar el QR -->
@@ -216,15 +217,15 @@
                             <div class="p-2">
                                 <p>
                                     <strong>Estado:</strong>
-                                    <span id="estado-{{ $etiqueta->id ?? 'N/A' }}">
+                                    <span id="estado-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
                                         {{ $etiqueta->estado ?? 'N/A' }}
                                     </span>
                                     <strong>Fecha Inicio:</strong>
-                                    <span id="inicio-{{ $etiqueta->id ?? 'N/A' }}">
+                                    <span id="inicio-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
                                         {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_inicio_ensamblado ?? 'No asignada' : $etiqueta->fecha_inicio ?? 'No asignada' }}
                                     </span>
                                     <strong>Fecha Finalización:</strong>
-                                    <span id="final-{{ $etiqueta->id ?? 'N/A' }}">
+                                    <span id="final-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
                                         {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_finalizacion_ensamblado ?? 'No asignada' : $etiqueta->fecha_finalizacion ?? 'No asignada' }}
                                     </span>
 
