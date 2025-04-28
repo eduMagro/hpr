@@ -148,7 +148,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         "Hemos completado la etiqueta."
                     );
                 }
-                scrollToNextDiv(id);
+                // 💥 Aquí la clave: safeId
+                const safeId = id.replace(/\./g, "-");
+                scrollToNextDiv(safeId);
                 break;
             case "fabricando":
                 // Si no se ha iniciado el temporizador para esta etiqueta, se guarda el instante actual
@@ -166,14 +168,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     "info",
                     "Fabricada",
                     "Los Elementos han sido fabricados y los pasamos a otra máquina."
-                );
-                scrollToNextDiv(id);
-                break;
-            case "parcialmente_completada":
-                showAlert(
-                    "warning",
-                    "Etiqueta parcialmente completada",
-                    "Algunos elementos aún están en proceso en otras máquinas."
                 );
                 scrollToNextDiv(id);
                 break;
@@ -222,7 +216,6 @@ document.addEventListener("DOMContentLoaded", () => {
         // Si la etiqueta se encuentra en estado completada o fabricada, agregarla automáticamente a la lista.
         if (
             data.estado.toLowerCase() === "completada" ||
-            data.estado.toLowerCase() === "parcialmente_completada" ||
             data.estado.toLowerCase() === "fabricada"
         ) {
             agregarItemEtiqueta(id, data);
@@ -259,22 +252,44 @@ document.addEventListener("DOMContentLoaded", () => {
             );
         }
     }
-    // Función para hacer scroll al siguiente div
-    function scrollToNextDiv(currentId) {
-        const allDivs = document.querySelectorAll(".proceso"); // Asegúrate de que los divs tienen la clase 'proceso'
-        const safeId = currentId.replace(/\./g, "-");
-        const currentDiv = document.getElementById(`etiqueta-${safeId}`);
+    function scrollToNextDiv(currentEtiquetaId) {
+        const safeId = currentEtiquetaId.replace(/\./g, "-"); // 🔹 Corriges los puntos (bien)
+        const currentDiv = document.getElementById(`etiqueta-${safeId}`); // 🔹 Buscas el div
 
-        if (currentDiv) {
-            for (let i = 0; i < allDivs.length; i++) {
-                if (allDivs[i] === currentDiv && i + 1 < allDivs.length) {
-                    allDivs[i + 1].scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                    });
-                    break;
-                }
-            }
+        if (!currentDiv) {
+            console.warn(
+                `No se encontró el div actual para el ID: etiqueta-${safeId}`
+            );
+            return;
+        }
+
+        const allDivs = Array.from(document.querySelectorAll(".proceso")); // 🔹 Agarras todos los divs `.proceso`
+        const indexActual = allDivs.indexOf(currentDiv); // 🔹 Buscas la posición
+
+        if (indexActual === -1) {
+            console.warn(
+                "No se encontró el índice del div actual en la lista de procesos."
+            );
+            return;
+        }
+
+        const siguienteDiv = allDivs[indexActual + 1];
+        if (siguienteDiv) {
+            siguienteDiv.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+        } else {
+            console.info(
+                "Última etiqueta alcanzada, no hay más para hacer scroll."
+            );
+            Swal.fire({
+                icon: "success",
+                title: "¡Perfecto!",
+                text: "Has terminado todas las etiquetas de esta máquina.",
+                timer: 2500,
+                showConfirmButton: false,
+            });
         }
     }
 

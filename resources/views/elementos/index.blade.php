@@ -17,202 +17,213 @@
             {{ __('Lista de Elementos') }}
         </h2>
     </x-slot>
+    @php
+        $filtrosActivos = [];
+
+        if (request('buscar')) {
+            $filtrosActivos[] = 'contiene <strong>“' . request('buscar') . '”</strong>';
+        }
+
+        if (request('id')) {
+            $filtrosActivos[] = 'ID: <strong>' . request('id') . '</strong>';
+        }
+
+        if (request('codigo_planilla')) {
+            $filtrosActivos[] = 'Código de planilla: <strong>' . request('codigo_planilla') . '</strong>';
+        }
+
+        if (request('usuario1')) {
+            $filtrosActivos[] = 'Operario 1: <strong>' . request('usuario1') . '</strong>';
+        }
+
+        if (request('usuario2')) {
+            $filtrosActivos[] = 'Operario 2: <strong>' . request('usuario2') . '</strong>';
+        }
+
+        if (request('etiqueta')) {
+            $filtrosActivos[] = 'Etiqueta ID: <strong>' . request('etiqueta') . '</strong>';
+        }
+
+        if (request('subetiqueta')) {
+            $filtrosActivos[] = 'Subetiqueta: <strong>' . request('subetiqueta') . '</strong>';
+        }
+
+        if (request('paquete_id')) {
+            $filtrosActivos[] = 'Paquete ID: <strong>' . request('paquete_id') . '</strong>';
+        }
+
+        if (request('maquina')) {
+            $filtrosActivos[] = 'Máquina 1: <strong>' . request('maquina') . '</strong>';
+        }
+
+        if (request('maquina_2')) {
+            $filtrosActivos[] = 'Máquina 2: <strong>' . request('maquina_2') . '</strong>';
+        }
+
+        if (request('maquina3')) {
+            $filtrosActivos[] = 'Máquina 3: <strong>' . request('maquina3') . '</strong>';
+        }
+
+        if (request('producto1')) {
+            $filtrosActivos[] = 'Materia Prima 1: <strong>' . request('producto1') . '</strong>';
+        }
+
+        if (request('producto2')) {
+            $filtrosActivos[] = 'Materia Prima 2: <strong>' . request('producto2') . '</strong>';
+        }
+
+        if (request('producto3')) {
+            $filtrosActivos[] = 'Materia Prima 3: <strong>' . request('producto3') . '</strong>';
+        }
+
+        if (request('figura')) {
+            $filtrosActivos[] = 'Figura: <strong>' . request('figura') . '</strong>';
+        }
+
+        if (request('estado')) {
+            $estados = [
+                'pendiente' => 'Pendiente',
+                'fabricando' => 'Fabricando',
+                'completado' => 'Completado',
+                'montaje' => 'En Montaje',
+            ];
+            $filtrosActivos[] = 'Estado: <strong>' . ($estados[request('estado')] ?? request('estado')) . '</strong>';
+        }
+
+        if (request('fecha_inicio')) {
+            $filtrosActivos[] = 'Desde: <strong>' . request('fecha_inicio') . '</strong>';
+        }
+
+        if (request('fecha_finalizacion')) {
+            $filtrosActivos[] = 'Hasta: <strong>' . request('fecha_finalizacion') . '</strong>';
+        }
+
+        if (request('sort_by')) {
+            $sorts = [
+                'created_at' => 'Fecha de creación',
+                'id' => 'ID',
+                'figura' => 'Figura',
+                'subetiqueta' => 'Subetiqueta',
+                'paquete_id' => 'Paquete ID',
+            ];
+            $orden = request('order') == 'desc' ? 'descendente' : 'ascendente';
+            $filtrosActivos[] =
+                'Ordenado por <strong>' .
+                ($sorts[request('sort_by')] ?? request('sort_by')) .
+                "</strong> en orden <strong>$orden</strong>";
+        }
+    @endphp
+
 
     <div class="w-full p-4 sm:p-2">
-        <!-- Formulario de filtrado -->
-        <form method="GET" action="{{ route('elementos.index') }}"
-            class="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 md:gap-4 p-2">
-
-            <!-- Estado -->
-            <div class="flex flex-col">
-                <label for="estado" class="text-sm font-medium text-gray-700">Estado</label>
-                <select name="estado" class="border p-2 rounded w-full">
-                    <option value="">Todos</option>
-                    <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente
-                    </option>
-                    <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando
-                    </option>
-                    <option value="completado" {{ request('estado') == 'completado' ? 'selected' : '' }}>Completado
-                    </option>
-                    <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>Montaje</option>
-                </select>
+        @if (count($filtrosActivos))
+            <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
+                <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
             </div>
+        @endif
+        @php
+            function ordenarColumnaElemento($columna, $titulo)
+            {
+                $currentSort = request('sort_by');
+                $currentOrder = request('order');
+                $isSorted = $currentSort === $columna;
+                $nextOrder = $isSorted && $currentOrder === 'asc' ? 'desc' : 'asc';
+                $icon = $isSorted ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down') : 'fas fa-sort';
+                $url = request()->fullUrlWithQuery(['sort_by' => $columna, 'order' => $nextOrder]);
 
-            <!-- Fecha Inicio -->
-            <div class="flex flex-col">
-                <label for="fecha_inicio" class="text-sm font-medium text-gray-700">Fecha Inicio</label>
-                <input type="date" name="fecha_inicio" value="{{ request('fecha_inicio') }}"
-                    class="border p-2 rounded w-full">
-            </div>
-
-            <!-- Fecha Finalización -->
-            <div class="flex flex-col">
-                <label for="fecha_finalizacion" class="text-sm font-medium text-gray-700">Fecha Fin</label>
-                <input type="date" name="fecha_finalizacion" value="{{ request('fecha_finalizacion') }}"
-                    class="border p-2 rounded w-full">
-            </div>
-
-            <!-- Botón Filtrar -->
-            <div class="flex flex-col justify-end">
-                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded w-full md:w-auto">
-                    Filtrar
-                </button>
-            </div>
-        </form>
+                return '<a href="' .
+                    $url .
+                    '" class="text-white text-decoration-none">' .
+                    $titulo .
+                    ' <i class="' .
+                    $icon .
+                    '"></i></a>';
+            }
+        @endphp
 
         <!-- Tabla de elementos con scroll horizontal -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
-                    <tr class="text-left text-sm uppercase">
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-top h-full">
-                                <span class="self-center">ID</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="id"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Planilla</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="codigo_planilla"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Op. 1</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="usuario1"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Op. 2</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="usuario2"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Etiqueta</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="etiqueta"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">SubEtiqueta</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="etiqueta"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Paquete</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="paquete_id"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Maq. 1</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="maquina"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Maq. 2</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="maquina_2"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Maq. 3</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="maquina3"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">M. Prima 1</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="producto1"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">M. Prima 2</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="producto2"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">M. Prima 3</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="producto3"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-                        <th class="py-3 border text-center">
-                            <div class="flex flex-col items-end h-full">
-                                <span class="self-center">Figura</span>
-                                <form method="GET" action="{{ route('elementos.index') }}" class="mt-2 w-full">
-                                    <input type="text" name="figura"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </div>
-                        </th>
-
-                        <th class="py-3 border text-center">Peso (kg)</th>
-                        <th class="py-3 border text-center">Diámetro (mm)</th>
-                        <th class="py-3 border text-center">Longitud (m)</th>
-                        <th class="py-3 border text-center">Estado</th>
-                        <th class="py-3 border text-center">Acciones</th>
+                    <tr class="text-center text-xs uppercase">
+                        <!-- Encabezados con orden dinámico -->
+                        <th class="p-2 border">{!! ordenarColumnaElemento('id', 'ID') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('codigo_planilla', 'Planilla') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('usuario1', 'Op. 1') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('usuario2', 'Op. 2') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('etiqueta', 'Etiqueta') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('subetiqueta', 'SubEtiqueta') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('paquete_id', 'Paquete') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('maquina', 'Maq. 1') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('maquina_2', 'Maq. 2') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('maquina3', 'Maq. 3') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('producto1', 'M. Prima 1') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('producto2', 'M. Prima 2') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('producto3', 'M. Prima 3') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('figura', 'Figura') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('peso', 'Peso (kg)') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('diametro', 'Diámetro (mm)') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('longitud', 'Longitud (m)') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('estado', 'Estado') !!}</th>
+                        <th class="p-2 border">Acciones</th>
                     </tr>
+
+                    <form method="GET" action="{{ route('elementos.index') }}">
+                        <tr class="text-center text-xs uppercase">
+                            @foreach (['id', 'codigo_planilla', 'usuario1', 'usuario2', 'etiqueta', 'subetiqueta', 'paquete_id', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura'] as $campo)
+                                <th class="py-3 border">
+                                    <input type="text" name="{{ $campo }}" value="{{ request($campo) }}"
+                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Buscar">
+                                </th>
+                            @endforeach
+
+                            <!-- Peso, diámetro, longitud: sin filtro -->
+                            <th class="py-3 border">
+                                <input type="text" name="peso" value="{{ request('peso') }}"
+                                    class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
+                            </th>
+                            <th class="py-3 border">
+                                <input type="text" name="diametro" value="{{ request('diametro') }}"
+                                    class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
+                            </th>
+                            <th class="py-3 border">
+                                <input type="text" name="longitud" value="{{ request('longitud') }}"
+                                    class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Buscar">
+                            </th>
+
+
+                            <!-- Estado con select -->
+                            <th class="py-3 border">
+                                <select name="estado"
+                                    class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Todos</option>
+                                    <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
+                                        Pendiente</option>
+                                    <option value="fabricando"
+                                        {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando</option>
+                                    <option value="completado"
+                                        {{ request('estado') == 'completado' ? 'selected' : '' }}>Completado</option>
+                                    <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>
+                                        Montaje</option>
+                                </select>
+                            </th>
+
+                            <!-- Botón buscar y limpiar -->
+                            <th class="py-3 border flex gap-1 justify-center">
+                                <button type="submit" class="btn btn-sm btn-info px-2"><i
+                                        class="fas fa-search"></i></button>
+                                <a href="{{ route('elementos.index') }}" class="btn btn-sm btn-warning px-2"><i
+                                        class="fas fa-undo"></i></a>
+                            </th>
+                        </tr>
+                    </form>
                 </thead>
+
+
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
@@ -238,8 +249,7 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.id"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.id"
-                                    class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="elemento.id" class="form-input w-full">
                             </td>
                             <!-- PLANILLA -->
                             <td class="px-1 py-3 text-center border">

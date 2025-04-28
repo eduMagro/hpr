@@ -75,6 +75,7 @@ class MaquinaController extends Controller
         $maquina = Maquina::with([
             'elementos.planilla',
             'elementos.etiquetaRelacion',
+            'elementos.subetiquetas',
             'productos'
         ])->findOrFail($id);
 
@@ -200,16 +201,15 @@ class MaquinaController extends Controller
         })->values()->toArray();
 
         $etiquetasData = $elementosMaquina
-            ->groupBy('etiqueta_id')
-            ->map(function ($grupo, $etiquetaId) {
-                $etiqueta = optional($grupo->first()->etiqueta); // safe null
+            ->filter(fn($item) => !empty($item->etiqueta_sub_id)) // evitamos elementos raros
+            ->groupBy('etiqueta_sub_id')
+            ->map(function ($grupo, $subId) {
                 return [
-                    'codigo'    => $etiqueta->etiqueta_sub_id ?? 'sin-codigo',
+                    'codigo'    => (string) $subId,
                     'elementos' => $grupo->pluck('id')->toArray(),
                     'pesoTotal' => $grupo->sum('peso'),
                 ];
             })
-            ->filter(fn($data) => $data['codigo'] !== 'sin-codigo') // elimina nulos
             ->values();
 
 

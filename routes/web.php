@@ -34,7 +34,7 @@ use App\Http\Controllers\NominaController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 
-Route::get('/dashboard', function () {
+Route::get('/', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 

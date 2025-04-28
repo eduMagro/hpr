@@ -24,105 +24,156 @@ class ElementoController extends Controller
      */
     private function aplicarFiltros($query, Request $request)
     {
-        if ($request->filled('id')) {
-            $query->where('id', $request->input('id'));
+        // 🔍 Búsqueda global en múltiples campos
+        if ($request->has('buscar') && $request->buscar) {
+            $buscar = $request->input('buscar');
+            $query->where(function ($q) use ($buscar) {
+                $q->where('id', 'like', "%$buscar%")
+                    ->orWhere('figura', 'like', "%$buscar%")
+                    ->orWhere('subetiquetas', 'like', "%$buscar%")
+                    ->orWhereHas('planilla', function ($q) use ($buscar) {
+                        $q->where('codigo', 'like', "%$buscar%");
+                    })
+                    ->orWhereHas('user', function ($q) use ($buscar) {
+                        $q->where('name', 'like', "%$buscar%");
+                    })
+                    ->orWhereHas('user2', function ($q) use ($buscar) {
+                        $q->where('name', 'like', "%$buscar%");
+                    })
+                    ->orWhereHas('maquina', function ($q) use ($buscar) {
+                        $q->where('nombre', 'like', "%$buscar%");
+                    })
+                    ->orWhereHas('maquina_2', function ($q) use ($buscar) {
+                        $q->where('nombre', 'like', "%$buscar%");
+                    })
+                    ->orWhereHas('maquina_3', function ($q) use ($buscar) {
+                        $q->where('nombre', 'like', "%$buscar%");
+                    });
+            });
         }
 
-        if ($request->filled('estado')) {
-            if ($request->estado === '.') {
-                $query->whereNull('estado');
-            } else {
-                $query->where('estado', $request->estado);
+        // 🔢 Filtros específicos
+        $filters = [
+            'id' => 'id',
+            'figura' => 'figura',
+            'subetiquetas' => 'subetiqueta',
+            'paquete_id' => 'paquete_id',
+        ];
+
+        foreach ($filters as $requestKey => $column) {
+            if ($request->has($requestKey) && $request->$requestKey !== null && $request->$requestKey !== '') {
+                $query->where($column, 'like', "%{$request->$requestKey}%");
             }
         }
 
-        if ($request->filled('fecha_inicio') && $request->filled('fecha_finalizacion')) {
-            $query->whereBetween('created_at', [$request->fecha_inicio, $request->fecha_finalizacion]);
-        } elseif ($request->filled('fecha_inicio')) {
+        // 📅 Filtrado por rango de fechas
+        if ($request->has('fecha_inicio') && $request->fecha_inicio) {
             $query->whereDate('created_at', '>=', $request->fecha_inicio);
-        } elseif ($request->filled('fecha_finalizacion')) {
+        }
+        if ($request->has('fecha_finalizacion') && $request->fecha_finalizacion) {
             $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
         }
 
-        if ($request->filled('codigo_planilla')) {
-            if ($request->codigo_planilla === '.') {
-                $query->whereDoesntHave('planilla');
-            } else {
-                $query->whereHas('planilla', function ($q) use ($request) {
-                    $q->where('codigo', 'like', '%' . $request->codigo_planilla . '%');
-                });
-            }
+        // 🧩 Relaciones con otras tablas
+
+        // Planilla
+        if ($request->has('codigo_planilla') && $request->codigo_planilla) {
+            $query->whereHas('planilla', function ($q) use ($request) {
+                $q->where('codigo', 'like', "%{$request->codigo_planilla}%");
+            });
         }
 
-        if ($request->filled('usuario1')) {
-            if ($request->usuario1 === '.') {
-                $query->whereDoesntHave('user');
-            } else {
-                $query->whereHas('user', function ($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->usuario1 . '%');
-                });
-            }
+        // Usuario 1
+        if ($request->has('usuario1') && $request->usuario1) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->usuario1}%");
+            });
         }
 
-        if ($request->filled('etiqueta')) {
-            if ($request->etiqueta === '.') {
-                $query->whereDoesntHave('etiquetaRelacion');
-            } else {
-                $query->whereHas('etiquetaRelacion', function ($q) use ($request) {
-                    $q->where('id', $request->etiqueta);
-                });
-            }
+        // Usuario 2
+        if ($request->has('usuario2') && $request->usuario2) {
+            $query->whereHas('user2', function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->usuario2}%");
+            });
         }
 
-        if ($request->filled('maquina')) {
-            if ($request->maquina === '.') {
-                $query->whereDoesntHave('maquina');
-            } else {
-                $query->whereHas('maquina', function ($q) use ($request) {
-                    $q->where('nombre', 'like', '%' . $request->maquina . '%');
-                });
-            }
-        }
-        if ($request->filled('maquina_2')) {
-            if ($request->maquina === '.') {
-                $query->whereDoesntHave('maquina_2');
-            } else {
-                $query->whereHas('maquina_2', function ($q) use ($request) {
-                    $q->where('nombre', 'like', '%' . $request->maquina . '%');
-                });
-            }
+        // Etiqueta
+        if ($request->has('etiqueta') && $request->etiqueta) {
+            $query->whereHas('etiquetaRelacion', function ($q) use ($request) {
+                $q->where('id', $request->etiqueta);
+            });
         }
 
-        if ($request->filled('producto1')) {
-            if ($request->producto1 === '.') {
-                $query->whereDoesntHave('producto');
-            } else {
-                $query->whereHas('producto', function ($q) use ($request) {
-                    $q->where('nombre', 'like', '%' . $request->producto1 . '%');
-                });
-            }
+        // Máquinas
+        if ($request->has('maquina') && $request->maquina) {
+            $query->whereHas('maquina', function ($q) use ($request) {
+                $q->where('nombre', 'like', "%{$request->maquina}%");
+            });
         }
 
-        if ($request->filled('producto2')) {
-            if ($request->producto2 === '.') {
-                $query->whereDoesntHave('producto');
-            } else {
-                $query->whereHas('producto', function ($q) use ($request) {
-                    $q->where('nombre', 'like', '%' . $request->producto2 . '%');
-                });
-            }
+        if ($request->has('maquina_2') && $request->maquina_2) {
+            $query->whereHas('maquina_2', function ($q) use ($request) {
+                $q->where('nombre', 'like', "%{$request->maquina_2}%");
+            });
         }
 
-        if ($request->filled('figura')) {
-            if ($request->figura === '.') {
-                $query->whereNull('figura');
-            } else {
-                $query->where('figura', 'like', '%' . $request->figura . '%');
-            }
+        if ($request->has('maquina3') && $request->maquina3) {
+            $query->whereHas('maquina_3', function ($q) use ($request) {
+                $q->where('nombre', 'like', "%{$request->maquina3}%");
+            });
         }
+
+        // Productos
+        if ($request->has('producto1') && $request->producto1) {
+            $query->whereHas('producto', function ($q) use ($request) {
+                $q->where('nombre', 'like', "%{$request->producto1}%");
+            });
+        }
+
+        if ($request->has('producto2') && $request->producto2) {
+            $query->whereHas('producto2', function ($q) use ($request) {
+                $q->where('nombre', 'like', "%{$request->producto2}%");
+            });
+        }
+
+        if ($request->has('producto3') && $request->producto3) {
+            $query->whereHas('producto3', function ($q) use ($request) {
+                $q->where('nombre', 'like', "%{$request->producto3}%");
+            });
+        }
+
+        // Estado
+        if ($request->has('estado') && $request->estado) {
+            $query->where('estado', 'like', "%{$request->estado}%");
+        }
+        if ($request->filled('peso')) {
+            $query->where('peso', 'like', "%{$request->peso}%");
+        }
+
+        if ($request->filled('diametro')) {
+            $query->where('diametro', 'like', "%{$request->diametro}%");
+        }
+
+        if ($request->filled('longitud')) {
+            $query->where('longitud', 'like', "%{$request->longitud}%");
+        }
+
+        // 🏷️ Ordenación dinámica
+        $allowedSortColumns = ['created_at', 'id', 'figura', 'subetiqueta', 'paquete_id'];
+
+        $sortBy = $request->filled('sort_by') && in_array($request->input('sort_by'), $allowedSortColumns)
+            ? $request->input('sort_by')
+            : 'created_at'; // Default seguro
+
+        $order = $request->filled('order') && in_array($request->input('order'), ['asc', 'desc'])
+            ? $request->input('order')
+            : 'desc'; // Default seguro
+
+        $query->orderBy($sortBy, $order);
 
         return $query;
     }
+
 
     public function index(Request $request)
     {
@@ -327,7 +378,7 @@ class ElementoController extends Controller
             Log::info('Datos antes de validar:', ['data' => $request]);
 
             // Validar los datos recibidos con mensajes personalizados
-            $validatedData = $request->validate([
+            $validated = $request->validate([
                 'users_id'      => 'nullable|integer|exists:users,id',
                 'users_id_2'    => 'nullable|integer|exists:users,id',
                 'planilla_id'   => 'nullable|integer|exists:planillas,id',
@@ -389,11 +440,40 @@ class ElementoController extends Controller
             // Registrar los datos validados antes de actualizar
             Log::info('Datos antes de actualizar:', ['data' => $validatedData]);
 
-            // Buscar el elemento a actualizar, o lanzar una excepción si no se encuentra
             $elemento = Elemento::findOrFail($id);
 
-            // Actualizar el registro con los datos validados
-            $elemento->update($validatedData);
+            // 🚚 Si cambió la máquina, recalcular etiqueta_sub_id
+            if (
+                array_key_exists('maquina_id', $validated)
+                && $validated['maquina_id'] != $elemento->maquina_id
+            ) {
+                $nuevoMaquinaId = $validated['maquina_id'];
+                $prefijo = (int) $elemento->etiqueta_sub_id; // parte antes del punto
+
+                // 1) Buscar hermanos en la máquina destino con ese mismo prefijo
+                $hermano = Elemento::where('maquina_id', $nuevoMaquinaId)
+                    ->where('etiqueta_sub_id', 'like', "$prefijo.%")
+                    ->first();
+
+                if ($hermano) {
+                    // Si existe, reutilizar la misma etiqueta_sub_id
+                    $validated['etiqueta_sub_id'] = $hermano->etiqueta_sub_id;
+                } else {
+                    // 2) No hay hermanos; generar siguiente sufijo libre
+                    $sufijos = Elemento::where('etiqueta_sub_id', 'like', "$prefijo.%")
+                        ->pluck('etiqueta_sub_id')
+                        ->map(function ($full) use ($prefijo) {
+                            return (int) explode('.', $full)[1];
+                        })
+                        ->toArray();
+
+                    $next = empty($sufijos) ? 1 : (max($sufijos) + 1);
+                    $validated['etiqueta_sub_id'] = "$prefijo.$next";
+                }
+            }
+
+            // Actualizar resto de campos
+            $elemento->update($validated);
 
             // Registrar el estado del elemento después de actualizar
             Log::info('Elemento después de actualizar:', ['data' => $elemento->toArray()]);

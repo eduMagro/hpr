@@ -61,10 +61,16 @@ function agregarItem() {
 
     // Procesamiento según tipo de item
     if (itemType === "etiqueta") {
-        // Buscar la etiqueta en datos precargados
-        const etiqueta = etiquetasData.find(
-            (e) => String(e.codigo) === String(itemCode)
-        );
+        const etiqueta = etiquetasData.find((e) => {
+            console.log(
+                "Comparando",
+                String(e.codigo),
+                "con",
+                String(itemCode)
+            );
+            return String(e.codigo).trim() === String(itemCode).trim();
+        });
+
         if (etiqueta) {
             // Si la etiqueta tiene un array de elementos, se calcula el peso sumando cada uno
             if (
@@ -193,7 +199,11 @@ function actualizarLista() {
  * - Muestra mensajes de error o éxito completos.
  ***************************************/
 function crearPaquete() {
-    console.log("Iniciando la creación del paquete con items:", items);
+    console.log(
+        "Iniciando la creación del paquete con items:",
+        JSON.stringify(items, null, 2)
+    );
+
     if (items.length === 0) {
         Swal.fire({
             icon: "warning",
@@ -209,7 +219,7 @@ function crearPaquete() {
         const bodyData = {
             items: items.map((item) => ({
                 ...item,
-                id: parseInt(item.id),
+                id: item.id,
             })),
             maquina_id: parseInt(maquinaId),
             ubicacion_id: parseInt(ubicacionId),
@@ -232,13 +242,24 @@ function crearPaquete() {
 
     // Se realiza la llamada directamente a /paquetes
     enviarSolicitudPaquete(false)
-        .then((response) => {
-            if (!response.ok) {
-                return response.json().then((errData) => {
-                    throw errData;
-                });
+        .then(async (response) => {
+            let data;
+            try {
+                data = await response.clone().json(); // Intentamos parsear JSON
+            } catch (jsonError) {
+                // Si no es JSON, interpretamos como error grave
+                throw new Error(
+                    `Error inesperado del servidor (Código ${response.status})`
+                );
             }
-            return response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message ||
+                        `Error del servidor (Código ${response.status})`
+                );
+            }
+            return data;
         })
         .then((data) => {
             if (data.success) {

@@ -194,7 +194,8 @@
 
                     @endphp
 
-                    <div id="etiqueta-{{ $etiqueta->id }}" style="background-color: #fe7f09; border: 1px solid black;"
+                    <div id="etiqueta-{{ $etiqueta->etiqueta_sub_id }}"
+                        style="background-color: #fe7f09; border: 1px solid black;"
                         class="proceso boder shadow-md mt-4">
                         <div class="p-2">
                             <h2 class="text-lg font-semibold text-gray-900">
@@ -477,8 +478,9 @@
                 alert('Debes ingresar al menos 1 nuevo elemento.');
                 return;
             }
+            const url = "{{ route('elementos.dividir', [], false) }}";
 
-            fetch("{{ route('elementos.dividir') }}", {
+            fetch(url, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
