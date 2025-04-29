@@ -34,12 +34,6 @@ class ElementoController extends Controller
                     ->orWhereHas('planilla', function ($q) use ($buscar) {
                         $q->where('codigo', 'like', "%$buscar%");
                     })
-                    ->orWhereHas('user', function ($q) use ($buscar) {
-                        $q->where('name', 'like', "%$buscar%");
-                    })
-                    ->orWhereHas('user2', function ($q) use ($buscar) {
-                        $q->where('name', 'like', "%$buscar%");
-                    })
                     ->orWhereHas('maquina', function ($q) use ($buscar) {
                         $q->where('nombre', 'like', "%$buscar%");
                     })
@@ -80,20 +74,6 @@ class ElementoController extends Controller
         if ($request->has('codigo_planilla') && $request->codigo_planilla) {
             $query->whereHas('planilla', function ($q) use ($request) {
                 $q->where('codigo', 'like', "%{$request->codigo_planilla}%");
-            });
-        }
-
-        // Usuario 1
-        if ($request->has('usuario1') && $request->usuario1) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->usuario1}%");
-            });
-        }
-
-        // Usuario 2
-        if ($request->has('usuario2') && $request->usuario2) {
-            $query->whereHas('user2', function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->usuario2}%");
             });
         }
 
@@ -187,8 +167,6 @@ class ElementoController extends Controller
             'producto2',
             'producto3',
             'paquete',
-            'user',
-            'user2'
         ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
 
         // Aplicar los filtros utilizando un método separado
@@ -292,69 +270,69 @@ class ElementoController extends Controller
      * @return \Illuminate\Http\Response
      */
 
-    public function show($id)
-    {
-        $planillas = Planilla::with([
-            'paquetes:id,planilla_id,peso,ubicacion_id',
-            'paquetes.ubicacion:id', // Cargar la ubicación de cada paquete
-            'etiquetas:id,planilla_id,estado,peso,paquete_id',
-            'elementos:id,planilla_id,estado,peso,ubicacion_id,etiqueta_id,paquete_id,maquina_id',
-            'elementos.ubicacion:id,nombre', // Cargar la ubicación de cada elemento
-            'elementos.maquina:id,nombre' // Cargar la máquina de cada elemento
-        ])->get();
+    // public function show($id)
+    // {
+    //     $planillas = Planilla::with([
+    //         'paquetes:id,planilla_id,peso,ubicacion_id',
+    //         'paquetes.ubicacion:id', // Cargar la ubicación de cada paquete
+    //         'etiquetas:id,planilla_id,estado,peso',
+    //         'elementos:id,planilla_id,estado,peso,etiqueta_id,paquete_id,maquina_id',
+    //         'elementos.ubicacion:id,nombre', // Cargar la ubicación de cada elemento
+    //         'elementos.maquina:id,nombre' // Cargar la máquina de cada elemento
+    //     ])->get();
 
-        // Función para asignar color de fondo según estado
-        $getColor = function ($estado, $tipo) {
-            $estado = strtolower($estado ?? 'desconocido');
+    //     // Función para asignar color de fondo según estado
+    //     $getColor = function ($estado, $tipo) {
+    //         $estado = strtolower($estado ?? 'desconocido');
 
-            if ($tipo === 'etiqueta' && $estado === 'completada') {
-                $estado = 'completado';
-            }
+    //         if ($tipo === 'etiqueta' && $estado === 'completada') {
+    //             $estado = 'completado';
+    //         }
 
-            return match ($estado) {
-                'completado' => 'bg-green-200',
-                'pendiente' => 'bg-red-200',
-                'fabricando' => 'bg-blue-200',
-                default => 'bg-gray-200'
-            };
-        };
+    //         return match ($estado) {
+    //             'completado' => 'bg-green-200',
+    //             'pendiente' => 'bg-red-200',
+    //             'fabricando' => 'bg-blue-200',
+    //             default => 'bg-gray-200'
+    //         };
+    //     };
 
-        // Procesar cada planilla
-        $planillasCalculadas = $planillas->map(function ($planilla) use ($getColor) {
-            $pesoAcumulado = $planilla->elementos->where('estado', 'completado')->sum('peso');
-            $pesoTotal = max(1, $planilla->peso_total ?? 1);
-            $progreso = min(100, ($pesoAcumulado / $pesoTotal) * 100);
+    //     // Procesar cada planilla
+    //     $planillasCalculadas = $planillas->map(function ($planilla) use ($getColor) {
+    //         $pesoAcumulado = $planilla->elementos->where('estado', 'completado')->sum('peso');
+    //         $pesoTotal = max(1, $planilla->peso_total ?? 1);
+    //         $progreso = min(100, ($pesoAcumulado / $pesoTotal) * 100);
 
-            $paquetes = $planilla->paquetes->map(function ($paquete) use ($getColor) {
-                $paquete->color = $getColor($paquete->estado, 'paquete');
-                return $paquete;
-            });
+    //         $paquetes = $planilla->paquetes->map(function ($paquete) use ($getColor) {
+    //             $paquete->color = $getColor($paquete->estado, 'paquete');
+    //             return $paquete;
+    //         });
 
-            $elementos = $planilla->elementos->map(function ($elemento) use ($getColor) {
-                $elemento->color = $getColor($elemento->estado, 'elemento');
-                return $elemento;
-            });
+    //         $elementos = $planilla->elementos->map(function ($elemento) use ($getColor) {
+    //             $elemento->color = $getColor($elemento->estado, 'elemento');
+    //             return $elemento;
+    //         });
 
-            $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $elementos) {
-                $etiqueta->color = $getColor($etiqueta->estado, 'etiqueta');
-                $etiqueta->elementos = $elementos->where('etiqueta_id', $etiqueta->id);
-                return $etiqueta;
-            });
+    //         $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $elementos) {
+    //             $etiqueta->color = $getColor($etiqueta->estado, 'etiqueta');
+    //             $etiqueta->elementos = $elementos->where('etiqueta_id', $etiqueta->id);
+    //             return $etiqueta;
+    //         });
 
-            return [
-                'planilla' => $planilla,
-                'pesoAcumulado' => $pesoAcumulado,
-                'pesoRestante' => max(0, $pesoTotal - $pesoAcumulado),
-                'progreso' => round($progreso, 2),
-                'paquetes' => $paquetes,
-                'etiquetas' => $etiquetas,
-                'elementos' => $elementos,
-                'etiquetasSinPaquete' => $etiquetas->whereNull('paquete_id')
-            ];
-        });
+    //         return [
+    //             'planilla' => $planilla,
+    //             'pesoAcumulado' => $pesoAcumulado,
+    //             'pesoRestante' => max(0, $pesoTotal - $pesoAcumulado),
+    //             'progreso' => round($progreso, 2),
+    //             'paquetes' => $paquetes,
+    //             'etiquetas' => $etiquetas,
+    //             'elementos' => $elementos,
+    //             'etiquetasSinPaquete' => $etiquetas->whereNull('paquete_id')
+    //         ];
+    //     });
 
-        return view('elementos.show', compact('planillasCalculadas'));
-    }
+    //     return view('elementos.show', compact('planillasCalculadas'));
+    // }
     public function showByEtiquetas($planillaId)
     {
 
@@ -379,8 +357,6 @@ class ElementoController extends Controller
 
             // Validar los datos recibidos con mensajes personalizados
             $validated = $request->validate([
-                'users_id'      => 'nullable|integer|exists:users,id',
-                'users_id_2'    => 'nullable|integer|exists:users,id',
                 'planilla_id'   => 'nullable|integer|exists:planillas,id',
                 'etiqueta_id'   => 'nullable|integer|exists:etiquetas,id',
                 'paquete_id'    => 'nullable|integer|exists:paquetes,id',
@@ -399,10 +375,6 @@ class ElementoController extends Controller
                 'longitud'      => 'nullable|numeric',
                 'estado'        => 'nullable|string|max:50'
             ], [
-                'users_id.integer'      => 'El campo users_id debe ser un número entero.',
-                'users_id.exists'       => 'El usuario especificado en users_id no existe.',
-                'users_id_2.integer'    => 'El campo users_id_2 debe ser un número entero.',
-                'users_id_2.exists'     => 'El usuario especificado en users_id_2 no existe.',
                 'planilla_id.integer'   => 'El campo planilla_id debe ser un número entero.',
                 'planilla_id.exists'    => 'La planilla especificada en planilla_id no existe.',
                 'etiqueta_id.integer'   => 'El campo etiqueta_id debe ser un número entero.',
@@ -438,7 +410,7 @@ class ElementoController extends Controller
 
 
             // Registrar los datos validados antes de actualizar
-            Log::info('Datos antes de actualizar:', ['data' => $validatedData]);
+            Log::info('Datos antes de actualizar:', ['data' => $validated]);
 
             $elemento = Elemento::findOrFail($id);
 

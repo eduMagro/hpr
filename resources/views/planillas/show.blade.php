@@ -69,10 +69,10 @@
             <p class="text-gray-500 mt-4">No hay paquetes empaquetados.</p>
         @endif
 
-        {{-- @if ($planillaCalculada['elementosSinPaquete']->isNotEmpty())
+        @if ($planillaCalculada['elementosSinPaquete']->isNotEmpty())
             <h3 class="text-md font-semibold mt-8 text-gray-800">Elementos sin paquete</h3>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                @foreach ($planillaCalculada['elementosSinPaquete']->reject(fn($e) => $planillaCalculada['subpaquetes']->contains('elemento_id', $e->id)) as $elemento)
+                @foreach ($planillaCalculada['elementosSinPaquete'] as $elemento)
                     <div class="bg-white shadow-md rounded-lg p-4 border {{ $elemento->color }} text-gray-800">
                         <strong>Elemento #{{ $elemento->id }}</strong> -
                         Peso: {{ number_format($elemento->peso, 2) }} kg
@@ -87,6 +87,7 @@
             </div>
         @else
             <p class="text-gray-500 mt-4">No hay elementos sin paquete.</p>
-        @endif --}}
+        @endif
+
     </div>
 </x-app-layout>

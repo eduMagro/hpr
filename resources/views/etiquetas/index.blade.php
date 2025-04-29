@@ -73,10 +73,12 @@
                                         placeholder="Buscar">
                                 </form>
                             </th>
-                            <th class="p-2 border">Ensamblador 1</th>
-                            <th class="p-2 border">Ensamblador 2</th>
-                            <th class="p-2 border">Soldador 1</th>
-                            <th class="p-2 border">Soldador 2</th>
+                            <th class="p-2 border">Op 1</th>
+                            <th class="p-2 border">Op 2</th>
+                            <th class="p-2 border">Ens 1</th>
+                            <th class="p-2 border">Ens 2</th>
+                            <th class="p-2 border">Sol 1</th>
+                            <th class="p-2 border">Sol 2</th>
                             {{-- <th class="px-4 py-3 border">Paquete</th> --}}
                             <th class="p-2 border">Número de Etiqueta
                                 <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
@@ -139,12 +141,35 @@
                                     @endif
                                 </td>
 
+                                <!-- Opeario 1 (no editable) -->
+                                <td class="p-2 text-center border">
+                                    @if ($etiqueta->operario1)
+                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->operario1]) }}"
+                                            class="text-blue-500 hover:underline">
+                                            {{ $etiqueta->operario1->name }}
+                                        </a>
+                                    @else
+                                        N/A
+                                    @endif
+                                </td>
+
+                                <!-- Operario 2 (no editable) -->
+                                <td class="p-2 text-center border">
+                                    @if ($etiqueta->opeario2)
+                                        <a href="{{ route('users.index', ['users_id' => $etiqueta->opeario2]) }}"
+                                            class="text-blue-500 hover:underline">
+                                            {{ $etiqueta->opeario2->name }}
+                                        </a>
+                                    @else
+                                        N/A
+                                    @endif
+                                </td>
                                 <!-- Ensamblador 1 (no editable) -->
                                 <td class="p-2 text-center border">
                                     @if ($etiqueta->ensamblador1)
                                         <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador1]) }}"
                                             class="text-blue-500 hover:underline">
-                                            {{ $etiqueta->ensambladorRelacion->name }}
+                                            {{ $etiqueta->ensamblador1->name }}
                                         </a>
                                     @else
                                         N/A
@@ -156,7 +181,7 @@
                                     @if ($etiqueta->ensamblador2)
                                         <a href="{{ route('users.index', ['users_id' => $etiqueta->ensamblador2]) }}"
                                             class="text-blue-500 hover:underline">
-                                            {{ $etiqueta->ensamblador2Relacion->name }}
+                                            {{ $etiqueta->ensamblador2->name }}
                                         </a>
                                     @else
                                         N/A
@@ -164,10 +189,10 @@
                                 </td>
 
                                 <!-- Soldador1 (no editable) -->
-                                <td class="p-2 text-center border">{{ $etiqueta->soldador1 ?? 'N/A' }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->soldador1->name ?? 'N/A' }}</td>
 
                                 <!-- Soldador2 (no editable) -->
-                                <td class="p-2 text-center border">{{ $etiqueta->soldador2 ?? 'N/A' }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->soldador2->name ?? 'N/A' }}</td>
 
                                 <!-- Número de Etiqueta (editable) -->
                                 <td class="p-2 text-center border">

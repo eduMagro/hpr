@@ -24,8 +24,6 @@ class Elemento extends Model
     // Campos que se pueden asignar masivamente
     protected $fillable = [
         'id',
-        'users_id',
-        'users_id_2',
         'planilla_id',
         'etiqueta_id',
         'etiqueta_sub_id',
@@ -132,15 +130,6 @@ class Elemento extends Model
         return $this->belongsTo(Paquete::class, 'paquete_id');
     }
 
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'users_id');  // Relación con User
-    }
-    // Relación con el segundo usuario
-    public function user2()
-    {
-        return $this->belongsTo(User::class, 'users_id_2');
-    }
     // Longitudes
     public function getLongitudCmAttribute()
     {

@@ -84,7 +84,7 @@
             $estados = [
                 'pendiente' => 'Pendiente',
                 'fabricando' => 'Fabricando',
-                'completado' => 'Completado',
+                'fabricado' => 'Fabricado',
                 'montaje' => 'En Montaje',
             ];
             $filtrosActivos[] = 'Estado: <strong>' . ($estados[request('estado')] ?? request('estado')) . '</strong>';
@@ -149,8 +149,6 @@
                         <!-- Encabezados con orden dinámico -->
                         <th class="p-2 border">{!! ordenarColumnaElemento('id', 'ID') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('codigo_planilla', 'Planilla') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('usuario1', 'Op. 1') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('usuario2', 'Op. 2') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('etiqueta', 'Etiqueta') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('subetiqueta', 'SubEtiqueta') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('paquete_id', 'Paquete') !!}</th>
@@ -170,7 +168,7 @@
 
                     <form method="GET" action="{{ route('elementos.index') }}">
                         <tr class="text-center text-xs uppercase">
-                            @foreach (['id', 'codigo_planilla', 'usuario1', 'usuario2', 'etiqueta', 'subetiqueta', 'paquete_id', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura'] as $campo)
+                            @foreach (['id', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'paquete_id', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura'] as $campo)
                                 <th class="py-3 border">
                                     <input type="text" name="{{ $campo }}" value="{{ request($campo) }}"
                                         class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -205,8 +203,8 @@
                                         Pendiente</option>
                                     <option value="fabricando"
                                         {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando</option>
-                                    <option value="completado"
-                                        {{ request('estado') == 'completado' ? 'selected' : '' }}>Completado</option>
+                                    <option value="fabricado" {{ request('estado') == 'fabricado' ? 'selected' : '' }}>
+                                        Fabricado</option>
                                     <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>
                                         Montaje</option>
                                 </select>
@@ -226,7 +224,7 @@
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
-                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
+                        {{-- <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
                             x-data="{
                                 editando: false,
                                 elemento: @js($elemento),
@@ -243,7 +241,23 @@
                                     this.elemento.maquina_2 = this.elemento.maquina_2 || { nombre: 'N/A' };
                                     this.elemento.maquina_3 = this.elemento.maquina_3 || { nombre: 'N/A' };
                                 }
-                            }" x-init="inicializar()">
+                            }" x-init="inicializar()"> --}}
+                        <tr tabindex="0" x-data="{
+                            editando: false,
+                            elemento: @js($elemento),
+                            original: JSON.parse(JSON.stringify(@js($elemento)))
+                        }"
+                            @dblclick="if(!$event.target.closest('input')) {
+                                  if(!editando) {
+                                    editando = true;
+                                  } else {
+                                    elemento = JSON.parse(JSON.stringify(original));
+                                    editando = false;
+                                  }
+                                }"
+                            @keydown.enter.stop="guardarCambios(elemento); editando = false"
+                            :class="{ 'bg-yellow-100': editando }"
+                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
                             <!-- ID -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
@@ -254,36 +268,12 @@
                             <!-- PLANILLA -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <a href="{{ route('planillas.index', ['id' => $elemento->planilla->id]) }}"
+                                    <a href="{{ route('planillas.index', ['planilla_id' => $elemento->planilla->id]) }}"
                                         class="text-blue-500 hover:underline">
                                         {{ $elemento->planilla->codigo_limpio }}
                                     </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.planilla.codigo_limpio"
-                                    class="form-input w-full">
-                            </td>
-                            <!-- USUARIO 1 -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <a href="{{ route('users.index', ['id' => $elemento->user->id ?? '#']) }}"
-                                        class="text-blue-500 hover:underline">
-                                        {{ $elemento->user->name ?? 'N/A' }}
-                                    </a>
-                                </template>
-                                <!-- En modo edición, se edita el id de la máquina -->
-                                <input x-show="editando" type="text" x-model="elemento.users_id"
-                                    class="form-input w-full">
-                            </td>
-                            <!-- USUARIO 2 -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <a href="{{ route('users.index', ['id' => $elemento->user2->id ?? '#']) }}"
-                                        class="text-blue-500 hover:underline">
-                                        {{ $elemento->user2->name ?? 'N/A' }}
-                                    </a>
-                                </template>
-                                <!-- En modo edición, se edita el id de la máquina -->
-                                <input x-show="editando" type="text" x-model="elemento.users_id_2"
                                     class="form-input w-full">
                             </td>
 
@@ -309,7 +299,7 @@
                                     </a>
 
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.etiquetaRelacion.id"
+                                <input x-show="editando" type="text" x-model="elemento.subetiquetas"
                                     class="form-input w-full">
                             </td>
                             <!-- PAQUETE -->
@@ -435,7 +425,7 @@
                                 <select x-show="editando" x-model="elemento.estado" class="form-select w-full">
                                     <option value="pendiente">Pendiente</option>
                                     <option value="fabricando">Fabricando</option>
-                                    <option value="completado">Completado</option>
+                                    <option value="fabricado">Fabricado</option>
                                 </select>
                             </td>
                             <!-- Botones -->

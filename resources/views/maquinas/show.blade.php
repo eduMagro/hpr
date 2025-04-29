@@ -106,21 +106,21 @@
 
                 @php
                     $idsReempaquetados = collect($elementosReempaquetados ?? []);
+
                     function debeSerExcluido($elemento)
                     {
                         // Verificar si el elemento tiene un paquete directo
                         $tienePaqueteDirecto = !is_null($elemento->paquete_id);
 
-                        // Verificar si el estado es "completado"
-                        $estaCompletado = strtolower($elemento->estado) === 'completado';
+                        // Verificar si el estado es "fabricado"
+                        $estaFabricado = strtolower($elemento->estado) === 'fabricado';
 
-                        // Excluir solo si el elemento tiene un paquete directo O si todos sus subpaquetes están en un paquete Y además está completado
-                        return $tienePaqueteDirecto && $estaCompletado;
+                        // Excluir solo si el elemento está fabricado Y pertenece a un paquete
+                        return $tienePaqueteDirecto && $estaFabricado;
                     }
 
                     if (stripos($maquina->tipo, 'ensambladora') !== false) {
                         $elementosAgrupados = $elementosMaquina
-                            ->reject(fn($e) => $idsReempaquetados->contains($e->id))
                             ->groupBy('etiqueta_sub_id')
                             ->filter(function ($grupo) use ($maquina) {
                                 return $grupo->contains(function ($elemento) use ($maquina) {
@@ -147,6 +147,7 @@
                             })
                             ->groupBy('etiqueta_sub_id');
                     }
+
                     // Ordenar los grupos por la fecha_estimada_entrega de la planilla sin alterar el orden interno
                     $elementosAgrupados = $elementosAgrupados->sortBy(
                         fn($grupo) => optional($grupo->first()->planilla)->fecha_estimada_entrega,
@@ -178,7 +179,6 @@
                         })
                         ->values();
                 @endphp
-
                 @forelse ($elementosAgrupados as $etiquetaId => $elementos)
                     @php
                         $firstElement = $elementos->first();
@@ -533,10 +533,6 @@
 
         // console.log("Datos precargados de etiquetas:", window.etiquetasData);
         // console.log("Pesos precargados de elementos:", window.pesosElementos);
-
-
-        let elementosEnUnaSolaMaquina = @json($elementosEnUnaSolaMaquina->pluck('id')->toArray());
-        let etiquetasEnUnaSolaMaquina = @json($etiquetasEnUnaSolaMaquina);
     </script>
     <!-- SCRIPT PARA IMPRIMIR QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>

@@ -253,27 +253,41 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     function scrollToNextDiv(currentEtiquetaId) {
-        const safeId = currentEtiquetaId.replace(/\./g, "-"); // 🔹 Corriges los puntos (bien)
-        const currentDiv = document.getElementById(`etiqueta-${safeId}`); // 🔹 Buscas el div
+        const safeId = currentEtiquetaId.replace(/\./g, "-");
+        const currentDiv = document.getElementById(`etiqueta-${safeId}`);
+        const allDivs = Array.from(document.querySelectorAll(".proceso"));
 
-        if (!currentDiv) {
-            console.warn(
-                `No se encontró el div actual para el ID: etiqueta-${safeId}`
-            );
-            return;
+        let siguienteDiv = null;
+
+        if (currentDiv) {
+            // Si existe, buscamos el siguiente div a partir del actual
+            const indexActual = allDivs.indexOf(currentDiv);
+            for (let i = indexActual + 1; i < allDivs.length; i++) {
+                const div = allDivs[i];
+                const estadoSpan = div.querySelector('[id^="estado-"]');
+                if (
+                    estadoSpan &&
+                    estadoSpan.innerText.trim().toLowerCase() !== "completada"
+                ) {
+                    siguienteDiv = div;
+                    break;
+                }
+            }
+        } else {
+            // Si NO existe el div actual, buscamos el primer div disponible que no esté completado
+            for (let i = 0; i < allDivs.length; i++) {
+                const div = allDivs[i];
+                const estadoSpan = div.querySelector('[id^="estado-"]');
+                if (
+                    estadoSpan &&
+                    estadoSpan.innerText.trim().toLowerCase() !== "completada"
+                ) {
+                    siguienteDiv = div;
+                    break;
+                }
+            }
         }
 
-        const allDivs = Array.from(document.querySelectorAll(".proceso")); // 🔹 Agarras todos los divs `.proceso`
-        const indexActual = allDivs.indexOf(currentDiv); // 🔹 Buscas la posición
-
-        if (indexActual === -1) {
-            console.warn(
-                "No se encontró el índice del div actual en la lista de procesos."
-            );
-            return;
-        }
-
-        const siguienteDiv = allDivs[indexActual + 1];
         if (siguienteDiv) {
             siguienteDiv.scrollIntoView({
                 behavior: "smooth",
@@ -286,9 +300,8 @@ document.addEventListener("DOMContentLoaded", () => {
             Swal.fire({
                 icon: "success",
                 title: "¡Perfecto!",
-                text: "Has terminado todas las etiquetas de esta máquina.",
-                timer: 2500,
-                showConfirmButton: false,
+                text: "Has terminado todas las etiquetas de esta planilla.",
+                showConfirmButton: true,
             });
         }
     }

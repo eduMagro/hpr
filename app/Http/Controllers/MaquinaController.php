@@ -11,25 +11,84 @@ use App\Models\User;
 use App\Models\Ubicacion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Session;
 
 
 class MaquinaController extends Controller
 {
     public function index(Request $request)
     {
+        // Conseguir lista de operarios
         $usuarios = User::where('id', '!=', auth()->id())
             ->where('rol', 'operario')
             ->get();
+        $elementos = Elemento::select(
+            'elementos.*',
+            // Alias que elige la columna de agrupamiento según el tipo de máquina
+            DB::raw("
+                    CASE
+                        WHEN maquinas.tipo = 'ensambladora' THEN elementos.maquina_id_2
+                        WHEN maquinas.tipo = 'soldadora'    THEN elementos.maquina_id_3
+                        ELSE elementos.maquina_id
+                    END as maquina_group_id
+                ")
+        )
+            // Necesitamos el tipo de la máquina original
+            ->join('maquinas', 'maquinas.id', '=', 'elementos.maquina_id')
+            // Para ordenar por fecha de entrega de la planilla
+            ->join('planillas', 'planillas.id', '=', 'elementos.planilla_id')
 
+            // ➖ Excluimos los elementos que *tengan* al menos 1 etiqueta completada
+            ->whereDoesntHave('subetiquetas', function ($q) {
+                $q->where('estado', 'completada');
+            })
+
+
+            // Filtrado condicional:
+            ->where(function ($q) {
+                $q->where(function ($q1) {
+                    // máquinas “normales” (ni ensambladora ni soldadora)
+                    $q1->where('maquinas.tipo', '<>', 'ensambladora')
+                        ->where('maquinas.tipo', '<>', 'soldadora')
+                        ->whereNotNull('elementos.maquina_id');
+                })
+                    ->orWhere(function ($q2) {
+                        // ensambladoras → uso de maquina_id_2
+                        $q2->where('maquinas.tipo', 'ensambladora')
+                            ->whereNotNull('elementos.maquina_id_2');
+                    })
+                    ->orWhere(function ($q3) {
+                        // soldadoras → uso de maquina_id_3
+                        $q3->where('maquinas.tipo', 'soldadora')
+                            ->whereNotNull('elementos.maquina_id_3');
+                    });
+            })
+
+            // Ordenamos en SQL por el alias y por fecha de entrega
+            ->orderBy('maquina_group_id', 'asc')
+            ->orderBy('planillas.fecha_estimada_entrega', 'asc')
+
+            // Cargamos la relación para evitar N+1
+            ->with('planilla')
+
+            ->get();
+
+        // Finalmente agrupamos en memoria según el alias
+        $colaPorMaquina = $elementos
+            ->groupBy('maquina_group_id')
+            ->map->values();
+        // Ahora $colaPorMaquina es una Collection donde cada clave es el ID de máquina
+        // y el valor es otra Collection (ordenada por fecha) de elementos asociados.
+
+        // Conseguir lista de maquinas con productos y conteo de elementos en cada una 
         $query = Maquina::with('productos')
             ->selectRaw('maquinas.*, (
-                SELECT COUNT(*) FROM elementos 
+                SELECT COUNT(*) FROM elementos
                 WHERE elementos.maquina_id_2 = maquinas.id
             ) as elementos_ensambladora')
             ->withCount(['elementos as elementos_count' => function ($query) {
-                $query->where('estado', '!=', 'completado');
+                $query->where('estado', '!=', 'fabricado');
             }]);
-
 
         // Aplicar filtro por nombre si se pasa como parámetro en la solicitud
         if ($request->filled('nombre')) {
@@ -59,10 +118,10 @@ class MaquinaController extends Controller
                 'elementos_ensambladora' => $maquina->elementos_ensambladora,
             ];
         });
-        // dd($datosDepuracion->toArray());
+        //dd($datosDepuracion->toArray());
 
         // Pasar las máquinas y usuarios a la vista
-        return view('maquinas.index', compact('registrosMaquina', 'usuarios'));
+        return view('maquinas.index', compact('registrosMaquina', 'usuarios', 'colaPorMaquina'));
     }
 
 
@@ -71,164 +130,169 @@ class MaquinaController extends Controller
     //------------------------------------------------------------------------------------ SHOW
     public function show($id)
     {
-        // 1) Cargar la máquina y sus relaciones
+        // ---------------------------------------------------------------
+        // 1) Cargar la máquina con relaciones precargadas
+        // ---------------------------------------------------------------
         $maquina = Maquina::with([
-            'elementos.planilla',
-            'elementos.etiquetaRelacion',
-            'elementos.subetiquetas',
-            'productos'
+            'elementos.planilla',        // Planilla de cada elemento
+            'elementos.etiquetaRelacion', // Etiqueta principal de cada elemento
+            'elementos.subetiquetas',     // Sub-etiquetas de cada elemento
+            'productos'                   // Productos actualmente en la máquina
         ])->findOrFail($id);
 
-        $ubicacion = Ubicacion::where('descripcion', 'like', '%' . $maquina->codigo . '%')->first();
+        // ---------------------------------------------------------------
+        // 2) Determinar la ubicación buscando el código de la máquina
+        // ---------------------------------------------------------------
+        $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
 
+        // ---------------------------------------------------------------
+        // 3) Obtener el usuario autenticado y compañero de sesión (si existe)
+        // ---------------------------------------------------------------
         $usuario1 = auth()->user();
-        $usuario2 = session('compañero_id') ? User::find(session('compañero_id')) : null;
-
-        // Decodificar nombres (por tu lógica)
         $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
-        if ($usuario2) {
-            $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
-        }
 
-        // 2) Verificar si la máquina es "IDEA 5"
-        $maquinaIdea5 = Maquina::whereRaw('LOWER(nombre) = ?', ['idea 5'])->first();
-
-        // 3) Cargar la colección base de elementos para ESTA máquina
-        $elementosMaquina = $maquina->elementos;
-        $elementosMaquina = $elementosMaquina->load('etiquetaRelacion');
-
-        // 4) Si estamos en "IDEA 5", fusionar elementos que tengan maquina_id_2 = Idea5 (y otra maquina principal)
-        if ($maquinaIdea5 && $maquina->id == $maquinaIdea5->id) {
-            $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)
-                ->where('maquina_id', '!=', $maquinaIdea5->id)
-                ->get();
-            $elementosMaquina = $elementosMaquina->merge($elementosExtra);
-        }
-
-        // ---------------------------------------------------------------
-        // A) AGRUPAR POR PLANILLA LOS ELEMENTOS DE ESTA MÁQUINA
-        //    (solo se agrupan planillas que de verdad tienen elementos en esta máquina).
-        // ---------------------------------------------------------------
-        $elementosPorPlanilla = $elementosMaquina
-            ->groupBy('planilla_id')
-            ->sortBy(function ($grupo) {
-                // Ordenar por fecha_estimada_entrega de la planilla
-                return optional($grupo->first()->planilla)->fecha_estimada_entrega;
-            });
-
-        // ---------------------------------------------------------------
-        // B) SELECCIONAR LA PRIMERA PLANILLA "NO COMPLETADA" CON ELEMENTOS PENDIENTES
-        //    Esto significa: planilla->estado != 'Completada'
-        //    (o tu propia lógica) y que haya al menos un elemento sin completar
-        // ---------------------------------------------------------------
-        $planillaActiva = null;
-        foreach ($elementosPorPlanilla as $planillaId => $grupo) {
-            $planilla = $grupo->first()->planilla;
-
-            // Aquí asumes que si planilla->estado != 'Completada' => No está terminada
-            // (Ajusta según tu DB: 'Pendiente', 'En proceso', etc.)
-            if ($planilla && $planilla->estado !== 'Completada') {
-                // Opcional: verifica si en ese grupo hay AL MENOS un elemento sin estado 'completado'
-                // (si no quieres filtrar por elemento, quita esta parte)
-                $hayElementosPendientes = $grupo->contains(function ($elem) {
-                    return strtolower($elem->estado) !== 'completado';
-                });
-
-                if ($hayElementosPendientes) {
-                    $planillaActiva = $planilla;
-                    break; // la primera que encontramos
-                }
+        $usuario2 = null;
+        if (Session::has('compañero_id')) {
+            $usuario2 = User::find(Session::get('compañero_id'));
+            if ($usuario2) {
+                $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
             }
         }
 
         // ---------------------------------------------------------------
-        // C) QUEDARNOS SOLO CON LOS ELEMENTOS DE ESTA PLANILLA ACTIVA
-        //    (si no hay planilla activa, quedará vacío)
+        // 4) Colección base de elementos para esta máquina
+        //    - Solo los que están en estado "Pendiente"
+        //    - Incluye sub-etiquetas
         // ---------------------------------------------------------------
-        if ($planillaActiva) {
-            $elementosMaquina = $elementosMaquina->filter(function ($elem) use ($planillaActiva) {
-                return $elem->planilla_id == $planillaActiva->id;
+        $elementosMaquina = $maquina
+            ->elementos()
+            // ->where('estado', 'pendiente')
+            ->with('subetiquetas')
+            ->get();
+
+        // ---------------------------------------------------------------
+        // 5) Si es una ensambladora, añadir elementos trasladados desde otra máquina
+        // ---------------------------------------------------------------
+        if (stripos($maquina->tipo, 'ensambladora') !== false) {
+            $elementosExtra = Elemento::where('maquina_id_2', $maquina->id)
+                ->where('maquina_id', '!=', $maquina->id)
+                ->with('subetiquetas')
+                ->get();
+
+            // Unir ambas colecciones
+            $elementosMaquina = $elementosMaquina->merge($elementosExtra);
+        }
+
+        // ---------------------------------------------------------------
+        // 6) Agrupar elementos por planilla y ordenar por fecha de entrega
+        // ---------------------------------------------------------------
+        $elementosPorPlanilla = $elementosMaquina
+            ->groupBy('planilla_id')
+            ->sortBy(function ($grupo) {
+                return optional($grupo->first()->planilla)->fecha_estimada_entrega;
             });
+
+        // ---------------------------------------------------------------
+        // 7) Seleccionar la primera planilla "activa" con elementos pendientes
+        // ---------------------------------------------------------------
+        $planillaActiva = null;
+        foreach ($elementosPorPlanilla as $grupo) {
+            $planilla = $grupo->first()->planilla;
+            if ($planilla && $planilla->estado !== 'completada') {
+                $hayPendientesOSinPaquete = $grupo->contains(function ($elem) {
+                    return strtolower($elem->estado) !== 'fabricado'
+                        || (strtolower($elem->estado) === 'fabricado' && is_null($elem->paquete_id));
+                });
+
+                if ($hayPendientesOSinPaquete) {
+                    $planillaActiva = $planilla;
+                    break;
+                }
+            }
+        }
+
+        // Nota: Para filtrar elementos a esta planilla activa, descomenta:
+        if ($planillaActiva) {
+            $elementosMaquina = $elementosMaquina->where('planilla_id', $planillaActiva->id);
         } else {
-            // No hay planilla pendiente para esta máquina => sin elementos
             $elementosMaquina = collect();
         }
 
-        // El resto de la lógica parte ya de LOS ELEMENTOS de la planilla activa
         // ---------------------------------------------------------------
+        // 8) Preparar datos adicionales para la vista
+        //    A) IDs de etiquetas en esta máquina
+        //    B) Elementos de esas etiquetas en otras máquinas
+        //    C) Etiquetas presentes en una sola máquina
+        //    D) Elementos de esas etiquetas
+        //    E) Datos de peso y etiquetas para JavaScript
+        // ---------------------------------------------------------------
+        // A)
+        // $etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
 
-        // 6) Recolectar etiquetas
-        $etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
+        // // B)
+        // $otrosElementos = Elemento::with('maquina')
+        //     ->whereIn('etiqueta_id', $etiquetasIds)
+        //     ->where('maquina_id', '!=', $maquina->id);
 
-        // 7) Otros elementos (siempre que necesites mostrarlos, ajusta tu lógica)
-        $otrosElementos = Elemento::with('maquina')
-            ->whereIn('etiqueta_id', $etiquetasIds)
-            ->where('maquina_id', '!=', $maquina->id);
+        // if (stripos($maquina->tipo, 'ensambladora') !== false) {
+        //     $otrosElementos = $otrosElementos->where(function ($query) use ($maquina) {
+        //         $query->where('maquina_id_2', '!=', $maquina->id)
+        //             ->orWhereNull('maquina_id_2');
+        //     });
+        // }
 
-        // Si la máquina actual es la Idea5, excluimos los de maquina_id_2 = Idea5
-        if ($maquinaIdea5) {
-            $otrosElementos = $otrosElementos->where(function ($query) use ($maquinaIdea5) {
-                $query->where('maquina_id_2', '!=', $maquinaIdea5->id)
-                    ->orWhereNull('maquina_id_2');
-            });
-        }
-        $otrosElementos = $otrosElementos->get()->groupBy('etiqueta_id');
+        // $otrosElementos = $otrosElementos->get()->groupBy('etiqueta_id');
 
-        // 8) Etiquetas con elementos en una sola máquina
-        $etiquetasEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasIds)
-            ->selectRaw('etiqueta_id, COUNT(DISTINCT maquina_id) as total_maquinas')
-            ->groupBy('etiqueta_id')
-            ->having('total_maquinas', 1)
-            ->pluck('etiqueta_id');
+        // // C)
+        // $etiquetasEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasIds)
+        //     ->selectRaw('etiqueta_id, COUNT(DISTINCT maquina_id) as total_maquinas')
+        //     ->groupBy('etiqueta_id')
+        //     ->having('total_maquinas', 1)
+        //     ->pluck('etiqueta_id');
 
-        // 9) Elementos de esas etiquetas
-        $elementosEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasEnUnaSolaMaquina)
-            ->with('maquina')
-            ->get();
+        // // D)
+        // $elementosEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasEnUnaSolaMaquina)
+        //     ->with('maquina')
+        //     ->get();
 
-        // Fusionar con elementos de maquina_id_2 = Idea5
-        if ($maquinaIdea5) {
-            $elementosExtra = Elemento::where('maquina_id_2', $maquinaIdea5->id)->get();
-            $elementosEnUnaSolaMaquina = $elementosEnUnaSolaMaquina->merge($elementosExtra);
-        }
+        // if (stripos($maquina->tipo, 'ensambladora') !== false) {
+        //     $extra = Elemento::where('maquina_id_2', $maquina->id)->get();
+        //     $elementosEnUnaSolaMaquina = $elementosEnUnaSolaMaquina->merge($extra);
+        // }
 
-        // 10) Preparar datos de pesos
-        $pesosElementos = $elementosMaquina->map(function ($item) {
-            return [
-                'id'   => $item->id,
-                'peso' => $item->peso,
-            ];
-        })->values()->toArray();
+        // E)
+        $pesosElementos = $elementosMaquina->map(fn($item) => [
+            'id'   => $item->id,
+            'peso' => $item->peso,
+        ])->values()->toArray();
 
         $etiquetasData = $elementosMaquina
-            ->filter(fn($item) => !empty($item->etiqueta_sub_id)) // evitamos elementos raros
+            ->filter(fn($item) => !empty($item->etiqueta_sub_id))
             ->groupBy('etiqueta_sub_id')
-            ->map(function ($grupo, $subId) {
-                return [
-                    'codigo'    => (string) $subId,
-                    'elementos' => $grupo->pluck('id')->toArray(),
-                    'pesoTotal' => $grupo->sum('peso'),
-                ];
-            })
+            ->map(fn($grupo, $subId) => [
+                'codigo'    => (string) $subId,
+                'elementos' => $grupo->pluck('id')->toArray(),
+                'pesoTotal' => $grupo->sum('peso'),
+            ])
             ->values();
 
+        $elementosReempaquetados = Session::get('elementos_reempaquetados', []);
 
-        //Cogemos los elementos reenpaquetados para la ensambladora
-        $elementosReempaquetados = session('elementos_reempaquetados', []);
-
-        // 13) Retornar la vista (asegúrate de usar `$elementosMaquina` en la vista)
+        // ---------------------------------------------------------------
+        // 9) Retornar la vista con todos los datos preparados
+        // ---------------------------------------------------------------
         return view('maquinas.show', [
             'maquina'                   => $maquina,
             'ubicacion'                 => $ubicacion,
             'usuario1'                  => $usuario1,
             'usuario2'                  => $usuario2,
-            'otrosElementos'            => $otrosElementos,
-            'etiquetasEnUnaSolaMaquina' => $etiquetasEnUnaSolaMaquina,
-            'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
-            'elementosMaquina'          => $elementosMaquina, // Ya está filtrado a la planilla activa
+            // 'otrosElementos'            => $otrosElementos,
+            // 'etiquetasEnUnaSolaMaquina' => $etiquetasEnUnaSolaMaquina,
+            // 'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
+            'elementosMaquina'          => $elementosMaquina,
             'pesosElementos'            => $pesosElementos,
             'etiquetasData'             => $etiquetasData,
-            'elementosReempaquetados'   => $elementosReempaquetados
+            'elementosReempaquetados'   => $elementosReempaquetados,
         ]);
     }
 

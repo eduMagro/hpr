@@ -16,7 +16,6 @@ class PlanificacionController extends Controller
 {
     public function index()
     {
-
         // 🔹 Obtener las salidas con relaciones necesarias
         $salidas = Salida::with([
             'salidaClientes.obra:id,obra',
@@ -37,7 +36,6 @@ class PlanificacionController extends Controller
             ->whereIn('id', $obrasConSalidasIds)
             ->orderBy('obra')
             ->get();
-
 
         $obrasConSalidasResources = $obrasConSalidas->map(fn($obra) => [
             'id' => (string) $obra->id,
@@ -91,7 +89,7 @@ class PlanificacionController extends Controller
         });
 
         $planillas = Planilla::with('obra')
-            ->whereDoesntHave('paquetes.salidas') // 👈 solo si la relación está bien definida
+            ->whereDoesntHave('paquetes.salidas') // Recogemos las planillas que no estan asociadas a una salida
             ->get();
 
         $eventosPlanillas = $planillas->map(function ($planilla) {
@@ -104,9 +102,7 @@ class PlanificacionController extends Controller
 
             // 👇 Primero parseamos la fecha correctamente
             // Como fecha_estimada_entrega ya es un Carbon, no hace falta parsear
-            $fecha = Carbon::createFromFormat('d/m/Y', $planilla->fecha_estimada_entrega)
-                ->setTime(8, 0); // 8:00 AM (hora, minuto)
-
+            $fecha = Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_estimada_entrega);
             return [
                 'title' => "{$planilla->codigo_limpio} ({$planilla->estado})",
                 'id' => $planilla->id,
@@ -127,8 +123,6 @@ class PlanificacionController extends Controller
             $salidasEventos->toArray(),
             $eventosPlanillas->toArray()
         ));
-
-
 
         return view('planificacion.index', compact(
             'fechas',

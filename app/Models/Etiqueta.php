@@ -15,11 +15,11 @@ class Etiqueta extends Model
     protected $fillable = [
         'etiqueta_sub_id', // Para el caso en que todos los elementos tienen la misma máquina
         'planilla_id',
-        'users_id_1',
-        'users_id_2',
         'producto_id',
         'producto_id_2',
         'ubicacion_id',
+        'operario1',
+        'operario2',
         'soldador1',
         'soldador2',
         'ensamblador1',
@@ -100,24 +100,33 @@ class Etiqueta extends Model
     {
         return optional($this->soldador2)->name ?? 'N/A';
     }
+    public function operario1()
+    {
+        return $this->belongsTo(User::class);  // Relación con User
+    }
+    // Relación con el segundo usuario
+    public function operario2()
+    {
+        return $this->belongsTo(User::class);
+    }
     // Relación con el modelo User
     public function soldador1()
     {
-        return $this->belongsTo(User::class, 'soldador1');
+        return $this->belongsTo(User::class);
     }
 
     public function soldador2()
     {
-        return $this->belongsTo(User::class, 'soldador2');
+        return $this->belongsTo(User::class);
     }
 
-    public function ensambladorRelacion()
+    public function ensamblador1()
     {
-        return $this->belongsTo(User::class, 'ensamblador1');
+        return $this->belongsTo(User::class);
     }
 
-    public function ensamblador2Relacion()
+    public function ensamblador2()
     {
-        return $this->belongsTo(User::class, 'ensamblador2');
+        return $this->belongsTo(User::class);
     }
 }

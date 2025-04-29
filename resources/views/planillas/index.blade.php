@@ -389,8 +389,9 @@
                                 <template x-if="!editando">
                                     <span x-text="planilla.fecha_estimada_entrega"></span>
                                 </template>
+
                                 <input x-show="editando" type="text" x-model="planilla.fecha_estimada_entrega"
-                                    class="form-input w-full" placeholder="DD/MM/YYYY">
+                                    class="form-input w-full" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Usuario -->

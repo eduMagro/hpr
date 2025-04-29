@@ -212,7 +212,7 @@ class PlanillaController extends Controller
             // 📌 Cargar suma de peso completado
             $planillas->loadSum([
                 'elementos as suma_peso_completados' => function ($query) {
-                    $query->where('estado', 'completado');
+                    $query->where('estado', 'fabricado');
                 }
             ], 'peso');
             $clientes = Cliente::whereHas('obras', function ($query) {
@@ -242,7 +242,7 @@ class PlanillaController extends Controller
         ])->findOrFail($id);
 
         $getColor = fn($estado) => match (strtolower(trim($estado ?? 'desconocido'))) {
-            'completado' => 'bg-green-200',
+            'fabricado' => 'bg-green-200',
             'pendiente' => 'bg-red-200',
             'fabricando' => 'bg-blue-200',
             default => 'bg-gray-200'
@@ -261,7 +261,7 @@ class PlanillaController extends Controller
         return view('planillas.show', [
             'planillaCalculada' => [
                 'planilla' => $planilla,
-                'progreso' => round(min(100, ($elementos->where('estado', 'completado')->sum('peso') / max(1, $planilla->peso_total)) * 100), 2),
+                'progreso' => round(min(100, ($elementos->where('estado', 'fabricado')->sum('peso') / max(1, $planilla->peso_total)) * 100), 2),
                 'paquetes' => $paquetes,
                 'elementosSinPaquete' => $elementosSinPaquete
             ]
@@ -560,7 +560,7 @@ class PlanillaController extends Controller
                 'estado'                 => 'nullable|string|in:pendiente,fabricando,completada',
                 'fecha_inicio'           => 'nullable|date_format:d/m/Y H:i',
                 'fecha_finalizacion'     => 'nullable|date_format:d/m/Y H:i',
-                'fecha_estimada_entrega' => 'nullable|date_format:d/m/Y',
+                'fecha_estimada_entrega' => 'nullable|date_format:d/m/Y H:i',
                 'fecha_importacion'      => 'nullable|date_format:d/m/Y',
 
                 'usuario'                => 'nullable|string|max:100'
@@ -593,7 +593,7 @@ class PlanillaController extends Controller
                 // Se modifican los mensajes para referir a cada campo.
                 'fecha_inicio.date_format'           => 'El campo Fecha Inicio no corresponde al formato DD/MM/YYYY HH:mm.',
                 'fecha_finalizacion.date_format'     => 'El campo Fecha Finalización no corresponde al formato DD/MM/YYYY HH:mm.',
-                'fecha_estimada_entrega.date_format' => 'El campo Fecha Estimada de Entrega no corresponde al formato DD/MM/YYYY.',
+                'fecha_estimada_entrega.date_format' => 'El campo Fecha Estimada de Entrega no corresponde al formato DD/MM/YYYY HH:mm.',
                 'fecha_importacion.date_format'           => 'El campo Fecha Estimada de Entrega no corresponde al formato DD/MM/YYYY.',
 
                 'usuario.string'        => 'El campo Usuario debe ser una cadena de texto.',
@@ -624,8 +624,8 @@ class PlanillaController extends Controller
 
             // 3) Convertir fecha_estimada_entrega si existe (si la recibes con día/mes/año)
             if (!empty($validatedData['fecha_estimada_entrega'])) {
-                $validatedData['fecha_estimada_entrega'] = Carbon::createFromFormat('d/m/Y', $validatedData['fecha_estimada_entrega'])
-                    ->format('Y-m-d');
+                $validatedData['fecha_estimada_entrega'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_estimada_entrega'])
+                    ->format('Y-m-d H:i:s');
             }
             // Actualizar la planilla con los datos validados
             $planilla->update($validatedData);

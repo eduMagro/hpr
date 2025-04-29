@@ -7,13 +7,14 @@
     </x-slot>
 
     <div class="container mx-auto px-4 py-6">
-        <!-- Botón para crear una nueva maquina con estilo Bootstrap -->
+        <!-- Botón para crear una nueva máquina -->
         <div class="mb-4">
             <a href="{{ route('maquinas.create') }}" class="btn btn-primary">
                 Crear Nueva Máquina
             </a>
         </div>
-        <!-- FORMULARIO DE BUSQUEDA -->
+
+        <!-- Formulario de búsqueda de máquinas -->
         <form method="GET" action="{{ route('maquinas.index') }}" class="form-inline mt-3 mb-3">
             <input type="text" name="nombre" class="form-control mb-3" placeholder="Buscar por código de máquina"
                 value="{{ request('nombre') }}">
@@ -22,147 +23,192 @@
             </button>
         </form>
 
-        <!-- Usamos una estructura de tarjetas para mostrar las ubicaciones -->
+        <!-- Lista de máquinas en grid responsive -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-            @if (isset($registrosMaquina) &&
-                    $registrosMaquina instanceof \Illuminate\Pagination\LengthAwarePaginator &&
-                    $registrosMaquina->isNotEmpty())
-                @forelse ($registrosMaquina as $maquina)
-                    <div class="bg-white border p-4 shadow-md rounded-lg">
-                        <h3 class="font-bold text-xl break-words">{{ $maquina->codigo }}</h3>
-                        <p><strong>Nombre Máquina:</strong> {{ $maquina->nombre }}</p>
-                        <p>
+            @forelse($registrosMaquina as $maquina)
+                <!-- Componente Alpine para control de desplegable por máquina -->
+                <div x-data="{ openMachine: false }" class="bg-white border p-4 shadow-md rounded-lg">
+                    <!-- Cabecera de la tarjeta de máquina -->
+                    <button @click="openMachine = !openMachine" class="w-full flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-xl break-words">{{ $maquina->codigo }} — {{ $maquina->nombre }}
+                            </h3>
+                            <p class="text-sm text-gray-600">
+                                <strong>Estado:</strong>
+                                @php
+                                    $inProduction =
+                                        $maquina->tipo == 'ensambladora'
+                                            ? $maquina->elementos_ensambladora > 0
+                                            : $maquina->elementos_count > 0;
+                                @endphp
+                                <span class="{{ $inProduction ? 'text-success' : 'text-danger' }}">
+                                    {{ $inProduction ? 'En producción' : 'Sin trabajo' }}
+                                </span>
+                            </p>
+                        </div>
+                        <!-- Icono de flecha que rota al expandir -->
+                        <svg :class="openMachine ? 'transform rotate-180' : ''" class="h-6 w-6 transition-transform"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
 
+                    <!-- Contenido desplegable de la máquina -->
+                    <div x-show="openMachine" x-collapse class="mt-4 space-y-4">
+                        <!-- Botones QR y parámetros -->
+                        <div class="flex items-center space-x-2">
                             <button
-                                onclick="generateAndPrintQR('{{ $maquina->id }}', '{{ $maquina->nombre }}', 'MÁQUINA')"
+                                onclick="generateAndPrintQR('{{ $maquina->id }}','{{ $maquina->nombre }}','MÁQUINA')"
                                 class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
                                 QR
                             </button>
+                            <div id="qrCanvas_{{ $maquina->id }}" style="display:none;"></div>
+                            <p><strong>Diámetros:</strong> {{ $maquina->diametro_min }} - {{ $maquina->diametro_max }}
+                            </p>
+                        </div>
 
-                        </p>
-                        <div id="qrCanvas" style="display:none;"></div>
+                        {{-- Cola de planillas agrupadas por planilla_id --}}
+                        @php
+                            // recogemos, para esta máquina ($maquina->id),
+                            // el conjunto de elementos preparado en el controlador
+                            $elements = $colaPorMaquina->get($maquina->id, collect());
 
-                        <p><strong>Diámetros aceptados:
-                            </strong>{{ $maquina->diametro_min . ' - ' . $maquina->diametro_max }}</p>
-                        <p><strong>Estado: </strong>
-                            @php
-                                $enProduccion =
-                                    $maquina->tipo == 'ensambladora'
-                                        ? $maquina->elementos_ensambladora > 0
-                                        : $maquina->elementos_count > 0;
-                            @endphp
-                            <span class="{{ $enProduccion ? 'text-success' : 'text-danger' }}">
-                                {{ $enProduccion ? 'En producción' : 'Sin trabajo' }}
-                            </span>
-                        </p>
+                            // dentro de esos elementos, agrupamos por planilla
+                            $groupedByPlanilla = $elements->groupBy(fn($e) => $e->planilla->id);
+                        @endphp
 
-                        <!-- Mostrar los productos que contiene esta ubicación -->
-                        <h4 class="mt-4 font-semibold">Productos en máquina:</h4>
-                        @if ($maquina->productos->isEmpty())
-                            <p>No hay productos en esta máquina.</p>
-                        @else
-                            <ul class="list-disc pl-6 break-words">
-                                @foreach ($maquina->productos->sortBy([['diametro', 'asc'], ['peso_stock', 'asc']]) as $producto)
-                                    <li class="mb-2 flex items-center justify-between">
-                                        <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                        <div>
+                            <h4 class="font-semibold mb-2">Cola de Planillas ({{ $elements->count() }})</h4>
+                            @if ($groupedByPlanilla->isEmpty())
+                                <p class="text-gray-500">No hay planillas en cola.</p>
+                            @else
+                                @foreach ($groupedByPlanilla as $planillaId => $items)
+                                    <div x-data="{ openPlanilla: false }" class="border rounded-lg mb-3">
+                                        <button @click="openPlanilla = !openPlanilla"
+                                            class="w-full px-3 py-2 flex justify-between items-center bg-gray-100">
+                                            <div>
+                                                <span class="font-medium">
+                                                    {{ $items->first()->planilla->codigo_limpio }}
+                                                </span>
+                                                <span class="ml-2 text-sm text-gray-600">
+                                                    Entrega:
+                                                    {{ $items->first()->planilla->fecha_estimada_entrega }}
+                                                </span>
+                                            </div>
+                                            <svg :class="openPlanilla ? 'transform rotate-180' : ''"
+                                                class="h-5 w-5 transition-transform" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
 
-
-                                            <!-- Cuadro de progreso -->
-                                            @if ($producto->tipo == 'ENCARRETADO')
-                                                <div
-                                                    style="width: 100px; height: 100px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
-                                                    <div class="cuadro verde"
-                                                        style="width: 100%; 
-                               height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-                               background-color: green; 
-                               position: absolute; 
-                               bottom: 0;">
+                                        <ul x-show="openPlanilla" x-collapse class="px-6 py-3 space-y-2 bg-white">
+                                            @foreach ($items as $elemento)
+                                                <li class="flex justify-between items-center">
+                                                    <div>
+                                                        <span class="font-semibold">Elemento
+                                                            #{{ $elemento->id }}</span>
+                                                        <span class="text-sm text-gray-600">
+                                                            Tipo: {{ $elemento->figura }}, Estado:
+                                                            {{ ucfirst($elemento->estado) }}
+                                                        </span>
                                                     </div>
-                                                    <span
-                                                        style="position: absolute; top: 10px; left: 10px; color: white;">
-                                                        {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
-                                                    </span>
-                                                </div>
-                                                <!-- Información del producto -->
+                                                    <a href="{{ route('elementos.show', $elemento->id) }}"
+                                                        class="text-blue-500 hover:underline text-sm">
+                                                        Ver
+                                                    </a>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endforeach
+                            @endif
+                        </div>
+
+                        <!-- Productos en máquina -->
+                        <div>
+                            <h4 class="font-semibold mb-2">Productos en máquina:</h4>
+                            @if ($maquina->productos->isEmpty())
+                                <p>No hay productos en esta máquina.</p>
+                            @else
+                                <ul class="list-disc pl-6 space-y-2">
+                                    @foreach ($maquina->productos->sortBy([['diametro', 'asc'], ['peso_stock', 'asc']]) as $producto)
+                                        <li class="flex items-center justify-between">
+                                            <div class="flex items-center space-x-4">
+                                                @if ($producto->tipo === 'ENCARRETADO')
+                                                    <div
+                                                        class="w-24 h-24 bg-gray-200 relative rounded-lg overflow-hidden">
+                                                        <div class="absolute bottom-0 w-full"
+                                                            style="height: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; background-color: green;">
+                                                        </div>
+                                                        <span
+                                                            class="absolute top-2 left-2 text-white">{{ $producto->peso_stock }}
+                                                            / {{ $producto->peso_inicial }} kg</span>
+                                                    </div>
+                                                @elseif($producto->tipo === 'BARRA')
+                                                    <div
+                                                        class="w-48 h-8 bg-gray-200 relative rounded-lg overflow-hidden">
+                                                        <div class="absolute right-0 h-full"
+                                                            style="width: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; background-color: green;">
+                                                        </div>
+                                                        <span
+                                                            class="absolute left-2 top-1/2 transform -translate-y-1/2 text-white">{{ $producto->peso_stock }}
+                                                            / {{ $producto->peso_inicial }} kg</span>
+                                                    </div>
+                                                @endif
                                                 <div>
                                                     <p><strong>ID:</strong> {{ $producto->id }}</p>
                                                     <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
-
-                                                </div>
-                                            @elseif ($producto->tipo == 'BARRA')
-                                                <!-- Información del producto -->
-
-                                                <div
-                                                    style="width: 200px; height: 30px; background-color: #ddd; position: relative; overflow: hidden; border-radius: 8px;">
-                                                    <div class="barra verde"
-                                                        style="width: {{ ($producto->peso_stock / $producto->peso_inicial) * 100 }}%; 
-                               height: 100%; 
-                               background-color: green; 
-                               position: absolute; 
-                               right: 0;">
-                                                    </div>
-                                                    <span
-                                                        style="position: absolute; top: 50%; left: 10px; transform: translateY(-50%); color: white;">
-                                                        {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
-                                                    </span>
-                                                </div>
-                                                <div>
-                                                    <p><strong>ID:</strong> {{ $producto->id }}</p>
-                                                    <p><strong>Diámetro:</strong> {{ $producto->diametro_mm }}</p>
-                                                    @if ($producto->tipo == 'barras')
+                                                    @if ($producto->tipo === 'BARRA')
                                                         <p><strong>Longitud:</strong> {{ $producto->longitud_metros }}
                                                         </p>
                                                     @endif
                                                 </div>
-                                            @endif
-
-
-                                            <!-- Botón "Ver" alineado a la derecha -->
+                                            </div>
                                             <a href="{{ route('productos.show', $producto->id) }}"
-                                                class="btn btn-sm btn-primary" style="margin-left: auto;">Ver</a>
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @endif
+                                                class="btn btn-sm btn-primary">Ver</a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
 
-                        <hr style="border: 1px solid #ccc; margin: 10px 0;">
-
+                        <!-- Acciones finales: eliminar, editar, iniciar sesión -->
                         <div class="mt-4 flex justify-between items-center">
-                            {{-- sweet alert para eliminar --}}
                             <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
-
-                            <!-- Enlace para editar -->
                             <a href="{{ route('maquinas.edit', $maquina->id) }}"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                            {{-- Enlace para ver --}}
                             <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
-
                         </div>
                     </div>
-                @empty
-                    <p>No hay máquinas disponibles.</p> <!-- Mensaje si no hay datos -->
-                @endforelse
-            @endif
-        </div>
-        <div class="mt-4 flex justify-center">
-            {{ $registrosMaquina->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-        </div>
-        <!-- SCRIPT PARA IMPRIMIR QR -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-        <script src="{{ asset('js/imprimirQr.js') }}"></script>
-        <script>
-            const usuarios = @json($usuarios);
-            const csrfToken = '{{ csrf_token() }}';
+                </div>
+            @empty
+                <p>No hay máquinas disponibles.</p>
+            @endforelse
 
-            window.rutas = {
-                guardarSesion: '{{ route('maquinas.sesion.guardar') }}',
-                base: '{{ url('/') }}' // esta es la clave para que sea flexible
-            };
-        </script>
+        </div>
 
-        </script>
-        <script src="{{ asset('js/maquinaJS/seleccionarCompa.js') }}" defer></script>
+        <!-- Paginación -->
+        <div class="mt-6 flex justify-center">
+            {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
+        </div>
+
+    </div>
+
+    <!-- Scripts QR y Alpine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="{{ asset('js/imprimirQr.js') }}"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        const usuarios = @json($usuarios);
+        const csrfToken = '{{ csrf_token() }}';
+        window.rutas = {
+            guardarSesion: '{{ route('maquinas.sesion.guardar') }}',
+            base: '{{ url('/') }}'
+        };
+    </script>
+    <script src="{{ asset('js/maquinaJS/seleccionarCompa.js') }}" defer></script>
 </x-app-layout>
