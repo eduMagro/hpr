@@ -23,139 +23,123 @@
                     </button>
                 </form> --}}
             </div>
-            <button class="btn btn-secondary" type="button" data-bs-toggle="collapse"
-                data-bs-target="#filtrosBusqueda">
-                🔍 Filtros Avanzados
-            </button>
-            <!-- FORMULARIO DE FILTROS -->
-            <div id="filtrosBusqueda" class="collapse">
-                <form method="GET" action="{{ route('users.index') }}" class="card card-body shadow-sm">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <!-- Filtro: Nombre -->
-                            <input type="text" name="name" class="form-control" placeholder="Buscar por nombre"
-                                value="{{ request('name') }}">
-                        </div>
-                        <div class="col-md-3">
-                            <!-- Filtro: Email -->
-                            <input type="text" name="email" class="form-control" placeholder="Buscar por email"
-                                value="{{ request('email') }}">
-                        </div>
-                        <div class="col-md-3">
-                            <!-- Filtro: Empresa -->
-                            <input type="text" name="empresa" class="form-control" placeholder="Buscar por empresa"
-                                value="{{ request('empresa') }}">
-                        </div>
-                        <div class="col-md-3">
-                            <!-- Filtro: Rol -->
-                            <select name="rol" class="form-control">
-                                <option value="">-- Filtrar por Rol --</option>
-                                @foreach ($roles as $nombre)
-                                    <option value="{{ $nombre }}"
-                                        {{ request('rol') == $nombre ? 'selected' : '' }}>
-                                        {{ ucfirst($nombre) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <!-- Filtro: Categoría -->
-                            <select name="categoria" class="form-control">
-                                <option value="">-- Filtrar por Categoría --</option>
-                                @foreach ($categorias as $categoria)
-                                    <option value="{{ $categoria->id }}"
-                                        {{ request('categoria') == $categoria->id ? 'selected' : '' }}>
-                                        {{ ucfirst($categoria->nombre) }}
-                                    </option>
-                                @endforeach
-
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <!-- Filtro: Especialidad -->
-                            <select name="especialidad" class="form-control">
-                                <option value="">-- Filtrar por Especialidad --</option>
-                                @foreach ($especialidades as $nombre)
-                                    <option value="{{ $nombre }}"
-                                        {{ request('especialidad') == $nombre ? 'selected' : '' }}>
-                                        {{ ucfirst($nombre) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <!-- Filtro: Turno -->
-                            <select name="turno" class="form-control">
-                                <option value="">-- Filtrar por Turno Actual --</option>
-                                @foreach ($turnosHoy as $turno)
-                                    <option value="{{ $turno }}"
-                                        {{ request('turno') == $turno ? 'selected' : '' }}>
-                                        {{ ucfirst($turno) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <!-- Filtro: Estado -->
-                            <select name="estado" class="form-control">
-                                <option value="">-- Filtrar por Estado --</option>
-                                <option value="activo" {{ request('estado') == 'activo' ? 'selected' : '' }}>Activo
-                                </option>
-                                <option value="inactivo" {{ request('estado') == 'inactivo' ? 'selected' : '' }}>
-                                    Inactivo
-                                </option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <!-- Filtro: Número de registros a mostrar -->
-                            <select name="per_page" class="form-control">
-                                <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10 registros
-                                </option>
-                                <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25 registros
-                                </option>
-                                <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 registros
-                                </option>
-                                <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100
-                                    registros
-                                </option>
-                            </select>
-                        </div>
-                        <!-- Botones -->
-                        <div class="col-12 d-flex justify-content-between">
-                            <button type="submit" class="btn btn-info">
-                                <i class="fas fa-search"></i> Buscar
-                            </button>
-                            <a href="{{ route('users.index') }}" class="btn btn-warning">
-                                <i class="fas fa-undo"></i> Resetear Filtros
-                            </a>
-                        </div>
-                    </div>
-                </form>
-            </div>
+            @if (count($filtrosActivos))
+                <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
+                    <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
+                </div>
+            @endif
 
             <!-- TABLA DE USUARIOS -->
             <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
                 <table class="w-full border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white">
-                        <tr class="text-left text-sm uppercase">
-                            <th class="py-3 px-2 border text-center">
-                                <a
-                                    href="{{ request()->fullUrlWithQuery(['sort' => 'id', 'order' => request('order') === 'asc' ? 'desc' : 'asc']) }}">
-                                    ID <i class="fas fa-sort"></i>
-                                </a>
-                            </th>
-                            <th class="py-3 px-2 border text-center">Nombre</th>
-                            <th class="py-3 px-2 border text-center">Email</th>
-                            <th class="py-3 px-2 border text-center">DNI</th>
-                            <th class="py-3 px-2 border text-center">Empresa</th>
-                            <th class="py-3 px-2 border text-center">Rol</th>
-                            <th class="py-3 px-2 border text-center">Categoría</th>
-                            <th class="py-3 px-2 border text-center">Especialidad</th>
-                            <th class="py-3 px-2 border text-center">Turno</th>
-                            <th class="py-3 px-2 border text-center">Estado</th>
-                            <th class="py-3 px-2 border text-center">Generar Turnos</th>
-                            <th class="py-3 px-2 border text-center">Acciones</th>
+                        <tr class="text-center text-xs uppercase">
+                            <th class="p-2 border">{!! $ordenables['id'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['name'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['email'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['dni'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['empresa'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['rol'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['categoria'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['especialidad'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['turno'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['estado'] !!}</th>
+                            <th class="p-2 border"></th>
+                            <th class="p-2 border">Acciones</th>
                         </tr>
+                        <tr class="text-center text-xs uppercase">
+                            <form method="GET" action="{{ route('users.index') }}">
+                                <th class="p-1 border"></th> <!-- ID: sin filtro directo -->
+                                <th class="p-1 border">
+                                    <input type="text" name="name" value="{{ request('name') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="email" value="{{ request('email') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="dni" value="{{ request('dni') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="empresa_id" class="form-control form-control-sm">
+                                        <option value="">Todas</option>
+                                        @foreach ($empresas as $empresa)
+                                            <option value="{{ $empresa->id }}"
+                                                {{ request('empresa_id') == $empresa->id ? 'selected' : '' }}>
+                                                {{ $empresa->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="rol" class="form-control form-control-sm">
+                                        <option value="">Todos</option>
+                                        @foreach ($roles as $rol)
+                                            <option value="{{ $rol }}"
+                                                {{ request('rol') == $rol ? 'selected' : '' }}>
+                                                {{ ucfirst($rol) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="categoria_id" class="form-control form-control-sm">
+                                        <option value="">Todas</option>
+                                        @foreach ($categorias as $categoria)
+                                            <option value="{{ $categoria->id }}"
+                                                {{ request('categoria_id') == $categoria->id ? 'selected' : '' }}>
+                                                {{ $categoria->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="especialidad" class="form-control form-control-sm">
+                                        <option value="">Todas</option>
+                                        @foreach ($especialidades as $esp)
+                                            <option value="{{ $esp }}"
+                                                {{ request('especialidad') == $esp ? 'selected' : '' }}>
+                                                {{ ucfirst($esp) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="turno" class="form-control form-control-sm">
+                                        <option value="">Todos</option>
+                                        @foreach ($turnos as $turno)
+                                            <option value="{{ $turno }}"
+                                                {{ request('turno') == $turno ? 'selected' : '' }}>
+                                                {{ ucfirst($turno) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="estado" class="form-control form-control-sm">
+                                        <option value="">Todos</option>
+                                        <option value="activo" {{ request('estado') == 'activo' ? 'selected' : '' }}>
+                                            Activo
+                                        </option>
+                                        <option value="inactivo"
+                                            {{ request('estado') == 'inactivo' ? 'selected' : '' }}>
+                                            Inactivo</option>
+                                    </select>
+                                </th>
+                                <th class="p-1 border"></th>
+                                <th class="p-1 border text-center">
+                                    <button type="submit" class="btn btn-sm btn-info px-2">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                    <a href="{{ route('users.index') }}" class="btn btn-sm btn-warning px-2">
+                                        <i class="fas fa-undo"></i>
+                                    </a>
+                                </th>
+                            </form>
+                        </tr>
+
                     </thead>
                     <tbody class="text-gray-700 text-sm">
                         @forelse ($registrosUsuarios as $user)
@@ -437,7 +421,8 @@
                         if (result.isConfirmed) {
                             console.log("🟢 Enviando datos al backend...");
 
-                            fetch("{{ route('registros-fichaje.store') }}", {
+                            fetch("{{ url('/fichar') }}", {
+
                                     method: "POST",
                                     headers: {
                                         "Content-Type": "application/json",
@@ -490,6 +475,8 @@
                                         icon: 'error',
                                         title: 'Error de conexión',
                                         text: 'No se pudo comunicar con el servidor.',
+                                    }).then(() => {
+                                        window.location.reload();
                                     });
                                 });
                         }

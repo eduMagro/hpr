@@ -158,28 +158,39 @@ class SalidaController extends Controller
     }
 
 
-    public function create()
+    public function create(Request $request)
     {
-        // Obtener planillas COMPLETADAS con los paquetes, sus elementos
-        $planillasCompletadas = Planilla::where('estado', 'completada')
-            ->with(['paquetes' => function ($query) {
-                // Filtrar solo los paquetes que NO tienen salida asociada
+        // Si se han pasado planillas desde el calendario, usamos solo esas
+        $planillasIds = explode(',', $request->get('planillas', ''));
+
+        // Base del query SIN filtrar por estado y SIN whereHas
+        $planillasQuery = Planilla::with([
+            'paquetes' => function ($query) {
+                // Si quieres aquí puedes seguir filtrando paquetes sin salida
                 $query->whereDoesntHave('salidas');
-            }, 'paquetes.elementos'])  // Incluir elementos
-            ->whereHas('paquetes', function ($query) {
-                // Asegurarnos de que la planilla tenga al menos un paquete sin salida asociada
-                $query->whereDoesntHave('salidas');
-            })
-            ->orderBy('fecha_estimada_entrega', 'asc') // Ordenar por fecha estimada de entrega
+            },
+            'paquetes.elementos',
+            'cliente',
+            'obra'
+        ]);
+
+
+        // Si se recibieron planillas por parámetro, filtramos
+        if (!empty($planillasIds[0])) {
+            $planillasQuery->whereIn('id', $planillasIds);
+        }
+
+        // Ejecutar query
+        $planillasCompletadas = $planillasQuery
+            ->orderBy('fecha_estimada_entrega', 'asc')
             ->get();
 
         // Obtener los paquetes de las planillas (filtrados previamente)
         $paquetes = $planillasCompletadas->pluck('paquetes')->flatten();
 
-        // Obtener las empresas con sus camiones
+        // Empresas con camiones
         $empresas = EmpresaTransporte::with('camiones')->get();
 
-        // Pasar planillas, paquetes disponibles, elementos a la vista
         return view('salidas.create', [
             'planillasCompletadas' => $planillasCompletadas,
             'paquetes' => $paquetes,

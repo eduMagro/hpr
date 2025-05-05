@@ -6,11 +6,139 @@ use Illuminate\Http\Request;
 
 use App\Models\User;
 use App\Models\Turno;
+use App\Models\Obra;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class AsignacionTurnoController extends Controller
 {
+
+    public function fichar(Request $request)
+    {
+        Log::info('📩 Datos recibidos en store()', $request->all());
+
+        try {
+            $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'tipo' => 'required|in:entrada,salida',
+                'latitud' => 'required|numeric',
+                'longitud' => 'required|numeric',
+                'obra_id' => 'required|exists:obras,id',
+            ], [
+                'latitud.required' => 'La latitud es requerida.',
+                'latitud.numeric' => 'La latitud debe ser un número',
+                'longitud.required' => 'La longitud es requerida.',
+                'longitud.numeric' => 'La longitud debe ser un número.',
+            ]);
+
+            $user = User::findOrFail($request->user_id);
+
+            if ($user->rol !== 'operario') {
+                return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
+            }
+
+            $fechaHoy = now()->toDateString();
+            $horaActual = now();
+
+            $obra = Obra::findOrFail($request->obra_id);
+            $distancia = $this->calcularDistancia(
+                $request->latitud,
+                $request->longitud,
+                $obra->latitud,
+                $obra->longitud
+            );
+            Log::info('Distancia hasta la nave', ['distancia' => $distancia]);
+
+            if ($distancia > $obra->distancia) {
+                return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
+            }
+
+            // Buscar asignación de turno para hoy
+            $asignacionTurno = $user->asignacionesTurnos()->where('fecha', $fechaHoy)->first();
+
+            if (!$asignacionTurno) {
+                return response()->json(['error' => 'No tienes un turno asignado para hoy.'], 403);
+            }
+
+            $turnoNombre = strtolower($asignacionTurno->turno->nombre);
+            $warning = null;
+
+            if ($request->tipo === 'entrada') {
+                if ($asignacionTurno->entrada) {
+                    return response()->json(['error' => 'Ya has registrado una entrada hoy.'], 403);
+                }
+
+                if (!$this->validarHoraEntrada($turnoNombre, $horaActual)) {
+                    $warning = 'Has fichado entrada fuera de tu horario de turno.';
+                }
+
+                $asignacionTurno->update(['entrada' => $horaActual]);
+            } elseif ($request->tipo === 'salida') {
+                if (!$asignacionTurno->entrada) {
+                    return response()->json(['error' => 'No puedes registrar una salida sin haber registrado entrada.'], 403);
+                }
+
+                if ($asignacionTurno->salida) {
+                    return response()->json(['error' => 'Ya has registrado una salida hoy.'], 403);
+                }
+
+                if (!$this->validarHoraSalida($turnoNombre, $horaActual)) {
+                    $warning = 'Has fichado salida fuera de tu horario de turno.';
+                }
+
+                $asignacionTurno->update(['salida' => $horaActual]);
+            }
+
+            return response()->json([
+                'success' => 'Fichaje registrado correctamente.',
+                'warning' => $warning
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
+        }
+    }
+    private function validarHoraEntrada($turno, $horaActual)
+    {
+        $hora = $horaActual->format('H:i');
+
+        return match ($turno) {
+            'mañana' => $hora >= '05:45' && $hora <= '06:30',
+            'tarde' => $hora >= '13:45' && $hora <= '14:30',
+            'noche' => $hora >= '21:45' && $hora <= '22:30',
+            default => false,
+        };
+    }
+
+    private function validarHoraSalida($turno, $horaActual)
+    {
+        $hora = $horaActual->format('H:i');
+
+        return match ($turno) {
+            'mañana' => $hora >= '13:45' && $hora <= '14:30',
+            'tarde' => $hora >= '21:45' && $hora <= '22:30',
+            'noche' => $hora >= '05:45' && $hora <= '06:30',
+            default => false,
+        };
+    }
+
+    /**
+     * Calcula la distancia en metros entre dos puntos geográficos usando la fórmula de Haversine.
+     */
+    private function calcularDistancia($lat1, $lon1, $lat2, $lon2)
+    {
+        $radioTierra = 6371000; // Radio de la Tierra en metros
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $radioTierra * $c; // Distancia en metros
+    }
+
     public function store(Request $request)
     {
         try {
@@ -100,7 +228,7 @@ class AsignacionTurnoController extends Controller
                 $currentDate->addDay();
             }
 
-            return response()->json(['success' => 'Asignación completada con éxito.']);
+            return response()->json(['success' => 'Asignación completada.']);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al registrar el turno: ' . $e->getMessage()], 500);
         }

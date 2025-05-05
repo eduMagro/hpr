@@ -102,7 +102,7 @@
                 },
                 body: JSON.stringify({
                     mensaje: mensajeCompleto,
-                    categoria: "programador" // 🔹 Se asigna el destinatario como "programador"
+                    destinatario_id: 1 // 🔹 Se asigna el destinatario como "programador"
                 })
             })
             .then(response => response.json())

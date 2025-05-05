@@ -6,103 +6,131 @@
         </h2>
     </x-slot>
 
-    <div class="container mx-auto px-4 py-6">
+    <div class="w-full p-4 sm:p-4">
 
         <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
-        <div class="mb-4">
+        <div class="mb-4 flex space-x-2">
             <a href="{{ route('entradas.create') }}" class="btn btn-primary">
                 Crear Nueva Entrada
             </a>
+            <a href="{{ route('pedidos.index') }}" class="btn btn-secondary bg-yellow-500 hover:bg-yellow-600 text-white">
+                Ir a Pedidos de Compra
+            </a>
+            <a href="{{ route('proveedores.index') }}"
+                class="btn btn-secondary bg-yellow-500 hover:bg-yellow-600 text-white">
+                Ver Proveedores
+            </a>
         </div>
 
-        <!-- FORMULARIO DE BUSQUEDA -->
-        <form method="GET" action="{{ route('entradas.index') }}" class="form-inline mt-3 mb-3">
-            <input type="text" name="albaran" class="form-control mb-3" placeholder="Buscar por albarán"
-                value="{{ request('albaran') }}">
+        <div class="my-6">
+            <h3 class="text-lg font-semibold mb-3 text-gray-800">Stock disponible en almacén</h3>
+            <div class="overflow-x-auto rounded-lg">
+                <form action="{{ route('pedidos.confirmar') }}" method="POST">
+                    @csrf
 
-            <input type="text" name="fecha" class="form-control mb-3" placeholder="Buscar por fecha"
-                value="{{ request('fecha') }}">
+                    <table class="w-full text-sm border-collapse border text-center mt-6">
+                        <thead class="bg-blue-600 text-white">
+                            <tr>
+                                <th class="border px-2 py-1">✔</th>
+                                <th class="border px-2 py-1">Tipo</th>
+                                <th class="border px-2 py-1">Diámetro</th>
+                                <th class="border px-2 py-1">Peso Pendiente</th>
+                                <th class="border px-2 py-1">Stock Disponible</th>
+                                <th class="border px-2 py-1">Pedido</th>
 
-            <button type="submit" class="btn btn-info ml-2">
-                <i class="fas fa-search"></i> Buscar
-            </button>
-        </form>
-        <!-- Usamos una estructura de tarjetas para dispositivos móviles -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            @forelse ($entradas as $entrada)
-                <div class="bg-white border p-4 shadow-md rounded-lg">
-                    <h3 class="font-bold text-xl">{{ $entrada->albaran }}</h3>
-                    <p><strong>Fecha:</strong> {{ $entrada->created_at }}</p>
-                    <!-- Sección de Fabricantes -->
-                    <p><strong>Fabricante:</strong>
-                        @php
-                            // Obtener los fabricantes únicos de los productos asociados a esta entrada
-                            $fabricantes = $entrada->productos->pluck('fabricante')->unique();
-                        @endphp
+                                <th class="border px-2 py-1">Diferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($comparativa as $clave => $c)
+                                <tr class="{{ $c['diferencia'] < 0 ? 'bg-red-100' : 'bg-green-100' }}">
+                                    <td class="border px-2 py-1">
+                                        <input type="checkbox" name="seleccionados[]" value="{{ $clave }}">
+                                        <input type="hidden" name="detalles[{{ $clave }}][tipo]"
+                                            value="{{ $c['tipo'] }}">
+                                        <input type="hidden" name="detalles[{{ $clave }}][diametro]"
+                                            value="{{ $c['diametro'] }}">
+                                        <input type="hidden" name="detalles[{{ $clave }}][cantidad]"
+                                            value="{{ abs($c['diferencia']) }}">
+                                    </td>
+                                    <td class="border px-2 py-1">{{ ucfirst($c['tipo']) }}</td>
+                                    <td class="border px-2 py-1">{{ $c['diametro'] }} mm</td>
+                                    <td class="border px-2 py-1">{{ number_format($c['pendiente'], 2, ',', '.') }} kg
+                                    </td>
+                                    <td class="border px-2 py-1">{{ number_format($c['disponible'], 2, ',', '.') }} kg
+                                    </td>
+                                    <td class="border px-2 py-1">{{ number_format($c['pedido'], 2, ',', '.') }} kg</td>
 
-                        @if ($fabricantes->isNotEmpty())
-                            @foreach ($fabricantes as $fabricante)
-                                {{ $fabricante }}@if (!$loop->last)
-                                    ,
-                                @endif
+                                    <td class="border px-2 py-1 font-bold">
+                                        {{ number_format($c['diferencia'], 2, ',', '.') }} kg</td>
+                                </tr>
                             @endforeach
-                        @else
-                            No hay fabricantes disponibles.
-                        @endif
-                    </p>
+                        </tbody>
+                    </table>
 
-                    <h4 class="mt-4 font-semibold">Productos Asociados: {{ $entrada->productos->count() }}</h4>
-                    <hr style="border: 1px solid #ccc; margin: 10px 0;">
-                    <ul>
-                        @foreach ($entrada->productos as $producto)
-                            <li class="mt-2">
-                                <p><strong>ID:</strong> {{ $producto->id }}</p>
-                                <a href="{{ route('productos.show', $producto->id) }}"
-                                    class="btn btn-sm btn-primary">Ver</a>
-                                <p><strong>Producto:</strong> {{ $producto->nombre }} / {{ $producto->tipo }}</p>
-                                <p><strong>Diámetro:</strong> {{ $producto->diametro }}</p>
-                                <p><strong>Longitud:</strong> {{ $producto->longitud }}</p>
-                                <!-- Lista desordenada con los detalles del producto -->
-                                @if (isset($producto->ubicacion->nombre))
-                                    <p><strong>Ubicación:</strong>
-                                        {{ $producto->ubicacion->nombre }}</p>
-                                @elseif (isset($producto->maquina->nombre))
-                                    <p><strong>Máquina:</strong>
-                                        {{ $producto->maquina->nombre }}
-                                    </p>
-                                @else
-                                    <p class="font-bold text-lg text-gray-800 break-words">No está ubicada</p>
-                                @endif
-                                <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
-                                <p>
-                                    <button
-                                        onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_colada }}', 'MATERIA PRIMA')"
-                                        class="btn btn-primary btn-sm">QR</button>
-                                </p>
-                                <div id="qrCanvas" style="display:none;"></div>
-                            </li>
-                            <hr style="border: 1px solid #ccc; margin: 10px 0;">
-                        @endforeach
-                        <p><small><strong>Usuario: </strong> {{ $entrada->user->name }} </small></p>
-                        <hr style="border: 1px solid #ccc; margin: 10px 0;">
-                    </ul>
-
-                    <div class="mt-4 flex justify-between">
-                        <a href="{{ route('entradas.edit', $entrada->id) }}"
-                            class="text-blue-600 hover:text-blue-900">Editar</a>
-                        <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
+                    <div class="mt-4 text-right">
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                            Crear pedido con seleccionados
+                        </button>
                     </div>
-                </div>
-                @empty
-                    <p>No hay entradas de material disponibles.</p> <!-- Mensaje si no hay datos -->
-                @endforelse
+                </form>
+
+
             </div>
+        </div>
+
+        <!-- Usamos una estructura de tarjetas para dispositivos móviles -->
+
+        <div class="bg-white shadow rounded-lg overflow-x-auto">
+            <table class="w-full border text-sm text-center">
+                <thead class="bg-blue-600 text-white uppercase text-xs">
+                    <tr>
+                        <th class="px-3 py-2 border">Albarán</th>
+                        <th class="px-3 py-2 border">Fecha</th>
+                        <th class="px-3 py-2 border">Nº Productos</th>
+                        <th class="px-3 py-2 border">Peso Total</th>
+                        <th class="px-3 py-2 border">Usuario</th>
+                        <th class="px-3 py-2 border">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($entradas as $entrada)
+                        <tr class="border-b hover:bg-blue-50">
+                            <td class="px-3 py-2">{{ $entrada->albaran }}</td>
+                            <td class="px-3 py-2">{{ $entrada->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="px-3 py-2">{{ $entrada->productos->count() }}</td>
+                            <td class="px-3 py-2">{{ number_format($entrada->peso_total ?? 0, 2, ',', '.') }} kg
+                            </td>
+                            <td class="px-3 py-2">{{ $entrada->usuario->name ?? 'N/A' }}</td>
+                            <td class="px-3 py-2">
+                                <a href="{{ route('entradas.show', $entrada->id) }}"
+                                    class="text-blue-600 hover:underline text-sm">Ver</a> |
+                                <a href="{{ route('entradas.edit', $entrada->id) }}"
+                                    class="text-yellow-600 hover:underline text-sm">Editar</a> |
+                                <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="py-4 text-gray-500">No hay entradas de material registradas.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4 flex justify-center">
+            {{ $entradas->onEachSide(1)->links('vendor.pagination.bootstrap-5') }}
+        </div>
+
+    </div>
 
 
-            <div class="mt-4 flex justify-center">
-                {{ $entradas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-            </div>
+    <div class="mt-4 flex justify-center">
+        {{ $entradas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
+    </div>
 
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-            <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
-    </x-app-layout>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
+</x-app-layout>

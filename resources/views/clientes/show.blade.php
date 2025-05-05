@@ -53,39 +53,119 @@
                         </thead>
                         <tbody class="text-gray-700">
                             @foreach ($cliente->obras as $obra)
-                                <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer">
-                                    <td class="px-2 py-3 text-center border">{{ $obra->id }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->obra }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->cod_obra }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->ciudad }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->direccion }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->latitud }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->longitud }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->distancia }}</td>
-                                    <td class="px-2 py-3 text-center border">{{ $obra->fecha_inicio }}</td>
-                                    <td class="px-2 py-3 text-center border">
-                                        {{ number_format($obra->peso_entregado, 2) }} kg
-                                    </td>
-                                    <td class="px-2 py-3 text-center border">
-                                        @php
-                                            switch ($obra->estado) {
-                                                case 'activa':
-                                                    $color = 'text-green-500';
-                                                    break;
-                                                case 'completada':
-                                                    $color = 'text-blue-500';
-                                                    break;
-                                                case 'inactiva':
-                                                default:
-                                                    $color = 'text-red-500';
-                                                    break;
-                                            }
-                                        @endphp
+                                <tr tabindex="0" x-data="{
+                                    editando: false,
+                                    obra: @js($obra),
+                                    original: JSON.parse(JSON.stringify(@js($obra)))
+                                }"
+                                    @dblclick="if(!$event.target.closest('input')) {
+                                  if(!editando) {
+                                    editando = true;
+                                  } else {
+                                    obra = JSON.parse(JSON.stringify(original));
+                                    editando = false;
+                                  }
+                                }"
+                                    @keydown.enter.stop="guardarCambios(obra); editando = false"
+                                    :class="{ 'bg-yellow-100': editando }"
+                                    class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
 
-                                        <span class="{{ $color }}">
-                                            {{ ucfirst($obra->estado) }}
-                                        </span>
+                                    <!-- ID -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.id"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.id"
+                                            class="form-input w-full">
                                     </td>
+                                    <!-- Nombre -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.obra"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.obra"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Código -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.cod_obra"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.cod_obra"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Ciudad -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.ciudad"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.ciudad"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Dirección -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.direccion"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.direccion"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Latitud -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.latitud"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.latitud"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Longitud -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.longitud"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.longitud"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Radio -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.distancia"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.distancia"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Fecha Inicio -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.fecha_inicio"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.fecha_inicio"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Peso Entregado -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.peso_entregado"></span>
+                                        </template>
+                                        <input x-show="editando" type="text" x-model="obra.peso_entregado"
+                                            class="form-input w-full">
+                                    </td>
+                                    <!-- Estado -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.estado"
+                                                :class="{
+                                                    'text-green-500': obra.estado === 'activa',
+                                                    'text-blue-500': obra.estado === 'completada',
+                                                    'text-red-500': obra.estado !== 'activa' && obra
+                                                        .estado !== 'completada'
+                                                }"></span>
+                                        </template>
+
+                                        <input x-show="editando" type="text" x-model="obra.estado"
+                                            class="form-input w-full">
+                                    </td>
+
                                     <td class="px-2 py-3 text-center border">
                                         <a href="{{ route('obras.show', $obra->id) }}"
                                             class="text-blue-500 hover:underline">Ver</a>
@@ -164,4 +244,59 @@
         </div>
 
     </div>
+    <script>
+        function guardarCambios(obra) {
+            fetch(`{{ route('obras.update', '') }}/${obra.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(obra)
+                })
+                .then(async response => {
+                    const contentType = response.headers.get('content-type');
+                    let data = {};
+
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0,
+                            100)); // corta para no saturar
+                    }
+
+                    if (response.ok && data.success) {
+                        window.location.reload();
+                    } else {
+                        let errorMsg = data.message || "Ha ocurrido un error inesperado.";
+                        if (data.errors) {
+                            errorMsg = Object.values(data.errors).flat().join("<br>");
+                        }
+
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error al actualizar",
+                            html: errorMsg,
+                            confirmButtonText: "OK",
+                            showCancelButton: true,
+                            cancelButtonText: "Reportar Error"
+                        }).then((result) => {
+                            if (result.dismiss === Swal.DismissReason.cancel) {
+                                notificarProgramador(errorMsg);
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    // Este catch ahora captura errores de red y errores de tipo (como HTML no válido)
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error de conexión",
+                        text: error.message || "No se pudo actualizar la planilla. Inténtalo nuevamente.",
+                        confirmButtonText: "OK"
+                    });
+                });
+        }
+    </script>
 </x-app-layout>

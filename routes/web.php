@@ -4,10 +4,13 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RegistroFichajeController;
-use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\PapeleraController;
+use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\FabricanteController;
+use App\Http\Controllers\ProductoBaseController;
+use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\EmpresaTransportecontroller;
@@ -15,6 +18,7 @@ use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MaquinaController;
 use App\Http\Controllers\MovimientoController;
 use App\Http\Controllers\PlanillaController;
+use App\Http\Controllers\ProduccionController;
 use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\EtiquetaController;
@@ -24,6 +28,7 @@ use App\Http\Controllers\ObraController;
 use App\Http\Controllers\AsignacionTurnoController;
 use App\Http\Controllers\CamionController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\ProveedorController;
 //nominas
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\IrpfTramoController;
@@ -45,22 +50,21 @@ Route::middleware('auth')->group(function () {
 
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/users/{id}', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-
-
+    Route::put('/actualizar-especialidad/{operario}', [ProfileController::class, 'actualizarEspecialidad']);
     Route::resource('clientes', ClienteController::class);
-
+    Route::resource('proveedores', ProveedorController::class);
 
     // Rutas para el controlador de entradas
     Route::resource('entradas', EntradaController::class);
-    /* Las siguientes rutas se generan automáticamente:
+    Route::resource('pedidos', PedidoController::class);
+    Route::post('/pedidos/confirmar', [PedidoController::class, 'confirmar'])->name('pedidos.confirmar');
+    Route::get('pedidos/{pedido}/recepcion', [PedidoController::class, 'recepcion'])->name('pedidos.recepcion');
+    Route::post('pedidos/{pedido}/recepcion', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');
 
-        1. GET /entradas         --> EntradaController@index   (Muestra todas las entradas)
-        2. GET /entradas/create  --> EntradaController@create  (Muestra el formulario para crear una nueva entrada)
-        3. POST /entradas        --> EntradaController@store   (Guarda una nueva entrada)
-        4. GET /entradas/{id}/edit --> EntradaController@edit   (Muestra el formulario para editar una entrada existente)
-        5. PUT/PATCH /entradas/{id} --> EntradaController@update  (Actualiza una entrada existente)
-        6. DELETE /entradas/{id}  --> EntradaController@destroy (Elimina una entrada) */
+
+    Route::resource('fabricantes', FabricanteController::class);
+    Route::resource('productos-base', ProductoBaseController::class);
+
     Route::resource('productos', ProductoController::class);
 
 
@@ -77,12 +81,15 @@ Route::middleware('auth')->group(function () {
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);
     Route::post('/asignaciones-turnos/destroy', [AsignacionTurnoController::class, 'destroy'])
         ->name('asignaciones-turnos.destroy');
+    Route::post('/asignaciones-turno/{id}/actualizar-puesto', [AsignacionTurnoController::class, 'actualizarPuesto']);
+    Route::post('/fichar', [AsignacionTurnoController::class, 'fichar'])->name('fichar');
 
     Route::post('/generar-turnos', function (Request $request) {
         Artisan::call('turnos:generar-anuales');
         return back()->with('success', '✅ Turnos generados correctamente.');
     })->name('generar-turnos');
     Route::post('/profile/generar-turnos/{user}', [ProfileController::class, 'generarTurnos'])->name('profile.generar.turnos');
+    Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
 
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);
@@ -121,6 +128,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/salidas/export/{mes}', [\App\Http\Controllers\SalidaController::class, 'export'])->name('salidas.export');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaController::class, 'actualizarEstado']);
     Route::post('/actualizar-fecha-salida', [SalidaController::class, 'actualizarFechaSalida']);
+
+
+    Route::resource('produccion', ProduccionController::class);
     // Rutas para la gestión de camiones
     Route::resource('camiones', CamionController::class);
 
@@ -129,7 +139,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/update-field', [EmpresaTransporteController::class, 'updateField'])->name('update.field');
 
     Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
-    Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
+    // Route::get('/alertas/sin-leer', [AlertaController::class, 'alertasSinLeer'])->name('alertas.sinLeer');
     Route::post('/alertas/store', [AlertaController::class, 'store'])->name('alertas.store');
 
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');

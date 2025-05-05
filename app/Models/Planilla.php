@@ -24,14 +24,9 @@ class Planilla extends Model
      * @var array
      */
     protected $fillable = [
-
-        'users_id',
-        'cod_obra',
         'codigo',
-        'cliente',
-        'cod_cliente',
+        'users_id',
         'cliente_id',
-        'nom_obra',
         'obra_id',
         'seccion',
         'descripcion',
@@ -43,7 +38,6 @@ class Planilla extends Model
         'fecha_finalizacion',
         'tiempo_fabricacion',
         'fecha_estimada_entrega',
-
     ];
 
     /**

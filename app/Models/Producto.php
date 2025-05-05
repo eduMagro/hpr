@@ -12,11 +12,8 @@ class Producto extends Model
     protected $table = 'productos';
 
     protected $fillable = [
-        'fabricante',
-        'nombre',
-        'tipo',
-        'diametro',
-        'longitud',
+        'producto_base_id',
+        'proveedor_id',
         'n_colada',
         'n_paquete',
         'peso_inicial',
@@ -73,14 +70,14 @@ class Producto extends Model
         return $this->hasMany(Elemento::class, 'producto_id');
     }
     public function elementos2()
-{
-    return $this->hasMany(Elemento::class, 'producto_id_2');
-}
+    {
+        return $this->hasMany(Elemento::class, 'producto_id_2');
+    }
 
-public function elementos3()
-{
-    return $this->hasMany(Elemento::class, 'producto_id_3');
-}
+    public function elementos3()
+    {
+        return $this->hasMany(Elemento::class, 'producto_id_3');
+    }
 
     // Diámetro (mm)
     public function getDiametroMmAttribute()
@@ -90,5 +87,13 @@ public function elementos3()
     public function getLongitudMetrosAttribute()
     {
         return $this->longitud ? number_format($this->longitud) . ' m' : 'No asignado';
+    }
+    public function productoBase()
+    {
+        return $this->belongsTo(ProductoBase::class);
+    }
+    public function proveedor()
+    {
+        return $this->belongsTo(Proveedor::class);
     }
 }

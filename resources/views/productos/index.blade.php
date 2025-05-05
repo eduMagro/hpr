@@ -8,111 +8,232 @@
     </x-slot>
 
     <div class="w-full px-6 py-4">
-        <!-- FORMULARIO DE BÚSQUEDA AVANZADA -->
-        <button class="btn btn-secondary mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosBusqueda">
-            🔍 Filtros Avanzados
-        </button>
-
-        <div id="filtrosBusqueda" class="collapse">
-            <form method="GET" action="{{ route('productos.index') }}" class="card card-body shadow-sm">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <input type="text" name="id" class="form-control" placeholder="ID"
-                            value="{{ request('id') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <select name="fabricante" class="form-control">
-                            <option value="">Seleccione Fabricante</option>
-                            <option value="MEGASA" {{ request('fabricante') == 'MEGASA' ? 'selected' : '' }}>MEGASA
-                            </option>
-                            <option value="GETAFE" {{ request('fabricante') == 'GETAFE' ? 'selected' : '' }}>GETAFE
-                            </option>
-                            <option value="NERVADUCTIL" {{ request('fabricante') == 'NERVADUCTIL' ? 'selected' : '' }}>
-                                NERVADUCTIL</option>
-                            <option value="Siderurgica Sevillana"
-                                {{ request('fabricante') == 'Siderurgica Sevillana' ? 'selected' : '' }}>Siderúrgica
-                                Sevillana</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select name="tipo" class="form-control">
-                            <option value="">Seleccione Tipo</option>
-                            <option value="barras" {{ request('tipo') == 'barras' ? 'selected' : '' }}>Barras</option>
-                            <option value="encarretado" {{ request('tipo') == 'encarretado' ? 'selected' : '' }}>
-                                Encarretado</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select name="diametro" class="form-control">
-                            <option value="">Seleccione Diámetro</option>
-                            <option value="5" {{ request('diametro') == '5' ? 'selected' : '' }}>5 mm</option>
-                            <option value="8" {{ request('diametro') == '8' ? 'selected' : '' }}>8 mm</option>
-                            <option value="10" {{ request('diametro') == '10' ? 'selected' : '' }}>10 mm</option>
-                            <option value="12" {{ request('diametro') == '12' ? 'selected' : '' }}>12 mm</option>
-                            <option value="16" {{ request('diametro') == '16' ? 'selected' : '' }}>16 mm</option>
-                            <option value="20" {{ request('diametro') == '20' ? 'selected' : '' }}>20 mm</option>
-                            <option value="25" {{ request('diametro') == '25' ? 'selected' : '' }}>25 mm</option>
-                            <option value="32" {{ request('diametro') == '32' ? 'selected' : '' }}>32 mm</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <input type="text" name="longitud" class="form-control" placeholder="Longitud"
-                            value="{{ request('longitud') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <input type="text" name="n_colada" class="form-control" placeholder="Número de Colada"
-                            value="{{ request('n_colada') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <input type="text" name="n_paquete" class="form-control" placeholder="Número de Paquete"
-                            value="{{ request('n_paquete') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <input type="text" name="estado" class="form-control" placeholder="Estado"
-                            value="{{ request('estado') }}">
-                    </div>
-                    <div class="col-12 d-flex justify-content-between">
-                        <button type="submit" class="btn btn-info">
-                            <i class="fas fa-search"></i> Buscar
-                        </button>
-                        <a href="{{ route('productos.index') }}" class="btn btn-warning">
-                            <i class="fas fa-undo"></i> Resetear Filtros
-                        </a>
-                    </div>
-                </div>
-            </form>
-        </div>
 
         @if (Auth::user()->rol === 'oficina')
+            <!-- Catálogo de Productos Base -->
+            <div x-data="{ open: false }" class="mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-lg font-semibold text-gray-800">Catálogo de Productos Base</h2>
+                    <button @click="open = !open"
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">
+                        <span x-show="!open">Mostrar</span><span x-show="open">Ocultar</span>
+                    </button>
+                </div>
+                <div x-show="open" x-transition class="overflow-x-auto bg-white shadow rounded-lg">
+                    <table class="w-full min-w-[600px] border border-gray-300 text-sm">
+                        <thead class="bg-blue-200 text-gray-700">
+                            <tr>
+                                <th class="px-3 py-2 border">ID</th>
+                                <th class="px-3 py-2 border">Tipo</th>
+                                <th class="px-3 py-2 border">Diámetro</th>
+                                <th class="px-3 py-2 border">Longitud</th>
+
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($productosBase as $base)
+                                <tr class="border-b odd:bg-gray-100 even:bg-gray-50">
+                                    <td class="px-3 py-2 border text-center">{{ $base->id }}</td>
+                                    <td class="px-3 py-2 border text-center">{{ ucfirst($base->tipo) }}</td>
+                                    <td class="px-3 py-2 border text-center">{{ $base->diametro }} mm</td>
+                                    <td class="px-3 py-2 border text-center">{{ $base->longitud ?? '—' }}</td>
+
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-gray-500">No hay productos base
+                                        registrados.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            @php
+                $filtrosActivos = [];
+
+                if (request('buscar')) {
+                    $filtrosActivos[] = 'contiene <strong>“' . request('buscar') . '”</strong>';
+                }
+                if (request('proveedor')) {
+                    $filtrosActivos[] = 'Proveedor: <strong>' . request('proveedor') . '</strong>';
+                }
+                if (request('tipo')) {
+                    $filtrosActivos[] = 'Tipo: <strong>' . request('tipo') . '</strong>';
+                }
+                if (request('diametro')) {
+                    $filtrosActivos[] = 'Diámetro: <strong>' . request('diametro') . '</strong>';
+                }
+                if (request('longitud')) {
+                    $filtrosActivos[] = 'Longitud: <strong>' . request('longitud') . '</strong>';
+                }
+                if (request('n_colada')) {
+                    $filtrosActivos[] = 'Nº Colada: <strong>' . request('n_colada') . '</strong>';
+                }
+                if (request('n_paquete')) {
+                    $filtrosActivos[] = 'Nº Paquete: <strong>' . request('n_paquete') . '</strong>';
+                }
+                if (request('estado')) {
+                    $estados = [
+                        'disponible' => 'Disponible',
+                        'reservado' => 'Reservado',
+                        'consumido' => 'Consumido',
+                    ];
+                    $filtrosActivos[] =
+                        'Estado: <strong>' . ($estados[request('estado')] ?? request('estado')) . '</strong>';
+                }
+                if (request('ubicacion')) {
+                    $filtrosActivos[] = 'Ubicación: <strong>' . request('ubicacion') . '</strong>';
+                }
+
+                if (request('sort')) {
+                    $sorts = [
+                        'id' => 'ID',
+                        'proveedor' => 'Proveedor',
+                        'tipo' => 'Tipo',
+                        'diametro' => 'Diámetro',
+                        'longitud' => 'Longitud',
+                        'n_colada' => 'Nº Colada',
+                        'n_paquete' => 'Nº Paquete',
+                        'peso_inicial' => 'Peso Inicial',
+                        'peso_stock' => 'Peso Stock',
+                        'estado' => 'Estado',
+                        'ubicacion' => 'Ubicación',
+                    ];
+                    $orden = request('order') == 'desc' ? 'descendente' : 'ascendente';
+                    $filtrosActivos[] =
+                        'Ordenado por <strong>' .
+                        ($sorts[request('sort')] ?? request('sort')) .
+                        "</strong> en orden <strong>$orden</strong>";
+                }
+
+                if (request('per_page')) {
+                    $filtrosActivos[] = 'Mostrando <strong>' . request('per_page') . '</strong> registros por página';
+                }
+            @endphp
+
+            @if (count($filtrosActivos))
+                <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
+                    <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
+                </div>
+            @endif
+
+            @php
+                function ordenarColumna($columna, $titulo)
+                {
+                    $currentSort = request('sort_by');
+                    $currentOrder = request('order');
+                    $isSorted = $currentSort === $columna;
+                    $nextOrder = $isSorted && $currentOrder === 'asc' ? 'desc' : 'asc';
+                    $icon = $isSorted
+                        ? ($currentOrder === 'asc'
+                            ? 'fas fa-sort-up'
+                            : 'fas fa-sort-down')
+                        : 'fas fa-sort';
+
+                    $url = request()->fullUrlWithQuery(['sort_by' => $columna, 'order' => $nextOrder]);
+
+                    return '<a href="' .
+                        $url .
+                        '" class="text-white text-decoration-none">' .
+                        $titulo .
+                        ' <i class="' .
+                        $icon .
+                        '"></i></a>';
+                }
+            @endphp
+
             <!-- Modo Tabla -->
             <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
                 <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white">
-                        <tr class="text-left text-sm uppercase">
-                            <th class="px-4 py-3 border">ID Materia Prima</th>
-                            <th class="px-4 py-3 border">Fabricante</th>
-                            <th class="px-4 py-3 border">Nombre</th>
-                            <th class="px-4 py-3 border">Tipo</th>
-                            <th class="px-4 py-3 border">Diámetro</th>
-                            <th class="px-4 py-3 border">Longitud</th>
-                            <th class="px-4 py-3 border">Nº Colada</th>
-                            <th class="px-4 py-3 border">Nº Paquete</th>
-                            <th class="px-4 py-3 border">Peso Inicial</th>
-                            <th class="px-4 py-3 border">Peso Stock</th>
-                            <th class="px-4 py-3 border">Estado</th>
-                            <th class="px-4 py-3 border">Ubicación</th>
-                            <th class="px-4 py-3 border text-center">Acciones</th>
+                        <tr class="text-center text-xs uppercase">
+                            <th class="p-2 border">{!! ordenarColumna('id', 'ID Materia Prima') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('proveedor', 'Proveedor') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('tipo', 'Tipo') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('diametro', 'Diámetro') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('longitud', 'Longitud') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('n_colada', 'Nº Colada') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('n_paquete', 'Nº Paquete') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('peso_inicial', 'Peso Inicial') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('peso_stock', 'Peso Stock') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('estado', 'Estado') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('ubicacion', 'Ubicación') !!}</th>
+                            <th class="p-2 border">Acciones</th>
                         </tr>
+                        <tr class="text-center text-xs uppercase">
+                            <form method="GET" action="{{ route('productos.index') }}">
+                                <th class="p-1 border">
+                                    <input type="text" name="id" value="{{ request('id') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="proveedor" value="{{ request('proveedor') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="tipo" value="{{ request('tipo') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="diametro" value="{{ request('diametro') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="longitud" value="{{ request('longitud') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="num_colada" value="{{ request('num_colada') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="num_paquete" value="{{ request('num_paquete') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border"></th> <!-- Peso Inicial: sin filtro por ahora -->
+                                <th class="p-1 border"></th> <!-- Peso Stock: sin filtro por ahora -->
+                                <th class="p-1 border">
+                                    <select name="estado" class="form-control form-control-sm">
+                                        <option value="">Todos</option>
+                                        <option value="almacenado"
+                                            {{ request('estado') == 'almacenado' ? 'selected' : '' }}>Almacenado
+                                        </option>
+                                        <option value="fabricando"
+                                            {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando
+                                        </option>
+                                        <option value="consumido"
+                                            {{ request('estado') == 'consumido' ? 'selected' : '' }}>Consumido</option>
+                                    </select>
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="ubicacion" value="{{ request('ubicacion') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border text-center">
+                                    <button type="submit" class="btn btn-sm btn-info px-2"><i
+                                            class="fas fa-search"></i></button>
+                                    <a href="{{ route('productos.index') }}" class="btn btn-sm btn-warning px-2"><i
+                                            class="fas fa-undo"></i></a>
+                                </th>
+                            </form>
+                        </tr>
+
                     </thead>
                     <tbody class="text-gray-700 text-sm">
                         @forelse($registrosProductos as $producto)
                             <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer">
                                 <td class="px-4 py-3 text-center border">{{ $producto->id }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->fabricante }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->nombre }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->tipo }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->diametro }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->longitud ?? 'N/A' }}</td>
+                                <td class="px-4 py-3 text-center border">{{ $producto->proveedor->nombre ?? '—' }}
+                                </td>
+                                <td class="px-4 py-3 text-center border">
+                                    {{ ucfirst($producto->productoBase->tipo ?? '—') }}</td>
+                                <td class="px-4 py-3 text-center border">
+                                    {{ $producto->productoBase->diametro ?? '—' }}
+                                </td>
+                                <td class="px-4 py-3 text-center border">
+                                    {{ $producto->productoBase->longitud ?? '—' }}
+                                </td>
                                 <td class="px-4 py-3 text-center border">{{ $producto->n_colada }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $producto->n_paquete }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $producto->peso_inicial }} kg</td>
@@ -143,7 +264,7 @@
                         @empty
                             <tr>
                                 <td colspan="13" class="text-center py-4 text-gray-500">No hay productos
-                                    disponibles.</td>
+                                    con esa descripción.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -155,11 +276,10 @@
                 @forelse($registrosProductos as $producto)
                     <div class="bg-white shadow-md rounded-lg p-4">
                         <h3 class="font-bold text-lg text-gray-700">ID Materia Prima: {{ $producto->id }}</h3>
-                        <p><strong>Fabricante:</strong> {{ $producto->fabricante }}</p>
-                        <p><strong>Nombre:</strong> {{ $producto->nombre }}</p>
-                        <p><strong>Tipo:</strong> {{ $producto->tipo }}</p>
-                        <p><strong>Diámetro:</strong> {{ $producto->diametro }}</p>
-                        <p><strong>Longitud:</strong> {{ $producto->longitud ?? 'N/A' }}</p>
+                        <p><strong>Proveedor:</strong> {{ $producto->proveedor->nombre ?? '—' }}</p>
+                        <p><strong>Tipo:</strong> {{ ucfirst($producto->productoBase->tipo ?? '—') }}</p>
+                        <p><strong>Diámetro:</strong> {{ $producto->productoBase->diametro ?? '—' }}</p>
+                        <p><strong>Longitud:</strong> {{ $producto->productoBase->longitud ?? '—' }}</p>
                         <p><strong>Nº Colada:</strong> {{ $producto->n_colada }}</p>
                         <p><strong>Nº Paquete:</strong> {{ $producto->n_paquete }}</p>
                         <p><strong>Peso Inicial:</strong> {{ $producto->peso_inicial }} kg</p>

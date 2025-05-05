@@ -11,6 +11,7 @@ use Illuminate\View\View;
 use App\Models\User;
 use App\Models\Maquina;
 use App\Models\Turno;
+use App\Models\Festivo;
 use App\Models\Categoria;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
@@ -22,11 +23,92 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Http;
-
+use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Nomina;
 
 class ProfileController extends Controller
 {
+
+    private function filtrosActivos(Request $request): array
+    {
+        $filtros = [];
+
+        if ($request->filled('name')) {
+            $filtros[] = 'Nombre: <strong>' . $request->name . '</strong>';
+        }
+
+        if ($request->filled('email')) {
+            $filtros[] = 'Email: <strong>' . $request->email . '</strong>';
+        }
+
+        if ($request->filled('dni')) {
+            $filtros[] = 'DNI: <strong>' . $request->dni . '</strong>';
+        }
+
+        if ($request->filled('empresa')) {
+            $filtros[] = 'Empresa: <strong>' . $request->empresa . '</strong>';
+        }
+
+        if ($request->filled('rol')) {
+            $filtros[] = 'Rol: <strong>' . $request->rol . '</strong>';
+        }
+
+        if ($request->filled('categoria_id')) {
+            $nombreCategoria = Categoria::find($request->categoria_id)?->nombre ?? 'Desconocida';
+            $filtros[] = 'Categoría: <strong>' . $nombreCategoria . '</strong>';
+        }
+
+        if ($request->filled('especialidad')) {
+            $filtros[] = 'Especialidad: <strong>' . $request->especialidad . '</strong>';
+        }
+
+        if ($request->filled('turno')) {
+            $filtros[] = 'Turno: <strong>' . $request->turno . '</strong>';
+        }
+
+        if ($request->filled('estado')) {
+            $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
+        }
+
+
+        if ($request->filled('sort')) {
+            $sorts = [
+                'nombre' => 'Nombre',
+                'email' => 'Email',
+                'dni' => 'DNI',
+                'empresa' => 'Empresa',
+                'rol' => 'Rol',
+                'categoria' => 'Categoría',
+                'especialidad' => 'Especialidad',
+                'turno' => 'Turno',
+                'estado' => 'Estado',
+            ];
+            $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
+        }
+
+        if ($request->filled('per_page')) {
+            $filtros[] = 'Mostrando <strong>' . $request->per_page . '</strong> registros por página';
+        }
+
+        return $filtros;
+    }
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = $isSorted
+            ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down')
+            : 'fas fa-sort';
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="text-white text-decoration-none">' .
+            $titulo . ' <i class="' . $icon . '"></i></a>';
+    }
 
     public function aplicarFiltros(Request $request)
     {
@@ -57,8 +139,8 @@ class ProfileController extends Controller
         }
 
         // Filtrar por categoría
-        if ($request->filled('categoria')) {
-            $query->where('categoria_id', $request->input('categoria'));
+        if ($request->filled('categoria_id')) {
+            $query->where('categoria_id', $request->input('categoria_id'));
         }
 
         // Filtrar por especialidad
@@ -69,16 +151,15 @@ class ProfileController extends Controller
         // Obtener la fecha de hoy
         $hoy = Carbon::today()->toDateString();
         // Filtrar por turno de hoy si se selecciona un turno
+        // if ($request->filled('turno')) {
+        //     $query->whereHas('asignacionesTurnos', function ($q) use ($request, $hoy) {
+        //         $q->where('fecha', $hoy)->whereHas('turno', function ($t) use ($request) {
+        //             $t->where('nombre', $request->input('turno'));
+        //         });
+        //     });
+        // }
         if ($request->filled('turno')) {
-            $query->whereHas('asignacionesTurnos', function ($q) use ($request, $hoy) {
-                $q->where('fecha', $hoy)->whereHas('turno', function ($t) use ($request) {
-                    $t->where('nombre', $request->input('turno'));
-                });
-            });
-        }
-        // Filtrar por estado
-        if ($request->filled('estado')) {
-            $query->where('users.estado', $request->input('estado'));
+            $query->where('users.turno', $request->input('turno'));
         }
 
         // Ordenar resultados
@@ -91,46 +172,94 @@ class ProfileController extends Controller
 
     public function index(Request $request)
     {
-        // Obtener la cantidad de usuarios conectados
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
         $obras = Obra::where('estado', 'activa')->get();
-        // Obtener valores únicos desde la tabla users
         $categorias = Categoria::orderBy('nombre')->get();
+        $empresas = Empresa::orderBy('nombre')->get();
+        $especialidades = Maquina::distinct()->pluck('codigo')->sort();
+        $especialidades = $especialidades->merge(['grua 1', 'grua 2', 'grua 3']);
 
-        $especialidades = Maquina::distinct()->pluck('codigo')->filter()->sort();
         $roles = User::distinct()->pluck('rol')->filter()->sort();
-        // Obtener la fecha de hoy
-        $hoy = Carbon::today()->toDateString();
+        $turnos = User::distinct()->pluck('turno')->filter()->sort();
 
-        // Obtener los turnos asignados para hoy desde la tabla asignaciones_turnos
+        $ordenables = [
+            'id' => $this->getOrdenamiento('id', 'ID'),
+            'name' => $this->getOrdenamiento('name', 'Nombre'),
+            'email' => $this->getOrdenamiento('email', 'Email'),
+            'dni' => $this->getOrdenamiento('dni', 'DNI'),
+            'empresa' => $this->getOrdenamiento('empresa', 'Empresa'),
+            'rol' => $this->getOrdenamiento('rol', 'Rol'),
+            'categoria' => $this->getOrdenamiento('categoria', 'Categoría'),
+            'especialidad' => $this->getOrdenamiento('especialidad', 'Especialidad'),
+            'turno' => $this->getOrdenamiento('turno', 'Turno'),
+            'estado' => $this->getOrdenamiento('estado', 'Estado'),
+        ];
+
+        $hoy = Carbon::today()->toDateString();
         $turnosHoy = AsignacionTurno::where('fecha', $hoy)
             ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
-            ->pluck('turnos.nombre')
-            ->unique()
-            ->sort();
-        // Aplicar filtros
-        $query = $this->aplicarFiltros($request)->with('categoria', 'empresa');
-        $empresas = Empresa::orderBy('nombre')->get();
+            ->pluck('turnos.nombre')->unique()->sort();
 
-        $registrosUsuarios = $query->paginate(10)->appends($request->except('page'));
+        // Obtener usuarios según filtros (sin paginar aún)
+        $usuarios = $this->aplicarFiltros($request)->with('categoria', 'empresa')->get();
 
-        // Obtener el usuario autenticado
+        // ✅ Filtrado por "estado de conexión" en colección
+        if ($request->filled('estado')) {
+            if ($request->estado === 'activo') {
+                $usuarios = $usuarios->filter(fn($u) => $u->isOnline());
+            } elseif ($request->estado === 'inactivo') {
+                $usuarios = $usuarios->filter(fn($u) => !$u->isOnline());
+            }
+        }
+
+        // ✅ Paginar manualmente la colección
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
+        $registrosUsuarios = new LengthAwarePaginator(
+            $usuarios->slice($offset, $perPage)->values(),
+            $usuarios->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        $filtrosActivos = $this->filtrosActivos($request);
         $user = auth()->user();
-
         $coloresTurnos = $this->getColoresTurnos();
-        // **Eventos de fichajes**
+
         $eventosFichajes = $this->getEventosFichajes($user);
-
         $eventosTurnos = $this->getEventosTurnos($user);
+        $festivos = Festivo::select('fecha', 'titulo')->get()->map(function ($festivo) {
+            return [
+                'title' => $festivo->titulo,
+                'start' => $festivo->fecha,
+                'backgroundColor' => '#ff2800',
+                'borderColor' => '#b22222',
+                'textColor' => 'white',
+                'allDay' => true,
+                'editable' => true
+            ];
+        })->toArray();
 
-        // **Obtener los festivos usando el método**
-        $festivos = $this->getFestivos();
-
-        // **Combinar eventos (Fichajes, Turnos y Festivos)**
         $eventos = array_merge($eventosFichajes->toArray(), $eventosTurnos->toArray(), $festivos);
 
-        // Pasar datos a la vista
-        return view('User.index', compact('registrosUsuarios', 'usuariosConectados', 'obras', 'user', 'empresas', 'eventos', 'coloresTurnos', 'categorias', 'especialidades', 'roles', 'turnosHoy'));
+        return view('User.index', compact(
+            'registrosUsuarios',
+            'usuariosConectados',
+            'obras',
+            'user',
+            'empresas',
+            'eventos',
+            'coloresTurnos',
+            'categorias',
+            'especialidades',
+            'roles',
+            'turnos',
+            'turnosHoy',
+            'filtrosActivos',
+            'ordenables'
+        ));
     }
 
     public function show($id)
@@ -214,6 +343,11 @@ class ProfileController extends Controller
             'falta_injustificada' => [
                 'bg' => '#000000',
                 'border' => $this->darkenColor('#000000'),
+                'text' => '#FFFFFF'
+            ],
+            'festivo' => [
+                'bg' => '#ff0000',
+                'border' => '#b91c1c',
                 'text' => '#FFFFFF'
             ],
         ];
@@ -401,6 +535,13 @@ class ProfileController extends Controller
             if (!$resultado) {
                 return response()->json(['error' => 'No se pudo actualizar el usuario.'], 500);
             }
+            // Actualizar asignaciones_turno desde hoy hasta fin de año
+            AsignacionTurno::where('user_id', $usuario->id)
+                ->whereDate('fecha', '>=', Carbon::today())
+                ->whereDate('fecha', '<=', Carbon::createFromDate(null, 12, 31))
+                ->where('turno_id', '!=', 10)
+                ->update(['puesto' => $usuario->especialidad]);
+
 
             return response()->json(['success' => 'Usuario actualizado correctamente.']);
         } catch (ValidationException $e) {
@@ -422,8 +563,18 @@ class ProfileController extends Controller
         $inicio = Carbon::now()->addDay()->startOfDay();
         $fin = Carbon::now()->endOfYear();
 
-        // Obtener festivos desde el método getFestivos()
-        $festivos = $this->getFestivos();
+        $festivos = Festivo::select('fecha', 'titulo')->get()->map(function ($festivo) {
+            return [
+                'title' => $festivo->titulo,
+                'start' => $festivo->fecha,
+                'backgroundColor' => '#ff2800', // Rojo Ferrari
+                'borderColor' => '#b22222',
+                'textColor' => 'white',
+                'allDay' => true,
+                'editable' => true // ✅ Esto permite moverlo
+            ];
+        })->toArray();
+
         $festivosArray = collect($festivos)->pluck('start')->toArray();
         // Obtener los días donde ya hay una asignación de vacaciones (turno_id = 10)
         $diasVacaciones = AsignacionTurno::where('user_id', $user->id)

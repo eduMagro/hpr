@@ -16,7 +16,7 @@ class Entrada extends Model
     protected $fillable = [
         'albaran',
         'peso_total',
-        'users_id',
+        'usuario_id',
         'otros',
     ];
 
@@ -25,7 +25,7 @@ class Entrada extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    
+
 
     /**
      * Relación con la tabla 'ubicaciones'
@@ -44,7 +44,7 @@ class Entrada extends Model
      */
     public function user()
     {
-        return $this->belongsTo(User::class, 'users_id');  // Relación con User
+        return $this->belongsTo(User::class, 'usuario_id');  // Relación con User
     }
 
     /**
@@ -55,9 +55,4 @@ class Entrada extends Model
     {
         return $this->belongsToMany(Producto::class, 'entrada_producto');  // Relación uno a muchos
     }
-
 }
-
-
-
-

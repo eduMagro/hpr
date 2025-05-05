@@ -7,8 +7,17 @@
     </x-slot>
 
     <div class="w-full p-4 sm:p-4">
+
         {{-- Botón para crear nueva salida (solo rol oficina) --}}
         @if (auth()->user()->rol == 'oficina')
+            <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
+            <div class="mb-4 flex space-x-2">
+                <a href="{{ route('empresas-transporte.index') }}" class="btn btn-primary">
+                    Empresas de transporte
+                </a>
+
+            </div>
+
             {{-- Verificamos que existan salidas --}}
             @if ($salidas->count())
                 {{-- Iteramos por cada grupo de salidas por mes --}}

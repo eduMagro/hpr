@@ -22,7 +22,7 @@ class AlertaController extends Controller
         $query->orderBy('id', 'desc');
 
         // Filtrar por destino (rol) o destinatario (categoría), excepto administradores
-        if ($usuario->categoria !== 'programador') {
+        if ($usuario->especialidad !== 'programador') {
             $query->where(function ($q) use ($usuario) {
                 $q->where('destino', $usuario->rol)
                     ->orWhere('destinatario', $usuario->categoria)
@@ -77,89 +77,50 @@ class AlertaController extends Controller
 
     public function index()
     {
-        try {
-            DB::beginTransaction();
+        $user = Auth::user();
+        // Obtener todos los roles y categorías únicas desde la tabla users
+        $roles = User::distinct()->pluck('rol')->filter()->values();
+        $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
+        // Obtener todos los usuarios para el select del modal (puedes ajustar el orden o el filtro según necesites)
+        $usuarios = User::orderBy('name')->get();
+        $alertas = Alerta::where(function ($query) use ($user) {
+            $query->where('user_id_1', $user->id)                      // Alerta directa
+                ->orWhere('user_id_2', $user->id)                    // Mismo rol
+                ->orWhere('destino', $user->rol)                    // Mismo rol
+                ->orWhere('destinatario', $user->categoria_id)     // Misma categoría
+                ->orWhere('destinatario_id', $user->id);           // Alerta personal
+        })
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
 
-            $usuario = Auth::user();
-            if (!$usuario) {
-                return redirect()->route('login')->with('error', 'Debe iniciar sesión para ver las alertas.');
-            }
-
-            // Obtener todos los roles y categorías únicas desde la tabla users
-            $roles = User::distinct()->pluck('rol')->filter()->values();
-            $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
-            // Obtener todos los usuarios para el select del modal (puedes ajustar el orden o el filtro según necesites)
-            $usuarios = User::orderBy('name')->get();
-            if ($usuario->categoria === 'programador') {
-
-                // Los programadores ven todas las alertas (menos las que ya han leído)
-                $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
-                    $q->where('user_id', $usuario->id);
-                })
-                    ->orderBy('created_at', 'desc')
-                    ->get();
-            } else {
-
-                // Los demás usuarios ven alertas donde:
-                // - el destinatario_id es su ID, o
-                // - la alerta está dirigida a su rol o categoría
-                $alertasNoLeidas = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
-                    $q->where('user_id', $usuario->id);
-                })
-                    ->where(function ($query) use ($usuario) {
-                        $query->where('destinatario_id', $usuario->id)
-                            ->orWhere('destino', $usuario->rol)
-                            ->orWhere('destinatario', $usuario->categoria);
-                    })
-                    ->orderBy('created_at', 'desc')
-                    ->get();
-            }
-
-            // Registrar la lectura SOLO para las alertas que cumplen la condición de destinatario destino o destinatario_id
-            foreach ($alertasNoLeidas as $alerta) {
-                if (!$alerta->usuariosQueLeen()->where('user_id', $usuario->id)->exists()) {
-                    $alerta->usuariosQueLeen()->attach($usuario->id, ['leida_en' => now()]);
-                }
-            }
-
-            // Aplicar filtros y obtener alertas paginadas
-            $query = Alerta::orderBy('created_at', 'desc');
-            $alertas = $this->aplicarFiltros($query);
-
-            DB::commit();
-
-            return view('alertas.index', compact('alertas', 'alertasNoLeidas', 'roles', 'categorias', 'usuarios'));
-        } catch (Exception $e) {
-            DB::rollBack();
-            return redirect()->route('alertas.index')->with('error', 'Ocurrió un error al cargar las alertas.');
-        }
+        return view('alertas.index', compact('alertas', 'user', 'roles', 'categorias', 'usuarios'));
     }
 
     /**
      * Devuelve la cantidad de alertas sin leer (para mostrar la exclamación en la navbar).
      */
-    public function alertasSinLeer()
-    {
-        $usuario = Auth::user();
-        if (!$usuario) {
-            return response()->json(['cantidad' => 0]);
-        }
+    // public function alertasSinLeer()
+    // {
+    //     $usuario = Auth::user();
+    //     if (!$usuario) {
+    //         return response()->json(['cantidad' => 0]);
+    //     }
 
-        // Buscar alertas que el usuario NO ha leído
-        $cantidad = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
-            $q->where('user_id', $usuario->id);
-        })
-            ->when($usuario->categoria !== 'programador', function ($q) use ($usuario) {
-                $q->where(function ($subQuery) use ($usuario) {
-                    $subQuery->where('destino', $usuario->rol)  // Coincide con el rol del usuario
-                        ->orWhere('destinatario', $usuario->categoria) // Coincide con la categoría del usuario
-                        ->orWhere('destinatario_id', $usuario->id); // Coincide con la categoría del usuario
-                });
-            })
-            ->count();
+    //     // Buscar alertas que el usuario NO ha leído
+    //     $cantidad = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
+    //         $q->where('user_id', $usuario->id);
+    //     })
+    //         ->when($usuario->especialidad !== 'programador', function ($q) use ($usuario) {
+    //             $q->where(function ($subQuery) use ($usuario) {
+    //                 $subQuery->where('destino', $usuario->rol)  // Coincide con el rol del usuario
+    //                     ->orWhere('destinatario', $usuario->categoria) // Coincide con la categoría del usuario
+    //                     ->orWhere('destinatario_id', $usuario->id); // Coincide con la categoría del usuario
+    //             });
+    //         })
+    //         ->count();
 
-        return response()->json(['cantidad' => $cantidad]);
-    }
+    //     return response()->json(['cantidad' => $cantidad]);
+    // }
     public function store(Request $request)
     {
         // Validar que se proporcione solo un destino: rol, categoría o destinatario_id

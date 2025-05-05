@@ -96,80 +96,159 @@ class PlanillaController extends Controller
         return $maquinaSeleccionada?->id ?? null;
     }
 
+    private function filtrosActivos(Request $request): array
+    {
+        $filtros = [];
+
+        if ($request->filled('users_id')) {
+            $nombreUsuario = User::find($request->users_id)?->name ?? 'Desconocido';
+            $filtros[] = 'Responsable: <strong>' . $nombreUsuario . '</strong>';
+        }
+
+        if ($request->filled('codigo')) {
+            $filtros[] = 'Código Planilla: <strong>' . $request->codigo . '</strong>';
+        }
+
+        if ($request->filled('codigo_cliente')) {
+            $filtros[] = 'Código cliente: <strong>' . $request->codigo_cliente . '</strong>';
+        }
+
+        if ($request->filled('cliente')) {
+            $filtros[] = 'Cliente: <strong>' . $request->cliente . '</strong>';
+        }
+
+        if ($request->filled('cod_obra')) {
+            $filtros[] = 'Código obra: <strong>' . $request->cod_obra . '</strong>';
+        }
+
+        if ($request->filled('nom_obra')) {
+            $filtros[] = 'Obra: <strong>' . $request->nom_obra . '</strong>';
+        }
+
+
+        if ($request->filled('seccion')) {
+            $filtros[] = 'Sección: <strong>' . $request->seccion . '</strong>';
+        }
+
+        if ($request->filled('descripcion')) {
+            $filtros[] = 'Descripción: <strong>' . $request->descripcion . '</strong>';
+        }
+
+        if ($request->filled('ensamblado')) {
+            $filtros[] = 'Ensamblado: <strong>' . $request->ensamblado . '</strong>';
+        }
+
+        if ($request->filled('estado')) {
+            $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
+        }
+
+        if ($request->filled('fecha_finalizacion')) {
+            $filtros[] = 'Fecha finalización: <strong>' . $request->fecha_finalizacion . '</strong>';
+        }
+        if ($request->filled('fecha_importacion')) {
+            $filtros[] = 'Fecha importación: <strong>' . $request->fecha_importacion . '</strong>';
+        }
+        if ($request->filled('fecha_estimada_entrega')) {
+            $filtros[] = 'Fecha estimada entrega: <strong>' . $request->fecha_estimada_entrega . '</strong>';
+        }
+
+        if ($request->filled('sort')) {
+            $sorts = [
+                'fecha_estimada_entrega' => 'Entrega estimada',
+                'estado' => 'Estado',
+                'seccion' => 'Sección',
+                'peso_total' => 'Peso total',
+            ];
+            $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
+        }
+
+        if ($request->filled('per_page')) {
+            $filtros[] = 'Mostrando <strong>' . $request->per_page . '</strong> registros por página';
+        }
+
+        return $filtros;
+    }
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = $isSorted
+            ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down')
+            : 'fas fa-sort';
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="text-white text-decoration-none">' .
+            $titulo . ' <i class="' . $icon . '"></i></a>';
+    }
 
     //------------------------------------------------------------------------------------ FILTROS
-    private function aplicarFiltros($query, Request $request)
+    public function aplicarFiltros($query, Request $request)
     {
-        // 🔍 Búsqueda global en múltiples campos
-        if ($request->has('buscar') && $request->buscar) {
-            $buscar = $request->input('buscar');
-            $query->where(function ($q) use ($buscar) {
-                $q->where('codigo', 'like', "%$buscar%")
-                    ->orWhere('cliente', 'like', "%$buscar%")
-                    ->orWhere('nom_obra', 'like', "%$buscar%")
-                    ->orWhere('cod_obra', 'like', "%$buscar%")
-                    ->orWhereHas('user', function ($q) use ($buscar) {
-                        $q->where('name', 'like', "%$buscar%");
-                    });
+
+        if ($request->filled('users_id')) {
+            $query->where('users_id', $request->users_id);
+        }
+
+        if ($request->filled('codigo_cliente')) {
+            $query->whereHas('cliente', function ($q) use ($request) {
+                $q->where('codigo', 'like', '%' . $request->codigo_cliente . '%');
             });
         }
 
-        // 🔢 Filtros específicos
-        $filters = [
-            'codigo' => 'codigo',
-            'cod_obra' => 'cod_obra',
-            'nom_obra' => 'nom_obra',
-            'cliente' => 'cliente',
-            'ensamblado' => 'ensamblado',
-        ];
-
-        foreach ($filters as $requestKey => $column) {
-            if ($request->has($requestKey) && $request->$requestKey) {
-                $query->where($column, 'like', "%{$request->$requestKey}%");
-            }
-        }
-
-        // 📅 Filtrado por rango de fechas
-        if ($request->has('fecha_inicio') && $request->fecha_inicio) {
-            $query->whereDate('created_at', '>=', $request->fecha_inicio);
-        }
-        if ($request->has('fecha_finalizacion') && $request->fecha_finalizacion) {
-            $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
-        }
-
-        // 🏗️ Filtrar por usuario
-        if ($request->has('name') && $request->name) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $q->where('name', 'like', "%{$request->name}%");
+        if ($request->filled('cliente')) {
+            $query->whereHas('cliente', function ($q) use ($request) {
+                $q->where('empresa', 'like', '%' . $request->cliente . '%');
             });
         }
 
-        // 📌 Filtrar por planilla_id si está presente
-        if ($request->has('planilla_id')) {
-            $query->where('id', $request->planilla_id);
+        if ($request->filled('cod_obra')) {
+            $query->whereHas('obra', function ($q) use ($request) {
+                $q->where('cod_obra', 'like', '%' . $request->cod_obra . '%');
+            });
         }
 
-        // 📌 Filtrar por codigo de planilla si está presente
-        if ($request->has('codigo') && $request->codigo) {
-            $query->where('codigo', 'like', "%{$request->codigo}%");
+        if ($request->filled('nom_obra')) {
+            $query->whereHas('obra', function ($q) use ($request) {
+                $q->where('obra', 'like', '%' . $request->nom_obra . '%');
+            });
         }
 
-        // 🛠️ Filtrar por estado de fabricación
-        if ($request->has('estado') && $request->estado) {
-            $query->where('estado', 'like', "%{$request->estado}%");
+
+        if ($request->filled('seccion')) {
+            $query->where('seccion', 'like', '%' . $request->seccion . '%');
         }
-        // 🏷️ Ordenar los resultados
-        $allowedSortColumns = ['created_at', 'codigo', 'cliente', 'nom_obra']; // Lista de columnas permitidas
 
-        $sortBy = $request->filled('sort_by') && in_array($request->input('sort_by'), $allowedSortColumns)
-            ? $request->input('sort_by')
-            : 'created_at'; // Default seguro
+        if ($request->filled('descripcion')) {
+            $query->where('descripcion', 'like', '%' . $request->descripcion . '%');
+        }
 
-        $order = $request->filled('order') && in_array($request->input('order'), ['asc', 'desc'])
-            ? $request->input('order')
-            : 'desc'; // Default seguro
+        if ($request->filled('ensamblado')) {
+            $query->where('ensamblado', 'like', '%' . $request->ensamblado . '%');
+        }
 
-        $query->orderBy($sortBy, $order);
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('fecha_finalizacion')) {
+            $query->whereDate('fecha_finalizacion', $request->fecha_finalizacion);
+        }
+        if ($request->filled('fecha_importacion')) {
+            $query->whereDate('created_at', $request->fecha_importacion);
+        }
+        if ($request->filled('fecha_estimada_entrega')) {
+            $query->whereDate('fecha_estimada_entrega', $request->fecha_estimada_entrega);
+        }
+
+        // Ordenación
+        $sortBy = $request->input('sort', 'fecha_estimada_entrega');
+        $order = $request->input('order', 'desc');
+        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
 
         return $query;
     }
@@ -180,49 +259,58 @@ class PlanillaController extends Controller
     public function index(Request $request)
     {
         try {
+            // 1️⃣ Iniciar la consulta base con relaciones
             $query = Planilla::with(['user', 'elementos', 'cliente', 'obra']);
 
-            // Aplicar filtros
+            // 2️⃣ Aplicar filtros desde el formulario (usando método personalizado)
             $query = $this->aplicarFiltros($query, $request);
 
-            // 📌 Columnas permitidas para ordenar
-            $allowedSortColumns = ['created_at', 'codigo', 'cliente', 'nom_obra'];
+            // 3️⃣ Definir columnas ordenables para la vista (cabecera de la tabla)
+            $ordenables = [
+                'codigo' => $this->getOrdenamiento('codigo', 'Código'),
+                'cliente' => $this->getOrdenamiento('cliente', 'Cliente'),
+                'cod_obra' => $this->getOrdenamiento('cod_obra', 'Código Obra'),
+                'nom_obra' => $this->getOrdenamiento('nom_obra', 'Obra'),
+                'seccion' => $this->getOrdenamiento('seccion', 'Sección'),
+                'descripcion' => $this->getOrdenamiento('descripcion', 'Descripción'),
+                'ensamblado' => $this->getOrdenamiento('ensamblado', 'Ensamblado'),
+                'comentario' => $this->getOrdenamiento('comentario', 'Comentario'),
+                'peso_fabricado' => $this->getOrdenamiento('peso_fabricado', 'Peso Fabricado'),
+                'peso_total' => $this->getOrdenamiento('peso_total', 'Peso Total'),
+                'estado' => $this->getOrdenamiento('estado', 'Estado'),
+                'fecha_inicio' => $this->getOrdenamiento('fecha_inicio', 'Fecha Inicio'),
+                'fecha_finalizacion' => $this->getOrdenamiento('fecha_finalizacion', 'Fecha Finalización'),
+                'fecha_importacion' => $this->getOrdenamiento('fecha_importacion', 'Fecha Importación'),
+                'fecha_entrega' => $this->getOrdenamiento('fecha_entrega', 'Fecha Entrega'),
+                'name' => $this->getOrdenamiento('name', 'Usuario'),
+            ];
 
-            // 📌 Si no se envía un `sort_by` válido, usar 'created_at' por defecto
-            $sortBy = $request->filled('sort_by') && in_array($request->input('sort_by'), $allowedSortColumns)
-                ? $request->input('sort_by')
-                : 'created_at';
-
-            // 📌 Si no se envía `order`, usar 'desc' por defecto
-            $order = $request->filled('order') && in_array($request->input('order'), ['asc', 'desc'])
-                ? $request->input('order')
-                : 'desc';
-
-            // 📌 Verifica que `sort_by` no esté vacío antes de ordenar
-            if (!empty($sortBy)) {
-                $query->orderBy($sortBy, $order);
-            } else {
-                $query->orderBy('created_at', 'desc'); // Default seguro
-            }
-
-            // 📌 Paginación
+            // 6️⃣ Aplicar paginación y mantener filtros al cambiar de página
             $perPage = $request->input('per_page', 10);
             $planillas = $query->paginate($perPage)->appends($request->except('page'));
 
-            // 📌 Cargar suma de peso completado
+            // 7️⃣ Cargar suma de pesos fabricados por planilla
             $planillas->loadSum([
                 'elementos as suma_peso_completados' => function ($query) {
                     $query->where('estado', 'fabricado');
                 }
             ], 'peso');
-            $clientes = Cliente::whereHas('obras', function ($query) {
-                $query->where('estado', 'activa');
-            })->get();
 
-            $obras = Obra::where('estado', 'activa')->get();
-            // Retornar vista con los datos
-            return view('planillas.index', compact('planillas', 'clientes', 'obras'));
+            // 🔟 Obtener texto de filtros aplicados para mostrar en la vista
+            $filtrosActivos = $this->filtrosActivos($request);
+            // En tu controlador
+            $clientes = Cliente::select('id', 'codigo', 'empresa')->get();
+            $obras = Obra::select('id', 'cod_obra', 'obra')->get();
+            // ✅ Retornar la vista con todos los datos necesarios
+            return view('planillas.index', compact(
+                'planillas',
+                'clientes',
+                'obras',
+                'ordenables',
+                'filtrosActivos'
+            ));
         } catch (Exception $e) {
+            // ⚠️ Si algo falla, redirigir con mensaje de error
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }

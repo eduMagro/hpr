@@ -18,6 +18,7 @@ class Alerta extends Model
         'destinatario',
         'destinatario_id',
         'mensaje',
+        'completada',
         'leida',
         'created_at',
         'updated_at'
@@ -25,13 +26,8 @@ class Alerta extends Model
 
     protected $casts = [
         'leida' => 'boolean', // Para que Laravel lo maneje como booleano
+        'completada' => 'boolean', // Para que Laravel lo maneje como booleano
     ];
-    public function usuariosQueLeen()
-    {
-        return $this->belongsToMany(User::class, 'alertas_users')
-            ->withPivot('leida_en')
-            ->withTimestamps();
-    }
 
     /**
      * Relación con el usuario que genera la alerta.
@@ -56,8 +52,4 @@ class Alerta extends Model
     /**
      * Scope para obtener solo las alertas no leídas.
      */
-    public function scopeNoLeidas($query)
-    {
-        return $query->where('leida', false);
-    }
 }

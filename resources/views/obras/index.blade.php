@@ -16,73 +16,129 @@
                 Agregar Obra
             </a>
         </div>
+        @php
+            $filtrosActivos = [];
 
-        <div id="filtrosBusqueda" class="collapse">
-            <form method="GET" action="{{ route('obras.index') }}" class="card card-body shadow-sm">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <input type="text" name="buscar" class="form-control"
-                            placeholder="Buscar en código, cliente, obra..." value="{{ request('buscar') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <select name="completada" class="form-control">
-                            <option value="">Todas</option>
-                            <option value="1" {{ request('completada') == '1' ? 'selected' : '' }}>Completadas
-                            </option>
-                            <option value="0" {{ request('completada') == '0' ? 'selected' : '' }}>No Completadas
-                            </option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="cod_obra" class="form-control" placeholder="Código de Obra"
-                            value="{{ request('cod_obra') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="cliente" class="form-control" placeholder="Cliente"
-                            value="{{ request('cliente') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="cod_cliente" class="form-control" placeholder="Código Cliente"
-                            value="{{ request('cod_cliente') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="latitud" class="form-control" placeholder="Latitud"
-                            value="{{ request('latitud') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="longitud" class="form-control" placeholder="Longitud"
-                            value="{{ request('longitud') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="distancia" class="form-control" placeholder="Radio"
-                            value="{{ request('distancia') }}">
-                    </div>
-                    <div class="col-md-12 d-flex justify-content-between">
-                        <button type="submit" class="btn btn-info">
-                            <i class="fas fa-search"></i> Buscar
-                        </button>
-                        <a href="{{ route('obras.index') }}" class="btn btn-warning">
-                            <i class="fas fa-undo"></i> Resetear Filtros
-                        </a>
-                    </div>
-                </div>
-            </form>
-        </div>
+            if (request('buscar')) {
+                $filtrosActivos[] = 'Contiene <strong>“' . request('buscar') . '”</strong>';
+            }
+            if (request('cod_obra')) {
+                $filtrosActivos[] = 'Código de obra: <strong>' . request('cod_obra') . '</strong>';
+            }
+            if (request('cliente')) {
+                $filtrosActivos[] = 'Cliente: <strong>' . request('cliente') . '</strong>';
+            }
+            if (request('cod_cliente')) {
+                $filtrosActivos[] = 'Código cliente: <strong>' . request('cod_cliente') . '</strong>';
+            }
+            if (request('completada') !== null) {
+                $estado = request('completada') == '1' ? 'Sí' : 'No';
+                $filtrosActivos[] = 'Completada: <strong>' . $estado . '</strong>';
+            }
+
+            if (request('sort')) {
+                $sorts = [
+                    'obra' => 'Nombre de Obra',
+                    'cod_obra' => 'Código de Obra',
+                    'cliente' => 'Cliente',
+                    'cod_cliente' => 'Código Cliente',
+                    'latitud' => 'Latitud',
+                    'longitud' => 'Longitud',
+                    'distancia' => 'Radio',
+                ];
+                $orden = request('order') == 'desc' ? 'descendente' : 'ascendente';
+                $filtrosActivos[] =
+                    'Ordenado por <strong>' .
+                    ($sorts[request('sort')] ?? request('sort')) .
+                    '</strong> en orden <strong>' .
+                    $orden .
+                    '</strong>';
+            }
+
+            if (request('per_page')) {
+                $filtrosActivos[] = 'Mostrando <strong>' . request('per_page') . '</strong> registros por página';
+            }
+        @endphp
+
+        @if (count($filtrosActivos))
+            <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
+                <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
+            </div>
+        @endif
+
+        @php
+            function ordenarColumna($columna, $titulo)
+            {
+                $currentSort = request('sort');
+                $currentOrder = request('order');
+                $isSorted = $currentSort === $columna;
+                $nextOrder = $isSorted && $currentOrder === 'asc' ? 'desc' : 'asc';
+                $icon = $isSorted ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down') : 'fas fa-sort';
+                $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+                return '<a href="' .
+                    $url .
+                    '" class="text-white text-decoration-none">' .
+                    $titulo .
+                    ' <i class="' .
+                    $icon .
+                    '"></i></a>';
+            }
+        @endphp
 
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[800px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white">
-                    <tr class="text-left text-sm uppercase">
-                        <th class="px-4 py-3 border">Nombre Obra</th>
-                        <th class="px-4 py-3 border">Código Obra</th>
-                        <th class="px-4 py-3 border">Cliente</th>
-                        <th class="px-4 py-3 border">Código Cliente</th>
-                        <th class="px-4 py-3 border">Latitud</th>
-                        <th class="px-4 py-3 border">Longitud</th>
-                        <th class="px-4 py-3 border">Radio</th>
-                        <th class="px-4 py-3 border text-center">Acciones</th>
+                <thead class="bg-blue-500 text-white text-xs uppercase text-center">
+                    <tr>
+                        <th class="p-2 border">{!! ordenarColumna('obra', 'Nombre Obra') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('cod_obra', 'Código Obra') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('cliente', 'Cliente') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('cod_cliente', 'Código Cliente') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('latitud', 'Latitud') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('longitud', 'Longitud') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumna('distancia', 'Radio') !!}</th>
+                        <th class="p-2 border">Acciones</th>
+                    </tr>
+                    <tr>
+                        <form method="GET" action="{{ route('obras.index') }}">
+                            <th class="p-1 border">
+                                <input type="text" name="obra" value="{{ request('obra') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="cod_obra" value="{{ request('cod_obra') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="cliente" value="{{ request('cliente') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="cod_cliente" value="{{ request('cod_cliente') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="latitud" value="{{ request('latitud') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="longitud" value="{{ request('longitud') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="distancia" value="{{ request('distancia') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border text-center">
+                                <button type="submit" class="btn btn-sm btn-info px-2"><i
+                                        class="fas fa-search"></i></button>
+                                <a href="{{ route('obras.index') }}" class="btn btn-sm btn-warning px-2"><i
+                                        class="fas fa-undo"></i></a>
+                            </th>
+                        </form>
                     </tr>
                 </thead>
+
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($obras as $obra)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
@@ -161,7 +217,7 @@
         </div>
     </div>
 
-    <script src="//unpkg.com/alpinejs" defer></script>
+
     <script>
         function guardarCambios(obra) {
             fetch(`/obras/${obra.id}`, {

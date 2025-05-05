@@ -1,6 +1,10 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="text-lg font-semibold text-gray-800">
+            <a href="{{ route('entradas.index') }}" class="text-blue-600">
+                {{ __('Entradas') }}
+            </a>
+            <span class="mx-2">/</span>
             {{ __('Crear Entradas de Material') }}
         </h2>
     </x-slot>
@@ -10,17 +14,15 @@
             @csrf
 
             <div class="mb-4">
-                <label for="fabricante" class="block text-gray-700 font-bold mb-2">Fabricante:</label>
-                <select id="fabricante" name="fabricante" required class="w-full px-3 py-2 border rounded-lg">
-                    <option value="" {{ old('fabricante') == '' ? 'selected' : '' }}>Seleccione un fabricante
-                    </option>
-                    <option value="MEGASA" {{ old('fabricante') == 'MEGASA' ? 'selected' : '' }}>MEGASA</option>
-                    <option value="GETAFE" {{ old('fabricante') == 'GETAFE' ? 'selected' : '' }}>GETAFE</option>
-                    <option value="NERVADUCTIL" {{ old('fabricante') == 'NERVADUCTIL' ? 'selected' : '' }}>NERVADUCTIL
-                    </option>
-                    <option value="SIDERURGICA SEVILLANA"
-                        {{ old('fabricante') == 'SIDERURGICA SEVILLANA' ? 'selected' : '' }}>SIDERURGICA SEVILLANA
-                    </option>
+                <label for="proveedor_id" class="block text-gray-700 font-bold mb-2">Proveedor:</label>
+                <select id="proveedor_id" name="proveedor_id" required class="w-full px-3 py-2 border rounded-lg">
+                    <option value="">Seleccione un proveedor</option>
+                    @foreach ($proveedores as $proveedor)
+                        <option value="{{ $proveedor->id }}"
+                            {{ old('proveedor_id') == $proveedor->id ? 'selected' : '' }}>
+                            {{ $proveedor->nombre }}
+                        </option>
+                    @endforeach
                 </select>
             </div>
 
@@ -31,63 +33,44 @@
                     class="w-full px-3 py-2 border rounded-lg">
             </div>
 
-            <div class="p-4 border rounded-lg bg-gray-100">
-                <h3 class="font-bold text-lg mb-2">Paquete</h3>
-                <div class="mb-2">
-                    <label for="tipo" class="block text-gray-700">Tipo:</label>
-                    <select id="tipo" name="tipo" required class="w-full px-3 py-2 border rounded-lg">
-                        <option value="ENCARRETADO" {{ old('tipo') == 'ENCARRETADO' ? 'selected' : '' }}>ENCARRETADO
+            <div class="mb-4">
+                <label for="producto_base_id" class="block text-gray-700 font-bold mb-2">Producto base:</label>
+                <select id="producto_base_id" name="producto_base_id" required
+                    class="w-full px-3 py-2 border rounded-lg">
+                    <option value="" disabled selected>Seleccione un producto base</option>
+                    @foreach ($productosBase as $producto)
+                        <option value="{{ $producto->id }}">
+                            {{ strtoupper($producto->tipo) }} |
+                            Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
                         </option>
-                        <option value="BARRA" {{ old('tipo') == 'BARRA' ? 'selected' : '' }}>BARRA</option>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label for="diametro" class="block text-gray-700">Diámetro:</label>
-                    <select id="diametro" name="diametro" required class="w-full px-3 py-2 border rounded-lg">
-                        <option value="" disabled {{ old('diametro') == '' ? 'selected' : '' }}>Seleccione un
-                            diámetro</option>
-                        @foreach ([5, 8, 10, 12, 16, 20, 25, 32] as $diametro)
-                            <option value="{{ $diametro }}" {{ old('diametro') == $diametro ? 'selected' : '' }}>
-                                {{ $diametro }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label for="longitud" class="block text-gray-700">Longitud:</label>
-                    <select id="longitud" name="longitud" class="w-full px-3 py-2 border rounded-lg">
-                        <option value="" disabled {{ old('longitud') == '' ? 'selected' : '' }}>Seleccione una
-                            longitud</option>
-                        @foreach ([6, 12, 14, 15, 16] as $longitud)
-                            <option value="{{ $longitud }}" {{ old('longitud') == $longitud ? 'selected' : '' }}>
-                                {{ $longitud }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label for="n_colada" class="block text-gray-700">Colada:</label>
-                    <input type="text" id="n_colada" name="n_colada" value="{{ old('n_colada') }}" required
-                        class="w-full px-3 py-2 border rounded-lg">
-                </div>
-                <div class="mb-2">
-                    <label for="n_paquete" class="block text-gray-700">Paquete:</label>
-                    <input type="text" id="n_paquete" name="n_paquete" value="{{ old('n_paquete') }}" required
-                        class="w-full px-3 py-2 border rounded-lg">
-                </div>
-                <div class="mb-2">
-                    <label for="peso" class="block text-gray-700">Peso (kg):</label>
-                    <input type="number" id="peso" name="peso" value="{{ old('peso') }}" required
-                        min="1" step="0.01" class="w-full px-3 py-2 border rounded-lg">
-                </div>
-                <div class="mb-2">
-                    <label for="ubicacion" class="block text-gray-700">Ubicación:</label>
-                    <input type="text" id="ubicacion" name="ubicacion" value="{{ old('ubicacion') }}"
-                        class="w-full px-3 py-2 border rounded-lg">
-                </div>
+                    @endforeach
+                </select>
             </div>
 
-            <button type="submit"
-                class="w-full bg-blue-500 text-white py-2 px-4 mt-4 rounded-lg hover:bg-blue-600">Registrar
-                Entrada</button>
-        </form>
+            <div class="mb-2">
+                <label for="n_colada" class="block text-gray-700">Colada:</label>
+                <input type="text" id="n_colada" name="n_colada" value="{{ old('n_colada') }}" required
+                    class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div class="mb-2">
+                <label for="n_paquete" class="block text-gray-700">Paquete:</label>
+                <input type="text" id="n_paquete" name="n_paquete" value="{{ old('n_paquete') }}" required
+                    class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div class="mb-2">
+                <label for="peso" class="block text-gray-700">Peso (kg):</label>
+                <input type="number" id="peso" name="peso" value="{{ old('peso') }}" required min="1"
+                    step="0.01" class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div class="mb-2">
+                <label for="ubicacion" class="block text-gray-700">Ubicación:</label>
+                <input type="text" id="ubicacion" name="ubicacion" value="{{ old('ubicacion') }}"
+                    class="w-full px-3 py-2 border rounded-lg">
+            </div>
+    </div>
+
+    <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 mt-4 rounded-lg hover:bg-blue-600">Registrar
+        Entrada</button>
+    </form>
     </div>
 </x-app-layout>

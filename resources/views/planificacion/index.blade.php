@@ -90,24 +90,36 @@
 
         const todasLasObras = @json($todasLasObras);
         const obrasConSalidas = @json($obrasConSalidasResources);
+        const todosLosEventos = @json($eventos); // ¡ojo, guarda todos los eventos!
 
-        const eventos = @json($eventos);
-
-        function crearCalendario(resources) {
+        function crearCalendario(resources, eventosFiltrados) {
             if (calendar) {
                 calendar.destroy(); // 🔥 destruye el anterior antes de renderizar el nuevo
             }
+
             const vistaGuardada = localStorage.getItem('ultimaVistaCalendario') || 'resourceTimelineDay';
+            const fechaGuardada = localStorage.getItem('fechaCalendario');
+
             calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                 locale: 'es',
                 initialView: vistaGuardada,
-                viewDidMount: function(view) {
-                    localStorage.setItem('ultimaVistaCalendario', view.view.type);
+                initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
+                datesSet: function(info) {
+                    let fechaActual = info.startStr;
+
+                    if (calendar.view.type === 'dayGridMonth') {
+                        const middleDate = new Date(info.start);
+                        middleDate.setDate(middleDate.getDate() + 15); // Aproximadamente la mitad del mes
+                        fechaActual = middleDate.toISOString().split('T')[0];
+                    }
+
+                    localStorage.setItem('fechaCalendario', fechaActual);
+                    localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
                 },
                 eventMinHeight: 30,
                 slotMinTime: "06:00:00",
-                slotMaxTime: "20:00:00",
+                slotMaxTime: "18:00:00",
                 firstDay: 1,
                 height: 'auto',
                 headerToolbar: {
@@ -131,10 +143,12 @@
                             day: 'numeric',
                             month: 'short'
                         }
-                    }
+                    },
+
                 },
                 editable: true,
                 resources: resources,
+                events: eventosFiltrados,
                 resourceAreaColumns: [{
                         field: 'title',
                         headerContent: 'Obra'
@@ -144,31 +158,47 @@
                         headerContent: 'Cliente'
                     }
                 ],
-                events: eventos,
                 eventClick: function(info) {
                     const tipo = info.event.extendedProps.tipo;
-                    const id = info.event.id;
 
                     if (tipo === 'planilla') {
-                        const id = info.event.id;
-                        const url = `{{ url('/planillas') }}/${id}`;
-                        window.open(url,
-                            '_blank'); // o cambia a window.location.href = url para abrir en misma pestaña
+                        const planillasIds = info.event.extendedProps.planillas_ids;
+
+                        // Redireccionar a la ruta de creación de salidas, pasando los IDs por query string
+                        const url = `{{ url('/salidas/create') }}?planillas=${planillasIds.join(',')}`;
+                        window.location.href = url;
                     }
+
                     if (tipo === 'salida') {
-                        const url = `{{ url('/salidas') }}/${id}`;
-                        window.open(url,
-                            '_blank');
+                        const url = `{{ url('/salidas') }}/${info.event.id}`;
+                        window.open(url, '_blank');
                     }
                 },
                 eventContent: function(arg) {
                     const bg = arg.event.backgroundColor || '#9CA3AF';
+                    const props = arg.event.extendedProps;
+
+                    let html = `
+        <div style="background-color:${bg}; color:white;" class="rounded px-2 py-1 text-xs font-semibold">
+            ${arg.event.title}
+    `;
+
+                    if (props.tipo === 'planilla') {
+                        html +=
+                            `<br><span class="text-[10px] font-normal">🧱 ${Number(props.pesoTotal).toLocaleString()} kg</span>`;
+                        html +=
+                            `<br><span class="text-[10px] font-normal">📏 ${Number(props.longitudTotal).toLocaleString()} m</span>`;
+
+                        if (props.diametroMedio !== null) {
+                            html +=
+                                `<br><span class="text-[10px] font-normal">⌀ ${props.diametroMedio} mm</span>`;
+                        }
+                    }
+
+                    html += `</div>`;
+
                     return {
-                        html: `
-                    <div style="background-color:${bg}; color:white;" class="rounded px-2 py-1 text-xs font-semibold">
-                        ${arg.event.title}
-                    </div>
-                `
+                        html
                     };
                 },
                 eventDidMount: function(info) {
@@ -230,9 +260,8 @@
                                             return res.json();
                                         })
                                         .then(() => {
-                                            Swal.fire('✅ Comentario guardado');
                                             location
-                                        .reload(); // 👈 Recarga para actualizar el tooltip
+                                                .reload(); // 👈 Recarga para actualizar el tooltip
                                         })
                                         .catch(err => {
                                             Swal.fire('❌ Error', err.message, 'error');
@@ -246,6 +275,7 @@
                     const tipo = info.event.extendedProps.tipo;
                     const nuevaFecha = info.event.start.toISOString();
                     const id = info.event.id;
+                    const planillasIds = info.event.extendedProps.planillas_ids;
 
                     fetch(`{{ url('/planificacion') }}/${id}`, {
                             method: 'PUT',
@@ -256,7 +286,8 @@
                             },
                             body: JSON.stringify({
                                 fecha: nuevaFecha,
-                                tipo: tipo
+                                tipo: tipo,
+                                planillas_ids: planillasIds
                             })
                         })
                         .then(response => {
@@ -265,28 +296,76 @@
                         })
                         .then(() => {
                             console.log("✅ Fecha actualizada");
+
+                            // 🔥 Ahora recargamos los eventos
+                            fetch('{{ url('/planificacion') }}', {
+                                    headers: {
+                                        'Accept': 'application/json' // 🔥 Importante para que Laravel sepa que quieres JSON
+                                    }
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    calendar.removeAllEvents(); // limpiamos eventos
+                                    calendar.addEventSource(data); // cargamos nuevos
+                                    // console.log('Eventos cargados:');
+                                    // eventos.forEach(evento => {
+                                    //     console.log(
+                                    //         `Título: ${evento.title}, resourceId: ${evento.resourceId}, tipo: ${evento.tipo}`
+                                    //     );
+                                    // });
+                                    calendar.refetchResources();
+
+                                })
+                                .catch(error => {
+                                    console.error("❌ Error cargando eventos:", error);
+                                });
                         })
                         .catch(error => {
                             console.error("❌ Error en Fetch:", error);
                             info.revert();
                         });
-                }
+                },
+                dateClick: function(info) {
+                    const vistaActual = calendar.view.type;
+
+                    // Solo aplicamos el cambio de vista si estamos en la semana o en el mes
+                    if (vistaActual === 'resourceTimelineWeek' || vistaActual === 'dayGridMonth') {
+                        calendar.changeView('resourceTimelineDay', info.dateStr);
+                    }
+                },
             });
+            // console.log('Resources disponibles:');
+            // resources.forEach(res => {
+            //     console.log(`Resource ID: ${res.id}, Obra: ${res.title}`);
+            // });
+
+            // console.log('Eventos cargados:');
+            // eventosFiltrados.forEach(evento => {
+            //     console.log(`Título: ${evento.title}, resourceId: ${evento.resourceId}`);
+            // });
+            // console.log('🔎 Todos los eventos:', todosLosEventos);
+
             calendar.render();
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            crearCalendario(obrasConSalidas); // 👈 inicia con obras que tienen salidas
+            // 👇 Al cargar, mostramos todo
+            crearCalendario(todasLasObras, todosLosEventos);
 
             document.getElementById('ver-todas').addEventListener('click', () => {
-                crearCalendario(
-                    todasLasObras); // 👈 al hacer clic, recarga todo con todas las obras activas
+                crearCalendario(todasLasObras, todosLosEventos);
             });
 
             document.getElementById('ver-con-salidas').addEventListener('click', () => {
-                crearCalendario(obrasConSalidas); // 👈 vuelve a mostrar solo las que tienen salidas
-            });
+                // Filtramos eventos para solo los que pertenezcan a obras con salidas
+                const obrasConSalidasIds = obrasConSalidas.map(res => res.id);
 
+                const eventosFiltrados = todosLosEventos.filter(ev => {
+                    return ev.resourceId && obrasConSalidasIds.includes(ev.resourceId);
+                });
+
+                crearCalendario(obrasConSalidas, eventosFiltrados);
+            });
         });
     </script>
 

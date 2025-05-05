@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AsignacionTurno;
+use App\Models\Festivo;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -32,38 +33,36 @@ class VacacionesController extends Controller
         })->toArray(); // Convertimos la colección a array
 
         //----------------- OBTENER FESTIVOS
-        $response = Http::get("https://date.nager.at/api/v3/PublicHolidays/" . date('Y') . "/ES");
+        $festivos = Festivo::select('fecha', 'titulo')->get()->map(function ($festivo) {
+            return [
+                'id' => $festivo->id,
+                'title' => $festivo->titulo,
+                'start' => $festivo->fecha,
+                'backgroundColor' => '#ff2800', // Rojo Ferrari
+                'borderColor' => '#b22222',
+                'textColor' => 'white',
+                'allDay' => true,
+                'editable' => true // ✅ Esto permite moverlo
+            ];
+        })->toArray();
 
-        $festivos = [];
-
-        if ($response->successful()) {
-            $festivos = collect($response->json())->filter(function ($holiday) {
-                // Si no tiene 'counties', es un festivo NACIONAL
-                if (!isset($holiday['counties'])) {
-                    return true;
-                }
-
-                // Si el festivo pertenece a Andalucía
-                return in_array('ES-AN', $holiday['counties']);
-            })->map(function ($holiday) {
-                return [
-                    'title' => $holiday['localName'],
-                    'start' => $holiday['date'],
-                    'backgroundColor' => '#ff0000', // Rojo para festivos
-                    'borderColor' => '#b91c1c',
-                    'textColor' => 'white',
-                    'allDay' => true
-                ];
-            })->toArray();
-        }
 
         // Mezclar festivos y vacaciones de empleados
         $eventosVacaciones = array_merge($festivos, $eventosVacaciones);
+
 
         return view('vacaciones.index', compact('eventosVacaciones'));
     }
 
 
+    public function moverFestivo(Request $request)
+    {
+        $festivo = Festivo::findOrFail($request->id);
+        $festivo->fecha = $request->nueva_fecha;
+        $festivo->save();
+
+        return response()->json(['mensaje' => 'Festivo actualizado']);
+    }
 
     // public function store(Request $request)
     // {

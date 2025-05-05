@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Producto;
+use App\Models\ProductoBase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -13,8 +14,6 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltros($query, Request $request)
     {
-        $query = Producto::query();
-
         // Aplicar filtros si están presentes en la solicitud
         if ($request->filled('id')) {
             $query->where('id', $request->id);
@@ -23,14 +22,23 @@ class ProductoController extends Controller
             $query->where('fabricante', $request->fabricante);
         }
         if ($request->filled('tipo')) {
-            $query->where('tipo', $request->tipo);
+            $query->whereHas('productoBase', function ($q) use ($request) {
+                $q->where('tipo', $request->tipo);
+            });
         }
+
         if ($request->filled('diametro')) {
-            $query->where('diametro', $request->diametro);
+            $query->whereHas('productoBase', function ($q) use ($request) {
+                $q->where('diametro', $request->diametro);
+            });
         }
+
         if ($request->filled('longitud')) {
-            $query->where('longitud', $request->longitud);
+            $query->whereHas('productoBase', function ($q) use ($request) {
+                $q->where('longitud', $request->longitud);
+            });
         }
+
         if ($request->filled('n_colada')) {
             $query->where('n_colada', $request->n_colada);
         }
@@ -48,34 +56,35 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ INDEX
     public function index(Request $request)
     {
-        // Inicializa la consulta de productos
-        $query = Producto::query();
+        // Inicializa la consulta de productos dados de alta (paquetes)
+        $query = Producto::with('productoBase', 'ubicacion', 'maquina');
 
-        // Aplica los filtros
+        // Aplica los filtros si tienes una función para eso
         $query = $this->aplicarFiltros($query, $request);
 
-        // Establecer el criterio de ordenación basado en los parámetros de la solicitud
-        // Si no se pasa un criterio de ordenación, se ordenará por la fecha de creación ('created_at') por defecto
-        $sortBy = $request->input('sort_by', 'created_at');  // Obtener el valor del parámetro 'sort_by' o 'created_at' por defecto
-        $order = $request->input('order', 'desc');        // Obtener el valor del parámetro 'order' o 'desc' por defecto (descendente)
+        // Orden dinámico
+        $sortBy = $request->input('sort_by', 'id');
+        $order = $request->input('order', 'asc');
+        $query->orderBy($sortBy, $order);
 
-        // Aplicar el ordenamiento dinámico a la consulta según el criterio de ordenación y el orden (asc/desc)
-        // 'CAST({$sortBy} AS CHAR)' convierte el valor de la columna para asegurar que se ordena como texto
-        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
 
-        // Obtener el valor de paginación, si no se pasa un valor se utilizará 10 como valor predeterminado
+
+
+        // Paginación
         $perPage = $request->input('per_page', 10);
-
-        // Ejecutar la consulta con paginación
-        // 'paginate($perPage)' divide los resultados en páginas según el valor de 'perPage'
-        // 'appends($request->except('page'))' mantiene los parámetros de búsqueda en la URL durante la paginación
         $registrosProductos = $query->paginate($perPage)->appends($request->except('page'));
 
-        // Pasar los productos paginados a la vista para mostrar los datos
+        // Obtener el catálogo de productos base
+        $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
+
+
+        // Devolver ambos conjuntos a la vista
         return view('productos.index', compact(
-            'registrosProductos'
+            'registrosProductos',
+            'productosBase'
         ));
     }
+
     //------------------------------------------------------------------------------------ SHOW
     public function show($id)
     {

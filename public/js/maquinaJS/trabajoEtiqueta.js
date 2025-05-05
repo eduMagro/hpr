@@ -313,9 +313,22 @@ document.addEventListener("DOMContentLoaded", () => {
         Swal.fire({
             icon: "error",
             title: "Ha ocurrido un error",
-            text: `Ha pasado: ${mensaje}`,
-            footer: "Por favor, inténtalo de nuevo o contacta al soporte si el problema persiste.",
-        });
+            text: `Problemas: ${mensaje}`,
+            footer: "Por favor, inténtalo de nuevo o contacta al soporte si el problema continua.",
+            showConfirmButton: false,
+            showCancelButton: true,
+            cancelButtonText: "Cerrar",
+            showDenyButton: true,
+            denyButtonText: "Reportar Error",
+        })
+            .then((result) => {
+                if (result.isDenied) {
+                    notificarProgramador(mensaje); // Asegúrate de que esta función esté definida
+                }
+            })
+            .then(() => {
+                window.location.reload(); // Recarga la página tras el mensaje
+            });
     }
 
     // Actualiza la función para recibir el id conocido de la etiqueta

@@ -30,8 +30,10 @@
                 <div>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">Información</h3>
                     <p><strong>Email:</strong> <span class="text-gray-600">{{ $user->email }}</span></p>
-                    <p><strong>Categoría:</strong> <span class="text-gray-600">{{ $user->categoria }}</span></p>
-                    <p><strong>Especialidad:</strong> <span class="text-gray-600">{{ $user->especialidad }}</span></p>
+                    <p><strong>Categoría:</strong> <span
+                            class="text-gray-600">{{ $user->categoria->nombre ?? 'N/A' }}</span></p>
+                    <p><strong>Especialidad:</strong> <span
+                            class="text-gray-600">{{ $user->especialidad ?? 'N/A' }}</span></p>
                     <p class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
                         <strong>Vacaciones restantes:</strong> {{ $user->dias_vacaciones }}
                     </p>
@@ -207,7 +209,7 @@
                                                     calendar.addEvent({
                                                         title: tipoSeleccionado
                                                             .charAt(0)
-                                                        .toUpperCase() +
+                                                            .toUpperCase() +
                                                             tipoSeleccionado.slice(
                                                                 1),
                                                         start: currentDate

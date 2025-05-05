@@ -6,7 +6,11 @@ use App\Models\Entrada;
 use App\Models\Ubicacion;
 use App\Models\User;
 use App\Models\EntradaProducto;
-use App\Models\Producto;  // Asegúrate de importar Producto
+use App\Models\Producto;
+use App\Models\Pedido;
+use App\Models\Elemento;
+use App\Models\ProductoBase;
+use App\Models\Proveedor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -53,8 +57,73 @@ class EntradaController extends Controller
             // Obtener las entradas paginadas, ordenadas por fecha de creación
             $entradas = $query->orderBy('created_at', 'desc')->paginate(10);
 
+            $elementosPendientes = Elemento::with('maquina')
+                ->where('estado', 'pendiente')
+                ->get()
+                ->filter(fn($e) => $e->maquina && $e->maquina->tipo && $e->diametro)
+                ->groupBy(fn($e) => $e->maquina->tipo_material . '-' . intval($e->diametro))
+                ->map(fn($group) => $group->sum('peso'));
+
+            $pedidosPendientes = Pedido::with('productos')
+                ->where('estado', 'pendiente')
+                ->get()
+                ->flatMap(function ($pedido) {
+                    return $pedido->productos->map(function ($producto) use ($pedido) {
+                        return [
+                            'tipo' => $producto->tipo,
+                            'diametro' => $producto->diametro,
+                            'cantidad' => $producto->pivot->cantidad,
+                        ];
+                    });
+                })
+                ->groupBy(fn($item) => "{$item['tipo']}-{$item['diametro']}")
+                ->map(fn($items) => collect($items)->sum('cantidad'));
+
+            $stockData = Producto::with('productoBase')
+                ->where('estado', 'almacenado')
+                ->get()
+                ->groupBy(fn($p) => $p->productoBase->diametro)
+                ->map(function ($group) {
+                    $encarretado = $group->filter(fn($p) => $p->productoBase->tipo === 'encarretado')->sum('peso_stock');
+                    $barras = $group->filter(fn($p) => $p->productoBase->tipo === 'barra');
+                    $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)
+                        ->map(fn($items) => $items->sum('peso_stock'));
+
+                    $barrasTotal = $barrasPorLongitud->sum();
+                    $total = $barrasTotal + $encarretado;
+
+                    return [
+                        'encarretado' => $encarretado,
+                        'barras' => $barrasPorLongitud,
+                        'barras_total' => $barrasTotal,
+                        'total' => $total,
+                    ];
+                })->sortKeys();
+
+            $comparativa = [];
+
+            foreach ($stockData as $diametro => $data) {
+                foreach (['barra', 'encarretado'] as $tipo) {
+                    $clave = "{$tipo}-{$diametro}";
+                    $pendiente = $elementosPendientes[$clave] ?? 0;
+                    $pedido = $pedidosPendientes[$clave] ?? 0;
+                    $disponible = $tipo === 'barra' ? $data['barras_total'] : $data['encarretado'];
+
+                    $diferencia = $disponible + $pedido - $pendiente;
+
+                    $comparativa[$clave] = [
+                        'tipo' => $tipo,
+                        'diametro' => $diametro,
+                        'pendiente' => $pendiente,
+                        'disponible' => $disponible,
+                        'pedido' => $pedido,
+                        'diferencia' => $diferencia,
+                    ];
+                }
+            }
+
             // Devolver la vista con las entradas
-            return view('entradas.index', compact('entradas'));
+            return view('entradas.index', compact('entradas', 'stockData', 'comparativa'));
         } catch (ValidationException $e) {
             // Manejo de excepciones de validación
             return redirect()->back()
@@ -72,8 +141,10 @@ class EntradaController extends Controller
     {
         $ubicaciones = Ubicacion::all();
         $usuarios = User::all();
+        $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
+        $proveedores = Proveedor::orderBy('nombre')->get();
 
-        return view('entradas.create', compact('ubicaciones', 'usuarios'));
+        return view('entradas.create', compact('ubicaciones', 'usuarios', 'productosBase', 'proveedores'));
     }
 
     public function store(Request $request)
@@ -81,52 +152,51 @@ class EntradaController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
-                'fabricante' => 'required|in:MEGASA,GETAFE,NERVADUCTIL,SIDERURGICA SEVILLANA',
+                'proveedor_id' => 'required|exists:proveedores,id',
                 'albaran' => 'required|string|min:1|max:30',
-                'tipo' => 'required|in:ENCARRETADO,BARRA',
-                'diametro' => 'required|numeric|in:5,8,10,12,16,20,25,32',
-                'longitud' => 'nullable|numeric|in:6,12,14,15,16',
+                'producto_base_id' => 'required|exists:productos_base,id',
                 'n_colada' => 'required|string|max:50',
                 'n_paquete' => 'required|string|max:50',
                 'peso' => 'required|numeric|min:1',
-                'ubicacion' => 'nullable|string|max:100',
+                'ubicacion' => 'nullable|integer|exists:ubicaciones,id',
                 'otros' => 'nullable|string|max:255',
             ], [
-                'fabricante.required' => 'El fabricante es obligatorio.',
-                'fabricante.in' => 'El fabricante seleccionado no es válido.',
+                'proveedor_id.required' => 'El proveedor es obligatorio.',
                 'albaran.required' => 'El número de albarán es obligatorio.',
-                'tipo.required' => 'El tipo de paquete es obligatorio.',
-                'diametro.required' => 'El diámetro es obligatorio.',
+                'producto_base_id.required' => 'Debes seleccionar un producto base.',
+                'producto_base_id.exists' => 'El producto base no es válido.',
                 'n_colada.required' => 'El número de colada es obligatorio.',
                 'n_paquete.required' => 'El número de paquete es obligatorio.',
                 'peso.required' => 'El peso es obligatorio.',
             ]);
 
-            // Crear la entrada
+            $productoBase = ProductoBase::findOrFail($request->producto_base_id);
+
+            if (!$productoBase) {
+                throw new \Exception('No se encontró un producto base con las características proporcionadas.');
+            }
+
+            // Crear entrada
             $entrada = Entrada::create([
                 'albaran' => $request->albaran,
-                'users_id' => auth()->id(),
+                'usuario_id' => auth()->id(),
                 'otros' => $request->otros ?? null,
             ]);
 
-            // Crear producto
+            // Crear el producto
             $producto = Producto::create([
-                'fabricante' => $request->fabricante,
-                'nombre' => 'CORRUGADO', // Puedes ajustar esto según sea necesario
-                'tipo' => $request->tipo,
-                'diametro' => $request->diametro,
-                'longitud' => $request->longitud ?? NULL,
-                'n_colada' => $request->n_colada,
-                'n_paquete' => $request->n_paquete,
-                'peso_inicial' => $request->peso,
-                'peso_stock' => $request->peso,
-                'ubicacion_id' => $request->ubicacion, // Debes relacionar esto con una ubicación existente
-                'maquina_id' => null, // Puedes cambiarlo según sea necesario
-                'estado' => 'ALMACENADO',
-                'otros' => $request->otros ?? null,
+                'producto_base_id' => $request->producto_base_id,
+                'proveedor_id'     => $request->proveedor_id,
+                'n_colada'         => $request->n_colada,
+                'n_paquete'        => $request->n_paquete,
+                'peso_inicial'     => $request->peso,
+                'peso_stock'       => $request->peso,
+                'estado'           => 'almacenado',
+                'ubicacion_id'     => $request->ubicacion,
+                'maquina_id'       => null,
+                'otros'            => 'Alta manual. Fabricante: ' . $request->fabricante,
             ]);
-
-            // Crear la relación en la tabla intermedia
+            // Relación entrada-producto
             EntradaProducto::create([
                 'entrada_id' => $entrada->id,
                 'producto_id' => $producto->id,
@@ -141,7 +211,7 @@ class EntradaController extends Controller
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Hubo un problema al registrar la entrada: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
         }
     }
 

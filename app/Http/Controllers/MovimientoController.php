@@ -8,6 +8,7 @@ use App\Models\Producto;
 use App\Models\Paquete;
 use App\Models\Ubicacion;
 use App\Models\Maquina;
+use App\Models\Alerta;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -159,7 +160,7 @@ class MovimientoController extends Controller
                 } elseif ($request->tipo_movimiento == 'paquete') { // ----------------- MOVIMIENTO PAQUETE
                     $paquete = Paquete::find($request->paquete_id);
 
-                    Movimiento::create([
+                    $movimiento = Movimiento::create([
                         'paquete_id' => $request->paquete_id,
                         'ubicacion_origen' => $paquete->ubicacion_id,
                         'maquina_origen' => $paquete->maquina_id, // Si aplicable
@@ -167,7 +168,21 @@ class MovimientoController extends Controller
                         'maquina_id' => NULL,
                         'users_id' => auth()->id(),
                     ]);
+                    $producto = $movimiento->producto;
+                    $diametro = number_format($producto->diametro, 2);
+                    $maquina = Maquina::find($movimiento->maquina_id);
 
+                    // Buscar alerta pendiente para ese diámetro y máquina
+                    $alerta = Alerta::where('completada', false)
+                        ->where('mensaje', 'like', "%diámetro {$diametro}%")
+                        ->where('mensaje', 'like', "%máquina {$maquina->nombre}%")
+                        ->latest()
+                        ->first();
+
+                    if ($alerta) {
+                        $alerta->completada = true;
+                        $alerta->save();
+                    }
                     // Actualización de ubicación del paquete
                     $paquete->ubicacion_id = $request->ubicacion_destino ?: null;
                     $paquete->save();

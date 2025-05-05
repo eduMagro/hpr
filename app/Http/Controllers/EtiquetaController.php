@@ -170,7 +170,7 @@ class etiquetaController extends Controller
                             $warnings[] = "El stock para el {$diametro} es insuficiente. Avisaremos a los gruistas en turno.";
 
                             // Obtener solo los gruistas que tienen asignado turno en la fecha actual
-                            $gruistasEnTurno = User::where('categoria', 'gruista')
+                            $gruistasEnTurno = User::where('especialidad', 'gruista')
                                 ->whereHas('asignacionesTurnos', function ($query) {
                                     $query->where('fecha', Carbon::now()->toDateString());
                                 })
@@ -378,7 +378,7 @@ class etiquetaController extends Controller
                         if ($productosPorDiametro->isEmpty()) {
                             return response()->json([
                                 'success' => false,
-                                'error' => "No se encontraron materias primas para el diámetro {$diametro} en la máquina.",
+                                'error' => "No se encontraron materias primas para el diámetro {$diametro}.",
                             ], 400);
                         }
 
@@ -411,7 +411,7 @@ class etiquetaController extends Controller
                         if ($pesoNecesarioTotal > 0) {
                             return response()->json([
                                 'success' => false,
-                                'error' => "No hay suficiente materia prima para el diámetro {$diametro}.",
+                                'error' => "No hay suficiente materia prima para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
                             ], 400);
                         }
                     }
@@ -495,7 +495,6 @@ class etiquetaController extends Controller
     {
 
         foreach ($elementosEnMaquina as $elemento) {
-            Log::info("Entra en el condicional para completar elementos");
             $elemento->estado = "fabricado";
             $elemento->save();
         }
@@ -520,7 +519,7 @@ class etiquetaController extends Controller
             if ($productosPorDiametro->isEmpty()) {
                 return response()->json([
                     'success' => false,
-                    'error' => "No se encontraron materias primas para el diámetro {$diametro} en la máquina.",
+                    'error' => "No se encontraron materias primas para el diámetro {$diametro}.",
                 ], 400);
             }
 
@@ -556,9 +555,13 @@ class etiquetaController extends Controller
             }
 
             if ($pesoNecesarioTotal > 0) {
+                $warnings[] = "El stock para el {$diametro} es insuficiente. Avisaremos a los gruistas en turno.";
+                // Log para depuración
+                Log::info("Entrando al condicional de stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.");
+                $this->lanzarAlertaStockInsuficiente($diametro, $maquina->nombre);
                 return response()->json([
                     'success' => false,
-                    'error' => "No hay suficiente materia prima para el diámetro {$diametro}.",
+                    'error' => "No hay suficiente materia prima para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
                 ], 400);
             }
         }
@@ -692,7 +695,28 @@ class etiquetaController extends Controller
 
         return true;
     }
+    private function lanzarAlertaStockInsuficiente($diametro, $maquinaNombre)
+    {
+        $mensaje = "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquinaNombre}.";
 
+        $gruistasEnTurno = User::where('especialidad', 'gruista')
+            ->whereHas('asignacionesTurnos', function ($query) {
+                $query->where('fecha', Carbon::now()->toDateString());
+            })
+            ->get();
+        Log::info("{$gruistasEnTurno}");
+        if ($gruistasEnTurno->isNotEmpty()) {
+            foreach ($gruistasEnTurno as $gruista) {
+                Alerta::create([
+                    'mensaje'         => $mensaje,
+                    'destinatario_id' => $gruista->id,
+                    'user_id_1'       => Auth::id(),
+                    'user_id_2'       => session()->get('compañero_id', null),
+                    'leida'           => false,
+                ]);
+            }
+        }
+    }
     public function update(Request $request, $id)
     {
         try {
@@ -793,6 +817,7 @@ class etiquetaController extends Controller
             ], 500);
         }
     }
+
 
     public function destroy($id)
     {

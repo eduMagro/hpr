@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Obra;
+use Illuminate\Support\Facades\Validator;
 
 class ObraController extends Controller
 {
@@ -105,7 +106,7 @@ class ObraController extends Controller
             'latitud' => $request->latitud,
             'longitud' => $request->longitud,
             'distancia' => $request->distancia,
-            'completada' => 0, // Siempre será 0 por defecto
+            'estado' => 'activa', // Siempre será 0 por defecto
         ]);
 
         return redirect()->route('clientes.show', $request->cliente_id)->with('success', 'Obra creada correctamente.');
@@ -117,24 +118,21 @@ class ObraController extends Controller
         return view('obras.edit', compact('obra'));
     }
 
+
+
     public function update(Request $request, Obra $obra)
     {
-        // Modificar el request para cambiar comas por puntos antes de validar
-        $request->merge([
-            'latitud' => $request->has('latitud') ? str_replace(',', '.', $request->latitud) : null,
-            'longitud' => $request->has('longitud') ? str_replace(',', '.', $request->longitud) : null,
-        ]);
-
-        // Validar los datos con los valores corregidos
-        $request->validate([
+        // Definir reglas y mensajes
+        $rules = [
             'obra' => 'required|string|max:255',
             'cod_obra' => 'required|string|max:50',
-            'cliente' => 'required|string|max:255',
-            'cod_cliente' => 'nullable|string|max:50',
             'distancia' => 'nullable|integer',
             'latitud' => 'nullable|numeric',
             'longitud' => 'nullable|numeric',
-        ], [
+            'estado' => 'nullable|string',
+        ];
+
+        $messages = [
             'obra.required' => 'El nombre de la obra es obligatorio.',
             'obra.string' => 'El nombre de la obra debe ser un texto.',
             'obra.max' => 'El nombre de la obra no puede tener más de 255 caracteres.',
@@ -143,22 +141,40 @@ class ObraController extends Controller
             'cod_obra.string' => 'El código de obra debe ser un texto.',
             'cod_obra.max' => 'El código de obra no puede tener más de 50 caracteres.',
 
-            'cliente.required' => 'El nombre del cliente es obligatorio.',
-            'cliente.string' => 'El nombre del cliente debe ser un texto.',
-            'cliente.max' => 'El nombre del cliente no puede tener más de 255 caracteres.',
-
-            'cod_cliente.string' => 'El código del cliente debe ser un texto.',
-            'cod_cliente.max' => 'El código del cliente no puede tener más de 50 caracteres.',
             'distancia.integer' => 'La distancia debe ser un número entero.',
             'latitud.numeric' => 'La latitud debe ser un número.',
             'longitud.numeric' => 'La longitud debe ser un número.',
+        ];
+
+        // Normalizar latitud y longitud (comas por puntos)
+        $input = $request->all();
+        if (isset($input['latitud'])) {
+            $input['latitud'] = str_replace(',', '.', $input['latitud']);
+        }
+        if (isset($input['longitud'])) {
+            $input['longitud'] = str_replace(',', '.', $input['longitud']);
+        }
+
+        // Validar
+        $validator = Validator::make($input, $rules, $messages);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Actualizar la obra
+        $obra->update($validator->validated());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Obra actualizada correctamente.',
+            'obra' => $obra
         ]);
-
-        // Actualizar la obra con los datos validados
-        $obra->update($request->all());
-
-        return response()->json(['success' => true, 'message' => 'Obra actualizada correctamente.', 'obra' => $obra]);
     }
+
 
 
 

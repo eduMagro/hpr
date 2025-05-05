@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class PlanificacionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // 🔹 Obtener las salidas con relaciones necesarias
         $salidas = Salida::with([
@@ -24,11 +24,11 @@ class PlanificacionController extends Controller
             'empresaTransporte:id,nombre'
         ])->get();
 
-        // 🔹 Obtener todas las obras activas como resources
+        // 🔹 Obras activas
         $obras = Obra::with('cliente')->where('estado', 'activa')->get();
 
         $obrasConSalidasIds = $salidas->pluck('salidaClientes')->flatten()
-            ->pluck('obra_id') // 👈 usamos el ID directamente
+            ->pluck('obra_id')
             ->unique()
             ->filter();
 
@@ -46,84 +46,120 @@ class PlanificacionController extends Controller
         $resources = $obras->map(fn($obra) => [
             'id' => (string) $obra->id,
             'title' => $obra->obra,
-            'cliente' => optional($obra->cliente)->empresa, // o nombre
+            'cliente' => optional($obra->cliente)->empresa,
         ]);
 
-        $todasLasObras = $resources; // ✅ guarda el array completo aquí
+        $todasLasObras = $resources;
 
         // 🔹 Festivos
         $festivos = $this->getFestivos();
 
-        // 🔹 Fechas para el calendario
+        // 🔹 Fechas
         $fechas = collect(range(0, 13))->map(fn($i) => [
             'fecha' => now()->addDays($i)->format('Y-m-d'),
             'dia' => now()->addDays($i)->locale('es')->translatedFormat('l')
         ]);
 
-        // 🔹 Eventos
-        $salidasEventos = $salidas->map(function ($salida) {
-            $obra = optional($salida->salidaClientes->first())->obra;
+        $salidasEventos = $salidas->flatMap(function ($salida) {
             $empresa = optional($salida->empresaTransporte)->nombre;
-            $pesoTotal = $salida->paquetes->sum(fn($paquete) => optional($paquete->planilla)->peso_total ?? 0);
-            $pesoTotal = round($pesoTotal, 0);
+            $pesoTotal = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
             $fechaInicio = Carbon::parse($salida->fecha_salida);
-            $fechaFin = $fechaInicio->copy()->addHours(3); // ⏱ +3 horas
-            // 👇 Define color según estado
-            $color = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6'; // verde o azul
+            $fechaFin = $fechaInicio->copy()->addHours(3);
+            $color = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
 
-            return [
-                'title' => "{$salida->codigo_salida} - {$pesoTotal} kg",
-                'id' => $salida->id,
-                'start' => $fechaInicio->toDateTimeString(),
-                'end' => $fechaFin->toDateTimeString(),
-                'resourceId' => optional($obra)->id,
-                'tipo' => 'salida',
-                'backgroundColor' => $color,
-                'borderColor' => $color,
-                'extendedProps' => [
-                    'empresa' => $empresa,
+            return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $pesoTotal, $fechaInicio, $fechaFin, $color) {
+                $obra = $relacion->obra;
+                $nombreObra = optional($obra)->obra ?? 'Obra desconocida';
+
+                return [
+                    'title' => "{$salida->codigo_salida} - {$nombreObra} - {$pesoTotal} kg",
+                    'id' => $salida->id . '-' . $obra->id, // ID combinado para que sea único por evento
+                    'start' => $fechaInicio->toDateTimeString(),
+                    'end' => $fechaFin->toDateTimeString(),
+                    'resourceId' => $obra->id,
                     'tipo' => 'salida',
-                    'comentario' => $salida->comentario,
-                ]
-            ];
+                    'backgroundColor' => $color,
+                    'borderColor' => $color,
+                    'extendedProps' => [
+                        'empresa' => $empresa,
+                        'tipo' => 'salida',
+                        'comentario' => $salida->comentario,
+                    ]
+                ];
+            });
         });
 
+        // 🔹 Planillas agrupadas por obra y fecha
         $planillas = Planilla::with('obra')
-            ->whereDoesntHave('paquetes.salidas') // Recogemos las planillas que no estan asociadas a una salida
+            ->whereDoesntHave('paquetes.salidas')
             ->get();
 
-        $eventosPlanillas = $planillas->map(function ($planilla) {
-            $color = match ($planilla->estado) {
-                'completada' => '#374151', // gris oscuro (Tailwind: gray-700)
-                'fabricando' => '#6B7280', // gris medio (Tailwind: gray-500/600)
-                'pendiente' => '#D1D5DB', // blanco/gris claro (Tailwind: gray-300)
-                default => '#9E9E9E'       // gris neutro
-            };
+        $planillas = Planilla::with('obra', 'elementos')
+            ->whereDoesntHave('paquetes.salidas') // Mantienes esta condición
+            ->get();
 
-            // 👇 Primero parseamos la fecha correctamente
-            // Como fecha_estimada_entrega ya es un Carbon, no hace falta parsear
-            $fecha = Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_estimada_entrega);
-            return [
-                'title' => "{$planilla->codigo_limpio} ({$planilla->estado})",
-                'id' => $planilla->id,
-                'start' => $fecha->toDateTimeString(),
-                'end' => $fecha->copy()->addHours(2)->toDateTimeString(),
-                'resourceId' => $planilla->obra_id,
-                'backgroundColor' => $color,
-                'borderColor' => $color,
-                'tipo' => 'planilla',
-                'extendedProps' => [
-                    'tipo' => 'planilla'
-                ]
-            ];
-        });
+        $eventosPlanillas = $planillas
+            ->groupBy(fn($p) => $p->obra_id . '|' . $p->fecha_estimada_entrega)
+            ->map(function ($grupoPlanillas) {
+                $obraId = $grupoPlanillas->first()->obra_id;
+                $nombreObra = optional($grupoPlanillas->first()->obra)->obra ?? 'Obra desconocida';
+                $planillasIds = $grupoPlanillas->pluck('id')->toArray();
+                $color = '#9CA3AF';
 
-        $eventos = array_values(array_merge(
+                $fechaInicio = Carbon::createFromFormat('d/m/Y H:i', $grupoPlanillas->first()->fecha_estimada_entrega);
+
+                // 🔢 Peso total de las planillas
+                $pesoTotal = $grupoPlanillas->sum(fn($p) => $p->peso_total ?? 0);
+
+                // 📏 Longitud total: suma de (longitud * barras) de todos los elementos de esas planillas
+                $longitudTotal = $grupoPlanillas->flatMap->elementos
+                    ->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0));
+
+                // 🔘 Diámetro medio
+                $elementos = $grupoPlanillas->flatMap->elementos;
+                $diametros = $elementos->pluck('diametro')->filter(); // elimina nulos y ceros si quieres ->filter(fn($d) => $d > 0)
+                $diametroMedio = $diametros->isNotEmpty() ? round($diametros->avg(), 2) : null;
+
+                return [
+                    'title' => "{$nombreObra}",
+                    'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
+                    'start' => $fechaInicio->toIso8601String(),
+                    'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
+                    'resourceId' => (string) $obraId,
+                    'allDay' => false,
+                    'backgroundColor' => $color,
+                    'borderColor' => $color,
+                    'tipo' => 'planilla',
+                    'extendedProps' => [
+                        'tipo' => 'planilla',
+                        'pesoTotal' => $pesoTotal,
+                        'longitudTotal' => $longitudTotal,
+                        'planillas_ids' => $planillasIds,
+                        'diametroMedio' => $diametroMedio,
+                    ]
+                ];
+            })
+            ->values();
+
+
+        $eventos = collect(array_merge(
             $festivos,
             $salidasEventos->toArray(),
             $eventosPlanillas->toArray()
-        ));
+        ))->map(function ($evento) {
+            if (isset($evento['resourceId'])) {
+                $evento['resourceId'] = (string) $evento['resourceId']; // 🔥 Forzamos aquí antes del @json
+            }
+            return $evento;
+        })->values();
 
+
+        // 🔥 Si pide JSON (AJAX), devolvemos solo los eventos
+        if ($request->wantsJson()) {
+            return response()->json($eventos);
+        }
+
+        // 🖥 Si es carga normal, renderizamos la vista
         return view('planificacion.index', compact(
             'fechas',
             'eventos',
@@ -133,6 +169,7 @@ class PlanificacionController extends Controller
             'obrasConSalidasResources'
         ));
     }
+
 
     private function getFestivos()
     {
@@ -169,7 +206,8 @@ class PlanificacionController extends Controller
                 'backgroundColor' => '#ff0000',
                 'borderColor' => '#b91c1c',
                 'textColor' => 'white',
-                'allDay' => true
+                'allDay' => true,
+                'tipo' => 'festivo'
             ],
             [
                 'title' => 'Feria Los Palacios y Vfca',
@@ -177,13 +215,15 @@ class PlanificacionController extends Controller
                 'backgroundColor' => '#ff0000',
                 'borderColor' => '#b91c1c',
                 'textColor' => 'white',
-                'allDay' => true
+                'allDay' => true,
+                'tipo' => 'festivo'
             ]
         ]);
 
         // Combinar festivos nacionales, autonómicos y locales
         return $festivos->merge($festivosLocales)->values()->toArray();
     }
+
     public function guardarComentario(Request $request, $id)
     {
         $request->validate([
@@ -196,7 +236,6 @@ class PlanificacionController extends Controller
 
         return response()->json(['success' => true]);
     }
-
 
     public function update(Request $request, $id)
     {
@@ -221,14 +260,21 @@ class PlanificacionController extends Controller
         }
 
         if ($request->tipo === 'planilla') {
-            Log::info('🛠 Actualizando planilla', [
-                'id' => $id,
-                'nueva_fecha_estimada' => $fecha->toDateString()
+            Log::info('🛠 Actualizando planillas', [
+                'planillas_ids' => $request->planillas_ids,
+                'nueva_fecha_estimada' => $fecha
             ]);
 
-            $planilla = Planilla::findOrFail($id);
-            $planilla->fecha_estimada_entrega = $fecha->toDateString();
-            $planilla->save();
+            if (is_array($request->planillas_ids) && count($request->planillas_ids) > 0) {
+                // 🔥 Actualizar varias planillas
+                Planilla::whereIn('id', $request->planillas_ids)
+                    ->update(['fecha_estimada_entrega' => $fecha]);
+            } else {
+                // Por compatibilidad, si solo hay un ID (antiguo método)
+                $planilla = Planilla::findOrFail($id);
+                $planilla->fecha_estimada_entrega = $fecha;
+                $planilla->save();
+            }
 
             return response()->json(['success' => true, 'modelo' => 'planilla']);
         }

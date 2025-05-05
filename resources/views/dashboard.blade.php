@@ -228,7 +228,7 @@
             }
         }
     </style>
-    <script>
+    {{-- <script>
         document.addEventListener("DOMContentLoaded", function() {
             fetch("{{ route('alertas.sinLeer') }}")
                 .then(response => response.json())
@@ -239,6 +239,6 @@
                     }
                 });
         });
-    </script>
+    </script> --}}
 
 </x-app-layout>
