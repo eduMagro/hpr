@@ -10,6 +10,7 @@ use App\Http\Controllers\EntradaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\FabricanteController;
 use App\Http\Controllers\ProductoBaseController;
+use App\Http\Controllers\PedidoGlobalController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\EstadisticasController;
@@ -56,10 +57,13 @@ Route::middleware('auth')->group(function () {
 
     // Rutas para el controlador de entradas
     Route::resource('entradas', EntradaController::class);
+    Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);
     Route::post('/pedidos/confirmar', [PedidoController::class, 'confirmar'])->name('pedidos.confirmar');
     Route::get('pedidos/{pedido}/recepcion', [PedidoController::class, 'recepcion'])->name('pedidos.recepcion');
     Route::post('pedidos/{pedido}/recepcion', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');
+    Route::post('/pedidos/{pedido}/enviar-correo', [PedidoController::class, 'enviarCorreo'])->name('pedidos.enviarCorreo');
+    Route::get('/pedidos/preview', [PedidoController::class, 'preview'])->name('pedidos.preview');
 
 
     Route::resource('fabricantes', FabricanteController::class);
@@ -81,7 +85,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);
     Route::post('/asignaciones-turnos/destroy', [AsignacionTurnoController::class, 'destroy'])
         ->name('asignaciones-turnos.destroy');
-    Route::post('/asignaciones-turno/{id}/actualizar-puesto', [AsignacionTurnoController::class, 'actualizarPuesto']);
+    Route::post('/asignaciones-turno/{id}/actualizar-puesto', [ProduccionController::class, 'actualizarPuesto']);
     Route::post('/fichar', [AsignacionTurnoController::class, 'fichar'])->name('fichar');
 
     Route::post('/generar-turnos', function (Request $request) {
@@ -95,6 +99,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('movimientos', MovimientoController::class);
     Route::resource('paquetes', PaqueteController::class);
     Route::resource('etiquetas', EtiquetaController::class);
+
     Route::resource('obras', ObraController::class);
 
     Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])
@@ -107,6 +112,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
         ->name('elementosEtiquetas');
     Route::post('/elementos/dividir', [ElementoController::class, 'dividirElemento'])->name('elementos.dividir');
+    Route::post('/elementos/{elementoId}/solicitar-cambio-maquina', [ElementoController::class, 'solicitarCambioMaquina']);
+    Route::put('/elementos/{id}/cambio-maquina', [ElementoController::class, 'cambioMaquina'])->name('elementos.cambioMaquina');
+
+
 
     //Actualizar estado de etiquetas
     //Route::post('/actualizarEstado', [ElementoController::class, 'actualizarEstado'])->name('elementos.actualizarEstado');
@@ -119,6 +128,7 @@ Route::middleware('auth')->group(function () {
     // Para elegir un peon en maquinas
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])
         ->name('maquinas.sesion.guardar');
+    Route::get('/maquinas/{id}/json', [MaquinaController::class, 'showJson'])->name('maquinas.json');
 
     Route::resource('salidas', SalidaController::class);
     Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaController::class, 'quitarPaquete'])

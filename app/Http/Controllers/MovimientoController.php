@@ -128,22 +128,24 @@ class MovimientoController extends Controller
         try {
             DB::transaction(function () use ($request) {
 
-                if ($request->tipo_movimiento == 'producto') { // ----------------- MOVIMIENTO PRODUCTO
-                    $producto = Producto::find($request->producto_id);
+                if ($request->tipo_movimiento == 'producto') { // ----------------- MOVIMIENTO MATERIA PRIMA
+                    $producto = Producto::with('productoBase')->find($request->producto_id);
 
                     if ($request->maquina_id) {
                         $maquina = Maquina::find($request->maquina_id);
                         $maquinas_encarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
 
-                        if (in_array($maquina->codigo, $maquinas_encarretado) && $producto->tipo == 'barras') {
-
+                        if (in_array($maquina->codigo, $maquinas_encarretado) && $producto->productoBase->tipo == 'barras') {
                             throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
                         }
 
-                        if ($producto->diametro < $maquina->diametro_min || $producto->diametro > $maquina->diametro_max) {
+                        $diametro = $producto->productoBase->diametro;
+
+                        if ($diametro < $maquina->diametro_min || $diametro > $maquina->diametro_max) {
                             throw new \Exception('El diámetro del producto no está dentro del rango aceptado por la máquina.');
                         }
                     }
+
                     Movimiento::create([
                         'producto_id' => $producto->id,
                         'ubicacion_origen' => $producto->ubicacion_id,

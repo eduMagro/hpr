@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class Pedido extends Model
 {
@@ -10,24 +11,53 @@ class Pedido extends Model
 
     protected $fillable = [
         'codigo',
+        'pedido_global_id',
         'proveedor_id',
         'fecha_pedido',
-        'fecha_estimada',
+        'fecha_entrega',
         'estado',
         'observaciones',
     ];
     protected $casts = [
-        'fecha_pedido' => 'datetime',
-        'fecha_estimada' => 'datetime',
+        'fecha_pedido' => 'date',
+        'fecha_entrega' => 'date',
     ];
+    protected $appends = ['fecha_pedido_formateada', 'fecha_entrega_formateada', 'peso_total_formateado'];
+
+    public function getFechaCreacionFormateadaAttribute()
+    {
+        return Carbon::parse($this->created_at)->format('d-m-Y H:i');
+    }
+    public function pedidoGlobal()
+    {
+        return $this->belongsTo(PedidoGlobal::class, 'pedido_global_id');
+    }
+
+
     public static function generarCodigo()
     {
         $año = now()->format('y');
-        $último = self::whereYear('created_at', now()->year)->count();
-        $número = str_pad($último + 1, 4, '0', STR_PAD_LEFT);
+        $prefix = "PC{$año}/";
 
-        return "PC{$año}/{$número}";
+        // Buscar el último código generado
+        $últimoCodigo = self::where('codigo', 'like', "{$prefix}%")
+            ->orderBy('codigo', 'desc')
+            ->value('codigo');
+
+        // Extraer el número y aumentarlo
+        $siguiente = 1;
+
+        if ($últimoCodigo) {
+            $partes = explode('/', $últimoCodigo);
+            $numeroActual = intval($partes[1]);
+            $siguiente = $numeroActual + 1;
+        }
+
+        $númeroFormateado = str_pad($siguiente, 4, '0', STR_PAD_LEFT);
+
+        return $prefix . $númeroFormateado;
     }
+
 
     public function proveedor()
     {
@@ -39,5 +69,32 @@ class Pedido extends Model
         return $this->belongsToMany(ProductoBase::class, 'pedido_productos')
             ->withPivot('cantidad', 'observaciones')
             ->withTimestamps();
+    }
+    public function entradas()
+    {
+        return $this->hasMany(Entrada::class);
+    }
+
+    public function getFechaPedidoFormateadaAttribute()
+    {
+        return optional($this->fecha_pedido)->format('d-m-Y');
+    }
+
+    public function getFechaEntregaFormateadaAttribute()
+    {
+        return optional($this->fecha_entrega)->format('d-m-Y');
+    }
+    public function getPesoTotalFormateadoAttribute()
+    {
+        if (is_null($this->peso_total)) {
+            return 'N/A';
+        }
+
+        return number_format($this->peso_total, 2, ',', '.') . ' kg';
+    }
+
+    public function getCantidadSuministradaAttribute()
+    {
+        return $this->entradas()->sum('peso_total');
     }
 }

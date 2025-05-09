@@ -189,70 +189,96 @@ class PlanillaController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltros($query, Request $request)
     {
-
+        // Filtro por usuario
         if ($request->filled('users_id')) {
             $query->where('users_id', $request->users_id);
         }
 
+        // Filtro por código (columna directa)
+        if ($request->filled('codigo')) {
+            $query->where('codigo', 'like', '%' . $request->codigo . '%');
+        }
+
+        // Filtro por código del cliente
         if ($request->filled('codigo_cliente')) {
             $query->whereHas('cliente', function ($q) use ($request) {
                 $q->where('codigo', 'like', '%' . $request->codigo_cliente . '%');
             });
         }
 
+        // Filtro por nombre de cliente (empresa)
         if ($request->filled('cliente')) {
             $query->whereHas('cliente', function ($q) use ($request) {
                 $q->where('empresa', 'like', '%' . $request->cliente . '%');
             });
         }
 
+        // Filtro por código de obra
         if ($request->filled('cod_obra')) {
             $query->whereHas('obra', function ($q) use ($request) {
                 $q->where('cod_obra', 'like', '%' . $request->cod_obra . '%');
             });
         }
 
+        // Filtro por nombre de obra
         if ($request->filled('nom_obra')) {
             $query->whereHas('obra', function ($q) use ($request) {
                 $q->where('obra', 'like', '%' . $request->nom_obra . '%');
             });
         }
 
+        // Filtros directos sobre columnas de la tabla planillas
+        $query->when(
+            $request->filled('seccion'),
+            fn($q) =>
+            $q->where('seccion', 'like', '%' . $request->seccion . '%')
+        );
 
-        if ($request->filled('seccion')) {
-            $query->where('seccion', 'like', '%' . $request->seccion . '%');
-        }
+        $query->when(
+            $request->filled('descripcion'),
+            fn($q) =>
+            $q->where('descripcion', 'like', '%' . $request->descripcion . '%')
+        );
 
-        if ($request->filled('descripcion')) {
-            $query->where('descripcion', 'like', '%' . $request->descripcion . '%');
-        }
+        $query->when(
+            $request->filled('ensamblado'),
+            fn($q) =>
+            $q->where('ensamblado', 'like', '%' . $request->ensamblado . '%')
+        );
 
-        if ($request->filled('ensamblado')) {
-            $query->where('ensamblado', 'like', '%' . $request->ensamblado . '%');
-        }
+        $query->when(
+            $request->filled('estado'),
+            fn($q) =>
+            $q->where('estado', $request->estado)
+        );
 
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
-        }
-
+        // Fechas
         if ($request->filled('fecha_finalizacion')) {
-            $query->whereDate('fecha_finalizacion', $request->fecha_finalizacion);
-        }
-        if ($request->filled('fecha_importacion')) {
-            $query->whereDate('created_at', $request->fecha_importacion);
-        }
-        if ($request->filled('fecha_estimada_entrega')) {
-            $query->whereDate('fecha_estimada_entrega', $request->fecha_estimada_entrega);
+            $query->whereDate('fecha_finalizacion', Carbon::parse($request->fecha_finalizacion)->format('Y-m-d'));
         }
 
-        // Ordenación
+        if ($request->filled('fecha_importacion')) {
+            $query->whereDate('created_at', Carbon::parse($request->fecha_importacion)->format('Y-m-d'));
+        }
+
+        if ($request->filled('fecha_estimada_entrega')) {
+            $query->whereDate('fecha_estimada_entrega', Carbon::parse($request->fecha_estimada_entrega)->format('Y-m-d'));
+        }
+
+        // Ordenación segura
         $sortBy = $request->input('sort', 'fecha_estimada_entrega');
         $order = $request->input('order', 'desc');
-        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
+
+        // Validar sortBy para evitar SQL injection
+        $allowedSorts = ['fecha_estimada_entrega', 'created_at', 'fecha_finalizacion', 'codigo']; // ajusta según tus columnas
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'fecha_estimada_entrega';
+        }
+
+        $query->orderBy($sortBy, $order);
 
         return $query;
     }
-
 
 
     //------------------------------------------------------------------------------------ INDEX()
@@ -356,7 +382,6 @@ class PlanillaController extends Controller
         ]);
     }
 
-
     //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
@@ -383,11 +408,11 @@ class PlanillaController extends Controller
 
         try {
             $file = $request->file('file');
-            $importedData = Excel::toArray([], $file);
+            $importedData = \Maatwebsite\Excel\Facades\Excel::toArray([], $file);
             $firstSheet = $importedData[0] ?? [];
 
             if (empty($firstSheet)) {
-                throw new Exception('El archivo está vacío o no contiene datos válidos.');
+                throw new \Exception('El archivo está vacío o no contiene datos válidos.');
             }
 
             $headers = $firstSheet[0] ?? [];
@@ -395,7 +420,7 @@ class PlanillaController extends Controller
             $filteredData = array_filter($data, fn($row) => array_filter($row));
 
             if (empty($filteredData)) {
-                throw new Exception('El archivo no contiene filas válidas después de las cabeceras.');
+                throw new \Exception('El archivo no contiene filas válidas después de las cabeceras.');
             }
 
             $groupedByCodigo = [];
@@ -405,7 +430,7 @@ class PlanillaController extends Controller
             }
 
             foreach ($groupedByCodigo as $codigo => $rows) {
-                $pesoTotal = array_reduce($rows, fn($carry, $row) => $carry + (float) ($row[34] ?? 0), 0);
+                $pesoTotal = array_reduce($rows, fn($carry, $row) => $carry + (float)($row[34] ?? 0), 0);
 
                 $nomObra = trim(Str::lower($rows[0][3] ?? ''));
                 $nomCliente = trim(Str::lower($rows[0][1] ?? ''));
@@ -434,7 +459,6 @@ class PlanillaController extends Controller
                     'fecha_estimada_entrega' => now()->addDays(7),
                 ]);
 
-                // Agrupar filas por número de etiqueta (columna 30)
                 $filasAgrupadasPorEtiqueta = [];
                 foreach ($rows as $row) {
                     $numeroEtiqueta = $row[21] ?? null;
@@ -444,7 +468,6 @@ class PlanillaController extends Controller
                 }
 
                 foreach ($filasAgrupadasPorEtiqueta as $numeroEtiqueta => $filas) {
-                    // Crear etiqueta padre
                     $etiquetaPadre = Etiqueta::create([
                         'numero_etiqueta' => $numeroEtiqueta,
                         'planilla_id' => $planilla->id,
@@ -454,7 +477,6 @@ class PlanillaController extends Controller
                         'etiqueta_sub_id' => null,
                     ]);
 
-                    // Agrupar por máquina antes de crear subetiquetas
                     $gruposPorMaquina = [];
                     foreach ($filas as $row) {
                         $diametro = $row[25] ?? 0;
@@ -472,7 +494,6 @@ class PlanillaController extends Controller
                     foreach ($gruposPorMaquina as $maquina_id => $grupo) {
                         $idHijo = "{$etiquetaPadre->id}.{$contadorSubetiquetas}";
 
-                        // Crear subetiqueta relacionada a la etiqueta padre
                         $subEtiqueta = Etiqueta::create([
                             'numero_etiqueta' => $numeroEtiqueta,
                             'planilla_id' => $planilla->id,
@@ -482,7 +503,34 @@ class PlanillaController extends Controller
                             'etiqueta_sub_id' => $idHijo,
                         ]);
 
+                        // Agrupar elementos duplicados
+                        $agrupados = [];
                         foreach ($grupo as $item) {
+                            $row = $item['row'];
+                            $clave = implode('|', [
+                                $row[26], // figura
+                                $row[21], // fila
+                                $row[23], // marca
+                                // $row[30], // etiqueta
+                                $row[25], // diametro
+                                $row[27], // longitud
+                                $row[33] ?? 0, // dobles por barra
+                                $row[47] ?? '', // dimensiones
+                            ]);
+
+                            if (!isset($agrupados[$clave])) {
+                                $agrupados[$clave] = [
+                                    'row' => $row,
+                                    'peso' => (float)($row[34] ?? 0),
+                                    'barras' => (int)($row[32] ?? 0),
+                                ];
+                            } else {
+                                $agrupados[$clave]['peso'] += (float)($row[34] ?? 0);
+                                $agrupados[$clave]['barras'] += (int)($row[32] ?? 0);
+                            }
+                        }
+
+                        foreach ($agrupados as $item) {
                             $row = $item['row'];
                             $tiempos = $this->calcularTiemposElemento($row);
 
@@ -497,9 +545,9 @@ class PlanillaController extends Controller
                                 'etiqueta' => $row[30],
                                 'diametro' => $row[25],
                                 'longitud' => $row[27],
-                                'barras' => $row[32],
+                                'barras' => $item['barras'],
                                 'dobles_barra' => $row[33] ?? 0,
-                                'peso' => $row[34],
+                                'peso' => $item['peso'],
                                 'dimensiones' => $row[47] ?? null,
                                 'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
                             ]);
@@ -524,11 +572,12 @@ class PlanillaController extends Controller
 
             DB::commit();
             return redirect()->route('planillas.index')->with('success', 'Planillas importadas con éxito.');
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->route('planillas.index')->with('error', 'Hubo un problema al importar las planillas: ' . $e->getMessage());
         }
     }
+
 
     //------------------------------------------------------------------------------------ CALCULARTIEMPOSELEMENTO()
     private function calcularTiemposElemento(array $row)

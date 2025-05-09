@@ -178,8 +178,11 @@
                         <!-- Acciones finales: eliminar, editar, iniciar sesión -->
                         <div class="mt-4 flex justify-between items-center">
                             <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
-                            <a href="{{ route('maquinas.edit', $maquina->id) }}"
-                                class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+                            <a href="javascript:void(0);"
+                                class="text-blue-500 hover:text-blue-700 text-sm open-edit-modal"
+                                data-id="{{ $maquina->id }}">
+                                Editar
+                            </a>
                             <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
                                 class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
                         </div>
@@ -197,6 +200,50 @@
         </div>
 
     </div>
+    <div id="editModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex items-center justify-center">
+
+        <div class="bg-white p-6 rounded shadow-lg w-96">
+            <h2 class="text-lg font-semibold mb-4">Editar Máquina</h2>
+            <form id="editMaquinaForm">
+                @csrf
+                <input type="hidden" id="edit-id" name="id">
+
+                @foreach ([
+        'codigo' => 'Código de la Máquina',
+        'nombre' => 'Nombre de la Máquina',
+        'diametro_min' => 'Diámetro Mínimo',
+        'diametro_max' => 'Diámetro Máximo',
+        'peso_min' => 'Peso Mínimo',
+        'peso_max' => 'Peso Máximo',
+    ] as $field => $label)
+                    <div class="form-group mb-4">
+                        <label for="edit-{{ $field }}"
+                            class="form-label fw-bold text-uppercase">{{ $label }}</label>
+                        <input
+                            type="{{ str_starts_with($field, 'peso') || str_starts_with($field, 'diametro') ? 'number' : 'text' }}"
+                            id="edit-{{ $field }}" name="{{ $field }}"
+                            class="form-control form-control-lg" placeholder="Introduce {{ strtolower($label) }}">
+                    </div>
+                @endforeach
+
+                <div class="form-group mb-4">
+                    <label for="edit-estado" class="form-label fw-bold text-uppercase">Estado</label>
+                    <select id="edit-estado" name="estado" class="form-control form-control-lg" required>
+                        <option value="">-- Selecciona un estado --</option>
+                        <option value="activa">Activa</option>
+                        <option value="en mantenimiento">En mantenimiento</option>
+                        <option value="inactiva">Inactiva</option>
+                    </select>
+                </div>
+
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">Actualizar Máquina</button>
+                    <button type="button" id="closeModal" class="btn btn-secondary mt-2">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
     <!-- Scripts QR y Alpine -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -211,4 +258,78 @@
         };
     </script>
     <script src="{{ asset('js/maquinaJS/seleccionarCompa.js') }}" defer></script>
+    <script>
+        // Asignar evento a todos los botones de edición
+        document.querySelectorAll('.open-edit-modal').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                console.log('Clic en editar máquina ID:', id); // Para depurar
+
+                // Obtener los datos de la máquina por AJAX
+                fetch(`/maquinas/${id}/json`)
+
+                    .then(res => res.json())
+                    .then(data => {
+                        // Rellenar los campos del modal
+                        document.getElementById('edit-id').value = data.id;
+                        ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min', 'peso_max',
+                            'estado'
+                        ].forEach(field => {
+                            const el = document.getElementById(`edit-${field}`);
+                            if (el) el.value = data[field] ?? '';
+                        });
+
+                        // Mostrar el modal (asegura visibilidad con estilo)
+                        const modal = document.getElementById('editModal');
+                        modal.classList.remove('hidden');
+                        modal.style.display = 'flex';
+                    })
+                    .catch(err => {
+                        console.error('Error al cargar datos de la máquina:', err);
+                        alert('No se pudieron cargar los datos de la máquina.');
+                    });
+            });
+        });
+
+        // Cerrar modal al hacer clic en cancelar
+        document.getElementById('closeModal').addEventListener('click', () => {
+            const modal = document.getElementById('editModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        });
+
+        // Enviar formulario de edición con AJAX
+        document.getElementById('editMaquinaForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('edit-id').value;
+            const formData = new FormData(this);
+            formData.append('_method', 'PUT');
+
+            fetch(`/maquinas/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': formData.get('_token'),
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('editModal').classList.add('hidden');
+                        document.getElementById('editModal').style.display = 'none';
+                        location.reload(); // Recargar para mostrar cambios
+                    } else {
+                        return response.json().then(data => {
+                            alert(data.message || 'Error al actualizar la máquina.');
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error en la actualización:', error);
+                    alert('Error inesperado. Revisa la consola.');
+                });
+        });
+    </script>
+
 </x-app-layout>

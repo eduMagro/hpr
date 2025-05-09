@@ -15,6 +15,7 @@ class Entrada extends Model
     // Los campos que son asignables masivamente
     protected $fillable = [
         'albaran',
+        'pedido_id',
         'peso_total',
         'usuario_id',
         'otros',
@@ -54,5 +55,9 @@ class Entrada extends Model
     public function productos()
     {
         return $this->belongsToMany(Producto::class, 'entrada_producto');  // Relación uno a muchos
+    }
+    public function pedido()
+    {
+        return $this->belongsTo(Pedido::class, 'pedido_id');
     }
 }

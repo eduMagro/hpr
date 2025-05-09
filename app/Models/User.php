@@ -35,7 +35,7 @@ class User extends Authenticatable
         'dni',
         'rol',
         'categoria_id',
-        'especialidad',
+        'maquina_id',
         'turno',
         'turno_actual',
         'dias_vacaciones',
@@ -98,6 +98,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Salida::class, 'user_id');
     }
+    public function maquina()
+    {
+        return $this->belongsTo(Maquina::class, 'maquina_id');
+    }
+
 
     // Relación: Un usuario tiene muchos movimientos
     public function movimientos()

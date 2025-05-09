@@ -407,7 +407,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ctx.font = "14px Arial";
                 ctx.fillText("✂️ Dividir", buttonX + 70, buttonY + 20);
 
-                // Guardar posición del botón para detectar clics
+                // Area de click
                 canvas.addEventListener("click", function (event) {
                     let rect = canvas.getBoundingClientRect();
                     let mouseX = event.clientX - rect.left;
@@ -429,6 +429,35 @@ document.addEventListener("DOMContentLoaded", () => {
                 y: labelY - 20,
                 width: 50,
                 height: 30,
+            });
+            // Botón "Dividir" (ya existente)
+            const buttonX = canvas.width - 100;
+            const buttonY = centerY + availableSlotHeight / 2 - 50;
+
+            // Nuevo botón "Cambiar máquina"
+            const cambioX = buttonX;
+            const cambioY = buttonY + 40;
+
+            ctx.fillStyle = "#28a745"; // verde compatible con el naranja de la etiqueta
+            ctx.fillRect(cambioX, cambioY, 110, 30);
+            ctx.fillStyle = "#fff";
+            ctx.font = "13px Arial";
+            ctx.fillText("🔁 Cambiar máquina", cambioX + 55, cambioY + 20);
+
+            // Area de click
+            canvas.addEventListener("click", function (event) {
+                let rect = canvas.getBoundingClientRect();
+                let mouseX = event.clientX - rect.left;
+                let mouseY = event.clientY - rect.top;
+
+                if (
+                    mouseX >= cambioX &&
+                    mouseX <= cambioX + 110 &&
+                    mouseY >= cambioY &&
+                    mouseY <= cambioY + 30
+                ) {
+                    abrirModalCambioElemento(elemento.id);
+                }
             });
 
             // CASO 1: ARC único

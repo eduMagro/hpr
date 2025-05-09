@@ -2,22 +2,18 @@
     <x-slot name="title">{{ $maquina->nombre }} - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            <a href="{{ route('maquinas.index') }}" class="text-blue-500">
-                {{ __('Máquinas') }}
-            </a><span> / </span>{{ __('Trabajando en Máquina') }}: <strong>{{ $maquina->nombre }}</strong>,
+            <strong>{{ $maquina->nombre }}</strong>,
             {{ $usuario1->name }} @if ($usuario2)
                 y {{ $usuario2->name }}
             @endif
         </h2>
     </x-slot>
 
-
     <div class="mx-auto px-4 py-6">
-
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
             <!-- --------------------------------------------------------------- Información de la máquina --------------------------------------------------------------- -->
-            <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
+            {{-- <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
                     {{ $maquina->codigo }}
                 </h3>
@@ -100,9 +96,9 @@
                         🛠️ Chequeo de Máquina
                     </button>
                 </div>
-            </div>
+            </div> --}}
             <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
-            <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
+            <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-5">
 
                 @php
                     $idsReempaquetados = collect($elementosReempaquetados ?? []);
@@ -193,10 +189,22 @@
                             isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
 
                     @endphp
-
                     <div id="etiqueta-{{ $etiqueta->etiqueta_sub_id }}"
-                        style="background-color: #fe7f09; border: 1px solid black;"
-                        class="proceso boder shadow-md mt-4">
+                        style="background-color: #fe7f09; border: 1px solid black;" class="proceso boder shadow-xl mt-4">
+                        <!-- Asegúrate de incluir Lucide o FontAwesome si usas uno de esos -->
+                        <div class="relative">
+                            <button
+                                onclick="generateAndPrintQR('{{ $etiqueta->etiqueta_sub_id }}', '{{ $etiqueta->planilla->codigo_limpio }}', 'ETIQUETA')"
+                                class="absolute top-2 right-2 text-blue-800 hover:text-blue-900">
+                                <!-- Icono QR de Lucide -->
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 3h4v4H3V3zm14 0h4v4h-4V3zM3 17h4v4H3v-4zm14 4v-4h-4v2a2 2 0 002 2h2zm-6-4h2v2h-2v-2zm4-4h4v4h-4v-4zm0-6h4v4h-4V7zM7 7h4v4H7V7z" />
+                                </svg>
+                            </button>
+                        </div>
+
                         <div class="p-2">
                             <h2 class="text-lg font-semibold text-gray-900">
                                 <span>{{ $planilla->obra->obra }}</span> -
@@ -214,7 +222,6 @@
                             </h3>
                             <!-- Contenedor oculto para generar el QR -->
                             <div id="qrContainer-{{ $etiqueta->id ?? 'N/A' }}" style="display: none;"></div>
-
                             <div class="p-2">
                                 <p>
                                     <strong>Estado:</strong>
@@ -247,9 +254,55 @@
                     </div>
                 @empty
                     <div class="col-span-4 text-center py-4 text-gray-600">
-                        No hay elementos disponibles para esta máquina.
+                        No hay etiquetas disponibles para esta máquina.
                     </div>
                 @endforelse
+            </div>
+            <!-- Modal para cambio de máquina -->
+            <div id="modalCambioMaquina"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded shadow-md w-full max-w-md">
+                    <h2 class="text-lg font-semibold mb-4">Motivo del cambio de máquina</h2>
+                    <form id="formCambioMaquina" onsubmit="enviarCambioMaquina(event)">
+                        <input type="hidden" id="cambio-elemento-id" name="elemento_id">
+                        {{-- Motivo del cambio --}}
+                        <label for="motivoSelect" class="block font-semibold mb-1">Motivo del cambio:</label>
+                        <select id="motivoSelect" name="motivo" onchange="mostrarCampoOtro()"
+                            class="w-full border p-2 rounded mb-4" required>
+                            <option value="" disabled selected>Selecciona un motivo</option>
+                            <option value="Fallo técnico en máquina actual">Fallo técnico en máquina actual</option>
+                            <option value="Máquina saturada o con mucha carga">Máquina saturada o con mucha carga
+                            </option>
+                            <option value="Cambio de prioridad en producción">Cambio de prioridad en producción</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                        <div id="campoOtroMotivo" class="hidden mb-4">
+                            <label for="motivoTexto" class="block font-semibold mb-1">Especifica otro motivo:</label>
+                            <input type="text" id="motivoTexto" class="w-full border p-2 rounded"
+                                placeholder="Escribe tu motivo">
+                        </div>
+                        {{-- Selección de máquina destino --}}
+                        <label for="maquinaDestino" class="block font-semibold mb-1">Máquina destino:</label>
+                        <select id="maquinaDestino" name="maquina_id" class="w-full border p-2 rounded mb-4" required>
+                            <option value="" disabled selected>Selecciona una máquina</option>
+                            @php $maquinaActualId = $maquina->id; @endphp
+
+                            @foreach ($maquinas as $m)
+                                @if (in_array($m->tipo, ['cortadora_dobladora', 'estribadora']) && $m->id !== $maquina->id)
+                                    <option value="{{ $m->id }}">{{ $m->nombre }} ({{ $m->tipo }})
+                                    </option>
+                                @endif
+                            @endforeach
+                        </select>
+                        <div class="mt-4 text-right">
+                            <button type="button" onclick="cerrarModalCambio()"
+                                class="mr-2 px-4 py-1 bg-gray-300 rounded">Cancelar</button>
+                            <button type="submit"
+                                class="px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700">Enviar</button>
+                        </div>
+                    </form>
+
+                </div>
             </div>
 
             <!-- Modal para Dividir Elemento -->
@@ -376,7 +429,6 @@
                 </script>
 
             </div>
-
             <!-- Modal Reportar Incidencia (Oculto por defecto) -->
             <div id="modalIncidencia"
                 class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
@@ -417,7 +469,6 @@
                     </form>
                 </div>
             </div>
-
             <!-- Modal Chequeo de Máquina (Oculto por defecto) -->
             <div id="modalCheckeo"
                 class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">
@@ -465,46 +516,69 @@
         </div>
     </div>
     <script>
-        function abrirModalDividirElemento(elementoId) {
-            document.getElementById('dividir_elemento_id').value = elementoId;
-            document.getElementById('modalDividirElemento').classList.remove('hidden');
+        //--------------------------------------------------------------------------------------------------------
+
+        function abrirModalCambioElemento(elementoId) {
+            document.getElementById('modalCambioMaquina').classList.remove('hidden');
+            document.getElementById('cambio-elemento-id').value = elementoId;
         }
 
-        function enviarDivision() {
-            let elementoId = document.getElementById('dividir_elemento_id').value;
-            let numNuevos = document.getElementById('num_nuevos').value;
 
-            if (numNuevos < 1) {
-                alert('Debes ingresar al menos 1 nuevo elemento.');
-                return;
+
+        function cerrarModalCambio() {
+            document.getElementById('modalCambioMaquina').classList.add('hidden');
+
+            // Limpiar correctamente los campos
+            document.getElementById('motivoSelect').value = '';
+            document.getElementById('motivoTexto').value = '';
+            document.getElementById('maquinaDestino').value = '';
+            document.getElementById('campoOtroMotivo').classList.add('hidden');
+        }
+
+
+        function mostrarCampoOtro() {
+            const select = document.getElementById('motivoSelect');
+            const campoOtro = document.getElementById('campoOtroMotivo');
+
+            if (select.value === 'Otros') {
+                campoOtro.classList.remove('hidden');
+            } else {
+                campoOtro.classList.add('hidden');
             }
-            const url = "{{ route('elementos.dividir', [], false) }}";
+        }
 
-            fetch(url, {
-                    method: "POST",
+        function enviarCambioMaquina(event) {
+            event.preventDefault();
+
+            const elementoId = document.getElementById('cambio-elemento-id').value;
+            let motivo = document.getElementById('motivoSelect').value;
+            if (motivo === 'Otros') {
+                motivo = document.getElementById('motivoTexto').value.trim();
+            }
+            const maquinaId = document.getElementById('maquinaDestino').value;
+            // Puedes ajustar la URL y los headers si usas Axios
+            fetch(`/elementos/${elementoId}/solicitar-cambio-maquina`, {
+                    method: 'POST',
                     headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
                     body: JSON.stringify({
-                        elemento_id: elementoId,
-                        num_nuevos: numNuevos
-                    })
+                        motivo,
+                        maquina_id: maquinaId
+                    }),
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        alert('El elemento se ha dividido correctamente.');
-                        location.reload(); // Recargar la página para ver los cambios
-                    } else {
-                        alert('Error: ' + data.message);
-                    }
+                    alert(data.message || 'Solicitud enviada');
+                    cerrarModalCambio();
                 })
                 .catch(error => {
-                    alert('Hubo un problema con la división: ' + error);
+                    console.error('Error:', error);
+                    alert('Hubo un problema al enviar la solicitud.');
                 });
         }
-
+        //--------------------------------------------------------------------------------------------------------
         function confirmarEliminacion(actionUrl) {
             Swal.fire({
                 title: '¿Quieres deshecharlo?',
@@ -530,7 +604,7 @@
         window.etiquetasData =
             @json($etiquetasData); // Ej.: [{ codigo: "3718", elementos: [27906,27907,...], pesoTotal: 155.55 }, ...]
         window.pesosElementos = @json($pesosElementos); // Ej.: { "27906": "77.81", "27907": "3.87", ... }
-
+        //--------------------------------------------------------------------------------------------------------
         // console.log("Datos precargados de etiquetas:", window.etiquetasData);
         // console.log("Pesos precargados de elementos:", window.pesosElementos);
     </script>

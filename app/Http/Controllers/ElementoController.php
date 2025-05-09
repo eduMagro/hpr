@@ -6,6 +6,10 @@ use App\Models\Elemento;
 use App\Models\Planilla;
 use App\Models\Etiqueta;
 use App\Models\Maquina;
+use App\Models\Alerta;
+use App\Models\AsignacionTurno;
+use App\Models\turno;
+use App\Models\User;
 use App\Models\Ubicacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +22,6 @@ use Exception;
 
 class ElementoController extends Controller
 {
-
     /**
      * Aplica los filtros a la consulta de elementos
      */
@@ -154,7 +157,6 @@ class ElementoController extends Controller
         return $query;
     }
 
-
     public function index(Request $request)
     {
         $query = Elemento::with([
@@ -239,14 +241,130 @@ class ElementoController extends Controller
             ], 500);
         }
     }
-
-
     /**
      * Almacena un nuevo elemento en la base de datos.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+
+    public function solicitarCambioMaquina(Request $request, $elementoId)
+    {
+        $motivo     = $request->motivo;
+        $maquinaId  = $request->maquina_id;
+        $horaActual = Carbon::now()->format('H:i:s');
+
+        // Obtener el elemento que solicita el cambio
+        $elemento = Elemento::find($elementoId);
+        if (!$elemento) {
+            return response()->json(['message' => 'Elemento no encontrado.'], 404);
+        }
+
+        $etiquetaSubId = $elemento->etiqueta_sub_id;
+        $maquinaOrigen = Maquina::find($elemento->maquina_id);
+        $maquinaDestino = Maquina::find($maquinaId);
+
+        // Buscar turno actual
+        $turno = Turno::where('hora_entrada', '<=', $horaActual)
+            ->where('hora_salida', '>=', $horaActual)
+            ->first();
+
+        if (!$turno) {
+            return response()->json(['message' => 'No se encontró turno activo.'], 404);
+        }
+
+        // Buscar asignaciones activas para hoy en la máquina destino
+        $asignaciones = AsignacionTurno::where('fecha', Carbon::today())
+            ->where('maquina_id', $maquinaId)
+            ->where('turno_id', $turno->id)
+            ->get();
+
+        if ($asignaciones->isEmpty()) {
+            return response()->json(['message' => 'No hay usuarios asignados a esa máquina.'], 404);
+        }
+
+        foreach ($asignaciones as $asignacion) {
+            $usuarioDestino = User::find($asignacion->user_id);
+
+            $mensaje = "Solicitud de cambio de máquina para elemento #{$elemento->id} (etiqueta {$etiquetaSubId}): {$motivo}. "
+                . "Origen: " . ($maquinaOrigen?->nombre ?? 'N/A') . ", Destino: " . ($maquinaDestino?->nombre ?? 'N/A');
+
+            Alerta::create([
+                'user_id_1'       => auth()->id(),
+                'user_id_2'       => $usuarioDestino->id,
+                'destino'         => 'produccion',
+                'destinatario'    => $usuarioDestino->name,
+                'destinatario_id' => $usuarioDestino->id,
+                'mensaje'         => $mensaje,
+                'leida'           => false,
+                'completada'      => false,
+            ]);
+
+            Log::info("Alerta enviada", [
+                'elemento_id' => $elemento->id,
+                'etiqueta_sub_id' => $etiquetaSubId,
+                'usuario_id'  => $usuarioDestino->id,
+                'mensaje'     => $mensaje,
+            ]);
+        }
+
+        return response()->json(['message' => 'Solicitud enviada correctamente al operario asignado.']);
+    }
+
+    public function cambioMaquina(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'maquina_id' => 'required|exists:maquinas,id',
+            ]);
+            Log::info("Entrando al metodo...");
+            $elemento = Elemento::findOrFail($id);
+            $nuevaMaquinaId = $request->maquina_id;
+
+            if ($elemento->maquina_id == $nuevaMaquinaId) {
+                Log::info("El elemento ya pertenece a esa maquina");
+            }
+
+            $prefijo = (int) $elemento->etiqueta_sub_id;
+
+            // Buscar hermanos en la nueva máquina con mismo prefijo
+            $hermano = Elemento::where('maquina_id', $nuevaMaquinaId)
+                ->where('etiqueta_sub_id', 'like', "$prefijo.%")
+                ->first();
+            Log::info("Buscando a mirmano");
+
+            if ($hermano) {
+                $elemento->etiqueta_sub_id = $hermano->etiqueta_sub_id;
+            } else {
+                $sufijos = Elemento::where('etiqueta_sub_id', 'like', "$prefijo.%")
+                    ->pluck('etiqueta_sub_id')
+                    ->map(fn($e) => (int) explode('.', $e)[1])
+                    ->toArray();
+                $next = empty($sufijos) ? 1 : (max($sufijos) + 1);
+                $elemento->etiqueta_sub_id = "$prefijo.$next";
+            }
+
+            $elemento->maquina_id = $nuevaMaquinaId;
+            $elemento->save();
+            // Marcar la alerta como completada
+            $alertaId = $request->query('alerta_id');
+
+            if ($alertaId) {
+                $alerta = Alerta::find($alertaId);
+                if ($alerta) {
+                    $alerta->completada = true;
+                    $alerta->save();
+                    Log::info("Alerta {$alertaId} completada");
+                }
+            }
+
+            return redirect()->route('dashboard')->with('success', 'Cambio de máquina aplicado correctamente.');
+        } catch (\Exception $e) {
+            Log::error("Error al cambiar máquina de elemento {$id}: {$e->getMessage()}");
+            return back()->with('error', 'No se pudo cambiar la máquina del elemento.');
+        }
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -263,76 +381,6 @@ class ElementoController extends Controller
         return redirect()->route('elementos.index')->with('success', 'Elemento creado exitosamente.');
     }
 
-    /**
-     * Muestra un elemento específico.
-     *
-     * @param  \App\Models\Elemento  $elemento
-     * @return \Illuminate\Http\Response
-     */
-
-    // public function show($id)
-    // {
-    //     $planillas = Planilla::with([
-    //         'paquetes:id,planilla_id,peso,ubicacion_id',
-    //         'paquetes.ubicacion:id', // Cargar la ubicación de cada paquete
-    //         'etiquetas:id,planilla_id,estado,peso',
-    //         'elementos:id,planilla_id,estado,peso,etiqueta_id,paquete_id,maquina_id',
-    //         'elementos.ubicacion:id,nombre', // Cargar la ubicación de cada elemento
-    //         'elementos.maquina:id,nombre' // Cargar la máquina de cada elemento
-    //     ])->get();
-
-    //     // Función para asignar color de fondo según estado
-    //     $getColor = function ($estado, $tipo) {
-    //         $estado = strtolower($estado ?? 'desconocido');
-
-    //         if ($tipo === 'etiqueta' && $estado === 'completada') {
-    //             $estado = 'completado';
-    //         }
-
-    //         return match ($estado) {
-    //             'completado' => 'bg-green-200',
-    //             'pendiente' => 'bg-red-200',
-    //             'fabricando' => 'bg-blue-200',
-    //             default => 'bg-gray-200'
-    //         };
-    //     };
-
-    //     // Procesar cada planilla
-    //     $planillasCalculadas = $planillas->map(function ($planilla) use ($getColor) {
-    //         $pesoAcumulado = $planilla->elementos->where('estado', 'completado')->sum('peso');
-    //         $pesoTotal = max(1, $planilla->peso_total ?? 1);
-    //         $progreso = min(100, ($pesoAcumulado / $pesoTotal) * 100);
-
-    //         $paquetes = $planilla->paquetes->map(function ($paquete) use ($getColor) {
-    //             $paquete->color = $getColor($paquete->estado, 'paquete');
-    //             return $paquete;
-    //         });
-
-    //         $elementos = $planilla->elementos->map(function ($elemento) use ($getColor) {
-    //             $elemento->color = $getColor($elemento->estado, 'elemento');
-    //             return $elemento;
-    //         });
-
-    //         $etiquetas = $planilla->etiquetas->map(function ($etiqueta) use ($getColor, $elementos) {
-    //             $etiqueta->color = $getColor($etiqueta->estado, 'etiqueta');
-    //             $etiqueta->elementos = $elementos->where('etiqueta_id', $etiqueta->id);
-    //             return $etiqueta;
-    //         });
-
-    //         return [
-    //             'planilla' => $planilla,
-    //             'pesoAcumulado' => $pesoAcumulado,
-    //             'pesoRestante' => max(0, $pesoTotal - $pesoAcumulado),
-    //             'progreso' => round($progreso, 2),
-    //             'paquetes' => $paquetes,
-    //             'etiquetas' => $etiquetas,
-    //             'elementos' => $elementos,
-    //             'etiquetasSinPaquete' => $etiquetas->whereNull('paquete_id')
-    //         ];
-    //     });
-
-    //     return view('elementos.show', compact('planillasCalculadas'));
-    // }
     public function showByEtiquetas($planillaId)
     {
 
@@ -347,8 +395,6 @@ class ElementoController extends Controller
 
         return view('elementos.show', compact('planilla', 'etiquetasConElementos'));
     }
-
-
 
     public function update(Request $request, $id)
     {
@@ -476,7 +522,6 @@ class ElementoController extends Controller
             ], 500);
         }
     }
-
 
     /**
      * Elimina un elemento existente de la base de datos.

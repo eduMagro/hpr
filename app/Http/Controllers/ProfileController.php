@@ -58,9 +58,11 @@ class ProfileController extends Controller
             $filtros[] = 'Categoría: <strong>' . $nombreCategoria . '</strong>';
         }
 
-        if ($request->filled('especialidad')) {
-            $filtros[] = 'Especialidad: <strong>' . $request->especialidad . '</strong>';
+        if ($request->filled('maquina_id')) {
+            $maquina = Maquina::find($request->maquina_id);
+            $filtros[] = 'Máquina: <strong>' . ($maquina->nombre ?? 'ID ' . $request->maquina_id) . '</strong>';
         }
+
 
         if ($request->filled('turno')) {
             $filtros[] = 'Turno: <strong>' . $request->turno . '</strong>';
@@ -79,7 +81,7 @@ class ProfileController extends Controller
                 'empresa' => 'Empresa',
                 'rol' => 'Rol',
                 'categoria' => 'Categoría',
-                'especialidad' => 'Especialidad',
+                'maquina' => 'Máquina',
                 'turno' => 'Turno',
                 'estado' => 'Estado',
             ];
@@ -138,15 +140,12 @@ class ProfileController extends Controller
             $query->where('users.rol', $request->input('rol'));
         }
 
-        // Filtrar por categoría
-        if ($request->filled('categoria_id')) {
-            $query->where('categoria_id', $request->input('categoria_id'));
+        // Filtrar por máquina (maquina_id)
+        if ($request->filled('maquina_id')) {
+            $query->where('maquina_id', $request->input('maquina_id'));
         }
 
-        // Filtrar por especialidad
-        if ($request->filled('especialidad')) {
-            $query->where('users.especialidad', 'like', '%' . $request->input('especialidad') . '%');
-        }
+
 
         // Obtener la fecha de hoy
         $hoy = Carbon::today()->toDateString();
@@ -176,9 +175,7 @@ class ProfileController extends Controller
         $obras = Obra::where('estado', 'activa')->get();
         $categorias = Categoria::orderBy('nombre')->get();
         $empresas = Empresa::orderBy('nombre')->get();
-        $especialidades = Maquina::distinct()->pluck('codigo')->sort();
-        $especialidades = $especialidades->merge(['grua 1', 'grua 2', 'grua 3']);
-
+        $maquinas = Maquina::orderBy('nombre')->get(); // Puedes usar 'codigo' si prefieres
         $roles = User::distinct()->pluck('rol')->filter()->sort();
         $turnos = User::distinct()->pluck('turno')->filter()->sort();
 
@@ -190,7 +187,7 @@ class ProfileController extends Controller
             'empresa' => $this->getOrdenamiento('empresa', 'Empresa'),
             'rol' => $this->getOrdenamiento('rol', 'Rol'),
             'categoria' => $this->getOrdenamiento('categoria', 'Categoría'),
-            'especialidad' => $this->getOrdenamiento('especialidad', 'Especialidad'),
+            'maquina_id' => $this->getOrdenamiento('maquina_id', 'Máquina'),
             'turno' => $this->getOrdenamiento('turno', 'Turno'),
             'estado' => $this->getOrdenamiento('estado', 'Estado'),
         ];
@@ -201,7 +198,7 @@ class ProfileController extends Controller
             ->pluck('turnos.nombre')->unique()->sort();
 
         // Obtener usuarios según filtros (sin paginar aún)
-        $usuarios = $this->aplicarFiltros($request)->with('categoria', 'empresa')->get();
+        $usuarios = $this->aplicarFiltros($request)->with('categoria', 'empresa', 'maquina')->get();
 
         // ✅ Filtrado por "estado de conexión" en colección
         if ($request->filled('estado')) {
@@ -253,7 +250,7 @@ class ProfileController extends Controller
             'eventos',
             'coloresTurnos',
             'categorias',
-            'especialidades',
+            'maquinas',
             'roles',
             'turnos',
             'turnosHoy',
@@ -490,7 +487,7 @@ class ProfileController extends Controller
                 'empresa_id' => 'nullable|exists:empresas,id',
                 'rol' => 'required|string|max:50',
                 'categoria_id' => 'nullable|exists:categorias,id',
-                'especialidad' => 'nullable|string|max:15',
+                'maquina_id' => 'nullable|exists:maquinas,id',
                 'turno' => 'nullable|string|in:nocturno,diurno,mañana,flexible',
             ], [
                 'name.required' => 'El nombre es obligatorio.',
@@ -510,8 +507,6 @@ class ProfileController extends Controller
 
                 'categoria_id.exists' => 'La categoría no existe.',
 
-                'especialidad.string' => 'La especialidad debe ser un texto válido.',
-
                 'turno.string' => 'El turno debe ser un texto válido.',
                 'turno.in' => 'El turno debe ser "mañana", "tarde", "noche" o "flexible".',
             ]);
@@ -528,7 +523,7 @@ class ProfileController extends Controller
                 'empresa_id' => $request->empresa_id,
                 'rol' => $request->rol,
                 'categoria_id' => $request->categoria_id,
-                'especialidad' => $request->especialidad,
+                'maquina_id' => $request->maquina_id,
                 'turno' => $request->turno,
             ]);
 
@@ -540,7 +535,7 @@ class ProfileController extends Controller
                 ->whereDate('fecha', '>=', Carbon::today())
                 ->whereDate('fecha', '<=', Carbon::createFromDate(null, 12, 31))
                 ->where('turno_id', '!=', 10)
-                ->update(['puesto' => $usuario->especialidad]);
+                ->update(['maquina_id' => $usuario->maquina_id]);
 
 
             return response()->json(['success' => 'Usuario actualizado correctamente.']);
@@ -619,7 +614,10 @@ class ProfileController extends Controller
                 // Registrar el turno en la base de datos
                 AsignacionTurno::updateOrCreate(
                     ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
-                    ['turno_id' => $turnoAsignado]
+                    [
+                        'turno_id' => $turnoAsignado,
+                        'maquina_id' => $user->maquina_id, // o $user->maquina_id si lo renombraste así
+                    ]
                 );
 
                 // Si es viernes, cambiar turno para la próxima semana

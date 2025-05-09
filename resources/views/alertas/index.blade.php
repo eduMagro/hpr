@@ -94,10 +94,7 @@
                     <tbody class="text-gray-700 text-sm">
                         @forelse ($alertas as $alerta)
                             <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-
-
                                 @php
-
                                     // Extraer diámetro
                                     preg_match('/diámetro (\d+(\.\d+)?)/i', $alerta->mensaje, $matchDiametro);
                                     $diametro = $matchDiametro[1] ?? null;
@@ -123,27 +120,57 @@
                                             ])
                                             : null;
                                 @endphp
+                                {{-- Es un asolicitud de cambio de maquina? --}}
+                                @php
+                                    $esCambioMaquina = strpos($alerta->mensaje, 'Solicitud de cambio de máquina') === 0;
 
+                                    $elementoId = $etiquetaSubId = $origen = $destino = $maquinaDestinoId = null;
+
+                                    if ($esCambioMaquina) {
+                                        preg_match('/elemento\s#(\d+)/i', $alerta->mensaje, $matchElemento);
+                                        preg_match('/etiqueta\s([\d\.]+)\)/i', $alerta->mensaje, $matchEtiqueta);
+                                        preg_match('/Origen:\s([^,]+),/i', $alerta->mensaje, $matchOrigen);
+                                        preg_match('/Destino:\s(.+)$/i', $alerta->mensaje, $matchDestino);
+
+                                        $elementoId = $matchElemento[1] ?? null;
+                                        $etiquetaSubId = $matchEtiqueta[1] ?? null;
+                                        $origen = $matchOrigen[1] ?? null;
+                                        $destino = $matchDestino[1] ?? null;
+
+                                        // Buscar la máquina destino por nombre
+                                        $maquinaDestino = \App\Models\Maquina::where('nombre', trim($destino))->first();
+                                        $maquinaDestinoId = $maquinaDestino->id ?? 'null';
+                                    }
+                                @endphp
 
                                 <td class="px-2 py-3 text-center border">
-                                    @if ($url)
-                                        <a href="{{ $url }}" class="text-blue-600 hover:underline">
+                                    @php
+                                        $esEntrante = $alerta->destinatario_id == $user->id;
+                                    @endphp
+
+                                    @if ($esCambioMaquina && $etiquetaSubId && $origen && $destino && $esEntrante)
+                                        <a href="#"
+                                            onclick="abrirModalAceptarCambio('{{ $elementoId }}', '{{ $origen }}', '{{ $destino }}', '{{ $maquinaDestinoId }}', '{{ $alerta->id }}')"
+                                            class="text-green-700 hover:underline font-semibold">
                                             {{ $alerta->mensaje }}
                                         </a>
                                     @else
-                                        {{ $alerta->mensaje }}
+                                        <span class="text-gray-500">
+                                            {{ $alerta->mensaje }}
+                                        </span>
                                     @endif
                                 </td>
-
 
                                 <td class="px-2 py-3 text-center border">{{ $alerta->created_at->format('d/m/Y H:i') }}
                                 </td>
                                 <td class="px-2 py-3 text-center border">
-                                    @if ($alerta->user_id_1 == $user->id)
-                                        <span class="text-red-600 font-bold">⬆ Saliente</span>
-                                    @else
+
+                                    @if ($esEntrante)
                                         <span class="text-green-600 font-bold">⬇ Entrante</span>
+                                    @else
+                                        <span class="text-red-600 font-bold">⬆ Saliente</span>
                                     @endif
+
                                 </td>
                                 <td class="px-2 py-3 text-center border">
                                     @if ($alerta->completada)
@@ -171,4 +198,60 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Confirmación Cambio de Máquina -->
+    <div id="modalConfirmacionCambio"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md relative">
+            <!-- Título -->
+            <h2 class="text-xl font-bold mb-4 text-center">¿Aceptar cambio de máquina?</h2>
+
+            <!-- Contenido dinámico -->
+            <p class="mb-4 text-center">
+                Solicitud para <strong>elemento <span id="elementoModal" class="font-semibold"></span></strong><br>
+                De <span id="origenModal" class="font-semibold text-red-600"></span>
+                a <span id="destinoModal" class="font-semibold text-green-600"></span>
+            </p>
+
+            <!-- Formulario de acción -->
+            <form id="formAceptarCambio" method="POST">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="maquina_id" id="nueva_maquina_id">
+
+                <div class="flex justify-center gap-4 mt-4">
+                    <button type="button" onclick="cerrarModalConfirmacion()"
+                        class="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">
+                        Cancelar
+                    </button>
+
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                        Aceptar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function abrirModalAceptarCambio(elementoId, origen, destino, maquinaDestinoId = null, alertaId = null) {
+            // Asigna los valores al modal
+            document.getElementById('elementoModal').textContent = elementoId;
+            document.getElementById('origenModal').textContent = origen;
+            document.getElementById('destinoModal').textContent = destino;
+            document.getElementById('nueva_maquina_id').value = maquinaDestinoId;
+
+            if (!maquinaDestinoId) {
+                alert("ID de máquina destino no válido");
+                return;
+            }
+
+            const form = document.getElementById('formAceptarCambio');
+            form.action = `/elementos/${elementoId}/cambio-maquina?alerta_id=${alertaId}`; // importante
+
+            document.getElementById('modalConfirmacionCambio').classList.remove('hidden');
+        }
+    </script>
+
+
 </x-app-layout>

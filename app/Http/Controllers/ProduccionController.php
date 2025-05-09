@@ -17,41 +17,43 @@ class ProduccionController extends Controller
      */
     public function index()
     {
-        // Cargar máquinas ordenadas y darles formato
+        $estadoProduccionMaquinas = Maquina::selectRaw('maquinas.*, (
+            SELECT COUNT(*) FROM elementos
+            WHERE elementos.maquina_id_2 = maquinas.id
+        ) as elementos_ensambladora')
+            ->withCount(['elementos as elementos_count' => function ($query) {
+                $query->where('estado', '!=', 'fabricado');
+            }])
+            ->get()
+            ->mapWithKeys(function ($maquina) {
+                $inProduction = $maquina->tipo === 'ensambladora'
+                    ? $maquina->elementos_ensambladora > 0
+                    : $maquina->elementos_count > 0;
+
+                return [
+                    $maquina->id => [
+                        'nombre' => $maquina->nombre,
+                        'codigo' => $maquina->codigo,
+                        'en_produccion' => $inProduction,
+                    ]
+                ];
+            });
         $maquinas = Maquina::orderBy('id')->get(['id', 'nombre', 'codigo'])->map(function ($maquina) {
             return [
                 'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
                 'title' => $maquina->nombre,
-                'codigo' => strtolower($maquina->codigo) // ya en minúscula
+                'codigo' => strtolower($maquina->codigo)
             ];
         });
 
-        // Agregar grúas manualmente
-        $gruas = collect([
-            ['id' => '1000', 'title' => 'grua 1', 'codigo' => 'grua 1'],
-            ['id' => '1001', 'title' => 'grua 2', 'codigo' => 'grua 2'],
-            ['id' => '1002', 'title' => 'grua 3', 'codigo' => 'grua 3'],
-        ])->map(function ($grua) {
-            $grua['codigo'] = strtolower($grua['codigo']); // asegurar minúsculas
-            return $grua;
-        });
-
-        // Unir máquinas con grúas
-        $maquinas = $maquinas->merge($gruas);
-
-        // Indexar por código en minúsculas
-        $maquinasIndexadas = $maquinas->keyBy('codigo');
-
-        // Cargar trabajadores y sus asignaciones
         $trabajadores = User::with(['asignacionesTurnos.turno:id,hora_entrada,hora_salida'])
             ->where('rol', 'operario')
-            ->whereNotNull('especialidad')
+            ->whereNotNull('maquina_id') // aquí antes usabas `especialidad`
             ->get();
 
         $fechaHoy = Carbon::today();
         $fechaLimite = $fechaHoy->copy()->addDays(14);
 
-        // Crear eventos sin usar cache
         Log::info('Generando eventos para trabajadores');
         $eventos = [];
 
@@ -62,15 +64,25 @@ class ProduccionController extends Controller
                 if ($fechaTurno->between($fechaHoy, $fechaLimite)) {
                     $turno = $asignacionTurno->turno;
 
-                    $start = $asignacionTurno->fecha . 'T' . ($turno ? $turno->hora_entrada : '08:00:00');
-                    $end = $asignacionTurno->fecha . 'T' . ($turno ? $turno->hora_salida : '16:00:00');
+                    $horaEntrada = $turno?->hora_entrada ?? '08:00:00';
+                    $horaSalida = $turno?->hora_salida ?? '16:00:00';
 
-                    // Comparar puesto vs código en minúsculas
-                    $puesto = strtolower($asignacionTurno->puesto ?: $trabajador->especialidad);
-                    $maquina = $maquinasIndexadas->get($puesto);
-                    $resourceId = $maquina ? $maquina['id'] : null;
+                    if ($horaEntrada === '22:00:00' && $horaSalida === '06:00:00') {
+                        $start = Carbon::parse($asignacionTurno->fecha)->subDay()->format('Y-m-d') . 'T22:00:00';
+                        $end = $asignacionTurno->fecha . 'T06:00:00';
+                    } elseif ($horaEntrada === '06:00:00') {
+                        $start = $asignacionTurno->fecha . 'T06:00:00';
+                        $end = $asignacionTurno->fecha . 'T14:00:00';
+                    } elseif ($horaEntrada === '14:00:00') {
+                        $start = $asignacionTurno->fecha . 'T14:00:00';
+                        $end = $asignacionTurno->fecha . 'T22:00:00';
+                    } else {
+                        $start = $asignacionTurno->fecha . 'T' . $horaEntrada;
+                        $end = $asignacionTurno->fecha . 'T' . $horaSalida;
+                    }
 
-                    Log::info("Puesto: $puesto | Resource ID: $resourceId");
+                    $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
+                    $resourceId = $maquinaId ? str_pad($maquinaId, 3, '0', STR_PAD_LEFT) : null;
 
                     $eventos[] = [
                         'id' => $asignacionTurno->id,
@@ -78,17 +90,22 @@ class ProduccionController extends Controller
                         'start' => $start,
                         'end' => $end,
                         'resourceId' => $resourceId,
-                        'trabajador' => $trabajador
+                        'extendedProps' => [
+                            'categoria_id' => $trabajador->categoria_id,
+                            'categoria_nombre' => $trabajador->categoria?->nombre,
+                        ],
+                        'maquina_id' => $trabajador->maquina_id
                     ];
                 }
             }
         }
 
+
+
         Log::info('Eventos generados: ', ['count' => count($eventos)]);
         $trabajadoresEventos = $eventos;
 
-        // Mostrar operarios que trabajan mañana (excepto vacaciones)
-        $fechaActual = Carbon::today()->addDays(1);
+        $fechaActual = Carbon::today();
         $operariosTrabajando = User::where('rol', 'operario')
             ->whereHas('asignacionesTurnos', function ($query) use ($fechaActual) {
                 $query->whereDate('fecha', $fechaActual)
@@ -96,18 +113,27 @@ class ProduccionController extends Controller
             })
             ->get();
 
-        return view('produccion.index', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando'));
-    }
+        $idsConEventos = collect($eventos)->pluck('trabajador.id')->unique();
+        $trabajadoresSinEvento = $trabajadores->filter(fn($t) => !$idsConEventos->contains($t->id));
 
+        Log::info('Trabajadores sin eventos:', $trabajadoresSinEvento->pluck('name')->toArray());
+
+        return view('produccion.index', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
+    }
 
     public function actualizarPuesto(Request $request, $id)
     {
+        $request->validate([
+            'maquina_id' => 'required|exists:maquinas,id',
+        ]);
+
         $asignacion = AsignacionTurno::findOrFail($id);
-        $asignacion->puesto = $request->input('puesto');
+        $asignacion->maquina_id = $request->input('maquina_id');
         $asignacion->save();
 
         return response()->json(['success' => true]);
     }
+
 
     /**
      * Show the form for creating a new resource.

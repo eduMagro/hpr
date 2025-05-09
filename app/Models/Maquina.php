@@ -13,6 +13,7 @@ class Maquina extends Model
     protected $fillable = [
         'codigo',
         'nombre',
+        'estado',
         'tipo',
         'diametro_min',
         'diametro_max',
@@ -26,6 +27,10 @@ class Maquina extends Model
         'updated_at' => 'datetime',
     ];
 
+    public function usuarios()
+    {
+        return $this->hasMany(User::class, 'especialidad');
+    }
 
     public function productos()
     {

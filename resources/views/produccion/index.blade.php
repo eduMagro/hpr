@@ -11,23 +11,63 @@
         <div class="w-full bg-white">
             <div id="calendario" class="w-full h-screen"></div>
         </div>
-        <!-- Lista de Operarios -->
-        <div class="mt-6">
-            <h3 class="text-2xl font-semibold text-gray-900 mb-4">Operarios Trabajando</h3>
-            <ul class="space-y-2">
-                @foreach ($operariosTrabajando as $operario)
-                    <li class="px-4 py-2 rounded {{ $operario->estado == 'trabajando' ? 'bg-green-500 text-white' : 'bg-gray-100' }}"
-                        data-operario-id="{{ $operario->id }}">
-                        <span>{{ $operario->name }}</span>
-                        <span>Categoría: {{ $operario->categoria_id }}</span>
-                        <span class="text-sm text-gray-600" id="especialidad-{{ $operario->id }}"
-                            onclick="activarEdicion({{ $operario->id }}, '{{ $operario->especialidad }}')">
-                            {{ $operario->especialidad }}
-                        </span>
-                    </li>
-                @endforeach
-            </ul>
+        <!-- Tabla de Operarios -->
+        <div class="mt-8">
+            <h3 class="text-2xl font-semibold text-gray-900 mb-4">Operarios que trabajan hoy</h3>
+            <div class="overflow-x-auto rounded-lg shadow">
+                <table class="min-w-full divide-y divide-gray-200 bg-white">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Nombre</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Categoría</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Máquina</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Puesto (turno)</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Turno</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Estado</th>
+                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">¿Con evento?</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach ($operariosTrabajando as $operario)
+                            @php
+                                $turno = $operario->asignacionesTurnos()->whereDate('fecha', today())->first();
+                                $puestoAsignado = $turno->maquina?->nombre ?? '—';
+
+                                $turnoNombre = $turno->turno->nombre ?? '—';
+                                $tieneEvento = collect($trabajadoresEventos)->contains(function ($evento) use (
+                                    $operario,
+                                ) {
+                                    return $evento['resourceId'] && $evento['title'] === $operario->name;
+                                });
+                            @endphp
+                            <tr class="{{ $operario->estado == 'trabajando' ? 'bg-green-100' : '' }}">
+                                <td class="px-4 py-2 text-sm text-gray-900 font-medium">{{ $operario->name }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-700">
+                                    {{ $operario->categoria->nombre ?? $operario->categoria_id }}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-700">
+                                    <span id="maquina-{{ $operario->id }}"
+                                        onclick="activarEdicion({{ $operario->id }}, '{{ $operario->maquina_id }}')">
+                                        {{ $operario->maquina->nombre ?? 'Sin asignar' }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-700">{{ $puestoAsignado }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-700">{{ $turnoNombre }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-700 capitalize">{{ $operario->estado }}</td>
+                                <td class="px-4 py-2 text-sm">
+                                    @if ($tieneEvento)
+                                        <span class="text-green-600 font-bold">✅</span>
+                                    @else
+                                        <span class="text-red-500 font-bold">❌</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
+
     </div>
 
     <!-- FullCalendar -->
@@ -72,21 +112,39 @@
                 },
                 displayEventEnd: true,
                 eventMinHeight: 30,
-                slotMinTime: "00:00:00",
-                slotMaxTime: "22:00:00",
+                // slotMinTime: "00:00:00",
+                // slotMaxTime: "22:00:00",
                 firstDay: 1,
                 height: 'auto',
                 headerToolbar: {
                     left: 'prev,next today',
-                    center: 'title',
-                    right: 'resourceTimelineDay,resourceTimelineWeek'
+                    center: 'title'
                 },
                 buttonText: {
-                    today: 'Hoy',
-                    day: 'Día',
-                    week: 'Semana'
+                    today: 'Hoy'
                 },
+                slotLabelDidMount: function(info) {
+                    const viewType = info.view.type;
+
+                    if (viewType === 'resourceTimelineDay') {
+                        const hour = parseInt(info.date.getHours());
+
+                        if (hour >= 6 && hour < 14) {
+                            info.el.style.backgroundColor = '#a7f3d0'; // verde claro
+                        } else if (hour >= 14 && hour < 22) {
+                            info.el.style.backgroundColor = '#bfdbfe'; // azul claro
+                        } else {
+                            info.el.style.backgroundColor = '#fde68a'; // amarillo claro
+                        }
+
+                        info.el.style.borderRight = '1px solid #e5e7eb';
+                    }
+                }, // eventOrder: 'orden',
                 views: {
+                    resourceTimelineDay: {
+                        slotMinTime: '00:00:00',
+                        slotMaxTime: '23:59:00',
+                    },
                     resourceTimelineWeek: {
                         slotDuration: {
                             days: 1
@@ -96,10 +154,11 @@
                             day: 'numeric',
                             month: 'short'
                         }
-                    },
+                    }
                 },
                 editable: true,
                 resources: resources, // Usamos los recursos ordenados
+                resourceAreaWidth: '200px',
                 events: trabajadores,
                 resourceAreaColumns: [{
                     field: 'title',
@@ -107,7 +166,8 @@
                 }],
                 eventDrop: function(info) {
                     const asignacionId = info.event.id; // ID del registro asignaciones_turno
-                    const nuevoPuesto = info.newResource.title;
+                    const nuevoMaquinaId = info.event.getResources()[0]
+                        ?.id; // Obtenemos el ID de la máquina (resourceId)
 
                     fetch(`/asignaciones-turno/${asignacionId}/actualizar-puesto`, {
                             method: 'POST',
@@ -116,31 +176,34 @@
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
                             body: JSON.stringify({
-                                puesto: nuevoPuesto
+                                maquina_id: parseInt(nuevoMaquinaId)
                             })
                         })
                         .then(response => {
-                            if (!response.ok) throw new Error('Error al actualizar el puesto');
+                            if (!response.ok) throw new Error('Error al actualizar la máquina asignada');
                             return response.json();
                         })
                         .then(data => {
-                            console.log('Puesto actualizado con éxito:', data);
+                            console.log('Máquina actualizada con éxito:', data);
                         })
                         .catch(error => {
-                            alert('No se pudo actualizar el puesto');
+                            alert('No se pudo actualizar la máquina asignada');
                             console.error(error);
                             info.revert(); // Deshacer el movimiento si falla
                         });
                 },
                 eventContent: function(arg) {
                     const props = arg.event.extendedProps;
-                    let html = `<div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded">
-                            ${arg.event.title}
+                    let html = `
+                        <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded flex items-center gap-1">
+                            <span>${arg.event.title}</span>
+                            <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''})</span>
                         </div>`;
                     return {
                         html
                     };
                 }
+
             });
             // Forzar el orden de los recursos explícitamente usando setResources
             calendar.render();

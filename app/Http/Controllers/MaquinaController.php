@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Maquina;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
-
+use App\Models\AsignacionTurno;
 use App\Models\User;
 use App\Models\Ubicacion;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +18,37 @@ class MaquinaController extends Controller
 {
     public function index(Request $request)
     {
+        $usuario = auth()->user();
+
+        if ($usuario->rol === 'operario') {
+            $asignacion = AsignacionTurno::where('user_id', $usuario->id)
+                ->whereNotNull('maquina_id')
+                ->whereNotNull('turno_id')
+                ->latest()
+                ->first();
+
+            if (!$asignacion) {
+                abort(403, 'No tienes ningún turno hoy.');
+            }
+
+            $maquinaId = $asignacion->maquina_id;
+            $turnoId   = $asignacion->turno_id;
+
+            // Buscar compañero con misma máquina y mismo turno
+            $compañero = AsignacionTurno::where('maquina_id', $maquinaId)
+                ->where('turno_id', $turnoId)
+                ->where('user_id', '!=', $usuario->id)
+                ->latest()
+                ->first();
+
+            // Guardar en sesión como lo hacía tu método guardarSesion
+            session(['compañero_id' => optional($compañero)->user_id]);
+
+            // Redirigir directamente a la máquina
+            return redirect()->route('maquinas.show', ['maquina' => $maquinaId]);
+        }
+
+        //Resto de usuarios...
         // Conseguir lista de operarios
         $usuarios = User::where('id', '!=', auth()->id())
             ->where('rol', 'operario')
@@ -109,23 +140,25 @@ class MaquinaController extends Controller
         $perPage = $request->input('per_page', 10);
         $registrosMaquina = $query->paginate($perPage)->appends($request->except('page'));
         // DEPURACION INTERESANTE
-        $datosDepuracion = $registrosMaquina->map(function ($maquina) {
-            return [
-                'id' => $maquina->id,
-                'nombre' => $maquina->nombre,
-                'tipo' => $maquina->tipo,
-                'elementos_count' => $maquina->elementos_count,
-                'elementos_ensambladora' => $maquina->elementos_ensambladora,
-            ];
-        });
+        // $datosDepuracion = $registrosMaquina->map(function ($maquina) {
+        //     return [
+        //         'id' => $maquina->id,
+        //         'nombre' => $maquina->nombre,
+        //         'tipo' => $maquina->tipo,
+        //         'elementos_count' => $maquina->elementos_count,
+        //         'elementos_ensambladora' => $maquina->elementos_ensambladora,
+        //     ];
+        // });
         //dd($datosDepuracion->toArray());
 
         // Pasar las máquinas y usuarios a la vista
         return view('maquinas.index', compact('registrosMaquina', 'usuarios', 'colaPorMaquina'));
     }
-
-
-
+    public function showJson($id)
+    {
+        $maquina = Maquina::findOrFail($id);
+        return response()->json($maquina);
+    }
 
     //------------------------------------------------------------------------------------ SHOW
     public function show($id)
@@ -144,7 +177,7 @@ class MaquinaController extends Controller
         // 2) Determinar la ubicación buscando el código de la máquina
         // ---------------------------------------------------------------
         $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
-
+        $maquinas = Maquina::orderBy('nombre')->get(); // O cualquier otro criterio
         // ---------------------------------------------------------------
         // 3) Obtener el usuario autenticado y compañero de sesión (si existe)
         // ---------------------------------------------------------------
@@ -218,47 +251,6 @@ class MaquinaController extends Controller
             $elementosMaquina = collect();
         }
 
-        // ---------------------------------------------------------------
-        // 8) Preparar datos adicionales para la vista
-        //    A) IDs de etiquetas en esta máquina
-        //    B) Elementos de esas etiquetas en otras máquinas
-        //    C) Etiquetas presentes en una sola máquina
-        //    D) Elementos de esas etiquetas
-        //    E) Datos de peso y etiquetas para JavaScript
-        // ---------------------------------------------------------------
-        // A)
-        // $etiquetasIds = $elementosMaquina->pluck('etiqueta_id')->unique();
-
-        // // B)
-        // $otrosElementos = Elemento::with('maquina')
-        //     ->whereIn('etiqueta_id', $etiquetasIds)
-        //     ->where('maquina_id', '!=', $maquina->id);
-
-        // if (stripos($maquina->tipo, 'ensambladora') !== false) {
-        //     $otrosElementos = $otrosElementos->where(function ($query) use ($maquina) {
-        //         $query->where('maquina_id_2', '!=', $maquina->id)
-        //             ->orWhereNull('maquina_id_2');
-        //     });
-        // }
-
-        // $otrosElementos = $otrosElementos->get()->groupBy('etiqueta_id');
-
-        // // C)
-        // $etiquetasEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasIds)
-        //     ->selectRaw('etiqueta_id, COUNT(DISTINCT maquina_id) as total_maquinas')
-        //     ->groupBy('etiqueta_id')
-        //     ->having('total_maquinas', 1)
-        //     ->pluck('etiqueta_id');
-
-        // // D)
-        // $elementosEnUnaSolaMaquina = Elemento::whereIn('etiqueta_id', $etiquetasEnUnaSolaMaquina)
-        //     ->with('maquina')
-        //     ->get();
-
-        // if (stripos($maquina->tipo, 'ensambladora') !== false) {
-        //     $extra = Elemento::where('maquina_id_2', $maquina->id)->get();
-        //     $elementosEnUnaSolaMaquina = $elementosEnUnaSolaMaquina->merge($extra);
-        // }
 
         // E)
         $pesosElementos = $elementosMaquina->map(fn($item) => [
@@ -286,13 +278,11 @@ class MaquinaController extends Controller
             'ubicacion'                 => $ubicacion,
             'usuario1'                  => $usuario1,
             'usuario2'                  => $usuario2,
-            // 'otrosElementos'            => $otrosElementos,
-            // 'etiquetasEnUnaSolaMaquina' => $etiquetasEnUnaSolaMaquina,
-            // 'elementosEnUnaSolaMaquina' => $elementosEnUnaSolaMaquina,
             'elementosMaquina'          => $elementosMaquina,
             'pesosElementos'            => $pesosElementos,
             'etiquetasData'             => $etiquetasData,
             'elementosReempaquetados'   => $elementosReempaquetados,
+            'maquinas'                  => $maquinas
         ]);
     }
 
@@ -314,7 +304,7 @@ class MaquinaController extends Controller
             $request->validate([
                 'codigo' => 'required|string|max:6|unique:maquinas,codigo',
                 'nombre' => 'required|string|max:40|unique:maquinas,nombre',
-                'tipo' => 'required|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual ',
+                'tipo' => 'string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual ',
                 'diametro_min' => 'integer',
                 'diametro_max' => 'integer',
                 'peso_min' => 'integer',
@@ -331,7 +321,6 @@ class MaquinaController extends Controller
                 'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
                 'nombre.unique' => 'Ya existe una máquina con el mismo nombre',
 
-                'tipo.required' => 'El campo "tipo" es obligatorio.',
                 'tipo.string' => 'El campo "tpo" debe ser una cadena de texto.',
                 'tipo.max' => 'El campo "tipo" no puede tener más de 50 caracteres.',
                 'tipo.in' => 'El tipo no está entre los posibles',
@@ -410,6 +399,7 @@ class MaquinaController extends Controller
             'diametro_max' => 'nullable|integer',
             'peso_min' => 'nullable|integer',
             'peso_max' => 'nullable|integer',
+            'estado' => 'required|string|in:activa,en mantenimiento,inactiva',
         ], [
             'codigo.required' => 'El campo "código" es obligatorio.',
             'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
@@ -421,11 +411,12 @@ class MaquinaController extends Controller
             'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
 
             'diametro_min.integer' => 'El "diámetro mínimo" debe ser un número entero.',
-
             'diametro_max.integer' => 'El "diámetro máximo" debe ser un número entero.',
-
             'peso_min.integer' => 'El "peso mínimo" debe ser un número entero.',
             'peso_max.integer' => 'El "peso máximo" debe ser un número entero.',
+
+            'estado.required' => 'El campo "estado" es obligatorio.',
+            'estado.in' => 'El estado debe ser: activa, en mantenimiento o inactiva.',
         ]);
 
         // Iniciar la transacción
@@ -446,10 +437,12 @@ class MaquinaController extends Controller
         } catch (\Exception $e) {
             // Revertir la transacción en caso de error
             DB::rollBack();
+
             // Redirigir con un mensaje de error
             return redirect()->back()->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente. Error: ' . $e->getMessage());
         }
     }
+
 
     public function destroy($id)
     {

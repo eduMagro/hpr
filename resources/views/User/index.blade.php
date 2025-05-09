@@ -41,7 +41,7 @@
                             <th class="p-2 border">{!! $ordenables['empresa'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['rol'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['categoria'] !!}</th>
-                            <th class="p-2 border">{!! $ordenables['especialidad'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['maquina_id'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['turno'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['estado'] !!}</th>
                             <th class="p-2 border"></th>
@@ -96,14 +96,15 @@
                                     </select>
                                 </th>
                                 <th class="p-1 border">
-                                    <select name="especialidad" class="form-control form-control-sm">
+                                    <select name="maquina_id" class="form-control form-control-sm">
                                         <option value="">Todas</option>
-                                        @foreach ($especialidades as $esp)
-                                            <option value="{{ $esp }}"
-                                                {{ request('especialidad') == $esp ? 'selected' : '' }}>
-                                                {{ ucfirst($esp) }}
+                                        @foreach ($maquinas as $maquina)
+                                            <option value="{{ $maquina->id }}"
+                                                {{ request('maquina') == $maquina->id ? 'selected' : '' }}>
+                                                {{ $maquina->nombre }}
                                             </option>
                                         @endforeach
+
                                     </select>
                                 </th>
                                 <th class="p-1 border">
@@ -227,16 +228,14 @@
                                 </td>
                                 <td class="px-2 py-3 text-center border">
                                     <template x-if="!editando">
-                                        <span x-text="usuario.especialidad"></span>
+                                        <template x-if="!editando">
+                                            <span x-text="usuario.maquina?.nombre ?? 'Sin asignar'"></span>
+                                        </template>
                                     </template>
-                                    <select x-show="editando" x-model="usuario.especialidad"
-                                        class="form-input w-full">
-                                        <option value="">Selecciona esp.</option>
-                                        @foreach ($especialidades as $nombre)
-                                            <option value="{{ $nombre }}"
-                                                {{ request('especialidad') == $nombre ? 'selected' : '' }}>
-                                                {{ ucfirst($nombre) }}
-                                            </option>
+                                    <select x-show="editando" x-model="usuario.maquina_id" class="form-input w-full">
+                                        <option value="">Selecciona máq.</option>
+                                        @foreach ($maquinas as $maquina)
+                                            <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
                                         @endforeach
                                     </select>
                                 </td>
@@ -333,7 +332,7 @@
                 <p><strong>Correo:</strong> {{ auth()->user()->email }}</p>
                 <p><strong>Puesto:</strong> {{ auth()->user()->rol }}</p>
                 <p><strong>Categoría:</strong> {{ auth()->user()->categoria->nombre ?? 'Sin categoría' }}</p>
-                <p><strong>Especialidad:</strong> {{ auth()->user()->especialidad }}</p>
+                <p><strong>Maquina:</strong> {{ auth()->user()->maquina->nombre }}</p>
                 <p><strong>Días de vacaciones restantes:</strong> {{ auth()->user()->dias_vacaciones }}</p>
             </div>
         </div>

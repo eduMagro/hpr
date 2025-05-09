@@ -56,8 +56,8 @@
                             <!-- Tipo de máquina -->
                             <div class="form-group mb-4">
                                 <label for="tipo" class="form-label fw-bold text-uppercase">Tipo de Máquina
-                                    *</label>
-                                <select id="tipo" name="tipo" class="form-control form-control-lg" required>
+                                </label>
+                                <select id="tipo" name="tipo" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona su función</option>
                                     <option value="cortadora_dobladora">Cortadora y Dobladora</option>
                                     <option value="ensambladora">Ensambladora</option>
@@ -70,7 +70,7 @@
                             <!-- Diámetro mínimo -->
                             <div class="form-group mb-4">
                                 <label for="diametro_min" class="form-label fw-bold text-uppercase">Diámetro Mínimo
-                                    *</label>
+                                </label>
                                 <select id="diametro_min" name="diametro_min" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona un diámetro mínimo</option>
                                     <option value="8">8</option>
@@ -86,7 +86,7 @@
                             <!-- Diámetro máximo -->
                             <div class="form-group mb-4">
                                 <label for="diametro_max" class="form-label fw-bold text-uppercase">Diámetro Máximo
-                                    *</label>
+                                </label>
                                 <select id="diametro_max" name="diametro_max" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona un diámetro máximo</option>
                                     <option value="8">8</option>
@@ -101,7 +101,7 @@
 
                             <!-- Peso mínimo -->
                             <div class="form-group mb-4">
-                                <label for="peso_min" class="form-label fw-bold text-uppercase">Peso Mínimo *</label>
+                                <label for="peso_min" class="form-label fw-bold text-uppercase">Peso Mínimo</label>
                                 <select id="peso_min" name="peso_min" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona un peso mínimo</option>
                                     <option value="3000">3000 kg</option>
@@ -112,7 +112,7 @@
 
                             <!-- Peso máximo -->
                             <div class="form-group mb-4">
-                                <label for="peso_max" class="form-label fw-bold text-uppercase">Peso Máximo *</label>
+                                <label for="peso_max" class="form-label fw-bold text-uppercase">Peso Máximo</label>
                                 <select id="peso_max" name="peso_max" class="form-control form-control-lg">
                                     <option value="" disabled selected>Selecciona un peso máximo</option>
                                     <option value="3000">3000 kg</option>

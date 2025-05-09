@@ -33,7 +33,7 @@
                     <p><strong>Categoría:</strong> <span
                             class="text-gray-600">{{ $user->categoria->nombre ?? 'N/A' }}</span></p>
                     <p><strong>Especialidad:</strong> <span
-                            class="text-gray-600">{{ $user->especialidad ?? 'N/A' }}</span></p>
+                            class="text-gray-600">{{ $user->maquina->nombre ?? 'N/A' }}</span></p>
                     <p class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
                         <strong>Vacaciones restantes:</strong> {{ $user->dias_vacaciones }}
                     </p>
@@ -118,39 +118,50 @@
                             let tipoSeleccionado = result.value;
 
                             if (tipoSeleccionado === "ninguno") {
-                                // Petición para eliminar turnos
+                                let eventosEnRango = calendar.getEvents().filter(event => {
+                                    let eventDate = event.startStr;
+                                    return eventDate >= fechaInicio && eventDate <=
+                                        fechaFin;
+                                });
+
+                                // Detectar si es tipo "festivo" (todos los eventos en rango con título "Festivo")
+                                let todosSonFestivo = eventosEnRango.length > 0 &&
+                                    eventosEnRango.every(e => e.title?.toLowerCase() ===
+                                        "festivo");
+
+                                let body = {
+                                    fecha_inicio: fechaInicio,
+                                    fecha_fin: fechaFin
+                                };
+
+                                if (todosSonFestivo) {
+                                    body.tipo_turno =
+                                    "festivo"; // eliminar de todos los usuarios
+                                } else {
+                                    body.user_id =
+                                    "{{ $user->id }}"; // solo del usuario actual
+                                }
+
                                 fetch("{{ route('asignaciones-turnos.destroy') }}", {
                                         method: "POST",
                                         headers: {
                                             "Content-Type": "application/json",
                                             "X-CSRF-TOKEN": "{{ csrf_token() }}"
                                         },
-                                        body: JSON.stringify({
-                                            user_id: "{{ $user->id }}",
-                                            fecha_inicio: fechaInicio,
-                                            fecha_fin: fechaFin
-                                        })
+                                        body: JSON.stringify(body)
                                     })
                                     .then(response => response.json())
                                     .then(data => {
                                         if (data.success) {
                                             Swal.fire({
-                                                title: "Turno eliminado",
+                                                title: "Turnos eliminados",
                                                 text: data.success,
                                                 icon: "success",
                                                 timer: 2000,
                                                 showConfirmButton: false
                                             });
 
-                                            // Eliminar eventos en ese rango de fechas
-                                            let eventsToRemove = calendar.getEvents()
-                                                .filter(event => {
-                                                    let eventDate = event.startStr;
-                                                    return eventDate >= fechaInicio &&
-                                                        eventDate <= fechaFin;
-                                                });
-
-                                            eventsToRemove.forEach(event => event.remove());
+                                            eventosEnRango.forEach(event => event.remove());
                                         } else {
                                             Swal.fire({
                                                 title: "Error",
@@ -167,7 +178,6 @@
                                             icon: "error"
                                         });
                                     });
-
                             } else {
                                 // Petición para asignar turno
                                 fetch("{{ route('asignaciones-turnos.store') }}", {

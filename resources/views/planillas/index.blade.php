@@ -44,7 +44,6 @@
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
-
                     <tr class="text-center text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['codigo'] !!}</th>
                         <th class="p-2 border">Codigo Cliente</th>

@@ -22,7 +22,7 @@ class AlertaController extends Controller
         $query->orderBy('id', 'desc');
 
         // Filtrar por destino (rol) o destinatario (categoría), excepto administradores
-        if ($usuario->especialidad !== 'programador') {
+        if ($usuario->name !== 'Eduardo Magro Lemus') {
             $query->where(function ($q) use ($usuario) {
                 $q->where('destino', $usuario->rol)
                     ->orWhere('destinatario', $usuario->categoria)
@@ -96,31 +96,6 @@ class AlertaController extends Controller
         return view('alertas.index', compact('alertas', 'user', 'roles', 'categorias', 'usuarios'));
     }
 
-    /**
-     * Devuelve la cantidad de alertas sin leer (para mostrar la exclamación en la navbar).
-     */
-    // public function alertasSinLeer()
-    // {
-    //     $usuario = Auth::user();
-    //     if (!$usuario) {
-    //         return response()->json(['cantidad' => 0]);
-    //     }
-
-    //     // Buscar alertas que el usuario NO ha leído
-    //     $cantidad = Alerta::whereDoesntHave('usuariosQueLeen', function ($q) use ($usuario) {
-    //         $q->where('user_id', $usuario->id);
-    //     })
-    //         ->when($usuario->especialidad !== 'programador', function ($q) use ($usuario) {
-    //             $q->where(function ($subQuery) use ($usuario) {
-    //                 $subQuery->where('destino', $usuario->rol)  // Coincide con el rol del usuario
-    //                     ->orWhere('destinatario', $usuario->categoria) // Coincide con la categoría del usuario
-    //                     ->orWhere('destinatario_id', $usuario->id); // Coincide con la categoría del usuario
-    //             });
-    //         })
-    //         ->count();
-
-    //     return response()->json(['cantidad' => $cantidad]);
-    // }
     public function store(Request $request)
     {
         // Validar que se proporcione solo un destino: rol, categoría o destinatario_id

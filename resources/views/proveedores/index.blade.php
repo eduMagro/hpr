@@ -2,10 +2,20 @@
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
             <a href="{{ route('entradas.index') }}" class="text-blue-600">
-                {{ __('Entradas') }}
+                {{ __('Entradas de Material') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Proveedores') }}
+            <a href="{{ route('pedidos.index') }}" class="text-blue-600">
+                {{ __('Pedidos de Compra') }}
+            </a>
+            <span class="mx-2">/</span>
+            <a href="{{ route('pedidos_globales.index') }}" class="text-blue-600">
+                {{ __('Pedidos Globales') }}
+            </a>
+            <span class="mx-2">/</span>
+
+            {{ 'Proveedores' }}
+
         </h2>
     </x-slot>
 

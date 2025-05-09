@@ -9,6 +9,7 @@ use App\Models\Etiqueta;
 use App\Models\Ubicacion;
 use App\Models\Alerta;
 use App\Models\AsignacionTurno;
+use App\Models\Turno;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -65,7 +66,6 @@ class etiquetaController extends Controller
 
         return view('etiquetas.index', compact('etiquetas', 'etiquetasJson'));
     }
-
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
         DB::beginTransaction();
@@ -130,9 +130,13 @@ class etiquetaController extends Controller
 
                     // Obtener los productos disponibles en la máquina con los diámetros requeridos
                     $productos = $maquina->productos()
-                        ->whereIn('diametro', $diametrosRequeridos)
+                        ->whereHas('productoBase', function ($query) use ($diametrosRequeridos) {
+                            $query->whereIn('diametro', $diametrosRequeridos);
+                        })
+                        ->with('productoBase') // para evitar consultas adicionales al acceder a diametro
                         ->orderBy('peso_stock')
                         ->get();
+
                     if ($productos->isEmpty()) {
                         return response()->json([
                             'success' => false,
@@ -140,7 +144,8 @@ class etiquetaController extends Controller
                         ], 400);
                     }
                     // Agrupar productos por diámetro (asegurando que sean enteros)
-                    $productosAgrupados = $productos->groupBy(fn($producto) => (int) $producto->diametro);
+                    $productosAgrupados = $productos->groupBy(fn($producto) => (int) $producto->productoBase->diametro);
+
 
                     // Verificar si hay productos para cada diámetro requerido
                     $faltantes = [];
@@ -162,7 +167,8 @@ class etiquetaController extends Controller
 
                     // Para cada diámetro, comprobar que el stock total es suficiente
                     foreach ($diametrosConPesos as $diametro => $pesoNecesario) {
-                        $productosPorDiametro = $productos->where('diametro', $diametro);
+                        $productosPorDiametro = $productos->filter(fn($producto) => $producto->productoBase->diametro == $diametro);
+
                         $stockTotal = $productosPorDiametro->sum('peso_stock');
 
                         if ($stockTotal < $pesoNecesario) {
@@ -490,7 +496,6 @@ class etiquetaController extends Controller
             ], 500);
         }
     }
-
     private function actualizarElementosYConsumos($elementosEnMaquina, $maquina, &$etiqueta, &$warnings, &$numeroElementosCompletadosEnMaquina, $enOtrasMaquinas, &$productosAfectados, &$planilla)
     {
 
@@ -512,7 +517,10 @@ class etiquetaController extends Controller
             $pesoNecesarioTotal = $elementos->sum('peso');
 
             $productosPorDiametro = $maquina->productos()
-                ->where('diametro', $diametro)
+                ->whereHas('productoBase', function ($query) use ($diametro) {
+                    $query->where('diametro', $diametro);
+                })
+                ->with('productoBase')
                 ->orderBy('peso_stock')
                 ->get();
 
@@ -525,9 +533,7 @@ class etiquetaController extends Controller
 
             $consumos[$diametro] = [];
             foreach ($productosPorDiametro as $producto) {
-                if ($pesoNecesarioTotal <= 0) {
-                    break;
-                }
+                if ($pesoNecesarioTotal <= 0) break;
 
                 $pesoInicial = $producto->peso_inicial ?? $producto->peso_stock;
 
@@ -537,9 +543,10 @@ class etiquetaController extends Controller
 
                 if ($producto->peso_stock == 0) {
                     $producto->estado = "consumido";
-                    $producto->ubicacion_id = NULL;
-                    $producto->maquina_id = NULL;
+                    $producto->ubicacion_id = null;
+                    $producto->maquina_id = null;
                 }
+
                 $producto->save();
 
                 $productosAfectados[] = [
@@ -553,12 +560,11 @@ class etiquetaController extends Controller
                     'consumido' => $restar,
                 ];
             }
-
             if ($pesoNecesarioTotal > 0) {
                 $warnings[] = "El stock para el {$diametro} es insuficiente. Avisaremos a los gruistas en turno.";
-                // Log para depuración
                 Log::info("Entrando al condicional de stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.");
                 $this->lanzarAlertaStockInsuficiente($diametro, $maquina->nombre);
+
                 return response()->json([
                     'success' => false,
                     'error' => "No hay suficiente materia prima para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
@@ -717,6 +723,7 @@ class etiquetaController extends Controller
             }
         }
     }
+
     public function update(Request $request, $id)
     {
         try {
@@ -817,8 +824,6 @@ class etiquetaController extends Controller
             ], 500);
         }
     }
-
-
     public function destroy($id)
     {
         try {
