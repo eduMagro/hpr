@@ -13,14 +13,13 @@
                 {{ __('Pedidos Globales') }}
             </a>
             <span class="mx-2">/</span>
-
             {{ 'Proveedores' }}
 
         </h2>
     </x-slot>
 
-    <div class="px-4 py-6">
-        <div x-data="{ openProveedorModal: false }" class="container mx-auto p-6">
+    <div class="px-4 py-4">
+        <div x-data="{ openProveedorModal: false }" class="container mx-auto p-4">
             <!-- Botón para abrir el modal de añadir empresa -->
             <div class="flex justify-between mb-6">
                 <button @click="openProveedorModal = true"
@@ -32,7 +31,7 @@
             <!-- Modal para añadir nueva empresa -->
             <div x-show="openProveedorModal" x-transition x-cloak
                 class="fixed inset-0 flex items-center justify-center z-50 bg-gray-800 bg-opacity-50">
-                <div class="bg-white p-6 rounded-lg w-96">
+                <div class="bg-white p-4 rounded-lg w-96">
                     <h2 class="text-xl font-semibold text-gray-800 mb-4">Añadir Proveedor</h2>
                     <form action="{{ route('proveedores.store') }}" method="POST">
                         @csrf

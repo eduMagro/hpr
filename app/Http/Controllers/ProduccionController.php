@@ -59,6 +59,10 @@ class ProduccionController extends Controller
 
         foreach ($trabajadores as $trabajador) {
             foreach ($trabajador->asignacionesTurnos as $asignacionTurno) {
+                // Ignorar turnos de vacaciones
+                if ($asignacionTurno->turno_id == 10) {
+                    continue;
+                }
                 $fechaTurno = Carbon::parse($asignacionTurno->fecha);
 
                 if ($fechaTurno->between($fechaHoy, $fechaLimite)) {

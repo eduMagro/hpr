@@ -91,7 +91,7 @@
 
                         @foreach ($items as $item)
                             <a href="{{ $item['route'] ? route($item['route']) : '#' }}"
-                                class="w-36 h-36 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative {{ $esOperario && $item['route'] !== 'users.index' ? 'pointer-events-none opacity-50' : '' }}">
+                                class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative {{ $esOperario && $item['route'] !== 'users.index' ? 'pointer-events-none opacity-50' : '' }}">
 
                                 {{-- Icono principal --}}
                                 <img src="{{ asset($item['icon']) }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2">

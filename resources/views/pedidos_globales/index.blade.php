@@ -24,8 +24,8 @@
             </div>
         @endif
         <button onclick="abrirModalPedidoGlobal()"
-            class="ml-2 mb-2 inline-flex items-center px-4 py-1.5 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 shadow-sm">
-            + Crear Pedido Global
+            class="px-4 py-2 mb-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+            ➕ Crear Pedido Global
         </button>
         <div class="overflow-x-auto bg-white shadow rounded-lg">
             <table class="w-full border-collapse text-sm text-center">
