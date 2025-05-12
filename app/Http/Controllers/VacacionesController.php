@@ -14,25 +14,19 @@ class VacacionesController extends Controller
 
     public function index()
     {
-        //----------------- OBTENER VACACIONES DESDE ASIGNACIONES_TURNOS
-        $vacaciones = AsignacionTurno::with('user', 'turno')
-            ->whereHas('turno', function ($query) {
-                $query->where('nombre', 'vacaciones'); // Filtrar solo los turnos de vacaciones
-            })
+        // Vacaciones de operarios
+        $vacacionesOperarios = AsignacionTurno::with('user', 'turno')
+            ->whereHas('turno', fn($q) => $q->where('nombre', 'vacaciones'))
+            ->whereHas('user', fn($q) => $q->where('rol', 'operario'))
             ->get();
 
-        $eventosVacaciones = $vacaciones->map(function ($asignacion) {
-            return [
-                'title' => $asignacion->user->name,
-                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
-                'backgroundColor' => '#f87171', // Rojo claro para vacaciones
-                'borderColor' => '#dc2626', // Rojo oscuro para el borde
-                'textColor' => 'white',
-                'allDay' => true
-            ];
-        })->toArray(); // Convertimos la colección a array
+        // Vacaciones de oficina
+        $vacacionesOficina = AsignacionTurno::with('user', 'turno')
+            ->whereHas('turno', fn($q) => $q->where('nombre', 'vacaciones'))
+            ->whereHas('user', fn($q) => $q->where('rol', 'oficina'))
+            ->get();
 
-        //----------------- OBTENER FESTIVOS
+        // Festivos comunes
         $festivos = Festivo::select('fecha', 'titulo')->get()->map(function ($festivo) {
             return [
                 'id' => $festivo->id,
@@ -42,60 +36,41 @@ class VacacionesController extends Controller
                 'borderColor' => '#b22222',
                 'textColor' => 'white',
                 'allDay' => true,
-                'editable' => true // ✅ Esto permite moverlo
+                'editable' => true
             ];
         })->toArray();
 
+        // Eventos para operarios
+        $eventosOperarios = $vacacionesOperarios->map(function ($asignacion) {
+            return [
+                'title' => $asignacion->user->name,
+                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
+                'backgroundColor' => '#f87171', // Rosa claro
+                'borderColor' => '#dc2626',     // Rojo oscuro
+                'textColor' => 'white',
+                'allDay' => true
+            ];
+        })->toArray();
 
-        // Mezclar festivos y vacaciones de empleados
-        $eventosVacaciones = array_merge($festivos, $eventosVacaciones);
+        // Eventos para oficina
+        $eventosOficina = $vacacionesOficina->map(function ($asignacion) {
+            return [
+                'title' => $asignacion->user->name,
+                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
+                'backgroundColor' => '#f87171', // Rosa claro
+                'borderColor' => '#dc2626',     // Rojo oscuro
+                'textColor' => 'white',
+                'allDay' => true
+            ];
+        })->toArray();
 
+        // Añadir los festivos a ambos calendarios
+        $eventosOperarios = array_merge($eventosOperarios, $festivos);
+        $eventosOficina = array_merge($eventosOficina, $festivos);
 
-        return view('vacaciones.index', compact('eventosVacaciones'));
+        return view('vacaciones.index', [
+            'eventosOperarios' => $eventosOperarios,
+            'eventosOficina' => $eventosOficina
+        ]);
     }
-
-
-    public function moverFestivo(Request $request)
-    {
-        $festivo = Festivo::findOrFail($request->id);
-        $festivo->fecha = $request->nueva_fecha;
-        $festivo->save();
-
-        return response()->json(['mensaje' => 'Festivo actualizado']);
-    }
-
-    // public function store(Request $request)
-    // {
-    //     try {
-    //         $request->validate([
-    //             'user_id' => 'required|exists:users,id',
-    //             'fecha' => 'required|date',
-    //         ]);
-
-    //         $user = User::findOrFail($request->user_id);
-
-    //         // Verificar si el usuario tiene días de vacaciones disponibles
-    //         if ($user->dias_vacaciones <= 0) {
-    //             return response()->json(['error' => 'No tiene más días de vacaciones disponibles.'], 400);
-    //         }
-
-    //         // Verificar si ya ha seleccionado ese día
-    //         if (Vacaciones::where('user_id', $user->id)->where('fecha', $request->fecha)->exists()) {
-    //             return response()->json(['error' => 'Ese día ya ha sido seleccionado como vacaciones.'], 400);
-    //         }
-
-    //         // Registrar el día de vacaciones
-    //         Vacaciones::create([
-    //             'user_id' => $user->id,
-    //             'fecha' => $request->fecha,
-    //         ]);
-
-    //         // Restar un día de vacaciones
-    //         $user->decrement('dias_vacaciones');
-
-    //         return response()->json(['success' => 'Día de vacaciones registrado correctamente.']);
-    //     } catch (\Exception $e) {
-    //         return response()->json(['error' => 'Error al registrar las vacaciones: ' . $e->getMessage()], 500);
-    //     }
-    // }
 }

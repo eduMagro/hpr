@@ -10,80 +10,55 @@
         </h2>
     </x-slot>
 
-    <div class="container mx-auto px-4 py-6" id="contenedorCalendario">
-        <div class="bg-white rounded-lg shadow-lg">
-            <div id="calendario"></div>
+    <div class="container mx-auto px-4 py-6 space-y-12" id="contenedorCalendarios">
+
+        <!-- Calendario Operarios -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-blue-700 mb-4">Vacaciones · Operarios</h3>
+            <div id="calendario-operarios"></div>
         </div>
 
+        <!-- Calendario Oficina -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-yellow-700 mb-4">Vacaciones · Oficina</h3>
+            <div id="calendario-oficina"></div>
+        </div>
     </div>
 
-    <!-- Cargar FullCalendar con prioridad -->
+    <!-- FullCalendar y dependencias -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendario');
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            if (!calendarEl) {
-                console.error("Elemento 'calendario' no encontrado.");
-                return;
-            }
-
-            // Convertir los datos de Laravel en JSON válido
-            var eventosDesdeLaravel = @json($eventosVacaciones) || [];
-
-            var calendar = new FullCalendar.Calendar(calendarEl, {
+            const configComun = {
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 height: 'auto',
-                editable: true,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
-                },
-                eventDrop: function(info) {
-                    const evento = info.event;
-                    const data = {
-                        id: evento.id,
-                        nueva_fecha: evento.startStr
-                    };
+                }
+            };
 
-                    console.log("📦 Evento movido con fetch:", data);
-
-                    fetch('/festivos/editar', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                    .getAttribute('content')
-                            },
-                            body: JSON.stringify(data)
-                        })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error("Respuesta no válida del servidor");
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            console.log("✅ Festivo actualizado:", data);
-                            Swal.fire('¡Actualizado!', 'La fecha del festivo se ha cambiado.',
-                                'success');
-                        })
-                        .catch(error => {
-                            console.error("❌ Error al guardar:", error);
-                            Swal.fire('Error', 'No se pudo guardar el cambio.', 'error');
-                            info.revert();
-                        });
-                },
-                events: eventosDesdeLaravel
+            // Calendario Operarios
+            const calendarioOperarios = new FullCalendar.Calendar(document.getElementById('calendario-operarios'), {
+                ...configComun,
+                events: @json($eventosOperarios)
             });
 
-            calendar.render();
+            // Calendario Oficina
+            const calendarioOficina = new FullCalendar.Calendar(document.getElementById('calendario-oficina'), {
+                ...configComun,
+                events: @json($eventosOficina)
+            });
+
+            calendarioOperarios.render();
+            calendarioOficina.render();
         });
     </script>
-
 </x-app-layout>
