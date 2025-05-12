@@ -1,31 +1,32 @@
 <!-- Reporte de Pesos por Usuario (Planillero) -->
-<div class="bg-white shadow-lg rounded-lg mb-6">
-    <div class="bg-blue-600 text-white text-center p-4 rounded-t-lg">
-        <h3 class="text-lg font-semibold">Reporte de Pesos por Planillero</h3>
+<div class="bg-white shadow rounded mb-4 text-sm">
+    <div class="bg-blue-600 text-white text-center py-2 rounded-t">
+        <h3 class="font-semibold text-base">Reporte de Pesos por Planillero</h3>
     </div>
 
-    <div class="p-4">
-        <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-2 rounded-md">
+    <div class="px-3 py-2">
+        <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-1 rounded mb-2">
             Peso Total Importado por Planillero
         </h4>
         <div class="overflow-x-auto">
-            <table class="w-full border border-gray-300 rounded-lg">
+            <table class="w-full border border-gray-300 text-xs">
                 <thead class="bg-blue-500 text-white">
                     <tr>
-                        <th class="px-4 py-3 border text-center">Trabajador</th>
-                        <th class="px-4 py-3 border text-center">Peso Total Importado (kg)</th>
+                        <th class="px-2 py-1 border text-center">Trabajador</th>
+                        <th class="px-2 py-1 border text-center">Peso Total Importado (kg)</th>
                     </tr>
                 </thead>
                 <tbody class="text-gray-700">
                     @forelse ($pesoPorPlanillero as $planillero)
-                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-                            <td class="px-4 py-3 text-center border">{{ $planillero->name }}</td>
-                            <td class="px-4 py-3 text-center border">{{ number_format($planillero->peso_importado, 2) }}
+                        <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-100">
+                            <td class="px-2 py-1 text-center border">{{ $planillero->name }}</td>
+                            <td class="px-2 py-1 text-center border">
+                                {{ number_format($planillero->peso_importado, 2) }}
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="2" class="text-red-600 px-4 py-3 text-center">
+                            <td colspan="2" class="text-red-600 px-2 py-1 text-center">
                                 No hay datos disponibles
                             </td>
                         </tr>
@@ -35,16 +36,16 @@
         </div>
     </div>
 
-    <div class="text-center text-gray-600 bg-gray-100 py-2 rounded-b-lg">
+    <div class="text-center text-gray-500 bg-gray-100 py-1 rounded-b text-xs">
         Generado el {{ now()->format('d/m/Y H:i') }}
     </div>
 
-    <div class="p-4">
-        <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-2 rounded-md mt-6">
+    <div class="px-3 py-2">
+        <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-1 rounded mt-2 mb-1">
             Gráfica Mensual Peso/Planillero
         </h4>
         <div class="relative w-full overflow-x-auto">
-            <canvas id="pesoPorUsuarioChart" class="w-full h-full" style="max-height: 400px;"></canvas>
+            <canvas id="pesoPorUsuarioChart" class="w-full h-full" style="max-height: 300px;"></canvas>
         </div>
     </div>
 </div>

@@ -85,42 +85,39 @@ class EstadisticasController extends Controller
 
     private function getStockEncarretado()
     {
-        // Definir manualmente los diámetros que queremos incluir
-        $diametrosDefinidos = collect([5, 8, 10, 12, 16, 20, 25, 32]); // Agrega más si es necesario
+        $diametrosDefinidos = collect([5, 8, 10, 12, 16, 20, 25, 32]);
 
-        // Obtener el stock real de los productos tipo "encarretado"
-        $stockEncarretado = Producto::where('estado', 'almacenado')
-            ->where('tipo', 'encarretado')
-            ->selectRaw('diametro, SUM(peso_stock) AS stock')
-            ->groupBy('diametro')
-            ->pluck('stock', 'diametro'); // Devuelve un array [diametro => stock]
+        $productos = Producto::with('productoBase')
+            ->where('estado', 'almacenado')
+            ->whereHas('productoBase', fn($q) => $q->where('tipo', 'encarretado'))
+            ->get();
 
-        // Crear una colección asegurando que todos los diámetros existen, con stock 0 si no hay datos
-        return $diametrosDefinidos->map(function ($diametro) use ($stockEncarretado) {
+        $agrupado = $productos->groupBy(fn($p) => $p->productoBase->diametro)
+            ->map(fn($grupo) => $grupo->sum('peso_stock'));
+
+        return $diametrosDefinidos->map(function ($diametro) use ($agrupado) {
             return (object) [
                 'diametro' => (int) $diametro,
-                'stock' => (float) ($stockEncarretado[$diametro] ?? 0) // Si no existe en la BD, asigna 0
+                'stock' => (float) ($agrupado[$diametro] ?? 0),
             ];
         });
     }
 
     private function getStockBarras()
     {
-        // Definir manualmente los diámetros que queremos incluir
-        $diametrosDefinidos = collect([5, 8, 10, 12, 16, 20, 25, 32]); // Agrega más si es necesario
+        $diametrosDefinidos = collect([5, 8, 10, 12, 16, 20, 25, 32]);
 
-        // Obtener el stock real de las barras desde la base de datos
-        $stockBarras = Producto::where('estado', 'almacenado')
-            ->where('tipo', 'barra')
-            ->selectRaw('diametro, SUM(peso_stock) AS stock')
-            ->groupBy('diametro')
-            ->pluck('stock', 'diametro'); // Devuelve un array [diametro => stock]
+        // ⚠️ En lugar de usar selectRaw y pluck, usamos ->get() con ->with()
+        $productos = Producto::with('productoBase')
+            ->where('estado', 'almacenado')
+            ->whereHas('productoBase', fn($q) => $q->where('tipo', 'barra'))
+            ->get();
 
-        // Crear una colección asegurando que todos los diámetros existen, con stock 0 si no hay datos
-        return $diametrosDefinidos->map(function ($diametro) use ($stockBarras) {
+        // Mapeamos los productos a objetos con datos requeridos
+        return $productos->map(function ($producto) {
             return (object) [
-                'diametro' => (int) $diametro,
-                'stock' => (float) ($stockBarras[$diametro] ?? 0) // Si no existe en la BD, asigna 0
+                'productoBase' => $producto->productoBase,
+                'stock' => (float) $producto->peso_stock,
             ];
         });
     }
