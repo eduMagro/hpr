@@ -101,37 +101,6 @@ class ProduccionController extends Controller
                         ],
                         'maquina_id' => $trabajador->maquina_id
                     ];
-                    // Evento de entrada
-                    if ($asignacionTurno->entrada) {
-                        $entradaHora = Carbon::parse($asignacionTurno->entrada)->format('H:i');
-                        $eventos[] = [
-                            'id' => 'entrada-' . $asignacionTurno->id,
-                            'title' => '🟢 ' . $trabajador->name,
-                            'start' => Carbon::parse($asignacionTurno->entrada)->toIso8601String(),
-                            'resourceId' => $resourceId,
-                            'color' => '#28a745',
-                            'textColor' => '#ffffff',
-                            'allDay' => false,
-                        ];
-
-                        $registroFichajes[$trabajador->id]['entrada'] = $entradaHora;
-                    }
-
-                    // Evento de salida
-                    if ($asignacionTurno->salida) {
-                        $salidaHora = Carbon::parse($asignacionTurno->salida)->format('H:i');
-                        $eventos[] = [
-                            'id' => 'salida-' . $asignacionTurno->id,
-                            'title' => '🔴 ' . $trabajador->name,
-                            'start' => Carbon::parse($asignacionTurno->salida)->toIso8601String(),
-                            'resourceId' => $resourceId,
-                            'color' => '#dc3545',
-                            'textColor' => '#ffffff',
-                            'allDay' => false,
-                        ];
-
-                        $registroFichajes[$trabajador->id]['salida'] = $salidaHora;
-                    }
                 }
             }
         }
