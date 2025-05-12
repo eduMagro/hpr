@@ -74,11 +74,9 @@
                                         <div class="flex items-center gap-2">
                                             <button
                                                 onclick="generateAndPrintQR({{ $producto->id }}, '{{ $producto->tipo }}', '{{ $producto->diametro }}')"
-                                                class="bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700 text-sm">
-                                                Descargar QR
+                                                class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm">
+                                                Ver QR
                                             </button>
-
-
                                         </div>
 
                                     </div>
@@ -93,7 +91,6 @@
                         {{ ucfirst($producto->tipo) }} / {{ $producto->diametro }} mm —
                         {{ number_format($producto->pendiente, 2, ',', '.') }} kg restantes
                     </h4>
-
                     {{-- FORMULARIO DE NUEVO PAQUETE --}}
                     <form action="{{ route('pedidos.recepcion.guardar', $pedido->id) }}" method="POST"
                         class="space-y-4">
@@ -185,49 +182,22 @@
                     return;
                 }
 
-                const img = new Image();
-                img.crossOrigin = "anonymous"; // Compatibilidad
-                img.onload = function() {
-                    const canvas = document.createElement("canvas");
-                    canvas.width = qrSize;
-                    canvas.height = qrSize;
-
-                    const ctx = canvas.getContext("2d");
-                    ctx.fillStyle = "white";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0, qrSize, qrSize);
-
-                    // 👉 Opción 1: Descargar QR
-                    canvas.toBlob((blob) => {
-                        const blobUrl = URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.href = blobUrl;
-                        link.download = `QR-${nombre}-${id}.png`;
-
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(blobUrl);
-
-                        Swal.fire({
-                            icon: "success",
-                            title: "QR descargado",
-                            text: "Se ha guardado correctamente.",
-                            showCancelButton: true,
-                            confirmButtonText: "Ver QR",
-                            cancelButtonText: "Cerrar",
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                const qrWindow = window.open();
-                                qrWindow.document.write(
-                                    `<img src="${img.src}" style="width:100%;max-width:400px">`
-                                );
-                            }
-                        });
-                    }, "image/png");
-                };
-
-                img.src = qrImg.src;
+                // Mostrar el QR en pantalla completa (modo Android-friendly)
+                const qrWindow = window.open("", "_blank");
+                qrWindow.document.write(`
+            <html>
+                <head>
+                    <title>QR ${nombre}</title>
+                    <style>
+                        body { margin: 0; background: #fff; display: flex; align-items: center; justify-content: center; height: 100vh; }
+                        img { max-width: 100%; height: auto; }
+                    </style>
+                </head>
+                <body>
+                    <img src="${qrImg.src}" alt="QR ${nombre}">
+                </body>
+            </html>
+        `);
             }, 800);
         }
     </script>
