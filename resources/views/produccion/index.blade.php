@@ -194,26 +194,30 @@
                 },
                 eventContent: function(arg) {
                     const props = arg.event.extendedProps;
-                    const title = arg.event.title;
 
-                    const hora = new Date(arg.event.start).toLocaleTimeString('es-ES', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
+                    const nombre = arg.event.title;
+                    const categoria = props.categoria_nombre ?? '';
 
-                    let bgClass = 'bg-blue-600';
-                    if (title.startsWith('🟢')) bgClass = 'bg-green-600';
-                    if (title.startsWith('🔴')) bgClass = 'bg-red-600';
+                    let entrada = props.entrada_real ?
+                        new Date(props.entrada_real).toLocaleTimeString('es-ES', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) :
+                        null;
 
-                    let nombreLimpio = title.replace(/^🟢 |^🔴 /, '');
+                    let salida = props.salida_real ?
+                        new Date(props.salida_real).toLocaleTimeString('es-ES', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) :
+                        null;
 
-                    // Si es entrada o salida, mostramos la hora. Si no, la omitimos.
-                    const texto =
-                        `${nombreLimpio} · ${props.categoria_nombre ?? ''}${title.startsWith('🟢') || title.startsWith('🔴') ? ` · ${hora}` : ''}`;
+                    const fichajes = entrada || salida ? ` · ${entrada ?? ''}${salida ? ' - ' + salida : ''}` :
+                        '';
 
                     let html = `
-        <div class="px-2 py-1 text-xs font-semibold ${bgClass} text-white rounded leading-tight truncate">
-            ${texto}
+        <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded leading-tight truncate">
+            ${nombre} · ${categoria}${fichajes}
         </div>
     `;
 
@@ -221,6 +225,7 @@
                         html
                     };
                 }
+
             });
             // Forzar el orden de los recursos explícitamente usando setResources
             calendar.render();
