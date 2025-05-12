@@ -387,23 +387,33 @@ class ProfileController extends Controller
     }
     protected function getEventosFichajes($user)
     {
-        return $user->registrosFichajes->flatMap(function ($fichaje) {
-            return [
-                [
+        return $user->asignacionesTurnos->flatMap(function ($asignacion) {
+            $eventos = [];
 
-                    'start' => Carbon::parse($fichaje->entrada)->toIso8601String(),
-                    'color' => '#28a745', // Verde para entradas
+            if ($asignacion->entrada) {
+                $eventos[] = [
+                    'title' => 'Entrada',
+                    'start' => Carbon::parse($asignacion->entrada)->toIso8601String(),
+                    'color' => '#28a745', // Verde
+                    'textColor' => '#ffffff',
                     'allDay' => false
-                ],
-                $fichaje->salida ? [
+                ];
+            }
 
-                    'start' => Carbon::parse($fichaje->salida)->toIso8601String(),
-                    'color' => '#dc3545', // Rojo para salidas
+            if ($asignacion->salida) {
+                $eventos[] = [
+                    'title' => 'Salida',
+                    'start' => Carbon::parse($asignacion->salida)->toIso8601String(),
+                    'color' => '#dc3545', // Rojo
+                    'textColor' => '#ffffff',
                     'allDay' => false
-                ] : null
-            ];
-        })->filter();
+                ];
+            }
+
+            return $eventos;
+        });
     }
+
     /**
      * Función para oscurecer un color en hexadecimal.
      */

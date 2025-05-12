@@ -52,8 +52,13 @@
                                 ],
                                 [
                                     'route' => 'planificacion.index',
-                                    'label' => 'Planificación',
+                                    'label' => 'Planificación Portes',
                                     'icon' => asset('imagenes/iconos/planificacion.png'),
+                                ],
+                                [
+                                    'route' => 'produccion.index', // Asegúrate de que esta ruta exista
+                                    'label' => 'Planificación Trabajadores',
+                                    'icon' => asset('imagenes/iconos/planificacion-trabajadores.png'), // Debes tener esta imagen
                                 ],
                                 [
                                     'route' => 'empresas.index',
