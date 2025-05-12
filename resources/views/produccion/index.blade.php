@@ -208,10 +208,17 @@
                         }) :
                         null;
 
-                    // Estilo por tipo de evento
                     let bgClass = 'bg-blue-600';
                     if (title.startsWith('🟢')) bgClass = 'bg-green-600';
                     if (title.startsWith('🔴')) bgClass = 'bg-red-600';
+
+                    let lineaHorario = '';
+
+                    if (title.startsWith('🟢') || title.startsWith('🔴')) {
+                        lineaHorario = `${horaInicio}`; // Solo entrada o salida
+                    } else if (horaFin) {
+                        lineaHorario = `${horaInicio} - ${horaFin}`; // Turno completo
+                    }
 
                     let html = `
         <div class="px-2 py-1 text-xs font-semibold ${bgClass} text-white rounded flex flex-col leading-tight">
@@ -219,7 +226,7 @@
                 <span>${title}</span>
             </div>
             <div class="text-[10px] font-normal opacity-80">
-                ${props.categoria_nombre ?? ''} · ${horaInicio}${horaFin ? ' - ' + horaFin : ''}
+                ${props.categoria_nombre ?? ''} · ${lineaHorario}
             </div>
         </div>
     `;
