@@ -398,12 +398,11 @@ class PedidoController extends Controller
             $qrFilename = "qr-producto-{$producto->id}.png";
             $qrPath = "qrs/{$qrFilename}";
 
-            $qr = QrCode::format('png')
+            $svg = QrCode::format('svg')
                 ->size(300)
-                ->margin(2)
                 ->generate($producto->id);
 
-            Storage::disk('public')->put($qrPath, $qr);
+            Storage::disk('public')->put("qrs/qr-producto-{$producto->id}.svg", $svg);
 
             return redirect()->route('pedidos.recepcion', $pedido->id)
                 ->with('success', 'Paquete registrado correctamente.')

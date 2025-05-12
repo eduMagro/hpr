@@ -72,11 +72,12 @@
                                             @endif
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <a href="{{ asset('storage/qrs/qr-producto-' . $producto->id . '.png') }}"
-                                                download="qr-paquete-{{ $producto->id }}.png"
-                                                class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition">
+                                            <a href="{{ asset('storage/qrs/qr-producto-' . $producto->id . '.svg') }}"
+                                                download="qr-paquete-{{ $producto->id }}.svg"
+                                                class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 transition">
                                                 Descargar QR
                                             </a>
+
                                         </div>
                                         <button
                                             onclick="generateAndPrintQR(
