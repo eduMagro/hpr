@@ -57,6 +57,8 @@ Route::middleware('auth')->group(function () {
 
     // Rutas para el controlador de entradas
     Route::resource('entradas', EntradaController::class);
+    Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
+
     Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);
     Route::post('/pedidos/confirmar', [PedidoController::class, 'confirmar'])->name('pedidos.confirmar');

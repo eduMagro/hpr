@@ -29,6 +29,7 @@
             </div>
         @endif
         @if (auth()->user()->rol === 'oficina')
+
             <div class="mb-6"> <!-- Tabla stock -->
                 <div class="overflow-x-auto rounded-lg">
                     @php
@@ -251,11 +252,10 @@
 
                                 {{-- Campo de fecha estimada de entrega --}}
                                 <div class="text-left">
-                                    <label for="fecha_estimada_entrega"
-                                        class="block text-sm font-medium text-gray-700 mb-1">
-                                        Fecha estimada de entrega:
+                                    <label for="fecha_entrega" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Fecha Entrega:
                                     </label>
-                                    <input type="date" name="fecha_estimada_entrega" id="fecha_estimada_entrega"
+                                    <input type="date" name="fecha_entrega" id="fecha_entrega"
                                         class="w-full border border-gray-300 rounded px-3 py-2">
                                 </div>
 
@@ -289,98 +289,100 @@
                     </div>
                 </div>
             </div>
-        @endif
-        <!-- Tabla pedidos  -->
-        <div class="overflow-x-auto bg-white shadow rounded-lg">
-            <table class="w-full border-collapse text-sm text-center">
-                <thead class="bg-blue-500 text-white text-10">
-                    <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
-                        <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
-                        <th class="p-2 border">{!! $ordenables['proveedor'] ?? 'Proveedor' !!}</th>
-                        <th class="p-2 border">Cantidad Restante</th>
-                        <th class="p-2 border">{!! $ordenables['peso_total'] ?? 'peso_total' !!}</th>
-                        <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
-                        <th class="p-2 border">{!! $ordenables['fecha_entrega'] ?? 'F. Estimada Entrega' !!}</th>
-                        <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
-                        <th class="p-2 border">Lineas</th>
-                        <th class="p-2 border">Creación Registro</th>
-                        <th class="p-2 border">Acciones</th>
-                    </tr>
+            <!-- Tabla pedidos  -->
+            <div class="overflow-x-auto bg-white shadow rounded-lg">
+                <table class="w-full border-collapse text-sm text-center">
+                    <thead class="bg-blue-500 text-white text-10">
+                        <tr class="text-center text-xs uppercase">
+                            <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['proveedor'] ?? 'Proveedor' !!}</th>
+                            <th class="p-2 border">Cantidad Restante</th>
+                            <th class="p-2 border">{!! $ordenables['peso_total'] ?? 'peso_total' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['fecha_entrega'] ?? 'F. Entrega' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
+                            <th class="p-2 border">Lineas</th>
+                            <th class="p-2 border">Creación Registro</th>
+                            <th class="p-2 border">Acciones</th>
+                        </tr>
 
-                    <tr class="text-center text-xs uppercase">
-                        <form method="GET" action="{{ route('pedidos.index') }}">
-                            <th class="p-1 border">
-                                <input type="text" name="codigo" value="{{ request('codigo') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <select name="pedido_global_id" class="form-control form-control-sm">
-                                    <option value="">Todos</option>
-                                    @foreach ($pedidosGlobales as $pg)
-                                        <option value="{{ $pg->id }}"
-                                            {{ request('pedido_global_id') == $pg->id ? 'selected' : '' }}>
-                                            {{ $pg->codigo }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </th>
-                            <th class="p-1 border">
-                                <select name="proveedor_id" class="form-control form-control-sm">
-                                    <option value="">Todos</option>
-                                    @foreach ($proveedores as $proveedor)
-                                        <option value="{{ $proveedor->id }}"
-                                            {{ request('proveedor_id') == $proveedor->id ? 'selected' : '' }}>
-                                            {{ $proveedor->nombre }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </th>
-                            <th class="p-1 border"></th>
-                            <th class="p-1 border"></th>
-                            <th class="p-1 border">
-                                <input type="date" name="fecha_pedido" value="{{ request('fecha_pedido') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <input type="date" name="fecha_entrega" value="{{ request('fecha_entrega') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <select name="estado" class="form-control form-control-sm">
-                                    <option value="">Todos</option>
-                                    <option value="pendiente"
-                                        {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
-                                        Pendiente</option>
-                                    <option value="parcial" {{ request('estado') == 'parcial' ? 'selected' : '' }}>
-                                        Parcial</option>
-                                    <option value="completo" {{ request('estado') == 'completo' ? 'selected' : '' }}>
-                                        Completo</option>
-                                    <option value="cancelado"
-                                        {{ request('estado') == 'cancelado' ? 'selected' : '' }}>
-                                        Cancelado</option>
-                                </select>
-                            </th>
-                            <th class="p-1 border text-center"></th>
-                            <th class="p-1 border text-center"></th>
-                            <th class="p-1 border text-center">
-                                <button type="submit" class="btn btn-sm btn-info px-2"><i
-                                        class="fas fa-search"></i></button>
-                                <a href="{{ route('pedidos.index') }}" class="btn btn-sm btn-warning px-2"><i
-                                        class="fas fa-undo"></i></a>
-                            </th>
-                        </form>
-                    </tr>
-                </thead>
+                        <tr class="text-center text-xs uppercase">
+                            <form method="GET" action="{{ route('pedidos.index') }}">
+                                <th class="p-1 border">
+                                    <input type="text" name="codigo" value="{{ request('codigo') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="pedido_global_id" class="form-control form-control-sm">
+                                        <option value="">Todos</option>
+                                        @foreach ($pedidosGlobales as $pg)
+                                            <option value="{{ $pg->id }}"
+                                                {{ request('pedido_global_id') == $pg->id ? 'selected' : '' }}>
+                                                {{ $pg->codigo }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="proveedor_id" class="form-control form-control-sm">
+                                        <option value="">Todos</option>
+                                        @foreach ($proveedores as $proveedor)
+                                            <option value="{{ $proveedor->id }}"
+                                                {{ request('proveedor_id') == $proveedor->id ? 'selected' : '' }}>
+                                                {{ $proveedor->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                <th class="p-1 border"></th>
+                                <th class="p-1 border"></th>
+                                <th class="p-1 border">
+                                    <input type="date" name="fecha_pedido" value="{{ request('fecha_pedido') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="date" name="fecha_entrega"
+                                        value="{{ request('fecha_entrega') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <select name="estado" class="form-control form-control-sm">
+                                        <option value="">Todos</option>
+                                        <option value="pendiente"
+                                            {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
+                                            Pendiente</option>
+                                        <option value="parcial"
+                                            {{ request('estado') == 'parcial' ? 'selected' : '' }}>
+                                            Parcial</option>
+                                        <option value="completo"
+                                            {{ request('estado') == 'completo' ? 'selected' : '' }}>
+                                            Completo</option>
+                                        <option value="cancelado"
+                                            {{ request('estado') == 'cancelado' ? 'selected' : '' }}>
+                                            Cancelado</option>
+                                    </select>
+                                </th>
+                                <th class="p-1 border text-center"></th>
+                                <th class="p-1 border text-center"></th>
+                                <th class="p-1 border text-center">
+                                    <button type="submit" class="btn btn-sm btn-info px-2"><i
+                                            class="fas fa-search"></i></button>
+                                    <a href="{{ route('pedidos.index') }}" class="btn btn-sm btn-warning px-2"><i
+                                            class="fas fa-undo"></i></a>
+                                </th>
+                            </form>
+                        </tr>
+                    </thead>
 
-                <tbody>
-                    @forelse ($pedidos as $pedido)
-                        <tr tabindex="0" x-data="{
-                            editando: false,
-                            pedido: @js($pedido),
-                            original: JSON.parse(JSON.stringify(@js($pedido)))
-                        }"
-                            @dblclick="if(!$event.target.closest('input')) {
+                    <tbody>
+                        @forelse ($pedidos as $pedido)
+                            <tr tabindex="0" x-data="{
+                                editando: false,
+                                pedido: @js($pedido),
+                                original: JSON.parse(JSON.stringify(@js($pedido)))
+                            }"
+                                @dblclick="if(!$event.target.closest('input')) {
                           if(!editando) {
                             editando = true;
                           } else {
@@ -388,119 +390,180 @@
                             editando = false;
                           }
                         }"
-                            @keydown.enter.stop="guardarCambios(pedido); editando = false"
-                            :class="{ 'bg-yellow-100': editando }"
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
+                                @keydown.enter.stop="guardarCambios(pedido); editando = false"
+                                :class="{ 'bg-yellow-100': editando }"
+                                class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
 
-                            <!-- Código -->
-                            <td class="border px-3 py-2">
-                                <span x-text="pedido.codigo"></span>
-                            </td>
+                                <!-- Código -->
+                                <td class="border px-3 py-2">
+                                    <span x-text="pedido.codigo"></span>
+                                </td>
 
-                            <!-- Pedido Global -->
-                            <td class="border px-3 py-2">
-                                <span x-text="pedido.pedido_global?.codigo ?? 'N/A'"></span>
-                            </td>
+                                <!-- Pedido Global -->
+                                <td class="border px-3 py-2">
+                                    <span x-text="pedido.pedido_global?.codigo ?? 'N/A'"></span>
+                                </td>
 
-                            <!-- Proveedor -->
-                            <td class="border px-3 py-2">
-                                <span x-text="pedido.proveedor?.nombre ?? 'N/A'"></span>
-                            </td>
+                                <!-- Proveedor -->
+                                <td class="border px-3 py-2">
+                                    <span x-text="pedido.proveedor?.nombre ?? 'N/A'"></span>
+                                </td>
 
-                            <!-- Cantidad recepcionada -->
-                            <td class="border px-3 py-2">
-                                {{ number_format($pedido->cantidad_restante, 2, ',', '.') }} kg
+                                <!-- Cantidad recepcionada -->
+                                <td class="border px-3 py-2">
+                                    {{ number_format($pedido->cantidad_restante, 2, ',', '.') }} kg
 
-                            </td>
-                            <!-- Peso total -->
-                            <td class="border px-3 py-2">
-                                <span x-text="pedido.peso_total_formateado"></span>
-                            </td>
+                                </td>
+                                <!-- Peso total -->
+                                <td class="border px-3 py-2">
+                                    <span x-text="pedido.peso_total_formateado"></span>
+                                </td>
 
-                            <!-- Fecha Pedido -->
-                            <td class="border px-3 py-2">
-                                <template x-if="!editando">
-                                    <span x-text="pedido.fecha_pedido_formateada ?? 'N/A'"></span>
-                                </template>
-                                <input x-show="editando" type="date" x-model="pedido.fecha_pedido"
-                                    class="form-input w-full">
-                            </td>
-                            <!-- Fecha Entrega -->
-                            <td class="border px-3 py-2">
-                                <template x-if="!editando">
-                                    <span x-text="pedido.fecha_entrega_formateada ?? 'N/A'"></span>
-                                </template>
-                                <input x-show="editando" type="date" x-model="pedido.fecha_entrega"
-                                    class="form-input w-full">
-                            </td>
-                            <td class="border px-3 py-2 capitalize">{{ $pedido->estado }}</td>
-                            <td class="border px-3 py-2">{{ $pedido->productos->count() }}</td>
-                            <td class="border px-3 py-2">{{ $pedido->fecha_creacion_formateada }}</td>
-                            <td class="border px-3 py-2 space-x-2">
-                                <template x-if="editando">
-                                    <button @click="guardarCambios(pedido); editando = false"
-                                        class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
-                                        Guardar
-                                    </button>
-                                </template>
-                                <a href="javascript:void(0)" class="text-blue-600 hover:underline text-sm"
-                                    onclick='mostrarProductosModal(@json($pedido->productos_formateados))'>
-                                    Ver
-                                </a>
-                                <x-boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />
-                                @if ($pedido->estado !== 'completo')
-                                    <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
-                                        class="text-green-600 hover:underline">Recepcionar</a>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="py-4 text-gray-500">No hay pedidos registrados.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-            <!-- Modal -->
-            <div id="modalProductos"
-                class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                <div class="bg-white p-6 rounded-lg w-full max-w-4xl shadow-xl relative">
-                    <button type="button" onclick="cerrarModalProductos()"
-                        class="absolute top-3 right-3 text-gray-500 hover:text-red-600 transition duration-200 p-2 rounded-full hover:bg-gray-100 shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-
-
-                    <h3 class="text-lg font-semibold mb-4 text-gray-800">Productos del pedido</h3>
-
-                    <table
-                        class="w-full border-collapse text-sm text-center overflow-hidden rounded-lg shadow border border-gray-300">
-                        <thead class="bg-blue-800 text-white">
-                            <tr>
-                                <th class="border px-3 py-2">Tipo</th>
-                                <th class="border px-3 py-2">Diámetro</th>
-                                <th class="border px-3 py-2">Longitud</th>
-                                <th class="border px-3 py-2">Cantidad (kg)</th>
+                                <!-- Fecha Pedido -->
+                                <td class="border px-3 py-2">
+                                    <template x-if="!editando">
+                                        <span x-text="pedido.fecha_pedido_formateada ?? 'N/A'"></span>
+                                    </template>
+                                    <input x-show="editando" type="date" x-model="pedido.fecha_pedido"
+                                        class="form-input w-full">
+                                </td>
+                                <!-- Fecha Entrega -->
+                                <td class="border px-3 py-2">
+                                    <template x-if="!editando">
+                                        <span x-text="pedido.fecha_entrega_formateada ?? 'N/A'"></span>
+                                    </template>
+                                    <input x-show="editando" type="date" x-model="pedido.fecha_entrega"
+                                        class="form-input w-full">
+                                </td>
+                                <td class="border px-3 py-2 capitalize">{{ $pedido->estado }}</td>
+                                <td class="border px-3 py-2">{{ $pedido->productos->count() }}</td>
+                                <td class="border px-3 py-2">{{ $pedido->fecha_creacion_formateada }}</td>
+                                <td class="border px-3 py-2 space-x-2">
+                                    <template x-if="editando">
+                                        <button @click="guardarCambios(pedido); editando = false"
+                                            class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
+                                            Guardar
+                                        </button>
+                                    </template>
+                                    <a href="javascript:void(0)" class="text-blue-600 hover:underline text-sm"
+                                        onclick='mostrarProductosModal(@json($pedido->productos_formateados))'>
+                                        Ver
+                                    </a>
+                                    <x-boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />
+                                    @if ($pedido->estado !== 'completo')
+                                        <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
+                                            class="text-green-600 hover:underline">Recepcionar</a>
+                                    @endif
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody id="tablaProductosBody" class="bg-white">
-                            {{-- Se rellena por JS --}}
-                        </tbody>
-                    </table>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="py-4 text-gray-500">No hay pedidos registrados.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+                <!-- Modal -->
+                <div id="modalProductos"
+                    class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg w-full max-w-4xl shadow-xl relative">
+                        <button type="button" onclick="cerrarModalProductos()"
+                            class="absolute top-3 right-3 text-gray-500 hover:text-red-600 transition duration-200 p-2 rounded-full hover:bg-gray-100 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
 
+
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800">Productos del pedido</h3>
+
+                        <table
+                            class="w-full border-collapse text-sm text-center overflow-hidden rounded-lg shadow border border-gray-300">
+                            <thead class="bg-blue-800 text-white">
+                                <tr>
+                                    <th class="border px-3 py-2">Tipo</th>
+                                    <th class="border px-3 py-2">Diámetro</th>
+                                    <th class="border px-3 py-2">Longitud</th>
+                                    <th class="border px-3 py-2">Cantidad (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaProductosBody" class="bg-white">
+                                {{-- Se rellena por JS --}}
+                            </tbody>
+                        </table>
+
+                    </div>
                 </div>
+
+
             </div>
 
+            <div class="mt-4">
+                {{ $pedidos->links('vendor.pagination.bootstrap-5') }}
+            </div>
 
-        </div>
+        @endif
+        {{-- ---------------------------------------------------- ROL OPERARIO ---------------------------------------------------- --}}
+        @if (Auth::user()->rol === 'operario')
+            <div class="p-4 w-full max-w-4xl mx-auto">
+                <form method="GET" action="{{ route('pedidos.index') }}"
+                    class="flex flex-col sm:flex-row gap-2 mb-6">
+                    <input type="text" name="codigo" value="{{ request('codigo') }}"
+                        class="form-control form-control-sm flex-grow"
+                        placeholder="Introduce el código del pedido (ej: PC25/0003)">
+                    <button type="submit" class="btn btn-primary text-sm">Buscar</button>
+                </form>
 
-        <div class="mt-4">
-            {{ $pedidos->links('vendor.pagination.bootstrap-5') }}
-        </div>
+                @php
+                    $codigo = request('codigo');
+                    $pedidosFiltrados = $codigo
+                        ? \App\Models\Pedido::with('productos')
+                            ->where('codigo', 'like', '%' . $codigo . '%')
+                            ->orderBy('created_at', 'desc')
+                            ->get()
+                        : collect();
+                @endphp
+
+                @if ($codigo)
+                    @if ($pedidosFiltrados->isEmpty())
+                        <div class="text-red-500 text-sm text-center">No se encontraron pedidos con el código
+                            <strong>{{ $codigo }}</strong>.
+                        </div>
+                    @else
+                        <div class="bg-white shadow rounded-lg overflow-x-auto">
+                            <table class="w-full border text-sm text-center">
+                                <thead class="bg-blue-600 text-white uppercase text-xs">
+                                    <tr>
+                                        <th class="px-3 py-2 border">Código</th>
+                                        <th class="px-3 py-2 border">Proveedor</th>
+                                        <th class="px-3 py-2 border">Estado</th>
+                                        <th class="px-3 py-2 border">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($pedidosFiltrados as $pedido)
+                                        <tr class="border-b hover:bg-blue-50">
+                                            <td class="px-3 py-2">{{ $pedido->codigo }}</td>
+                                            <td class="px-3 py-2">{{ $pedido->proveedor->nombre ?? '—' }}</td>
+                                            <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
+                                            <td class="px-3 py-2">
+                                                <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
+                                                    class="btn btn-success btn-sm">
+                                                    Recepcionar
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                @endif
+            </div>
+        @endif
+
     </div>
 
     <script>

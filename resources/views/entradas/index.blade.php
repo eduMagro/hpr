@@ -36,6 +36,7 @@
                         <th class="px-3 py-2 border">Fecha</th>
                         <th class="px-3 py-2 border">Nº Productos</th>
                         <th class="px-3 py-2 border">Peso Total</th>
+                        <th class="px-3 py-2 border">Estado</th>
                         <th class="px-3 py-2 border">Usuario</th>
                         <th class="px-3 py-2 border">Acciones</th>
                     </tr>
@@ -49,6 +50,7 @@
                             <td class="px-3 py-2">{{ $entrada->productos->count() }}</td>
                             <td class="px-3 py-2">{{ number_format($entrada->peso_total ?? 0, 2, ',', '.') }} kg
                             </td>
+                            <td class="px-3 py-2">{{ $entrada->estado ?? 'N/A' }}</td>
                             <td class="px-3 py-2">{{ $entrada->user->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2">
                                 <a href="{{ route('entradas.show', $entrada->id) }}"

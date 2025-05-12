@@ -25,6 +25,9 @@ class PedidoCreado extends Mailable
     public function build()
     {
         return $this->subject('Nuevo Pedido Generado')
-            ->view('emails.pedidos.pedido_creado');
+            ->view('emails.pedidos.pedido_creado')
+            ->with([
+                'pedido' => $this->pedido,
+            ]);
     }
 }

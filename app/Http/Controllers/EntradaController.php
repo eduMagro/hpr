@@ -316,6 +316,19 @@ class EntradaController extends Controller
         }
     }
 
+    public function cerrar($id)
+    {
+        $entrada = Entrada::findOrFail($id);
+
+        if ($entrada->estado === 'cerrado') {
+            return redirect()->back()->with('info', 'Este albarán ya está cerrado.');
+        }
+
+        $entrada->estado = 'cerrado';
+        $entrada->save();
+
+        return redirect()->back()->with('success', 'Albarán cerrado correctamente.');
+    }
 
 
     // Eliminar una entrada y sus productos asociados

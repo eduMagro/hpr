@@ -295,10 +295,6 @@ class PedidoController extends Controller
     {
         $pedido = Pedido::with(['productos', 'entradas.productos'])->findOrFail($id);
 
-        if (in_array($pedido->estado, ['completado', 'cancelado'])) {
-            return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
-        }
-
         // Calcular cuánto se ha recepcionado por producto_base_id
         $recepcionadoPorProducto = [];
 
@@ -319,7 +315,6 @@ class PedidoController extends Controller
         return view('pedidos.recepcion', compact('pedido'));
     }
 
-
     public function procesarRecepcion(Request $request, $id)
     {
         try {
@@ -329,7 +324,7 @@ class PedidoController extends Controller
                 return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
             }
 
-            $productoBaseId = $request->input('producto_id');
+            $productoBaseId = $request->input('producto_base_id');
             $peso = floatval($request->input('peso'));
             $nColada = $request->input('n_colada');
             $nPaquete = $request->input('n_paquete');
@@ -340,11 +335,12 @@ class PedidoController extends Controller
                 return redirect()->back()->with('error', 'El peso del paquete debe ser mayor que cero.');
             }
 
-            $ubicacion = Ubicacion::where('id', $ubicacionId)->first();
+            $ubicacion = Ubicacion::find($ubicacionId);
             if (!$ubicacion) {
                 return redirect()->back()->with('error', "Ubicación no encontrada: '{$ubicacionId}'");
             }
 
+            // Crear producto
             $producto = Producto::create([
                 'producto_base_id' => $productoBaseId,
                 'proveedor_id' => $pedido->proveedor_id,
@@ -358,16 +354,25 @@ class PedidoController extends Controller
                 'otros' => $otros,
             ]);
 
-            $codigoEntrada = $this->generarCodigoAlbaran();
+            // Buscar entrada abierta
+            $entrada = Entrada::where('pedido_id', $pedido->id)
+                ->where('estado', 'abierto')
+                ->latest()
+                ->first();
 
-            $entrada = Entrada::create([
-                'albaran' => $codigoEntrada,
-                'pedido_id' => $pedido->id,
-                'peso_total' => $peso,
-                'usuario_id' => auth()->id(),
-                'otros' => 'Entrada generada desde recepción de pedido',
-            ]);
+            // Si no existe, la creamos
+            if (!$entrada) {
+                $entrada = Entrada::create([
+                    'albaran' => $this->generarCodigoAlbaran(),
+                    'pedido_id' => $pedido->id,
+                    'peso_total' => 0,
+                    'usuario_id' => auth()->id(),
+                    'otros' => 'Entrada generada desde recepción de pedido',
+                    'estado' => 'abierto',
+                ]);
+            }
 
+            // Crear línea en entrada_producto
             EntradaProducto::create([
                 'entrada_id' => $entrada->id,
                 'producto_id' => $producto->id,
@@ -375,7 +380,11 @@ class PedidoController extends Controller
                 'users_id' => auth()->id(),
             ]);
 
-            // Verificar estado del pedido tras la entrada
+            // Sumar peso
+            $entrada->peso_total += $peso;
+            $entrada->save();
+
+            // Verificar si el pedido debe pasar a estado "completado" o "parcial"
             $pesoSuministrado = $pedido->entradas()->sum('peso_total');
             $pesoPedido = $pedido->productos->sum(fn($p) => $p->pivot->cantidad);
             $margen = 0.005;
@@ -391,6 +400,7 @@ class PedidoController extends Controller
                 ->with('error', 'Error: ' . $e->getMessage());
         }
     }
+
 
     public function generarCodigoAlbaran()
     {
@@ -486,7 +496,7 @@ class PedidoController extends Controller
         $request->validate([
             'seleccionados' => 'required|array',
             'fabricante_id' => 'required|exists:proveedores,id',
-            'fecha_estimada_entrega' => 'required|date|after_or_equal:today',
+            'fecha_entrega' => 'required|date|after_or_equal:today',
         ], [
             'seleccionados.required' => 'Debes seleccionar al menos un producto.',
             'seleccionados.array' => 'El formato de los productos seleccionados no es válido.',
@@ -494,9 +504,9 @@ class PedidoController extends Controller
             'fabricante_id.required' => 'El proveedor es obligatorio.',
             'fabricante_id.exists' => 'El proveedor seleccionado no es válido.',
 
-            'fecha_estimada_entrega.required' => 'La fecha estimada de entrega es obligatoria.',
-            'fecha_estimada_entrega.date' => 'La fecha estimada debe ser una fecha válida.',
-            'fecha_estimada_entrega.after_or_equal' => 'La fecha de entrega no puede ser anterior a hoy.',
+            'fecha_entrega.required' => 'La fecha estimada de entrega es obligatoria.',
+            'fecha_entrega.date' => 'La fecha estimada debe ser una fecha válida.',
+            'fecha_entrega.after_or_equal' => 'La fecha de entrega no puede ser anterior a hoy.',
         ]);
 
 
@@ -515,7 +525,7 @@ class PedidoController extends Controller
             'estado' => 'pendiente',
             'proveedor_id' => $request->fabricante_id,
             'fecha_pedido' => now(),
-            'fecha_entrega' => $request->fecha_estimada_entrega,
+            'fecha_entrega' => $request->fecha_entrega,
         ]);
 
         $pesoTotal = 0;
@@ -594,7 +604,7 @@ class PedidoController extends Controller
             'estado' => 'pendiente',
             'proveedor_id' => $request->fabricante_id,
             'fecha_pedido' => now(),
-            'fecha_entrega' => $request->fecha_estimada_entrega,
+            'fecha_entrega' => $request->fecha_entrega,
         ]);
 
         $pesoTotal = 0;
