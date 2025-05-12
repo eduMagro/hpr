@@ -123,7 +123,7 @@ class ProduccionController extends Controller
 
         Log::info('Trabajadores sin eventos:', $trabajadoresSinEvento->pluck('name')->toArray());
 
-        return view('produccion.index', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas', 'registroFichajes'));
+        return view('produccion.index', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
     }
 
     public function actualizarPuesto(Request $request, $id)
