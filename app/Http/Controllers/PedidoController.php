@@ -395,7 +395,8 @@ class PedidoController extends Controller
             $pedido->save();
 
             return redirect()->route('pedidos.recepcion', $pedido->id)
-                ->with('success', 'Paquete registrado correctamente.'); // ✅ ahora sí corresponde
+                ->with('success', 'Paquete registrado correctamente.')
+                ->with('producto_id', $producto->id);
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
@@ -404,13 +405,14 @@ class PedidoController extends Controller
     }
     public function mostrarQR($id)
     {
-        $producto = Producto::findOrFail($id);
+        $producto = \App\Models\Producto::findOrFail($id);
 
-        $qr = QrCode::format('png')->size(300)->generate($producto->id);
+        $qr = QrCode::format('png')
+            ->size(300)
+            ->generate($producto->id);
 
         return response($qr)
-            ->header('Content-Type', 'image/png')
-            ->header('Content-Disposition', 'inline; filename="qr-producto-' . $producto->id . '.png"');
+            ->header('Content-Type', 'image/png');
     }
 
     public function generarCodigoAlbaran()
