@@ -88,8 +88,9 @@ class ProduccionController extends Controller
                     $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
                     $resourceId = $maquinaId ? str_pad($maquinaId, 3, '0', STR_PAD_LEFT) : null;
 
+                    // Evento del turno
                     $eventos[] = [
-                        'id' => $asignacionTurno->id,
+                        'id' => 'turno-' . $asignacionTurno->id,
                         'title' => $trabajador->name,
                         'start' => $start,
                         'end' => $end,
@@ -100,6 +101,32 @@ class ProduccionController extends Controller
                         ],
                         'maquina_id' => $trabajador->maquina_id
                     ];
+
+                    // Evento de entrada
+                    if ($asignacionTurno->entrada) {
+                        $eventos[] = [
+                            'id' => 'entrada-' . $asignacionTurno->id,
+                            'title' => '🟢 ' . $trabajador->name,
+                            'start' => Carbon::parse($asignacionTurno->entrada)->toIso8601String(),
+                            'resourceId' => $resourceId,
+                            'color' => '#28a745',
+                            'textColor' => '#ffffff',
+                            'allDay' => false,
+                        ];
+                    }
+
+                    // Evento de salida
+                    if ($asignacionTurno->salida) {
+                        $eventos[] = [
+                            'id' => 'salida-' . $asignacionTurno->id,
+                            'title' => '🔴 ' . $trabajador->name,
+                            'start' => Carbon::parse($asignacionTurno->salida)->toIso8601String(),
+                            'resourceId' => $resourceId,
+                            'color' => '#dc3545',
+                            'textColor' => '#ffffff',
+                            'allDay' => false,
+                        ];
+                    }
                 }
             }
         }
