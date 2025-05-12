@@ -12,6 +12,8 @@ use App\Models\ProductoBase;
 use App\Models\Entrada;
 use App\Models\EntradaProducto;
 use App\Models\Ubicacion;
+use Illuminate\Support\Facades\Storage;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Mail\PedidoCreado;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
@@ -392,8 +394,20 @@ class PedidoController extends Controller
             $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
             $pedido->save();
 
+            // Generar imagen QR y guardarla en el storage
+            $qrFilename = "qr-producto-{$producto->id}.png";
+            $qrPath = "qrs/{$qrFilename}";
+
+            $qr = QrCode::format('png')
+                ->size(300)
+                ->margin(2)
+                ->generate($producto->id);
+
+            Storage::disk('public')->put($qrPath, $qr);
+
             return redirect()->route('pedidos.recepcion', $pedido->id)
-                ->with('success', 'Paquete registrado correctamente.');
+                ->with('success', 'Paquete registrado correctamente.')
+                ->with('qr_url', Storage::url($qrPath)); // URL pública
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()

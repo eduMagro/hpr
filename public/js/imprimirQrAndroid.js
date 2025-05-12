@@ -9,11 +9,9 @@ function generateAndPrintQR(id, nombre, tipo) {
         document.body.appendChild(qrContainer);
     }
 
-    qrContainer.innerHTML = ""; // Limpia cualquier QR anterior
+    qrContainer.innerHTML = "";
+    const qrSize = 200; // Puedes ajustar el tamaño del QR
 
-    const qrSize = 50; // Tamaño exacto en píxeles
-
-    // Generamos el código QR
     new QRCode(qrContainer, {
         text: id.toString(),
         width: qrSize,
@@ -31,42 +29,36 @@ function generateAndPrintQR(id, nombre, tipo) {
             return;
         }
 
-        // Crear un lienzo con el tamaño exacto
-        let canvas = document.createElement("canvas");
-        let ctx = canvas.getContext("2d");
-        let img = new Image();
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
 
         img.onload = function () {
             canvas.width = qrSize;
-            canvas.height = qrSize + 40; // Espacio para el nombre
+            canvas.height = qrSize;
             ctx.fillStyle = "white";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, qrSize, qrSize);
 
-            // Añadir el texto con el nombre
-            ctx.fillStyle = "black";
-            ctx.font = "16px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(nombre, qrSize / 2, qrSize + 30);
+            canvas.toBlob((blob) => {
+                const blobUrl = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = blobUrl;
+                link.download = `QR-${nombre}-${id}.png`;
 
-            let qrBase64 = canvas.toDataURL("image/png", 1.0);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(blobUrl);
 
-            // Crear enlace para descargar la imagen con el tamaño exacto
-            let link = document.createElement("a");
-            link.href = qrBase64;
-            link.download = `QR-${nombre}-${id}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            // Mensaje para guiar al usuario a imprimir manualmente
-            Swal.fire({
-                icon: "success",
-                title: "QR Descargado",
-                text: "El QR se ha descargado correctamente. Ábrelo desde iPrint&Label",
-            });
+                Swal.fire({
+                    icon: "success",
+                    title: "QR descargado",
+                    text: "El QR se ha guardado correctamente.",
+                });
+            }, "image/png");
         };
 
-        img.src = qrImg.src; // Cargar la imagen en base64
-    }, 500);
+        img.src = qrImg.src;
+    }, 600);
 }
