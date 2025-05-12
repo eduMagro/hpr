@@ -199,25 +199,25 @@
                     const categoria = props.categoria_nombre ?? '';
 
                     let entrada = props.entrada_real ?
-                        new Date(props.entrada_real).toLocaleTimeString('es-ES', {
+                        '🟢 ' + new Date(props.entrada_real).toLocaleTimeString('es-ES', {
                             hour: '2-digit',
                             minute: '2-digit'
                         }) :
                         null;
 
                     let salida = props.salida_real ?
-                        new Date(props.salida_real).toLocaleTimeString('es-ES', {
+                        '🔴 ' + new Date(props.salida_real).toLocaleTimeString('es-ES', {
                             hour: '2-digit',
                             minute: '2-digit'
                         }) :
                         null;
 
-                    const fichajes = entrada || salida ? ` · ${entrada ?? ''}${salida ? ' - ' + salida : ''}` :
-                        '';
+                    const fichajes = [entrada, salida].filter(Boolean).join(' · ');
 
                     let html = `
-        <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded leading-tight truncate">
-            ${nombre} · ${categoria}${fichajes}
+        <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded leading-tight truncate flex flex-col">
+            <div class="truncate">${nombre} · ${categoria}</div>
+            ${fichajes ? `<div class="text-[10px] opacity-90">${fichajes}</div>` : ''}
         </div>
     `;
 
@@ -225,6 +225,7 @@
                         html
                     };
                 }
+
 
             });
             // Forzar el orden de los recursos explícitamente usando setResources
