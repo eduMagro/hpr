@@ -196,38 +196,24 @@
                     const props = arg.event.extendedProps;
                     const title = arg.event.title;
 
-                    const horaInicio = new Date(arg.event.start).toLocaleTimeString('es-ES', {
+                    const hora = new Date(arg.event.start).toLocaleTimeString('es-ES', {
                         hour: '2-digit',
                         minute: '2-digit'
                     });
-
-                    const horaFin = arg.event.end ?
-                        new Date(arg.event.end).toLocaleTimeString('es-ES', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }) :
-                        null;
 
                     let bgClass = 'bg-blue-600';
                     if (title.startsWith('🟢')) bgClass = 'bg-green-600';
                     if (title.startsWith('🔴')) bgClass = 'bg-red-600';
 
-                    let lineaHorario = '';
+                    let nombreLimpio = title.replace(/^🟢 |^🔴 /, '');
 
-                    if (title.startsWith('🟢') || title.startsWith('🔴')) {
-                        lineaHorario = `${horaInicio}`; // Solo entrada o salida
-                    } else if (horaFin) {
-                        lineaHorario = `${horaInicio} - ${horaFin}`; // Turno completo
-                    }
+                    // Si es entrada o salida, mostramos la hora. Si no, la omitimos.
+                    const texto =
+                        `${nombreLimpio} · ${props.categoria_nombre ?? ''}${title.startsWith('🟢') || title.startsWith('🔴') ? ` · ${hora}` : ''}`;
 
                     let html = `
-        <div class="px-2 py-1 text-xs font-semibold ${bgClass} text-white rounded flex flex-col leading-tight">
-            <div class="flex items-center gap-1">
-                <span>${title}</span>
-            </div>
-            <div class="text-[10px] font-normal opacity-80">
-                ${props.categoria_nombre ?? ''} · ${lineaHorario}
-            </div>
+        <div class="px-2 py-1 text-xs font-semibold ${bgClass} text-white rounded leading-tight truncate">
+            ${texto}
         </div>
     `;
 
