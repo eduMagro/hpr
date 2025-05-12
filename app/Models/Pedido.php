@@ -93,8 +93,9 @@ class Pedido extends Model
         return number_format($this->peso_total, 2, ',', '.') . ' kg';
     }
 
-    public function getCantidadSuministradaAttribute()
+    public function getCantidadRestanteAttribute()
     {
-        return $this->entradas()->sum('peso_total');
+        $suministrado = $this->entradas()->sum('peso_total');
+        return max(0, $this->peso_total - $suministrado);
     }
 }

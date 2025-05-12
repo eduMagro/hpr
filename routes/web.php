@@ -70,6 +70,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('productos-base', ProductoBaseController::class);
 
     Route::resource('productos', ProductoController::class);
+    Route::post('/productos/crear-desde-recepcion', [PedidoController::class, 'crearDesdeRecepcion'])->name('productos.crear.desde.recepcion');
 
 
     Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');

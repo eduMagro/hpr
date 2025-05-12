@@ -45,8 +45,6 @@
                 if (result.dismiss === Swal.DismissReason.cancel) {
                     notificarProgramador({!! json_encode(session('error')) !!});
                 }
-            }).then(() => {
-                window.location.reload(); // Recarga la página tras el mensaje
             });
         });
     </script>

@@ -10,201 +10,97 @@
     </x-slot>
 
     <div class="px-4 py-6">
-        <form action="{{ route('pedidos.recepcion.guardar', $pedido->id) }}" method="POST"
-            class="bg-white shadow rounded p-6 space-y-6 max-w-4xl mx-auto">
-            @csrf
-            <input type="hidden" name="pedido_id" value="{{ $pedido->id }}">
-            <table class="w-full text-sm border-collapse border text-center">
-                <tbody>
-                    @foreach ($pedido->productos as $producto)
-                        @if ($producto->pendiente > 0)
-                            <div class="mb-6 rounded bg-gray-300 p-4 shadow-sm grupo-producto"
-                                data-producto-id="{{ $producto->id }}" x-data="{
-                                    items: JSON.parse(localStorage.getItem('paquetes_{{ $producto->id }}')) || [{}],
-                                    guardar() {
-                                        localStorage.setItem('paquetes_{{ $producto->id }}', JSON.stringify(this.items));
-                                    },
-                                    agregar() {
-                                        this.items.push({});
-                                        this.guardar();
-                                    },
-                                    eliminar() {
-                                        if (this.items.length > 1) {
-                                            this.items.pop();
-                                            this.guardar();
-                                        }
-                                    }
-                                }">
-                                <h4 class="text-md font-semibold mb-2">
-                                    {{ ucfirst($producto->tipo) }} / {{ $producto->diametro }} mm —
-                                    {{ number_format($producto->pendiente, 2, ',', '.') }} kg
-                                </h4>
+        @foreach ($pedido->productos as $producto)
+            @php
+                $productoActivo = old('producto_id') == $producto->id;
+            @endphp
 
-                                <template x-for="(item, index) in items" :key="index">
-                                    <div class="border border-gray-300 bg-gray-100 p-4 rounded-lg shadow-sm mb-3">
-                                        <div class="text-sm font-semibold text-gray-700 mb-2">
-                                            Paquete <span x-text="index + 1"></span>
-                                        </div>
+            @if ($producto->pendiente > 0 || $productoActivo)
+                @php
+                    $productosRecepcionados = \App\Models\Producto::where('producto_base_id', $producto->id)
+                        ->whereHas('entrada', fn($q) => $q->where('pedido_id', $pedido->id))
+                        ->get();
 
-                                        <div class="flex flex-col gap-3">
-                                            <input type="hidden"
-                                                name="lineas[{{ $producto->id }}][producto_base_id][]"
-                                                value="{{ $producto->id }}">
+                    $formData = session('form_data');
+                @endphp
 
-                                            <input type="text" :value="item.peso"
-                                                @input="item.peso = $event.target.value; guardar()"
-                                                name="lineas[{{ $producto->id }}][peso][]" placeholder="Peso Paquete"
-                                                class="border px-2 py-1 rounded bg-white w-full min-w-[120px]">
+                <div class="mb-6 bg-white border border-gray-300 rounded shadow p-6 space-y-6 max-w-4xl mx-auto">
 
-                                            <input type="text" :value="item.n_colada"
-                                                @input="item.n_colada = $event.target.value; guardar()"
-                                                name="lineas[{{ $producto->id }}][n_colada][]" placeholder="Nº colada"
-                                                class="border px-2 py-1 rounded bg-white w-full min-w-[120px]">
+                    {{-- CABECERA --}}
+                    <h4 class="text-md font-semibold text-gray-800">
+                        {{ ucfirst($producto->tipo) }} / {{ $producto->diametro }} mm —
+                        {{ number_format($producto->pendiente, 2, ',', '.') }} kg restantes
+                    </h4>
 
-                                            <input type="text" :value="item.n_paquete"
-                                                @input="item.n_paquete = $event.target.value; guardar()"
-                                                name="lineas[{{ $producto->id }}][n_paquete][]"
-                                                placeholder="Nº paquete"
-                                                class="border px-2 py-1 rounded bg-white w-full min-w-[120px]">
+                    {{-- LISTADO DE PAQUETES RECEPCIONADOS --}}
+                    @if ($productosRecepcionados->count())
+                        <div>
+                            <p class="font-semibold text-gray-700 mb-2">Paquetes recepcionados:</p>
+                            <div class="flex flex-wrap gap-3">
+                                @foreach ($productosRecepcionados as $p)
+                                    <div class="flex items-center gap-2 bg-gray-100 px-3 py-2 rounded shadow-sm">
+                                        <span class="text-sm text-gray-800 font-medium">
+                                            {{ number_format($p->peso_inicial, 2, ',', '.') }} kg
+                                            @if ($p->n_paquete)
+                                                — Paquete {{ $p->n_paquete }}
+                                            @endif
+                                        </span>
 
-                                            <input type="text" :value="item.ubicacion_texto"
-                                                @input="item.ubicacion_texto = $event.target.value; guardar()"
-                                                name="lineas[{{ $producto->id }}][ubicacion_texto][]"
-                                                placeholder="Escanea ubicación"
-                                                class="border px-2 py-1 rounded bg-white w-full min-w-[120px]">
-
-                                            <input type="text" :value="item.otros"
-                                                @input="item.otros = $event.target.value; guardar()"
-                                                name="lineas[{{ $producto->id }}][otros][]"
-                                                placeholder="Observaciones (opcional)"
-                                                class="border px-2 py-1 rounded bg-white w-full min-w-[120px]">
-                                        </div>
+                                        <button
+                                            onclick="generateAndPrintQR(
+                                                '{{ $p->id }}',
+                                                '{{ addslashes($p->n_paquete ?? 'SIN-PAQUETE') }}',
+                                                'MATERIA PRIMA'
+                                            )"
+                                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                            QR
+                                        </button>
                                     </div>
-                                </template>
-
-                                <div class="flex gap-4 mt-2">
-                                    <button type="button" class="text-sm text-blue-600 hover:underline"
-                                        @click="agregar()">
-                                        + Añadir otro paquete
-                                    </button>
-                                    <button type="button" class="text-sm text-red-600 hover:underline"
-                                        @click="eliminar()">
-                                        – Eliminar último paquete
-                                    </button>
-                                </div>
+                                @endforeach
                             </div>
-                        @endif
-                    @endforeach
+                        </div>
+                    @endif
 
-                </tbody>
-            </table>
+                    {{-- FORMULARIO DE NUEVO PAQUETE --}}
+                    <form action="{{ route('pedidos.recepcion.guardar', $pedido->id) }}" method="POST"
+                        class="space-y-4">
+                        @csrf
+                        <input type="hidden" name="pedido_id" value="{{ $pedido->id }}">
+                        <input type="hidden" name="producto_id" value="{{ $producto->id }}">
 
-            <div class="text-right">
-                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                    Confirmar recepción
-                </button>
-            </div>
-        </form>
+                        <div class="flex flex-col gap-3 bg-gray-100 p-4 rounded-lg border border-gray-300 shadow-sm">
+                            <input type="text" name="peso" placeholder="Peso del paquete"
+                                value="{{ $productoActivo ? old('peso') ?? ($formData['peso'] ?? '') : '' }}"
+                                class="border px-2 py-2 rounded w-full bg-white" required>
+
+                            <input type="text" name="n_colada" placeholder="Nº colada"
+                                value="{{ $productoActivo ? old('n_colada') ?? ($formData['n_colada'] ?? '') : '' }}"
+                                class="border px-2 py-2 rounded w-full bg-white">
+
+                            <input type="text" name="n_paquete" placeholder="Nº paquete"
+                                value="{{ $productoActivo ? old('n_paquete') ?? ($formData['n_paquete'] ?? '') : '' }}"
+                                class="border px-2 py-2 rounded w-full bg-white">
+
+                            <input type="text" name="ubicacion_id" placeholder="Ubicación"
+                                value="{{ $productoActivo ? old('ubicacion_id') ?? ($formData['ubicacion_id'] ?? '') : '' }}"
+                                class="border px-2 py-2 rounded w-full bg-white">
+
+                            <input type="text" name="otros" placeholder="Observaciones"
+                                value="{{ $productoActivo ? old('otros') ?? ($formData['otros'] ?? '') : '' }}"
+                                class="border px-2 py-2 rounded w-full bg-white">
+                        </div>
+
+                        <div class="text-right">
+                            <button type="submit"
+                                class="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                Confirmar paquete
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            @endif
+
+        @endforeach
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const productos = document.querySelectorAll('[data-producto-id]');
-
-            productos.forEach(contenedor => {
-                const productoId = contenedor.dataset.productoId;
-                const itemsContainer = document.createElement('div');
-                itemsContainer.classList.add('paquetes-container');
-
-                // Cargar desde localStorage
-                let items = JSON.parse(localStorage.getItem('paquetes_' + productoId)) || [{}];
-                items.forEach((item, index) => itemsContainer.appendChild(crearFila(item, productoId,
-                    index + 1)));
-
-
-                contenedor.insertBefore(itemsContainer, contenedor.querySelector('.flex'));
-
-                // Botones
-                const btnAdd = contenedor.querySelector('button.text-blue-600');
-                const btnRemove = contenedor.querySelector('button.text-red-600');
-
-                btnAdd.addEventListener('click', () => {
-                    items.push({});
-                    guardar(productoId, items);
-                    itemsContainer.appendChild(crearFila({}, productoId, items.length));
-
-                });
-
-                btnRemove.addEventListener('click', () => {
-                    if (items.length > 1) {
-                        items.pop();
-                        guardar(productoId, items);
-                        itemsContainer.lastChild.remove();
-                    }
-                });
-
-                function guardar(id, items) {
-                    localStorage.setItem('paquetes_' + id, JSON.stringify(items));
-                }
-
-                function crearFila(item, productoId, numero) {
-                    const fila = document.createElement('div');
-                    fila.className = "border border-gray-300 bg-gray-100 p-4 rounded-lg shadow-sm mb-3";
-
-                    fila.innerHTML = `
-        <div class="text-sm font-semibold text-gray-700 mb-2">
-            Paquete ${numero}
-        </div>
-        <div class="grid grid-cols-6 gap-3">
-            <input type="hidden" name="lineas[${productoId}][producto_base_id][]" value="${productoId}">
-            <input type="text" data-campo="peso" class="input-dato border px-2 py-1 rounded w-full col-span-1 bg-white"
-                name="lineas[${productoId}][peso][]" placeholder="Peso Paquete" value="${item.peso || ''}">
-            <input type="text" data-campo="n_colada" class="input-dato border px-2 py-1 rounded w-full col-span-1 bg-white"
-                name="lineas[${productoId}][n_colada][]" placeholder="Nº colada" value="${item.n_colada || ''}">
-            <input type="text" data-campo="n_paquete" class="input-dato border px-2 py-1 rounded w-full col-span-1 bg-white"
-                name="lineas[${productoId}][n_paquete][]" placeholder="Nº paquete" value="${item.n_paquete || ''}">
-            <input type="text" data-campo="ubicacion_texto" class="input-dato border px-2 py-1 rounded w-full col-span-2 bg-white"
-                name="lineas[${productoId}][ubicacion_texto][]" placeholder="Escanea ubicación" value="${item.ubicacion_texto || ''}">
-            <input type="text" data-campo="otros" class="input-dato border px-2 py-1 rounded w-full col-span-6 bg-white"
-                name="lineas[${productoId}][otros][]" placeholder="Observaciones (opcional)" value="${item.otros || ''}">
-        </div>
-    `;
-
-                    // Escuchar cambios en todos los inputs de este paquete
-                    const campos = fila.querySelectorAll('.input-dato');
-                    campos.forEach((input, idx) => {
-                        input.addEventListener('input', () => {
-                            const contenedor = fila.parentElement;
-                            const filas = contenedor.querySelectorAll('.input-dato');
-                            const totalCampos =
-                                5; // peso, n_colada, n_paquete, ubicacion_texto, otros
-                            const nuevosItems = [];
-
-                            for (let i = 0; i < filas.length; i += totalCampos) {
-                                nuevosItems.push({
-                                    peso: filas[i]?.value || '',
-                                    n_colada: filas[i + 1]?.value || '',
-                                    n_paquete: filas[i + 2]?.value || '',
-                                    ubicacion_texto: filas[i + 3]?.value || '',
-                                    otros: filas[i + 4]?.value || '',
-                                });
-                            }
-
-                            localStorage.setItem('paquetes_' + productoId, JSON.stringify(
-                                nuevosItems));
-                        });
-                    });
-
-                    return fila;
-                }
-
-            });
-        });
-    </script>
-    <style>
-        input[type="text"],
-        input[type="hidden"] {
-            min-width: 120px;
-        }
-    </style>
-
+    <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
 </x-app-layout>

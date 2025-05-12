@@ -298,7 +298,7 @@
                         <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                         <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
                         <th class="p-2 border">{!! $ordenables['proveedor'] ?? 'Proveedor' !!}</th>
-                        <th class="p-2 border">Cantidad Suministrada</th>
+                        <th class="p-2 border">Cantidad Restante</th>
                         <th class="p-2 border">{!! $ordenables['peso_total'] ?? 'peso_total' !!}</th>
                         <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
                         <th class="p-2 border">{!! $ordenables['fecha_entrega'] ?? 'F. Estimada Entrega' !!}</th>
@@ -409,7 +409,7 @@
 
                             <!-- Cantidad recepcionada -->
                             <td class="border px-3 py-2">
-                                {{ number_format($pedido->cantidad_suministrada, 2, ',', '.') }} kg
+                                {{ number_format($pedido->cantidad_restante, 2, ',', '.') }} kg
 
                             </td>
                             <!-- Peso total -->

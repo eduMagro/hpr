@@ -329,69 +329,53 @@ class PedidoController extends Controller
                 return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
             }
 
-            $lineas = $request->input('lineas', []);
-            $productosCreados = [];
-            $pesoTotal = 0;
+            $productoBaseId = $request->input('producto_id');
+            $peso = floatval($request->input('peso'));
+            $nColada = $request->input('n_colada');
+            $nPaquete = $request->input('n_paquete');
+            $ubicacionId = $request->input('ubicacion_id');
+            $otros = $request->input('otros');
 
-            foreach ($pedido->productos as $productoBase) {
-                $productoBaseId = $productoBase->id;
-                $entradas = $lineas[$productoBaseId] ?? [];
-
-                $pesos = $entradas['peso'] ?? [];
-                $coladas = $entradas['n_colada'] ?? [];
-                $paquetes = $entradas['n_paquete'] ?? [];
-                $ubicacionesTexto = $entradas['ubicacion_texto'] ?? [];
-                $otros = $entradas['otros'] ?? [];
-
-                for ($i = 0; $i < count($pesos); $i++) {
-                    $peso = floatval($pesos[$i] ?? 0);
-                    if ($peso <= 0) continue;
-
-                    $ubicacionId = intval($ubicacionesTexto[$i] ?? 0);
-                    if (!Ubicacion::find($ubicacionId)) {
-                        throw new \Exception("Ubicación ID {$ubicacionId} no válida.");
-                    }
-
-                    $producto = Producto::create([
-                        'producto_base_id' => $productoBaseId,
-                        'proveedor_id' => $pedido->proveedor_id,
-                        'n_colada' => $coladas[$i] ?? null,
-                        'n_paquete' => $paquetes[$i] ?? null,
-                        'peso_inicial' => $peso,
-                        'peso_stock' => $peso,
-                        'estado' => 'almacenado',
-                        'ubicacion_id' => $ubicacionId,
-                        'maquina_id' => null,
-                        'otros' => $otros[$i] ?? null,
-                    ]);
-
-                    $productosCreados[] = [
-                        'producto_id' => $producto->id,
-                        'ubicacion_id' => $ubicacionId,
-                    ];
-
-                    $pesoTotal += $peso;
-                }
+            if ($peso <= 0) {
+                return redirect()->back()->with('error', 'El peso del paquete debe ser mayor que cero.');
             }
 
+            $ubicacion = Ubicacion::where('id', $ubicacionId)->first();
+            if (!$ubicacion) {
+                return redirect()->back()->with('error', "Ubicación no encontrada: '{$ubicacionId}'");
+            }
+
+            $producto = Producto::create([
+                'producto_base_id' => $productoBaseId,
+                'proveedor_id' => $pedido->proveedor_id,
+                'n_colada' => $nColada,
+                'n_paquete' => $nPaquete,
+                'peso_inicial' => $peso,
+                'peso_stock' => $peso,
+                'estado' => 'almacenado',
+                'ubicacion_id' => $ubicacion->id,
+                'maquina_id' => null,
+                'otros' => $otros,
+            ]);
+
             $codigoEntrada = $this->generarCodigoAlbaran();
+
             $entrada = Entrada::create([
                 'albaran' => $codigoEntrada,
-                'pedido_id' => $request->pedido_id,
-                'peso_total' => $pesoTotal,
+                'pedido_id' => $pedido->id,
+                'peso_total' => $peso,
                 'usuario_id' => auth()->id(),
                 'otros' => 'Entrada generada desde recepción de pedido',
             ]);
 
-            foreach ($productosCreados as $item) {
-                EntradaProducto::create([
-                    'entrada_id' => $entrada->id,
-                    'producto_id' => $item['producto_id'],
-                    'ubicacion_id' => $item['ubicacion_id'],
-                    'users_id' => auth()->id(),
-                ]);
-            }
+            EntradaProducto::create([
+                'entrada_id' => $entrada->id,
+                'producto_id' => $producto->id,
+                'ubicacion_id' => $ubicacion->id,
+                'users_id' => auth()->id(),
+            ]);
 
+            // Verificar estado del pedido tras la entrada
             $pesoSuministrado = $pedido->entradas()->sum('peso_total');
             $pesoPedido = $pedido->productos->sum(fn($p) => $p->pivot->cantidad);
             $margen = 0.005;
@@ -399,13 +383,15 @@ class PedidoController extends Controller
             $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
             $pedido->save();
 
-            return redirect()->route('pedidos.index')->with('success', 'Recepción registrada y entrada creada correctamente.');
+            return redirect()->route('pedidos.recepcion', $pedido->id)
+                ->with('success', 'Paquete registrado correctamente.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error: ' . $e->getMessage());
         }
     }
+
     public function generarCodigoAlbaran()
     {
         $año = now()->format('y');
@@ -427,6 +413,74 @@ class PedidoController extends Controller
 
         return $prefix . $numeroFormateado;
     }
+    public function crearDesdeRecepcion(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'producto_base_id' => 'required|exists:productos_base,id',
+                'peso' => 'required|numeric|min:0.01',
+                'n_colada' => 'nullable|string|max:50',
+                'n_paquete' => 'nullable|string|max:50|unique:productos,n_paquete',
+                'ubicacion_id' => 'required|exists:ubicaciones,id',
+                'otros' => 'nullable|string|max:255',
+                'proveedor_id' => 'required|exists:proveedores,id',
+            ], [
+                'producto_base_id.required' => 'El producto base es obligatorio.',
+                'producto_base_id.exists' => 'El producto base no es válido.',
+
+                'peso.required' => 'El peso es obligatorio.',
+                'peso.numeric' => 'El peso debe ser un número.',
+                'peso.min' => 'El peso debe ser mayor que 0.',
+
+                'n_colada.string' => 'El número de colada debe ser texto.',
+                'n_colada.max' => 'El número de colada no puede tener más de 50 caracteres.',
+
+                'n_paquete.string' => 'El número de paquete debe ser texto.',
+                'n_paquete.max' => 'El número de paquete no puede tener más de 50 caracteres.',
+                'n_paquete.unique' => 'El número de paquete ya existe en otro producto.',
+
+                'ubicacion_id.required' => 'La ubicación es obligatoria.',
+                'ubicacion_id.exists' => 'La ubicación no es válida.',
+
+                'otros.string' => 'El campo de observaciones debe ser texto.',
+                'otros.max' => 'El campo de observaciones no puede tener más de 255 caracteres.',
+
+                'proveedor_id.required' => 'El proveedor es obligatorio.',
+                'proveedor_id.exists' => 'El proveedor no es válido.',
+            ]);
+
+            $producto = Producto::create([
+                'producto_base_id' => $validated['producto_base_id'],
+                'proveedor_id' => $validated['proveedor_id'],
+                'n_colada' => $validated['n_colada'] ?? null,
+                'n_paquete' => $validated['n_paquete'],
+                'peso_inicial' => $validated['peso'],
+                'peso_stock' => $validated['peso'],
+                'estado' => 'almacenado',
+                'ubicacion_id' => $validated['ubicacion_id'],
+                'maquina_id' => null,
+                'otros' => $validated['otros'] ?? null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'producto_id' => $producto->id,
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error inesperado: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
     public function store(Request $request)
     {
         $request->validate([

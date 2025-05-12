@@ -38,10 +38,23 @@ class Producto extends Model
      * Relación con la tabla 'entradas'
      * Un producto pertenece a una única entrada (relación uno a uno)
      */
+    public function entradaProducto()
+    {
+        return $this->hasOne(EntradaProducto::class, 'producto_id');
+    }
+
     public function entrada()
     {
-        return $this->belongsTo(Entrada::class, 'entrada_producto');  // Un producto pertenece a una entrada
+        return $this->hasOneThrough(
+            Entrada::class,
+            EntradaProducto::class,
+            'producto_id',     // Foreign key on entrada_producto
+            'id',              // Foreign key on entrada
+            'id',              // Local key on producto
+            'entrada_id'       // Local key on entrada_producto
+        );
     }
+
 
     /**
      * Relación con la tabla 'ubicaciones'
