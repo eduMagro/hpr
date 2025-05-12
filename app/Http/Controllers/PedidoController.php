@@ -394,26 +394,24 @@ class PedidoController extends Controller
             $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
             $pedido->save();
 
-            // Generar imagen QR y guardarla en el storage
-            $qrFilename = "qr-producto-{$producto->id}.png";
-            $qrPath = "qrs/{$qrFilename}";
-
-            $svg = QrCode::format('svg')
-                ->size(300)
-                ->generate($producto->id);
-
-            Storage::disk('public')->put("qrs/qr-producto-{$producto->id}.svg", $svg);
-
             return redirect()->route('pedidos.recepcion', $pedido->id)
-                ->with('success', 'Paquete registrado correctamente.')
-                ->with('qr_url', Storage::url($qrPath)); // URL pública
+                ->with('success', 'Paquete registrado correctamente.'); // ✅ ahora sí corresponde
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error: ' . $e->getMessage());
         }
     }
+    public function mostrarQR($id)
+    {
+        $producto = Producto::findOrFail($id);
 
+        $qr = QrCode::format('png')->size(300)->generate($producto->id);
+
+        return response($qr)
+            ->header('Content-Type', 'image/png')
+            ->header('Content-Disposition', 'inline; filename="qr-producto-' . $producto->id . '.png"');
+    }
 
     public function generarCodigoAlbaran()
     {
