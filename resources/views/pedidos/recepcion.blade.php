@@ -76,21 +76,6 @@
                                                 — Paquete {{ $productoEntrada->n_paquete }}
                                             @endif
                                         </div>
-                                        <div class="flex items-center gap-2">
-                                            <a href="{{ route('qr.mostrar', $producto->id) }}" target="_blank"
-                                                class="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 text-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                        stroke-width="2"
-                                                        d="M3 10h4v4H3v-4zM17 10h4v4h-4v-4zM10 3h4v4h-4V3zM10 17h4v4h-4v-4zM7 7h2v2H7V7zM15 15h2v2h-2v-2z" />
-                                                </svg>
-                                                Ver QR
-                                            </a>
-
-
-                                        </div>
-
                                     </div>
                                 @endforeach
 

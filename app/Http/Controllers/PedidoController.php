@@ -394,27 +394,35 @@ class PedidoController extends Controller
             $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
             $pedido->save();
 
-            return redirect()->route('pedidos.recepcion', $pedido->id)
-                ->with('success', 'Paquete registrado correctamente.')
-                ->with('producto_id', $producto->id);
+            return redirect()->route('qr.descargar', $producto->id);
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error: ' . $e->getMessage());
         }
     }
-    public function mostrarQR($id)
+    // public function mostrarQR($id)
+    // {
+    //     $producto = \App\Models\Producto::findOrFail($id);
+
+    //     $qr = QrCode::format('png')
+    //         ->size(300)
+    //         ->generate($producto->id);
+
+    //     return response($qr)
+    //         ->header('Content-Type', 'image/png');
+    // }
+    public function descargarQR($id)
     {
         $producto = \App\Models\Producto::findOrFail($id);
+        $svg = QrCode::format('svg')->size(300)->generate($producto->id);
 
-        $qr = QrCode::format('png')
-            ->size(300)
-            ->generate($producto->id);
+        $filename = "qr-producto-{$producto->id}.svg";
 
-        return response($qr)
-            ->header('Content-Type', 'image/png');
+        return response($svg)
+            ->header('Content-Type', 'image/svg+xml')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
     }
-
     public function generarCodigoAlbaran()
     {
         $año = now()->format('y');
