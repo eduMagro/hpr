@@ -17,15 +17,20 @@
             <div class="overflow-x-auto rounded-lg shadow">
                 <table class="min-w-full divide-y divide-gray-200 bg-white">
                     <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Nombre</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Categoría</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Máquina</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Puesto (turno)</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Turno</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">Estado</th>
-                            <th class="px-4 py-2 text-left text-sm font-semibold text-gray-700">¿Con evento?</th>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Nombre</th>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Categoría</th>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Especialidad</th>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Puesto asignado</th>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Turno</th>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Entrada</th>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Salida</th>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Estado</th>
+                                <th class="px-4 py-2 text-left text-sm text-gray-600">Evento</th>
+                            </tr>
+                        </thead>
+
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @foreach ($operariosTrabajando as $operario)
@@ -53,6 +58,12 @@
                                 </td>
                                 <td class="px-4 py-2 text-sm text-gray-700">{{ $puestoAsignado }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-700">{{ $turnoNombre }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-700">
+                                    {{ $registroFichajes[$operario->id]['entrada'] ?? '—' }}
+                                </td>
+                                <td class="px-4 py-2 text-sm text-gray-700">
+                                    {{ $registroFichajes[$operario->id]['salida'] ?? '—' }}
+                                </td>
                                 <td class="px-4 py-2 text-sm text-gray-700 capitalize">{{ $operario->estado }}</td>
                                 <td class="px-4 py-2 text-sm">
                                     @if ($tieneEvento)
@@ -194,38 +205,15 @@
                 },
                 eventContent: function(arg) {
                     const props = arg.event.extendedProps;
-
-                    const nombre = arg.event.title;
-                    const categoria = props.categoria_nombre ?? '';
-
-                    let entrada = props.entrada_real ?
-                        '🟢 ' + new Date(props.entrada_real).toLocaleTimeString('es-ES', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }) :
-                        null;
-
-                    let salida = props.salida_real ?
-                        '🔴 ' + new Date(props.salida_real).toLocaleTimeString('es-ES', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }) :
-                        null;
-
-                    const fichajes = [entrada, salida].filter(Boolean).join(' · ');
-
                     let html = `
-        <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded leading-tight truncate flex flex-col">
-            <div class="truncate">${nombre} · ${categoria}</div>
-            ${fichajes ? `<div class="text-[10px] opacity-90">${fichajes}</div>` : ''}
-        </div>
-    `;
-
+                        <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded flex items-center gap-1">
+                            <span>${arg.event.title}</span>
+                            <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''})</span>
+                        </div>`;
                     return {
                         html
                     };
                 }
-
 
             });
             // Forzar el orden de los recursos explícitamente usando setResources

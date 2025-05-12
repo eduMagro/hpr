@@ -101,9 +101,9 @@ class ProduccionController extends Controller
                         ],
                         'maquina_id' => $trabajador->maquina_id
                     ];
-
                     // Evento de entrada
                     if ($asignacionTurno->entrada) {
+                        $entradaHora = Carbon::parse($asignacionTurno->entrada)->format('H:i');
                         $eventos[] = [
                             'id' => 'entrada-' . $asignacionTurno->id,
                             'title' => '🟢 ' . $trabajador->name,
@@ -113,10 +113,13 @@ class ProduccionController extends Controller
                             'textColor' => '#ffffff',
                             'allDay' => false,
                         ];
+
+                        $registroFichajes[$trabajador->id]['entrada'] = $entradaHora;
                     }
 
                     // Evento de salida
                     if ($asignacionTurno->salida) {
+                        $salidaHora = Carbon::parse($asignacionTurno->salida)->format('H:i');
                         $eventos[] = [
                             'id' => 'salida-' . $asignacionTurno->id,
                             'title' => '🔴 ' . $trabajador->name,
@@ -126,6 +129,8 @@ class ProduccionController extends Controller
                             'textColor' => '#ffffff',
                             'allDay' => false,
                         ];
+
+                        $registroFichajes[$trabajador->id]['salida'] = $salidaHora;
                     }
                 }
             }
@@ -149,7 +154,7 @@ class ProduccionController extends Controller
 
         Log::info('Trabajadores sin eventos:', $trabajadoresSinEvento->pluck('name')->toArray());
 
-        return view('produccion.index', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
+        return view('produccion.index', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas', 'registroFichajes'));
     }
 
     public function actualizarPuesto(Request $request, $id)
