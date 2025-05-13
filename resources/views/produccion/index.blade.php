@@ -9,7 +9,7 @@
     <div class="py-6">
         <!-- Contenedor del Calendario -->
         <div class="w-full bg-white">
-            <div id="calendario" class="w-full h-screen"></div>
+            <div id="calendario" class="h-[80vh] w-full"></div>
         </div>
         <!-- Tabla de Operarios -->
         <div class="mt-8">
@@ -17,20 +17,18 @@
             <div class="overflow-x-auto rounded-lg shadow">
                 <table class="min-w-full divide-y divide-gray-200 bg-white">
                     <thead class="bg-gray-50">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Nombre</th>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Categoría</th>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Especialidad</th>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Puesto asignado</th>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Turno</th>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Entrada</th>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Salida</th>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Estado</th>
-                                <th class="px-4 py-2 text-left text-sm text-gray-600">Evento</th>
-                            </tr>
-                        </thead>
 
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Nombre</th>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Categoría</th>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Especialidad</th>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Puesto asignado</th>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Turno</th>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Entrada</th>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Salida</th>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Estado</th>
+                            <th class="px-4 py-2 text-left text-sm text-gray-600">Evento</th>
+                        </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         @foreach ($operariosTrabajando as $operario)
@@ -42,7 +40,7 @@
                                 $tieneEvento = collect($trabajadoresEventos)->contains(function ($evento) use (
                                     $operario,
                                 ) {
-                                    return $evento['resourceId'] && $evento['title'] === $operario->name;
+                                    return isset($evento['resourceId']) && $evento['title'] === $operario->name;
                                 });
                             @endphp
                             <tr class="{{ $operario->estado == 'trabajando' ? 'bg-green-100' : '' }}">
@@ -81,11 +79,16 @@
 
     </div>
 
-    <!-- FullCalendar -->
+    <!-- FullCalendar Scheduler con marca de agua -->
+    <!-- ✅ FullCalendar Scheduler completo con vista resourceTimelineWeek -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+    {{-- TOOLTIP --}}
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
 
     <script>
         let calendar;
@@ -123,8 +126,7 @@
                 },
                 displayEventEnd: true,
                 eventMinHeight: 30,
-                // slotMinTime: "00:00:00",
-                // slotMaxTime: "22:00:00",
+                timeZone: 'Europe/Madrid',
                 firstDay: 1,
                 height: 'auto',
                 headerToolbar: {
@@ -198,10 +200,15 @@
                             console.log('Máquina actualizada con éxito:', data);
                         })
                         .catch(error => {
-                            alert('No se pudo actualizar la máquina asignada');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'No se pudo actualizar la máquina asignada.'
+                            });
                             console.error(error);
-                            info.revert(); // Deshacer el movimiento si falla
+                            info.revert();
                         });
+
                 },
                 eventContent: function(arg) {
                     const props = arg.event.extendedProps;
