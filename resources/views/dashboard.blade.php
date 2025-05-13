@@ -1,6 +1,6 @@
 <x-app-layout>
     @php
-        $esOperario = auth()->user()->rol == '';
+        $esOperario = auth()->user()->rol == 'operario';
     @endphp
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -100,8 +100,22 @@
                         @endphp
 
                         @foreach ($items as $item)
+                            @php
+                                $permitidosOperario = [
+                                    'maquinas.index',
+                                    'users.index',
+                                    'entradas.index',
+                                    'salidas.index',
+                                    'alertas.index',
+                                ];
+
+                                // Si es operario y la ruta no está permitida, saltamos este ítem
+                                if ($esOperario && !in_array($item['route'], $permitidosOperario)) {
+                                    continue;
+                                }
+                            @endphp
                             <a href="{{ $item['route'] ? route($item['route']) : '#' }}"
-                                class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative {{ $esOperario && $item['route'] !== 'users.index' ? 'pointer-events-none opacity-50' : '' }}">
+                                class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative">
 
                                 {{-- Icono principal --}}
                                 <img src="{{ asset($item['icon']) }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2">
