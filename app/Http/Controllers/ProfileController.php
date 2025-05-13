@@ -261,7 +261,7 @@ class ProfileController extends Controller
 
     public function show($id)
     {
-        $user = User::with(['registrosFichajes', 'asignacionesTurnos.turno'])->findOrFail($id);
+        $user = User::with(['asignacionesTurnos.turno'])->findOrFail($id);
 
         // Fecha de inicio (1 de enero del año actual)
         $inicioAño = Carbon::now()->startOfYear();
