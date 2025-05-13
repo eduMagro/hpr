@@ -179,6 +179,21 @@ class ProfileController extends Controller
         $roles = User::distinct()->pluck('rol')->filter()->sort();
         $turnos = User::distinct()->pluck('turno')->filter()->sort();
 
+        $user = auth()->user();
+
+        // Fecha de inicio (1 de enero del año actual)
+        $inicioAño = Carbon::now()->startOfYear();
+
+        // **Calculamos ciertas variables**
+        $faltasInjustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_injustificada')
+            ->where('fecha', '>=', $inicioAño)->count();
+
+        $faltasJustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_justificada')
+            ->where('fecha', '>=', $inicioAño)->count();
+
+        $diasBaja = $user->asignacionesTurnos->where('turno.nombre', 'baja')
+            ->where('fecha', '>=', $inicioAño)->count();
+
         $ordenables = [
             'id' => $this->getOrdenamiento('id', 'ID'),
             'name' => $this->getOrdenamiento('name', 'Nombre'),
@@ -222,7 +237,7 @@ class ProfileController extends Controller
         );
 
         $filtrosActivos = $this->filtrosActivos($request);
-        $user = auth()->user();
+
         $coloresTurnos = $this->getColoresTurnos();
 
         $eventosFichajes = $this->getEventosFichajes($user);
@@ -255,7 +270,10 @@ class ProfileController extends Controller
             'turnos',
             'turnosHoy',
             'filtrosActivos',
-            'ordenables'
+            'ordenables',
+            'faltasInjustificadas',
+            'faltasJustificadas',
+            'diasBaja'
         ));
     }
 

@@ -87,8 +87,7 @@ class RegisteredUserController extends Controller
         ]);
 
         // Calcular los días de vacaciones disponibles
-        // $diasVacaciones = $this->calcularVacaciones();
-        $diasVacaciones = 22;
+        $diasVacaciones = $this->calcularVacaciones();
 
         $user = User::create([
             'name' => $request->name,
@@ -113,7 +112,7 @@ class RegisteredUserController extends Controller
      */
     private function calcularVacaciones(): int
     {
-        $totalDiasVacaciones = 28; // Total de días de vacaciones por año
+        $totalDiasVacaciones = 22; // Total de días de vacaciones por año
         $fechaActual = Carbon::now();
         $diasDelAño = $fechaActual->isLeapYear() ? 366 : 365; // Considera años bisiestos
         $diasTranscurridos = $fechaActual->dayOfYear; // Días desde el 1 de enero hasta hoy

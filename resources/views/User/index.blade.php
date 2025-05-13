@@ -235,7 +235,8 @@
                                     <select x-show="editando" x-model="usuario.maquina_id" class="form-input w-full">
                                         <option value="">Selecciona máq.</option>
                                         @foreach ($maquinas as $maquina)
-                                            <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
+                                            <option value="{{ $maquina->id }}">{{ $maquina->nombre ?? 'N/A' }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </td>
@@ -326,14 +327,48 @@
 
         <div class="container mx-auto px-4 py-6">
             {{-- ------------------------------- FICHA MODO OPERARIO -------------------------------- --}}
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <h3 class="text-lg font-semibold mb-2">Información del Usuario</h3>
-                <p><strong>Nombre:</strong> {{ auth()->user()->name }}</p>
-                <p><strong>Correo:</strong> {{ auth()->user()->email }}</p>
-                <p><strong>Puesto:</strong> {{ auth()->user()->rol }}</p>
-                <p><strong>Categoría:</strong> {{ auth()->user()->categoria->nombre ?? 'Sin categoría' }}</p>
-                <p><strong>Maquina:</strong> {{ auth()->user()->maquina->nombre }}</p>
-                <p><strong>Días de vacaciones restantes:</strong> {{ auth()->user()->dias_vacaciones }}</p>
+
+            <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto mb-6 border border-gray-200">
+                <!-- Encabezado con avatar -->
+                <div class="flex items-center space-x-4 border-b pb-4 mb-4">
+                    <div
+                        class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700">
+                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold">{{ auth()->user()->name }}</h3>
+                        <p class="text-gray-500 text-sm">{{ auth()->user()->rol }}</p>
+                    </div>
+                </div>
+
+                <!-- Contenido en dos columnas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Información del usuario -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Información</h3>
+                        <p><strong>Email:</strong> <span class="text-gray-600">{{ auth()->user()->email }}</span></p>
+                        <p><strong>Categoría:</strong> <span
+                                class="text-gray-600">{{ auth()->user()->categoria->nombre ?? 'N/A' }}</span></p>
+                        <p><strong>Especialidad:</strong> <span
+                                class="text-gray-600">{{ auth()->user()->maquina->nombre ?? 'N/A' }}</span></p>
+                        <p class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
+                            <strong>Vacaciones restantes:</strong> {{ auth()->user()->dias_vacaciones }}
+                        </p>
+                    </div>
+
+                    <!-- Resumen de asistencias -->
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Asistencias</h3>
+                        <div class="bg-gray-100 p-3 rounded-lg">
+                            <p><strong>Faltas injustificadas:</strong> <span
+                                    class="text-red-600">{{ $faltasInjustificadas }}</span></p>
+                            <p><strong>Faltas justificadas:</strong> <span
+                                    class="text-green-600">{{ $faltasJustificadas }}</span></p>
+                            <p><strong>Días de baja:</strong> <span class="text-purple-600">{{ $diasBaja }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         {{-- ------------------------------- CALENDARIO MODO OPERARIO -------------------------------- --}}
@@ -362,8 +397,7 @@
                 height: 'auto',
                 headerToolbar: {
                     left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    center: 'title'
                 },
                 selectable: false, // ❌ Desactivar selección
                 editable: false, // ❌ Desactivar edición
