@@ -126,7 +126,6 @@
                 },
                 displayEventEnd: true,
                 eventMinHeight: 30,
-                timeZone: 'Europe/Madrid',
                 firstDay: 1,
                 height: 'auto',
                 headerToolbar: {
