@@ -146,7 +146,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/actualizar-fecha-salida', [SalidaController::class, 'actualizarFechaSalida']);
 
 
-    Route::resource('produccion', ProduccionController::class);
+    //Route::resource('produccion', ProduccionController::class);
+    Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.trabajadores');
+    Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.maquinas');
     // Rutas para la gestión de camiones
     Route::resource('camiones', CamionController::class);
 

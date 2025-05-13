@@ -177,9 +177,8 @@
                     headerContent: 'Máquinas'
                 }],
                 eventDrop: function(info) {
-                    const asignacionId = info.event.id; // ID del registro asignaciones_turno
-                    const nuevoMaquinaId = info.event.getResources()[0]
-                        ?.id; // Obtenemos el ID de la máquina (resourceId)
+                    const asignacionId = info.event.id.replace(/^turno-/, ''); // Elimina el prefijo "turno-"
+                    const nuevoMaquinaId = parseInt(info.event.getResources()[0]?.id, 10); // Convierte a número
 
                     fetch(`/asignaciones-turno/${asignacionId}/actualizar-puesto`, {
                             method: 'POST',
@@ -188,7 +187,7 @@
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
                             body: JSON.stringify({
-                                maquina_id: parseInt(nuevoMaquinaId)
+                                maquina_id: nuevoMaquinaId
                             })
                         })
                         .then(response => {
@@ -207,7 +206,6 @@
                             console.error(error);
                             info.revert();
                         });
-
                 },
                 eventContent: function(arg) {
                     const props = arg.event.extendedProps;

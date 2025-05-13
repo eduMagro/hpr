@@ -16,7 +16,12 @@ class Planilla extends Model
      * @var string
      */
     protected $table = 'planillas';
-    protected $dates = ['created_at', 'updated_at']; // Asegura que las fechas sean tratadas correctamente
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'fecha_estimada_entrega' => 'datetime',
+    ];
 
     /**
      * Los atributos que son asignables masivamente.
@@ -101,10 +106,7 @@ class Planilla extends Model
      *
      * @var array
      */
-    protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-    ];
+
 
     public function getCodigoLimpioAttribute()
     {

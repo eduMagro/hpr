@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Maquina;
+use App\Models\Planilla;
+use App\Models\Elemento;
 use App\Models\User;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProduccionController extends Controller
@@ -15,7 +18,7 @@ class ProduccionController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function trabajadores()
     {
         $estadoProduccionMaquinas = Maquina::selectRaw('maquinas.*, (
             SELECT COUNT(*) FROM elementos
@@ -123,7 +126,7 @@ class ProduccionController extends Controller
 
         Log::info('Trabajadores sin eventos:', $trabajadoresSinEvento->pluck('name')->toArray());
 
-        return view('produccion.index', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
+        return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
     }
 
     public function actualizarPuesto(Request $request, $id)
@@ -138,6 +141,87 @@ class ProduccionController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    //---------------------------------------------------------- MAQUINAS
+
+    public function maquinas()
+    {
+        $maquinas = Maquina::orderBy('nombre')->get();
+
+        // Obtener los elementos que no están completamente fabricados
+        $elementos = Elemento::with(['planilla', 'planilla.obra'])
+            ->whereHas('planilla', function ($q) {
+                $q->whereIn('estado', ['pendiente', 'fabricando']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('estado')
+                    ->orWhere('estado', '<>', 'fabricado');
+            })
+            ->get();
+
+        // Agrupación por máquina destino según tipo
+        $elementosAgrupados = $elementos->groupBy(function ($elem) {
+            return match ($elem->maquina->tipo ?? null) {
+                'ensambladora' => $elem->maquina_id_2,
+                'soldadora'    => $elem->maquina_id_3,
+                default        => $elem->maquina_id,
+            };
+        });
+
+        // Generar eventos de planilla por máquina
+        $planillasEventos = collect();
+
+        foreach ($elementosAgrupados as $maquinaId => $elementosGrupo) {
+            $planillasPorMaquina = $elementosGrupo->groupBy('planilla_id');
+
+            foreach ($planillasPorMaquina as $planillaId => $grupo) {
+
+                $planilla = $grupo->first()->planilla;
+
+                if (!$planilla || !$planilla->fecha_estimada_entrega) continue;
+
+                // 🔢 Sumamos los tiempos de fabricación de todos los elementos
+                $duracionEnMinutos = $grupo->sum(fn($e) => intval($e->tiempo_fabricacion));
+
+                // 🕐 Calculamos la fecha final
+                $fechaInicio = $planilla->created_at;
+                $fechaFin = $fechaInicio->copy()->addMinutes($duracionEnMinutos);
+
+                $planillasEventos->push([
+                    'id' => 'planilla-' . $planilla->id,
+                    'title' => $planilla->codigo ?? 'Planilla #' . $planilla->id,
+                    'start' => $fechaInicio->toIso8601String(),
+                    'end' => $fechaFin->toIso8601String(),
+                    'resourceId' => $maquinaId,
+                    'backgroundColor' => $planilla->estado === 'pendiente' ? '#f87171' : '#60a5fa',
+                    'extendedProps' => [
+                        'obra' => optional($planilla->obra)->nombre ?? '—',
+                        'estado' => $planilla->estado,
+                        'duracion_min' => $duracionEnMinutos
+                    ],
+                ]);
+            }
+        }
+
+        $cargaPorMaquinaKg = Elemento::select('maquina_id', DB::raw('SUM(peso) as total_kg'))
+            ->whereHas('planilla', function ($q) {
+                $q->whereIn('estado', ['pendiente', 'fabricando']);
+            })
+            ->where(function ($q) {
+                $q->whereNull('estado')
+                    ->orWhere('estado', '<>', 'fabricado');
+            })
+            ->whereNotNull('maquina_id') // solo elementos con máquina asignada
+            ->groupBy('maquina_id')
+            ->pluck('total_kg', 'maquina_id'); // devuelve array maquina_id => total_kg
+
+        return view('produccion.maquinas', [
+            'maquinas' => $maquinas,
+            'planillasEventos' => $planillasEventos,
+            'cargaPorMaquinaKg' => $cargaPorMaquinaKg,
+        ]);
+    }
+
 
 
     /**

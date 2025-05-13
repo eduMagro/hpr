@@ -10,6 +10,7 @@
     </x-slot>
 
     <div class="mx-auto px-4 py-6">
+
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
             <!-- --------------------------------------------------------------- Información de la máquina --------------------------------------------------------------- -->
@@ -617,4 +618,5 @@
     </script>
     <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
     <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
+
 </x-app-layout>

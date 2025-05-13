@@ -88,7 +88,7 @@ class RegisteredUserController extends Controller
 
         // Calcular los días de vacaciones disponibles
         // $diasVacaciones = $this->calcularVacaciones();
-        $diasVacaciones = 28;
+        $diasVacaciones = 22;
 
         $user = User::create([
             'name' => $request->name,

@@ -56,8 +56,13 @@
                                     'icon' => asset('imagenes/iconos/planificacion.png'),
                                 ],
                                 [
-                                    'route' => 'produccion.index', // Asegúrate de que esta ruta exista
+                                    'route' => 'produccion.trabajadores', // Asegúrate de que esta ruta exista
                                     'label' => 'Planificación Trabajadores',
+                                    'icon' => asset('imagenes/iconos/planificacion-trabajadores.png'), // Debes tener esta imagen
+                                ],
+                                [
+                                    'route' => 'produccion.maquinas', // Asegúrate de que esta ruta exista
+                                    'label' => 'Planificación Máquinas',
                                     'icon' => asset('imagenes/iconos/planificacion-trabajadores.png'), // Debes tener esta imagen
                                 ],
                                 [

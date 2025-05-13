@@ -136,10 +136,10 @@
 
                                 if (todosSonFestivo) {
                                     body.tipo_turno =
-                                    "festivo"; // eliminar de todos los usuarios
+                                        "festivo"; // eliminar de todos los usuarios
                                 } else {
                                     body.user_id =
-                                    "{{ $user->id }}"; // solo del usuario actual
+                                        "{{ $user->id }}"; // solo del usuario actual
                                 }
 
                                 fetch("{{ route('asignaciones-turnos.destroy') }}", {
@@ -259,6 +259,4 @@
             calendar.render();
         });
     </script>
-
-
 </x-app-layout>
