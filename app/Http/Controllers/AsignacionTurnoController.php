@@ -13,6 +13,49 @@ use Illuminate\Support\Facades\Log;
 
 class AsignacionTurnoController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = AsignacionTurno::with(['user', 'turno', 'maquina'])
+            ->whereDate('fecha', '<=', Carbon::yesterday())
+            ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'));
+
+        if ($request->filled('trabajador')) {
+            $query->whereHas(
+                'user',
+                fn($q) =>
+                $q->where('name', 'like', '%' . $request->trabajador . '%')
+            );
+        }
+
+        $asignaciones = $query->orderBy('fecha', 'desc')->paginate(15);
+
+        // Contadores de puntualidad
+        $diasPuntuales = 0;
+        $diasImpuntuales = 0;
+        $diasSinFichaje = 0;
+
+        foreach ($asignaciones as $asignacion) {
+            $esperada = $asignacion->turno->hora_entrada ?? null;
+            $real = $asignacion->entrada;
+
+            if ($esperada && $real) {
+                $puntual = Carbon::parse($real)->lte(Carbon::parse($esperada));
+                $puntual ? $diasPuntuales++ : $diasImpuntuales++;
+            } elseif ($esperada && !$real) {
+                $diasSinFichaje++;
+            }
+        }
+
+        $diasTrabajados = $asignaciones->count();
+
+        return view('asignaciones-turnos.index', compact(
+            'asignaciones',
+            'diasTrabajados',
+            'diasPuntuales',
+            'diasImpuntuales',
+            'diasSinFichaje'
+        ));
+    }
 
     public function fichar(Request $request)
     {

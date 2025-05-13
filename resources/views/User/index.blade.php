@@ -15,6 +15,8 @@
             <div class="mb-4 flex items-center space-x-4">
                 <a href="{{ route('register') }}" class="btn btn-primary">Registrar Usuario</a>
                 <a href="{{ route('vacaciones.index') }}" class="btn btn-primary">Mostrar Vacaciones Globales</a>
+                <a href="{{ route('asignaciones-turnos.index') }}" class="btn btn-primary">Registros Entrada y
+                    Salida</a>
                 {{-- <form action="{{ route('generar-turnos') }}" method="POST" class="form-cargando">
                     @csrf
                     <button type="submit" class="btn btn-primary btn-cargando">

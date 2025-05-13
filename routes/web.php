@@ -3,7 +3,6 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\RegistroFichajeController;
 use App\Http\Controllers\PapeleraController;
 use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\EntradaController;
@@ -87,7 +86,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', ProfileController::class);
     Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.actualizar');
     Route::resource('vacaciones', VacacionesController::class);
-    Route::resource('registros-fichaje', RegistroFichajeController::class);
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);
     Route::post('/asignaciones-turnos/destroy', [AsignacionTurnoController::class, 'destroy'])
         ->name('asignaciones-turnos.destroy');
