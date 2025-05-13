@@ -98,7 +98,9 @@ class ProduccionController extends Controller
                         'start' => $start,
                         'end' => $end,
                         'resourceId' => $resourceId,
+                        'user_id' => $trabajador->id,
                         'extendedProps' => [
+                            'user_id' => $trabajador->id,
                             'categoria_id' => $trabajador->categoria_id,
                             'categoria_nombre' => $trabajador->categoria?->nombre,
                         ],

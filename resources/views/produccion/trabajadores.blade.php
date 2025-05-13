@@ -2,7 +2,7 @@
     <x-slot name="title">Planificación Producción</x-slot>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Planificación de Máquinas y Trabajadores') }}
+            {{ __('Planificación de Trabajadores') }}
         </h2>
     </x-slot>
 
@@ -206,6 +206,13 @@
                             console.error(error);
                             info.revert();
                         });
+                },
+                eventClick: function(info) {
+                    const userId = info.event.extendedProps.user_id;
+                    if (userId) {
+                        const url = "{{ route('users.show', ':id') }}".replace(':id', userId);
+                        window.location.href = url;
+                    }
                 },
                 eventContent: function(arg) {
                     const props = arg.event.extendedProps;
