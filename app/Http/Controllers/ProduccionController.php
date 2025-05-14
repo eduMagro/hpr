@@ -55,7 +55,7 @@ class ProduccionController extends Controller
             ->get();
 
         $fechaHoy = Carbon::today()->subWeek();
-        $fechaLimite = $fechaHoy->copy()->addDays(30);
+        $fechaLimite = $fechaHoy->copy()->addDays(40);
 
         Log::info('Generando eventos para trabajadores');
         $eventos = [];
