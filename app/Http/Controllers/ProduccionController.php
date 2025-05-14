@@ -54,7 +54,7 @@ class ProduccionController extends Controller
             ->whereNotNull('maquina_id') // aquí antes usabas `especialidad`
             ->get();
 
-        $fechaHoy = Carbon::today();
+        $fechaHoy = Carbon::today()->subWeek();
         $fechaLimite = $fechaHoy->copy()->addDays(30);
 
         Log::info('Generando eventos para trabajadores');
