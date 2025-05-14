@@ -16,8 +16,8 @@
                                     'icon' => asset('imagenes/iconos/materiales.png'),
                                 ],
                                 [
-                                    'route' => 'ubicaciones.index',
-                                    'label' => 'Ubicaciones',
+                                    'route' => 'localizaciones.index',
+                                    'label' => 'Localizaciones',
                                     'icon' => asset('imagenes/iconos/ubicaciones.png'),
                                 ],
                                 [

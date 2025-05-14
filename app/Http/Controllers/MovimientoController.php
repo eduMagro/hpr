@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Movimiento;
 use App\Models\Producto;
+use App\Models\Localizacion;
 use App\Models\Paquete;
 use App\Models\Ubicacion;
 use App\Models\Maquina;
@@ -88,8 +89,8 @@ class MovimientoController extends Controller
         $paquetes = Paquete::with('ubicacion')->get();
         $ubicaciones = Ubicacion::all();
         $maquinas = Maquina::all();
-
-        return view('movimientos.create', compact('productos', 'paquetes', 'ubicaciones', 'maquinas'));
+        $localizaciones = Localizacion::all();
+        return view('movimientos.create', compact('productos', 'paquetes', 'ubicaciones', 'maquinas', 'localizaciones'));
     }
     //------------------------------------------------ STORE() --------------------------------------------------------
     public function store(Request $request)

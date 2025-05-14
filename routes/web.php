@@ -12,6 +12,7 @@ use App\Http\Controllers\ProductoBaseController;
 use App\Http\Controllers\PedidoGlobalController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\UbicacionController;
+use App\Http\Controllers\LocalizacionController;
 use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\EmpresaTransportecontroller;
 use App\Http\Controllers\PlanificacionController;
@@ -78,6 +79,9 @@ Route::middleware('auth')->group(function () {
 
 
     Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
+
+    Route::resource('localizaciones', LocalizacionController::class);
+    Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])->name('localizaciones.verificar');
 
     Route::resource('ubicaciones', UbicacionController::class);
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
