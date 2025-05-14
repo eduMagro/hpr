@@ -82,6 +82,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('localizaciones', LocalizacionController::class);
     Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])->name('localizaciones.verificar');
+    Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])->name('localizaciones.editar.mapa');
 
     Route::resource('ubicaciones', UbicacionController::class);
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
