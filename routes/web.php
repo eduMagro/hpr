@@ -80,9 +80,14 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
 
-    Route::resource('localizaciones', LocalizacionController::class);
+    // ✅ Primero las rutas específicas
     Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])->name('localizaciones.verificar');
-    Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])->name('localizaciones.editar.mapa');
+    Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])->name('localizaciones.editarMapa');
+
+    // ✅ Después la ruta resource
+    Route::resource('localizaciones', LocalizacionController::class)->parameters([
+        'localizaciones' => 'localizacion'
+    ]);
 
     Route::resource('ubicaciones', UbicacionController::class);
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');

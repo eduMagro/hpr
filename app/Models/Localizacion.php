@@ -9,6 +9,8 @@ class Localizacion extends Model
     protected $table = 'localizaciones';
 
     protected $fillable = [
+        'localizacion',
+        'seccion',
         'x1',
         'y1',
         'x2',

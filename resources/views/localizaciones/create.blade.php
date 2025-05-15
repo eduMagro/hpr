@@ -8,7 +8,7 @@
 
     <div class="h-screen w-screen flex flex-col">
         <div class="p-2 bg-white z-10">
-            <a href="{{ route('localizaciones.editar.mapa') }}"
+            <a href="{{ route('localizaciones.editarMapa') }}"
                 class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition inline-block">
                 Editar Localización
             </a>

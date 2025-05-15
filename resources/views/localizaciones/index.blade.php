@@ -11,7 +11,7 @@
                 class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition inline-block">
                 Crear Nueva Localización
             </a>
-            <a href="{{ route('localizaciones.editar.mapa') }}"
+            <a href="{{ route('localizaciones.editarMapa') }}"
                 class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition inline-block">
                 Editar Localización
             </a>
