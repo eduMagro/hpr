@@ -40,6 +40,12 @@ class ProfileController extends Controller
         if ($request->filled('email')) {
             $filtros[] = 'Email: <strong>' . $request->email . '</strong>';
         }
+        if ($request->filled('movil_personal')) {
+            $filtros[] = 'Móvil Personal: <strong>' . $request->movil_personal . '</strong>';
+        }
+        if ($request->filled('movil_empresa')) {
+            $filtros[] = 'Móvil Empresa: <strong>' . $request->movil_empresa . '</strong>';
+        }
 
         if ($request->filled('dni')) {
             $filtros[] = 'DNI: <strong>' . $request->dni . '</strong>';
@@ -130,6 +136,15 @@ class ProfileController extends Controller
         if ($request->filled('email')) {
             $query->where('users.email', 'like', '%' . $request->input('email') . '%');
         }
+        // Filtrar por m. personal
+        if ($request->filled('movil_personal')) {
+            $query->where('users.movil_personal', 'like', '%' . $request->input('movil_personal') . '%');
+        }
+        // Filtrar por m. empresa
+        if ($request->filled('movil_empresa')) {
+            $query->where('users.movil_empresa', 'like', '%' . $request->input('movil_empresa') . '%');
+        }
+
         // Filtrar por empresa
         if ($request->filled('empresa')) {
             $query->where('users.empresa', 'like', '%' . $request->input('empresa') . '%');
@@ -506,6 +521,7 @@ class ProfileController extends Controller
                 'name' => 'required|string|max:50',
                 'email' => 'required|email|max:255|unique:users,email,' . $id,
                 'movil_personal' => 'nullable|string|max:255',
+                'movil_empresa' => 'nullable|string|max:255',
                 'dni' => [
                     'nullable',
                     'string',
@@ -549,6 +565,7 @@ class ProfileController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'movil_personal' => $request->movil_personal,
+                'movil_empresa' => $request->movil_empresa,
                 'dni' => $request->dni,
                 'empresa_id' => $request->empresa_id,
                 'rol' => $request->rol,

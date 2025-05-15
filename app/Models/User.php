@@ -31,6 +31,7 @@ class User extends Authenticatable
         'name',
         'email',
         'movil_personal',
+        'movil_empresa',
         'empresa_id',
         'password',
         'dni',

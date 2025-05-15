@@ -40,6 +40,7 @@
                             <th class="p-2 border">{!! $ordenables['name'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['email'] !!}</th>
                             <th class="p-2 border">Móvil Personal</th>
+                            <th class="p-2 border">Móvil Empresa</th>
                             <th class="p-2 border">{!! $ordenables['dni'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['empresa'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['rol'] !!}</th>
@@ -62,7 +63,11 @@
                                         class="form-control form-control-sm" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="movil" value="{{ request('movil') }}"
+                                    <input type="text" name="movil_personal" value="{{ request('movil_personal') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="movil_empresa" value="{{ request('movil_empresa') }}"
                                         class="form-control form-control-sm" />
                                 </th>
                                 <th class="p-1 border">
@@ -191,6 +196,13 @@
                                         <span x-text="usuario.movil_personal"></span>
                                     </template>
                                     <input x-show="editando" type="text" x-model="usuario.movil_personal"
+                                        class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
+                                </td>
+                                <td class="px-2 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="usuario.movil_empresa"></span>
+                                    </template>
+                                    <input x-show="editando" type="text" x-model="usuario.movil_empresa"
                                         class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
                                 </td>
                                 <td class="px-2 py-3 text-center border">
