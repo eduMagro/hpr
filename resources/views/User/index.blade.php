@@ -39,6 +39,7 @@
                             <th class="p-2 border">{!! $ordenables['id'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['name'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['email'] !!}</th>
+                            <th class="p-2 border">Móvil Personal</th>
                             <th class="p-2 border">{!! $ordenables['dni'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['empresa'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['rol'] !!}</th>
@@ -58,6 +59,10 @@
                                 </th>
                                 <th class="p-1 border">
                                     <input type="text" name="email" value="{{ request('email') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="movil" value="{{ request('movil') }}"
                                         class="form-control form-control-sm" />
                                 </th>
                                 <th class="p-1 border">
@@ -179,6 +184,13 @@
                                         <span x-text="usuario.email"></span>
                                     </template>
                                     <input x-show="editando" type="text" x-model="usuario.email"
+                                        class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
+                                </td>
+                                <td class="px-2 py-3 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="usuario.movil_personal"></span>
+                                    </template>
+                                    <input x-show="editando" type="text" x-model="usuario.movil_personal"
                                         class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
                                 </td>
                                 <td class="px-2 py-3 text-center border">

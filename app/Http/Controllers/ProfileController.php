@@ -505,6 +505,7 @@ class ProfileController extends Controller
             $request->validate([
                 'name' => 'required|string|max:50',
                 'email' => 'required|email|max:255|unique:users,email,' . $id,
+                'movil_personal' => 'nullable|string|max:255',
                 'dni' => [
                     'nullable',
                     'string',
@@ -547,6 +548,7 @@ class ProfileController extends Controller
             $resultado = $usuario->update([
                 'name' => $request->name,
                 'email' => $request->email,
+                'movil_personal' => $request->movil_personal,
                 'dni' => $request->dni,
                 'empresa_id' => $request->empresa_id,
                 'rol' => $request->rol,
