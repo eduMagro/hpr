@@ -25,6 +25,7 @@ class PedidoCreado extends Mailable
     public function build()
     {
         return $this->subject('Nuevo Pedido Generado')
+            ->cc(['sebastian.duran@pacoreyes.com', 'indiana.tirado@pacoreyes.com', 'alberto.mayo@pacoreyes.com', 'josemanuel.amuedo@pacoreyes.com'])
             ->view('emails.pedidos.pedido_creado')
             ->with([
                 'pedido' => $this->pedido,

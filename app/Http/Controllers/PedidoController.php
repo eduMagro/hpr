@@ -15,6 +15,7 @@ use App\Models\Ubicacion;
 use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Mail\PedidoCreado;
+use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
@@ -511,7 +512,6 @@ class PedidoController extends Controller
         }
     }
 
-
     public function store(Request $request)
     {
         $request->validate([
@@ -598,11 +598,30 @@ class PedidoController extends Controller
             'esVistaPrevia' => true, // 👈 Esto activará el botón solo en la vista previa
         ]);
     }
-    public function enviarCorreo($id)
+    public function enviarCorreo($id, Request $request)
     {
         $pedido = Pedido::with('productos')->findOrFail($id);
 
-        Mail::to('eduardo.magro@pacoreyes.com')->send(new PedidoCreado($pedido));
+        // Correos base
+        $ccCorreos = [
+            'sebastian.duran@pacoreyes.com',
+            'indiana.tirado@pacoreyes.com',
+            'alberto.mayo@pacoreyes.com',
+            'josemanuel.amuedo@pacoreyes.com',
+        ];
+
+        // Obtener usuarios desde la base de datos (por si necesitas más info o lógica a futuro)
+        $ccUsuarios = User::whereIn('email', $ccCorreos)->get();
+
+        // Extraer solo los emails válidos (por si alguno está inactivo o nulo)
+        $ccEmails = $ccUsuarios->pluck('email')->filter()->toArray();
+        // Email del proveedor
+        $emailProveedor = $pedido->proveedor->email;
+
+        // Enviar el correo
+        Mail::to($emailProveedor)
+            ->cc($ccEmails)
+            ->send(new PedidoCreado($pedido));
 
         return redirect()->route('pedidos.index')->with('success', 'Correo enviado correctamente.');
     }

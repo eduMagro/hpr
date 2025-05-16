@@ -58,7 +58,6 @@ class Pedido extends Model
         return $prefix . $númeroFormateado;
     }
 
-
     public function proveedor()
     {
         return $this->belongsTo(Proveedor::class);

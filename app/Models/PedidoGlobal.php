@@ -76,15 +76,17 @@ class PedidoGlobal extends Model
         return $this->belongsTo(Proveedor::class, 'proveedor_id');
     }
 
-    // Accesor para calcular cantidad pedida acumulada
-    public function getCantidadAcumuladaAttribute()
+    // Accesor para calcular la cantidad restante
+    public function getCantidadRestanteAttribute()
     {
-        // Obtener los IDs de los pedidos asociados a este pedido global
-        $pedidosIds = $this->pedidos()->pluck('id');
+        // Sumar el peso_total de todos los pedidos asociados a este pedido global
+        $cantidadPedida = $this->pedidos()->sum('peso_total');
 
-        // Sumar el peso_total de todas las entradas asociadas a esos pedidos
-        return Entrada::whereIn('pedido_id', $pedidosIds)->sum('peso_total');
+        // Restar a la cantidad_total del pedido global
+        return max(0, $this->cantidad_total - $cantidadPedida);
     }
+
+
     public function entradas()
     {
         return $this->hasManyThrough(

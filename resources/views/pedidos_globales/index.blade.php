@@ -34,7 +34,7 @@
                         <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                         <th class="p-2 border">{!! $ordenables['proveedor'] ?? 'Proveedor' !!}</th>
                         <th class="p-2 border">{!! $ordenables['cantidad_total'] ?? 'Cantidad Total' !!}</th>
-                        <th class="p-2 border">Cantidad Acumulada</th>
+                        <th class="p-2 border">Cantidad Restante</th>
                         <th class="p-2 border">Progreso</th>
                         <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
                         <th class="p-2 border">Creación Registro</th>
@@ -126,7 +126,7 @@
 
                             <!-- Cantidad acumulada (solo lectura) -->
                             <td class="p-2 border">
-                                {{ number_format($pedido->cantidad_acumulada, 2, ',', '.') }} kg
+                                {{ number_format($pedido->cantidad_restante, 2, ',', '.') }} kg
                             </td>
 
                             <!-- Progreso (solo lectura) -->

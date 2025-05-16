@@ -31,7 +31,7 @@
                             </h2>
 
                             <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-                                Estimado proveedor,<br>
+                                Estimado proveedor, {{ $pedido->proveedor->nombre }}<br>
                                 Le informamos que se ha generado un nuevo pedido a fecha
                                 {{ $pedido->created_at->format('d/m/Y') }}
                                 con
@@ -108,6 +108,13 @@
         <div style="position: absolute; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px;">
             <form action="{{ route('pedidos.enviarCorreo', $pedido->id) }}" method="POST">
                 @csrf
+                <!-- CC input aquí -->
+                <div style="margin-bottom: 12px;">
+                    <label for="cc" style="font-weight: 600; color: #374151;">Enviar también a (CC):</label><br>
+                    <input type="text" name="cc" id="cc"
+                        placeholder="correo1@ejemplo.com, correo2@ejemplo.com"
+                        style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #d1d5db; margin-top: 6px;">
+                </div>
                 <button type="submit"
                     style="
                     background-color: #2563eb;
