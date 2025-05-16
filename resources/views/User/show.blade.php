@@ -73,15 +73,33 @@
             var eventosDesdeLaravel = {!! json_encode($eventos) !!};
             var coloresTurnos = {!! json_encode($coloresTurnos) !!};
 
+            // ✅ Recuperar vista y fecha guardadas
+            const vistaGuardada = localStorage.getItem('ultimaVistaCalendario') || 'dayGridMonth';
+            const fechaGuardada = localStorage.getItem('fechaCalendario');
+
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
+                initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
                 locale: 'es',
                 height: 'auto',
                 selectable: true,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    right: ''
+                },
+                // ✅ Guardar la vista y fecha actual cada vez que cambia
+                datesSet: function(info) {
+                    let fechaActual = info.startStr;
+
+                    if (calendar.view.type === 'dayGridMonth') {
+                        const middleDate = new Date(info.start);
+                        middleDate.setDate(middleDate.getDate() + 15); // Aproximadamente mitad del mes
+                        fechaActual = middleDate.toISOString().split('T')[0];
+                    }
+
+                    localStorage.setItem('fechaCalendario', fechaActual);
+                    localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
                 },
                 events: eventosDesdeLaravel,
                 select: function(info) {

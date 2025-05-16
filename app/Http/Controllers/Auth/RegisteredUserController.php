@@ -38,6 +38,8 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+            'movil_personal' => ['nullable', 'string', 'lowercase', 'max:255', 'unique:users,movil_personal'],
+            'movil_empresa' => ['nullable', 'string', 'lowercase', 'max:255', 'unique:users,movil_empresa'],
             'dni' => [
                 'required',
                 'string',
@@ -63,6 +65,16 @@ class RegisteredUserController extends Controller
             'email.email' => 'Debe ingresar un correo electrónico válido.',
             'email.max' => 'El correo electrónico no puede superar los 255 caracteres.',
             'email.unique' => 'Este correo electrónico ya está registrado.',
+
+            'movil_personal.string' => 'El móvil personal debe ser un texto válido.',
+            'movil_personal.lowercase' => 'El móvil personal debe estar en minúsculas.',
+            'movil_personal.max' => 'El móvil personal no puede superar los 255 caracteres.',
+            'movil_personal.unique' => 'Este número de móvil personal ya está registrado.',
+
+            'movil_empresa.string' => 'El móvil de empresa debe ser un texto válido.',
+            'movil_empresa.lowercase' => 'El móvil de empresa debe estar en minúsculas.',
+            'movil_empresa.max' => 'El móvil de empresa no puede superar los 255 caracteres.',
+            'movil_empresa.unique' => 'Este número de móvil de empresa ya está registrado.',
 
             'dni.required' => 'El DNI es obligatorio.',
             'dni.string' => 'El DNI debe ser un texto válido.',
@@ -92,6 +104,8 @@ class RegisteredUserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'movil_personal' => $request->movil_personal,
+            'movil_empresa' => $request->movil_empresa,
             'dni' => $request->dni,
             'rol' => $request->rol,
             'categoria' => $request->categoria,

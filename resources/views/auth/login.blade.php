@@ -30,8 +30,16 @@
         <div class="block mt-4">
             <label for="remember_me" class="inline-flex items-center">
                 <input id="remember_me" type="checkbox"
-                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
+                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember"
+                    checked>
                 <span class="ms-2 text-sm text-gray-600">{{ __('Recuerdame') }}</span>
+            </label>
+        </div>
+        <div class="block mt-4">
+            <label for="recordar_correo" class="inline-flex items-center">
+                <input id="recordar_correo" type="checkbox"
+                    class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" checked>
+                <span class="ms-2 text-sm text-gray-600">Recordar correo</span>
             </label>
         </div>
 
@@ -48,4 +56,30 @@
             </x-primary-button>
         </div>
     </form>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const emailInput = document.getElementById('email');
+            const recordarCheckbox = document.getElementById('recordar_correo');
+
+            // Al cargar, si hay un correo guardado en localStorage, lo rellenamos
+            const correoGuardado = localStorage.getItem('correoRecordado');
+            if (correoGuardado) {
+                emailInput.value = correoGuardado;
+                recordarCheckbox.checked = true;
+            } else {
+                recordarCheckbox.checked = true; // ✅ Activado por defecto aunque no haya correo aún
+            }
+
+
+            // Al enviar el formulario, guardamos o borramos el correo según el checkbox
+            document.querySelector('form').addEventListener('submit', function() {
+                if (recordarCheckbox.checked) {
+                    localStorage.setItem('correoRecordado', emailInput.value);
+                } else {
+                    localStorage.removeItem('correoRecordado');
+                }
+            });
+        });
+    </script>
+
 </x-guest-layout>
