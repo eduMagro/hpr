@@ -597,32 +597,47 @@ class PedidoController extends Controller
     {
         $pedido = Pedido::with(['productos', 'proveedor', 'obra'])->findOrFail($id);
 
-        $mailable = new PedidoCreado($pedido);
+        // puedes comentar esto si no se usa en la vista directamente
+        $mailable = new PedidoCreado(
+            $pedido,
+            'compras@pacoreyes.com',
+            'Pedidos - Hierros Paco Reyes',
+            [
+                'sebastian.duran@pacoreyes.com',
+                'indiana.tirado@pacoreyes.com',
+                'alberto.mayo@pacoreyes.com',
+                'josemanuel.amuedo@pacoreyes.com',
+            ]
+        );
 
         return view('emails.pedidos.pedido_creado', [
             'pedido' => $pedido,
-            'esVistaPrevia' => true, // 👈 Esto activará el botón solo en la vista previa
+            'esVistaPrevia' => true,
         ]);
     }
+
     public function enviarCorreo($id, Request $request)
     {
         $pedido = Pedido::with('productos')->findOrFail($id);
 
         // Correos base
         $ccEmails = [
-            'sebastian.duran@pacoreyes.com',
-            'indiana.tirado@pacoreyes.com',
-            'alberto.mayo@pacoreyes.com',
-            'josemanuel.amuedo@pacoreyes.com',
+            'eduardo.magro@pacoreyes.com',
+
         ];
 
         // Email del proveedor
         $emailProveedor = $pedido->proveedor->email;
 
-        // Enviar el correo
-        Mail::to($emailProveedor)
-            ->cc($ccEmails)
-            ->send(new PedidoCreado($pedido));
+        Mail::to($emailProveedor)->send(
+            new PedidoCreado(
+                $pedido,
+                'compras@pacoreyes.com',
+                'Pedidos - Hierros Paco Reyes',
+                $ccEmails
+            )
+        );
+
 
         return redirect()->route('pedidos.index')->with('success', 'Correo enviado correctamente.');
     }

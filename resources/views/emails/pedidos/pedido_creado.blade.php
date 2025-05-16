@@ -16,36 +16,32 @@
                     <!-- Header -->
                     <tr style="background-color: #1f2937;">
                         <td style="padding: 20px 30px;">
-                            <img src="{{ config('app.url') . '/imagenes/ico/android-chrome-192x192.png' }}"
-                                alt="Logo">
+                            <table cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="vertical-align: middle; padding-right: 12px;">
+                                        <img src="{{ config('app.url') . '/imagenes/ico/android-chrome-192x192.png' }}"
+                                            alt="Logo Hierros Paco Reyes" width="40" height="40"
+                                            style="border-radius: 6px;">
+                                    </td>
+                                    <td style="vertical-align: middle;">
+                                        <h1 style="color: #CE1F23; font-size: 24px; margin: 0;">Hierros Paco Reyes</h1>
+                                    </td>
+                                </tr>
+                            </table>
 
-                            <h1 style="color: #CE1F23; font-size: 24px; margin: 0;">Hierros Paco Reyes</h1>
-                            <p style="color: #d1d5db; font-size: 14px; margin: 4px 0 0;">Especialistas en ferrallado
-                                industrial</p>
+                            <!-- Párrafo independiente alineado completamente a la izquierda -->
+                            <p style="color: #d1d5db; font-size: 14px; margin: 10px 0 0; padding-left: 0;">
+                                Especialistas en ferrallado industrial
+                            </p>
                         </td>
                     </tr>
+
 
                     <!-- Body -->
                     <tr>
                         <td style="padding: 30px;">
                             <h2 style="color: #1f2937; font-size: 20px; margin-bottom: 10px;">📦 Confirmación de pedido
                             </h2>
-                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
-                                PRUEBA !!!!!!
-                            </h2>
-                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
-                                PRUEBA !!!!!!
-                            </h2>
-                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
-                                PRUEBA !!!!!!
-                            </h2>
-                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
-                                PRUEBA !!!!!!
-                            </h2>
-                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
-                                PRUEBA !!!!!!
-                            </h2>
-
                             <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
                                 Estimado proveedor, {{ $pedido->proveedor->nombre }}<br>
                                 Le informamos que se ha generado un nuevo pedido a fecha
