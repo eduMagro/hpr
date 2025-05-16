@@ -603,18 +603,13 @@ class PedidoController extends Controller
         $pedido = Pedido::with('productos')->findOrFail($id);
 
         // Correos base
-        $ccCorreos = [
+        $ccEmails = [
             'sebastian.duran@pacoreyes.com',
             'indiana.tirado@pacoreyes.com',
             'alberto.mayo@pacoreyes.com',
             'josemanuel.amuedo@pacoreyes.com',
         ];
 
-        // Obtener usuarios desde la base de datos (por si necesitas más info o lógica a futuro)
-        $ccUsuarios = User::whereIn('email', $ccCorreos)->get();
-
-        // Extraer solo los emails válidos (por si alguno está inactivo o nulo)
-        $ccEmails = $ccUsuarios->pluck('email')->filter()->toArray();
         // Email del proveedor
         $emailProveedor = $pedido->proveedor->email;
 
