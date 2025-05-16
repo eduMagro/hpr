@@ -13,6 +13,7 @@ class Pedido extends Model
         'codigo',
         'pedido_global_id',
         'proveedor_id',
+        'obra_id',
         'fecha_pedido',
         'fecha_entrega',
         'estado',
@@ -61,6 +62,10 @@ class Pedido extends Model
     public function proveedor()
     {
         return $this->belongsTo(Proveedor::class);
+    }
+    public function obra()
+    {
+        return $this->belongsTo(Obra::class);
     }
 
     public function productos()

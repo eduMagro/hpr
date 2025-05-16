@@ -258,6 +258,19 @@
                                     <input type="date" name="fecha_entrega" id="fecha_entrega"
                                         class="w-full border border-gray-300 rounded px-3 py-2">
                                 </div>
+                                {{-- Campo de lugar de entrega --}}
+                                <div class="text-left">
+                                    <label for="obra_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Lugar de Entrega:
+                                    </label>
+                                    <select name="obra_id" id="obra_id"
+                                        class="w-full border border-gray-300 rounded px-3 py-2" required>
+                                        <option value="">Seleccionar obra</option>
+                                        @foreach ($obrasActivas as $obra)
+                                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
                                 <table
                                     class="w-full border-collapse text-sm text-center shadow-xl  overflow-hidden rounded-lg shadow border border-gray-300">

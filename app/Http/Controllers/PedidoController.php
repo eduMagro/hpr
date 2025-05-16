@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Mail\PedidoCreado;
 use App\Models\User;
+use App\Models\Obra;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
@@ -290,8 +291,10 @@ class PedidoController extends Controller
                 ];
             }
         }
+        // Obtener obras activas
+        $obrasActivas = Obra::where('estado', 'activa')->orderBy('obra')->get();
 
-        return view('pedidos.index', compact('pedidos', 'stockData', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'proveedores', 'filtrosActivos', 'ordenables', 'proveedores', 'pedidosGlobales'));
+        return view('pedidos.index', compact('pedidos', 'obrasActivas', 'stockData', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'proveedores', 'filtrosActivos', 'ordenables', 'proveedores', 'pedidosGlobales',));
     }
 
     public function recepcion($id)
@@ -514,9 +517,11 @@ class PedidoController extends Controller
 
     public function store(Request $request)
     {
+
         $request->validate([
             'seleccionados' => 'required|array',
             'fabricante_id' => 'required|exists:proveedores,id',
+            'obra_id' => 'required|exists:obras,id',
             'fecha_entrega' => 'required|date|after_or_equal:today',
         ], [
             'seleccionados.required' => 'Debes seleccionar al menos un producto.',
@@ -545,6 +550,7 @@ class PedidoController extends Controller
             'pedido_global_id' => $pedidoGlobal->id,
             'estado' => 'pendiente',
             'proveedor_id' => $request->fabricante_id,
+            'obra_id' => $request->obra_id,
             'fecha_pedido' => now(),
             'fecha_entrega' => $request->fecha_entrega,
         ]);
@@ -589,7 +595,7 @@ class PedidoController extends Controller
      */
     public function show($id)
     {
-        $pedido = Pedido::with(['productos', 'proveedor'])->findOrFail($id);
+        $pedido = Pedido::with(['productos', 'proveedor', 'obra'])->findOrFail($id);
 
         $mailable = new PedidoCreado($pedido);
 

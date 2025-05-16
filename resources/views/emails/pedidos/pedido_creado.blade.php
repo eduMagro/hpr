@@ -16,8 +16,9 @@
                     <!-- Header -->
                     <tr style="background-color: #1f2937;">
                         <td style="padding: 20px 30px;">
-                            <img src="{{ asset('imagenes/ico/android-chrome-192x192.png') }}" alt="Logo"
-                                width="48" style="vertical-align: middle; border-radius: 6px; margin-right: 12px;">
+                            <img src="{{ config('app.url') . '/imagenes/ico/android-chrome-192x192.png' }}"
+                                alt="Logo">
+
                             <h1 style="color: #CE1F23; font-size: 24px; margin: 0;">Hierros Paco Reyes</h1>
                             <p style="color: #d1d5db; font-size: 14px; margin: 4px 0 0;">Especialistas en ferrallado
                                 industrial</p>
@@ -28,6 +29,21 @@
                     <tr>
                         <td style="padding: 30px;">
                             <h2 style="color: #1f2937; font-size: 20px; margin-bottom: 10px;">📦 Confirmación de pedido
+                            </h2>
+                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
+                                PRUEBA !!!!!!
+                            </h2>
+                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
+                                PRUEBA !!!!!!
+                            </h2>
+                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
+                                PRUEBA !!!!!!
+                            </h2>
+                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
+                                PRUEBA !!!!!!
+                            </h2>
+                            <h2 style="color: red; font-size: 20px; margin-bottom: 10px;">¡¡¡¡ ESTO ES UN MANSEJE DE
+                                PRUEBA !!!!!!
                             </h2>
 
                             <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
@@ -47,6 +63,12 @@
                                     <td style="padding: 8px 0;"><strong>Fecha de entrega:</strong></td>
                                     <td style="padding: 8px 0;">
                                         {{ \Carbon\Carbon::parse($pedido->fecha_entrega)->format('d/m/Y') }}</td>
+
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0;"><strong>Lugar de entrega:</strong></td>
+                                    <td style="padding: 8px 0;">
+                                        {{ $pedido->obra->obra ?? 'N/A' }}</td>
 
                                 </tr>
                             </table>
@@ -108,13 +130,13 @@
         <div style="position: absolute; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px;">
             <form action="{{ route('pedidos.enviarCorreo', $pedido->id) }}" method="POST">
                 @csrf
-                <!-- CC input aquí -->
-                <div style="margin-bottom: 12px;">
+                <!-- CC input aquí || DESCOMENTAR SI QUIERES ELEGIR LOS CC MANUALMENTE-->
+                {{-- <div style="margin-bottom: 12px;">
                     <label for="cc" style="font-weight: 600; color: #374151;">Enviar también a (CC):</label><br>
                     <input type="text" name="cc" id="cc"
                         placeholder="correo1@ejemplo.com, correo2@ejemplo.com"
                         style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #d1d5db; margin-top: 6px;">
-                </div>
+                </div> --}}
                 <button type="submit"
                     style="
                     background-color: #2563eb;
