@@ -12,10 +12,15 @@
 
     <div class="container mx-auto px-4 py-6 space-y-12" id="contenedorCalendarios">
 
-        <!-- Calendario Operarios -->
+        <!-- Calendario Maquinistas -->
         <div class="bg-white rounded-lg shadow-lg p-6">
-            <h3 class="text-lg font-semibold text-blue-700 mb-4">Vacaciones · Operarios</h3>
-            <div id="calendario-operarios"></div>
+            <h3 class="text-lg font-semibold text-blue-700 mb-4">Vacaciones · Maquinistas</h3>
+            <div id="calendario-maquinistas"></div>
+        </div>
+        <!-- Calendario Ferrallas -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-blue-700 mb-4">Vacaciones · Ferrallas</h3>
+            <div id="calendario-ferrallas"></div>
         </div>
 
         <!-- Calendario Oficina -->
@@ -41,14 +46,20 @@
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    right: ''
                 }
             };
 
-            // Calendario Operarios
-            const calendarioOperarios = new FullCalendar.Calendar(document.getElementById('calendario-operarios'), {
+            // Calendario Maquinistas
+            const calendarioMaquinistas = new FullCalendar.Calendar(document.getElementById(
+                'calendario-maquinistas'), {
                 ...configComun,
-                events: @json($eventosOperarios)
+                events: @json($eventosMaquinistas)
+            });
+            // Calendario Ferrallas
+            const calendarioFerrallas = new FullCalendar.Calendar(document.getElementById('calendario-ferrallas'), {
+                ...configComun,
+                events: @json($eventosFerrallas)
             });
 
             // Calendario Oficina
@@ -57,8 +68,10 @@
                 events: @json($eventosOficina)
             });
 
-            calendarioOperarios.render();
+            calendarioMaquinistas.render();
+            calendarioFerrallas.render();
             calendarioOficina.render();
+
         });
     </script>
 </x-app-layout>
