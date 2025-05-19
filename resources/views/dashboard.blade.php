@@ -137,7 +137,63 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal Aceptación de Políticas -->
+        <!-- Modal Aceptación de Políticas -->
+        <div id="modal-politicas"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
+            <div class="bg-white p-6 rounded-lg w-full max-w-xl shadow-xl">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Términos y condiciones</h2>
+
+                <p class="text-sm text-gray-600 mb-4">
+                    Antes de utilizar esta aplicación, debes leer y aceptar nuestra
+                    <a href="{{ route('politica.privacidad') }}" target="_blank"
+                        class="text-blue-600 underline">Política de Privacidad</a>
+                    y nuestra
+                    <a href="{{ route('politica.cookies') }}" target="_blank" class="text-blue-600 underline">Política
+                        de Cookies</a>.
+                </p>
+
+                <form method="POST" action="{{ route('aceptar.politicas') }}" class="space-y-4">
+                    @csrf
+
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="acepta_privacidad" name="acepta_privacidad" required class="mt-1">
+                        <label for="acepta_privacidad" class="text-sm text-gray-700">He leído y acepto la Política de
+                            Privacidad</label>
+                    </div>
+
+                    <div class="flex items-start space-x-2">
+                        <input type="checkbox" id="acepta_cookies" name="acepta_cookies" required class="mt-1">
+                        <label for="acepta_cookies" class="text-sm text-gray-700">He leído y acepto la Política de
+                            Cookies</label>
+                    </div>
+
+                    <input type="hidden" name="ip_usuario" value="{{ request()->ip() }}">
+                    <input type="hidden" name="user_agent" value="{{ request()->userAgent() }}">
+
+                    <div class="pt-4 text-right">
+                        <button type="submit"
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            Aceptar y continuar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Puedes usar esta condición desde el backend con una variable tipo Blade
+            const debeAceptarPoliticas = {{ auth()->user()->acepta_politica_privacidad ? 'false' : 'true' }};
+
+            if (debeAceptarPoliticas) {
+                const modal = document.getElementById('modal-politicas');
+                modal.classList.remove('hidden');
+            }
+        });
+    </script>
 
     <!-- Estilos CSS directos -->
     <style>

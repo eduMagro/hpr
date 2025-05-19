@@ -30,6 +30,7 @@ use App\Http\Controllers\AsignacionTurnoController;
 use App\Http\Controllers\CamionController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\PoliticaController;
 //nominas
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\IrpfTramoController;
@@ -80,14 +81,14 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
 
-    // ✅ Primero las rutas específicas
-    Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])->name('localizaciones.verificar');
-    Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])->name('localizaciones.editarMapa');
+    // // ✅ Primero las rutas específicas
+    // Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])->name('localizaciones.verificar');
+    // Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])->name('localizaciones.editarMapa');
 
-    // ✅ Después la ruta resource
-    Route::resource('localizaciones', LocalizacionController::class)->parameters([
-        'localizaciones' => 'localizacion'
-    ]);
+    // // ✅ Después la ruta resource
+    // Route::resource('localizaciones', LocalizacionController::class)->parameters([
+    //     'localizaciones' => 'localizacion'
+    // ]);
 
     Route::resource('ubicaciones', UbicacionController::class);
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
@@ -188,6 +189,12 @@ Route::middleware('auth')->group(function () {
     //SIMULACION INVERSA
     Route::get('/simulacion-inversa', [NominaController::class, 'formularioInverso'])->name('nomina.inversa');
     Route::post('/simulacion-inversa', [NominaController::class, 'simularDesdeNeto'])->name('nomina.inversa.calcular');
+
+    Route::controller(PoliticaController::class)->group(function () {
+        Route::get('/politica-privacidad', 'mostrarPrivacidad')->name('politica.privacidad');
+        Route::get('/politica-cookies', 'mostrarCookies')->name('politica.cookies');
+        Route::post('/aceptar-politicas', 'aceptar')->name('aceptar.politicas');
+    });
 });
 
 
