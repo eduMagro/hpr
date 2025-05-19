@@ -139,30 +139,28 @@
         </div>
 
         <!-- Modal Aceptación de Políticas -->
+        <!-- Modal Aceptación de Políticas -->
         <div id="modal-politicas"
             class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">
-            <div class="bg-white p-6 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl">
+            <div class="bg-white p-6 rounded-lg w-full max-w-3xl shadow-xl">
                 <h2 class="text-xl font-semibold text-gray-800 mb-4">Términos y condiciones</h2>
 
-                <!-- Área scrolleable -->
-                <div class="space-y-6 max-h-[50vh] overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50">
-
+                <!-- 🟦 Área scrolleable SOLO para el contenido legal -->
+                <div class="space-y-6 max-h-64 overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50">
                     <!-- Política de Privacidad -->
                     <div>
                         <h3 class="text-lg font-bold text-gray-700 mb-2">Política de Privacidad</h3>
                         <p class="text-sm text-gray-700 leading-relaxed">
                             Hierros Paco Reyes S.L., con CIF B90467390, actúa como responsable del tratamiento de los
-                            datos
-                            personales recabados a través de esta aplicación. Los datos serán tratados con las
-                            siguientes finalidades:
-                            gestión laboral, generación de nóminas, control de fichajes y turnos, y comunicaciones
-                            internas.
-                            <br><br>
+                            datos personales
+                            recabados a través de esta aplicación. Los datos serán tratados con las siguientes
+                            finalidades: gestión laboral,
+                            generación de nóminas, control de fichajes y turnos, y comunicaciones internas.<br><br>
                             La base legal es la ejecución del contrato laboral y el cumplimiento de obligaciones
                             legales.
                             Los datos se almacenan en servidores dentro del Espacio Económico Europeo y se conservarán
-                            durante la
-                            relación laboral y hasta 5 años después. Puedes ejercer tus derechos enviando un correo a
+                            durante la relación
+                            laboral y hasta 5 años después. Puedes ejercer tus derechos enviando un correo a
                             <strong>rrhh@pacoreyes.com</strong>.
                         </p>
                     </div>
@@ -172,8 +170,7 @@
                         <h3 class="text-lg font-bold text-gray-700 mb-2">Política de Cookies</h3>
                         <p class="text-sm text-gray-700 leading-relaxed">
                             Esta aplicación utiliza cookies técnicas necesarias para el funcionamiento del sistema, así
-                            como cookies de personalización para guardar tus preferencias.
-                            <br><br>
+                            como cookies de personalización para guardar tus preferencias.<br><br>
                             También puede utilizar cookies de análisis si das tu consentimiento, con el fin de mejorar
                             el rendimiento de la plataforma. Las cookies no recogen datos sensibles y puedes configurar
                             su uso desde los ajustes de tu navegador.
@@ -209,6 +206,7 @@
                 </form>
             </div>
         </div>
+
 
     </div>
     <script>
