@@ -12,7 +12,7 @@ use App\Models\Ubicacion;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
-
+use Carbon\Carbon;
 
 class MaquinaController extends Controller
 {
@@ -21,10 +21,12 @@ class MaquinaController extends Controller
         $usuario = auth()->user();
 
         if ($usuario->rol === 'operario') {
+            $hoy = Carbon::today();
+
             $asignacion = AsignacionTurno::where('user_id', $usuario->id)
+                ->whereDate('fecha', $hoy) // 👉 Solo turnos de hoy
                 ->whereNotNull('maquina_id')
                 ->whereNotNull('turno_id')
-                ->latest()
                 ->first();
 
             if (!$asignacion) {

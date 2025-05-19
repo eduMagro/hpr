@@ -17,7 +17,6 @@
             <div class="overflow-x-auto rounded-lg shadow">
                 <table class="min-w-full divide-y divide-gray-200 bg-white">
                     <thead class="bg-gray-50">
-
                         <tr>
                             <th class="px-4 py-2 text-left text-sm text-gray-600">Nombre</th>
                             <th class="px-4 py-2 text-left text-sm text-gray-600">Categoría</th>
@@ -79,7 +78,6 @@
 
     </div>
 
-    <!-- FullCalendar Scheduler con marca de agua -->
     <!-- ✅ FullCalendar Scheduler completo con vista resourceTimelineWeek -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>

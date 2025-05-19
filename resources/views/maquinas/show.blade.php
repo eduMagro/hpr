@@ -194,11 +194,10 @@
                         style="background-color: #fe7f09; border: 1px solid black;" class="proceso boder shadow-xl mt-4">
                         <!-- Asegúrate de incluir Lucide o FontAwesome si usas uno de esos -->
                         <div class="relative">
-                            <button
-                                onclick="generateAndPrintQR('{{ $etiqueta->etiqueta_sub_id }}', '{{ $etiqueta->planilla->codigo_limpio }}', 'ETIQUETA')"
-                                class="absolute top-2 right-2 text-blue-800 hover:text-blue-900">
+                            <button {{-- onclick="generateAndPrintQR('{{ $etiqueta->etiqueta_sub_id }}', '{{ $etiqueta->planilla->codigo_limpio }}', 'ETIQUETA')" --}} onclick="imprimirEtiqueta('{{ $etiqueta->etiqueta_sub_id }}')"
+                                class="absolute top-2 right-2 text-blue-800 hover:text-blue-900 no-print">
                                 <!-- Icono QR de Lucide -->
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
+                                🖨️ <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M3 3h4v4H3V3zm14 0h4v4h-4V3zM3 17h4v4H3v-4zm14 4v-4h-4v2a2 2 0 002 2h2zm-6-4h2v2h-2v-2zm4-4h4v4h-4v-4zm0-6h4v4h-4V7zM7 7h4v4H7V7z" />
@@ -223,7 +222,7 @@
                             </h3>
                             <!-- Contenedor oculto para generar el QR -->
                             <div id="qrContainer-{{ $etiqueta->id ?? 'N/A' }}" style="display: none;"></div>
-                            <div class="p-2">
+                            <div class="p-2 no-print">
                                 <p>
                                     <strong>Estado:</strong>
                                     <span id="estado-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
@@ -618,5 +617,147 @@
     </script>
     <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
     <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
+    {{-- Al final del archivo Blade --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        function imprimirEtiqueta(etiquetaSubId) {
+            const contenedor = document.getElementById(`etiqueta-${etiquetaSubId}`);
+            const canvas = contenedor.querySelector("canvas");
+
+            const canvasImg = canvas.toDataURL("image/png");
+            const clone = contenedor.cloneNode(true);
+            clone.classList.add("etiqueta-print");
+
+            // Eliminar botones
+            clone.querySelectorAll(".no-print").forEach(el => el.remove());
+
+            // Reemplazar canvas por imagen
+            const img = new Image();
+            img.src = canvasImg;
+            img.style.maxWidth = "100%";
+            const canvasContainer = clone.querySelector("canvas").parentNode;
+            canvasContainer.innerHTML = "";
+            canvasContainer.appendChild(img);
+
+            // Generar QR en contenedor oculto
+            const tempQR = document.createElement("div");
+            document.body.appendChild(tempQR);
+            const qrSize = 80; // más pequeño
+
+            new QRCode(tempQR, {
+                text: etiquetaSubId.toString(),
+                width: qrSize,
+                height: qrSize
+            });
+
+            setTimeout(() => {
+                const qrImg = tempQR.querySelector("img");
+                if (qrImg) {
+                    // Crear contenedor integrado
+                    const qrWrapper = document.createElement("div");
+                    qrWrapper.className = "qr-box";
+                    qrWrapper.appendChild(qrImg);
+                    clone.insertBefore(qrWrapper, clone.firstChild);
+                }
+
+                // Estilos
+                const style = `
+<style>
+    @media print {
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    }
+
+    .etiqueta-print {
+        width: 10.5cm;
+        margin: 0 auto;
+        padding: 1cm;
+        border: 1px solid #000;
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        color: #000;
+        box-sizing: border-box;
+    }
+
+    .etiqueta-print > * {
+        padding: 2px;
+        box-sizing: border-box;
+    }
+
+    .etiqueta-print h2 {
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+
+    .etiqueta-print h3 {
+        font-size: 12px;
+        margin-bottom: 3px;
+    }
+
+    .etiqueta-print p,
+    .etiqueta-print span,
+    .etiqueta-print strong {
+        font-size: 11px;
+    }
+
+    .etiqueta-print img:not(.qr-print) {
+        width: 100%;
+        height: auto;
+        display: block;
+        margin-top: 10px;
+    }
+
+    .qr-box {
+        float: right;
+        margin-left: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #000;
+        padding: 2px;
+    }
+
+    .qr-box img {
+        width: 80px;
+        height: 80px;
+    }
+
+    .proceso {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+</style>
+`;
+
+                // Abrir nueva ventana de impresión
+                const printWindow = window.open("", "_blank");
+                printWindow.document.open();
+                printWindow.document.write(`
+<html>
+<head>
+    <title>Etiqueta ${etiquetaSubId}</title>
+    ${style}
+</head>
+<body>
+    ${clone.outerHTML}
+    <script>
+        window.print();
+        setTimeout(() => window.close(), 500);
+    <\/script>
+</body>
+</html>
+`);
+                printWindow.document.close();
+
+                tempQR.remove();
+            }, 300);
+        }
+    </script>
+
 
 </x-app-layout>
