@@ -149,20 +149,85 @@
                 <div class="space-y-6 max-h-64 overflow-y-auto border border-gray-200 rounded-md p-4 bg-gray-50">
                     <!-- Política de Privacidad -->
                     <div>
-                        <h3 class="text-lg font-bold text-gray-700 mb-2">Política de Privacidad</h3>
-                        <p class="text-sm text-gray-700 leading-relaxed">
-                            Hierros Paco Reyes S.L., con CIF B90467390, actúa como responsable del tratamiento de los
-                            datos personales
-                            recabados a través de esta aplicación. Los datos serán tratados con las siguientes
-                            finalidades: gestión laboral,
-                            generación de nóminas, control de fichajes y turnos, y comunicaciones internas.<br><br>
-                            La base legal es la ejecución del contrato laboral y el cumplimiento de obligaciones
-                            legales.
-                            Los datos se almacenan en servidores dentro del Espacio Económico Europeo y se conservarán
-                            durante la relación
-                            laboral y hasta 5 años después. Puedes ejercer tus derechos enviando un correo a
-                            <strong>rrhh@pacoreyes.com</strong>.
+                        <p class="text-sm text-gray-700 leading-relaxed space-y-4">
+                            <strong>🛡️ Política de Privacidad</strong><br><br>
+
+                            <strong>1. Responsable del Tratamiento</strong><br>
+                            En cumplimiento del Reglamento (UE) 2016/679 (RGPD) y la Ley Orgánica 3/2018 (LOPDGDD), se
+                            informa que los datos personales facilitados a través de esta aplicación serán tratados
+                            por:<br><br>
+                            Responsable: Hierros Paco Reyes S.L.<br>
+                            CIF: B90467390<br>
+                            Dirección: [Indicar dirección postal]<br>
+                            Correo electrónico de contacto: eduardo.magro@pacoreyes.com<br><br>
+
+                            <strong>2. Finalidad del Tratamiento</strong><br>
+                            Los datos personales de los trabajadores se tratarán con las siguientes finalidades:<br>
+                            - Gestión de la relación laboral y administrativa.<br>
+                            - Gestión de turnos, fichajes, vacaciones, incidencias y horas trabajadas.<br>
+                            - Generación, cálculo y control de nóminas.<br>
+                            - Asignación de tareas y seguimiento de la producción.<br>
+                            - Control de acceso y presencia en el entorno de trabajo.<br>
+                            - Envío de notificaciones internas o recordatorios mediante sistemas automatizados (previo
+                            consentimiento).<br>
+                            - Registro puntual de la ubicación geográfica del trabajador exclusivamente en el momento
+                            del fichaje, con el fin de verificar que se realiza desde el centro de trabajo o zonas
+                            autorizadas.<br><br>
+
+                            <strong>3. Legitimación del Tratamiento</strong><br>
+                            El tratamiento de sus datos personales se basa en:<br>
+                            - La ejecución del contrato laboral entre la empresa y el trabajador.<br>
+                            - El cumplimiento de obligaciones legales en materia laboral, fiscal y de Seguridad
+                            Social.<br>
+                            - El consentimiento expreso del trabajador para funcionalidades opcionales, como el envío de
+                            recordatorios o comunicaciones internas por medios electrónicos.<br>
+                            - El interés legítimo de la empresa en garantizar que los fichajes se realicen correctamente
+                            desde ubicaciones autorizadas, utilizando geolocalización puntual con fines de control de
+                            asistencia.<br><br>
+
+                            <strong>4. Categorías de Datos Tratados</strong><br>
+                            Los datos personales tratados a través de esta aplicación incluyen:<br>
+                            - Nombre y apellidos<br>
+                            - DNI/NIE<br>
+                            - Correo electrónico personal y corporativo<br>
+                            - Categoría profesional y departamento<br>
+                            - Datos relacionados con su jornada, turnos, presencia, incidencias, vacaciones, nóminas y
+                            productividad<br>
+                            - Ubicación geográfica del dispositivo, únicamente en el momento del fichaje de entrada o
+                            salida<br><br>
+
+                            <strong>5. Conservación de los Datos</strong><br>
+                            Los datos serán conservados mientras se mantenga la relación laboral con el trabajador y,
+                            una vez finalizada, durante un período de hasta cinco (5) años, salvo que exista una
+                            obligación legal que exija su conservación durante un plazo superior.<br><br>
+
+                            <strong>6. Destinatarios y Encargados del Tratamiento</strong><br>
+                            Los datos no se cederán a terceros, salvo obligación legal. No obstante, podrán ser tratados
+                            por proveedores de servicios externos que actúan como encargados del tratamiento, tales
+                            como:<br>
+                            - Proveedores de hosting y servidores ubicados en el Espacio Económico Europeo (EEE)<br>
+                            - Proveedores de servicios tecnológicos para el funcionamiento de la aplicación (CDNs,
+                            fuentes web, etc.)<br>
+                            - Herramientas de análisis de uso (como Google Analytics), solo en caso de haber sido
+                            aceptadas expresamente por el usuario<br><br>
+
+                            <strong>7. Derechos del Usuario</strong><br>
+                            El trabajador podrá ejercer los siguientes derechos en cualquier momento:<br>
+                            - Acceder a sus datos personales<br>
+                            - Solicitar la rectificación de los datos inexactos<br>
+                            - Solicitar la supresión de sus datos<br>
+                            - Oponerse al tratamiento<br>
+                            - Solicitar la limitación del tratamiento<br>
+                            - Solicitar la portabilidad de los datos<br><br>
+                            Para ejercer estos derechos deberá enviar una solicitud por escrito a rrhh@pacoreyes.com,
+                            adjuntando copia de su documento identificativo.<br><br>
+
+                            <strong>8. Seguridad de los Datos</strong><br>
+                            La empresa ha adoptado todas las medidas técnicas y organizativas necesarias para garantizar
+                            la integridad, confidencialidad y disponibilidad de los datos personales almacenados, en
+                            cumplimiento del artículo 32 del RGPD.
                         </p>
+
                     </div>
 
                     <!-- Política de Cookies -->
