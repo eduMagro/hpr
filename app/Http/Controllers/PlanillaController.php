@@ -24,58 +24,78 @@ class PlanillaController extends Controller
 {
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
-        $pesoEstimado = $barras * $longitud * $diametro * 0.00617;
 
-        // Obtener las máquinas disponibles (puedes filtrar si lo deseas)
-        $maquinas = \App\Models\Maquina::all(); // o filtra solo activas, por tipo, etc.
+        $estribo = $doblesPorBarra >= 5 && $diametro < 20;
 
-        // Instancia del servicio
-        $ia = app(AsignacionMaquinaIAService::class);
+        $maquinas = collect(); // Inicializar con una colección vacía de Laravel
 
-        // Ejecutar decisión IA
-        $respuestaIA = $ia->decidirMaquina([
-            'diametro' => $diametro,
-            'longitud' => $longitud,
-            'figura' => $figura,
-            'dobles' => $doblesPorBarra,
-            'barras' => $barras,
-            'peso' => $pesoEstimado,
-            'ensamblado' => $ensamblado,
-            'maquinas_disponibles' => $maquinas->pluck('codigo')->join(', '),
-        ]);
+        $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
 
-        // Extraer el código de la máquina (primera línea)
-        $lineas = explode("\n", trim($respuestaIA));
-        $codigo = strtoupper(Str::slug($lineas[0], '')); // sanitiza y convierte
-
-        // Buscar esa máquina
-        $maquina = $maquinas->firstWhere('codigo', $codigo);
-
-        // Log o control de respuesta
-        logger()->info('📡 IA Asignación de Máquina', [
-            'elemento' => compact('diametro', 'longitud', 'figura', 'barras'),
-            'codigo_sugerido' => $codigo,
-            'respuesta_ia' => $respuestaIA,
-        ]);
-        // Si no encontró ninguna máquina, aplica una de respaldo o devuelve null
-        if (!$maquina) {
-            logger()->warning('⚠️ Código de máquina IA no encontrado', [
-                'codigo_sugerido' => $codigo,
-                'respuesta_completa' => $respuestaIA
-            ]);
-
-            // Puedes usar una máquina por defecto (ej: MANUAL), o devolver null
-            $maquina = $maquinas->firstWhere('codigo', 'MANUAL');
-
-            // Si ni siquiera hay MANUAL, lanza excepción para evitar error silencioso
-            if (!$maquina) {
-                throw new \Exception("No se pudo asignar ninguna máquina válida para el código IA: $codigo");
+        $maquinaForzada = null;
+        if (count($diametrosPlanilla) > 1) {
+            $maxDiametro = max($diametrosPlanilla);
+            if ($maxDiametro <= 12) {
+                $maquinaForzada = ['PS12', 'F12'];
+            } elseif ($maxDiametro <= 16) {
+                $maquinaForzada = ['MS16'];
+            } elseif ($maxDiametro <= 20) {
+                $maquinaForzada = ['MSR20'];
+            } elseif ($maxDiametro <= 25) {
+                $maquinaForzada = ['SL28'];
+            } else {
+                $maquinaForzada = ['MANUAL'];
             }
         }
 
-        return $maquina?->id;
-    }
+        if ($diametro == 5) {
+            $maquinas = Maquina::where('codigo', 'ID5')->get();
+        } elseif ($estribo) {
+            if ($diametro == 8) {
+                $maquinas = Maquina::where('codigo', 'PS12')->get();
+            } elseif (in_array($diametro, [10, 12])) {
+                $maquinas = Maquina::where('codigo', 'F12')->get();
+            } elseif (in_array($diametro, [10, 12])) {
+                $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
+            } elseif (in_array($diametro, [10, 16])) {
+                $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12', 'MS16'])->get();
+            }
+        } elseif (!$estribo && $diametro >= 10 && $diametro <= 16) {
+            $maquinas = Maquina::where('codigo', 'MS16')->get();
+        } elseif (!$estribo && $diametro >= 8 && $diametro <= 20) {
+            $maquinas = Maquina::where('codigo', 'MSR20')->get();
+        } elseif (!$estribo && $diametro >= 12 && $diametro <= 25) {
+            $maquinas = Maquina::where('codigo', 'SL28')->get();
+        } elseif ($maquinaForzada) {
+            $maquinas = Maquina::whereIn('codigo', $maquinaForzada)->get();
+        } else {
+            $maquinas = Maquina::where('codigo', 'MANUAL')->get();
+        }
 
+        if ($maquinas->isEmpty()) {
+            return null;
+        }
+
+        // Selección de la máquina con menor carga
+        $maquinaSeleccionada = null;
+        $pesoMinimo = PHP_INT_MAX;
+
+        foreach ($maquinas as $maquina) {
+            $pesoActual = Elemento::where('maquina_id', $maquina->id)->sum('peso');
+
+            if ($pesoActual < 5000) {
+                // Prioriza la primera máquina con menos de 5,000 kg
+                return $maquina->id;
+            }
+
+            // Si todas están por encima del umbral, selecciona la de menor peso acumulado
+            if ($pesoActual < $pesoMinimo) {
+                $pesoMinimo = $pesoActual;
+                $maquinaSeleccionada = $maquina;
+            }
+        }
+
+        return $maquinaSeleccionada?->id ?? null;
+    }
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
@@ -448,8 +468,10 @@ class PlanillaController extends Controller
                 }
 
                 foreach ($filasAgrupadasPorEtiqueta as $numeroEtiqueta => $filas) {
+                    $codigoPadre = Etiqueta::generarCodigoEtiqueta();
+
                     $etiquetaPadre = Etiqueta::create([
-                        'numero_etiqueta' => $numeroEtiqueta,
+                        'codigo' => $codigoPadre,
                         'planilla_id' => $planilla->id,
                         'nombre' => $filas[0][22] ?? 'Sin nombre',
                         'peso' => 0,
@@ -472,15 +494,15 @@ class PlanillaController extends Controller
 
                     $contadorSubetiquetas = 1;
                     foreach ($gruposPorMaquina as $maquina_id => $grupo) {
-                        $idHijo = "{$etiquetaPadre->id}.{$contadorSubetiquetas}";
+                        $codigoSub = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
 
                         $subEtiqueta = Etiqueta::create([
-                            'numero_etiqueta' => $numeroEtiqueta,
+                            'codigo' => $codigoPadre,
                             'planilla_id' => $planilla->id,
                             'nombre' => $grupo[0]['row'][22] ?? 'Sin nombre',
                             'peso' => 0,
                             'marca' => null,
-                            'etiqueta_sub_id' => $idHijo,
+                            'etiqueta_sub_id' => $codigoSub,
                         ]);
 
                         // Agrupar elementos duplicados
@@ -488,14 +510,13 @@ class PlanillaController extends Controller
                         foreach ($grupo as $item) {
                             $row = $item['row'];
                             $clave = implode('|', [
-                                $row[26], // figura
-                                $row[21], // fila
-                                $row[23], // marca
-                                // $row[30], // etiqueta
-                                $row[25], // diametro
-                                $row[27], // longitud
-                                $row[33] ?? 0, // dobles por barra
-                                $row[47] ?? '', // dimensiones
+                                $row[26],
+                                $row[21],
+                                $row[23],
+                                $row[25],
+                                $row[27],
+                                $row[33] ?? 0,
+                                $row[47] ?? '',
                             ]);
 
                             if (!isset($agrupados[$clave])) {
@@ -513,11 +534,12 @@ class PlanillaController extends Controller
                         foreach ($agrupados as $item) {
                             $row = $item['row'];
                             $tiempos = $this->calcularTiemposElemento($row);
-
+                            $codigoElemento = Elemento::generarCodigo();
                             Elemento::create([
+                                'codigo' => $codigoElemento,
                                 'planilla_id' => $planilla->id,
                                 'etiqueta_id' => $subEtiqueta->id,
-                                'etiqueta_sub_id' => $idHijo,
+                                'etiqueta_sub_id' => $codigoSub,
                                 'maquina_id' => $maquina_id,
                                 'figura' => $row[26],
                                 'fila' => $row[21],

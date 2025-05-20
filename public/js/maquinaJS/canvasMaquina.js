@@ -396,53 +396,14 @@ document.addEventListener("DOMContentLoaded", () => {
             ctx.fillStyle = ELEMENT_TEXT_COLOR;
             ctx.fillText(`#${elemento.id}`, labelX, labelY);
 
-            // Dibujar botón de dividir debajo de la figura
-            if (elemento.peso > 500 || elemento.barras > 30) {
-                const buttonX = canvas.width - 100;
-                const buttonY = centerY + availableSlotHeight / 2 - 50;
-
-                ctx.fillStyle = "#007bff";
-                ctx.fillRect(buttonX, buttonY, 80, 30);
-                ctx.fillStyle = "#fff";
-                ctx.font = "14px Arial";
-                ctx.fillText("✂️ Dividir", buttonX + 70, buttonY + 20);
-
-                // Area de click
-                canvas.addEventListener("click", function (event) {
-                    let rect = canvas.getBoundingClientRect();
-                    let mouseX = event.clientX - rect.left;
-                    let mouseY = event.clientY - rect.top;
-
-                    if (
-                        mouseX >= buttonX &&
-                        mouseX <= buttonX + 80 &&
-                        mouseY >= buttonY &&
-                        mouseY <= buttonY + 30
-                    ) {
-                        abrirModalDividirElemento(elemento.id);
-                    }
-                });
-            }
-            clickableIDs.push({
-                id: elemento.id,
-                x: labelX - 45,
-                y: labelY - 20,
-                width: 50,
-                height: 30,
-            });
-            // Botón "Dividir" (ya existente)
             const buttonX = canvas.width - 100;
             const buttonY = centerY + availableSlotHeight / 2 - 50;
 
-            // Nuevo botón "Cambiar máquina"
-            const cambioX = buttonX;
-            const cambioY = buttonY + 40;
-
-            ctx.fillStyle = "#28a745"; // verde compatible con el naranja de la etiqueta
-            ctx.fillRect(cambioX, cambioY, 110, 30);
+            ctx.fillStyle = "#007bff";
+            ctx.fillRect(buttonX, buttonY, 80, 30);
             ctx.fillStyle = "#fff";
-            ctx.font = "13px Arial";
-            ctx.fillText("🔁 Cambiar máquina", cambioX + 55, cambioY + 20);
+            ctx.font = "14px Arial";
+            ctx.fillText("✂️ Dividir", buttonX + 70, buttonY + 20);
 
             // Area de click
             canvas.addEventListener("click", function (event) {
@@ -451,10 +412,51 @@ document.addEventListener("DOMContentLoaded", () => {
                 let mouseY = event.clientY - rect.top;
 
                 if (
+                    mouseX >= buttonX &&
+                    mouseX <= buttonX + 80 &&
+                    mouseY >= buttonY &&
+                    mouseY <= buttonY + 30
+                ) {
+                    abrirModalEtiquetarElemento(elemento.id);
+                }
+            });
+
+            clickableIDs.push({
+                id: elemento.id,
+                x: labelX - 45,
+                y: labelY - 20,
+                width: 50,
+                height: 30,
+            });
+            // Botón "Dividir" (ya existente)
+
+            const cambioX = canvas.width - 160; // puedes ajustarlo
+            const cambioY = buttonY + 40;
+            const cambioAncho = 150;
+            const cambioAlto = 30;
+
+            ctx.fillStyle = "#28a745";
+            ctx.fillRect(cambioX, cambioY, cambioAncho, cambioAlto);
+            ctx.fillStyle = "#fff";
+            ctx.font = "13px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(
+                "🔁 Cambiar máquina",
+                cambioX + cambioAncho / 2,
+                cambioY + 20
+            );
+
+            // Área de clic
+            canvas.addEventListener("click", function (event) {
+                let rect = canvas.getBoundingClientRect();
+                let mouseX = event.clientX - rect.left;
+                let mouseY = event.clientY - rect.top;
+
+                if (
                     mouseX >= cambioX &&
-                    mouseX <= cambioX + 110 &&
+                    mouseX <= cambioX + cambioAncho &&
                     mouseY >= cambioY &&
-                    mouseY <= cambioY + 30
+                    mouseY <= cambioY + cambioAlto
                 ) {
                     abrirModalCambioElemento(elemento.id);
                 }
@@ -676,4 +678,133 @@ function agregarItemDesdeCanvas(itemCode) {
     const newItem = { id: itemCode, type: itemType };
     items.push(newItem);
     actualizarLista();
+}
+
+// =======================
+// Función para etiquetar elementos
+// =======================
+function abrirModalEtiquetarElemento(idElemento) {
+    const grupo = window.elementosAgrupadosScript.find((g) =>
+        g.elementos.some((e) => e.id === idElemento)
+    );
+
+    if (!grupo || !grupo.etiqueta) {
+        Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "No se encontró la etiqueta asociada al elemento.",
+        });
+        return;
+    }
+
+    const elemento = grupo.elementos.find((e) => e.id === idElemento);
+    const barrasOriginales = elemento.barras ?? 0;
+
+    if (barrasOriginales < 2) {
+        Swal.fire({
+            icon: "warning",
+            title: "No se puede dividir",
+            text: "Este elemento no tiene suficientes barras para dividirse.",
+        });
+        return;
+    }
+
+    const etiquetaSubId = grupo.etiqueta?.etiqueta_sub_id || "";
+    const base = etiquetaSubId.split(".")[0]; // ETQ-25-0001.02 → ETQ-25-0001
+
+    const subetiquetasExistentes = window.elementosAgrupadosScript
+        .filter((g) => {
+            const sub = g.etiqueta?.etiqueta_sub_id;
+            return sub && sub.startsWith(base + ".");
+        })
+        .map((g) => g.etiqueta.etiqueta_sub_id);
+
+    let subIdDisponible = null;
+    for (let i = 1; i <= 100; i++) {
+        const candidato = `${base}.${String(i).padStart(2, "0")}`;
+        if (!subetiquetasExistentes.includes(candidato)) {
+            subIdDisponible = candidato;
+            break;
+        }
+    }
+
+    if (!subIdDisponible) {
+        Swal.fire({
+            icon: "error",
+            title: "Límite alcanzado",
+            text: "No se pudo generar una nueva subetiqueta, ya existen demasiadas.",
+        });
+        return;
+    }
+
+    // Preguntar cuántas barras quiere mover
+    Swal.fire({
+        title: `¿Cuántas barras quieres mover?`,
+        input: "number",
+        inputAttributes: {
+            min: 1,
+            max: barrasOriginales,
+            step: 1,
+        },
+        inputValue: 1,
+        showCancelButton: true,
+        confirmButtonText: "Mover",
+        cancelButtonText: "Cancelar",
+        preConfirm: (valor) => {
+            const cantidad = parseInt(valor);
+            if (
+                isNaN(cantidad) ||
+                cantidad < 1 ||
+                cantidad > barrasOriginales
+            ) {
+                return Swal.showValidationMessage(
+                    `Debes ingresar un número entre 1 y ${barrasOriginales - 1}`
+                );
+            }
+            return cantidad;
+        },
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        const cantidadMover = result.value;
+
+        fetch(`/subetiquetas/crear`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": document.querySelector(
+                    'meta[name="csrf-token"]'
+                ).content,
+            },
+            body: JSON.stringify({
+                elemento_id: idElemento,
+                etiqueta_sub_id: subIdDisponible,
+                cantidad: cantidadMover,
+            }),
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: "success",
+                        title: "Elemento dividido",
+                        text: data.message,
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error al crear",
+                        text: data.message || "Algo salió mal",
+                    });
+                }
+            })
+            .catch((err) => {
+                console.error(err);
+                Swal.fire({
+                    icon: "error",
+                    title: "Error de red",
+                    text: "No se pudo dividir el elemento.",
+                });
+            });
+    });
 }

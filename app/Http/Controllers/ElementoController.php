@@ -365,6 +365,86 @@ class ElementoController extends Controller
         }
     }
 
+    public function crearSubEtiqueta(Request $request)
+    {
+        $request->validate([
+            'elemento_id' => 'required|exists:elementos,id',
+            'cantidad' => 'required|integer|min:1',
+            'etiqueta_sub_id' => 'required|string',
+        ]);
+
+        try {
+            $elemento = Elemento::findOrFail($request->elemento_id);
+            $etiquetaBase = Etiqueta::findOrFail($elemento->etiqueta_id);
+
+            if ($request->cantidad > $elemento->barras) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No puedes mover más barras de las que tiene el elemento.',
+                ]);
+            }
+
+            // Obtener la base alfanumérica del sub_id recibido
+            $baseCodigo = explode('.', $request->etiqueta_sub_id)[0]; // ETQ-25-0001.02 → ETQ-25-0001
+
+            // Buscar subetiquetas ya existentes con esa base
+            $subExistentes = Etiqueta::where('etiqueta_sub_id', 'like', "$baseCodigo.%")
+                ->pluck('etiqueta_sub_id')
+                ->toArray();
+
+            // Generar nuevo sub_id disponible
+            $nuevoSubId = null;
+            for ($i = 1; $i <= 100; $i++) {
+                $candidato = $baseCodigo . '.' . str_pad($i, 2, '0', STR_PAD_LEFT);
+                if (!in_array($candidato, $subExistentes)) {
+                    $nuevoSubId = $candidato;
+                    break;
+                }
+            }
+
+            if (!$nuevoSubId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo encontrar una subetiqueta disponible.',
+                ]);
+            }
+
+            // Crear nueva etiqueta
+            $nuevaEtiqueta = $etiquetaBase->replicate();
+            $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
+            $nuevaEtiqueta->save();
+
+            // Crear nuevo elemento
+            $nuevoElemento = $elemento->replicate();
+            $nuevoElemento->etiqueta_id = $nuevaEtiqueta->id;
+            $nuevoElemento->etiqueta_sub_id = $nuevoSubId;
+            $nuevoElemento->barras = $request->cantidad;
+            $nuevoElemento->codigo = Elemento::generarCodigo(); // si usas códigos tipo EL-25-001
+            $nuevoElemento->save();
+
+            // Actualizar o eliminar el elemento original
+            $elemento->barras -= $request->cantidad;
+            if ($elemento->barras <= 0) {
+                $elemento->delete();
+            } else {
+                $elemento->save();
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Subetiqueta $nuevoSubId y nuevo elemento creados correctamente.",
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al dividir elemento: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+
     public function store(Request $request)
     {
         $validated = $request->validate([

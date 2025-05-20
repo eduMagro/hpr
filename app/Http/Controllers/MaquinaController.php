@@ -139,7 +139,7 @@ class MaquinaController extends Controller
         }
 
         // Paginación
-        $perPage = $request->input('per_page', 10);
+        $perPage = $request->input('per_page', 20);
         $registrosMaquina = $query->paginate($perPage)->appends($request->except('page'));
         // DEPURACION INTERESANTE
         // $datosDepuracion = $registrosMaquina->map(function ($maquina) {

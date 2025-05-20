@@ -10,11 +10,10 @@
     </x-slot>
 
     <div class="mx-auto px-4 py-6">
-
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
             <!-- --------------------------------------------------------------- Información de la máquina --------------------------------------------------------------- -->
-            {{-- <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
+            <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
                 <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
                     {{ $maquina->codigo }}
                 </h3>
@@ -97,58 +96,34 @@
                         🛠️ Chequeo de Máquina
                     </button>
                 </div>
-            </div> --}}
+            </div>
             <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
-            <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-5">
-
+            <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
                 @php
                     $idsReempaquetados = collect($elementosReempaquetados ?? []);
 
                     function debeSerExcluido($elemento)
                     {
-                        // Verificar si el elemento tiene un paquete directo
                         $tienePaqueteDirecto = !is_null($elemento->paquete_id);
-
-                        // Verificar si el estado es "fabricado"
                         $estaFabricado = strtolower($elemento->estado) === 'fabricado';
-
-                        // Excluir solo si el elemento está fabricado Y pertenece a un paquete
                         return $tienePaqueteDirecto && $estaFabricado;
                     }
 
-                    if (stripos($maquina->tipo, 'ensambladora') !== false) {
-                        $elementosAgrupados = $elementosMaquina
-                            ->groupBy('etiqueta_sub_id')
-                            ->filter(function ($grupo) use ($maquina) {
-                                return $grupo->contains(function ($elemento) use ($maquina) {
-                                    return $elemento->maquina_id_2 == $maquina->id &&
-                                        $elemento->maquina_id != $maquina->id;
-                                });
-                            });
-                    } elseif (stripos($maquina->nombre, 'Soldadora') !== false) {
-                        $elementosAgrupados = $maquina
-                            ->elementosTerciarios()
-                            ->where('maquina_id_3', $maquina->id)
-                            ->get()
-                            ->filter(function ($item) {
-                                return !debeSerExcluido($item) &&
-                                    strtolower(optional($item->etiquetaRelacion)->estado ?? '') === 'soldando';
-                            })
-                            ->groupBy(function ($item) {
-                                return $item->etiqueta_id . '-' . $item->marca;
-                            });
-                    } else {
-                        $elementosAgrupados = $elementosMaquina
-                            ->filter(function ($elemento) {
-                                return !debeSerExcluido($elemento);
-                            })
-                            ->groupBy('etiqueta_sub_id');
-                    }
+                    $elementosFiltrados = $elementosMaquina->filter(function ($elemento) use ($maquina) {
+                        if (stripos($maquina->tipo, 'ensambladora') !== false) {
+                            return $elemento->maquina_id_2 == $maquina->id && $elemento->maquina_id != $maquina->id;
+                        }
+                        if (stripos($maquina->nombre, 'soldadora') !== false) {
+                            return !debeSerExcluido($elemento) &&
+                                $elemento->maquina_id_3 == $maquina->id &&
+                                strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') === 'soldando';
+                        }
+                        return !debeSerExcluido($elemento);
+                    });
 
-                    // Ordenar los grupos por la fecha_estimada_entrega de la planilla sin alterar el orden interno
-                    $elementosAgrupados = $elementosAgrupados->sortBy(
-                        fn($grupo) => optional($grupo->first()->planilla)->fecha_estimada_entrega,
-                    );
+                    $elementosAgrupados = $elementosFiltrados
+                        ->groupBy('etiqueta_sub_id')
+                        ->sortBy(fn($grupo) => optional($grupo->first()->planilla)->fecha_estimada_entrega);
 
                     $elementosAgrupadosScript = $elementosAgrupados
                         ->map(function ($grupo) {
@@ -156,9 +131,6 @@
                                 'etiqueta' => $grupo->first()->etiquetaRelacion ?? null,
                                 'planilla' => $grupo->first()->planilla ?? null,
                                 'elementos' => $grupo
-                                    // ->filter(function ($elemento) {
-                                    //     return !debeSerExcluido($elemento);
-                                    // })
                                     ->map(function ($elemento) {
                                         return [
                                             'id' => $elemento->id,
@@ -176,25 +148,24 @@
                         })
                         ->values();
                 @endphp
-                @forelse ($elementosAgrupados as $etiquetaId => $elementos)
+
+                @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
                     @php
                         $firstElement = $elementos->first();
-                        if ($firstElement) {
-                            $etiqueta = $firstElement->etiquetaRelacion;
-                            $planilla = $firstElement->planilla;
-                        } else {
-                            $etiqueta = null;
-                            $planilla = null;
-                        }
+                        $etiqueta =
+                            $firstElement->etiquetaRelacion ??
+                            \App\Models\Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+                        $planilla = $firstElement->planilla ?? null;
                         $tieneElementosEnOtrasMaquinas =
-                            isset($otrosElementos[$etiquetaId]) && $otrosElementos[$etiquetaId]->isNotEmpty();
-
+                            isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty();
                     @endphp
                     <div id="etiqueta-{{ $etiqueta->etiqueta_sub_id }}"
-                        style="background-color: #fe7f09; border: 1px solid black;" class="proceso boder shadow-xl mt-4">
+                        style="background-color: #fe7f09; border: 1px solid black;"
+                        class="proceso boder shadow-xl mt-4">
                         <!-- Asegúrate de incluir Lucide o FontAwesome si usas uno de esos -->
                         <div class="relative">
-                            <button {{-- onclick="generateAndPrintQR('{{ $etiqueta->etiqueta_sub_id }}', '{{ $etiqueta->planilla->codigo_limpio }}', 'ETIQUETA')" --}} onclick="imprimirEtiqueta('{{ $etiqueta->etiqueta_sub_id }}')"
+                            <button {{-- onclick="generateAndPrintQR('{{ $etiqueta->etiqueta_sub_id }}', '{{ $etiqueta->planilla->codigo_limpio }}', 'ETIQUETA')" --}}
+                                onclick="imprimirEtiqueta('{{ $etiqueta->etiqueta_sub_id }}')"
                                 class="absolute top-2 right-2 text-blue-800 hover:text-blue-900 no-print">
                                 <!-- Icono QR de Lucide -->
                                 🖨️ <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
@@ -250,6 +221,14 @@
                             <div id="canvas-container" style="width: 100%; border-top: 1px solid black;">
                                 <canvas id="canvas-etiqueta-{{ $etiqueta->id ?? 'N/A' }}"></canvas>
                             </div>
+                            <!-- Contenedor para el canvas de impresión -->
+                            <div id="canvas-container-print"
+                                style="width: 100%; border-top: 1px solid black; visibility: hidden; height: 0;">
+                                <canvas id="canvas-imprimir-etiqueta-{{ $etiqueta->etiqueta_sub_id }}"></canvas>
+
+                            </div>
+
+
                         </div>
                     </div>
                 @empty
@@ -283,7 +262,8 @@
                         </div>
                         {{-- Selección de máquina destino --}}
                         <label for="maquinaDestino" class="block font-semibold mb-1">Máquina destino:</label>
-                        <select id="maquinaDestino" name="maquina_id" class="w-full border p-2 rounded mb-4" required>
+                        <select id="maquinaDestino" name="maquina_id" class="w-full border p-2 rounded mb-4"
+                            required>
                             <option value="" disabled selected>Selecciona una máquina</option>
                             @php $maquinaActualId = $maquina->id; @endphp
 
@@ -318,8 +298,8 @@
                         <label for="num_nuevos" class="block text-sm font-medium text-gray-700 mb-1">
                             ¿Cuántos nuevos grupos de elementos quieres crear?
                         </label>
-                        <input type="number" name="num_nuevos" id="num_nuevos" class="w-full border rounded p-2 mb-4"
-                            min="1" placeholder="Ej: 2">
+                        <input type="number" name="num_nuevos" id="num_nuevos"
+                            class="w-full border rounded p-2 mb-4" min="1" placeholder="Ej: 2">
 
                         <div class="flex justify-end mt-4">
                             <button type="button"
@@ -345,6 +325,14 @@
                             placeholder="Escanea un QR..." autofocus>
                         <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
                     </div>
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function() {
+                            const input = document.getElementById("procesoEtiqueta");
+                            if (input) {
+                                input.focus();
+                            }
+                        });
+                    </script>
 
                     <!-- Sistema de inputs para crear paquetes -->
                     <div class="bg-gray-100 border p-2 mb-2 shadow-md rounded-lg">
@@ -616,33 +604,51 @@
         window.elementosAgrupadosScript = @json($elementosAgrupadosScript);
     </script>
     <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
+    <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script>
+
     <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
     {{-- Al final del archivo Blade --}}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <script>
         function imprimirEtiqueta(etiquetaSubId) {
-            const contenedor = document.getElementById(`etiqueta-${etiquetaSubId}`);
-            const canvas = contenedor.querySelector("canvas");
+            const canvas = document.getElementById(`canvas-imprimir-etiqueta-${etiquetaSubId}`);
+            if (!canvas) {
+                alert("No se encontró el canvas de impresión limpio.");
+                return;
+            }
 
-            const canvasImg = canvas.toDataURL("image/png");
+            // Aumentamos tamaño del canvas para impresión (doble escala)
+            const scaleFactor = 2;
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = canvas.width * scaleFactor;
+            tempCanvas.height = canvas.height * scaleFactor;
+            const ctx = tempCanvas.getContext("2d");
+            ctx.scale(scaleFactor, scaleFactor);
+            ctx.drawImage(canvas, 0, 0);
+
+            const canvasImg = tempCanvas.toDataURL("image/png");
+
+            // Clonar contenedor de etiqueta
+            const contenedor = document.getElementById(`etiqueta-${etiquetaSubId}`);
             const clone = contenedor.cloneNode(true);
             clone.classList.add("etiqueta-print");
 
-            // Eliminar botones
+            // Quitar botones u otros elementos no imprimibles
             clone.querySelectorAll(".no-print").forEach(el => el.remove());
 
-            // Reemplazar canvas por imagen
+            // Reemplazar canvas por imagen generada
             const img = new Image();
             img.src = canvasImg;
-            img.style.maxWidth = "100%";
+            img.style.width = "100%";
+            img.style.height = "auto";
             const canvasContainer = clone.querySelector("canvas").parentNode;
             canvasContainer.innerHTML = "";
             canvasContainer.appendChild(img);
 
-            // Generar QR en contenedor oculto
+            // Crear QR en div temporal
             const tempQR = document.createElement("div");
             document.body.appendChild(tempQR);
-            const qrSize = 80; // más pequeño
+            const qrSize = 140;
 
             new QRCode(tempQR, {
                 text: etiquetaSubId.toString(),
@@ -653,14 +659,12 @@
             setTimeout(() => {
                 const qrImg = tempQR.querySelector("img");
                 if (qrImg) {
-                    // Crear contenedor integrado
                     const qrWrapper = document.createElement("div");
                     qrWrapper.className = "qr-box";
                     qrWrapper.appendChild(qrImg);
                     clone.insertBefore(qrWrapper, clone.firstChild);
                 }
 
-                // Estilos
                 const style = `
 <style>
     @media print {
@@ -671,55 +675,55 @@
     }
 
     .etiqueta-print {
-        width: 10.5cm;
-        margin: 0 auto;
-        padding: 1cm;
-        border: 1px solid #000;
+        width: 16cm;
+        margin: 2cm auto;
+        padding: 1.5cm;
+        border: 2px solid #000;
         font-family: Arial, sans-serif;
-        font-size: 11px;
+        font-size: 15px;
         color: #000;
         box-sizing: border-box;
     }
 
     .etiqueta-print > * {
-        padding: 2px;
+        padding: 6px;
         box-sizing: border-box;
     }
 
     .etiqueta-print h2 {
-        font-size: 14px;
-        margin-bottom: 4px;
+        font-size: 22px;
+        margin-bottom: 8px;
     }
 
     .etiqueta-print h3 {
-        font-size: 12px;
-        margin-bottom: 3px;
+        font-size: 18px;
+        margin-bottom: 6px;
     }
 
     .etiqueta-print p,
     .etiqueta-print span,
     .etiqueta-print strong {
-        font-size: 11px;
+        font-size: 15px;
     }
 
     .etiqueta-print img:not(.qr-print) {
         width: 100%;
         height: auto;
         display: block;
-        margin-top: 10px;
+        margin-top: 14px;
     }
 
     .qr-box {
         float: right;
-        margin-left: 10px;
-        margin-bottom: 10px;
-        border: 1px solid #000;
-        padding: 2px;
+        margin-left: 14px;
+        margin-bottom: 14px;
+        border: 2px solid #000;
+        padding: 6px;
     }
 
     .qr-box img {
-        width: 80px;
-        height: 80px;
+        width: 140px;
+        height: 140px;
     }
 
     .proceso {
@@ -734,7 +738,6 @@
 </style>
 `;
 
-                // Abrir nueva ventana de impresión
                 const printWindow = window.open("", "_blank");
                 printWindow.document.open();
                 printWindow.document.write(`
@@ -753,7 +756,6 @@
 </html>
 `);
                 printWindow.document.close();
-
                 tempQR.remove();
             }, 300);
         }

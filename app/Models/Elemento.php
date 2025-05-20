@@ -24,6 +24,7 @@ class Elemento extends Model
     // Campos que se pueden asignar masivamente
     protected $fillable = [
         'id',
+        'codigo',
         'planilla_id',
         'etiqueta_id',
         'etiqueta_sub_id',
@@ -48,10 +49,23 @@ class Elemento extends Model
         'estado'
     ];
 
-    protected $appends = ['id_el', 'longitud_cm', 'longitud_m', 'peso_kg', 'diametro_mm'];
-    public function getIdElAttribute()
+    protected $appends = ['longitud_cm', 'longitud_m', 'peso_kg', 'diametro_mm'];
+    public static function generarCodigo(): string
     {
-        return 'EL' . $this->id;
+        $año = now()->year;
+        $anyoCorto = substr($año, -2);
+
+        $ultimo = self::where('codigo', 'like', "EL-$anyoCorto-%")
+            ->orderByDesc('codigo')
+            ->value('codigo');
+
+        $siguiente = 1;
+        if ($ultimo) {
+            $partes = explode('-', $ultimo); // EL-25-012
+            $siguiente = (int)($partes[2] ?? 0) + 1;
+        }
+
+        return sprintf("EL-%s-%03d", $anyoCorto, $siguiente);
     }
     /**
      * Indica si el modelo debe gestionar las marcas de tiempo.

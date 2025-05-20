@@ -13,6 +13,7 @@ class Etiqueta extends Model
     protected $table = 'etiquetas';
 
     protected $fillable = [
+        'codigo',
         'etiqueta_sub_id', // Para el caso en que todos los elementos tienen la misma máquina
         'planilla_id',
         'producto_id',
@@ -41,6 +42,43 @@ class Etiqueta extends Model
     {
         return 'ET' . $this->id;
     }
+
+    public static function generarCodigoEtiqueta(): string
+    {
+        $año = now()->year;
+        $anyoCorto = substr($año, -2);
+
+        $ultimo = self::where('codigo', 'like', "ETQ-$anyoCorto-%")
+            ->orderByDesc('codigo')
+            ->value('codigo');
+
+        $siguiente = 1;
+        if ($ultimo) {
+            $partes = explode('-', $ultimo);
+            $siguiente = (int)($partes[2] ?? 0) + 1;
+        }
+
+        return sprintf("ETQ-%s-%03d", $anyoCorto, $siguiente);
+    }
+
+    public static function generarCodigoSubEtiqueta(string $codigoPadre): string
+    {
+        // Buscar subetiquetas existentes para este padre
+        $existentes = self::where('codigo', $codigoPadre)
+            ->whereNotNull('etiqueta_sub_id')
+            ->pluck('etiqueta_sub_id')
+            ->map(function ($sub) {
+                $partes = explode('.', $sub);
+                return isset($partes[1]) ? (int)$partes[1] : 0;
+            })
+            ->toArray();
+
+        $contador = empty($existentes) ? 1 : max($existentes) + 1;
+
+        return $codigoPadre . '.' . str_pad($contador, 2, '0', STR_PAD_LEFT);
+    }
+
+
     // Relaciones
     public function planilla()
     {

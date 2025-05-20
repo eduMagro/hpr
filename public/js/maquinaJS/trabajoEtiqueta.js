@@ -24,14 +24,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const etiquetaId = e.target.value.trim();
 
         // Validar que el ID sea un número válido mayor que cero
-        if (!etiquetaId || isNaN(etiquetaId) || Number(etiquetaId) <= 0) {
-            Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: "❌ ID inválido. Intenta de nuevo.",
-            });
-            return;
-        }
+        // if (!etiquetaId || isNaN(etiquetaId) || Number(etiquetaId) <= 0) {
+        //     Swal.fire({
+        //         icon: "error",
+        //         title: "Error",
+        //         text: "❌ ID inválido. Intenta de nuevo.",
+        //     });
+        //     return;
+        // }
 
         actualizarEtiqueta(etiquetaId, maquinaId);
 

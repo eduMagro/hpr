@@ -4,346 +4,169 @@
             {{ __('Crear Movimientos') }}
         </h2>
     </x-slot>
-
     <div class="container mt-5">
-
-        <!-- Formulario de movimiento -->
-        <div class="card shadow-lg border-0">
-            <div class="card-header bg-primary text-white text-center">
-                <h2>Crear Movimiento de Material</h2>
-            </div>
-            <div class="card-body">
-                <form action="{{ route('movimientos.store') }}" method="POST" id="form-movimiento">
-                    @csrf
-
-                    <!-- Input QR o manual -->
-                    <div class="form-group mb-4">
-                        <label for="producto_id" class="form-label fw-bold">Producto (QR)</label>
-                        <input type="text" name="producto_id" id="producto_id" class="form-control mb-3"
-                            placeholder="Escanea o introduce el código del producto" value="{{ old('producto_id') }}"
-                            onfocus="this.select()">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h2>Crear Movimiento de Material</h2>
                     </div>
+                    <div class="card-body">
+                        <form action="{{ route('movimientos.store') }}" method="POST" id="form-movimiento">
+                            @csrf
+                            <!-- Seleccionar Producto o Paquete -->
+                            <div class="form-group mb-4">
+                                <label for="tipo_movimiento" class="form-label fw-bold">Tipo de Movimiento</label>
+                                <select id="tipo_movimiento" name="tipo_movimiento" class="form-control">
+                                    <option value="producto">Materia Prima</option>
+                                    <option value="paquete">Paquete</option>
+                                </select>
+                            </div>
 
-                    <!-- Campo oculto con ID de localización -->
-                    <input type="hidden" name="localizacion_id" id="localizacion_id">
+                            <!-- Seleccionar Producto (solo visible si se elige 'Materia Prima') -->
+                            <div id="producto-section" class="form-group mb-4">
+                                <label for="producto_id" class="form-label fw-bold">Materia Prima</label>
+                                @if (request('producto_id'))
+                                    <input type="text" name="producto_id" class="form-control"
+                                        value="{{ request('producto_id') }}" readonly>
+                                @elseif(!request('producto_id'))
+                                    <input type="text" name="producto_id" id="producto_id" class="form-control mb-3"
+                                        placeholder="QR Materia Prima" value="{{ old('producto_id') }}">
+                                @endif
+                            </div>
 
-                    <!-- Visualización del nombre o ID de ubicación -->
-                    <div class="form-group mb-4">
-                        <label class="form-label fw-bold">Ubicación Seleccionada:</label>
-                        <div id="ubicacionElegida" class="text-success fw-bold">Ninguna seleccionada</div>
+                            <!-- Seleccionar Paquete (solo visible si se elige 'Paquete') -->
+                            <div id="paquete-section" class="form-group mb-4" style="display: none;">
+                                <label for="paquete_id" class="form-label fw-bold">Paquete</label>
+                                <input type="text" name="paquete_id" id="paquete_id" class="form-control mb-3"
+                                    placeholder="QR Paquete" value="{{ old('paquete_id') }}">
+                            </div>
+
+                            <!-- Movimiento a Ubicación -->
+                            <div class="form-group mb-4">
+                                <label for="ubicacion_destino" class="form-label fw-bold">Ubicación Destino</label>
+                                <select id="ubicacion_destino" name="ubicacion_destino" class="form-control">
+                                    <option selected value="">Seleccione una nueva ubicación</option>
+                                    @foreach ($ubicaciones as $ubicacion)
+                                        <option value="{{ $ubicacion->id }}">{{ $ubicacion->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <!-- Movimiento a Máquina -->
+                            <div id="maquina-section" class="form-group mb-4">
+                                <label for="maquina_id" class="form-label fw-bold">Máquina Destino</label>
+                                <select id="maquina_id" name="maquina_id" class="form-control">
+                                    <option selected value="">Seleccione una máquina</option>
+                                    @foreach ($maquinas as $maquina)
+                                        <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <!-- Botón de Envío -->
+                            <div class="d-grid">
+                                <button type="submit" id="submit-btn" class="btn btn-success btn-lg">Registrar
+                                    Movimiento</button>
+                            </div>
+                        </form>
+
                     </div>
-
-                    <!-- Botón de envío -->
-                    <div class="d-grid">
-                        <button type="submit" id="submit-btn" class="btn btn-success btn-lg">
-                            Registrar Movimiento
-                        </button>
+                    <div class="card-footer text-center text-muted">
+                        <small>El producto puede moverse a otra ubicación o a una máquina, pero no ambos.</small>
                     </div>
-                </form>
+                </div>
             </div>
-
-            <div class="card-footer text-center text-muted">
-                <small>El producto puede moverse a otra ubicación o a una máquina, pero no ambos.</small>
-            </div>
-        </div>
-
-        <!-- Contenedor visual del grid -->
-        <div id="grid-container" class="mb-4">
-            <div id="grid" class="border w-100 aspect-[115/22] grid"></div>
         </div>
     </div>
-
-    <!-- ESTILOS -->
-    <style>
-        .cell {
-            aspect-ratio: 1;
-            width: 100%;
-            background-color: white;
-            border: 1px solid #ccc;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .cell:hover {
-            background-color: #f0fdf4;
-        }
-
-        .tipo-material {
-            background-color: #15803d;
-        }
-
-        .tipo-maquina {
-            background-color: #1d4ed8;
-        }
-
-        .tipo-transitable {
-            background-color: #6b7280;
-        }
-
-        .seleccionada {
-            outline: 3px solid red;
-        }
-
-        #grid {
-            display: grid;
-            grid-template-columns: repeat(115, 1fr);
-            grid-template-rows: repeat(22, 1fr);
-        }
-    </style>
-
-    <!-- SCRIPTS -->
     <script>
-        const grid = document.getElementById('grid');
-        const localizaciones = @json($localizaciones);
-        const celdas = [];
-        let celdaSeleccionada = null;
-        const celdaMap = {};
+        document.addEventListener("DOMContentLoaded", function() {
+            const form = document.getElementById("form-movimiento");
+            const submitBtn = document.getElementById("submit-btn");
 
-        // Crear y mapear celdas
-        const fragment = document.createDocumentFragment();
-        for (let y = 1; y <= 22; y++) {
-            for (let x = 1; x <= 115; x++) {
-                const div = document.createElement('div');
-                const coord = `${x},${y}`;
-                div.classList.add('cell');
-                div.dataset.coord = coord;
-                celdaMap[coord] = div;
-                fragment.appendChild(div);
-                celdas.push(div);
-            }
-        }
-        grid.appendChild(fragment);
+            if (form) {
+                form.addEventListener("submit", function(event) {
+                    event.preventDefault();
+                    submitBtn.disabled = true; // Deshabilitar botón
 
-        // Pintar localizaciones existentes
-        for (const loc of localizaciones) {
-            for (let x = loc.x1; x <= loc.x2; x++) {
-                for (let y = loc.y1; y <= loc.y2; y++) {
-                    const key = `${x},${y}`;
-                    const cell = celdaMap[key];
-                    if (cell) {
-                        cell.classList.add(`tipo-${loc.tipo}`);
-                        cell.dataset.localizacionId = loc.id;
-                        cell.dataset.localizacionNombre = loc.localizacion;
-                    }
-                }
-            }
-        }
+                    let formData = new FormData(form);
 
-        // Al hacer clic en una celda
-        grid.addEventListener('click', (e) => {
-            const cell = e.target;
-            // Validaciones
-            if (!cell.classList.contains('cell') ||
-                !cell.dataset.localizacionId ||
-                cell.classList.contains('tipo-transitable')) return;
-
-            // Desmarcar anterior
-            if (celdaSeleccionada)
-                celdaSeleccionada.classList.remove('seleccionada');
-
-            // Marcar nueva
-            cell.classList.add('seleccionada');
-            celdaSeleccionada = cell;
-
-            const id = cell.dataset.localizacionId;
-            const nombre = cell.dataset.localizacionNombre || `ID ${id}`;
-
-            document.getElementById('ubicacionElegida').textContent = nombre;
-            document.getElementById('localizacion_id').value = id;
-        });
-
-        // Variables para arrastre
-        let isDragging = false;
-        let startX = null,
-            startY = null,
-            endX = null,
-            endY = null;
-        let areaTemporal = new Set();
-
-        // Inicia selección
-        document.addEventListener('mousedown', (e) => {
-            if (!e.target.classList.contains('cell')) return;
-            const [x, y] = e.target.dataset.coord.split(',').map(Number);
-            startX = endX = x;
-            startY = endY = y;
-            isDragging = true;
-            areaTemporal = new Set([`${x},${y}`]);
-        });
-
-        // Actualiza selección mientras se arrastra
-        document.addEventListener('mouseover', (e) => {
-            if (!isDragging || !e.target.classList.contains('cell')) return;
-            const [x, y] = e.target.dataset.coord.split(',').map(Number);
-            endX = x;
-            endY = y;
-
-            areaTemporal.clear();
-            const minX = Math.min(startX, endX),
-                maxX = Math.max(startX, endX);
-            const minY = Math.min(startY, endY),
-                maxY = Math.max(startY, endY);
-
-            for (let cx = minX; cx <= maxX; cx++) {
-                for (let cy = minY; cy <= maxY; cy++) {
-                    areaTemporal.add(`${cx},${cy}`);
-                }
-            }
-        });
-
-        // Al soltar el botón: verificar si la zona ya existe
-        document.addEventListener('mouseup', () => {
-            console.log('[DEBUG] mouseup lanzado');
-            if (!isDragging || areaTemporal.size === 0) {
-                console.log('No se está arrastrando o no hay área temporal seleccionada');
-                return;
-            }
-
-            isDragging = false;
-
-            const minX = Math.min(startX, endX);
-            const maxX = Math.max(startX, endX);
-            const minY = Math.min(startY, endY);
-            const maxY = Math.max(startY, endY);
-
-            console.log('Área seleccionada:', {
-                x1: minX,
-                y1: minY,
-                x2: maxX,
-                y2: maxY
-            });
-
-            fetch("{{ route('localizaciones.verificar') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify({
-                        x1: minX,
-                        y1: minY,
-                        x2: maxX,
-                        y2: maxY
-                    })
-                })
-                .then(res => {
-                    console.log('Respuesta fetch recibida:', res);
-                    return res.json();
-                })
-                .then(data => {
-                    console.log('Respuesta parseada:', data);
-
-                    if (data.existe) {
-                        console.log('¡Localización existente encontrada!', data.localizacion);
-
-                        Swal.fire({
-                            title: 'Esta ubicación ya existe',
-                            text: `¿Quieres editar la localización "${data.localizacion.localizacion}" de tipo "${data.localizacion.tipo}"?`,
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonText: 'Editar',
-                            cancelButtonText: 'Cancelar'
-                        }).then(result => {
-                            if (result.isConfirmed) {
-                                console.log('El usuario eligió editar.');
-                                abrirModalEdicion(data.localizacion);
-                            } else {
-                                console.log('El usuario canceló la edición.');
+                    fetch(form.action, {
+                            method: "POST",
+                            body: formData,
+                            headers: {
+                                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
+                                    .getAttribute("content")
                             }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    title: "¡Éxito!",
+                                    text: data.message,
+                                    icon: "success",
+                                    confirmButtonText: "Aceptar"
+                                }).then(() => {
+                                    window.location.href = "{{ route('movimientos.index') }}";
+                                });
+                            } else if (data.errors) {
+                                let errorMessages = Object.values(data.errors).flat().join("\n");
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Errores de validación",
+                                    text: errorMessages,
+                                    confirmButtonText: "Aceptar"
+                                });
+                            } else if (data.error) {
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Error",
+                                    text: data.error,
+                                    confirmButtonText: "Aceptar"
+                                });
+                            }
+                            submitBtn.disabled = false; // Rehabilitar el botón si hay errores
+                        })
+                        .catch(error => {
+                            console.error("Error:", error);
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error",
+                                text: "Hubo un problema con la solicitud. Inténtelo otra vez.",
+                                confirmButtonText: "Aceptar"
+                            });
+                            submitBtn.disabled = false;
                         });
-                    } else {
-                        console.log('No existe ninguna localización exacta para esta área.');
-                        abrirModalCreacion(minX, minY, maxX, maxY);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error al verificar localización:', error);
                 });
-
-            areaTemporal.clear();
+            }
         });
 
-        // Modal para nueva localización
-        function abrirModalCreacion(x1, y1, x2, y2) {
-            Swal.fire({
-                title: 'Nueva localización',
-                html: `
-                    <label for="tipo" class="block text-left mb-1">Tipo:</label>
-                    <select id="tipo" class="swal2-input">
-                        <option value="material">Tipo Material</option>
-                        <option value="maquina">Tipo Máquina</option>
-                        <option value="transitable">Tipo Transitable</option>
-                    </select>
-                    <label for="seccion" class="block text-left mt-3 mb-1">Sección:</label>
-                    <input id="seccion" class="swal2-input" placeholder="Ej. A1, B2...">
-                    <label for="nombre" class="block text-left mt-3 mb-1">Nombre de la localización:</label>
-                    <input id="nombre" class="swal2-input" placeholder="Ej. Máquina 5, Pasillo 3...">
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Crear',
-                cancelButtonText: 'Cancelar',
-                preConfirm: () => {
-                    const tipo = document.getElementById('tipo').value;
-                    const seccion = document.getElementById('seccion').value.trim();
-                    const nombre = document.getElementById('nombre').value.trim();
+        document.addEventListener('DOMContentLoaded', function() {
+            const tipoMovimiento = document.getElementById('tipo_movimiento');
+            const productoSection = document.getElementById('producto-section');
+            const paqueteSection = document.getElementById('paquete-section');
+            const maquinaSection = document.getElementById('maquina-section'); // Corregido
 
-                    if (!seccion || !nombre) {
-                        Swal.showValidationMessage('Sección y nombre son obligatorios');
-                        return false;
-                    }
-
-                    return {
-                        tipo,
-                        seccion,
-                        nombre
-                    };
+            // Función para manejar la visibilidad de los campos
+            function toggleFields() {
+                if (tipoMovimiento.value === 'producto') {
+                    productoSection.style.display = 'block'; // Mostrar campo de Producto
+                    paqueteSection.style.display = 'none'; // Ocultar campo de Paquete
+                    maquinaSection.style.display = 'block'; // Mostrar campo de Maquina
+                } else if (tipoMovimiento.value === 'paquete') {
+                    productoSection.style.display = 'none'; // Ocultar campo de Producto
+                    maquinaSection.style.display = 'none'; // Ocultar campo de Maquina
+                    paqueteSection.style.display = 'block'; // Mostrar campo de Paquete
                 }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const {
-                        tipo,
-                        seccion,
-                        nombre
-                    } = result.value;
-                    guardarConTipo(tipo, seccion, nombre, x1, y1, x2, y2);
-                }
-            });
-        }
+            }
 
-        // Guardar localización nueva
-        function guardarConTipo(tipo, seccion, nombre, x1, y1, x2, y2) {
-            const localizacion = {
-                x1,
-                y1,
-                x2,
-                y2,
-                tipo,
-                seccion,
-                localizacion: nombre
-            };
+            // Inicializar el estado de los campos según la selección actual
+            toggleFields();
 
-            fetch("{{ route('localizaciones.store') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify(localizacion)
-                })
-                .then(async res => {
-                    if (!res.ok) {
-                        const error = await res.json();
-                        throw new Error(error.message || 'Error desconocido');
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    Swal.fire('Guardado', data.message, 'success').then(() => {
-                        location.reload(); // Refrescar para ver la nueva zona
-                    });
-                })
-                .catch(err => {
-                    Swal.fire('Error', err.message, 'error');
-                });
-        }
+            // Cambiar visibilidad cuando se seleccione un tipo de movimiento
+            tipoMovimiento.addEventListener('change', toggleFields);
+        });
     </script>
+
 </x-app-layout>
