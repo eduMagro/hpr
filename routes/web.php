@@ -31,7 +31,7 @@ use App\Http\Controllers\CamionController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\PoliticaController;
-//nominas
+use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\IrpfTramoController;
 use App\Http\Controllers\SeguridadSocialController;
@@ -122,6 +122,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');
+    Route::post('/planillas/reordenar', [PlanillaController::class, 'reordenarPlanillas'])->name('planillas.reordenar');
 
     Route::resource('elementos', ElementoController::class);
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])
@@ -195,6 +196,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/politica-cookies', 'mostrarCookies')->name('politica.cookies');
         Route::post('/aceptar-politicas', 'aceptar')->name('aceptar.politicas');
     });
+
+    Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
 });
 
 

@@ -1,7 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 return [
+    'next'     => 'Siguiente &raquo;',
     'previous' => '&laquo; Anterior',
-    'next' => 'Siguiente &raquo;',
-    'showing' => 'Mostrando :from - :to de :total registros',
+    'showing'  => 'Mostrando :from - :to de :total registros',
 ];

@@ -311,7 +311,7 @@
                                         class="text-green-500 hover:underline">Ver</a>
                                     <span> | </span>
                                     <a href="{{ route('users.edit', $user->id) }}"
-                                        class="text-green-500 hover:underline">Ajustes</a>
+                                        class="text-green-500 hover:underline">Editar</a>
                                 </td>
                             </tr>
                         @empty

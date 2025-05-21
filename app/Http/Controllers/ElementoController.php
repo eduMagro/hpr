@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Elemento;
+use App\Models\OrdenPlanilla;
 use App\Models\Planilla;
 use App\Models\Etiqueta;
 use App\Models\Maquina;
@@ -572,7 +573,38 @@ class ElementoController extends Controller
 
             // Actualizar resto de campos
             $elemento->update($validated);
+            // Si cambió de máquina, actualizar orden_planillas
+            if (array_key_exists('maquina_id', $validated) && $validated['maquina_id'] != $elemento->getOriginal('maquina_id')) {
+                $planillaId = $elemento->planilla_id;
+                $nuevaMaquinaId = $validated['maquina_id'];
+                $maquinaAnteriorId = $elemento->getOriginal('maquina_id');
 
+                // 1. Insertar en nueva máquina si no existe
+                $existe = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $nuevaMaquinaId)
+                    ->exists();
+
+                if (!$existe) {
+                    $ultimaPosicion = OrdenPlanilla::where('maquina_id', $nuevaMaquinaId)->max('posicion') ?? 0;
+
+                    OrdenPlanilla::create([
+                        'planilla_id' => $planillaId,
+                        'maquina_id' => $nuevaMaquinaId,
+                        'posicion' => $ultimaPosicion + 1,
+                    ]);
+                }
+
+                // 2. Eliminar de la máquina anterior si ya no hay elementos
+                $quedan = \App\Models\Elemento::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maquinaAnteriorId)
+                    ->exists();
+
+                if (!$quedan) {
+                    OrdenPlanilla::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maquinaAnteriorId)
+                        ->delete();
+                }
+            }
             // Registrar el estado del elemento después de actualizar
             Log::info('Elemento después de actualizar:', ['data' => $elemento->toArray()]);
 

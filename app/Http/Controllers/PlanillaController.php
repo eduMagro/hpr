@@ -19,6 +19,7 @@ use Exception;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Services\AsignacionMaquinaIAService;
+use App\Models\OrdenPlanilla;
 
 class PlanillaController extends Controller
 {
@@ -504,7 +505,14 @@ class PlanillaController extends Controller
                             'marca' => null,
                             'etiqueta_sub_id' => $codigoSub,
                         ]);
+                        // 👉 AÑADIR ESTE BLOQUE AQUÍ:
+                        $ultimaPosicion = OrdenPlanilla::where('maquina_id', $maquina_id)->max('posicion') ?? 0;
 
+                        OrdenPlanilla::create([
+                            'planilla_id' => $planilla->id,
+                            'maquina_id' => $maquina_id,
+                            'posicion' => $ultimaPosicion + 1,
+                        ]);
                         // Agrupar elementos duplicados
                         $agrupados = [];
                         foreach ($grupo as $item) {
@@ -567,8 +575,12 @@ class PlanillaController extends Controller
                     }
                 }
 
+                $elementos = $planilla->elementos;
+                $tiempoBase = $elementos->sum('tiempo_fabricacion');
+                $tiempoAdicional = $elementos->count() * 1200; // 20 minutos por elemento
+
                 $planilla->update([
-                    'tiempo_fabricacion' => $planilla->elementos->sum('tiempo_fabricacion'),
+                    'tiempo_fabricacion' => $tiempoBase + $tiempoAdicional,
                 ]);
             }
 

@@ -172,27 +172,9 @@ class etiquetaController extends Controller
                         $stockTotal = $productosPorDiametro->sum('peso_stock');
 
                         if ($stockTotal < $pesoNecesario) {
-                            // Acumular el mensaje de alerta para el log
-                            $warnings[] = "El stock para el {$diametro} es insuficiente. Avisaremos a los gruistas en turno.";
-
-                            // Obtener solo los gruistas que tienen asignado turno en la fecha actual
-                            $gruistasEnTurno = User::where('especialidad', 'gruista')
-                                ->whereHas('asignacionesTurnos', function ($query) {
-                                    $query->where('fecha', Carbon::now()->toDateString());
-                                })
-                                ->get();
-
-                            // Si existen gruistas en turno, se crea una alerta por cada uno
-                            if ($gruistasEnTurno->isNotEmpty()) {
-                                foreach ($gruistasEnTurno as $gruista) {
-                                    Alerta::create([
-                                        'mensaje'      => "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
-                                        'destinatario_id' => $gruista->id, // El destinatario es el gruista en turno
-                                        'user_id_1'    => Auth::id(),   // Emisor de la alerta
-                                        'user_id_2'    => session()->get('compañero_id', null),
-                                        'leida'        => false,
-                                    ]);
-                                }
+                            if ($stockTotal < $pesoNecesario) {
+                                $warnings[] = "El stock para el {$diametro} es insuficiente. Avisaremos a los gruistas en turno.";
+                                $this->lanzarAlertaStockInsuficiente($diametro, $maquina->nombre);
                             }
                         }
                     }
@@ -705,11 +687,14 @@ class etiquetaController extends Controller
     {
         $mensaje = "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquinaNombre}.";
 
-        $gruistasEnTurno = User::where('especialidad', 'gruista')
+        $gruistasEnTurno = User::whereHas('maquina', function ($q) {
+            $q->where('nombre', 'like', '%grua%');
+        })
             ->whereHas('asignacionesTurnos', function ($query) {
                 $query->where('fecha', Carbon::now()->toDateString());
             })
             ->get();
+
         Log::info("{$gruistasEnTurno}");
         if ($gruistasEnTurno->isNotEmpty()) {
             foreach ($gruistasEnTurno as $gruista) {

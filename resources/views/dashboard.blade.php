@@ -90,11 +90,15 @@
                                     'label' => 'Mantenimiento',
                                     'icon' => asset('imagenes/iconos/mantenimiento.png'),
                                 ],
-
                                 [
                                     'route' => 'alertas.index',
                                     'label' => 'Alertas',
                                     'icon' => asset('imagenes/iconos/alertas.png'),
+                                ],
+                                [
+                                    'route' => 'ayuda.index',
+                                    'label' => 'Ayuda',
+                                    'icon' => asset('imagenes/iconos/ayuda.png'),
                                 ],
                             ];
                         @endphp

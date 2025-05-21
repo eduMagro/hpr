@@ -52,6 +52,10 @@ class Planilla extends Model
      */
     public $timestamps = true;
     protected $appends = ['codigo_limpio', 'peso_total_kg'];
+    public function ordenProduccion()
+    {
+        return $this->hasOne(OrdenPlanilla::class);
+    }
 
     public function getFechaEstimadaEntregaAttribute($value)
     {

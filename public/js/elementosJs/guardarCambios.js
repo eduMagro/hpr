@@ -39,15 +39,7 @@ function guardarCambios(elemento) {
         .then((response) => response.json())
         .then((data) => {
             if (data.success) {
-                Swal.fire({
-                    icon: "success",
-                    title: "Elemento actualizado",
-                    text: "El elemento se ha actualizado con éxito.",
-                    timer: 2000,
-                    showConfirmButton: false,
-                }).then(() => {
-                    window.location.reload(); // Recarga la página tras el mensaje
-                });
+                window.location.reload(); // Recarga la página tras el mensaje
             } else {
                 let errorMsg =
                     data.message || "Ha ocurrido un error inesperado.";

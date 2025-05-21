@@ -192,4 +192,13 @@ class User extends Authenticatable
     {
         return $this->hasOne(Modelo145::class);
     }
+    public function esOperario()
+    {
+        return $this->rol === 'operario';
+    }
+
+    public function esOficina()
+    {
+        return $this->rol === 'oficina' || $this->rol === 'admin';
+    }
 }
