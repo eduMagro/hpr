@@ -20,56 +20,57 @@
 
                 <!-- Mostrar los productos en la máquina -->
                 @if ($maquina->productos->isEmpty())
-                    <p>No hay productos en esta máquina.</p>
+                    <p class="p-4 text-gray-500">No hay productos en esta máquina.</p>
                 @else
                     <ul class="list-none p-6 break-words">
-                        @foreach ($maquina->productos->sortBy([['diametro', 'asc'], ['peso_stock', 'asc']]) as $producto)
-                            <li class="mb-1">
-                                <div class="flex items-center justify-between">
+                        @foreach ($maquina->productos->sortBy([['productoBase.diametro', 'asc'], ['peso_stock', 'asc']]) as $producto)
+                            <li class="mb-4">
+                                <div class="flex items-center justify-between gap-4 flex-wrap">
                                     <div class="flex flex-col">
-                                        <span><strong>Ø</strong> {{ $producto->diametro_mm }}</span>
-                                        @if (strtoupper($producto->tipo === 'BARRA'))
-                                            <span><strong>L:</strong> {{ $producto->longitud_metros }}</span>
+                                        <span><strong>Ø</strong> {{ $producto->productoBase->diametro }} mm</span>
+
+                                        @if (strtoupper($producto->productoBase->tipo) === 'BARRA')
+                                            <span><strong>L:</strong> {{ $producto->productoBase->longitud }} m</span>
                                         @endif
-                                        <a href="{{ route('productos.index', ['id' => $producto->id]) }}"
-                                            class="btn btn-sm btn-primary mb-2">Ver</a>
+
+                                        {{-- <a href="{{ route('productos.index', ['id' => $producto->id]) }}"
+                       class="btn btn-sm btn-primary mt-2">Ver</a> --}}
                                     </div>
-                                    <div class="flex flex-col">
-                                        <!-- Botón para consumir el producto (con confirmación) -->
+
+                                    <div class="flex flex-col items-center">
                                         <button class="bg-gray-200 hover:bg-gray-300 text-black py-2 px-4 rounded"
                                             onclick="confirmarEliminacion('{{ route('productos.consumir', $producto->id) }}')">
                                             ❌
                                         </button>
 
-                                        <!-- Formulario oculto que se enviará tras la confirmación -->
                                         <form id="formulario-eliminar" action="" method="POST"
                                             style="display: none;">
                                             @csrf
-                                            @method('PUT') <!-- Ojo: coincide con Route::put(...) -->
+                                            @method('PUT')
                                         </form>
                                     </div>
 
-                                    @if (strtoupper($producto->tipo == 'ENCARRETADO'))
+                                    @php
+                                        $porcentaje = ($producto->peso_stock / max($producto->peso_inicial, 1)) * 100;
+                                    @endphp
+
+                                    @if (strtoupper($producto->productoBase->tipo) === 'ENCARRETADO')
                                         <div id="progreso-container-{{ $producto->id }}"
-                                            class="ml-4 relative w-20 h-20 bg-gray-300 overflow-hidden rounded-lg">
+                                            class="relative w-20 h-20 bg-gray-300 overflow-hidden rounded-lg">
                                             <div id="progreso-barra-{{ $producto->id }}"
-                                                class="absolute bottom-0 w-full bg-green-500"
-                                                style="height: {{ ($producto->peso_stock / max($producto->peso_inicial, 1)) * 100 }}%;">
+                                                class="absolute bottom-0 w-full"
+                                                style="height: {{ $porcentaje }}%; background-color: green;">
                                             </div>
                                             <span id="progreso-texto-{{ $producto->id }}"
                                                 class="absolute top-2 left-2 text-white text-xs font-semibold">
                                                 {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
                                             </span>
                                         </div>
-                                    @elseif(strtoupper($producto->tipo == 'BARRA'))
+                                    @elseif (strtoupper($producto->productoBase->tipo) === 'BARRA')
                                         <div id="progreso-container-{{ $producto->id }}"
-                                            class="ml-4 relative w-60 h-10 bg-gray-300 overflow-hidden rounded-lg">
-                                            <div class="barra verde"
-                                                style="width: {{ ($producto->peso_stock / max($producto->peso_inicial, 1)) * 100 }}%;
-                                    height: 100%; 
-                                    background-color: green; 
-                                    position: absolute; 
-                                    right: 0;">
+                                            class="relative w-60 h-10 bg-gray-300 overflow-hidden rounded-lg">
+                                            <div class="absolute right-0 h-full"
+                                                style="width: {{ $porcentaje }}%; background-color: green;">
                                             </div>
                                             <span id="progreso-texto-{{ $producto->id }}"
                                                 class="absolute top-2 left-2 text-white text-xs font-semibold">
@@ -77,12 +78,28 @@
                                             </span>
                                         </div>
                                     @endif
+
+                                    <!-- Botón solicitar recambio -->
+                                    <div class="mt-2 w-full">
+                                        <form method="POST" action="{{ route('movimientos.crear') }}">
+
+                                            @csrf
+                                            <input type="hidden" name="tipo_movimiento" value="recarga_materia_prima">
+                                            <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
+                                            <input type="hidden" name="producto_id" value="{{ $producto->id }}">
+                                            <input type="hidden" name="descripcion"
+                                                value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $producto->productoBase->diametro }} {{ strtolower($producto->productoBase->tipo) }}, {{ $producto->peso_stock }} kg)">
+                                            <button class="btn btn-warning">Solicitar recambio</button>
+                                        </form>
+
+                                    </div>
                                 </div>
+                                <hr class="my-3">
                             </li>
-                            <hr>
                         @endforeach
                     </ul>
                 @endif
+
                 <div class="flex flex-col gap-2 p-4">
                     <!-- Botón Reportar Incidencia -->
                     <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
@@ -97,6 +114,7 @@
                     </button>
                 </div>
             </div>
+
             <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
             <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
                 @php
@@ -252,7 +270,8 @@
                             <option value="Fallo técnico en máquina actual">Fallo técnico en máquina actual</option>
                             <option value="Máquina saturada o con mucha carga">Máquina saturada o con mucha carga
                             </option>
-                            <option value="Cambio de prioridad en producción">Cambio de prioridad en producción</option>
+                            <option value="Cambio de prioridad en producción">Cambio de prioridad en producción
+                            </option>
                             <option value="Otros">Otros</option>
                         </select>
                         <div id="campoOtroMotivo" class="hidden mb-4">

@@ -112,6 +112,8 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('maquinas', MaquinaController::class);
     Route::resource('movimientos', MovimientoController::class);
+    Route::post('/movimientos/crear', [MovimientoController::class, 'crearMovimiento'])->name('movimientos.crear');
+
     Route::resource('paquetes', PaqueteController::class);
     Route::resource('etiquetas', EtiquetaController::class);
 

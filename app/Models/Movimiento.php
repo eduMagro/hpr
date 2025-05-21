@@ -12,14 +12,22 @@ class Movimiento extends Model
     protected $table = 'movimientos';
 
     protected $fillable = [
+        'tipo',
         'producto_id',
         'paquete_id',
         'ubicacion_origen',
         'ubicacion_destino',
-        'maquina_id',
         'maquina_origen',
-        'users_id',
+        'maquina_id',
+        'estado',
+        'prioridad',
+        'descripcion',
+        'fecha_solicitud',
+        'fecha_ejecucion',
+        'solicitado_por',
+        'ejecutado_por',
     ];
+
     public $timestamps = true;
     protected $casts = [
         'created_at' => 'datetime',
@@ -57,8 +65,13 @@ class Movimiento extends Model
         return $this->belongsTo(Maquina::class, 'maquina_origen');
     }
 
-    public function usuario()
+    public function solicitadoPor()
     {
-        return $this->belongsTo(User::class, 'users_id');
+        return $this->belongsTo(User::class, 'solicitado_por');
+    }
+
+    public function ejecutadoPor()
+    {
+        return $this->belongsTo(User::class, 'ejecutado_por');
     }
 }

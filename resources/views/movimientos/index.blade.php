@@ -25,10 +25,10 @@
                         <input type="text" name="movimiento_id" class="form-control" placeholder="ID de Movimiento"
                             value="{{ request('movimiento_id') }}">
                     </div>
-                    <div class="col-md-4">
+                    {{-- <div class="col-md-4">
                         <input type="text" name="usuario" class="form-control" placeholder="Nombre de Usuario"
                             value="{{ request('usuario') }}">
-                    </div>
+                    </div> --}}
 
                     <!-- Filtros de búsqueda por Producto o Paquete -->
                     <div class="col-md-4">
@@ -81,48 +81,103 @@
             <table class="min-w-full table-auto">
                 <thead>
                     <tr class="bg-gray-200">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Movimiento ID</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Origen</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destino</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Producto Asociado
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Tipo
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
+                            Descripción</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
+                            Prioridad</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
+                            Solicitado</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
+                            Ejecutado</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Estado
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Fecha
+                            solicitud</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Fecha
+                            ejecución</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Origen
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Destino
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
+                            Producto/Paquete
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Acciones
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($registrosMovimientos as $movimiento)
                         <tr class="border-b">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {{ $movimiento->id }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $movimiento->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <a href="{{ route('users.index', ['id' => $movimiento->usuario->id]) }}"
-                                    class="text-blue-500 hover:underline">
-                                    {{ $movimiento->usuario->name }}
-                                </a>
+                            <td class="px-6 py-4 text-sm font-medium text-gray-900 text-center">
+                                {{ $movimiento->id }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                @if ($movimiento->ubicacionOrigen && $movimiento->ubicacionOrigen->nombre)
-                                    {{ $movimiento->ubicacionOrigen->nombre }}
-                                @elseif ($movimiento->maquinaOrigen && $movimiento->maquinaOrigen->nombre)
-                                    {{ $movimiento->maquinaOrigen->nombre }}
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                {{ ucfirst($movimiento->tipo ?? 'N/A') }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                {{ Str::limit($movimiento->descripcion, 50) ?? '—' }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                @if ($movimiento->prioridad == 1)
+                                    <span class="badge bg-secondary">Normal</span>
+                                @elseif ($movimiento->prioridad == 2)
+                                    <span class="badge bg-warning">Alta</span>
                                 @else
-                                    Sin origen
+                                    <span class="badge bg-danger">Urgente</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                @if ($movimiento->ubicacionDestino && $movimiento->ubicacionDestino->nombre)
-                                    {{ $movimiento->ubicacionDestino->nombre }}
-                                @elseif ($movimiento->maquina && $movimiento->maquina->nombre)
-                                    {{ $movimiento->maquina->nombre }}
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                @if ($movimiento->solicitadoPor)
+                                    <a href="{{ route('users.index', ['id' => $movimiento->solicitadoPor->id]) }}"
+                                        class="text-blue-500 hover:underline">
+                                        {{ $movimiento->solicitadoPor->name }}
+                                    </a>
                                 @else
-                                    Sin destino
+                                    <span class="text-gray-400 text-center align-middle">—</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                @if ($movimiento->ejecutadoPor)
+                                    <a href="{{ route('users.index', ['id' => $movimiento->ejecutadoPor->id]) }}"
+                                        class="text-green-600 hover:underline">
+                                        {{ $movimiento->ejecutadoPor->name }}
+                                    </a>
+                                @else
+                                    <span class="text-gray-400 text-center align-middle">—</span>
+                                @endif
+                            </td>
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                <span
+                                    class="badge {{ $movimiento->estado === 'pendiente' ? 'bg-warning' : 'bg-success' }}">
+                                    {{ ucfirst($movimiento->estado) }}
+                                </span>
+                            </td>
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                {{ $movimiento->fecha_solicitud ?? '—' }}
+                            </td>
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                {{ $movimiento->fecha_ejecucion ? $movimiento->fecha_ejecucion->format('d/m/Y H:i') : '—' }}
+                            </td>
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                {{ $movimiento->ubicacionOrigen->nombre ?? ($movimiento->maquinaOrigen->nombre ?? '—') }}
+                            </td>
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                {{ $movimiento->ubicacionDestino->nombre ?? ($movimiento->maquina->nombre ?? '—') }}
+                            </td>
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
                                 @if ($movimiento->producto)
                                     <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}"
                                         class="text-blue-500 hover:underline">
@@ -137,13 +192,15 @@
                                     N/A
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
                                 <x-boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
+
         </div>
         <div class="mt-4 flex justify-center">
             {{ $registrosMovimientos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
