@@ -731,7 +731,7 @@
                                 document.getElementById('ubicaciones-actuales').classList.remove('hidden');
                                 ubicacionesSugeridas.forEach(u => {
                                     const li = document.createElement('li');
-                                    li.textContent = u.nombre;
+                                    li.textContent = `${u.nombre} (MP ID: ${u.producto_id})`;
                                     lista.appendChild(li);
                                 });
                             } else {

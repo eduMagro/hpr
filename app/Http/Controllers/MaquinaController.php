@@ -256,10 +256,13 @@ class MaquinaController extends Controller
                         ->get();
 
                     $ubicaciones = $productosCompatibles
-                        ->pluck('ubicacion')
-                        ->filter()
-                        ->unique('id')
-                        ->map(fn($u) => ['id' => $u->id, 'nombre' => $u->nombre])
+                        ->filter(fn($p) => $p->ubicacion) // Asegura que tenga ubicación
+                        ->map(fn($p) => [
+                            'id' => $p->ubicacion->id,
+                            'nombre' => $p->ubicacion->nombre,
+                            'producto_id' => $p->id,
+                        ])
+                        ->unique('id') // Evita duplicar ubicaciones
                         ->values()
                         ->toArray();
 
