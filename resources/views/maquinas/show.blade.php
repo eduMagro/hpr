@@ -13,110 +13,227 @@
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
             <!-- --------------------------------------------------------------- Información de la máquina --------------------------------------------------------------- -->
-            <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
-                <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
-                    {{ $maquina->codigo }}
-                </h3>
+            @if (strtolower($maquina->tipo) !== 'grua')
+                <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-1 md:sticky md:top-4">
+                    <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
+                        {{ $maquina->codigo }}
+                    </h3>
 
-                <!-- Mostrar los productos en la máquina -->
-                @if ($maquina->productos->isEmpty())
-                    <p class="p-4 text-gray-500">No hay productos en esta máquina.</p>
-                @else
-                    <ul class="list-none p-6 break-words">
-                        @foreach ($maquina->productos->sortBy([['productoBase.diametro', 'asc'], ['peso_stock', 'asc']]) as $producto)
-                            <li class="mb-4">
-                                <div class="flex items-center justify-between gap-4 flex-wrap">
-                                    <div class="flex flex-col">
-                                        <span><strong>Ø</strong> {{ $producto->productoBase->diametro }} mm</span>
+                    <!-- Mostrar los productos en la máquina -->
+                    @if ($maquina->productos->isEmpty())
+                        <p class="p-4 text-gray-500">No hay productos en esta máquina.</p>
+                    @else
+                        <ul class="list-none p-2 break-words">
+                            @foreach ($maquina->productos->sortBy([['productoBase.diametro', 'asc'], ['peso_stock', 'asc']]) as $producto)
+                                <li class="mb-4">
+                                    <div class="flex items-center  gap-2 flex-wrap">
+                                        <div class="flex flex-col">
+                                            <span><strong>Ø</strong> {{ $producto->productoBase->diametro }} mm</span>
 
-                                        @if (strtoupper($producto->productoBase->tipo) === 'BARRA')
-                                            <span><strong>L:</strong> {{ $producto->productoBase->longitud }} m</span>
-                                        @endif
-
-                                        {{-- <a href="{{ route('productos.index', ['id' => $producto->id]) }}"
-                       class="btn btn-sm btn-primary mt-2">Ver</a> --}}
-                                    </div>
-
-                                    <div class="flex flex-col items-center">
-                                        <button class="bg-gray-200 hover:bg-gray-300 text-black py-2 px-4 rounded"
-                                            onclick="confirmarEliminacion('{{ route('productos.consumir', $producto->id) }}')">
-                                            ❌
-                                        </button>
-
-                                        <form id="formulario-eliminar" action="" method="POST"
-                                            style="display: none;">
-                                            @csrf
-                                            @method('PUT')
-                                        </form>
-                                    </div>
-
-                                    @php
-                                        $porcentaje = ($producto->peso_stock / max($producto->peso_inicial, 1)) * 100;
-                                    @endphp
-
-                                    @if (strtoupper($producto->productoBase->tipo) === 'ENCARRETADO')
-                                        <div id="progreso-container-{{ $producto->id }}"
-                                            class="relative w-20 h-20 bg-gray-300 overflow-hidden rounded-lg">
-                                            <div id="progreso-barra-{{ $producto->id }}"
-                                                class="absolute bottom-0 w-full"
-                                                style="height: {{ $porcentaje }}%; background-color: green;">
-                                            </div>
-                                            <span id="progreso-texto-{{ $producto->id }}"
-                                                class="absolute top-2 left-2 text-white text-xs font-semibold">
-                                                {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
-                                            </span>
+                                            @if (strtoupper($producto->productoBase->tipo) === 'BARRA')
+                                                <span><strong>L:</strong> {{ $producto->productoBase->longitud }}
+                                                    m</span>
+                                            @endif
                                         </div>
-                                    @elseif (strtoupper($producto->productoBase->tipo) === 'BARRA')
-                                        <div id="progreso-container-{{ $producto->id }}"
-                                            class="relative w-60 h-10 bg-gray-300 overflow-hidden rounded-lg">
-                                            <div class="absolute right-0 h-full"
-                                                style="width: {{ $porcentaje }}%; background-color: green;">
-                                            </div>
-                                            <span id="progreso-texto-{{ $producto->id }}"
-                                                class="absolute top-2 left-2 text-white text-xs font-semibold">
-                                                {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
-                                            </span>
+
+                                        <div class="flex flex-col items-center">
+                                            <button class="bg-gray-200 hover:bg-gray-300 text-black py-2 px-2 rounded"
+                                                onclick="confirmarEliminacion('{{ route('productos.consumir', $producto->id) }}')">
+                                                ❌
+                                            </button>
+
+                                            <form id="formulario-eliminar" action="" method="POST"
+                                                style="display: none;">
+                                                @csrf
+                                                @method('PUT')
+                                            </form>
                                         </div>
-                                    @endif
 
-                                    <!-- Botón solicitar recambio -->
-                                    <div class="mt-2 w-full">
-                                        <form method="POST" action="{{ route('movimientos.crear') }}">
+                                        {{-- @php
+                                            $porcentaje =
+                                                ($producto->peso_stock / max($producto->peso_inicial, 1)) * 100;
+                                        @endphp
 
-                                            @csrf
-                                            <input type="hidden" name="tipo_movimiento" value="recarga_materia_prima">
-                                            <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
-                                            <input type="hidden" name="producto_id" value="{{ $producto->id }}">
-                                            <input type="hidden" name="descripcion"
-                                                value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $producto->productoBase->diametro }} {{ strtolower($producto->productoBase->tipo) }}, {{ $producto->peso_stock }} kg)">
-                                            <button class="btn btn-warning">Solicitar recambio</button>
-                                        </form>
+                                        @if (strtoupper($producto->productoBase->tipo) === 'ENCARRETADO')
+                                            <div id="progreso-container-{{ $producto->id }}"
+                                                class="relative w-20 h-20 bg-gray-300 overflow-hidden rounded-lg">
+                                                <div id="progreso-barra-{{ $producto->id }}"
+                                                    class="absolute bottom-0 w-full"
+                                                    style="height: {{ $porcentaje }}%; background-color: green;">
+                                                </div>
+                                                <span id="progreso-texto-{{ $producto->id }}"
+                                                    class="absolute top-2 left-2 text-white text-xs font-semibold">
+                                                    {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
+                                                </span>
+                                            </div>
+                                        @elseif (strtoupper($producto->productoBase->tipo) === 'BARRA')
+                                            <div id="progreso-container-{{ $producto->id }}"
+                                                class="relative w-60 h-10 bg-gray-300 overflow-hidden rounded-lg">
+                                                <div class="absolute right-0 h-full"
+                                                    style="width: {{ $porcentaje }}%; background-color: green;">
+                                                </div>
+                                                <span id="progreso-texto-{{ $producto->id }}"
+                                                    class="absolute top-2 left-2 text-white text-xs font-semibold">
+                                                    {{ $producto->peso_stock }} / {{ $producto->peso_inicial }} kg
+                                                </span>
+                                            </div>
+                                        @endif --}}
 
+                                        <!-- Botón solicitar recambio -->
+                                        <div class="mt-2 w-full">
+                                            <form method="POST" action="{{ route('movimientos.crear') }}">
+                                                @csrf
+                                                <input type="hidden" name="tipo" value="recarga_materia_prima">
+                                                <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
+                                                <input type="hidden" name="producto_id" value="{{ $producto->id }}">
+                                                <input type="hidden" name="descripcion"
+                                                    value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $producto->productoBase->diametro }} {{ strtolower($producto->productoBase->tipo) }}, {{ $producto->peso_stock }} kg)">
+                                                <button class="btn btn-warning">Solicitar recambio</button>
+                                            </form>
+                                        </div>
                                     </div>
-                                </div>
-                                <hr class="my-3">
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
+                                    <hr class="my-3">
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
 
-                <div class="flex flex-col gap-2 p-4">
-                    <!-- Botón Reportar Incidencia -->
-                    <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
-                        🚨 Reportar Incidencia
-                    </button>
+                    <div class="flex flex-col gap-2 p-4">
+                        <!-- Botón Reportar Incidencia -->
+                        <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
+                            🚨 Reportar Incidencia
+                        </button>
 
-                    <!-- Botón Realizar Chequeo de Máquina -->
-                    <button onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
-                        🛠️ Chequeo de Máquina
-                    </button>
+                        <!-- Botón Realizar Chequeo de Máquina -->
+                        <button onclick="document.getElementById('modalCheckeo').classList.remove('hidden')"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
+                            🛠️ Chequeo de Máquina
+                        </button>
+                    </div>
                 </div>
-            </div>
+            @endif
 
             <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
-            <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-4">
+            <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-5">
+                @if (stripos($maquina->tipo, 'grua') !== false)
+                    <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mt-4">
+                        <h3 class="text-lg font-bold text-yellow-800 mb-2">📦 Movimientos Pendientes</h3>
+
+                        @if ($movimientosPendientes->isEmpty())
+                            <p class="text-gray-600">No hay movimientos pendientes actualmente.</p>
+                        @else
+                            <ul class="space-y-3">
+                                @foreach ($movimientosPendientes as $mov)
+                                    <li class="p-3 border border-yellow-200 rounded shadow-sm bg-white">
+                                        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                                            <div class="flex-1">
+                                                <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
+                                                <p><strong>Descripción:</strong> {{ $mov->descripcion }}</p>
+                                                <p><strong>Solicitado por:</strong>
+                                                    {{ optional($mov->solicitadoPor)->name ?? 'N/A' }}</p>
+                                                <p><strong>Fecha:</strong> {{ $mov->created_at->format('d/m/Y H:i') }}
+                                                </p>
+                                            </div>
+
+                                            <div class="flex-shrink-0">
+                                                <button
+                                                    onclick='abrirModalMovimiento(
+                                                        @json($mov->id),
+                                                        @json($mov->tipo),
+                                                        "", // productoId se escanea luego
+                                                        @json($mov->maquina_destino),
+                                                        @json($mov->producto_base_id),
+                                                        @json($ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] ?? [])
+                                                    )'
+                                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                                                    ✅ Ejecutar
+                                                </button>
+
+                                            </div>
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+
+                    <!-- Modal para ejecutar movimiento -->
+                    <div id="modalMovimiento"
+                        class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
+                        <div class="bg-white p-6 rounded shadow-lg w-full max-w-xl">
+                            <h2 class="text-xl font-bold mb-4 text-center">📦 Registrar Movimiento a Máquina</h2>
+
+                            <!-- Ubicaciones sugeridas -->
+                            <div id="ubicaciones-actuales" class="mb-4 hidden">
+                                <label class="font-bold block mb-2">Ubicaciones con producto disponible</label>
+                                <ul id="ubicaciones-lista" class="list-disc list-inside text-gray-700 text-sm"></ul>
+                            </div>
+
+                            <!-- Formulario -->
+                            <form method="POST" action="{{ route('movimientos.store') }}"
+                                id="form-ejecutar-movimiento">
+                                @csrf
+                                <input type="hidden" name="tipo" id="modal_tipo">
+                                <input type="hidden" name="producto_base_id" id="modal_producto_base_id">
+                                <input type="hidden" name="maquina_destino" id="modal_maquina_id">
+
+                                <!-- Input QR producto -->
+                                <div class="mb-4">
+                                    <label for="producto_id" class="font-bold">Escanea el QR del producto que vas a
+                                        mover</label>
+                                    <input type="text" name="producto_id" id="modal_producto_id"
+                                        class="form-control mt-1 border rounded px-3 py-2 w-full"
+                                        placeholder="QR producto..." autofocus required>
+                                </div>
+
+                                <div class="flex justify-end gap-4 mt-6">
+                                    <button type="button" onclick="cerrarModalMovimiento()"
+                                        class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancelar</button>
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Registrar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Scripts -->
+                    <script>
+                        function abrirModalMovimiento(id, tipo, productoId, maquinaId, productoBaseId, ubicacionesSugeridas) {
+                            document.getElementById('modal_tipo').value = tipo;
+                            document.getElementById('modal_maquina_id').value = maquinaId;
+                            document.getElementById('modal_producto_id').value = ''; // limpiar QR anterior
+                            document.getElementById('modal_producto_base_id').value = productoBaseId;
+
+                            // Pintar ubicaciones sugeridas
+                            const lista = document.getElementById('ubicaciones-lista');
+                            lista.innerHTML = '';
+
+                            if (ubicacionesSugeridas && ubicacionesSugeridas.length > 0) {
+                                document.getElementById('ubicaciones-actuales').classList.remove('hidden');
+                                ubicacionesSugeridas.forEach(u => {
+                                    const li = document.createElement('li');
+                                    li.textContent = u.nombre;
+                                    lista.appendChild(li);
+                                });
+                            } else {
+                                document.getElementById('ubicaciones-actuales').classList.add('hidden');
+                            }
+
+                            document.getElementById('modalMovimiento').classList.remove('hidden');
+                            document.getElementById('modalMovimiento').classList.add('flex');
+                        }
+
+                        function cerrarModalMovimiento() {
+                            document.getElementById('modalMovimiento').classList.add('hidden');
+                            document.getElementById('modalMovimiento').classList.remove('flex');
+                        }
+                    </script>
+
+                @endif
+
+
+
                 @php
                     $idsReempaquetados = collect($elementosReempaquetados ?? []);
 
@@ -202,7 +319,8 @@
                                 </span> - S:{{ $planilla->seccion }}
                             </h2>
                             <h3 class="text-lg font-semibold text-gray-900">
-                                <span class="text-blue-700"> {{ $etiqueta->etiqueta_sub_id ?? 'N/A' }} </span>
+                                <span class="text-blue-700">
+                                    {{ $etiqueta->etiqueta_sub_id ?? 'N/A' }} </span>
                                 {{ $etiqueta->nombre ?? 'Sin nombre' }} -
 
                                 <span>Cal:B500SD</span>
@@ -214,11 +332,13 @@
                             <div class="p-2 no-print">
                                 <p>
                                     <strong>Estado:</strong>
-                                    <span id="estado-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
+                                    <span
+                                        id="estado-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
                                         {{ $etiqueta->estado ?? 'N/A' }}
                                     </span>
                                     <strong>Fecha Inicio:</strong>
-                                    <span id="inicio-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
+                                    <span
+                                        id="inicio-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
                                         {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_inicio_ensamblado ?? 'No asignada' : $etiqueta->fecha_inicio ?? 'No asignada' }}
                                     </span>
                                     <strong>Fecha Finalización:</strong>
@@ -231,7 +351,8 @@
                             </div>
                             <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
                             @if (isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty())
-                                <h4 class="font-semibold text-red-700 p-2">⚠️ Hay elementos en otras máquinas</h4>
+                                <h4 class="font-semibold text-red-700 p-2">⚠️ Hay elementos en otras
+                                    máquinas</h4>
                             @endif
                         </div>
                         <div>
@@ -267,15 +388,18 @@
                         <select id="motivoSelect" name="motivo" onchange="mostrarCampoOtro()"
                             class="w-full border p-2 rounded mb-4" required>
                             <option value="" disabled selected>Selecciona un motivo</option>
-                            <option value="Fallo técnico en máquina actual">Fallo técnico en máquina actual</option>
-                            <option value="Máquina saturada o con mucha carga">Máquina saturada o con mucha carga
+                            <option value="Fallo técnico en máquina actual">Fallo técnico en máquina actual
+                            </option>
+                            <option value="Máquina saturada o con mucha carga">Máquina saturada o con mucha
+                                carga
                             </option>
                             <option value="Cambio de prioridad en producción">Cambio de prioridad en producción
                             </option>
                             <option value="Otros">Otros</option>
                         </select>
                         <div id="campoOtroMotivo" class="hidden mb-4">
-                            <label for="motivoTexto" class="block font-semibold mb-1">Especifica otro motivo:</label>
+                            <label for="motivoTexto" class="block font-semibold mb-1">Especifica otro
+                                motivo:</label>
                             <input type="text" id="motivoTexto" class="w-full border p-2 rounded"
                                 placeholder="Escribe tu motivo">
                         </div>
@@ -288,7 +412,8 @@
 
                             @foreach ($maquinas as $m)
                                 @if (in_array($m->tipo, ['cortadora_dobladora', 'estribadora']) && $m->id !== $maquina->id)
-                                    <option value="{{ $m->id }}">{{ $m->nombre }} ({{ $m->tipo }})
+                                    <option value="{{ $m->id }}">{{ $m->nombre }}
+                                        ({{ $m->tipo }})
                                     </option>
                                 @endif
                             @endforeach
@@ -335,107 +460,110 @@
                 </div>
             </div>
             <!-- --------------------------------------------------------------- GRID PARA OTROS --------------------------------------------------------------- -->
-            <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
-                <div class="flex flex-col gap-4">
-                    <!-- Input de lectura de QR -->
-                    <div class="bg-white border p-2 shadow-md rounded-lg self-start sm:col-span-1 md:sticky">
-                        <h3 class="font-bold text-xl">PROCESO ETIQUETA</h3>
-                        <input type="text" id="procesoEtiqueta" class="w-full border p-2 rounded"
-                            placeholder="Escanea un QR..." autofocus>
-                        <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
+            @if (strtolower($maquina->tipo) !== 'grua')
+                <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
+                    <div class="flex flex-col gap-4">
+                        <!-- Input de lectura de QR -->
+                        <div class="bg-white border p-2 shadow-md rounded-lg self-start sm:col-span-1 md:sticky">
+                            <h3 class="font-bold text-xl">PROCESO ETIQUETA</h3>
+                            <input type="text" id="procesoEtiqueta" class="w-full border p-2 rounded"
+                                placeholder="Escanea un QR..." autofocus>
+                            <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
+                        </div>
+                        <script>
+                            document.addEventListener("DOMContentLoaded", function() {
+                                const input = document.getElementById("procesoEtiqueta");
+                                if (input) {
+                                    input.focus();
+                                }
+                            });
+                        </script>
+
+                        <!-- Sistema de inputs para crear paquetes -->
+                        <div class="bg-gray-100 border p-2 mb-2 shadow-md rounded-lg">
+                            <h3 class="font-bold text-xl">Crear Paquete</h3>
+                            <div class="mb-2">
+                                <label for="itemType" class="block text-gray-700 font-semibold">Selecciona el
+                                    tipo:</label>
+                                <select id="itemType" class="border rounded p-2 w-full">
+                                    <option value="Etiqueta">Etiqueta</option>
+                                    <option value="Elemento">Elemento</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label for="qrItem" class="block text-gray-700 font-semibold">Escanear
+                                    QR:</label>
+                                <input type="text" id="qrItem" class="border rounded p-2 w-full"
+                                    placeholder="Escanea o ingresa un código QR">
+                            </div>
+
+                            <!-- Listado dinámico de items -->
+                            <div class="mb-4">
+                                <h4 class="font-semibold text-gray-700 mb-2">Items agregados:</h4>
+                                <ul id="itemsList" class="list-disc pl-6 space-y-2">
+                                    <!-- Los items se agregarán aquí dinámicamente -->
+                                </ul>
+                            </div>
+
+                            <!-- Botón para crear el paquete -->
+                            <button id="crearPaqueteBtn"
+                                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full">
+                                📦 Crear Paquete
+                            </button>
+
+                        </div>
                     </div>
+                    <!-- ---------------------------------------- ELIMINAR PAQUETE ------------------------------- -->
+                    <form id="deleteForm" method="POST">
+                        @csrf
+                        @method('DELETE')
+                        <label for="paquete_id" class="block text-gray-700 font-semibold mb-2">
+                            ID del Paquete a Eliminar:
+                        </label>
+                        <input type="number" name="paquete_id" id="paquete_id" required
+                            class="w-full border p-2 rounded mb-2" placeholder="Ingrese ID del paquete">
+                        <button type="submit"
+                            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md mt-2">
+                            🗑️ Eliminar Paquete
+                        </button>
+                    </form>
+
                     <script>
-                        document.addEventListener("DOMContentLoaded", function() {
-                            const input = document.getElementById("procesoEtiqueta");
-                            if (input) {
-                                input.focus();
+                        document.getElementById('deleteForm').addEventListener('submit', function(event) {
+                            event.preventDefault(); // Evita el envío inmediato
+
+                            const paqueteId = document.getElementById('paquete_id').value;
+
+                            if (!paqueteId) {
+                                Swal.fire({
+                                    icon: "warning",
+                                    title: "Campo vacío",
+                                    text: "Por favor, ingrese un ID válido.",
+                                    confirmButtonColor: "#3085d6",
+                                });
+                                return;
                             }
+
+                            Swal.fire({
+                                title: "¿Estás seguro?",
+                                text: "Esta acción no se puede deshacer.",
+                                icon: "warning",
+                                showCancelButton: true,
+                                confirmButtonColor: "#d33",
+                                cancelButtonColor: "#3085d6",
+                                confirmButtonText: "Sí, eliminar",
+                                cancelButtonText: "Cancelar"
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    this.action = "/paquetes/" + paqueteId; // Modifica la acción con el ID
+                                    this.submit(); // Envía el formulario
+                                }
+                            });
                         });
                     </script>
 
-                    <!-- Sistema de inputs para crear paquetes -->
-                    <div class="bg-gray-100 border p-2 mb-2 shadow-md rounded-lg">
-                        <h3 class="font-bold text-xl">Crear Paquete</h3>
-                        <div class="mb-2">
-                            <label for="itemType" class="block text-gray-700 font-semibold">Selecciona el
-                                tipo:</label>
-                            <select id="itemType" class="border rounded p-2 w-full">
-                                <option value="Etiqueta">Etiqueta</option>
-                                <option value="Elemento">Elemento</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label for="qrItem" class="block text-gray-700 font-semibold">Escanear QR:</label>
-                            <input type="text" id="qrItem" class="border rounded p-2 w-full"
-                                placeholder="Escanea o ingresa un código QR">
-                        </div>
-
-                        <!-- Listado dinámico de items -->
-                        <div class="mb-4">
-                            <h4 class="font-semibold text-gray-700 mb-2">Items agregados:</h4>
-                            <ul id="itemsList" class="list-disc pl-6 space-y-2">
-                                <!-- Los items se agregarán aquí dinámicamente -->
-                            </ul>
-                        </div>
-
-                        <!-- Botón para crear el paquete -->
-                        <button id="crearPaqueteBtn"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full">
-                            📦 Crear Paquete
-                        </button>
-
-                    </div>
                 </div>
-                <!-- ---------------------------------------- ELIMINAR PAQUETE ------------------------------- -->
-                <form id="deleteForm" method="POST">
-                    @csrf
-                    @method('DELETE')
-                    <label for="paquete_id" class="block text-gray-700 font-semibold mb-2">
-                        ID del Paquete a Eliminar:
-                    </label>
-                    <input type="number" name="paquete_id" id="paquete_id" required
-                        class="w-full border p-2 rounded mb-2" placeholder="Ingrese ID del paquete">
-                    <button type="submit"
-                        class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md mt-2">
-                        🗑️ Eliminar Paquete
-                    </button>
-                </form>
-
-                <script>
-                    document.getElementById('deleteForm').addEventListener('submit', function(event) {
-                        event.preventDefault(); // Evita el envío inmediato
-
-                        const paqueteId = document.getElementById('paquete_id').value;
-
-                        if (!paqueteId) {
-                            Swal.fire({
-                                icon: "warning",
-                                title: "Campo vacío",
-                                text: "Por favor, ingrese un ID válido.",
-                                confirmButtonColor: "#3085d6",
-                            });
-                            return;
-                        }
-
-                        Swal.fire({
-                            title: "¿Estás seguro?",
-                            text: "Esta acción no se puede deshacer.",
-                            icon: "warning",
-                            showCancelButton: true,
-                            confirmButtonColor: "#d33",
-                            cancelButtonColor: "#3085d6",
-                            confirmButtonText: "Sí, eliminar",
-                            cancelButtonText: "Cancelar"
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                this.action = "/paquetes/" + paqueteId; // Modifica la acción con el ID
-                                this.submit(); // Envía el formulario
-                            }
-                        });
-                    });
-                </script>
-
-            </div>
+            @endif
             <!-- Modal Reportar Incidencia (Oculto por defecto) -->
             <div id="modalIncidencia"
                 class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center">

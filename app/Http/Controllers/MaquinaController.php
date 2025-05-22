@@ -6,9 +6,11 @@ use Illuminate\Http\Request;
 use App\Models\Maquina;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
+use App\Models\Producto;
 use App\Models\AsignacionTurno;
 use App\Models\User;
 use App\Models\Ubicacion;
+use App\Models\Movimiento;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
@@ -217,7 +219,39 @@ class MaquinaController extends Controller
             // Unir ambas colecciones
             $elementosMaquina = $elementosMaquina->merge($elementosExtra);
         }
+        // ---------------------------------------------------------------
+        // 5) Si es una grua, añadir elementos trasladados desde otra máquina
+        // ---------------------------------------------------------------
 
+        if (stripos($maquina->tipo, 'grua') !== false) {
+            $ubicacionesDisponiblesPorProductoBase = [];
+            $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion'])->where('estado', 'pendiente')->orderBy('created_at', 'desc')->get();
+            foreach ($movimientosPendientes as $mov) {
+
+                if ($mov->producto_base_id) {
+
+
+                    $productosCompatibles = Producto::with('ubicacion')
+                        ->where('producto_base_id', $mov->producto_base_id)
+                        ->where('estado', 'almacenado')
+                        ->get();
+
+                    // Extraer ubicaciones únicas
+                    $ubicaciones = $productosCompatibles
+                        ->pluck('ubicacion') // Accede directamente a la relación 1:1
+                        ->filter()            // Elimina nulos por si algún producto no tiene ubicación
+                        ->unique('id')        // Ubicaciones únicas
+                        ->map(fn($u) => ['id' => $u->id, 'nombre' => $u->nombre])
+                        ->values()
+                        ->toArray();
+
+                    $ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] = $ubicaciones;
+                }
+            }
+        } else {
+            $movimientosPendientes = collect(); // colección vacía para evitar errores
+            $ubicacionesDisponiblesPorProductoBase = $ubicacionesDisponiblesPorProductoBase ?? [];
+        }
         // ---------------------------------------------------------------
         // 6) Agrupar elementos por planilla y ordenar por fecha de entrega
         // ---------------------------------------------------------------
@@ -284,7 +318,9 @@ class MaquinaController extends Controller
             'pesosElementos'            => $pesosElementos,
             'etiquetasData'             => $etiquetasData,
             'elementosReempaquetados'   => $elementosReempaquetados,
-            'maquinas'                  => $maquinas
+            'maquinas'                  => $maquinas,
+            'movimientosPendientes' => $movimientosPendientes,
+            'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase
         ]);
     }
 

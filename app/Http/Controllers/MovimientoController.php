@@ -56,12 +56,7 @@ class MovimientoController extends Controller
         $usuario = auth()->user();
 
         // Base query con relaciones necesarias
-        $query = Movimiento::with(['producto', 'ejecutadoPor', 'solicitadoPor', 'ubicacionOrigen', 'ubicacionDestino', 'maquinaOrigen', 'maquina']);
-
-        // Filtrar según el rol del usuario
-        if ($usuario->rol === 'operario') {
-            $query->where('users_id', $usuario->id);
-        }
+        $query = Movimiento::with(['producto', 'productoBase', 'ejecutadoPor', 'solicitadoPor', 'ubicacionOrigen', 'ubicacionDestino', 'maquinaOrigen', 'maquinaDestino']);
         // Si es 'oficina', no aplicamos restricciones y puede ver todos los movimientos
 
         // Aplicar filtros utilizando el método 'aplicarFiltros'
@@ -96,13 +91,13 @@ class MovimientoController extends Controller
     public function crearMovimiento(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'tipo_movimiento' => 'required',
-            'producto_id' => 'required_if:tipo_movimiento,recarga_materia_prima|nullable|exists:productos,id',
-            'paquete_id' => 'required_if:tipo_movimiento,paquete|nullable|exists:paquetes,id',
+            'tipo' => 'required',
+            'producto_id' => 'required_if: tipo,recarga_materia_prima|nullable|exists:productos,id',
+            'paquete_id' => 'required_if: tipo,paquete|nullable|exists:paquetes,id',
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
             'maquina_id' => 'nullable|exists:maquinas,id',
         ], [
-            'tipo_movimiento.required' => 'El tipo de movimiento es obligatorio.',
+            'tipo.required' => 'El tipo de movimiento es obligatorio.',
             'producto_id.required_if' => 'El producto es obligatorio cuando el tipo de movimiento es recarga de materia prima.',
             'producto_id.exists' => 'El producto seleccionado no existe.',
             'paquete_id.required_if' => 'El paquete es obligatorio cuando el tipo de movimiento es paquete.',
@@ -125,7 +120,7 @@ class MovimientoController extends Controller
 
         try {
             DB::transaction(function () use ($request) {
-                switch ($request->tipo_movimiento) {
+                switch ($request->tipo) {
                     //__________________________________ RECARGA MATERIA PRIMA __________________________________
                     case 'recarga_materia_prima':
                         $productoReferencia = Producto::with('productoBase')->find($request->producto_id);
@@ -139,15 +134,19 @@ class MovimientoController extends Controller
                         $descripcion = "Se solicita materia prima del tipo {$tipo} (Ø{$diametro}, {$longitud} mm) en la máquina {$nombreMaquina}";
 
                         Movimiento::create([
-                            'tipo' => 'recarga_materia_prima',
-                            'maquina_origen' => $request->maquina_id,
-                            'estado' => 'pendiente',
-                            'descripcion' => $descripcion,
-                            'prioridad' => 1,
-                            'fecha_solicitud' => now(),
-                            'solicitado_por' => auth()->id(),
+                            'tipo'              => 'Recarga materia prima',
+                            'maquina_origen'    => null,
+                            'maquina_destino'    => $request->maquina_id,
+                            'producto_id'       => null,
+                            'producto_base_id'  => $productoReferencia->productoBase->id ?? null,
+                            'estado'            => 'pendiente',
+                            'descripcion'       => $descripcion,
+                            'prioridad'         => 1,
+                            'fecha_solicitud'   => now(),
+                            'solicitado_por'    => auth()->id(),
                         ]);
                         break;
+
 
                     //__________________________________ MOVIMIENTO PAQUETE __________________________________
                     case 'paquete':
@@ -169,10 +168,11 @@ class MovimientoController extends Controller
                 }
             });
 
-            return response()->json(['success' => true, 'message' => 'Movimiento registrado correctamente.']);
+            return redirect()->back()->with('success', 'Movimiento creado correctamente.');
         } catch (\Exception $e) {
-            Log::error('Error en movimiento: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error al registrar movimiento: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Hubo un problema al registrar el movimiento. Inténtalo de nuevo.');
         }
     }
 
@@ -180,19 +180,19 @@ class MovimientoController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'tipo_movimiento' => 'required',  // Validar el tipo de movimiento
-            'producto_id' => 'required_if:tipo_movimiento,producto|nullable|exists:productos,id',  // Producto obligatorio si tipo_movimiento es producto
-            'paquete_id' => 'required_if:tipo_movimiento,paquete|nullable|exists:paquetes,id',  // Paquete obligatorio si tipo_movimiento es paquete
+            'tipo' => 'required',  // Validar el tipo de movimiento
+            'producto_id' => 'required_if: tipo,producto|nullable|exists:productos,id',  // Producto obligatorio si  tipo es producto
+            'paquete_id' => 'required_if: tipo,paquete|nullable|exists:paquetes,id',  // Paquete obligatorio si  tipo es paquete
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
-            'maquina_id' => 'nullable|exists:maquinas,id',
+            'maquina_destino' => 'nullable|exists:maquinas,id',
         ], [
-            'tipo_movimiento.required' => 'El tipo de movimiento es obligatorio.',
+            'tipo.required' => 'El tipo de movimiento es obligatorio.',
             'producto_id.required_if' => 'El producto es obligatorio cuando el tipo de movimiento es producto.',
             'producto_id.exists' => 'El producto seleccionado no existe.',
             'paquete_id.required_if' => 'El paquete es obligatorio cuando el tipo de movimiento es paquete.',
             'paquete_id.exists' => 'El paquete seleccionado no existe.',
             'ubicacion_destino.exists' => 'Ubicación no válida.',
-            'maquina_id.exists' => 'Máquina no válida.',
+            'maquina_destino.exists' => 'Máquina no válida.',
         ]);
 
         // Si la validación falla, devuelve los errores
@@ -201,25 +201,25 @@ class MovimientoController extends Controller
         }
 
 
-        if ($request->ubicacion_destino && $request->maquina_id) {
+        if ($request->ubicacion_destino && $request->maquina_destino) {
             return response()->json(['error' => 'No puedes elegir una ubicación y una máquina a la vez como destino']);
         }
 
-        if (!$request->ubicacion_destino && !$request->maquina_id) {
+        if (!$request->ubicacion_destino && !$request->maquina_destino) {
             return response()->json(['error' => 'No has elegido destino']);
         }
 
         try {
             DB::transaction(function () use ($request) {
-                switch ($request->tipo_movimiento) {
-                    case 'recarga_materia_prima':
+                switch ($request->tipo) {
+                    case 'Recarga materia prima':
                         $producto = Producto::with('productoBase')->find($request->producto_id);
 
-                        if ($request->maquina_id) {
-                            $maquina = Maquina::find($request->maquina_id);
+                        if ($request->maquina_destino) {
+                            $maquina = Maquina::find($request->maquina_destino);
                             $maquinas_encarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
 
-                            if (in_array($maquina->codigo, $maquinas_encarretado) && $producto->productoBase->tipo == 'barras') {
+                            if (in_array($maquina->codigo, $maquinas_encarretado) && $producto->productoBase->tipo === 'barras') {
                                 throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
                             }
 
@@ -230,19 +230,34 @@ class MovimientoController extends Controller
                             }
                         }
 
-                        Movimiento::create([
+                        // Buscar movimiento pendiente con ese producto base y máquina
+                        $movimiento = Movimiento::where('producto_base_id', $producto->producto_base_id)
+                            ->where('maquina_destino', $request->maquina_destino)
+                            ->where('estado', 'pendiente')
+                            ->latest()
+                            ->first();
+
+                        if (!$movimiento) {
+                            throw new \Exception('No se encontró un movimiento pendiente para completar.');
+                        }
+
+                        // Marcar como completado
+                        $movimiento->update([
                             'producto_id' => $producto->id,
                             'ubicacion_origen' => $producto->ubicacion_id,
-                            'maquina_origen' => $producto->maquina_id,
-                            'ubicacion_destino' => $request->ubicacion_destino,
-                            'maquina_id' => $request->maquina_id,
+                            'maquina_origen' => null,
+                            'estado' => 'completado',
                             'users_id' => auth()->id(),
                         ]);
 
+                        // Actualizar estado y destino del producto
                         $producto->ubicacion_id = $request->ubicacion_destino ?: null;
-                        $producto->maquina_id = $request->maquina_id ?: null;
+                        $producto->maquina_id = $request->maquina_destino ?: null;
                         $producto->estado = $request->ubicacion_destino ? 'almacenado' : 'fabricando';
                         $producto->save();
+
+                        break;
+
                     case 'paquete':
                         $paquete = Paquete::find($request->paquete_id);
 
@@ -278,10 +293,11 @@ class MovimientoController extends Controller
                 }
             });
 
-            return response()->json(['success' => true, 'message' => 'Movimiento registrado correctamente.']);
+            return redirect()->back()->with('success', 'Movimiento completado correctamente.');
         } catch (\Exception $e) {
-            Log::error('Error en movimiento: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Error al registrar movimiento: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Hubo un problema al ejecutar el movimiento. Inténtalo de nuevo.');
         }
     }
 

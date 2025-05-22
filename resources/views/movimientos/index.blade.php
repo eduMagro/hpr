@@ -84,6 +84,9 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">ID</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Tipo
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Producto
+                            Solicitado
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
                             Descripción</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
@@ -119,6 +122,15 @@
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
                                 {{ ucfirst($movimiento->tipo ?? 'N/A') }}
                             </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                @if ($movimiento->productoBase)
+                                    {{ ucfirst(strtolower($movimiento->productoBase->tipo)) }}
+                                    (Ø{{ $movimiento->productoBase->diametro }}{{ strtolower($movimiento->productoBase->tipo) === 'barra' ? ', ' . $movimiento->productoBase->longitud . ' m' : '' }})
+                                @else
+                                    <span class="text-gray-400 italic">Sin datos</span>
+                                @endif
+                            </td>
+
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
                                 {{ Str::limit($movimiento->descripcion, 50) ?? '—' }}
                             </td>
@@ -174,7 +186,7 @@
                             </td>
 
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
-                                {{ $movimiento->ubicacionDestino->nombre ?? ($movimiento->maquina->nombre ?? '—') }}
+                                {{ $movimiento->ubicacionDestino->nombre ?? ($movimiento->maquinaDestino->nombre ?? '—') }}
                             </td>
 
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
@@ -189,7 +201,7 @@
                                         Paquete #{{ $movimiento->paquete->id }}
                                     </a>
                                 @else
-                                    N/A
+                                    —
                                 @endif
                             </td>
 

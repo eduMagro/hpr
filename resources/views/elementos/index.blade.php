@@ -28,6 +28,9 @@
             $filtrosActivos[] = 'ID: <strong>' . request('id') . '</strong>';
         }
 
+        if (request('codigo')) {
+            $filtrosActivos[] = 'Código de elemento: <strong>' . request('codigo') . '</strong>';
+        }
         if (request('codigo_planilla')) {
             $filtrosActivos[] = 'Código de planilla: <strong>' . request('codigo_planilla') . '</strong>';
         }
@@ -148,6 +151,7 @@
                     <tr class="text-center text-xs uppercase">
                         <!-- Encabezados con orden dinámico -->
                         <th class="p-2 border">{!! ordenarColumnaElemento('id', 'ID') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('codigo', 'Codigo Elemento') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('codigo_planilla', 'Planilla') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('etiqueta', 'Etiqueta') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('subetiqueta', 'SubEtiqueta') !!}</th>
@@ -168,7 +172,7 @@
 
                     <form method="GET" action="{{ route('elementos.index') }}">
                         <tr class="text-center text-xs uppercase">
-                            @foreach (['id', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'paquete_id', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura'] as $campo)
+                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'paquete_id', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura'] as $campo)
                                 <th class="py-3 border">
                                     <input type="text" name="{{ $campo }}" value="{{ request($campo) }}"
                                         class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
@@ -264,6 +268,12 @@
                                     <span x-text="elemento.id"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.id" class="form-input w-full">
+                            </td>
+                            <!-- CODIGO -->
+                            <td class="px-1 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <input type="text" x-model="elemento.codigo" class="form-input w-full">
+                                </template>
                             </td>
                             <!-- PLANILLA -->
                             <td class="px-1 py-3 text-center border">
