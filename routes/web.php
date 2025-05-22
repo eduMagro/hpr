@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function () {
     Route::post('pedidos/{pedido}/recepcion', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');
     Route::post('/pedidos/{pedido}/enviar-correo', [PedidoController::class, 'enviarCorreo'])->name('pedidos.enviarCorreo');
     Route::get('/pedidos/preview', [PedidoController::class, 'preview'])->name('pedidos.preview');
+    Route::put('/pedidos/{pedido}/activar', [PedidoController::class, 'activar'])->name('pedidos.activar');
 
 
     Route::resource('fabricantes', FabricanteController::class);
@@ -111,6 +112,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
 
     Route::resource('maquinas', MaquinaController::class);
+    Route::post('/maquinas/{id}/cambiar-estado', [MaquinaController::class, 'cambiarEstado'])->name('maquinas.cambiarEstado');
+
     Route::resource('movimientos', MovimientoController::class);
     Route::post('/movimientos/crear', [MovimientoController::class, 'crearMovimiento'])->name('movimientos.crear');
 

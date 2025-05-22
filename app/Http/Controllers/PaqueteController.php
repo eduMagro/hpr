@@ -8,6 +8,7 @@ use App\Models\Etiqueta;
 use App\Models\Ubicacion;
 use App\Models\Elemento;
 use App\Models\Maquina;
+use App\Models\Movimiento;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -154,6 +155,17 @@ class PaqueteController extends Controller
 
             // Crear el paquete
             $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal);
+
+            // Crear movimiento de paquete pendiente
+            Movimiento::create([
+                'tipo' => 'Bajada de paquete',
+                'paquete_id'         => $paquete->id,
+                'solicitado_por'         => auth()->id(),
+                'descripcion'        => "Se solicita bajar del carro el paquete #{$paquete->id} de la máquina {$maquina->nombre}",
+                'ubicacion_origen'   => $ubicacion->id,
+                'maquina_origen'     => $maquina->id,
+                'estado'             => 'pendiente'
+            ]);
 
             // Asignar los elementos al paquete
             $this->asignarItemsAPaquete($todosElementos->pluck('id')->toArray(), $paquete->id);

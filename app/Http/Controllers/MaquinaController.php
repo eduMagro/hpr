@@ -7,6 +7,8 @@ use App\Models\Maquina;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Models\Producto;
+use App\Models\ProductoBase;
+use App\Models\Pedido;
 use App\Models\AsignacionTurno;
 use App\Models\User;
 use App\Models\Ubicacion;
@@ -182,6 +184,12 @@ class MaquinaController extends Controller
         // ---------------------------------------------------------------
         $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
         $maquinas = Maquina::orderBy('nombre')->get(); // O cualquier otro criterio
+
+        // Productos base compatibles con la máquina
+        $productosBaseCompatibles = ProductoBase::where('tipo', $maquina->tipo_material)
+            ->whereBetween('diametro', [$maquina->diametro_min, $maquina->diametro_max])
+            ->orderBy('diametro')
+            ->get();
         // ---------------------------------------------------------------
         // 3) Obtener el usuario autenticado y compañero de sesión (si existe)
         // ---------------------------------------------------------------
@@ -220,27 +228,37 @@ class MaquinaController extends Controller
             $elementosMaquina = $elementosMaquina->merge($elementosExtra);
         }
         // ---------------------------------------------------------------
-        // 5) Si es una grua, añadir elementos trasladados desde otra máquina
+        // 5) Si es una grua, añadir movimientos
         // ---------------------------------------------------------------
 
         if (stripos($maquina->tipo, 'grua') !== false) {
             $ubicacionesDisponiblesPorProductoBase = [];
-            $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion'])->where('estado', 'pendiente')->orderBy('created_at', 'desc')->get();
+
+            $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion'])
+                ->where('estado', 'pendiente')
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            $movimientosCompletados = Movimiento::with(['solicitadoPor', 'ejecutadoPor', 'producto.ubicacion'])
+                ->where('estado', 'completado')
+                ->orderBy('updated_at', 'desc')
+                ->where('ejecutado_por', auth()->id())
+                ->take(20)
+                ->get();
+
+            $pedidosActivos = Pedido::where('estado', 'activo')->orderBy('updated_at', 'desc')->get();
+
             foreach ($movimientosPendientes as $mov) {
-
                 if ($mov->producto_base_id) {
-
-
                     $productosCompatibles = Producto::with('ubicacion')
                         ->where('producto_base_id', $mov->producto_base_id)
                         ->where('estado', 'almacenado')
                         ->get();
 
-                    // Extraer ubicaciones únicas
                     $ubicaciones = $productosCompatibles
-                        ->pluck('ubicacion') // Accede directamente a la relación 1:1
-                        ->filter()            // Elimina nulos por si algún producto no tiene ubicación
-                        ->unique('id')        // Ubicaciones únicas
+                        ->pluck('ubicacion')
+                        ->filter()
+                        ->unique('id')
                         ->map(fn($u) => ['id' => $u->id, 'nombre' => $u->nombre])
                         ->values()
                         ->toArray();
@@ -249,9 +267,12 @@ class MaquinaController extends Controller
                 }
             }
         } else {
-            $movimientosPendientes = collect(); // colección vacía para evitar errores
+            $movimientosPendientes = collect();
+            $movimientosCompletados = collect();
             $ubicacionesDisponiblesPorProductoBase = $ubicacionesDisponiblesPorProductoBase ?? [];
+            $pedidosActivos = collect();
         }
+
         // ---------------------------------------------------------------
         // 6) Agrupar elementos por planilla y ordenar por fecha de entrega
         // ---------------------------------------------------------------
@@ -320,11 +341,12 @@ class MaquinaController extends Controller
             'elementosReempaquetados'   => $elementosReempaquetados,
             'maquinas'                  => $maquinas,
             'movimientosPendientes' => $movimientosPendientes,
-            'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase
+            'movimientosCompletados' => $movimientosCompletados,
+            'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase,
+            'productosBaseCompatibles' => $productosBaseCompatibles,
+            'pedidosActivos' => $pedidosActivos,
         ]);
     }
-
-
 
     public function create()
     {
@@ -414,7 +436,18 @@ class MaquinaController extends Controller
 
         return response()->json(['success' => true]);
     }
+    public function cambiarEstado(Request $request, $id)
+    {
+        $request->validate([
+            'estado' => 'nullable|string|max:50', // si no se envía, usaremos el valor por defecto
+        ]);
 
+        $maquina = Maquina::findOrFail($id);
+        $maquina->estado = $request->input('estado', 'activa'); // por defecto "activa"
+        $maquina->save();
+
+        return redirect()->back()->with('success', 'Estado de la máquina actualizado correctamente.');
+    }
     public function edit($id)
     {
         if (auth()->user()->rol !== 'oficina') {

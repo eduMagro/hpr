@@ -514,6 +514,14 @@ class PedidoController extends Controller
             ], 500);
         }
     }
+    public function activar($id)
+    {
+        $pedido = Pedido::findOrFail($id);
+        $pedido->estado = 'activo';
+        $pedido->save();
+
+        return redirect()->back()->with('success', 'Pedido activado correctamente.');
+    }
 
     public function store(Request $request)
     {

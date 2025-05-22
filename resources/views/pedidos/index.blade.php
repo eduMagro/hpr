@@ -452,6 +452,23 @@
                                 <td class="border px-3 py-2">{{ $pedido->productos->count() }}</td>
                                 <td class="border px-3 py-2">{{ $pedido->fecha_creacion_formateada }}</td>
                                 <td class="border px-3 py-2 space-x-2">
+                                    @if (in_array($pedido->estado, ['pendiente', 'parcial']))
+                                        <form method="POST" action="{{ route('pedidos.activar', $pedido->id) }}"
+                                            class="inline">
+                                            @csrf
+                                            @method('PUT')
+                                            <button type="submit"
+                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow">
+                                                Activar
+                                            </button>
+                                        </form>
+                                    @else
+                                        <button disabled
+                                            class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-60 cursor-not-allowed">
+                                            Activar
+                                        </button>
+                                    @endif
+
                                     <template x-if="editando">
                                         <button @click="guardarCambios(pedido); editando = false"
                                             class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">

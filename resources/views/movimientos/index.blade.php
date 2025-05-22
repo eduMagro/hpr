@@ -178,7 +178,7 @@
                             </td>
 
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
-                                {{ $movimiento->fecha_ejecucion ? $movimiento->fecha_ejecucion->format('d/m/Y H:i') : '—' }}
+                                {{ $movimiento->fecha_ejecucion ?? '—' }}
                             </td>
 
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">

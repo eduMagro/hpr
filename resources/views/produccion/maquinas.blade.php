@@ -58,7 +58,8 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const maquinas = @json($maquinas->map(fn($m) => ['id' => $m->id, 'title' => $m->nombre]));
+            const maquinas = @json($resources);
+
             const planillas = @json($planillasEventos);
 
             const calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {

@@ -154,6 +154,18 @@ class ProduccionController extends Controller
         $maquinas = Maquina::whereNotNull('tipo')
             ->orderBy('id')
             ->get();
+        $resources = $maquinas->map(function ($m) {
+            return [
+                'id' => $m->id,
+                'title' => match ($m->estado) {
+                    'activa' => '🟢 ' . $m->nombre,
+                    'averiada' => '🔴 ' . $m->nombre,
+                    'mantenimiento' => '🛠️ ' . $m->nombre,
+                    'pausa' => '⏸️ ' . $m->nombre,
+                    default => ' ' . $m->nombre,
+                },
+            ];
+        });
 
         // ================================
         // 🔹 2. ELEMENTOS ACTIVOS
@@ -303,6 +315,7 @@ class ProduccionController extends Controller
             'cargaPorMaquinaTurno' => $cargaPorMaquinaTurno,
             'erroresPlanillas' => $erroresPlanillas,
             'cargaPorMaquinaTurnoConFechas' => $cargaPorMaquinaTurnoConFechas,
+            'resources' => $resources,
         ]);
     }
 
