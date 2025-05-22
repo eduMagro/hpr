@@ -531,15 +531,15 @@ class PedidoController extends Controller
             $pedido->estado = 'activo';
             $pedido->save();
 
-            // Crear movimiento de descarga_material
+            // Crear movimiento de descarga de materia prima asociado al pedido
             Movimiento::create([
-                'tipo'              => 'descarga_material',
-                'estado'            => 'pendiente',
-                'descripcion'       => 'Se solicita descarga de materiales para el pedido #' . $pedido->id,
-                'fecha_solicitud'   => now(),
-                'solicitado_por'    => auth()->id(),
-                'pedido_id'         => $pedido->id,
-                'prioridad'         => 1,
+                'tipo'            => 'descarga materia prima',
+                'estado'          => 'pendiente',
+                'descripcion'     => 'Se solicita descarga de materiales para el pedido ' . $pedido->codigo,
+                'fecha_solicitud' => now(),
+                'solicitado_por'  => auth()->id(),
+                'pedido_id'       => $pedido->id, // ← clave foránea hacia el pedido
+                'prioridad'       => 1,
             ]);
 
             DB::commit();

@@ -83,6 +83,10 @@ class Pedido extends Model
     {
         return optional($this->fecha_pedido)->format('d-m-Y');
     }
+    public function movimientos()
+    {
+        return $this->hasMany(Movimiento::class);
+    }
 
     public function getFechaEntregaFormateadaAttribute()
     {

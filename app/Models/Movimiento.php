@@ -16,6 +16,8 @@ class Movimiento extends Model
         'producto_id',
         'producto_base_id',
         'paquete_id',
+        'pedido_id',
+        'salida_id',
         'ubicacion_origen',
         'ubicacion_destino',
         'maquina_origen',
@@ -49,6 +51,16 @@ class Movimiento extends Model
     {
         return $this->belongsTo(Paquete::class, 'paquete_id');
     }
+    public function pedido()
+    {
+        return $this->belongsTo(Pedido::class);
+    }
+
+    public function salida()
+    {
+        return $this->belongsTo(Salida::class);
+    }
+
 
     public function ubicacionOrigen()
     {

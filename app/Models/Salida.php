@@ -63,4 +63,8 @@ class Salida extends Model
     {
         return $this->belongsToMany(Obra::class, 'salida_cliente', 'salida_id', 'obra_id');
     }
+    public function movimientos()
+    {
+        return $this->hasMany(Movimiento::class);
+    }
 }

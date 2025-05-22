@@ -494,7 +494,13 @@
                                                     ✅ Ejecutar recarga
                                                 </button>
                                             @endif
-
+                                            @if (strtolower($mov->tipo) === 'descarga materia prima' && $mov->pedido)
+                                                <button
+                                                    onclick='abrirModalPedidoDesdeMovimiento(@json($mov->pedido))'
+                                                    class="bg-orange-500 hover:bg-orange-600 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
+                                                    🏗️ Ir al pedido
+                                                </button>
+                                            @endif
                                         </div>
                                     </li>
                                 @endforeach
@@ -533,6 +539,7 @@
                     </div>
                     <!-- Paginador para completados -->
                     <div class="mt-4 flex justify-center gap-2" id="paginador-movimientos-completados"></div>
+
                     {{-- 🔄 MODAL MOVIMIENTO LIBRE --}}
                     <div id="modalMovimientoLibre"
                         class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
@@ -674,6 +681,20 @@
                             </form>
                         </div>
                     </div>
+                    {{-- 🔄 MODAL DESCARGA MATERIA PRIMA --}}
+                    <div id="modal-ver-pedido"
+                        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+                        <div class="bg-white w-full max-w-2xl rounded shadow-lg p-6 relative">
+                            <button onclick="cerrarModalPedido()"
+                                class="absolute top-2 right-2 text-gray-500 hover:text-black text-xl">&times;</button>
+
+                            <h2 class="text-xl font-bold mb-4">Pedido vinculado al movimiento</h2>
+
+                            <div id="contenidoPedido" class="space-y-3 text-sm">
+                                {{-- El contenido se rellena por JavaScript --}}
+                            </div>
+                        </div>
+                    </div>
 
                     {{-- Scripts --}}
                     <script>
@@ -784,6 +805,31 @@
                                 }
                             });
                         });
+
+
+                        function abrirModalPedidoDesdeMovimiento(pedido) {
+                            if (!pedido) return;
+
+                            const contenedor = document.getElementById('contenidoPedido');
+                            const modal = document.getElementById('modal-ver-pedido');
+
+                            contenedor.innerHTML = `
+            <p><strong>Código:</strong> ${pedido.codigo}</p>
+            <p><strong>Estado:</strong> ${pedido.estado}</p>
+            <p><strong>Proveedor:</strong> ${pedido.proveedor?.nombre ?? '—'}</p>
+
+            <a href="/pedidos/${pedido.id}/recepcion"
+                class="btn btn-success mt-4 inline-block">
+                Ir a recepcionarlo
+            </a>
+        `;
+
+                            modal.classList.remove('hidden');
+                        }
+
+                        function cerrarModalPedido() {
+                            document.getElementById('modal-ver-pedido').classList.add('hidden');
+                        }
                     </script>
                 </div>
             @endif
