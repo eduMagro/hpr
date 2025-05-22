@@ -497,7 +497,7 @@
                                             @if (strtolower($mov->tipo) === 'descarga materia prima' && $mov->pedido)
                                                 <button
                                                     onclick='abrirModalPedidoDesdeMovimiento(@json($mov->pedido))'
-                                                    class="bg-orange-500 hover:bg-orange-600 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
+                                                    class="bg-orange-500 hover:bg-orange-600 text-white border border-black text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
                                                     🏗️ Ir al pedido
                                                 </button>
                                             @endif
