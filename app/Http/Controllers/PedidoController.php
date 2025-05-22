@@ -12,6 +12,7 @@ use App\Models\ProductoBase;
 use App\Models\Entrada;
 use App\Models\EntradaProducto;
 use App\Models\Ubicacion;
+use App\Models\Movimiento;
 use Illuminate\Support\Facades\Storage;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Mail\PedidoCreado;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PedidoController extends Controller
 {
@@ -517,10 +519,38 @@ class PedidoController extends Controller
     public function activar($id)
     {
         $pedido = Pedido::findOrFail($id);
-        $pedido->estado = 'activo';
-        $pedido->save();
 
-        return redirect()->back()->with('success', 'Pedido activado correctamente.');
+        if (!in_array($pedido->estado, ['pendiente', 'parcial'])) {
+            return redirect()->back()->with('error', 'Solo se pueden activar pedidos en estado pendiente o parcial.');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Cambiar estado a activo
+            $pedido->estado = 'activo';
+            $pedido->save();
+
+            // Crear movimiento de descarga_material
+            Movimiento::create([
+                'tipo'              => 'descarga_material',
+                'estado'            => 'pendiente',
+                'descripcion'       => 'Se solicita descarga de materiales para el pedido #' . $pedido->id,
+                'fecha_solicitud'   => now(),
+                'solicitado_por'    => auth()->id(),
+                'pedido_id'         => $pedido->id,
+                'prioridad'         => 1,
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Pedido activado correctamente y movimiento generado.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error al activar pedido o crear movimiento: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Error al activar el pedido.');
+        }
     }
 
     public function store(Request $request)
