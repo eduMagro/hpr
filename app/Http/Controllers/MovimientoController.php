@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Movimiento;
 use App\Models\Producto;
+use App\Models\ProductoBase;
 use App\Models\Localizacion;
 use App\Models\Paquete;
 use App\Models\Ubicacion;
@@ -92,7 +93,8 @@ class MovimientoController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'tipo' => 'required',
-            'producto_id' => 'required_if: tipo,recarga_materia_prima|nullable|exists:productos,id',
+            'producto_id' => 'nullable|exists:productos,id',
+            'producto_base_id' => 'required_if:tipo,recarga_materia_prima|exists:productos_base,id',
             'paquete_id' => 'required_if: tipo,paquete|nullable|exists:paquetes,id',
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
             'maquina_id' => 'nullable|exists:maquinas,id',
@@ -123,12 +125,21 @@ class MovimientoController extends Controller
                 switch ($request->tipo) {
                     //__________________________________ RECARGA MATERIA PRIMA __________________________________
                     case 'recarga_materia_prima':
-                        $productoReferencia = Producto::with('productoBase')->find($request->producto_id);
-                        $maquina = Maquina::find($request->maquina_id);
+                        $productoBase = null;
 
-                        $tipo = strtolower($productoReferencia->productoBase->tipo ?? 'N/A');
-                        $diametro = $productoReferencia->productoBase->diametro ?? '?';
-                        $longitud = $productoReferencia->productoBase->longitud ?? '?';
+                        if ($request->filled('producto_id')) {
+                            $productoReferencia = Producto::with('productoBase')->find($request->producto_id);
+                            $productoBase = $productoReferencia->productoBase;
+                        } else {
+                            $productoBase = ProductoBase::find($request->producto_base_id);
+                        }
+
+                        $maquina = Maquina::find($request->maquina_id);
+                        dd($productoReferencia);
+                        $tipo = strtolower($productoBase->tipo ?? 'N/A');
+                        $diametro = $productoBase->diametro ?? '?';
+                        $longitud = $productoBase->longitud ?? '?';
+
                         $nombreMaquina = $maquina->nombre ?? 'desconocida';
 
                         $descripcion = "Se solicita materia prima del tipo {$tipo} (Ø{$diametro}, {$longitud} mm) en la máquina {$nombreMaquina}";
@@ -136,15 +147,16 @@ class MovimientoController extends Controller
                         Movimiento::create([
                             'tipo'              => 'Recarga materia prima',
                             'maquina_origen'    => null,
-                            'maquina_destino'    => $request->maquina_id,
-                            'producto_id'       => null,
-                            'producto_base_id'  => $productoReferencia->productoBase->id ?? null,
+                            'maquina_destino'   => $request->maquina_id,
+                            'producto_id'       => $request->producto_id, // puede ser null
+                            'producto_base_id'  => $productoBase->id,
                             'estado'            => 'pendiente',
                             'descripcion'       => $descripcion,
                             'prioridad'         => 1,
                             'fecha_solicitud'   => now(),
                             'solicitado_por'    => auth()->id(),
                         ]);
+
                         break;
 
 

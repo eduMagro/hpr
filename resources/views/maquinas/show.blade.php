@@ -112,10 +112,13 @@
                                             @csrf
                                             <input type="hidden" name="tipo" value="recarga_materia_prima">
                                             <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
+                                            <input type="hidden" name="producto_base_id"
+                                                value="{{ $productoBase->id }}">
                                             @if ($productoExistente)
                                                 <input type="hidden" name="producto_id"
                                                     value="{{ $productoExistente->id }}">
                                             @endif
+
                                             <input type="hidden" name="descripcion"
                                                 value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
                                             <button class="btn btn-warning">Solicitar recambio</button>
