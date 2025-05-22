@@ -135,7 +135,14 @@ class MovimientoController extends Controller
                         }
 
                         $maquina = Maquina::find($request->maquina_id);
-                        dd($productoReferencia);
+
+                        if ($request->filled('producto_id')) {
+                            $productoReferencia = Producto::with('productoBase')->find($request->producto_id);
+                            $productoBase = $productoReferencia->productoBase;
+                        } else {
+                            $productoBase = ProductoBase::find($request->producto_base_id);
+                        }
+
                         $tipo = strtolower($productoBase->tipo ?? 'N/A');
                         $diametro = $productoBase->diametro ?? '?';
                         $longitud = $productoBase->longitud ?? '?';
