@@ -1175,10 +1175,13 @@
 </head>
 <body>
     ${clone.outerHTML}
-    <script>
+   <script>
+    window.onload = () => {
         window.print();
-        setTimeout(() => window.close(), 500);
-    <\/script>
+        setTimeout(() => window.close(), 1000);
+    };
+<\/script>
+
 </body>
 </html>
 `);
