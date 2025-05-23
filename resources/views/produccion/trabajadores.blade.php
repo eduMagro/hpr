@@ -102,7 +102,7 @@
                 calendar.destroy();
             }
 
-            const vistaGuardada = localStorage.getItem('ultimaVistaCalendario') || 'resourceTimelineDay';
+            const vistaGuardada = 'resourceTimelineDay';
             const fechaGuardada = localStorage.getItem('fechaCalendario');
 
             calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
