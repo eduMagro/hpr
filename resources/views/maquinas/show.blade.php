@@ -1175,12 +1175,39 @@
 </head>
 <body>
     ${clone.outerHTML}
-   <script>
+  <script>
     window.onload = () => {
-        window.print();
-        setTimeout(() => window.close(), 1000);
+        const images = document.images;
+        let loadedImages = 0;
+        const totalImages = images.length;
+
+        if (totalImages === 0) {
+            window.print();
+            setTimeout(() => window.close(), 1000);
+            return;
+        }
+
+        for (const img of images) {
+            if (img.complete) {
+                loadedImages++;
+            } else {
+                img.onload = img.onerror = () => {
+                    loadedImages++;
+                    if (loadedImages === totalImages) {
+                        window.print();
+                        setTimeout(() => window.close(), 1000);
+                    }
+                };
+            }
+        }
+
+        if (loadedImages === totalImages) {
+            window.print();
+            setTimeout(() => window.close(), 1000);
+        }
     };
 <\/script>
+
 
 </body>
 </html>
