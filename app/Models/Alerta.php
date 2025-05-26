@@ -18,8 +18,6 @@ class Alerta extends Model
         'destinatario',
         'destinatario_id',
         'mensaje',
-        'completada',
-        'leida',
         'created_at',
         'updated_at'
     ];

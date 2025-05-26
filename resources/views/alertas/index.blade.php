@@ -84,42 +84,33 @@
                 <table class="w-full border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white">
                         <tr class="text-left text-sm uppercase">
-
+                            <th class="py-3 border text-center">Enviado por</th>
                             <th class="py-3 border text-center">Mensaje</th>
                             <th class="py-3 border text-center">Fecha</th>
                             <th class="py-3 border text-center">Tipo</th>
-                            <th class="py-3 border text-center">Completada</th>
+                            <th class="py-3 border text-center">Leida</th>
                         </tr>
                     </thead>
                     <tbody class="text-gray-700 text-sm">
+
                         @forelse ($alertas as $alerta)
-                            <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
-                                @php
-                                    // Extraer diámetro
-                                    preg_match('/diámetro (\d+(\.\d+)?)/i', $alerta->mensaje, $matchDiametro);
-                                    $diametro = $matchDiametro[1] ?? null;
+                            @php
+                                // Determinar si la alerta es entrante para el usuario
+                                $esEntrante =
+                                    ($alerta->destinatario_id && $alerta->destinatario_id == $user->id) ||
+                                    ($alerta->destino && $alerta->destino == $user->rol) ||
+                                    ($alerta->destinatario && $alerta->destinatario == $user->categoria);
 
-                                    // Extraer ID de máquina desde la URL
-                                    preg_match('/maquinas\/(\d+)/i', $alerta->mensaje, $matchMaquina);
-                                    $maquinaId = $matchMaquina[1] ?? null;
+                                // Determinar si está no leída
+                                $noLeida = !isset($alertasLeidas[$alerta->id]) || is_null($alertasLeidas[$alerta->id]);
 
-                                    // Obtener tipo de material desde la base de datos
-                                    $tipoMaterial = null;
-                                    if ($maquinaId) {
-                                        $maquina = \App\Models\Maquina::find($maquinaId);
-                                        $tipoMaterial = $maquina->tipo_material ?? null;
-                                    }
+                                // Pintar solo si es entrante y no leída
+                                $nueva = $esEntrante && $noLeida;
+                            @endphp
 
-                                    // Construir la URL con filtros
-                                    $url =
-                                        $diametro && $tipoMaterial
-                                            ? route('productos.index', [
-                                                'diametro' => $diametro,
-                                                'estado' => 'almacenado',
-                                                'tipo' => $tipoMaterial,
-                                            ])
-                                            : null;
-                                @endphp
+                            <tr class="{{ $nueva ? 'bg-yellow-100' : 'bg-white' }}"
+                                data-alerta-id="{{ $alerta->id }}">
+
                                 {{-- Es un asolicitud de cambio de maquina? --}}
                                 @php
                                     $esCambioMaquina = strpos($alerta->mensaje, 'Solicitud de cambio de máquina') === 0;
@@ -142,10 +133,30 @@
                                         $maquinaDestinoId = $maquinaDestino->id ?? 'null';
                                     }
                                 @endphp
+                                <td class="px-2 py-3 text-center border">
+                                    @php
+                                        $autor1 = $alerta->usuario1?->name;
+                                        $autor2 = $alerta->usuario2?->name;
+                                    @endphp
+
+                                    @if ($autor1 && $autor2)
+                                        <span title="Usuario 1 y Usuario 2">{{ $autor1 }} y
+                                            {{ $autor2 }}</span>
+                                    @elseif ($autor1)
+                                        <span title="Usuario 1">{{ $autor1 }}</span>
+                                    @elseif ($autor2)
+                                        <span title="Usuario 2">{{ $autor2 }}</span>
+                                    @else
+                                        <span class="text-gray-400 italic">Desconocido</span>
+                                    @endif
+                                </td>
 
                                 <td class="px-2 py-3 text-center border">
                                     @php
-                                        $esEntrante = $alerta->destinatario_id == $user->id;
+                                        $esEntrante =
+                                            ($alerta->destinatario_id && $alerta->destinatario_id == $user->id) ||
+                                            ($alerta->destino && $alerta->destino == $user->rol) ||
+                                            ($alerta->destinatario && $alerta->destinatario == $user->categoria);
                                     @endphp
 
                                     @if ($esCambioMaquina && $etiquetaSubId && $origen && $destino && $esEntrante)
@@ -161,7 +172,7 @@
                                     @endif
                                 </td>
 
-                                <td class="px-2 py-3 text-center border">{{ $alerta->created_at->format('d/m/Y H:i') }}
+                                <td class="px-2 py-3 text-center border">{{ $alerta->created_at->diffForHumans() }}
                                 </td>
                                 <td class="px-2 py-3 text-center border">
 
@@ -173,13 +184,17 @@
 
                                 </td>
                                 <td class="px-2 py-3 text-center border">
-                                    @if ($alerta->completada)
+                                    @php
+                                        $leida =
+                                            isset($alertasLeidas[$alerta->id]) && !is_null($alertasLeidas[$alerta->id]);
+                                    @endphp
+
+                                    @if ($leida)
                                         <span class="text-green-600 font-bold">✔ Sí</span>
                                     @else
                                         <span class="text-red-600 font-bold">✘ No</span>
                                     @endif
                                 </td>
-
                             </tr>
 
                         @empty
@@ -232,8 +247,27 @@
             </form>
         </div>
     </div>
-
     <script>
+        let nuevasAlertas = [];
+
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelectorAll("tr.bg-yellow-100").forEach(row => {
+                const id = row.dataset.alertaId;
+                if (id) nuevasAlertas.push(id);
+            });
+
+            console.log("Nuevas alertas detectadas:", nuevasAlertas); // Depuración
+        });
+
+        window.addEventListener("beforeunload", function() {
+            if (nuevasAlertas.length > 0) {
+                const data = new FormData();
+                data.append('_token', '{{ csrf_token() }}');
+                nuevasAlertas.forEach(id => data.append('alerta_ids[]', id));
+                navigator.sendBeacon("{{ route('alertas.marcarLeidas') }}", data);
+            }
+        });
+
         function abrirModalAceptarCambio(elementoId, origen, destino, maquinaDestinoId = null, alertaId = null) {
             // Asigna los valores al modal
             document.getElementById('elementoModal').textContent = elementoId;

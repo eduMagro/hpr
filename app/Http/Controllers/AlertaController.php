@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Alerta;
+use App\Models\AlertaLeida;
 use App\Models\User;
 use App\Models\Categoria;
 use Illuminate\Http\Request;
@@ -78,22 +79,61 @@ class AlertaController extends Controller
     public function index()
     {
         $user = Auth::user();
-        // Obtener todos los roles y categorías únicas desde la tabla users
-        $roles = User::distinct()->pluck('rol')->filter()->values();
-        $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
-        // Obtener todos los usuarios para el select del modal (puedes ajustar el orden o el filtro según necesites)
-        $usuarios = User::orderBy('name')->get();
+
         $alertas = Alerta::where(function ($query) use ($user) {
-            $query->where('user_id_1', $user->id)                      // Alerta directa
-                ->orWhere('user_id_2', $user->id)                    // Mismo rol
-                ->orWhere('destino', $user->rol)                    // Mismo rol
-                ->orWhere('destinatario', $user->categoria_id)     // Misma categoría
-                ->orWhere('destinatario_id', $user->id);           // Alerta personal
+            $query->where('user_id_1', $user->id)
+                ->orWhere('user_id_2', $user->id)
+                ->orWhere('destino', $user->rol)
+                ->orWhere('destinatario', $user->categoria_id)
+                ->orWhere('destinatario_id', $user->id);
         })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        return view('alertas.index', compact('alertas', 'user', 'roles', 'categorias', 'usuarios'));
+        // Obtener registros de alertas leídas por este usuario
+        $leidas = AlertaLeida::where('user_id', $user->id)->get()->keyBy('alerta_id');
+        $alertasLeidas = $leidas->mapWithKeys(fn($r) => [$r->alerta_id => $r->leida_en])->all();
+
+        $roles = User::distinct()->pluck('rol')->filter()->values();
+        $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
+        $usuarios = User::orderBy('name')->get();
+
+        return view('alertas.index', compact('alertas', 'user', 'roles', 'categorias', 'usuarios', 'alertasLeidas'));
+    }
+
+    public function marcarLeidas(Request $request)
+    {
+        $userId = Auth::id();
+        $ids = $request->input('alerta_ids', []);
+
+        if (!empty($ids)) {
+            AlertaLeida::where('user_id', $userId)
+                ->whereNull('leida_en')
+                ->whereIn('alerta_id', $ids)
+                ->update(['leida_en' => now()]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+    public function sinLeer()
+    {
+        $user = auth()->user();
+
+        // Obtener IDs de alertas entrantes para este usuario
+        $alertasLeidas = AlertaLeida::where('user_id', $user->id)
+            ->whereNull('leida_en')
+            ->pluck('alerta_id');
+
+        // Verificar si esas alertas son realmente para él (rol, categoría o id)
+        $cantidad = Alerta::whereIn('id', $alertasLeidas)
+            ->where(function ($q) use ($user) {
+                $q->where('destinatario_id', $user->id)
+                    ->orWhere('destino', $user->rol)
+                    ->orWhere('destinatario', $user->categoria);
+            })
+            ->count();
+
+        return response()->json(['cantidad' => $cantidad]);
     }
 
     public function store(Request $request)
@@ -166,9 +206,27 @@ class AlertaController extends Controller
                 $data['destinatario'] = null;
             }
 
-            // Crear la alerta con los datos preparados
-            Alerta::create($data);
+            $alerta = Alerta::create($data); // Guardamos la alerta y obtenemos su instancia
 
+            $usuariosDestino = collect(); // Colección vacía por defecto
+
+            // Determinar a quién se envía la alerta
+            if (!empty($request->rol)) {
+                $usuariosDestino = User::where('rol', $request->rol)->get();
+            } elseif (!empty($request->categoria)) {
+                $usuariosDestino = User::where('categoria_id', $request->categoria)->get();
+            } elseif (!empty($request->destinatario_id)) {
+                $usuariosDestino = User::where('id', $request->destinatario_id)->get();
+            }
+
+            // Crear registros en la tabla alertas_leidas
+            foreach ($usuariosDestino as $usuario) {
+                AlertaLeida::create([
+                    'alerta_id' => $alerta->id,
+                    'user_id' => $usuario->id,
+                    'leida_en' => null,
+                ]);
+            }
             return redirect()->back()->with('success', 'Alerta enviada correctamente.');
         } catch (ValidationException $e) {
             return redirect()->back()->withErrors($e->errors());
