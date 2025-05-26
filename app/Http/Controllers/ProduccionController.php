@@ -117,12 +117,22 @@ class ProduccionController extends Controller
         $trabajadoresEventos = $eventos;
 
         $fechaActual = Carbon::today();
+        $ordenTurnos = [3 => 0, 1 => 1, 2 => 2]; // Noche, Mañana, Tarde
+
         $operariosTrabajando = User::where('rol', 'operario')
             ->whereHas('asignacionesTurnos', function ($query) use ($fechaActual) {
                 $query->whereDate('fecha', $fechaActual)
                     ->where('turno_id', '<>', 10); // Excluir vacaciones
             })
-            ->get();
+            ->with(['asignacionesTurnos' => function ($query) use ($fechaActual) {
+                $query->whereDate('fecha', $fechaActual)
+                    ->where('turno_id', '<>', 10);
+            }])
+            ->get()
+            ->sortBy(function ($user) use ($ordenTurnos) {
+                $turnoId = $user->asignacionesTurnos->first()?->turno_id ?? 999;
+                return $ordenTurnos[$turnoId] ?? 999; // Prioridad personalizada
+            });
 
         $idsConEventos = collect($eventos)->pluck('trabajador.id')->unique();
         $trabajadoresSinEvento = $trabajadores->filter(fn($t) => !$idsConEventos->contains($t->id));
