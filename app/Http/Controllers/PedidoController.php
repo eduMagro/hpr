@@ -539,7 +539,7 @@ class PedidoController extends Controller
                 'fecha_solicitud' => now(),
                 'solicitado_por'  => auth()->id(),
                 'pedido_id'       => $pedido->id, // ← clave foránea hacia el pedido
-                'prioridad'       => 1,
+                'prioridad'       => 2,
             ]);
 
             DB::commit();

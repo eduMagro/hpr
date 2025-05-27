@@ -224,7 +224,7 @@ class MaquinaController extends Controller
 
             $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion', 'pedido.proveedor'])
                 ->where('estado', 'pendiente')
-                ->orderBy('created_at', 'asc')
+                ->orderBy('prioridad', 'asc')
                 ->get();
 
             $movimientosCompletados = Movimiento::with(['solicitadoPor', 'ejecutadoPor', 'producto.ubicacion'])
@@ -269,14 +269,15 @@ class MaquinaController extends Controller
         $planillaActiva = null;
         foreach ($elementosPorPlanilla as $grupo) {
             $planilla = $grupo->first()->planilla;
-            if (!$planilla || $planilla->estado === 'completada') continue;
 
-            $hayPendientesOSinPaquete = $grupo->contains(fn($e) => strtolower($e->estado) !== 'fabricado' || (strtolower($e->estado) === 'fabricado' && is_null($e->paquete_id)));
-            if (!$hayPendientesOSinPaquete) continue;
-
-            if (stripos($maquina->tipo, 'ensambladora') !== false && stripos($planilla->descripcion, 'hacer carcasas') !== false) {
-                $tieneRelacionCorrecta = $grupo->contains(fn($e) => $e->maquina_id_2 == $maquina->id);
-                if (!$tieneRelacionCorrecta) continue;
+            if (
+                str_contains(strtolower($maquina->tipo), 'ensambladora') &&
+                str_contains(strtolower($planilla->ensamblado), 'carcasas')
+            ) {
+                $tieneRelacionCorrecta = $grupo->contains(
+                    fn($e) =>
+                    $e->maquina_id == $maquina->id || $e->maquina_id_2 == $maquina->id
+                );
             }
 
             $planillaActiva = $planilla;
@@ -288,23 +289,70 @@ class MaquinaController extends Controller
         // ---------------------------------------------------------------
         // 8) Si es ensambladora, incluir elementos relacionados de otras máquinas
         // ---------------------------------------------------------------
-        if (stripos($maquina->tipo, 'ensambladora') !== false && $planillaActiva && str_contains(strtolower($planillaActiva->descripcion), 'carcasas')) {
-            $elementosExtra = Elemento::where('maquina_id_2', $maquina->id)->where('maquina_id', '!=', $maquina->id)->get();
+        if (
+            stripos($maquina->tipo, 'ensambladora') !== false &&
+            $planillaActiva &&
+            str_contains(strtolower(trim($planillaActiva->ensamblado)), 'carcasas')
+        ) {
+            // 1. Añadir estribos que vienen de otras máquinas (maquina_id_2 = ensambladora actual)
+            $elementosExtra = Elemento::where('maquina_id_2', $maquina->id)
+                ->where('maquina_id', '!=', $maquina->id)
+                ->get();
+
             $elementosMaquina = $elementosMaquina->merge($elementosExtra);
 
-            $bases = $elementosExtra->pluck('etiqueta_sub_id')->map(fn($id) => preg_replace('/\.\d+$/', '', $id))->unique();
+            // 2. Obtener las bases de subetiquetas de los estribos (ej: ETQ-25-001.02 → etq-25-001)
+            $bases = $elementosExtra->pluck('etiqueta_sub_id')
+                ->map(fn($id) => strtolower(preg_replace('/[\.\-]\d+$/', '', $id)))
+                ->unique()
+                ->values()
+                ->all();
 
-            foreach ($bases as $base) {
-                $subIdsRelacionadas = Etiqueta::where('etiqueta_sub_id', 'like', "$base.%")->pluck('id');
+            // 3. Buscar elementos de diámetro 5 que coincidan con esas bases
+            $elementosFinales = Elemento::where(function ($query) use ($bases) {
+                foreach ($bases as $base) {
+                    $query->orWhere('etiqueta_sub_id', 'like', "$base-%")
+                        ->orWhere('etiqueta_sub_id', 'like', "$base.%");
+                }
+            })
+                ->where('diametro', 5.00)
+                ->whereHas('maquina', fn($q) => $q->where('tipo', 'like', '%ensambladora%'))
+                ->get();
 
-                $elementosRelacionados = Elemento::whereIn('etiqueta_id', $subIdsRelacionadas)
-                    ->where('diametro', 5.00)
-                    ->whereHas('maquina', fn($q) => $q->where('tipo', 'like', '%ensambladora%'))
-                    ->get();
+            // 4. Añadirlos si no estaban ya
+            $idsExistentes = $elementosMaquina->pluck('id')->toArray();
+            $elementosFinalesFiltrados = $elementosFinales->filter(fn($e) => !in_array($e->id, $idsExistentes));
+            $elementosMaquina = $elementosMaquina->merge($elementosFinalesFiltrados);
 
-                $elementosMaquina = $elementosMaquina->merge($elementosRelacionados);
+            // 5. Fusión de subetiquetas: asignar a todos los de misma base la subetiqueta más baja
+            $agrupadasPorBase = $elementosMaquina->groupBy(function ($e) {
+                return preg_replace('/[\.\-]\d+$/', '', $e->etiqueta_sub_id);
+            });
+
+            foreach ($agrupadasPorBase as $grupo) {
+                $subEtiquetaMinima = $grupo->sortBy(function ($e) {
+                    preg_match('/[\.\-](\d+)$/', $e->etiqueta_sub_id, $m);
+                    return isset($m[1]) ? intval($m[1]) : PHP_INT_MAX;
+                })->first()->etiqueta_sub_id;
+
+                foreach ($grupo as $e) {
+                    $e->etiqueta_sub_id = $subEtiquetaMinima;
+                }
             }
+
+            // 6. 🔴 FILTRAR: solo estribos o ensambladora con base válida
+            $elementosMaquina = $elementosMaquina->filter(function ($e) use ($bases) {
+                if (!$e->maquina) return true;
+
+                $tipo = strtolower($e->maquina->tipo);
+                $baseElemento = strtolower(preg_replace('/[\.\-]\d+$/', '', $e->etiqueta_sub_id));
+
+                return str_contains($tipo, 'estribadora') ||
+                    ($e->diametro == 5.00 && str_contains($tipo, 'ensambladora') && in_array($baseElemento, $bases));
+            });
         }
+
+
 
         // ---------------------------------------------------------------
         // 9) Calcular pesos por elemento y agrupar etiquetas
@@ -380,6 +428,7 @@ class MaquinaController extends Controller
             'elementosAgrupadosScript'
         ));
     }
+
     public function create()
     {
         if (auth()->user()->rol !== 'oficina') {

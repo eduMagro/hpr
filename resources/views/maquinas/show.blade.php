@@ -18,59 +18,6 @@
             {{-- SI NO ES GRUA --}}
             @if (strtolower($maquina->tipo) !== 'grua')
 
-                {{-- @php
-                    $idsReempaquetados = collect($elementosReempaquetados ?? []);
-
-                    function debeSerExcluido($elemento)
-                    {
-                        $tienePaqueteDirecto = !is_null($elemento->paquete_id);
-                        $estaFabricado = strtolower($elemento->estado) === 'fabricado';
-                        return $tienePaqueteDirecto && $estaFabricado;
-                    }
-
-                    $elementosFiltrados = $elementosMaquina->filter(function ($elemento) use ($maquina) {
-                        if (stripos($maquina->tipo, 'ensambladora') !== false) {
-                            return $elemento->maquina_id_2 == $maquina->id ||
-                                $elemento->maquina_id == $maquina->id ||
-                                $elemento->planilla_id == optional($elemento->planilla)->id;
-                        }
-
-                        if (stripos($maquina->nombre, 'soldadora') !== false) {
-                            return !debeSerExcluido($elemento) &&
-                                $elemento->maquina_id_3 == $maquina->id &&
-                                strtolower(optional($elemento->etiquetaRelacion)->estado ?? '') === 'soldando';
-                        }
-                        return !debeSerExcluido($elemento);
-                    });
-
-                    $elementosAgrupados = $elementosFiltrados
-                        ->groupBy('etiqueta_sub_id')
-                        ->sortBy(fn($grupo) => optional($grupo->first()->planilla)->fecha_estimada_entrega);
-
-                    $elementosAgrupadosScript = $elementosAgrupados
-                        ->map(function ($grupo) {
-                            return [
-                                'etiqueta' => $grupo->first()->etiquetaRelacion ?? null,
-                                'planilla' => $grupo->first()->planilla ?? null,
-                                'elementos' => $grupo
-                                    ->map(function ($elemento) {
-                                        return [
-                                            'id' => $elemento->id,
-                                            'dimensiones' => $elemento->dimensiones,
-                                            'estado' => $elemento->estado,
-                                            'peso' => $elemento->peso_kg,
-                                            'diametro' => $elemento->diametro_mm,
-                                            'longitud' => $elemento->longitud_cm,
-                                            'barras' => $elemento->barras,
-                                            'figura' => $elemento->figura,
-                                        ];
-                                    })
-                                    ->values(),
-                            ];
-                        })
-                        ->values();
-                @endphp --}}
-
                 <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-1 md:sticky md:top-4">
                     <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
                         {{ $maquina->codigo }}

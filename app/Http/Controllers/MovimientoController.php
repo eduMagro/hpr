@@ -178,6 +178,7 @@ class MovimientoController extends Controller
                             'ubicacion_destino' => $request->ubicacion_destino,
                             'maquina_id' => null,
                             'estado' => 'pendiente',
+                            'prioridad'         => 3,
                             'users_id' => auth()->id(),
                         ]);
                         break;
