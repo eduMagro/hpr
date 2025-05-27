@@ -512,6 +512,7 @@ class ProfileController extends Controller
 
         return Redirect::route('profile.edit', ['id' => $id])->with('status', 'profile-updated');
     }
+
     public function actualizarUsuario(Request $request, $id)
     {
 
@@ -662,7 +663,6 @@ class ProfileController extends Controller
 
         return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}, excluyendo los festivos.");
     }
-
 
     public function destroy(Request $request, $id)
     {

@@ -631,29 +631,23 @@ class etiquetaController extends Controller
                 ->doesntExist();
 
             if ($elementosEtiquetaCompletos) {
-                // Si la máquina actual es de tipo "estribadora", asignamos una ensambladora
-                if ($maquina->tipo === 'estribadora') {
-                    $etiqueta->estado = 'fabricada';
-                    $etiqueta->fecha_finalizacion = now();
-                    $etiqueta->save();
-                } else {
-                    $etiqueta->estado = 'completada';
-                    $etiqueta->fecha_finalizacion = now();
-                    $etiqueta->save();
-                }
-            } else {
-                // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                if ($enOtrasMaquinas) {
-                    $etiqueta->estado = 'parcialmente_completada';
-                    $etiqueta->save();
-                }
+                $etiqueta->estado = $maquina->tipo === 'estribadora' ? 'fabricada' : 'completada';
+                $etiqueta->fecha_finalizacion = now();
+                $etiqueta->save();
             }
 
-            $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
+            // 🔧 Solo si la máquina actual no es cortadora_dobladora
+            if ($maquina->tipo !== 'cortadora_dobladora') {
+                $maquinaEnsambladora = Maquina::where('tipo', 'ensambladora')->first();
 
-            foreach ($elementosEnMaquina as $elemento) {
-                $elemento->maquina_id_2 = $maquinaEnsambladora->id;
-                $elemento->save();
+                if ($maquinaEnsambladora) {
+                    foreach ($elementosEnMaquina as $elemento) {
+                        if (is_null($elemento->maquina_id_2)) {
+                            $elemento->maquina_id_2 = $maquinaEnsambladora->id;
+                            $elemento->save();
+                        }
+                    }
+                }
             }
         } else {
 
@@ -696,17 +690,17 @@ class etiquetaController extends Controller
             ->get();
 
         Log::info("{$gruistasEnTurno}");
-        if ($gruistasEnTurno->isNotEmpty()) {
-            foreach ($gruistasEnTurno as $gruista) {
-                Alerta::create([
-                    'mensaje'         => $mensaje,
-                    'destinatario_id' => $gruista->id,
-                    'user_id_1'       => Auth::id(),
-                    'user_id_2'       => session()->get('compañero_id', null),
-                    'leida'           => false,
-                ]);
-            }
-        }
+        // if ($gruistasEnTurno->isNotEmpty()) {
+        //     foreach ($gruistasEnTurno as $gruista) {
+        //         Alerta::create([
+        //             'mensaje'         => $mensaje,
+        //             'destinatario_id' => $gruista->id,
+        //             'user_id_1'       => Auth::id(),
+        //             'user_id_2'       => session()->get('compañero_id', null),
+        //             'leida'           => false,
+        //         ]);
+        //     }
+        // }
     }
 
     public function update(Request $request, $id)

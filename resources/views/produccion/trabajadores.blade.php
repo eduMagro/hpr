@@ -175,8 +175,9 @@
                     headerContent: 'Máquinas'
                 }],
                 eventDrop: function(info) {
-                    const asignacionId = info.event.id.replace(/^turno-/, ''); // Elimina el prefijo "turno-"
-                    const nuevoMaquinaId = parseInt(info.event.getResources()[0]?.id, 10); // Convierte a número
+                    const asignacionId = info.event.id.replace(/^turno-/, '');
+                    const nuevoMaquinaId = parseInt(info.event.getResources()[0]?.id, 10);
+                    const nuevaHoraInicio = info.event.start.toISOString(); // Enviar la nueva hora
 
                     fetch(`/asignaciones-turno/${asignacionId}/actualizar-puesto`, {
                             method: 'POST',
@@ -185,21 +186,22 @@
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
                             body: JSON.stringify({
-                                maquina_id: nuevoMaquinaId
+                                maquina_id: nuevoMaquinaId,
+                                start: nuevaHoraInicio
                             })
                         })
                         .then(response => {
-                            if (!response.ok) throw new Error('Error al actualizar la máquina asignada');
+                            if (!response.ok) throw new Error('Error al actualizar la asignación');
                             return response.json();
                         })
                         .then(data => {
-                            console.log('Máquina actualizada con éxito:', data);
+                            console.log('Asignación actualizada:', data);
                         })
                         .catch(error => {
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: 'No se pudo actualizar la máquina asignada.'
+                                text: 'No se pudo actualizar la asignación de turno.'
                             });
                             console.error(error);
                             info.revert();

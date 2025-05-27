@@ -12,11 +12,13 @@
     <div class="mx-auto px-4 py-6">
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
+
+
             <!-- --------------------------------------------------------------- Información de la máquina --------------------------------------------------------------- -->
             {{-- SI NO ES GRUA --}}
             @if (strtolower($maquina->tipo) !== 'grua')
 
-                @php
+                {{-- @php
                     $idsReempaquetados = collect($elementosReempaquetados ?? []);
 
                     function debeSerExcluido($elemento)
@@ -28,8 +30,11 @@
 
                     $elementosFiltrados = $elementosMaquina->filter(function ($elemento) use ($maquina) {
                         if (stripos($maquina->tipo, 'ensambladora') !== false) {
-                            return $elemento->maquina_id_2 == $maquina->id && $elemento->maquina_id != $maquina->id;
+                            return $elemento->maquina_id_2 == $maquina->id ||
+                                $elemento->maquina_id == $maquina->id ||
+                                $elemento->planilla_id == optional($elemento->planilla)->id;
                         }
+
                         if (stripos($maquina->nombre, 'soldadora') !== false) {
                             return !debeSerExcluido($elemento) &&
                                 $elemento->maquina_id_3 == $maquina->id &&
@@ -64,7 +69,8 @@
                             ];
                         })
                         ->values();
-                @endphp
+                @endphp --}}
+
                 <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-1 md:sticky md:top-4">
                     <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
                         {{ $maquina->codigo }}

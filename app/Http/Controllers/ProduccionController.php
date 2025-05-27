@@ -146,10 +146,39 @@ class ProduccionController extends Controller
     {
         $request->validate([
             'maquina_id' => 'required|exists:maquinas,id',
+            'start' => 'required|date',
         ]);
 
         $asignacion = AsignacionTurno::findOrFail($id);
         $asignacion->maquina_id = $request->input('maquina_id');
+
+        $start = Carbon::parse($request->input('start'));
+        $horaCarbon = $start->copy();
+        $turnos = Turno::all();
+
+        foreach ($turnos as $turno) {
+            $entrada = Carbon::createFromTimeString($turno->hora_entrada);
+            $salida = Carbon::createFromTimeString($turno->hora_salida);
+
+            if ($entrada->gt($salida)) {
+                // Turno nocturno
+                if ($horaCarbon->gte($entrada) || $horaCarbon->lt($salida)) {
+                    $asignacion->turno_id = $turno->id;
+                    $asignacion->fecha = $horaCarbon->lt($salida)
+                        ? $start->copy()->subDay()->format('Y-m-d')
+                        : $start->format('Y-m-d');
+                    break;
+                }
+            } else {
+                // Turno normal
+                if ($horaCarbon->gte($entrada) && $horaCarbon->lt($salida)) {
+                    $asignacion->turno_id = $turno->id;
+                    $asignacion->fecha = $start->format('Y-m-d');
+                    break;
+                }
+            }
+        }
+
         $asignacion->save();
 
         return response()->json(['success' => true]);
