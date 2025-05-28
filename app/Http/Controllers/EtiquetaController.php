@@ -244,15 +244,15 @@ class etiquetaController extends Controller
                         // Si la máquina es de tipo ensambladora, se inicia la fase de ensamblado:
                         $etiqueta->fecha_inicio_ensamblado = now();
                         $etiqueta->estado = 'ensamblando';
-                        $etiqueta->ensamblador1 = Auth::id();
-                        $etiqueta->ensamblador2 = session()->get('compañero_id', null);
+                        $etiqueta->ensamblador1_id = Auth::id();
+                        $etiqueta->ensamblador2_id = session()->get('compañero_id', null);
                         $etiqueta->save();
                     } elseif ($maquina->tipo === 'soldadora') {
                         // Si la máquina es de tipo soldadora, se inicia la fase de soldadura:
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'soldando';
-                        $etiqueta->soldador1 = Auth::id();
-                        $etiqueta->soldador2 = session()->get('compañero_id', null);
+                        $etiqueta->soldador1_id = Auth::id();
+                        $etiqueta->soldador2_id = session()->get('compañero_id', null);
                         $etiqueta->save();
                     } else {
                         // Verificamos si ya todos los elementos en la máquina han sido completados
@@ -348,7 +348,7 @@ class etiquetaController extends Controller
 
                     // Finalizar la fase de ensamblado
                     $etiqueta->fecha_finalizacion_ensamblado = now();
-
+                    $etiqueta->save();
                     // -------------- CONSUMOS
                     $consumos = [];
 
@@ -359,9 +359,10 @@ class etiquetaController extends Controller
                         }
 
                         $productosPorDiametro = $maquina->productos()
-                            ->where('diametro', $diametro)
+                            ->whereHas('productoBase', fn($q) => $q->where('diametro', $diametro))
                             ->orderBy('peso_stock')
                             ->get();
+
 
                         if ($productosPorDiametro->isEmpty()) {
                             return response()->json([

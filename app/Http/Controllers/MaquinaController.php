@@ -324,21 +324,48 @@ class MaquinaController extends Controller
             $elementosFinalesFiltrados = $elementosFinales->filter(fn($e) => !in_array($e->id, $idsExistentes));
             $elementosMaquina = $elementosMaquina->merge($elementosFinalesFiltrados);
 
-            // 5. Fusión de subetiquetas: asignar a todos los de misma base la subetiqueta más baja
+            // 5. Fusión de subetiquetas: asignar a todos los de misma base la subetiqueta más significativa
             $agrupadasPorBase = $elementosMaquina->groupBy(function ($e) {
                 return preg_replace('/[\.\-]\d+$/', '', $e->etiqueta_sub_id);
             });
 
-            foreach ($agrupadasPorBase as $grupo) {
-                $subEtiquetaMinima = $grupo->sortBy(function ($e) {
-                    preg_match('/[\.\-](\d+)$/', $e->etiqueta_sub_id, $m);
-                    return isset($m[1]) ? intval($m[1]) : PHP_INT_MAX;
-                })->first()->etiqueta_sub_id;
+            foreach ($agrupadasPorBase as $base => $grupo) {
+                // Cargar etiquetas del grupo
+                $etiquetas = Etiqueta::whereIn('id', $grupo->pluck('etiqueta_id')->unique())->get();
 
-                foreach ($grupo as $e) {
-                    $e->etiqueta_sub_id = $subEtiquetaMinima;
+                // Buscar la que tiene tiempos
+                $etiquetaConTiempos = $etiquetas->first(function ($etq) {
+                    return $etq->fecha_inicio || $etq->fecha_finalizacion;
+                });
+
+                if (!$etiquetaConTiempos) continue;
+
+                $subIdCorrecto = $etiquetaConTiempos->etiqueta_sub_id;
+                $etiquetaIdCorrecto = $etiquetaConTiempos->id;
+
+                foreach ($grupo as $elemento) {
+                    if (
+                        $elemento->etiqueta_id !== $etiquetaIdCorrecto &&
+                        $elemento->etiqueta_sub_id !== $subIdCorrecto
+                    ) {
+                        $etiquetaAntigua = Etiqueta::find($elemento->etiqueta_id);
+
+                        $elemento->etiqueta_id = $etiquetaIdCorrecto;
+                        $elemento->etiqueta_sub_id = $subIdCorrecto;
+                        $elemento->save();
+
+                        // Si la antigua etiqueta ya no tiene elementos, eliminarla
+                        if (
+                            $etiquetaAntigua &&
+                            !Elemento::where('etiqueta_id', $etiquetaAntigua->id)->exists()
+                        ) {
+                            $etiquetaAntigua->delete();
+                        }
+                    }
                 }
             }
+
+
 
             // 6. 🔴 FILTRAR: solo estribos o ensambladora con base válida
             $elementosMaquina = $elementosMaquina->filter(function ($e) use ($bases) {
