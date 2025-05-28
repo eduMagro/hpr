@@ -103,13 +103,13 @@
             }
 
             const vistaGuardada = 'resourceTimelineDay';
-            const fechaGuardada = localStorage.getItem('fechaCalendario');
+
 
             calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                 locale: 'es',
                 initialView: vistaGuardada,
-                initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
+
                 datesSet: function(info) {
                     let fechaActual = info.startStr;
 
@@ -176,8 +176,20 @@
                 }],
                 eventDrop: function(info) {
                     const asignacionId = info.event.id.replace(/^turno-/, '');
-                    const nuevoMaquinaId = parseInt(info.event.getResources()[0]?.id, 10);
-                    const nuevaHoraInicio = info.event.start.toISOString(); // Enviar la nueva hora
+
+                    const recurso = info.event.getResources()?.[0];
+                    const nuevoMaquinaId = recurso ? parseInt(recurso.id, 10) : null;
+                    const nuevaHoraInicio = info.event.start?.toISOString();
+
+                    if (!nuevoMaquinaId || !nuevaHoraInicio) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Datos incompletos',
+                            text: 'No se pudo determinar la máquina o la hora de inicio.'
+                        });
+                        info.revert();
+                        return;
+                    }
 
                     fetch(`/asignaciones-turno/${asignacionId}/actualizar-puesto`, {
                             method: 'POST',
@@ -190,20 +202,29 @@
                                 start: nuevaHoraInicio
                             })
                         })
-                        .then(response => {
-                            if (!response.ok) throw new Error('Error al actualizar la asignación');
-                            return response.json();
-                        })
-                        .then(data => {
-                            console.log('Asignación actualizada:', data);
+                        .then(response => response.json().then(data => ({
+                            ok: response.ok,
+                            status: response.status,
+                            data
+                        })))
+                        .then(({
+                            ok,
+                            status,
+                            data
+                        }) => {
+                            if (!ok) {
+                                throw new Error(data?.message || `Error ${status}`);
+                            }
+                            console.log('✅ Asignación actualizada:', data);
+                            // Aquí podrías actualizar info.event.setExtendedProp() si necesitas
                         })
                         .catch(error => {
+                            console.error('❌ Error al actualizar:', error);
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error',
-                                text: 'No se pudo actualizar la asignación de turno.'
+                                title: 'Error al guardar',
+                                text: error.message || 'Ocurrió un error inesperado.'
                             });
-                            console.error(error);
                             info.revert();
                         });
                 },

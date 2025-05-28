@@ -154,35 +154,47 @@ class ProduccionController extends Controller
 
         $start = Carbon::parse($request->input('start'));
         $horaCarbon = $start->copy();
-        $turnos = Turno::all();
+
+        // ✅ Forzamos que se mantenga siempre el mismo día
+        $fechaAsignada = $asignacion->fecha;
+
+        $turnos = Turno::orderBy('hora_entrada')->get();
 
         foreach ($turnos as $turno) {
+            if (!$turno->hora_entrada || !$turno->hora_salida) {
+                continue;
+            }
+
             $entrada = Carbon::createFromTimeString($turno->hora_entrada);
             $salida = Carbon::createFromTimeString($turno->hora_salida);
 
             if ($entrada->gt($salida)) {
-                // Turno nocturno
-                if ($horaCarbon->gte($entrada) || $horaCarbon->lt($salida)) {
+                // Turno nocturno (22:00 a 06:00)
+                if ($horaCarbon->between(Carbon::createFromTime(0, 0, 0), $salida)) {
                     $asignacion->turno_id = $turno->id;
-                    $asignacion->fecha = $horaCarbon->lt($salida)
-                        ? $start->copy()->subDay()->format('Y-m-d')
-                        : $start->format('Y-m-d');
                     break;
                 }
             } else {
-                // Turno normal
                 if ($horaCarbon->gte($entrada) && $horaCarbon->lt($salida)) {
                     $asignacion->turno_id = $turno->id;
-                    $asignacion->fecha = $start->format('Y-m-d');
                     break;
                 }
             }
         }
 
+        // ✅ Reafirmamos que la fecha no cambia
+        $asignacion->fecha = $fechaAsignada;
         $asignacion->save();
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'turno_id' => $asignacion->turno_id,
+            'fecha' => $asignacion->fecha,
+            'maquina_id' => $asignacion->maquina_id,
+        ]);
     }
+
+
 
     //---------------------------------------------------------- MAQUINAS
     public function maquinas()
