@@ -437,6 +437,11 @@
             var eventosDesdeLaravel = {!! json_encode($eventos) !!};
             var coloresTurnos = {!! json_encode($coloresTurnos) !!}; // Colores desde el backend
 
+            // 🔒 Recoger fechas bloqueadas (estado vacaciones o solicitud pendiente)
+            const fechasBloqueadas = eventosDesdeLaravel
+                .filter(e => e.title === 'Solicitud pendiente' || e.title === 'Vacaciones')
+                .map(e => e.start);
+
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'es',
@@ -448,9 +453,24 @@
                 selectable: true, // ✅ Activar selección de fechas
                 selectMirror: true,
                 select: function(info) {
-                    const fechaInicio = info.startStr;
-                    const fechaFin = info.endStr;
+                    const fechaInicio = moment(info.startStr);
+                    const fechaFin = moment(info.endStr).subtract(1,
+                    'day'); // ⚠️ endStr es exclusivo en FullCalendar
 
+                    const rangoSeleccionado = [];
+                    let actual = fechaInicio.clone();
+                    while (actual.isSameOrBefore(fechaFin)) {
+                        rangoSeleccionado.push(actual.format('YYYY-MM-DD'));
+                        actual.add(1, 'day');
+                    }
+
+                    const conflicto = rangoSeleccionado.find(fecha => fechasBloqueadas.includes(fecha));
+
+                    if (conflicto) {
+                        Swal.fire('🚫 No permitido',
+                            `Ya hay una solicitud o vacaciones el día ${conflicto}.`, 'warning');
+                        return;
+                    }
                     Swal.fire({
                             title: 'Solicitar vacaciones',
                             html: `

@@ -70,6 +70,7 @@
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 height: 'auto',
+                editable: true,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
@@ -77,28 +78,105 @@
                 }
             };
 
-            // Calendario Maquinistas
-            const calendarioMaquinistas = new FullCalendar.Calendar(document.getElementById(
-                'calendario-maquinistas'), {
-                ...configComun,
-                events: @json($eventosMaquinistas)
-            });
-            // Calendario Ferrallas
-            const calendarioFerrallas = new FullCalendar.Calendar(document.getElementById('calendario-ferrallas'), {
-                ...configComun,
-                events: @json($eventosFerrallas)
-            });
+            function crearCalendario(idElemento, eventos) {
+                return new FullCalendar.Calendar(document.getElementById(idElemento), {
+                    ...configComun,
+                    events: eventos,
 
-            // Calendario Oficina
-            const calendarioOficina = new FullCalendar.Calendar(document.getElementById('calendario-oficina'), {
-                ...configComun,
-                events: @json($eventosOficina)
-            });
+                    eventDrop: function(info) {
+                        const fecha = info.event.startStr;
+                        const idUsuario = info.event.extendedProps.user_id;
+
+                        fetch(`/vacaciones/reprogramar`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': token
+                                },
+                                body: JSON.stringify({
+                                    user_id: idUsuario,
+                                    fecha_original: info.oldEvent.startStr,
+                                    nueva_fecha: fecha
+                                })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (!data.success) {
+                                    Swal.fire("❌ Error", data.error || "No se pudo reprogramar",
+                                        "error");
+                                    info.revert();
+                                }
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                Swal.fire("❌ Error", "Error de conexión", "error");
+                                info.revert();
+                            });
+                    },
+
+                    eventClick: function(info) {
+                        // Clic izquierdo: ir a ficha de usuario
+                        const userId = info.event.extendedProps.user_id;
+                        window.location.href = `/users/${userId}`;
+                    },
+
+                    eventDidMount: function(info) {
+                        // Clic derecho: confirmar eliminar vacaciones
+                        info.el.addEventListener('contextmenu', function(ev) {
+                            ev.preventDefault();
+                            Swal.fire({
+                                title: `¿Eliminar vacaciones de ${info.event.title}?`,
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: 'Sí, eliminar',
+                                cancelButtonText: 'Cancelar'
+                            }).then(result => {
+                                if (result.isConfirmed) {
+                                    fetch(`/vacaciones/eliminar-evento`, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': token
+                                            },
+                                            body: JSON.stringify({
+                                                user_id: info.event
+                                                    .extendedProps.user_id,
+                                                fecha: info.event.startStr
+                                            })
+                                        })
+                                        .then(res => res.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                info.event.remove();
+                                                Swal.fire('Eliminado',
+                                                    'Vacaciones eliminadas correctamente.',
+                                                    'success');
+                                            } else {
+                                                Swal.fire("❌ Error", data.error ||
+                                                    "No se pudo eliminar",
+                                                    "error");
+                                            }
+                                        })
+                                        .catch(() => {
+                                            Swal.fire("❌ Error",
+                                                "Error de conexión", "error");
+                                        });
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+
+            const calendarioMaquinistas = crearCalendario('calendario-maquinistas', @json($eventosMaquinistas));
+            const calendarioFerrallas = crearCalendario('calendario-ferrallas', @json($eventosFerrallas));
+            const calendarioOficina = crearCalendario('calendario-oficina', @json($eventosOficina));
 
             calendarioMaquinistas.render();
             calendarioFerrallas.render();
             calendarioOficina.render();
-
         });
     </script>
+
+
 </x-app-layout>

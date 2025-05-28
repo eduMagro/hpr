@@ -10,7 +10,7 @@ class AsignacionTurno extends Model
     use HasFactory;
 
     protected $table = 'asignaciones_turnos'; // Asegúrate de que coincide con la tabla en la BD
-    protected $fillable = ['user_id', 'turno_id', 'maquina_id', 'entrada', 'salida', 'fecha'];
+    protected $fillable = ['user_id', 'turno_id', 'estado', 'maquina_id', 'entrada', 'salida', 'fecha'];
 
     /**
      * Relación con el turno (cada asignación pertenece a un turno).

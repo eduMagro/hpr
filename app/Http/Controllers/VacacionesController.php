@@ -10,6 +10,7 @@ use App\Models\VacacionesSolicitud;
 use App\Models\Alerta;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
 class VacacionesController extends Controller
@@ -24,7 +25,7 @@ class VacacionesController extends Controller
             ->whereHas('user', function ($q) {
                 $q->where('rol', 'operario')
                     ->whereHas('maquina', function ($mq) {
-                        $mq->whereIn('tipo', ['estribadora', 'cortadora_dobladora']);
+                        $mq->whereIn('tipo', ['estribadora', 'cortadora_dobladora', 'grua']);
                     });
             })
             ->orderBy('fecha_inicio')
@@ -59,7 +60,7 @@ class VacacionesController extends Controller
             ->whereHas('user', function ($q) {
                 $q->where('rol', 'operario')
                     ->whereHas('maquina', function ($mq) {
-                        $mq->whereIn('tipo', ['estribadora', 'cortadora_dobladora']);
+                        $mq->whereIn('tipo', ['estribadora', 'cortadora_dobladora', 'grua']);
                     });
             })
             ->get();
@@ -96,7 +97,6 @@ class VacacionesController extends Controller
             ];
         })->toArray();
 
-        // Eventos visuales
         $eventosMaquinistas = $vacacionesMaquinistas->map(function ($asignacion) {
             return [
                 'title' => $asignacion->user->name,
@@ -104,7 +104,10 @@ class VacacionesController extends Controller
                 'backgroundColor' => '#f87171',
                 'borderColor' => '#dc2626',
                 'textColor' => 'white',
-                'allDay' => true
+                'allDay' => true,
+                'extendedProps' => [
+                    'user_id' => $asignacion->user->id,
+                ],
             ];
         })->toArray();
 
@@ -115,7 +118,10 @@ class VacacionesController extends Controller
                 'backgroundColor' => '#f87171',
                 'borderColor' => '#dc2626',
                 'textColor' => 'white',
-                'allDay' => true
+                'allDay' => true,
+                'extendedProps' => [
+                    'user_id' => $asignacion->user->id,
+                ],
             ];
         })->toArray();
 
@@ -126,7 +132,10 @@ class VacacionesController extends Controller
                 'backgroundColor' => '#f87171',
                 'borderColor' => '#dc2626',
                 'textColor' => 'white',
-                'allDay' => true
+                'allDay' => true,
+                'extendedProps' => [
+                    'user_id' => $asignacion->user->id,
+                ],
             ];
         })->toArray();
 
@@ -173,33 +182,114 @@ class VacacionesController extends Controller
     }
     public function aprobar($id)
     {
-        $solicitud = VacacionesSolicitud::findOrFail($id);
+        $solicitud = VacacionesSolicitud::with('user')->findOrFail($id);
+        $user = $solicitud->user;
+
+
         $solicitud->estado = 'aprobada';
         $solicitud->save();
 
-        // Crear registros en asignaciones_turnos
         $rango = CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin);
+        $diasAsignados = 0;
 
         foreach ($rango as $fecha) {
-            $registro = AsignacionTurno::firstOrNew([
-                'user_id' => $solicitud->user_id,
-                'fecha' => $fecha->format('Y-m-d')
+            $fechaStr = $fecha->format('Y-m-d');
+
+            if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                continue;
+            }
+
+            $asignacion = AsignacionTurno::firstOrNew([
+                'user_id' => $user->id,
+                'fecha'   => $fechaStr,
             ]);
 
-            $registro->estado = 'vacaciones';
-            $registro->save();
+            $estadoAnterior = $asignacion->estado;
+
+            $asignacion->estado = 'vacaciones';
+            $asignacion->maquina_id = $user->maquina_id;
+            $asignacion->save();
+
+            Log::info("✏️ Asignación actualizada para $fechaStr - estado anterior: " . ($estadoAnterior ?? 'ninguno'));
+
+            if (is_null($estadoAnterior) || $estadoAnterior !== 'vacaciones') {
+                $diasAsignados++;
+            }
         }
 
 
-        return redirect()->back()->with('success', 'Solicitud aprobada y vacaciones asignadas.');
+
+        // Restar días de vacaciones disponibles
+        if ($diasAsignados > 0) {
+            $user->dias_vacaciones = max(0, $user->dias_vacaciones - $diasAsignados);
+            $user->save();
+        }
+        Alerta::create([
+            'user_id_1'      => auth()->id(), // Quien aprueba
+            'destinatario_id' => $user->id,    // Quien recibe la alerta
+            'mensaje'        => "Tus vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} han sido aprobadas.",
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+        return redirect()->back()->with('success', "Solicitud aprobada. Se asignaron $diasAsignados días de vacaciones.");
     }
 
     public function denegar($id)
     {
-        $solicitud = VacacionesSolicitud::findOrFail($id);
+        $solicitud = VacacionesSolicitud::with('user')->findOrFail($id);
+        $user = $solicitud->user;
+
         $solicitud->estado = 'denegada';
         $solicitud->save();
 
-        return redirect()->back()->with('success', 'Solicitud denegada.');
+        // 🛑 Alerta al trabajador
+        Alerta::create([
+            'user_id_1'       => auth()->id(), // quien deniega
+            'destinatario_id' => $user->id,    // quien recibe
+            'mensaje'         => "Tu solicitud de vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} ha sido denegada.",
+            'created_at'      => now(),
+            'updated_at'      => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Solicitud denegada y alerta enviada.');
+    }
+
+    public function eliminarEvento(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'fecha' => 'required|date',
+        ]);
+
+        $eliminado = AsignacionTurno::where('user_id', $validated['user_id'])
+            ->where('fecha', $validated['fecha'])
+            ->where('estado', 'vacaciones')
+            ->delete();
+
+        return response()->json(['success' => $eliminado > 0]);
+    }
+
+
+    public function reprogramar(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'fecha_original' => 'required|date',
+            'nueva_fecha' => 'required|date',
+        ]);
+
+        $asignacion = AsignacionTurno::where('user_id', $validated['user_id'])
+            ->where('fecha', $validated['fecha_original'])
+            ->where('estado', 'vacaciones')
+            ->first();
+
+        if (!$asignacion) {
+            return response()->json(['error' => 'Asignación no encontrada'], 404);
+        }
+
+        $asignacion->fecha = $validated['nueva_fecha'];
+        $asignacion->save();
+
+        return response()->json(['success' => true]);
     }
 }

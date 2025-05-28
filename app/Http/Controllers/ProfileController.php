@@ -16,6 +16,7 @@ use App\Models\VacacionesSolicitud;
 use App\Models\Categoria;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Obra;
@@ -191,24 +192,34 @@ class ProfileController extends Controller
         $obras = Obra::where('estado', 'activa')->get();
         $categorias = Categoria::orderBy('nombre')->get();
         $empresas = Empresa::orderBy('nombre')->get();
-        $maquinas = Maquina::orderBy('nombre')->get(); // Puedes usar 'codigo' si prefieres
+        $maquinas = Maquina::orderBy('nombre')->get();
         $roles = User::distinct()->pluck('rol')->filter()->sort();
         $turnos = User::distinct()->pluck('turno')->filter()->sort();
         $totalSolicitudesPendientes = VacacionesSolicitud::where('estado', 'pendiente')->count();
         $user = auth()->user();
 
+        // Obtener todos los nombres de turnos válidos (mañana, tarde, noche, festivo, etc.)
+        $turnosValidos = Turno::pluck('nombre')->toArray();
+
         // Fecha de inicio (1 de enero del año actual)
         $inicioAño = Carbon::now()->startOfYear();
 
-        // **Calculamos ciertas variables**
-        $faltasInjustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_injustificada')
-            ->where('fecha', '>=', $inicioAño)->count();
+        // Mejor usar consultas con joins para evitar cargar todas las asignaciones
+        // Mejor usar consultas directas filtrando por estado
+        $faltasInjustificadas = AsignacionTurno::where('user_id', $user->id)
+            ->where('estado', 'falta_injustificada')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
 
-        $faltasJustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_justificada')
-            ->where('fecha', '>=', $inicioAño)->count();
+        $faltasJustificadas = AsignacionTurno::where('user_id', $user->id)
+            ->where('estado', 'falta_justificada')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
 
-        $diasBaja = $user->asignacionesTurnos->where('turno.nombre', 'baja')
-            ->where('fecha', '>=', $inicioAño)->count();
+        $diasBaja = AsignacionTurno::where('user_id', $user->id)
+            ->where('estado', 'baja')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
 
         $ordenables = [
             'id' => $this->getOrdenamiento('id', 'ID'),
@@ -231,7 +242,7 @@ class ProfileController extends Controller
         // Obtener usuarios según filtros (sin paginar aún)
         $usuarios = $this->aplicarFiltros($request)->with('categoria', 'empresa', 'maquina')->get();
 
-        // ✅ Filtrado por "estado de conexión" en colección
+        // Filtrado por "estado de conexión" en colección
         if ($request->filled('estado')) {
             if ($request->estado === 'activo') {
                 $usuarios = $usuarios->filter(fn($u) => $u->isOnline());
@@ -240,7 +251,7 @@ class ProfileController extends Controller
             }
         }
 
-        // ✅ Paginar manualmente la colección
+        // Paginar manualmente la colección
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $perPage = 10;
         $offset = ($currentPage - 1) * $perPage;
@@ -253,11 +264,49 @@ class ProfileController extends Controller
         );
 
         $filtrosActivos = $this->filtrosActivos($request);
-
         $coloresTurnos = $this->getColoresTurnos();
-
         $eventosFichajes = $this->getEventosFichajes($user);
-        $eventosTurnos = $this->getEventosTurnos($user);
+
+        // Eventos con turnos válidos
+        $eventosTurnos = AsignacionTurno::where('user_id', $user->id)
+            ->whereHas('turno', fn($q) => $q->whereIn('nombre', $turnosValidos))
+            ->get()
+            ->map(function ($asig) {
+                return [
+                    'title' => $asig->turno->nombre,
+                    'start' => $asig->fecha,
+                    'allDay' => true,
+                    'backgroundColor' => '#3b82f6',  // azul para turnos normales
+                    'borderColor' => '#2563eb',
+                    'textColor' => 'white',
+                ];
+            });
+
+        // Eventos con estados especiales (vacaciones, baja, festivo, etc)
+        $eventosEstados = AsignacionTurno::where('user_id', $user->id)
+            ->whereNotNull('estado')
+            ->whereNotIn('estado', ['activo']) // excluir estado activo si representa turno normal
+            ->get()
+            ->map(function ($asig) {
+                $colores = [
+                    'vacaciones' => ['bg' => '#f87171', 'border' => '#dc2626', 'text' => 'white'],
+                    'baja' => ['bg' => '#a855f7', 'border' => '#9333ea', 'text' => 'white'],
+                    'festivo' => ['bg' => '#fbbf24', 'border' => '#f59e0b', 'text' => 'black'],
+                ];
+
+                $color = $colores[$asig->estado] ?? ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => 'white'];
+
+                return [
+                    'title' => ucfirst($asig->estado),
+                    'start' => $asig->fecha,
+                    'allDay' => true,
+                    'backgroundColor' => $color['bg'],
+                    'borderColor' => $color['border'],
+                    'textColor' => $color['text'],
+                ];
+            });
+
+        // Festivos comunes
         $festivos = Festivo::select('fecha', 'titulo')->get()->map(function ($festivo) {
             return [
                 'title' => $festivo->titulo,
@@ -270,7 +319,43 @@ class ProfileController extends Controller
             ];
         })->toArray();
 
-        $eventos = array_merge($eventosFichajes->toArray(), $eventosTurnos->toArray(), $festivos);
+        // Solicitudes pendientes y denegadas
+        $solicitudesVacaciones = VacacionesSolicitud::where('user_id', $user->id)
+            ->whereIn('estado', ['pendiente', 'denegada'])
+            ->get()
+            ->flatMap(function ($solicitud) {
+                if ($solicitud->estado === 'pendiente') {
+                    $color = '#fcdde8';
+                    $textColor = 'black';
+                    $title = 'Solicitud pendiente';
+                } else {
+                    $color = '#000000';
+                    $textColor = 'white';
+                    $title = 'Vacaciones denegadas';
+                }
+
+                return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
+                    ->map(function ($fecha) use ($title, $color, $textColor) {
+                        return [
+                            'title' => $title,
+                            'start' => $fecha->toDateString(),
+                            'end' => $fecha->copy()->addDay()->toDateString(),
+                            'allDay' => true,
+                            'backgroundColor' => $color,
+                            'borderColor' => $color,
+                            'textColor' => $textColor,
+                        ];
+                    });
+            })->values();
+
+        // Merge final de eventos
+        $eventos = array_merge(
+            $eventosFichajes->toArray(),
+            $eventosTurnos->toArray(),
+            $eventosEstados->toArray(),
+            $festivos,
+            $solicitudesVacaciones->toArray()
+        );
 
         return view('User.index', compact(
             'registrosUsuarios',
@@ -296,35 +381,82 @@ class ProfileController extends Controller
 
     public function show($id)
     {
-        $user = User::with(['asignacionesTurnos.turno'])->findOrFail($id);
+        $user = User::with('asignacionesTurnos')->findOrFail($id);
 
-        // Fecha de inicio (1 de enero del año actual)
         $inicioAño = Carbon::now()->startOfYear();
 
-        // **Calculamos ciertas variables**
-        $faltasInjustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_injustificada')
-            ->where('fecha', '>=', $inicioAño)->count();
+        // Ahora contamos directamente filtrando por 'estado'
+        $faltasInjustificadas = $user->asignacionesTurnos
+            ->where('estado', 'falta_injustificada')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
 
-        $faltasJustificadas = $user->asignacionesTurnos->where('turno.nombre', 'falta_justificada')
-            ->where('fecha', '>=', $inicioAño)->count();
+        $faltasJustificadas = $user->asignacionesTurnos
+            ->where('estado', 'falta_justificada')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
 
-        $diasBaja = $user->asignacionesTurnos->where('turno.nombre', 'baja')
-            ->where('fecha', '>=', $inicioAño)->count();
+        $diasBaja = $user->asignacionesTurnos
+            ->where('estado', 'baja')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
 
-        // **Obtener todos los turnos de la base de datos**
         $turnos = Turno::all();
         $coloresTurnos = $this->getColoresTurnos();
 
-        // **Eventos de fichajes (entradas y salidas)**
         $eventosFichajes = $this->getEventosFichajes($user);
-        // dd($eventosFichajes);
         $eventosTurnos = $this->getEventosTurnos($user);
-
-        // **Obtener festivos reutilizando el método**
         $festivos = $this->getFestivos();
 
-        // **Combinar eventos (Fichajes, Turnos y Festivos)**
-        $eventos = $eventosFichajes->merge($eventosTurnos)->merge($festivos);
+        // Solicitudes pendientes y denegadas
+        $solicitudesVacaciones = VacacionesSolicitud::where('user_id', $user->id)
+            ->whereIn('estado', ['pendiente', 'denegada'])
+            ->get()
+            ->flatMap(function ($solicitud) {
+                if ($solicitud->estado === 'pendiente') {
+                    $color = '#fcdde8';
+                    $textColor = 'black';
+                    $title = 'Solicitud pendiente';
+                } else {
+                    $color = '#000000';
+                    $textColor = 'white';
+                    $title = 'Vacaciones denegadas';
+                }
+
+                return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
+                    ->map(function ($fecha) use ($title, $color, $textColor) {
+                        return [
+                            'title' => $title,
+                            'start' => $fecha->toDateString(),
+                            'end' => $fecha->copy()->addDay()->toDateString(),
+                            'allDay' => true,
+                            'backgroundColor' => $color,
+                            'borderColor' => $color,
+                            'textColor' => $textColor,
+                        ];
+                    });
+            })->values();
+
+        // Vacaciones aprobadas
+        $vacacionesAprobadas = AsignacionTurno::where('user_id', $user->id)
+            ->where('estado', 'vacaciones')
+            ->get()
+            ->map(function ($asig) {
+                return [
+                    'title' => 'Vacaciones',
+                    'start' => $asig->fecha,
+                    'allDay' => true,
+                    'backgroundColor' => '#f87171',
+                    'borderColor' => '#dc2626',
+                    'textColor' => 'white',
+                ];
+            });
+
+        // Merge de todos los eventos para el calendario
+        $eventos = $eventosFichajes->merge($eventosTurnos)
+            ->merge($festivos)
+            ->merge($solicitudesVacaciones)
+            ->merge($vacacionesAprobadas);
 
         return view('User.show', compact(
             'user',
@@ -336,6 +468,8 @@ class ProfileController extends Controller
             'diasBaja'
         ));
     }
+
+
 
     protected function getColoresTurnos()
     {
