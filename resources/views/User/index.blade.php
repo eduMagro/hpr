@@ -17,7 +17,6 @@
                     class="relative inline-block text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">
                     Registrar Usuario
                 </a>
-
                 <a href="{{ route('vacaciones.index') }}"
                     class="relative inline-block text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg ml-2">
                     Vacaciones

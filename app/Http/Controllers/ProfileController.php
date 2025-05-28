@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Maquina;
 use App\Models\Turno;
 use App\Models\Festivo;
+use App\Models\VacacionesSolicitud;
 use App\Models\Categoria;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
@@ -193,7 +194,7 @@ class ProfileController extends Controller
         $maquinas = Maquina::orderBy('nombre')->get(); // Puedes usar 'codigo' si prefieres
         $roles = User::distinct()->pluck('rol')->filter()->sort();
         $turnos = User::distinct()->pluck('turno')->filter()->sort();
-
+        $totalSolicitudesPendientes = VacacionesSolicitud::where('estado', 'pendiente')->count();
         $user = auth()->user();
 
         // Fecha de inicio (1 de enero del año actual)
@@ -288,7 +289,8 @@ class ProfileController extends Controller
             'ordenables',
             'faltasInjustificadas',
             'faltasJustificadas',
-            'diasBaja'
+            'diasBaja',
+            'totalSolicitudesPendientes'
         ));
     }
 
