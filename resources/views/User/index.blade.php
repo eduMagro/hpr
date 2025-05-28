@@ -12,21 +12,30 @@
     </x-slot>
     @if (Auth::check() && Auth::user()->rol == 'oficina')
         <div class="w-full px-6 py-4">
-            <div class="mb-4 flex items-center space-x-4">
-                <a href="{{ route('register') }}" class="btn btn-primary">Registrar Usuario</a>
-                <a href="{{ route('vacaciones.index') }}"
+            <div class="mb-4 flex items-center text-sm font-medium text-white  space-x-4">
+                <a href="{{ route('register') }}"
                     class="relative inline-block text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">
-                    Vacaciones
-                    @if ($totalSolicitudesPendientes > 0)
-                        <span
-                            class="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
-                            {{ $totalSolicitudesPendientes }}
-                        </span>
-                    @endif
+                    Registrar Usuario
                 </a>
 
-                <a href="{{ route('asignaciones-turnos.index') }}" class="btn btn-primary">Registros Entrada y
-                    Salida</a>
+                <a href="{{ route('vacaciones.index') }}"
+                    class="relative inline-block text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg ml-2">
+                    Vacaciones
+                    @isset($totalSolicitudesPendientes)
+                        @if ($totalSolicitudesPendientes > 0)
+                            <span
+                                class="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
+                                {{ $totalSolicitudesPendientes }}
+                            </span>
+                        @endif
+                    @endisset
+                </a>
+
+                <a href="{{ route('asignaciones-turnos.index') }}"
+                    class="relative inline-block text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg ml-2">
+                    Registros Entrada y Salida
+                </a>
+
                 {{-- <form action="{{ route('generar-turnos') }}" method="POST" class="form-cargando">
                     @csrf
                     <button type="submit" class="btn btn-primary btn-cargando">
