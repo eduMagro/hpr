@@ -106,138 +106,138 @@
 
 
             calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
-                    schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
-                    locale: 'es',
-                    initialView: vistaGuardada,
+                schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
+                locale: 'es',
+                initialView: vistaGuardada,
 
-                    datesSet: function(info) {
-                        let fechaActual = info.startStr;
+                datesSet: function(info) {
+                    let fechaActual = info.startStr;
 
-                        if (calendar.view.type === 'dayGridMonth') {
-                            const middleDate = new Date(info.start);
-                            middleDate.setDate(middleDate.getDate() + 15); // Aproximadamente la mitad del mes
-                            fechaActual = middleDate.toISOString().split('T')[0];
+                    if (calendar.view.type === 'dayGridMonth') {
+                        const middleDate = new Date(info.start);
+                        middleDate.setDate(middleDate.getDate() + 15); // Aproximadamente la mitad del mes
+                        fechaActual = middleDate.toISOString().split('T')[0];
+                    }
+
+                    localStorage.setItem('fechaCalendario', fechaActual);
+                    localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
+                },
+                displayEventEnd: true,
+                eventMinHeight: 30,
+                firstDay: 1,
+                height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title'
+                },
+                buttonText: {
+                    today: 'Hoy'
+                },
+                slotLabelDidMount: function(info) {
+                    const viewType = info.view.type;
+
+                    if (viewType === 'resourceTimelineDay') {
+                        const hour = parseInt(info.date.getHours());
+
+                        if (hour >= 6 && hour < 14) {
+                            info.el.style.backgroundColor = '#a7f3d0'; // verde claro
+                        } else if (hour >= 14 && hour < 22) {
+                            info.el.style.backgroundColor = '#bfdbfe'; // azul claro
+                        } else {
+                            info.el.style.backgroundColor = '#fde68a'; // amarillo claro
                         }
 
-                        localStorage.setItem('fechaCalendario', fechaActual);
-                        localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
+                        info.el.style.borderRight = '1px solid #e5e7eb';
+                    }
+                }, // eventOrder: 'orden',
+                views: {
+                    resourceTimelineDay: {
+                        slotMinTime: '00:00:00',
+                        slotMaxTime: '23:59:00',
                     },
-                    displayEventEnd: true,
-                    eventMinHeight: 30,
-                    firstDay: 1,
-                    height: 'auto',
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title'
-                    },
-                    buttonText: {
-                        today: 'Hoy'
-                    },
-                    slotLabelDidMount: function(info) {
-                        const viewType = info.view.type;
-
-                        if (viewType === 'resourceTimelineDay') {
-                            const hour = parseInt(info.date.getHours());
-
-                            if (hour >= 6 && hour < 14) {
-                                info.el.style.backgroundColor = '#a7f3d0'; // verde claro
-                            } else if (hour >= 14 && hour < 22) {
-                                info.el.style.backgroundColor = '#bfdbfe'; // azul claro
-                            } else {
-                                info.el.style.backgroundColor = '#fde68a'; // amarillo claro
-                            }
-
-                            info.el.style.borderRight = '1px solid #e5e7eb';
-                        }
-                    }, // eventOrder: 'orden',
-                    views: {
-                        resourceTimelineDay: {
-                            slotMinTime: '00:00:00',
-                            slotMaxTime: '23:59:00',
+                    resourceTimelineWeek: {
+                        slotDuration: {
+                            days: 1
                         },
-                        resourceTimelineWeek: {
-                            slotDuration: {
-                                days: 1
-                            },
-                            slotLabelFormat: {
-                                weekday: 'long',
-                                day: 'numeric',
-                                month: 'short'
-                            }
+                        slotLabelFormat: {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'short'
                         }
-                    },
-                    editable: true,
-                    resources: resources, // Usamos los recursos ordenados
-                    resourceAreaWidth: '200px',
-                    events: trabajadores,
-                    resourceAreaColumns: [{
-                        field: 'title',
-                        headerContent: 'Máquinas'
-                    }],
-                    eventDrop: function(info) {
-                        const asignacionId = info.event.id.replace(/^turno-/, '');
+                    }
+                },
+                editable: true,
+                resources: resources, // Usamos los recursos ordenados
+                resourceAreaWidth: '200px',
+                events: trabajadores,
+                resourceAreaColumns: [{
+                    field: 'title',
+                    headerContent: 'Máquinas'
+                }],
+                eventDrop: function(info) {
+                    const asignacionId = info.event.id.replace(/^turno-/, '');
 
-                        const recurso = info.event.getResources()?.[0];
-                        const nuevoMaquinaId = recurso ? parseInt(recurso.id, 10) : null;
-                        const nuevaHoraInicio = info.event.start?.toISOString();
+                    const recurso = info.event.getResources()?.[0];
+                    const nuevoMaquinaId = recurso ? parseInt(recurso.id, 10) : null;
+                    const nuevaHoraInicio = info.event.start?.toISOString();
 
-                        if (!nuevoMaquinaId || !nuevaHoraInicio) {
+                    if (!nuevoMaquinaId || !nuevaHoraInicio) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Datos incompletos',
+                            text: 'No se pudo determinar la máquina o la hora de inicio.'
+                        });
+                        info.revert();
+                        return;
+                    }
+
+                    fetch(`/asignaciones-turno/${asignacionId}/actualizar-puesto`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                maquina_id: nuevoMaquinaId,
+                                start: nuevaHoraInicio
+                            })
+                        })
+                        .then(response => response.json().then(data => ({
+                            ok: response.ok,
+                            status: response.status,
+                            data
+                        })))
+                        .then(({
+                            ok,
+                            status,
+                            data
+                        }) => {
+                            if (!ok) {
+                                throw new Error(data?.message || `Error ${status}`);
+                            }
+                            console.log('✅ Asignación actualizada:', data);
+                            // Aquí podrías actualizar info.event.setExtendedProp() si necesitas
+                        })
+                        .catch(error => {
+                            console.error('❌ Error al actualizar:', error);
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Datos incompletos',
-                                text: 'No se pudo determinar la máquina o la hora de inicio.'
+                                title: 'Error al guardar',
+                                text: error.message || 'Ocurrió un error inesperado.'
                             });
                             info.revert();
-                            return;
-                        }
-
-                        fetch(`/asignaciones-turno/${asignacionId}/actualizar-puesto`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                },
-                                body: JSON.stringify({
-                                    maquina_id: nuevoMaquinaId,
-                                    start: nuevaHoraInicio
-                                })
-                            })
-                            .then(response => response.json().then(data => ({
-                                ok: response.ok,
-                                status: response.status,
-                                data
-                            })))
-                            .then(({
-                                ok,
-                                status,
-                                data
-                            }) => {
-                                if (!ok) {
-                                    throw new Error(data?.message || `Error ${status}`);
-                                }
-                                console.log('✅ Asignación actualizada:', data);
-                                // Aquí podrías actualizar info.event.setExtendedProp() si necesitas
-                            })
-                            .catch(error => {
-                                console.error('❌ Error al actualizar:', error);
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error al guardar',
-                                    text: error.message || 'Ocurrió un error inesperado.'
-                                });
-                                info.revert();
-                            });
-                    },
-                    eventClick: function(info) {
-                        const userId = info.event.extendedProps.user_id;
-                        if (userId) {
-                            const url = "{{ route('users.show', ':id') }}".replace(':id', userId);
-                            window.location.href = url;
-                        }
-                    },
-                    eventContent: function(arg) {
-                        const props = arg.event.extendedProps;
-                        let html = `
+                        });
+                },
+                eventClick: function(info) {
+                    const userId = info.event.extendedProps.user_id;
+                    if (userId) {
+                        const url = "{{ route('users.show', ':id') }}".replace(':id', userId);
+                        window.location.href = url;
+                    }
+                },
+                eventContent: function(arg) {
+                    const props = arg.event.extendedProps;
+                    let html = `
                         <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded flex items-center gap-1">
                             <span>${arg.event.title}</span>
                             <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''}  </span>
@@ -245,15 +245,14 @@
                             <span class="text-[10px] font-normal opacity-80">🕒 ${props.entrada ?? '--'} -- ${props.salida ?? '--'}</span>
                         </div>`;
 
-                    }
                     return {
                         html
                     };
                 }
 
             });
-        // Forzar el orden de los recursos explícitamente usando setResources
-        calendar.render();
+            // Forzar el orden de los recursos explícitamente usando setResources
+            calendar.render();
         }
 
         document.addEventListener('DOMContentLoaded', function() {

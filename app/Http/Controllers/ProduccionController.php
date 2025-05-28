@@ -91,9 +91,16 @@ class ProduccionController extends Controller
 
                     $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
                     $resourceId = $maquinaId ? str_pad($maquinaId, 3, '0', STR_PAD_LEFT) : null;
+
                     // 🕓 Formatear entrada y salida reales
-                    $entrada = optional($asignacionTurno->entrada)->format('H:i');
-                    $salida = optional($asignacionTurno->salida)->format('H:i');
+                    $entrada = $asignacionTurno->entrada
+                        ? Carbon::parse($asignacionTurno->entrada)->format('H:i')
+                        : null;
+
+                    $salida = $asignacionTurno->salida
+                        ? Carbon::parse($asignacionTurno->salida)->format('H:i')
+                        : null;
+
                     // Evento del turno
                     $eventos[] = [
                         'id' => 'turno-' . $asignacionTurno->id,
