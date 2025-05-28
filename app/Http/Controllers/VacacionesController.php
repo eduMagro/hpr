@@ -107,15 +107,13 @@ class VacacionesController extends Controller
     {
         $request->validate([
             'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
-            'motivo' => 'nullable|string'
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio'
         ]);
 
         VacacionesSolicitud::create([
             'user_id' => auth()->id(),
             'fecha_inicio' => $request->fecha_inicio,
             'fecha_fin' => $request->fecha_fin,
-            'motivo' => $request->motivo,
             'estado' => 'pendiente'
         ]);
 

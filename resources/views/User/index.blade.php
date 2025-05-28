@@ -408,6 +408,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+
     <script>
         // ---------------------------------------------------- CALENDARIO 
         document.addEventListener('DOMContentLoaded', function() {
@@ -432,49 +434,45 @@
                     const fechaFin = info.endStr;
 
                     Swal.fire({
-                        title: 'Solicitar vacaciones',
-                        html: `
-            <p>📅 Del <b>${fechaInicio}</b> al <b>${moment(fechaFin).subtract(1, 'day').format('YYYY-MM-DD')}</b></p>
-            <textarea id="motivoVacaciones" class="swal2-textarea" placeholder="Motivo (opcional)"></textarea>
-        `,
-                        showCancelButton: true,
-                        confirmButtonText: 'Enviar solicitud',
-                        cancelButtonText: 'Cancelar',
-                        preConfirm: () => {
-                            return document.getElementById('motivoVacaciones').value;
-                        }
-                    }).then(result => {
-                        if (result.isConfirmed) {
-                            const motivo = result.value;
-
-                            fetch("{{ route('vacaciones.solicitar') }}", {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                                    },
-                                    body: JSON.stringify({
-                                        fecha_inicio: fechaInicio,
-                                        fecha_fin: moment(fechaFin).subtract(1,
-                                            'day').format('YYYY-MM-DD'),
-                                        motivo: motivo
+                            title: 'Solicitar vacaciones',
+                            html: `
+                                <p>📅 Del <b>${fechaInicio}</b> al <b>${moment(fechaFin).subtract(1, 'day').format('YYYY-MM-DD')}</b></p>
+                            `,
+                            showCancelButton: true,
+                            confirmButtonText: 'Enviar solicitud',
+                            cancelButtonText: 'Cancelar'
+                        })
+                        .then(result => {
+                            if (result.isConfirmed) {
+                                fetch("{{ route('vacaciones.solicitar') }}", {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                        },
+                                        body: JSON.stringify({
+                                            fecha_inicio: fechaInicio,
+                                            fecha_fin: moment(fechaFin).subtract(1,
+                                                'day').format('YYYY-MM-DD')
+                                        })
                                     })
-                                }).then(res => res.json())
-                                .then(data => {
-                                    if (data.success) {
-                                        Swal.fire("✅ Solicitud enviada", data.success,
-                                            "success").then(() => location.reload());
-                                    } else {
-                                        Swal.fire("❌ Error", data.error ||
-                                            "No se pudo enviar la solicitud", "error");
-                                    }
-                                }).catch(err => {
-                                    console.error(err);
-                                    Swal.fire("❌ Error",
-                                        "No se pudo comunicar con el servidor", "error");
-                                });
-                        }
-                    });
+                                    .then(res => res.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            Swal.fire("✅ Solicitud enviada", data.success,
+                                                "success").then(() => location.reload());
+                                        } else {
+                                            Swal.fire("❌ Error", data.error ||
+                                                "No se pudo enviar la solicitud", "error");
+                                        }
+                                    }).catch(err => {
+                                        console.error(err);
+                                        Swal.fire("❌ Error",
+                                            "No se pudo comunicar con el servidor", "error");
+                                    });
+                            }
+                        });
+
                 },
                 editable: true, // ❌ Desactivar edición
                 events: eventosDesdeLaravel // ✅ Solo mostrar los turnos asignados
