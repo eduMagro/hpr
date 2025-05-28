@@ -153,13 +153,6 @@ class User extends Authenticatable
         return $this->hasMany(Etiqueta::class, 'ensamblador2');
     }
 
-    /**
-     * Relación con `RegistroFichaje` (Un usuario tiene muchos registros de fichajes)
-     */
-    public function registrosFichajes()
-    {
-        return $this->hasMany(RegistroFichaje::class, 'user_id');
-    }
 
     /**
      * Relación con `AsignacionTurno` (Un usuario puede tener muchas asignaciones de turnos)

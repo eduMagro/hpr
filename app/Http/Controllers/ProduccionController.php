@@ -50,7 +50,7 @@ class ProduccionController extends Controller
             ];
         });
 
-        $trabajadores = User::with(['asignacionesTurnos.turno:id,hora_entrada,hora_salida'])
+        $trabajadores = User::with(['asignacionesTurnos.turno:id,hora_entrada,hora_salida', 'categoria', 'maquina'])
             ->where('rol', 'operario')
             ->whereNotNull('maquina_id') // aquí antes usabas `especialidad`
             ->get();
@@ -58,7 +58,7 @@ class ProduccionController extends Controller
         $fechaHoy = Carbon::today()->subWeek();
         $fechaLimite = $fechaHoy->copy()->addDays(40);
 
-        Log::info('Generando eventos para trabajadores');
+
         $eventos = [];
 
         foreach ($trabajadores as $trabajador) {
@@ -104,6 +104,9 @@ class ProduccionController extends Controller
                             'user_id' => $trabajador->id,
                             'categoria_id' => $trabajador->categoria_id,
                             'categoria_nombre' => $trabajador->categoria?->nombre,
+                            'especialidad_nombre' => $trabajador->maquina?->nombre,
+                            'hora_entrada_real' => $asignacionTurno->hora_entrada_real,
+                            'hora_salida_real' => $asignacionTurno->hora_salida_real,
                         ],
                         'maquina_id' => $trabajador->maquina_id
                     ];
@@ -113,7 +116,7 @@ class ProduccionController extends Controller
 
 
 
-        Log::info('Eventos generados: ', ['count' => count($eventos)]);
+        // Log::info('Eventos generados: ', ['count' => count($eventos)]);
         $trabajadoresEventos = $eventos;
 
         $fechaActual = Carbon::today();
@@ -137,7 +140,7 @@ class ProduccionController extends Controller
         $idsConEventos = collect($eventos)->pluck('trabajador.id')->unique();
         $trabajadoresSinEvento = $trabajadores->filter(fn($t) => !$idsConEventos->contains($t->id));
 
-        Log::info('Trabajadores sin eventos:', $trabajadoresSinEvento->pluck('name')->toArray());
+        // Log::info('Trabajadores sin eventos:', $trabajadoresSinEvento->pluck('name')->toArray());
 
         return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
     }

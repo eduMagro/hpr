@@ -240,8 +240,13 @@
                     let html = `
                         <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded flex items-center gap-1">
                             <span>${arg.event.title}</span>
-                            <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''})</span>
+                            <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''}  </span>
+                            <span class="text-[10px] font-normal opacity-80">🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})</span>
                         </div>`;
+                    if (props.hora_entrada_real || props.hora_salida_real) {
+                        html +=
+                            `<div class="text-[10px] mt-1 text-yellow-300 font-normal">🕒 ${props.hora_entrada_real ?? '--'} a ${props.hora_salida_real ?? '--'}</div>`;
+                    }
                     return {
                         html
                     };
