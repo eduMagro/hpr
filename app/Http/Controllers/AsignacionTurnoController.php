@@ -189,11 +189,13 @@ class AsignacionTurnoController extends Controller
                 'user_id'      => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
                 'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
-                'tipo'         => 'required|string', // Ya no validar en tabla turnos aquí
+                'tipo'         => 'required|string', // No validar en tabla turnos aquí
             ]);
 
-            // Buscar turno por nombre, si no existe asumimos vacaciones
             $turno = Turno::where('nombre', $request->tipo)->first();
+
+            // Obtener nombres válidos de turnos desde la tabla 'turnos'
+            $turnosValidos = Turno::pluck('nombre')->toArray();
 
             $fechaInicio = Carbon::parse($request->fecha_inicio);
             $fechaFin = Carbon::parse($request->fecha_fin);
@@ -219,14 +221,11 @@ class AsignacionTurnoController extends Controller
                         ->whereDate('fecha', $dateStr)
                         ->first();
 
-                    $esVacaciones = !$turno || !in_array($turno->nombre, ['festivo']) && $turno->nombre !== 'vacaciones';
-
-                    if ($turno && $turno->nombre === 'vacaciones') {
-                        $esVacaciones = true;
-                    }
+                    // Si el turno no existe o no está en la lista válida, se marca estado vacaciones
+                    $esVacaciones = !$turno || !in_array($turno->nombre, $turnosValidos);
 
                     if ($asignacion) {
-                        // Reversión si se sobrescribe un día de vacaciones por otro turno
+                        // Si sobrescribe vacaciones por turno válido, devolver días de vacaciones
                         if ($asignacion->estado === 'vacaciones' && !$esVacaciones) {
                             $user->increment('dias_vacaciones');
                         }
@@ -246,7 +245,7 @@ class AsignacionTurnoController extends Controller
                         } else {
                             $asignacion->update([
                                 'estado'     => 'activo',
-                                'turno_id'   => $turno ? $turno->id : null,
+                                'turno_id'   => $turno->id,
                                 'maquina_id' => $maquinaId,
                             ]);
                         }
@@ -272,7 +271,7 @@ class AsignacionTurnoController extends Controller
                                 'user_id'    => $user->id,
                                 'fecha'      => $dateStr,
                                 'estado'     => 'activo',
-                                'turno_id'   => $turno ? $turno->id : null,
+                                'turno_id'   => $turno->id,
                                 'maquina_id' => $maquinaId,
                             ]);
                         }
@@ -287,6 +286,7 @@ class AsignacionTurnoController extends Controller
             return response()->json(['error' => 'Error al registrar el turno: ' . $e->getMessage()], 500);
         }
     }
+
 
 
     public function destroy(Request $request)
