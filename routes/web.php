@@ -36,8 +36,7 @@ use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\IrpfTramoController;
 use App\Http\Controllers\SeguridadSocialController;
 use App\Http\Controllers\NominaController;
-
-
+use App\Models\VacacionesSolicitud;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 
@@ -98,6 +97,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', ProfileController::class);
     Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.actualizar');
     Route::resource('vacaciones', VacacionesController::class);
+    Route::post('/vacaciones/solicitar', [VacacionesController::class, 'store'])->name('vacaciones.solicitar');
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);
     Route::post('/asignaciones-turnos/destroy', [AsignacionTurnoController::class, 'destroy'])
         ->name('asignaciones-turnos.destroy');
@@ -163,6 +163,7 @@ Route::middleware('auth')->group(function () {
 
     //Route::resource('produccion', ProduccionController::class);
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.trabajadores');
+
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.maquinas');
     // Rutas para la gestión de camiones
     Route::resource('camiones', CamionController::class);

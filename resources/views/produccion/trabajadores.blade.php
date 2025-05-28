@@ -11,6 +11,7 @@
         <div class="w-full bg-white">
             <div id="calendario" class="h-[80vh] w-full"></div>
         </div>
+
         <!-- Tabla de Operarios -->
         <div class="mt-8">
             <h3 class="text-2xl font-semibold text-gray-900 mb-4">Operarios que trabajan hoy</h3>
@@ -121,6 +122,35 @@
 
                     localStorage.setItem('fechaCalendario', fechaActual);
                     localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
+                    fetch("{{ route('produccion.vacaciones') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .getAttribute('content')
+                            },
+                            body: JSON.stringify({
+                                fecha: fechaActual
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            const lista = document.querySelector('#vacaciones-hoy ul');
+                            lista.innerHTML = '';
+
+                            if (data.length === 0) {
+                                lista.innerHTML = '<li class="text-gray-500 italic">Ninguno</li>';
+                            } else {
+                                data.forEach(op => {
+                                    const li = document.createElement('li');
+                                    li.textContent = `• ${op.name}`;
+                                    lista.appendChild(li);
+                                });
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Error cargando operarios en vacaciones:', err);
+                        });
                 },
                 displayEventEnd: true,
                 eventMinHeight: 30,
@@ -242,7 +272,7 @@
                             <span>${arg.event.title}</span>
                             <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''}  </span>
                             <span class="text-[10px] font-normal opacity-80">🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})</span>
-                            <span class="text-[10px] font-normal opacity-80">🕒 ${props.entrada ?? '--'} -- ${props.salida ?? '--'}</span>
+                            <span class="text-[10px] font-normal opacity-80">🕒 ${props.entrada ?? '--'} / ${props.salida ?? '--'}</span>
                         </div>`;
 
                     return {

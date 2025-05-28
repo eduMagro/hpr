@@ -151,6 +151,7 @@ class ProduccionController extends Controller
         return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
     }
 
+
     public function actualizarPuesto(Request $request, $id)
     {
         $request->validate([
