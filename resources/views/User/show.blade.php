@@ -170,7 +170,7 @@
 
                                     // ✅ Para diferenciar si es eliminar turno o eliminar estado
                                     body.tipo =
-                                    tipoSeleccionado; // directamente lo que viene del select
+                                        tipoSeleccionado; // directamente lo que viene del select
 
                                 }
 
@@ -229,13 +229,7 @@
                                     .then(response => response.json())
                                     .then(data => {
                                         if (data.success) {
-                                            Swal.fire({
-                                                title: "Registrado",
-                                                text: data.success,
-                                                icon: "success",
-                                                timer: 2000,
-                                                showConfirmButton: false
-                                            });
+
 
                                             // Agregar eventos visuales
                                             let currentDate = new Date(fechaInicio);
@@ -266,6 +260,8 @@
                                                 currentDate.setDate(currentDate.getDate() +
                                                     1);
                                             }
+                                            // ✅ Recarga completa de la página
+                                            location.reload();
                                         } else {
                                             Swal.fire({
                                                 title: "Error",
