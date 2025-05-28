@@ -261,12 +261,19 @@ class VacacionesController extends Controller
             'fecha' => 'required|date',
         ]);
 
-        $eliminado = AsignacionTurno::where('user_id', $validated['user_id'])
+        $asignacion = AsignacionTurno::where('user_id', $validated['user_id'])
             ->where('fecha', $validated['fecha'])
             ->where('estado', 'vacaciones')
-            ->delete();
+            ->first();
 
-        return response()->json(['success' => $eliminado > 0]);
+        if (!$asignacion) {
+            return response()->json(['success' => false, 'error' => 'No se encontró la asignación de vacaciones.']);
+        }
+
+        $asignacion->estado = 'activo';
+        $asignacion->save();
+
+        return response()->json(['success' => true]);
     }
 
 

@@ -538,11 +538,9 @@ class ProfileController extends Controller
         $coloresTurnos = $this->getColoresTurnos(); // Obtener colores predefinidos
 
         return $user->asignacionesTurnos->map(function ($asignacion) use ($coloresTurnos) {
-            $color = $coloresTurnos[$asignacion->turno->nombre] ?? [
-                'bg' => '#808080', // Gris por defecto si no está en la lista
-                'border' => '#606060',
-                'text' => '#FFFFFF'
-            ];
+            $claveColor = $asignacion->turno?->nombre ?? $asignacion->estado;
+            $color = $coloresTurnos[$claveColor] ?? 'color-por-defecto';
+
 
             return [
                 'title' => ucfirst($asignacion->turno->nombre),
