@@ -531,19 +531,24 @@ class ProfileController extends Controller
             ];
         });
 
-        return $coloresAsignados;
+        return $coloresAsignados->toArray();
     }
     protected function getEventosTurnos($user)
     {
-        $coloresTurnos = $this->getColoresTurnos(); // Obtener colores predefinidos
+        $coloresTurnos = $this->getColoresTurnos(); // Array ya corregido
 
         return $user->asignacionesTurnos->map(function ($asignacion) use ($coloresTurnos) {
-            $claveColor = $asignacion->turno?->nombre ?? $asignacion->estado;
-            $color = $coloresTurnos[$claveColor] ?? 'color-por-defecto';
+            $nombreTurno = $asignacion->turno?->nombre ?? $asignacion->estado ?? 'desconocido';
+            $claveColor = $nombreTurno;
 
+            $color = $coloresTurnos[$claveColor] ?? [
+                'bg' => '#708090',
+                'border' => $this->darkenColor('#708090'),
+                'text' => '#FFFFFF'
+            ];
 
             return [
-                'title' => ucfirst($asignacion->turno->nombre),
+                'title' => ucfirst($nombreTurno),
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
                 'backgroundColor' => $color['bg'],
                 'borderColor' => $color['border'],
@@ -552,6 +557,7 @@ class ProfileController extends Controller
             ];
         });
     }
+
     protected function getEventosFichajes($user)
     {
         return $user->asignacionesTurnos->flatMap(function ($asignacion) {
@@ -587,6 +593,9 @@ class ProfileController extends Controller
     private function darkenColor($hex, $percent = 20)
     {
         $hex = str_replace("#", "", $hex);
+        if (strlen($hex) !== 6) {
+            return '#000000'; // Fallback a negro si formato inválido
+        }
         $rgb = [
             hexdec(substr($hex, 0, 2)),
             hexdec(substr($hex, 2, 2)),
