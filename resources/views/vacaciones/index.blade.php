@@ -11,11 +11,29 @@
     </x-slot>
 
     <div class="container mx-auto px-4 py-6 space-y-12" id="contenedorCalendarios">
-
+        {{-- Maquinistas --}}
+        <div>
+            <h3 class="text-xl font-semibold text-blue-700 mb-4">📥 Solicitudes pendientes · Maquinistas</h3>
+            @if ($solicitudesMaquinistas->isEmpty())
+                <p class="text-gray-600">No hay solicitudes pendientes.</p>
+            @else
+                <x-tabla-solicitudes :solicitudes="$solicitudesMaquinistas" />
+            @endif
+        </div>
         <!-- Calendario Maquinistas -->
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold text-blue-700 mb-4">Vacaciones · Maquinistas</h3>
             <div id="calendario-maquinistas"></div>
+        </div>
+
+        {{-- Ferrallas --}}
+        <div>
+            <h3 class="text-xl font-semibold text-blue-700 mb-4">📥 Solicitudes pendientes · Ferrallas</h3>
+            @if ($solicitudesFerrallas->isEmpty())
+                <p class="text-gray-600">No hay solicitudes pendientes.</p>
+            @else
+                <x-tabla-solicitudes :solicitudes="$solicitudesFerrallas" />
+            @endif
         </div>
         <!-- Calendario Ferrallas -->
         <div class="bg-white rounded-lg shadow-lg p-6">
@@ -23,6 +41,15 @@
             <div id="calendario-ferrallas"></div>
         </div>
 
+        {{-- Oficina --}}
+        <div>
+            <h3 class="text-xl font-semibold text-yellow-700 mb-4">📥 Solicitudes pendientes · Oficina</h3>
+            @if ($solicitudesOficina->isEmpty())
+                <p class="text-gray-600">No hay solicitudes pendientes.</p>
+            @else
+                <x-tabla-solicitudes :solicitudes="$solicitudesOficina" />
+            @endif
+        </div>
         <!-- Calendario Oficina -->
         <div class="bg-white rounded-lg shadow-lg p-6">
             <h3 class="text-lg font-semibold text-yellow-700 mb-4">Vacaciones · Oficina</h3>
