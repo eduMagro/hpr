@@ -187,8 +187,6 @@ class ProduccionController extends Controller
 
         $asignacion = AsignacionTurno::findOrFail($id);
 
-        $entrada = Carbon::parse($request->start);
-
         $asignacion->update([
             'maquina_id' => $request->maquina_id,
 

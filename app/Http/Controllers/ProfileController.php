@@ -265,21 +265,31 @@ class ProfileController extends Controller
         );
 
         $filtrosActivos = $this->filtrosActivos($request);
-        $coloresTurnos = $this->getColoresTurnos();
+
         $eventosFichajes = $this->getEventosFichajes($user);
 
-        // Eventos con turnos válidos
+        $coloresTurnos = $this->getColoresTurnos(); // ya lo tienes en tu controlador
+
         $eventosTurnos = AsignacionTurno::where('user_id', $user->id)
             ->whereHas('turno', fn($q) => $q->whereIn('nombre', $turnosValidos))
+            ->with('turno') // importante para evitar N+1
             ->get()
-            ->map(function ($asig) {
+            ->map(function ($asig) use ($coloresTurnos) {
+                $nombreTurno = $asig->turno->nombre ?? 'desconocido';
+
+                $color = $coloresTurnos[$nombreTurno] ?? [
+                    'bg' => '#708090',
+                    'border' => '#505d6e',
+                    'text' => '#ffffff'
+                ];
+
                 return [
-                    'title' => $asig->turno->nombre,
+                    'title' => ucfirst($nombreTurno),
                     'start' => $asig->fecha,
                     'allDay' => true,
-                    'backgroundColor' => '#3b82f6',  // azul para turnos normales
-                    'borderColor' => '#2563eb',
-                    'textColor' => 'white',
+                    'backgroundColor' => $color['bg'],
+                    'borderColor' => $color['border'],
+                    'textColor' => $color['text'],
                 ];
             });
 
