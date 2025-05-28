@@ -245,7 +245,7 @@
                         </div>`;
                     if (props.hora_entrada_real || props.hora_salida_real) {
                         html +=
-                            `<div class="text-[10px] mt-1 text-yellow-300 font-normal">🕒 ${props.hora_entrada_real ?? '--'} a ${props.hora_salida_real ?? '--'}</div>`;
+                            `<div class="text-[10px] mt-1 text-yellow-300 font-normal">🕒 ${props.entrada ?? '--'} a ${props.salida ?? '--'}</div>`;
                     }
                     return {
                         html
