@@ -105,8 +105,8 @@ class ProduccionController extends Controller
                             'categoria_id' => $trabajador->categoria_id,
                             'categoria_nombre' => $trabajador->categoria?->nombre,
                             'especialidad_nombre' => $trabajador->maquina?->nombre,
-                            'entrada' => $asignacionTurno->entrada,
-                            'salida' => $asignacionTurno->salida,
+                            'entrada' => optional($asignacionTurno->entrada)->format('H:i'),
+                            'salida' => optional($asignacionTurno->salida)->format('H:i'),
                         ],
                         'maquina_id' => $trabajador->maquina_id
                     ];
