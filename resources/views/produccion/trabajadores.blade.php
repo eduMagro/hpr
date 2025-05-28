@@ -243,7 +243,7 @@
                             <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''}  </span>
                             <span class="text-[10px] font-normal opacity-80">🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})</span>
                         </div>`;
-                    if (props.hora_entrada_real || props.hora_salida_real) {
+                    if (props.entrada || props.salida) {
                         html +=
                             `<div class="text-[10px] mt-1 text-yellow-300 font-normal">🕒 ${props.entrada ?? '--'} a ${props.salida ?? '--'}</div>`;
                     }

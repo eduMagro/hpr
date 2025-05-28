@@ -114,9 +114,6 @@ class ProduccionController extends Controller
             }
         }
 
-
-
-        // Log::info('Eventos generados: ', ['count' => count($eventos)]);
         $trabajadoresEventos = $eventos;
 
         $fechaActual = Carbon::today();
