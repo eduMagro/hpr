@@ -181,11 +181,15 @@ class VacacionesController extends Controller
         $rango = CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin);
 
         foreach ($rango as $fecha) {
-            AsignacionTurno::updateOrCreate(
-                ['user_id' => $solicitud->user_id, 'fecha' => $fecha->format('Y-m-d')],
-                ['estado' => 'vacaciones']
-            );
+            $registro = AsignacionTurno::firstOrNew([
+                'user_id' => $solicitud->user_id,
+                'fecha' => $fecha->format('Y-m-d')
+            ]);
+
+            $registro->estado = 'vacaciones';
+            $registro->save();
         }
+
 
         return redirect()->back()->with('success', 'Solicitud aprobada y vacaciones asignadas.');
     }
