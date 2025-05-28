@@ -91,7 +91,9 @@ class ProduccionController extends Controller
 
                     $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
                     $resourceId = $maquinaId ? str_pad($maquinaId, 3, '0', STR_PAD_LEFT) : null;
-
+                    // 🕓 Formatear entrada y salida reales
+                    $entrada = optional($asignacionTurno->entrada)->format('H:i');
+                    $salida = optional($asignacionTurno->salida)->format('H:i');
                     // Evento del turno
                     $eventos[] = [
                         'id' => 'turno-' . $asignacionTurno->id,
@@ -105,8 +107,8 @@ class ProduccionController extends Controller
                             'categoria_id' => $trabajador->categoria_id,
                             'categoria_nombre' => $trabajador->categoria?->nombre,
                             'especialidad_nombre' => $trabajador->maquina?->nombre,
-                            'entrada' => optional($asignacionTurno->entrada)->format('H:i'),
-                            'salida' => optional($asignacionTurno->salida)->format('H:i'),
+                            'entrada' => $entrada,
+                            'salida' => $salida,
                         ],
                         'maquina_id' => $trabajador->maquina_id
                     ];
