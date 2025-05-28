@@ -429,20 +429,19 @@
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
 
     <script>
-        // ---------------------------------------------------- CALENDARIO 
         document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendario');
+            const calendarEl = document.getElementById('calendario');
 
-            // Cargar eventos directamente desde Laravel
-            var eventosDesdeLaravel = {!! json_encode($eventos) !!};
-            var coloresTurnos = {!! json_encode($coloresTurnos) !!}; // Colores desde el backend
+            // Eventos y colores desde Laravel
+            const eventosDesdeLaravel = {!! json_encode($eventos) !!};
+            const coloresTurnos = {!! json_encode($coloresTurnos) !!};
 
-            // 🔒 Recoger fechas bloqueadas (estado vacaciones o solicitud pendiente)
+            // Fechas bloqueadas por vacaciones ya solicitadas o aprobadas
             const fechasBloqueadas = eventosDesdeLaravel
                 .filter(e => e.title === 'Solicitud pendiente' || e.title === 'Vacaciones')
                 .map(e => e.start);
 
-            var calendar = new FullCalendar.Calendar(calendarEl, {
+            const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'es',
                 height: 'auto',
@@ -450,12 +449,11 @@
                     left: 'prev,next today',
                     center: 'title'
                 },
-                selectable: true, // ✅ Activar selección de fechas
+                selectable: true,
                 selectMirror: true,
                 select: function(info) {
                     const fechaInicio = moment(info.startStr);
-                    const fechaFin = moment(info.endStr).subtract(1,
-                    'day'); // ⚠️ endStr es exclusivo en FullCalendar
+                    const fechaFin = moment(info.endStr).subtract(1, 'day'); // endStr es exclusivo
 
                     const rangoSeleccionado = [];
                     let actual = fechaInicio.clone();
@@ -465,59 +463,71 @@
                     }
 
                     const conflicto = rangoSeleccionado.find(fecha => fechasBloqueadas.includes(fecha));
-
                     if (conflicto) {
                         Swal.fire('🚫 No permitido',
                             `Ya hay una solicitud o vacaciones el día ${conflicto}.`, 'warning');
                         return;
                     }
-                    Swal.fire({
-                            title: 'Solicitar vacaciones',
-                            html: `
-                                <p>📅 Del <b>${fechaInicio}</b> al <b>${moment(fechaFin).subtract(1, 'day').format('YYYY-MM-DD')}</b></p>
-                            `,
-                            showCancelButton: true,
-                            confirmButtonText: 'Enviar solicitud',
-                            cancelButtonText: 'Cancelar'
-                        })
-                        .then(result => {
-                            if (result.isConfirmed) {
-                                fetch("{{ route('vacaciones.solicitar') }}", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                                        },
-                                        body: JSON.stringify({
-                                            fecha_inicio: fechaInicio,
-                                            fecha_fin: moment(fechaFin).subtract(1,
-                                                'day').format('YYYY-MM-DD')
-                                        })
-                                    })
-                                    .then(res => res.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            Swal.fire("✅ Solicitud enviada", data.success,
-                                                "success").then(() => location.reload());
-                                        } else {
-                                            Swal.fire("❌ Error", data.error ||
-                                                "No se pudo enviar la solicitud", "error");
-                                        }
-                                    }).catch(err => {
-                                        console.error(err);
-                                        Swal.fire("❌ Error",
-                                            "No se pudo comunicar con el servidor", "error");
-                                    });
-                            }
-                        });
 
+                    const fechaInicioFormato = fechaInicio.format('YYYY-MM-DD');
+                    const fechaFinFormato = fechaFin.format('YYYY-MM-DD');
+
+                    Swal.fire({
+                        title: 'Solicitar vacaciones',
+                        html: `
+                        <p>📅 Del <b>${fechaInicioFormato}</b> al <b>${fechaFinFormato}</b></p>
+                    `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Enviar solicitud',
+                        cancelButtonText: 'Cancelar'
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            fetch("{{ route('vacaciones.solicitar') }}", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                    },
+                                    body: JSON.stringify({
+                                        fecha_inicio: fechaInicioFormato,
+                                        fecha_fin: fechaFinFormato
+                                    })
+                                })
+                                .then(async res => {
+                                    const text = await res.text();
+                                    try {
+                                        return JSON.parse(text);
+                                    } catch (e) {
+                                        console.error(
+                                            "Respuesta no válida del servidor:",
+                                            text);
+                                        throw new Error(
+                                            "Error inesperado del servidor");
+                                    }
+                                })
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire("✅ Solicitud enviada", data.success,
+                                            "success").then(() => location.reload());
+                                    } else {
+                                        Swal.fire("❌ Error", data.error ||
+                                            "Error inesperado", "error");
+                                    }
+                                })
+                                .catch(err => {
+                                    Swal.fire("❌ Error", err.message, "error");
+                                });
+                        }
+                    });
                 },
-                editable: true, // ❌ Desactivar edición
-                events: eventosDesdeLaravel // ✅ Solo mostrar los turnos asignados
+                editable: false,
+                events: eventosDesdeLaravel
             });
 
             calendar.render();
         });
+
+
         // ---------------------------------------------------- REGISTRAR FICHAJE
         function registrarFichaje(tipo) {
 

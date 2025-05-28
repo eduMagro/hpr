@@ -101,24 +101,50 @@ class ProduccionController extends Controller
                         ? Carbon::parse($asignacionTurno->salida)->format('H:i')
                         : null;
 
-                    // Evento del turno
-                    $eventos[] = [
-                        'id' => 'turno-' . $asignacionTurno->id,
-                        'title' => $trabajador->name,
-                        'start' => $start,
-                        'end' => $end,
-                        'resourceId' => $resourceId,
-                        'user_id' => $trabajador->id,
-                        'extendedProps' => [
+                    $estado = $asignacionTurno->estado ?? 'activo';
+
+                    $mostrarEstado = $estado !== 'activo';
+
+                    // Evita crear el evento normal si el estado no es 'activo'
+                    if (!$mostrarEstado || in_array($estado, ['vacaciones', 'baja', 'justificada', 'injustificada'])) {
+
+                        $entrada = $mostrarEstado
+                            ? ucfirst($estado)
+                            : ($asignacionTurno->entrada ? Carbon::parse($asignacionTurno->entrada)->format('H:i') : null);
+
+                        $salida = $mostrarEstado
+                            ? null
+                            : ($asignacionTurno->salida ? Carbon::parse($asignacionTurno->salida)->format('H:i') : null);
+
+                        $color = match ($estado) {
+                            'vacaciones'      => ['bg' => '#f87171', 'border' => '#dc2626'],
+                            'baja'            => ['bg' => '#FF8C00', 'border' => '#FF6600'],
+                            'justificada'     => ['bg' => '#32CD32', 'border' => '#228B22'],
+                            'injustificada'   => ['bg' => '#DC143C', 'border' => '#B22222'],
+                            default           => ['bg' => '#3788d8', 'border' => '#3276b1'],
+                        };
+
+                        $eventos[] = [
+                            'id' => 'turno-' . $asignacionTurno->id,
+                            'title' => $trabajador->name,
+                            'start' => $start,
+                            'end' => $end,
+                            'resourceId' => $resourceId,
                             'user_id' => $trabajador->id,
-                            'categoria_id' => $trabajador->categoria_id,
-                            'categoria_nombre' => $trabajador->categoria?->nombre,
-                            'especialidad_nombre' => $trabajador->maquina?->nombre,
-                            'entrada' => $entrada,
-                            'salida' => $salida,
-                        ],
-                        'maquina_id' => $trabajador->maquina_id
-                    ];
+                            'backgroundColor' => $color['bg'],
+                            'borderColor' => $color['border'],
+                            'textColor' => '#ffffff',
+                            'extendedProps' => [
+                                'user_id' => $trabajador->id,
+                                'categoria_id' => $trabajador->categoria_id,
+                                'categoria_nombre' => $trabajador->categoria?->nombre,
+                                'especialidad_nombre' => $trabajador->maquina?->nombre,
+                                'entrada' => $entrada,
+                                'salida' => $salida,
+                            ],
+                            'maquina_id' => $trabajador->maquina_id
+                        ];
+                    }
                 }
             }
         }
@@ -151,60 +177,26 @@ class ProduccionController extends Controller
         return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
     }
 
-
     public function actualizarPuesto(Request $request, $id)
     {
         $request->validate([
             'maquina_id' => 'required|exists:maquinas,id',
-            'start' => 'required|date',
+
+            'turno_id' => 'nullable|exists:turnos,id', // por si lo sigues enviando
         ]);
 
         $asignacion = AsignacionTurno::findOrFail($id);
-        $asignacion->maquina_id = $request->input('maquina_id');
 
-        $start = Carbon::parse($request->input('start'));
-        $horaCarbon = $start->copy();
+        $entrada = Carbon::parse($request->start);
 
-        // ✅ Forzamos que se mantenga siempre el mismo día
-        $fechaAsignada = $asignacion->fecha;
+        $asignacion->update([
+            'maquina_id' => $request->maquina_id,
 
-        $turnos = Turno::orderBy('hora_entrada')->get();
-
-        foreach ($turnos as $turno) {
-            if (!$turno->hora_entrada || !$turno->hora_salida) {
-                continue;
-            }
-
-            $entrada = Carbon::createFromTimeString($turno->hora_entrada);
-            $salida = Carbon::createFromTimeString($turno->hora_salida);
-
-            if ($entrada->gt($salida)) {
-                // Turno nocturno (22:00 a 06:00)
-                if ($horaCarbon->between(Carbon::createFromTime(0, 0, 0), $salida)) {
-                    $asignacion->turno_id = $turno->id;
-                    break;
-                }
-            } else {
-                if ($horaCarbon->gte($entrada) && $horaCarbon->lt($salida)) {
-                    $asignacion->turno_id = $turno->id;
-                    break;
-                }
-            }
-        }
-
-        // ✅ Reafirmamos que la fecha no cambia
-        $asignacion->fecha = $fechaAsignada;
-        $asignacion->save();
-
-        return response()->json([
-            'success' => true,
-            'turno_id' => $asignacion->turno_id,
-            'fecha' => $asignacion->fecha,
-            'maquina_id' => $asignacion->maquina_id,
+            'turno_id' => $request->turno_id, // o puedes omitirlo si usas lógica automática
         ]);
+
+        return response()->json(['message' => 'Actualización exitosa']);
     }
-
-
 
     //---------------------------------------------------------- MAQUINAS
     public function maquinas()
@@ -379,7 +371,6 @@ class ProduccionController extends Controller
             'resources' => $resources,
         ]);
     }
-
 
     public function reordenarPlanillas(Request $request)
     {

@@ -270,12 +270,19 @@ class VacacionesController extends Controller
             return response()->json(['success' => false, 'error' => 'No se encontró la asignación de vacaciones.']);
         }
 
+        // Cambiar el estado
         $asignacion->estado = 'activo';
         $asignacion->save();
 
+        // Sumar un día al contador de vacaciones del usuario
+        $usuario = User::find($validated['user_id']);
+        if ($usuario) {
+            $usuario->dias_vacaciones += 1;
+            $usuario->save();
+        }
+
         return response()->json(['success' => true]);
     }
-
 
     public function reprogramar(Request $request)
     {

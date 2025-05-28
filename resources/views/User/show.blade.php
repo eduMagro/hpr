@@ -118,12 +118,20 @@
                         title: "Selecciona un turno",
                         html: `
                     ${mensajeFecha}
-                    <select id="tipo-dia" class="swal2-select">
-                        <option value="ninguno">❌ No asignar</option>
-                        @foreach ($turnos as $turno)
-                            <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
-                        @endforeach
-                    </select>
+                  <select id="tipo-dia" class="swal2-select">
+  <option value="eliminarTurnoEstado">🗑 Eliminar Turno</option>
+
+
+    @foreach ($turnos as $turno)
+        <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
+    @endforeach
+<option value="eliminarEstado">🗑 Eliminar Estado</option>
+    <option value="vacaciones">🏖 Vacaciones</option>
+    <option value="baja">🤒 Baja</option>
+    <option value="justificada">✅ Falta Justificada</option>
+    <option value="injustificada">❌ Falta Injustificada</option>
+</select>
+
                 `,
                         showCancelButton: true,
                         confirmButtonText: "Registrar",
@@ -135,7 +143,8 @@
                         if (result.isConfirmed) {
                             let tipoSeleccionado = result.value;
 
-                            if (tipoSeleccionado === "ninguno") {
+                            if (tipoSeleccionado === "eliminarTurnoEstado" ||
+                                tipoSeleccionado === "eliminarEstado") {
                                 let eventosEnRango = calendar.getEvents().filter(event => {
                                     let eventDate = event.startStr;
                                     return eventDate >= fechaInicio && eventDate <=
@@ -158,6 +167,11 @@
                                 } else {
                                     body.user_id =
                                         "{{ $user->id }}"; // solo del usuario actual
+
+                                    // ✅ Para diferenciar si es eliminar turno o eliminar estado
+                                    body.tipo =
+                                    tipoSeleccionado; // directamente lo que viene del select
+
                                 }
 
                                 fetch("{{ route('asignaciones-turnos.destroy') }}", {
@@ -196,8 +210,9 @@
                                             icon: "error"
                                         });
                                     });
+
                             } else {
-                                // Petición para asignar turno
+                                // Petición para asignar turno o estado
                                 fetch("{{ route('asignaciones-turnos.store') }}", {
                                         method: "POST",
                                         headers: {
@@ -222,11 +237,10 @@
                                                 showConfirmButton: false
                                             });
 
-                                            // Agregar eventos al calendario
+                                            // Agregar eventos visuales
                                             let currentDate = new Date(fechaInicio);
                                             let endDate = new Date(fechaFin);
                                             while (currentDate <= endDate) {
-                                                // Opcional: omitir sábados (6) y domingos (0)
                                                 if (currentDate.getDay() !== 0 &&
                                                     currentDate.getDay() !== 6) {
                                                     let color = coloresTurnos[
@@ -269,6 +283,7 @@
                                         });
                                     });
                             }
+
                         }
                     });
                 }

@@ -103,14 +103,19 @@
                 calendar.destroy();
             }
 
-            const vistaGuardada = 'resourceTimelineDay';
+            const vistasValidas = ['resourceTimelineDay', 'resourceTimelineWeek'];
+            let vistaGuardada = localStorage.getItem('ultimaVistaCalendario');
+            if (!vistasValidas.includes(vistaGuardada)) {
+                vistaGuardada = 'resourceTimelineDay';
+            }
 
+            const fechaGuardada = localStorage.getItem('fechaCalendario');
 
             calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                 locale: 'es',
                 initialView: vistaGuardada,
-
+                initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
                 datesSet: function(info) {
                     let fechaActual = info.startStr;
 
@@ -122,35 +127,7 @@
 
                     localStorage.setItem('fechaCalendario', fechaActual);
                     localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
-                    fetch("{{ route('produccion.vacaciones') }}", {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                    .getAttribute('content')
-                            },
-                            body: JSON.stringify({
-                                fecha: fechaActual
-                            })
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            const lista = document.querySelector('#vacaciones-hoy ul');
-                            lista.innerHTML = '';
 
-                            if (data.length === 0) {
-                                lista.innerHTML = '<li class="text-gray-500 italic">Ninguno</li>';
-                            } else {
-                                data.forEach(op => {
-                                    const li = document.createElement('li');
-                                    li.textContent = `• ${op.name}`;
-                                    lista.appendChild(li);
-                                });
-                            }
-                        })
-                        .catch(err => {
-                            console.error('Error cargando operarios en vacaciones:', err);
-                        });
                 },
                 displayEventEnd: true,
                 eventMinHeight: 30,
@@ -210,6 +187,16 @@
                     const recurso = info.event.getResources()?.[0];
                     const nuevoMaquinaId = recurso ? parseInt(recurso.id, 10) : null;
                     const nuevaHoraInicio = info.event.start?.toISOString();
+                    let turnoId = null;
+                    const hora = new Date(nuevaHoraInicio).getHours();
+
+                    if (hora >= 6 && hora < 14) {
+                        turnoId = 1; // mañana
+                    } else if (hora >= 14 && hora < 22) {
+                        turnoId = 2; // tarde
+                    } else {
+                        turnoId = 3; // noche
+                    }
 
                     if (!nuevoMaquinaId || !nuevaHoraInicio) {
                         Swal.fire({
@@ -229,8 +216,10 @@
                             },
                             body: JSON.stringify({
                                 maquina_id: nuevoMaquinaId,
-                                start: nuevaHoraInicio
+                                start: nuevaHoraInicio,
+                                turno_id: turnoId
                             })
+
                         })
                         .then(response => response.json().then(data => ({
                             ok: response.ok,
@@ -267,14 +256,24 @@
                 },
                 eventContent: function(arg) {
                     const props = arg.event.extendedProps;
+                    let horasTexto = '-- / --';
+
+                    if (props.entrada && props.salida) {
+                        horasTexto = `${props.entrada} / ${props.salida}`;
+                    } else if (props.entrada && !props.salida) {
+                        horasTexto = props.entrada;
+                    } else if (props.entrada && !props.salida) {
+                        horasTexto = props.salida;
+                    }
+
+
                     let html = `
-                        <div class="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded flex items-center gap-1">
+                        <div class="px-2 py-1 text-xs font-semibold flex items-center gap-1">
                             <span>${arg.event.title}</span>
                             <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''}  </span>
                             <span class="text-[10px] font-normal opacity-80">🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})</span>
-                            <span class="text-[10px] font-normal opacity-80">🕒 ${props.entrada ?? '--'} / ${props.salida ?? '--'}</span>
+                            <span class="text-[10px] font-normal opacity-80">${horasTexto}</span>
                         </div>`;
-
                     return {
                         html
                     };

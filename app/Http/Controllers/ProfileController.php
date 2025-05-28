@@ -103,6 +103,7 @@ class ProfileController extends Controller
 
         return $filtros;
     }
+
     private function getOrdenamiento(string $columna, string $titulo): string
     {
         $currentSort = request('sort');
@@ -327,11 +328,11 @@ class ProfileController extends Controller
                 if ($solicitud->estado === 'pendiente') {
                     $color = '#fcdde8';
                     $textColor = 'black';
-                    $title = 'Solicitud pendiente';
+                    $title = 'V. pendiente';
                 } else {
                     $color = '#000000';
                     $textColor = 'white';
-                    $title = 'Vacaciones denegadas';
+                    $title = 'V. denegadas';
                 }
 
                 return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
@@ -416,11 +417,11 @@ class ProfileController extends Controller
                 if ($solicitud->estado === 'pendiente') {
                     $color = '#fcdde8';
                     $textColor = 'black';
-                    $title = 'Solicitud pendiente';
+                    $title = 'V. pendiente';
                 } else {
                     $color = '#000000';
                     $textColor = 'white';
-                    $title = 'Vacaciones denegadas';
+                    $title = 'V. denegadas';
                 }
 
                 return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
@@ -468,8 +469,6 @@ class ProfileController extends Controller
             'diasBaja'
         ));
     }
-
-
 
     protected function getColoresTurnos()
     {
@@ -533,29 +532,34 @@ class ProfileController extends Controller
 
         return $coloresAsignados->toArray();
     }
+
     protected function getEventosTurnos($user)
     {
-        $coloresTurnos = $this->getColoresTurnos(); // Array ya corregido
+        $coloresTurnos = $this->getColoresTurnos();
 
-        return $user->asignacionesTurnos->map(function ($asignacion) use ($coloresTurnos) {
-            $nombreTurno = $asignacion->turno?->nombre ?? $asignacion->estado ?? 'desconocido';
-            $claveColor = $nombreTurno;
+        return $user->asignacionesTurnos
+            ->filter(function ($asignacion) {
+                return $asignacion->estado !== 'vacaciones';
+            })
+            ->map(function ($asignacion) use ($coloresTurnos) {
+                $nombreTurno = $asignacion->turno?->nombre ?? $asignacion->estado ?? 'desconocido';
+                $claveColor = $nombreTurno;
 
-            $color = $coloresTurnos[$claveColor] ?? [
-                'bg' => '#708090',
-                'border' => $this->darkenColor('#708090'),
-                'text' => '#FFFFFF'
-            ];
+                $color = $coloresTurnos[$claveColor] ?? [
+                    'bg' => '#708090',
+                    'border' => $this->darkenColor('#708090'),
+                    'text' => '#FFFFFF'
+                ];
 
-            return [
-                'title' => ucfirst($nombreTurno),
-                'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
-                'backgroundColor' => $color['bg'],
-                'borderColor' => $color['border'],
-                'textColor' => $color['text'], // Usar el color de texto asignado
-                'allDay' => true
-            ];
-        });
+                return [
+                    'title' => ucfirst($nombreTurno),
+                    'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
+                    'backgroundColor' => $color['bg'],
+                    'borderColor' => $color['border'],
+                    'textColor' => $color['text'],
+                    'allDay' => true
+                ];
+            });
     }
 
     protected function getEventosFichajes($user)

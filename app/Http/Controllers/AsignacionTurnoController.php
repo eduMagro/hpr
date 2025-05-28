@@ -141,6 +141,7 @@ class AsignacionTurnoController extends Controller
             return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
         }
     }
+
     private function validarHoraEntrada($turno, $horaActual)
     {
         $hora = $horaActual->format('H:i');
@@ -189,92 +190,77 @@ class AsignacionTurnoController extends Controller
                 'user_id'      => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
                 'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
-                'tipo'         => 'required|string', // No validar en tabla turnos aquí
+                'tipo'         => 'required|string',
             ]);
 
-            $turno = Turno::where('nombre', $request->tipo)->first();
+            // 🚫 Rechazar tipos que deben ir al método destroy
+            if (in_array($request->tipo, ['eliminarEstado', 'eliminarTurnoEstado'])) {
+                return response()->json(['error' => 'Esta operación debe gestionarse por otro método.'], 400);
+            }
 
-            // Obtener nombres válidos de turnos desde la tabla 'turnos'
-            $turnosValidos = Turno::pluck('nombre')->toArray();
-
+            $tipo = $request->tipo;
             $fechaInicio = Carbon::parse($request->fecha_inicio);
             $fechaFin = Carbon::parse($request->fecha_fin);
 
-            $usuarios = $turno && $turno->nombre === 'festivo'
+            $turnosValidos = Turno::pluck('nombre')->toArray();
+            $esTurno = in_array($tipo, $turnosValidos);
+            $turno = $esTurno ? Turno::where('nombre', $tipo)->first() : null;
+
+            $usuarios = ($tipo === 'festivo')
                 ? User::all()
                 : collect([User::findOrFail($request->user_id)]);
 
             foreach ($usuarios as $user) {
                 $maquinaId = $user->maquina?->id;
-
                 $currentDate = $fechaInicio->copy();
 
                 while ($currentDate->lte($fechaFin)) {
-                    if (in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                    if ($currentDate->isWeekend()) {
                         $currentDate->addDay();
                         continue;
                     }
 
                     $dateStr = $currentDate->toDateString();
-
                     $asignacion = AsignacionTurno::where('user_id', $user->id)
                         ->whereDate('fecha', $dateStr)
                         ->first();
 
-                    // Si el turno no existe o no está en la lista válida, se marca estado vacaciones
-                    $esVacaciones = !$turno || !in_array($turno->nombre, $turnosValidos);
+                    $estadoNuevo = $esTurno ? 'activo' : $tipo;
 
+                    // ☑️ ACTUALIZACIÓN
                     if ($asignacion) {
-                        // Si sobrescribe vacaciones por turno válido, devolver días de vacaciones
-                        if ($asignacion->estado === 'vacaciones' && !$esVacaciones) {
-                            $user->increment('dias_vacaciones');
-                        }
-
-                        if ($esVacaciones) {
-                            if ($user->dias_vacaciones <= 0) {
-                                return response()->json([
-                                    'error' => "El usuario {$user->name} no tiene más días de vacaciones disponibles para la fecha {$dateStr}."
-                                ], 400);
-                            }
-                            $user->decrement('dias_vacaciones');
-                            $asignacion->update([
-                                'estado'     => 'vacaciones',
-                                'turno_id'   => null,
-                                'maquina_id' => $maquinaId,
-                            ]);
-                        } else {
+                        if (!$esTurno && $asignacion->estado !== $estadoNuevo) {
+                            // Solo actualizar estado
+                            $asignacion->update(['estado' => $estadoNuevo]);
+                        } elseif ($esTurno && $asignacion->turno_id !== $turno->id) {
+                            // Solo actualizar turno y máquina
                             $asignacion->update([
                                 'estado'     => 'activo',
                                 'turno_id'   => $turno->id,
                                 'maquina_id' => $maquinaId,
                             ]);
                         }
-                    } else {
-                        // Nuevo registro
-                        if ($esVacaciones) {
+                    }
+
+                    // ➕ CREACIÓN
+                    else {
+                        // Comprobar vacaciones
+                        if ($estadoNuevo === 'vacaciones') {
                             if ($user->dias_vacaciones <= 0) {
                                 return response()->json([
                                     'error' => "El usuario {$user->name} no tiene más días de vacaciones disponibles para la fecha {$dateStr}."
                                 ], 400);
                             }
                             $user->decrement('dias_vacaciones');
-
-                            AsignacionTurno::create([
-                                'user_id'    => $user->id,
-                                'fecha'      => $dateStr,
-                                'estado'     => 'vacaciones',
-                                'turno_id'   => null,
-                                'maquina_id' => $maquinaId,
-                            ]);
-                        } else {
-                            AsignacionTurno::create([
-                                'user_id'    => $user->id,
-                                'fecha'      => $dateStr,
-                                'estado'     => 'activo',
-                                'turno_id'   => $turno->id,
-                                'maquina_id' => $maquinaId,
-                            ]);
                         }
+
+                        AsignacionTurno::create([
+                            'user_id'    => $user->id,
+                            'fecha'      => $dateStr,
+                            'estado'     => $estadoNuevo,
+                            'turno_id'   => $esTurno ? $turno->id : null,
+                            'maquina_id' => $esTurno ? $maquinaId : null,
+                        ]);
                     }
 
                     $currentDate->addDay();
@@ -287,8 +273,6 @@ class AsignacionTurnoController extends Controller
         }
     }
 
-
-
     public function destroy(Request $request)
     {
         try {
@@ -297,7 +281,6 @@ class AsignacionTurnoController extends Controller
                 'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
             ]);
 
-            // Si se especifica tipo_turno y es "festivo", borramos para todos los usuarios
             if ($request->filled('tipo_turno') && $request->tipo_turno === 'festivo') {
                 $turno = Turno::where('nombre', 'festivo')->first();
 
@@ -312,29 +295,46 @@ class AsignacionTurnoController extends Controller
                 return response()->json(['success' => 'Turnos festivos eliminados para todos los usuarios.']);
             }
 
-            // Si NO es festivo, validamos user_id y actuamos solo sobre ese usuario
             $request->validate([
                 'user_id' => 'required|exists:users,id',
+                'tipo'    => 'required|in:eliminarTurnoEstado,eliminarEstado',
             ]);
 
+            $tipo = trim($request->tipo); // ✅ evitar errores por espacios
+            Log::debug('Tipo recibido en destroy:', ['tipo' => $tipo]);
+
             $user = User::findOrFail($request->user_id);
-            $turnoVacaciones = Turno::where('nombre', 'vacaciones')->first();
 
             $asignaciones = AsignacionTurno::where('user_id', $user->id)
                 ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
                 ->get();
 
-            $vacacionesContadas = $turnoVacaciones
-                ? $asignaciones->where('turno_id', $turnoVacaciones->id)->count()
-                : 0;
+            $diasVacacionesASumar = 0;
 
-            if ($vacacionesContadas > 0) {
-                $user->increment('dias_vacaciones', $vacacionesContadas);
+            foreach ($asignaciones as $asignacion) {
+                if ($asignacion->estado === 'vacaciones') {
+                    $diasVacacionesASumar++;
+                }
+
+                if ($tipo === 'eliminarTurnoEstado') {
+                    $asignacion->delete();
+                } elseif ($tipo === 'eliminarEstado') {
+                    $asignacion->update([
+                        'estado' => null,
+                    ]);
+                }
             }
 
-            AsignacionTurno::whereIn('id', $asignaciones->pluck('id'))->delete();
 
-            return response()->json(['success' => 'Turnos del usuario eliminados correctamente.']);
+            if ($diasVacacionesASumar > 0) {
+                $user->increment('dias_vacaciones', $diasVacacionesASumar);
+            }
+
+            return response()->json([
+                'success' => $tipo === 'eliminarTurnoEstado'
+                    ? 'Turnos eliminados correctamente.'
+                    : 'Estado eliminado correctamente.'
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al eliminar los turnos: ' . $e->getMessage()], 500);
         }
