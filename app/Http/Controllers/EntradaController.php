@@ -216,40 +216,42 @@ class EntradaController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
-                'proveedor_id' => 'required|exists:proveedores,id',
-                'albaran' => 'required|string|min:1|max:30',
-                'pedido_id' => 'nullable|exists:pedidos,id',
+                'codigo'          => 'required|string|unique:productos,codigo|max:20',
+                'proveedor_id'    => 'required|exists:proveedores,id',
+                'albaran'         => 'required|string|min:1|max:30',
+                'pedido_id'       => 'nullable|exists:pedidos,id',
                 'producto_base_id' => 'required|exists:productos_base,id',
-                'n_colada' => 'required|string|max:50',
-                'n_paquete' => 'required|string|max:50',
-                'peso' => 'required|numeric|min:1',
-                'ubicacion' => 'nullable|integer|exists:ubicaciones,id',
-                'otros' => 'nullable|string|max:255',
+                'n_colada'        => 'required|string|max:50',
+                'n_paquete'       => 'required|string|max:50',
+                'peso'            => 'required|numeric|min:1',
+                'ubicacion'       => 'nullable|integer|exists:ubicaciones,id',
+                'otros'           => 'nullable|string|max:255',
             ], [
+                'codigo.required' => 'El código generado es obligatorio.',
+                'codigo.unique'   => 'Ese código ya existe.',
                 'proveedor_id.required' => 'El proveedor es obligatorio.',
-                'albaran.required' => 'El número de albarán es obligatorio.',
+                'albaran.required'      => 'El número de albarán es obligatorio.',
                 'producto_base_id.required' => 'Debes seleccionar un producto base.',
-                'producto_base_id.exists' => 'El producto base no es válido.',
-                'n_colada.required' => 'El número de colada es obligatorio.',
-                'n_paquete.required' => 'El número de paquete es obligatorio.',
-                'peso.required' => 'El peso es obligatorio.',
+                'producto_base_id.exists'   => 'El producto base no es válido.',
+                'n_colada.required'    => 'El número de colada es obligatorio.',
+                'n_paquete.required'   => 'El número de paquete es obligatorio.',
+                'peso.required'        => 'El peso es obligatorio.',
             ]);
 
             $productoBase = ProductoBase::findOrFail($request->producto_base_id);
 
-            if (!$productoBase) {
-                throw new \Exception('No se encontró un producto base con las características proporcionadas.');
-            }
-
             // Crear entrada
             $entrada = Entrada::create([
-                'albaran' => $request->albaran,
-                'usuario_id' => auth()->id(),
-                'otros' => $request->otros ?? null,
+                'albaran'     => $request->albaran,
+                'usuario_id'  => auth()->id(),
+                'peso_total'  => $request->peso,
+                'estado'      => 'cerrado',
+                'otros'       => $request->otros ?? null,
             ]);
 
             // Crear el producto
             $producto = Producto::create([
+                'codigo'           => $request->codigo,
                 'producto_base_id' => $request->producto_base_id,
                 'proveedor_id'     => $request->proveedor_id,
                 'n_colada'         => $request->n_colada,
@@ -259,14 +261,15 @@ class EntradaController extends Controller
                 'estado'           => 'almacenado',
                 'ubicacion_id'     => $request->ubicacion,
                 'maquina_id'       => null,
-                'otros'            => 'Alta manual. Fabricante: ' . $request->fabricante,
+                'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
             ]);
+
             // Relación entrada-producto
             EntradaProducto::create([
-                'entrada_id' => $entrada->id,
-                'producto_id' => $producto->id,
+                'entrada_id'   => $entrada->id,
+                'producto_id'  => $producto->id,
                 'ubicacion_id' => $request->ubicacion,
-                'users_id' => auth()->id(),
+                'users_id'     => auth()->id(),
             ]);
 
             DB::commit();
@@ -279,6 +282,7 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
         }
     }
+
 
 
     public function edit($id)

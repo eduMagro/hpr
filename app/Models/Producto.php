@@ -12,6 +12,7 @@ class Producto extends Model
     protected $table = 'productos';
 
     protected $fillable = [
+        'codigo',
         'producto_base_id',
         'proveedor_id',
         'n_colada',

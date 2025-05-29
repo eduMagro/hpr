@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Producto;
-use App\Models\ProductoBase;
 use Illuminate\Http\Request;
+use App\Models\ProductoCodigo;
+use App\Models\ProductoBase;
 use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Validation\ValidationException;
+use App\Exports\ProductosExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductoController extends Controller
 {
@@ -17,6 +20,9 @@ class ProductoController extends Controller
         // Aplicar filtros si están presentes en la solicitud
         if ($request->filled('id')) {
             $query->where('id', $request->id);
+        }
+        if ($request->filled('codigo')) {
+            $query->where('codigo', $request->codigo);
         }
         if ($request->filled('fabricante')) {
             $query->where('fabricante', $request->fabricante);
@@ -85,6 +91,44 @@ class ProductoController extends Controller
         ));
     }
 
+    public function generarYExportar(Request $request)
+    {
+        $cantidad = intval($request->input('cantidad', 1));
+        $anio = now()->format('y');
+        $tipo = 'MP'; // fijo
+
+        DB::beginTransaction();
+
+        try {
+            // Obtener o crear el contador del tipo y año
+            $contador = ProductoCodigo::lockForUpdate()->firstOrCreate(
+                ['tipo' => $tipo, 'anio' => $anio],
+                ['ultimo_numero' => 0]
+            );
+
+            $desde = $contador->ultimo_numero + 1;
+            $hasta = $contador->ultimo_numero + $cantidad;
+
+            // Generar los códigos en memoria
+            $nuevosCodigos = [];
+            for ($i = $desde; $i <= $hasta; $i++) {
+                $numero = str_pad($i, 4, '0', STR_PAD_LEFT);
+                $codigo = "$tipo-$anio-$numero";
+                $nuevosCodigos[] = (object)['codigo' => $codigo];
+            }
+
+            // Actualizar el contador
+            $contador->ultimo_numero = $hasta;
+            $contador->save();
+
+            DB::commit();
+
+            return Excel::download(new ProductosExport(collect($nuevosCodigos)), "codigos_MP.xlsx");
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return back()->with('error', 'Error al generar los códigos: ' . $e->getMessage());
+        }
+    }
     //------------------------------------------------------------------------------------ SHOW
     public function show($id)
     {

@@ -10,6 +10,68 @@
     <div class="w-full px-6 py-4">
 
         @if (Auth::user()->rol === 'oficina')
+
+            <button onclick="abrirModal()"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow">
+                Generar códigos
+            </button>
+            <div id="modalGenerarCodigos"
+                class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center">
+                <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                    <h2 class="text-xl font-semibold mb-4">Generar y exportar códigos</h2>
+
+                    <form action="{{ route('productos.generar.exportar') }}" method="POST" class="space-y-4">
+                        @csrf
+
+                        <div>
+                            <label for="cantidad" class="block text-sm font-medium text-gray-700">Cantidad a
+                                generar</label>
+                            <input type="number" id="cantidad" name="cantidad" value="10" min="1"
+                                class="w-full p-2 border border-gray-300 rounded-lg" required>
+                        </div>
+
+                        <div class="flex justify-end pt-2 space-x-2">
+                            <button type="button" onclick="cerrarModal()"
+                                class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                Generar
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+            <script>
+                function abrirModal() {
+                    const modal = document.getElementById('modalGenerarCodigos');
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                }
+
+                function cerrarModal() {
+                    const modal = document.getElementById('modalGenerarCodigos');
+                    modal.classList.remove('flex');
+                    modal.classList.add('hidden');
+                }
+
+                // Opcional: cerrar con tecla ESC
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        cerrarModal();
+                    }
+                });
+
+                // Opcional: cerrar si se hace clic fuera del contenido
+                window.addEventListener('click', function(event) {
+                    const modal = document.getElementById('modalGenerarCodigos');
+                    if (event.target === modal) {
+                        cerrarModal();
+                    }
+                });
+            </script>
+
             <!-- Catálogo de Productos Base -->
             <div x-data="{ open: false }" class="mb-6">
                 <div class="flex justify-between items-center mb-2">
@@ -54,6 +116,9 @@
 
                 if (request('buscar')) {
                     $filtrosActivos[] = 'contiene <strong>“' . request('buscar') . '”</strong>';
+                }
+                if (request('codigo')) {
+                    $filtrosActivos[] = 'Código: <strong>' . request('codigo') . '</strong>';
                 }
                 if (request('proveedor')) {
                     $filtrosActivos[] = 'Proveedor: <strong>' . request('proveedor') . '</strong>';
@@ -149,6 +214,7 @@
                     <thead class="bg-blue-500 text-white">
                         <tr class="text-center text-xs uppercase">
                             <th class="p-2 border">{!! ordenarColumna('id', 'ID Materia Prima') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('codigo', 'Código') !!}</th>
                             <th class="p-2 border">{!! ordenarColumna('proveedor', 'Proveedor') !!}</th>
                             <th class="p-2 border">{!! ordenarColumna('tipo', 'Tipo') !!}</th>
                             <th class="p-2 border">{!! ordenarColumna('diametro', 'Diámetro') !!}</th>
@@ -165,6 +231,10 @@
                             <form method="GET" action="{{ route('productos.index') }}">
                                 <th class="p-1 border">
                                     <input type="text" name="id" value="{{ request('id') }}"
+                                        class="form-control form-control-sm" />
+                                </th>
+                                <th class="p-1 border">
+                                    <input type="text" name="codigo" value="{{ request('codigo') }}"
                                         class="form-control form-control-sm" />
                                 </th>
                                 <th class="p-1 border">
@@ -224,6 +294,7 @@
                         @forelse($registrosProductos as $producto)
                             <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer">
                                 <td class="px-4 py-3 text-center border">{{ $producto->id }}</td>
+                                <td class="px-4 py-3 text-center border">{{ $producto->codigo ?? 'N/A' }}</td>
                                 <td class="px-4 py-3 text-center border">{{ $producto->proveedor->nombre ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 text-center border">

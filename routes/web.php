@@ -74,10 +74,6 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('productos', ProductoController::class);
     Route::post('/productos/crear-desde-recepcion', [PedidoController::class, 'crearDesdeRecepcion'])->name('productos.crear.desde.recepcion');
-    // Route::get('/qr/{id}', [PedidoController::class, 'mostrarQR'])->name('qr.mostrar');
-    Route::get('/qr/descargar/{id}', [PedidoController::class, 'descargarQR'])->name('qr.descargar');
-
-
 
     Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
 
@@ -130,6 +126,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])
         ->name('productos.consumir');
+    Route::post('/productos/generar-exportar', [ProductoController::class, 'generarYExportar'])->name('productos.generar.exportar');
+
 
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');

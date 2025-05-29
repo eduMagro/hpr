@@ -14,6 +14,12 @@
             @csrf
 
             <div class="mb-4">
+                <label for="codigo" class="block text-gray-700 font-bold mb-2">Código (escaneado):</label>
+                <input type="text" id="codigo" name="codigo" value="{{ old('codigo') }}" required
+                    placeholder="Escanee el código MP..." class="w-full px-3 py-2 border rounded-lg" autofocus>
+            </div>
+
+            <div class="mb-4">
                 <label for="proveedor_id" class="block text-gray-700 font-bold mb-2">Proveedor:</label>
                 <select id="proveedor_id" name="proveedor_id" required class="w-full px-3 py-2 border rounded-lg">
                     <option value="">Seleccione un proveedor</option>
@@ -28,8 +34,8 @@
 
             <div class="mb-4">
                 <label for="albaran" class="block text-gray-700 font-bold mb-2">Albarán:</label>
-                <input type="text" id="albaran" name="albaran" value="{{ old('albaran') }}" required
-                    pattern="[A-Za-z0-9]{5,15}" title="Debe contener entre 5 y 15 caracteres alfanuméricos"
+                <input type="text" id="albaran" name="albaran" value="{{ old('albaran', 'Entrada manual') }}"
+                    required pattern="[A-Za-z0-9 ]{5,30}" title="Debe contener entre 5 y 30 caracteres alfanuméricos"
                     class="w-full px-3 py-2 border rounded-lg">
             </div>
 
@@ -37,9 +43,10 @@
                 <label for="producto_base_id" class="block text-gray-700 font-bold mb-2">Producto base:</label>
                 <select id="producto_base_id" name="producto_base_id" required
                     class="w-full px-3 py-2 border rounded-lg">
-                    <option value="" disabled selected>Seleccione un producto base</option>
+                    <option value="" disabled>Seleccione un producto base</option>
                     @foreach ($productosBase as $producto)
-                        <option value="{{ $producto->id }}">
+                        <option value="{{ $producto->id }}"
+                            {{ old('producto_base_id') == $producto->id ? 'selected' : '' }}>
                             {{ strtoupper($producto->tipo) }} |
                             Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
                         </option>
@@ -67,10 +74,10 @@
                 <input type="text" id="ubicacion" name="ubicacion" value="{{ old('ubicacion') }}"
                     class="w-full px-3 py-2 border rounded-lg">
             </div>
-    </div>
 
-    <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 mt-4 rounded-lg hover:bg-blue-600">Registrar
-        Entrada</button>
-    </form>
+            <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 mt-4 rounded-lg hover:bg-blue-600">
+                Registrar Entrada
+            </button>
+        </form>
     </div>
 </x-app-layout>

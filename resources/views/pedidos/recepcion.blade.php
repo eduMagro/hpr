@@ -8,11 +8,7 @@
             {{ __('Recepción del Pedido ') }}{{ $pedido->codigo }}
         </h2>
     </x-slot>
-    @if (session('producto_id'))
-        <script>
-            window.open("{{ route('qr.mostrar', session('producto_id')) }}", "_blank");
-        </script>
-    @endif
+
 
     <div class="px-4 py-6">
         @foreach ($pedido->productos as $producto)
@@ -73,13 +69,9 @@
                                             {{ $productoEntrada->productoBase->diametro ?? '-' }} mm —
                                             {{ number_format($productoEntrada->peso_inicial, 2, ',', '.') }} kg
                                             @if ($productoEntrada->n_paquete)
-                                                — Paquete {{ $productoEntrada->n_paquete }}
+                                                — {{ $productoEntrada->codigo }}
                                             @endif
                                         </div>
-                                        <button onclick="descargarQRComoPNG({{ $productoEntrada->id }})"
-                                            class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm">
-                                            Descargar QR como PNG
-                                        </button>
 
                                     </div>
                                 @endforeach
@@ -102,6 +94,13 @@
                         <input type="hidden" name="producto_base_id" value="{{ $producto->id }}">
 
                         <div class="flex flex-col gap-3 bg-gray-100 p-4 rounded-lg border border-gray-300 shadow-sm">
+
+
+                            <input type="text" id="codigo" name="codigo" value="{{ old('codigo') }}" required
+                                placeholder="Escanee el código MP..." class="w-full px-3 py-2 border rounded-lg"
+                                autofocus>
+
+
                             <input type="text" name="peso" placeholder="Peso del paquete"
                                 value="{{ $productoActivo ? old('peso') ?? ($formData['peso'] ?? '') : '' }}"
                                 class="border px-2 py-2 rounded w-full bg-white" required>
@@ -134,10 +133,9 @@
             @endif
 
         @endforeach
-        <div id="qrContainer" style="display:none;"></div>
 
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <script>
         function confirmarCerrarAlbaran() {
             Swal.fire({
@@ -154,50 +152,6 @@
                     document.getElementById('cerrar-albaran-form').submit();
                 }
             });
-        }
-
-        function descargarQRComoPNG(id) {
-            const qrContainer = document.getElementById("qrContainer");
-            qrContainer.innerHTML = "";
-
-            const qrCode = new QRCode(qrContainer, {
-                text: id.toString(),
-                width: 300,
-                height: 300
-            });
-
-            setTimeout(() => {
-                const img = qrContainer.querySelector("img");
-                if (!img) {
-                    alert("Error al generar el QR.");
-                    return;
-                }
-
-                const canvas = document.createElement("canvas");
-                const ctx = canvas.getContext("2d");
-
-                canvas.width = 300;
-                canvas.height = 300;
-                const image = new Image();
-                image.crossOrigin = "anonymous";
-
-                image.onload = function() {
-                    ctx.fillStyle = "white";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-                    canvas.toBlob((blob) => {
-                        const link = document.createElement("a");
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `qr-${id}.png`;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    }, 'image/png');
-                };
-
-                image.src = img.src;
-            }, 500);
         }
     </script>
 

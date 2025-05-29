@@ -13,8 +13,6 @@ use App\Models\Entrada;
 use App\Models\EntradaProducto;
 use App\Models\Ubicacion;
 use App\Models\Movimiento;
-use Illuminate\Support\Facades\Storage;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Mail\PedidoCreado;
 use App\Models\User;
 use App\Models\Obra;
@@ -350,6 +348,7 @@ class PedidoController extends Controller
 
             // Crear producto
             $producto = Producto::create([
+                'codigo'           => $request->codigo,
                 'producto_base_id' => $productoBaseId,
                 'proveedor_id' => $pedido->proveedor_id,
                 'n_colada' => $nColada,
@@ -400,35 +399,14 @@ class PedidoController extends Controller
             $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
             $pedido->save();
 
-            return redirect()->route('qr.descargar', $producto->id);
+            return redirect()->back()->with('success', 'Producto recepcionado correctamente.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error: ' . $e->getMessage());
         }
     }
-    // public function mostrarQR($id)
-    // {
-    //     $producto = \App\Models\Producto::findOrFail($id);
 
-    //     $qr = QrCode::format('png')
-    //         ->size(300)
-    //         ->generate($producto->id);
-
-    //     return response($qr)
-    //         ->header('Content-Type', 'image/png');
-    // }
-    public function descargarQR($id)
-    {
-        $producto = \App\Models\Producto::findOrFail($id);
-        $svg = QrCode::format('svg')->size(300)->generate($producto->id);
-
-        $filename = "qr-producto-{$producto->id}.svg";
-
-        return response($svg)
-            ->header('Content-Type', 'image/svg+xml')
-            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
-    }
     public function generarCodigoAlbaran()
     {
         $año = now()->format('y');
