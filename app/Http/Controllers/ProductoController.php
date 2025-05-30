@@ -122,8 +122,8 @@ class ProductoController extends Controller
             $contador->save();
 
             DB::commit();
-
-            return Excel::download(new ProductosExport(collect($nuevosCodigos)), "codigos_MP.xlsx");
+            $fecha = now()->format('Ymd_His'); // Ej: 20250529_211523
+            return Excel::download(new ProductosExport(collect($nuevosCodigos)), "codigos_MP_$fecha.xlsx");
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', 'Error al generar los códigos: ' . $e->getMessage());
