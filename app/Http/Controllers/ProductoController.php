@@ -113,7 +113,7 @@ class ProductoController extends Controller
             $nuevosCodigos = [];
             for ($i = $desde; $i <= $hasta; $i++) {
                 $numero = str_pad($i, 4, '0', STR_PAD_LEFT);
-                $codigo = "$tipo-$anio-$numero";
+                $codigo = "$tipo$anio$numero";
                 $nuevosCodigos[] = (object)['codigo' => $codigo];
             }
 
