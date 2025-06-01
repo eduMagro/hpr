@@ -220,13 +220,9 @@ class AsignacionTurnoController extends Controller
                 while ($currentDate->lte($fechaFin)) {
                     $dateStr = $currentDate->toDateString();
 
-                    // ❌ Saltar fines de semana y festivos si tipo es vacaciones
                     if (
-                        $tipo === 'vacaciones' &&
-                        (
-                            in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
-                            in_array($dateStr, $festivos)
-                        )
+                        in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
+                        in_array($dateStr, $festivos)
                     ) {
                         $currentDate->addDay();
                         continue;
