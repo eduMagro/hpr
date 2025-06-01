@@ -255,7 +255,6 @@ class AsignacionTurnoController extends Controller
                             $asignacion->update(['estado' => $estadoNuevo]);
                         } elseif ($esTurno && $asignacion->turno_id !== $turno->id) {
                             $asignacion->update([
-                                'estado'     => 'activo',
                                 'turno_id'   => $turno->id,
                                 'maquina_id' => $maquinaId,
                             ]);
