@@ -194,6 +194,7 @@
                                             });
 
                                             eventosEnRango.forEach(event => event.remove());
+                                            location.reload();
                                         } else {
                                             Swal.fire({
                                                 title: "Error",

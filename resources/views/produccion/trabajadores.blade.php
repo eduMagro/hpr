@@ -160,7 +160,7 @@
                 views: {
                     resourceTimelineDay: {
                         slotMinTime: '00:00:00',
-                        slotMaxTime: '23:59:00',
+                        slotMaxTime: '21:59:00',
                     },
                     resourceTimelineWeek: {
                         slotDuration: {
