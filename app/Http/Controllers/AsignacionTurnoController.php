@@ -232,27 +232,11 @@ class AsignacionTurnoController extends Controller
                         continue;
                     }
 
-
                     $asignacion = AsignacionTurno::where('user_id', $user->id)
                         ->whereDate('fecha', $dateStr)
                         ->first();
 
                     $estadoNuevo = $esTurno ? 'activo' : $tipo;
-
-                    $debeRestarVacaciones = (
-                        $estadoNuevo === 'vacaciones' &&
-                        (!$asignacion || $asignacion->estado !== 'vacaciones')
-                    );
-
-                    if ($debeRestarVacaciones) {
-                        if ($user->dias_vacaciones <= 0) {
-                            return response()->json([
-                                'error' => "El usuario {$user->name} no tiene más días de vacaciones disponibles para la fecha {$dateStr}."
-                            ], 400);
-                        }
-
-                        $user->decrement('dias_vacaciones');
-                    }
 
                     if ($asignacion) {
                         if (!$esTurno && $asignacion->estado !== $estadoNuevo) {
@@ -282,6 +266,7 @@ class AsignacionTurnoController extends Controller
             return response()->json(['error' => 'Error al registrar el turno: ' . $e->getMessage()], 500);
         }
     }
+
 
     private function getFestivos()
     {
@@ -370,13 +355,7 @@ class AsignacionTurnoController extends Controller
                 ->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin])
                 ->get();
 
-            $diasVacacionesASumar = 0;
-
             foreach ($asignaciones as $asignacion) {
-                if ($asignacion->estado === 'vacaciones') {
-                    $diasVacacionesASumar++;
-                }
-
                 if ($tipo === 'eliminarTurnoEstado') {
                     $asignacion->delete();
                 } elseif ($tipo === 'eliminarEstado') {
@@ -384,11 +363,6 @@ class AsignacionTurnoController extends Controller
                         'estado' => null,
                     ]);
                 }
-            }
-
-
-            if ($diasVacacionesASumar > 0) {
-                $user->increment('dias_vacaciones', $diasVacacionesASumar);
             }
 
             return response()->json([

@@ -405,14 +405,18 @@ class ProfileController extends Controller
 
         $turnos = Turno::all();
 
-
+        $diasVacaciones = $user->asignacionesTurnos
+            ->where('estado', 'vacaciones')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
 
         return view('User.show', compact(
             'user',
             'turnos',
             'faltasInjustificadas',
             'faltasJustificadas',
-            'diasBaja'
+            'diasBaja',
+            'diasVacaciones'
         ));
     }
 
