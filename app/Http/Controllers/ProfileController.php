@@ -267,55 +267,48 @@ class ProfileController extends Controller
         $filtrosActivos = $this->filtrosActivos($request);
 
         $eventosFichajes = $this->getEventosFichajes($user);
+        $coloresTurnos = $this->getColoresTurnosYEstado();
 
-        $coloresTurnos = $this->getColoresTurnos(); // ya lo tienes en tu controlador
+        $asignaciones = AsignacionTurno::where('user_id', $user->id)
+            ->with('turno')
+            ->get();
 
-        $eventosTurnos = AsignacionTurno::where('user_id', $user->id)
-            ->whereHas('turno', fn($q) => $q->whereIn('nombre', $turnosValidos))
-            ->with('turno') // importante para evitar N+1
-            ->get()
-            ->map(function ($asig) use ($coloresTurnos) {
-                $nombreTurno = $asig->turno->nombre ?? 'desconocido';
+        $eventosAsignaciones = $asignaciones->flatMap(function ($asig) use ($coloresTurnos) {
+            $eventos = [];
 
-                $color = $coloresTurnos[$nombreTurno] ?? [
-                    'bg' => '#708090',
-                    'border' => '#505d6e',
-                    'text' => '#ffffff'
-                ];
+            // Turno (si existe)
+            if ($asig->turno) {
+                $nombre = $asig->turno->nombre;
+                $color = $coloresTurnos[$nombre] ?? ['bg' => '#708090', 'border' => '#505d6e', 'text' => '#FFFFFF'];
 
-                return [
-                    'title' => ucfirst($nombreTurno),
+                $eventos[] = [
+                    'title' => ucfirst($nombre),
                     'start' => $asig->fecha,
                     'allDay' => true,
                     'backgroundColor' => $color['bg'],
                     'borderColor' => $color['border'],
                     'textColor' => $color['text'],
                 ];
-            });
+            }
 
-        // Eventos con estados especiales (vacaciones, baja, festivo, etc)
-        $eventosEstados = AsignacionTurno::where('user_id', $user->id)
-            ->whereNotNull('estado')
-            ->whereNotIn('estado', ['activo']) // excluir estado activo si representa turno normal
-            ->get()
-            ->map(function ($asig) {
-                $colores = [
-                    'vacaciones' => ['bg' => '#f87171', 'border' => '#dc2626', 'text' => 'white'],
-                    'baja' => ['bg' => '#a855f7', 'border' => '#9333ea', 'text' => 'white'],
-                    'festivo' => ['bg' => '#fbbf24', 'border' => '#f59e0b', 'text' => 'black'],
-                ];
+            // Estado (si distinto de "activo")
+            if ($asig->estado && strtolower($asig->estado) !== 'activo') {
+                $estado = strtolower($asig->estado);
+                $color = $coloresTurnos[$estado] ?? ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => '#FFFFFF'];
 
-                $color = $colores[$asig->estado] ?? ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => 'white'];
-
-                return [
-                    'title' => ucfirst($asig->estado),
+                $eventos[] = [
+                    'title' => ucfirst($estado),
                     'start' => $asig->fecha,
                     'allDay' => true,
                     'backgroundColor' => $color['bg'],
                     'borderColor' => $color['border'],
                     'textColor' => $color['text'],
                 ];
-            });
+            }
+
+            return $eventos;
+        });
+
 
         // Festivos comunes
         $festivos = Festivo::select('fecha', 'titulo')->get()->map(function ($festivo) {
@@ -362,11 +355,11 @@ class ProfileController extends Controller
         // Merge final de eventos
         $eventos = array_merge(
             $eventosFichajes->toArray(),
-            $eventosTurnos->toArray(),
-            $eventosEstados->toArray(),
+            $eventosAsignaciones->toArray(),
             $festivos,
             $solicitudesVacaciones->toArray()
         );
+
 
         return view('User.index', compact(
             'registrosUsuarios',
@@ -392,11 +385,9 @@ class ProfileController extends Controller
 
     public function show($id)
     {
-        $user = User::with('asignacionesTurnos')->findOrFail($id);
-
+        $user = User::with(['asignacionesTurnos.turno'])->findOrFail($id);
         $inicioAño = Carbon::now()->startOfYear();
 
-        // Ahora contamos directamente filtrando por 'estado'
         $faltasInjustificadas = $user->asignacionesTurnos
             ->where('estado', 'falta_injustificada')
             ->where('fecha', '>=', $inicioAño)
@@ -413,26 +404,66 @@ class ProfileController extends Controller
             ->count();
 
         $turnos = Turno::all();
-        $coloresTurnos = $this->getColoresTurnos();
+        $coloresTurnos = $this->getColoresTurnosYEstado();
 
         $eventosFichajes = $this->getEventosFichajes($user);
-        $eventosTurnos = $this->getEventosTurnos($user);
         $festivos = $this->getFestivos();
 
-        // Solicitudes pendientes y denegadas
+        $asignaciones = AsignacionTurno::where('user_id', $user->id)
+            ->with('turno')
+            ->get();
+
+        $eventosAsignaciones = $asignaciones->flatMap(function ($asig) use ($coloresTurnos) {
+            $eventos = [];
+
+            // Turno (si lo tiene)
+            if ($asig->turno) {
+                $turnoNombre = $asig->turno->nombre;
+                $color = $coloresTurnos[$turnoNombre] ?? [
+                    'bg' => '#708090',
+                    'border' => '#505d6e',
+                    'text' => '#FFFFFF'
+                ];
+
+                $eventos[] = [
+                    'title' => ucfirst($turnoNombre),
+                    'start' => $asig->fecha,
+                    'allDay' => true,
+                    'backgroundColor' => $color['bg'],
+                    'borderColor' => $color['border'],
+                    'textColor' => $color['text'],
+                ];
+            }
+
+            // Estado (si no es "activo")
+            if ($asig->estado && strtolower($asig->estado) !== 'activo') {
+                $estado = strtolower($asig->estado);
+                $color = $coloresTurnos[$estado] ?? [
+                    'bg' => '#6b7280',
+                    'border' => '#4b5563',
+                    'text' => '#FFFFFF'
+                ];
+
+                $eventos[] = [
+                    'title' => ucfirst($estado),
+                    'start' => $asig->fecha,
+                    'allDay' => true,
+                    'backgroundColor' => $color['bg'],
+                    'borderColor' => $color['border'],
+                    'textColor' => $color['text'],
+                ];
+            }
+
+            return $eventos;
+        });
+
         $solicitudesVacaciones = VacacionesSolicitud::where('user_id', $user->id)
             ->whereIn('estado', ['pendiente', 'denegada'])
             ->get()
             ->flatMap(function ($solicitud) {
-                if ($solicitud->estado === 'pendiente') {
-                    $color = '#fcdde8';
-                    $textColor = 'black';
-                    $title = 'V. pendiente';
-                } else {
-                    $color = '#000000';
-                    $textColor = 'white';
-                    $title = 'V. denegadas';
-                }
+                $title = $solicitud->estado === 'pendiente' ? 'V. pendiente' : 'V. denegadas';
+                $color = $solicitud->estado === 'pendiente' ? '#fcdde8' : '#000000';
+                $textColor = $solicitud->estado === 'pendiente' ? 'black' : 'white';
 
                 return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
                     ->map(function ($fecha) use ($title, $color, $textColor) {
@@ -448,26 +479,10 @@ class ProfileController extends Controller
                     });
             })->values();
 
-        // Vacaciones aprobadas
-        $vacacionesAprobadas = AsignacionTurno::where('user_id', $user->id)
-            ->where('estado', 'vacaciones')
-            ->get()
-            ->map(function ($asig) {
-                return [
-                    'title' => 'Vacaciones',
-                    'start' => $asig->fecha,
-                    'allDay' => true,
-                    'backgroundColor' => '#f87171',
-                    'borderColor' => '#dc2626',
-                    'textColor' => 'white',
-                ];
-            });
-
-        // Merge de todos los eventos para el calendario
-        $eventos = $eventosFichajes->merge($eventosTurnos)
+        $eventos = $eventosFichajes
+            ->merge($eventosAsignaciones)
             ->merge($festivos)
-            ->merge($solicitudesVacaciones)
-            ->merge($vacacionesAprobadas);
+            ->merge($solicitudesVacaciones);
 
         return view('User.show', compact(
             'user',
@@ -480,9 +495,10 @@ class ProfileController extends Controller
         ));
     }
 
-    protected function getColoresTurnos()
+
+    protected function getColoresTurnosYEstado(): array
     {
-        // Definir colores base para cada tipo de turno
+        // Colores base para turnos
         $coloresBase = [
             'mañana' => [
                 'bg' => '#008000',
@@ -498,79 +514,110 @@ class ProfileController extends Controller
                 'bg' => '#FFFF00',
                 'border' => $this->darkenColor('#FFFF00'),
                 'text' => '#000000'
+            ]
+        ];
+
+        // Estados manuales
+        $estados = [
+            'vacaciones' => [
+                'bg' => '#f87171',
+                'border' => '#dc2626',
+                'text' => '#FFFFFF'
             ],
             'baja' => [
-                'bg' => '#D3D3D3',
-                'border' => $this->darkenColor('#D3D3D3'),
+                'bg' => '#a855f7',
+                'border' => '#9333ea',
+                'text' => '#FFFFFF'
+            ],
+            'festivo' => [
+                'bg' => '#fbbf24',
+                'border' => '#f59e0b',
                 'text' => '#000000'
             ],
-            'vacaciones' => [
-                'bg' => '#FFC0CB', // Rosa claro
-                'border' => $this->darkenColor('#FFC0CB'),
-                'text' => '#000000' // Texto negro para mejor visibilidad
-            ],
-
             'falta_justificada' => [
                 'bg' => '#808080',
-                'border' => $this->darkenColor('#808080'),
+                'border' => '#4b5563',
                 'text' => '#FFFFFF'
             ],
             'falta_injustificada' => [
                 'bg' => '#000000',
-                'border' => $this->darkenColor('#000000'),
+                'border' => '#000000',
                 'text' => '#FFFFFF'
-            ],
-            'festivo' => [
-                'bg' => '#ff0000',
-                'border' => '#b91c1c',
-                'text' => '#FFFFFF'
-            ],
+            ]
         ];
 
-        // Obtener turnos desde la base de datos y asignar colores
+        // Obtener todos los turnos desde la base de datos
         $turnos = Turno::all();
 
-        $coloresAsignados = $turnos->mapWithKeys(function ($turno) use ($coloresBase) {
+        // Asignar colores a los turnos registrados, con claves en minúsculas
+        $turnosColoreados = $turnos->mapWithKeys(function ($turno) use ($coloresBase) {
+            $clave = strtolower($turno->nombre);
             return [
-                $turno->nombre => $coloresBase[$turno->nombre] ?? [
-                    'bg' => '#708090', // Gris oscuro si el turno no está en la lista base
+                $clave => $coloresBase[$clave] ?? [
+                    'bg' => '#708090',
                     'border' => $this->darkenColor('#708090'),
                     'text' => '#FFFFFF'
                 ]
             ];
         });
 
-        return $coloresAsignados->toArray();
+        return array_merge($turnosColoreados->toArray(), $estados);
     }
+
 
     protected function getEventosTurnos($user)
     {
-        $coloresTurnos = $this->getColoresTurnos();
+        $coloresTurnos = $this->getColoresTurnosYEstado();
 
-        return $user->asignacionesTurnos
-            ->filter(function ($asignacion) {
-                return $asignacion->estado !== 'vacaciones';
-            })
-            ->map(function ($asignacion) use ($coloresTurnos) {
-                $nombreTurno = $asignacion->turno?->nombre ?? $asignacion->estado ?? 'desconocido';
-                $claveColor = $nombreTurno;
+        return $user->asignacionesTurnos->flatMap(function ($asignacion) use ($coloresTurnos) {
+            $eventos = [];
 
-                $color = $coloresTurnos[$claveColor] ?? [
-                    'bg' => '#708090',
-                    'border' => $this->darkenColor('#708090'),
+            $fecha = Carbon::parse($asignacion->fecha)->toIso8601String();
+
+            // 🎯 Evento de turno (si existe)
+            if ($asignacion->turno) {
+                $turnoNombre = $asignacion->turno->nombre;
+                $colorTurno = $coloresTurnos[$turnoNombre] ?? [
+                    'bg' => '#0275d8',
+                    'border' => '#025aa5',
                     'text' => '#FFFFFF'
                 ];
 
-                return [
-                    'title' => ucfirst($nombreTurno),
-                    'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
-                    'backgroundColor' => $color['bg'],
-                    'borderColor' => $color['border'],
-                    'textColor' => $color['text'],
-                    'allDay' => true
+                $eventos[] = [
+                    'title' => ucfirst($turnoNombre),
+                    'start' => $fecha,
+                    'backgroundColor' => $colorTurno['bg'],
+                    'borderColor' => $colorTurno['border'],
+                    'textColor' => $colorTurno['text'],
+                    'allDay' => true,
                 ];
-            });
+            }
+
+            // 🎯 Evento de estado (si no es "activo")
+            if ($asignacion->estado && strtolower($asignacion->estado) !== 'activo') {
+                $estadoNombre = ucfirst($asignacion->estado);
+                $colorEstado = $coloresTurnos[$asignacion->estado] ?? [
+                    'bg' => '#f87171',
+                    'border' => '#dc2626',
+                    'textColor' => 'white',
+                    'text' => '#FFFFFF'
+                ];
+
+                $eventos[] = [
+                    'title' => $estadoNombre,
+                    'start' => $fecha,
+                    'backgroundColor' => $colorEstado['bg'],
+                    'borderColor' => $colorEstado['border'],
+                    'textColor' => $colorEstado['text'],
+                    'allDay' => true,
+                ];
+            }
+
+            return $eventos;
+        });
     }
+
+
 
     protected function getEventosFichajes($user)
     {
@@ -767,11 +814,11 @@ class ProfileController extends Controller
         $festivos = $this->getFestivos();
         $festivosArray = collect($festivos)->pluck('start')->toArray();
 
-        // Obtener días con vacaciones ya asignadas
         $diasVacaciones = AsignacionTurno::where('user_id', $user->id)
-            ->where('turno_id', $turnoVacacionesId)
+            ->where('estado', 'vacaciones')
             ->pluck('fecha')
             ->toArray();
+
 
 
         // Determinar el turno inicial según el tipo de turno del usuario
@@ -792,31 +839,53 @@ class ProfileController extends Controller
 
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
             $esViernes = $fecha->dayOfWeek == Carbon::FRIDAY;
+            $fechaStr = $fecha->toDateString();
 
+            // Saltar solo sábados, domingos y festivos
             if (
                 in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
-                in_array($fecha->toDateString(), $festivosArray) ||
-                in_array($fecha->toDateString(), $diasVacaciones)
+                in_array($fechaStr, $festivosArray)
             ) {
-                // Cambiar turno los viernes aunque no se registre
                 if ($user->turno == 'diurno' && $esViernes) {
                     $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
                 }
                 continue;
             }
 
-            AsignacionTurno::updateOrCreate(
-                ['user_id' => $user->id, 'fecha' => $fecha->toDateString()],
-                [
-                    'turno_id' => $turnoAsignado,
+            $asignacion = AsignacionTurno::where('user_id', $user->id)
+                ->whereDate('fecha', $fechaStr)
+                ->first();
+
+            if ($asignacion) {
+                // Si tiene estado vacaciones, actualizar turno_id pero mantener estado
+                if ($asignacion->estado === 'vacaciones') {
+                    $asignacion->update([
+                        'turno_id'   => $turnoAsignado,
+                        'maquina_id' => $user->maquina_id,
+                    ]);
+                } else {
+                    // Turno normal, actualizar turno_id y máquina
+                    $asignacion->update([
+                        'turno_id'   => $turnoAsignado,
+                        'maquina_id' => $user->maquina_id,
+                        'estado'     => 'activo', // por si acaso
+                    ]);
+                }
+            } else {
+                AsignacionTurno::create([
+                    'user_id'    => $user->id,
+                    'fecha'      => $fechaStr,
+                    'turno_id'   => $turnoAsignado,
                     'maquina_id' => $user->maquina_id,
-                ]
-            );
+                    'estado'     => 'activo',
+                ]);
+            }
 
             if ($user->turno == 'diurno' && $esViernes) {
                 $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
             }
         }
+
 
         return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}, excluyendo los festivos.");
     }

@@ -236,31 +236,28 @@
                                             let currentDate = new Date(fechaInicio);
                                             let endDate = new Date(fechaFin);
                                             while (currentDate <= endDate) {
-                                                if (currentDate.getDay() !== 0 &&
-                                                    currentDate.getDay() !== 6) {
-                                                    let color = coloresTurnos[
-                                                        tipoSeleccionado] || {
+                                                let color = coloresTurnos[
+                                                    tipoSeleccionado] || {
                                                         bg: '#808080',
                                                         border: '#606060'
                                                     };
-                                                    calendar.addEvent({
-                                                        title: tipoSeleccionado
-                                                            .charAt(0)
-                                                            .toUpperCase() +
-                                                            tipoSeleccionado.slice(
-                                                                1),
-                                                        start: currentDate
-                                                            .toISOString().split(
-                                                                'T')[0],
-                                                        backgroundColor: color.bg,
-                                                        borderColor: color.border,
-                                                        textColor: 'white',
-                                                        allDay: true
-                                                    });
-                                                }
+
+                                                calendar.addEvent({
+                                                    title: tipoSeleccionado.charAt(
+                                                            0).toUpperCase() +
+                                                        tipoSeleccionado.slice(1),
+                                                    start: currentDate.toISOString()
+                                                        .split('T')[0],
+                                                    backgroundColor: color.bg,
+                                                    borderColor: color.border,
+                                                    textColor: 'white',
+                                                    allDay: true
+                                                });
+
                                                 currentDate.setDate(currentDate.getDate() +
                                                     1);
                                             }
+
                                             // ✅ Recarga completa de la página
                                             location.reload();
                                         } else {

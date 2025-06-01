@@ -186,6 +186,7 @@ class AsignacionTurnoController extends Controller
     public function store(Request $request)
     {
         try {
+            // 🧾 Validación básica de los datos recibidos
             $request->validate([
                 'user_id'      => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
@@ -193,7 +194,7 @@ class AsignacionTurnoController extends Controller
                 'tipo'         => 'required|string',
             ]);
 
-            // 🚫 Rechazar tipos que deben ir al método destroy
+            // 🚫 Tipos que deben ir al método destroy
             if (in_array($request->tipo, ['eliminarEstado', 'eliminarTurnoEstado'])) {
                 return response()->json(['error' => 'Esta operación debe gestionarse por otro método.'], 400);
             }
@@ -206,6 +207,7 @@ class AsignacionTurnoController extends Controller
             $esTurno = in_array($tipo, $turnosValidos);
             $turno = $esTurno ? Turno::where('nombre', $tipo)->first() : null;
 
+            // 👥 Usuarios afectados
             $usuarios = ($tipo === 'festivo')
                 ? User::all()
                 : collect([User::findOrFail($request->user_id)]);
@@ -215,25 +217,43 @@ class AsignacionTurnoController extends Controller
                 $currentDate = $fechaInicio->copy();
 
                 while ($currentDate->lte($fechaFin)) {
-                    if ($currentDate->isWeekend()) {
-                        $currentDate->addDay();
-                        continue;
-                    }
-
                     $dateStr = $currentDate->toDateString();
+
+
                     $asignacion = AsignacionTurno::where('user_id', $user->id)
                         ->whereDate('fecha', $dateStr)
                         ->first();
 
                     $estadoNuevo = $esTurno ? 'activo' : $tipo;
+                    // ⛔ Saltar fines de semana si el tipo es vacaciones
+                    if (
+                        $estadoNuevo === 'vacaciones' &&
+                        in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])
+                    ) {
+                        $currentDate->addDay();
+                        continue;
+                    }
+                    // 🧮 Si se va a asignar vacaciones y aún no estaba asignado como tal
+                    $debeRestarVacaciones = (
+                        $estadoNuevo === 'vacaciones' &&
+                        (!$asignacion || $asignacion->estado !== 'vacaciones')
+                    );
 
-                    // ☑️ ACTUALIZACIÓN
+                    if ($debeRestarVacaciones) {
+                        if ($user->dias_vacaciones <= 0) {
+                            return response()->json([
+                                'error' => "El usuario {$user->name} no tiene más días de vacaciones disponibles para la fecha {$dateStr}."
+                            ], 400);
+                        }
+
+                        $user->decrement('dias_vacaciones');
+                    }
+
+                    // ☑️ Si ya hay asignación, actualizamos
                     if ($asignacion) {
                         if (!$esTurno && $asignacion->estado !== $estadoNuevo) {
-                            // Solo actualizar estado
                             $asignacion->update(['estado' => $estadoNuevo]);
                         } elseif ($esTurno && $asignacion->turno_id !== $turno->id) {
-                            // Solo actualizar turno y máquina
                             $asignacion->update([
                                 'estado'     => 'activo',
                                 'turno_id'   => $turno->id,
@@ -241,19 +261,8 @@ class AsignacionTurnoController extends Controller
                             ]);
                         }
                     }
-
-                    // ➕ CREACIÓN
+                    // ➕ Si no hay asignación, creamos una nueva
                     else {
-                        // Comprobar vacaciones
-                        if ($estadoNuevo === 'vacaciones') {
-                            if ($user->dias_vacaciones <= 0) {
-                                return response()->json([
-                                    'error' => "El usuario {$user->name} no tiene más días de vacaciones disponibles para la fecha {$dateStr}."
-                                ], 400);
-                            }
-                            $user->decrement('dias_vacaciones');
-                        }
-
                         AsignacionTurno::create([
                             'user_id'    => $user->id,
                             'fecha'      => $dateStr,
