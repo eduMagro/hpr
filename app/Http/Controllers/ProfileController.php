@@ -855,6 +855,13 @@ class ProfileController extends Controller
             $asignacion = AsignacionTurno::where('user_id', $user->id)
                 ->whereDate('fecha', $fechaStr)
                 ->first();
+            // ⛔ Saltar si el turno existente tiene asignado un turno con nombre 'festivo'
+            if ($asignacion && optional($asignacion->turno)->nombre === 'festivo') {
+                if ($user->turno === 'diurno' && $esViernes) {
+                    $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
+                }
+                continue;
+            }
 
             if ($asignacion) {
                 // Si tiene estado vacaciones, actualizar turno_id pero mantener estado
