@@ -35,7 +35,7 @@
                     <p><strong>Especialidad:</strong> <span
                             class="text-gray-600">{{ $user->maquina->nombre ?? 'N/A' }}</span></p>
                     <p id="vacaciones-restantes" class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
-                        <strong>Vacaciones restantes:</strong> {{ $diasVacaciones }}
+                        <strong>Vacaciones Asignadas:</strong> {{ $diasVacaciones }}
                     </p>
 
                 </div>
