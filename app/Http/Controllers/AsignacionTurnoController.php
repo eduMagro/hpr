@@ -225,14 +225,18 @@ class AsignacionTurnoController extends Controller
                         ->first();
 
                     $estadoNuevo = $esTurno ? 'activo' : $tipo;
-                    // ⛔ Saltar fines de semana si el tipo es vacaciones
+                    //Evitar festivos y fines de semana
                     if (
                         $estadoNuevo === 'vacaciones' &&
-                        in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])
+                        (
+                            in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
+                            ($asignacion && optional($asignacion->turno)->nombre === 'festivo')
+                        )
                     ) {
                         $currentDate->addDay();
                         continue;
                     }
+
                     // 🧮 Si se va a asignar vacaciones y aún no estaba asignado como tal
                     $debeRestarVacaciones = (
                         $estadoNuevo === 'vacaciones' &&
