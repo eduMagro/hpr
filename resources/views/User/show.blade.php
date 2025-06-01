@@ -67,7 +67,7 @@
 
     <script>
         function actualizarVacacionesRestantes() {
-            fetch("{{ route('users.vacaciones-restantes', ['id' => $user->id]) }}")
+            fetch("{{ route('users.vacaciones-restantes', ['user' => $user->id]) }}")
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                     return response.json();
@@ -83,9 +83,9 @@
                 });
         }
 
-        // Puedes llamar a la función automáticamente al cargar la página:
         document.addEventListener('DOMContentLoaded', actualizarVacacionesRestantes);
     </script>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
