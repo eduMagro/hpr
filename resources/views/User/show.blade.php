@@ -67,16 +67,24 @@
 
     <script>
         function actualizarVacacionesRestantes() {
-            fetch('{{ route('users.vacaciones-restantes', $user->id) }}')
-                .then(response => response.json())
+            fetch("{{ route('users.vacaciones-restantes', ['id' => $user->id]) }}")
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+                    return response.json();
+                })
                 .then(data => {
                     const div = document.getElementById('vacaciones-restantes');
-                    if (div && data.dias !== undefined) {
-                        div.innerHTML = `<strong>Vacaciones restantes:</strong> ${data.dias}`;
+                    if (div && typeof data.dias !== 'undefined') {
+                        div.innerHTML = `<strong>Vacaciones disfrutadas:</strong> ${data.dias}`;
                     }
                 })
-                .catch(error => console.error('Error al actualizar vacaciones:', error));
+                .catch(error => {
+                    console.error('Error al actualizar vacaciones:', error);
+                });
         }
+
+        // Puedes llamar a la función automáticamente al cargar la página:
+        document.addEventListener('DOMContentLoaded', actualizarVacacionesRestantes);
     </script>
 
     <script>

@@ -883,8 +883,6 @@ class ProfileController extends Controller
         return response()->json($eventos);
     }
 
-
-
     public function destroy(Request $request, $id)
     {
         try {
@@ -956,5 +954,28 @@ class ProfileController extends Controller
 
         // Combinar festivos nacionales, autonómicos y locales
         return $festivos->merge($festivosLocales)->values()->toArray();
+    }
+    public function vacacionesRestantes(User $user)
+    {
+        $inicioAño = Carbon::now()->startOfYear();
+
+        $diasDisfrutados = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
+
+        // Si quieres mostrar los disfrutados:
+        return response()->json([
+            'dias' => $diasDisfrutados,
+        ]);
+
+        // Si quieres mostrar los restantes y asumes por ejemplo 22 al año:
+        /*
+    $totalAnual = 22;
+    $restantes = max(0, $totalAnual - $diasDisfrutados);
+    return response()->json([
+        'dias' => $restantes,
+    ]);
+    */
     }
 }
