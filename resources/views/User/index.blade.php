@@ -395,8 +395,9 @@
                                 class="text-gray-600">{{ auth()->user()->categoria->nombre ?? 'N/A' }}</span></p>
                         <p><strong>Especialidad:</strong> <span
                                 class="text-gray-600">{{ auth()->user()->maquina->nombre ?? 'N/A' }}</span></p>
-                        <p class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
-                            <strong>Vacaciones restantes:</strong> {{ auth()->user()->dias_vacaciones }}
+                        <p id="vacaciones-restantes"
+                            class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
+                            Vacaciones asignadas: {{ $diasVacaciones }}
                         </p>
                     </div>
 

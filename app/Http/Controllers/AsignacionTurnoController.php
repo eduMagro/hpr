@@ -221,16 +221,45 @@ class AsignacionTurnoController extends Controller
                     $dateStr = $currentDate->toDateString();
 
                     // ⛔ Evitar solo si es estado "vacaciones" y cae en fin de semana o festivo
-                    if (
-                        $tipo === 'vacaciones' &&
-                        (
-                            in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
-                            in_array($dateStr, $festivos)
-                        )
-                    ) {
-                        $currentDate->addDay();
-                        continue;
+                    // 💡 Solo para vacaciones, controlar el tope
+                    if ($tipo === 'vacaciones') {
+                        $inicioAño = Carbon::now()->startOfYear();
+                        $yaDisfrutados = $user->asignacionesTurnos()
+                            ->where('estado', 'vacaciones')
+                            ->where('fecha', '>=', $inicioAño)
+                            ->count();
+
+                        $diasSolicitados = 0;
+
+                        $tempDate = $fechaInicio->copy();
+                        while ($tempDate->lte($fechaFin)) {
+                            $dateStr = $tempDate->toDateString();
+
+                            if (
+                                !in_array($tempDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) &&
+                                !in_array($dateStr, $festivos)
+                            ) {
+                                $asignacion = AsignacionTurno::where('user_id', $user->id)
+                                    ->whereDate('fecha', $dateStr)
+                                    ->first();
+
+                                if (!$asignacion || $asignacion->estado !== 'vacaciones') {
+                                    $diasSolicitados++;
+                                }
+                            }
+
+                            $tempDate->addDay();
+                        }
+
+                        $totalPermitido = $user->vacaciones_totales ?? 22;
+
+                        if (($yaDisfrutados + $diasSolicitados) > $totalPermitido) {
+                            return response()->json([
+                                'error' => "El usuario {$user->name} ya tiene {$yaDisfrutados} días asignados y está intentando asignar {$diasSolicitados} más. Su tope es de {$totalPermitido} días de vacaciones anuales."
+                            ], 400);
+                        }
                     }
+
 
                     $asignacion = AsignacionTurno::where('user_id', $user->id)
                         ->whereDate('fecha', $dateStr)

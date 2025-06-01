@@ -99,8 +99,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
     Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
     // routes/web.php
-    Route::get('/users/{user}/vacaciones-restantes', [App\Http\Controllers\ProfileController::class, 'vacacionesRestantes'])
-        ->name('users.vacaciones-restantes');
+    Route::get('/users/{user}/resumen-asistencia', [ProfileController::class, 'resumenAsistencia'])
+        ->name('users.resumen-asistencia');
+
 
 
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class);

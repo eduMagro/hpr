@@ -185,13 +185,41 @@ class VacacionesController extends Controller
         $solicitud = VacacionesSolicitud::with('user')->findOrFail($id);
         $user = $solicitud->user;
 
-
-        $solicitud->estado = 'aprobada';
-        $solicitud->save();
-
         $rango = CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin);
-        $diasAsignados = 0;
+        $diasNuevos = 0;
+        $fechasAsignables = [];
 
+        $inicioAño = Carbon::now()->startOfYear();
+        $diasYaAsignados = $user->asignacionesTurnos()
+            ->where('estado', 'vacaciones')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
+
+        foreach ($rango as $fecha) {
+            $fechaStr = $fecha->format('Y-m-d');
+
+            if (in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])) {
+                continue;
+            }
+
+            $asignacionExistente = AsignacionTurno::where('user_id', $user->id)
+                ->where('fecha', $fechaStr)
+                ->where('estado', 'vacaciones')
+                ->exists();
+
+            if (!$asignacionExistente) {
+                $fechasAsignables[] = $fechaStr;
+                $diasNuevos++;
+            }
+        }
+
+        $tope = $user->vacaciones_totales ?? 22;
+
+        if (($diasYaAsignados + $diasNuevos) > $tope) {
+            return redirect()->back()->with('error', "No se puede aprobar la solicitud. El usuario ya tiene {$diasYaAsignados} días asignados y esta solicitud añade {$diasNuevos}, superando el tope de {$tope} días.");
+        }
+
+        // ✔️ Asignación real
         foreach ($rango as $fecha) {
             $fechaStr = $fecha->format('Y-m-d');
 
@@ -211,27 +239,22 @@ class VacacionesController extends Controller
             $asignacion->save();
 
             Log::info("✏️ Asignación actualizada para $fechaStr - estado anterior: " . ($estadoAnterior ?? 'ninguno'));
-
-            if (is_null($estadoAnterior) || $estadoAnterior !== 'vacaciones') {
-                $diasAsignados++;
-            }
         }
 
+        // ✔️ Marcar solicitud como aprobada
+        $solicitud->estado = 'aprobada';
+        $solicitud->save();
 
-
-        // Restar días de vacaciones disponibles
-        if ($diasAsignados > 0) {
-            $user->dias_vacaciones = max(0, $user->dias_vacaciones - $diasAsignados);
-            $user->save();
-        }
+        // ✔️ Alerta
         Alerta::create([
-            'user_id_1'      => auth()->id(), // Quien aprueba
-            'destinatario_id' => $user->id,    // Quien recibe la alerta
-            'mensaje'        => "Tus vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} han sido aprobadas.",
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'user_id_1'       => auth()->id(),
+            'destinatario_id' => $user->id,
+            'mensaje'         => "Tus vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} han sido aprobadas.",
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
-        return redirect()->back()->with('success', "Solicitud aprobada. Se asignaron $diasAsignados días de vacaciones.");
+
+        return redirect()->back()->with('success', "Solicitud aprobada. Se asignaron {$diasNuevos} días de vacaciones.");
     }
 
     public function denegar($id)

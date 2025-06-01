@@ -199,20 +199,24 @@ class ProfileController extends Controller
         $totalSolicitudesPendientes = VacacionesSolicitud::where('estado', 'pendiente')->count();
         $user = auth()->user();
 
+        $inicioAño = Carbon::now()->startOfYear();
+        $diasVacaciones = $user->asignacionesTurnos
+            ->where('estado', 'vacaciones')
+            ->where('fecha', '>=', $inicioAño)
+            ->count();
+
         // Obtener todos los nombres de turnos válidos (mañana, tarde, noche, festivo, etc.)
         $turnosValidos = Turno::pluck('nombre')->toArray();
 
         // Fecha de inicio (1 de enero del año actual)
         $inicioAño = Carbon::now()->startOfYear();
 
-        // Mejor usar consultas con joins para evitar cargar todas las asignaciones
-        // Mejor usar consultas directas filtrando por estado
-        $faltasInjustificadas = AsignacionTurno::where('user_id', $user->id)
+        $faltasInjustificadas = $user->asignacionesTurnos
             ->where('estado', 'falta_injustificada')
             ->where('fecha', '>=', $inicioAño)
             ->count();
 
-        $faltasJustificadas = AsignacionTurno::where('user_id', $user->id)
+        $faltasJustificadas = $user->asignacionesTurnos
             ->where('estado', 'falta_justificada')
             ->where('fecha', '>=', $inicioAño)
             ->count();
@@ -379,7 +383,8 @@ class ProfileController extends Controller
             'faltasInjustificadas',
             'faltasJustificadas',
             'diasBaja',
-            'totalSolicitudesPendientes'
+            'totalSolicitudesPendientes',
+            'diasVacaciones'
         ));
     }
 
@@ -388,35 +393,16 @@ class ProfileController extends Controller
         $user = User::with(['asignacionesTurnos.turno'])->findOrFail($id);
         $inicioAño = Carbon::now()->startOfYear();
 
-        $faltasInjustificadas = $user->asignacionesTurnos
-            ->where('estado', 'falta_injustificada')
-            ->where('fecha', '>=', $inicioAño)
-            ->count();
 
-        $faltasJustificadas = $user->asignacionesTurnos
-            ->where('estado', 'falta_justificada')
-            ->where('fecha', '>=', $inicioAño)
-            ->count();
-
-        $diasBaja = $user->asignacionesTurnos
-            ->where('estado', 'baja')
-            ->where('fecha', '>=', $inicioAño)
-            ->count();
 
         $turnos = Turno::all();
 
-        $diasVacaciones = $user->asignacionesTurnos
-            ->where('estado', 'vacaciones')
-            ->where('fecha', '>=', $inicioAño)
-            ->count();
+        $resumen = $this->getResumenAsistencia($user);
 
         return view('User.show', compact(
             'user',
             'turnos',
-            'faltasInjustificadas',
-            'faltasJustificadas',
-            'diasBaja',
-            'diasVacaciones'
+            'resumen'
         ));
     }
 
@@ -955,27 +941,27 @@ class ProfileController extends Controller
         // Combinar festivos nacionales, autonómicos y locales
         return $festivos->merge($festivosLocales)->values()->toArray();
     }
-    public function vacacionesRestantes(User $user)
+
+    private function getResumenAsistencia(User $user): array
     {
         $inicioAño = Carbon::now()->startOfYear();
 
-        $diasDisfrutados = $user->asignacionesTurnos()
-            ->where('estado', 'vacaciones')
+        $conteos = AsignacionTurno::select('estado', DB::raw('count(*) as total'))
+            ->where('user_id', $user->id)
             ->where('fecha', '>=', $inicioAño)
-            ->count();
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
 
-        // Si quieres mostrar los disfrutados:
-        return response()->json([
-            'dias' => $diasDisfrutados,
-        ]);
+        return [
+            'diasVacaciones'        => $conteos['vacaciones'] ?? 0,
+            'faltasInjustificadas'  => $conteos['injustificada'] ?? 0,
+            'faltasJustificadas'    => $conteos['justificada'] ?? 0,
+            'diasBaja'              => $conteos['baja'] ?? 0,
+        ];
+    }
 
-        // Si quieres mostrar los restantes y asumes por ejemplo 22 al año:
-        /*
-    $totalAnual = 22;
-    $restantes = max(0, $totalAnual - $diasDisfrutados);
-    return response()->json([
-        'dias' => $restantes,
-    ]);
-    */
+    public function resumenAsistencia(User $user)
+    {
+        return response()->json($this->getResumenAsistencia($user));
     }
 }

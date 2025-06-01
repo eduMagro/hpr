@@ -34,23 +34,21 @@
                             class="text-gray-600">{{ $user->categoria->nombre ?? 'N/A' }}</span></p>
                     <p><strong>Especialidad:</strong> <span
                             class="text-gray-600">{{ $user->maquina->nombre ?? 'N/A' }}</span></p>
-                    <p id="vacaciones-restantes" class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
-                        {{ $diasVacaciones }}
-                    </p>
+
 
                 </div>
 
                 <!-- Resumen de asistencias -->
                 <div>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">Asistencias</h3>
-                    <div class="bg-gray-100 p-3 rounded-lg">
-                        <p><strong>Faltas injustificadas:</strong> <span
-                                class="text-red-600">{{ $faltasInjustificadas }}</span></p>
-                        <p><strong>Faltas justificadas:</strong> <span
-                                class="text-green-600">{{ $faltasJustificadas }}</span></p>
-                        <p><strong>Días de baja:</strong> <span class="text-purple-600">{{ $diasBaja }}</span></p>
+                    <div id="resumen-asistencia" class="bg-gray-100 p-3 rounded-lg">
+                        <p><strong>Vacaciones asignadas: </strong> {{ $resumen['diasVacaciones'] }}</p>
+                        <p><strong>Faltas injustificadas: </strong> {{ $resumen['faltasInjustificadas'] }}</p>
+                        <p><strong>Faltas justificadas: </strong> {{ $resumen['faltasJustificadas'] }}</p>
+                        <p><strong>Días de baja: </strong> {{ $resumen['diasBaja'] }}</p>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -64,33 +62,40 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
+    <!-- JS separado -->
+    <script src="{{ asset('js/usuario-detalle.js') }}"></script>
 
     <script>
-        function actualizarVacacionesRestantes() {
-            fetch("{{ route('users.vacaciones-restantes', ['user' => $user->id]) }}")
+        function actualizarResumenAsistencia() {
+            fetch("{{ route('users.resumen-asistencia', ['user' => $user->id]) }}")
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
-                    const div = document.getElementById('vacaciones-restantes');
-                    if (div && typeof data.dias !== 'undefined') {
-                        div.innerHTML = `<strong>Vacaciones asignadas:</strong> ${data.dias}`;
+                    const div = document.getElementById('resumen-asistencia');
+                    if (div) {
+                        div.style.opacity = 0.5;
+                        div.innerHTML = `
+                            <p><strong>Vacaciones asignadas: </strong> ${data.diasVacaciones}</p>
+                            <p><strong>Faltas injustificadas: </strong> ${data.faltasInjustificadas}</p>
+                            <p><strong>Faltas justificadas: </strong> ${data.faltasJustificadas}</p>
+                            <p><strong>Días de baja: </strong> ${data.diasBaja}</p>
+                        `;
+                        setTimeout(() => div.style.opacity = 1, 200);
                     }
                 })
                 .catch(error => {
-                    console.error('Error al actualizar vacaciones:', error);
+                    console.error('Error al actualizar asistencias:', error);
                 });
         }
-
-        document.addEventListener('DOMContentLoaded', actualizarVacacionesRestantes);
     </script>
 
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendario');
-
+            actualizarResumenAsistencia();
             // ✅ Recuperar vista y fecha guardadas
             const vistaGuardada = localStorage.getItem('ultimaVistaCalendario') || 'dayGridMonth';
             const fechaGuardada = localStorage.getItem('fechaCalendario');
@@ -206,8 +211,7 @@
 
                                             eventosEnRango.forEach(event => event.remove());
                                             calendar.refetchEvents();
-                                            actualizarVacacionesRestantes();
-
+                                            setTimeout(actualizarResumenAsistencia, 200);
                                         } else {
                                             Swal.fire({
                                                 title: "Error",
@@ -245,8 +249,7 @@
                                         if (data.success) {
                                             // ✅ Recarga completa de la página
                                             calendar.refetchEvents();
-                                            actualizarVacacionesRestantes();
-
+                                            setTimeout(actualizarResumenAsistencia, 200);
                                         } else {
                                             Swal.fire({
                                                 title: "Error",

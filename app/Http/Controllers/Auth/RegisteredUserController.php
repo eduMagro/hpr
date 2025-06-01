@@ -98,8 +98,6 @@ class RegisteredUserController extends Controller
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
-        // Calcular los días de vacaciones disponibles
-        $diasVacaciones = $this->calcularVacaciones();
 
         $user = User::create([
             'name' => $request->name,
@@ -110,7 +108,6 @@ class RegisteredUserController extends Controller
             'rol' => $request->rol,
             'categoria' => $request->categoria,
             'turno' => $request->turno,
-            'dias_vacaciones' => $diasVacaciones,
             'password' => Hash::make($request->password),
         ]);
 
@@ -124,16 +121,4 @@ class RegisteredUserController extends Controller
      *
      * @return int
      */
-    private function calcularVacaciones(): int
-    {
-        $totalDiasVacaciones = 22; // Total de días de vacaciones por año
-        $fechaActual = Carbon::now();
-        $diasDelAño = $fechaActual->isLeapYear() ? 366 : 365; // Considera años bisiestos
-        $diasTranscurridos = $fechaActual->dayOfYear; // Días desde el 1 de enero hasta hoy
-
-        // Cálculo proporcional de los días de vacaciones restantes
-        $diasVacacionesRestantes = floor(($totalDiasVacaciones / $diasDelAño) * ($diasDelAño - $diasTranscurridos));
-
-        return max($diasVacacionesRestantes, 0); // Asegura que nunca sea negativo
-    }
 }
