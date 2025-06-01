@@ -1,63 +1,97 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Editar Detalles Materia Prima') }}
+        <h2 class="text-lg font-semibold text-gray-800">
+            <a href="{{ route('entradas.index') }}" class="text-blue-600">
+                {{ __('Entradas') }}
+            </a>
+            <span class="mx-2">/</span>
+            {{ __('Editar Entrada de Material') }}
         </h2>
     </x-slot>
 
-    <!-- Mostrar errores de validación -->
-    @if ($errors->any())
-        <div class="alert alert-danger mt-4">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    <!-- Mostrar mensajes de éxito o error -->
-    @if (session('error'))
-        <div class="alert alert-danger mt-4">
-            {{ session('error') }}
-        </div>
-    @endif
-    @if (session('success'))
-        <div class="alert alert-success mt-4">
-            {{ session('success') }}
-        </div>
-    @endif
-
     <div class="container mx-auto px-4 py-6">
-        <div class="flex justify-center">
-            <div class="w-full max-w-2xl">
-                <div class="bg-white shadow-lg rounded-lg border-0">
-                    <div class="bg-primary text-white text-center py-3 rounded-t-lg">
-                        <h2 class="text-uppercase text-lg font-bold">Editar Materia Prima</h2>
-                    </div>
-                    <div class="p-6">
-                        <form action="{{ route('productos.update', $producto->id) }}" method="POST">
-                            @csrf
-                            @method('PUT')
+        <form method="POST" action="{{ route('productos.update', $producto->id) }}"
+            class="max-w-lg mx-auto bg-white p-6 rounded-lg shadow-md">
+            @csrf
+            @method('PUT')
 
-                            @foreach (['fabricante', 'nombre', 'tipo', 'diametro', 'longitud', 'n_colada', 'n_paquete', 'peso_inicial', 'peso_stock', 'ubicacion_id', 'maquina_id', 'estado', 'otros'] as $campo)
-                                <div class="form-group mb-4">
-                                    <label for="{{ $campo }}"
-                                        class="form-label fw-bold text-uppercase">{{ str_replace('_', ' ', ucfirst($campo)) }}</label>
-                                    <input type="text" id="{{ $campo }}" name="{{ $campo }}"
-                                        class="form-control form-control-lg"
-                                        value="{{ old($campo, $producto->$campo) }}">
-                                </div>
-                            @endforeach
-
-                            <!-- Botón actualizar -->
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary btn-lg">Actualizar Producto</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+            <!-- Código (no editable si es clave primaria o identificador) -->
+            <div class="mb-4">
+                <label for="codigo" class="block text-gray-700 font-bold mb-2">Código:</label>
+                <input type="text" id="codigo" name="codigo" value="{{ old('codigo', $producto->codigo) }}"
+                    class="w-full px-3 py-2 border rounded-lg" readonly>
             </div>
-        </div>
+
+            <!-- Proveedor -->
+            <div class="mb-4">
+                <label for="proveedor_id" class="block text-gray-700 font-bold mb-2">Proveedor:</label>
+                <select id="proveedor_id" name="proveedor_id" required class="w-full px-3 py-2 border rounded-lg">
+                    <option value="">Seleccione un proveedor</option>
+                    @foreach ($proveedores as $proveedor)
+                        <option value="{{ $proveedor->id }}"
+                            {{ old('proveedor_id', $producto->proveedor_id) == $proveedor->id ? 'selected' : '' }}>
+                            {{ $proveedor->nombre }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- Producto base -->
+            <div class="mb-4">
+                <label for="producto_base_id" class="block text-gray-700 font-bold mb-2">Producto base:</label>
+                <select id="producto_base_id" name="producto_base_id" required
+                    class="w-full px-3 py-2 border rounded-lg">
+                    <option value="" disabled>Seleccione un producto base</option>
+                    @foreach ($productosBase as $base)
+                        <option value="{{ $base->id }}"
+                            {{ old('producto_base_id', $producto->producto_base_id) == $base->id ? 'selected' : '' }}>
+                            {{ strtoupper($base->tipo) }} |
+                            Ø{{ $base->diametro }}{{ $base->longitud ? ' | ' . $base->longitud . ' m' : '' }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- Colada -->
+            <div class="mb-2">
+                <label for="n_colada" class="block text-gray-700 font-bold mb-2">Colada:</label>
+                <input type="text" id="n_colada" name="n_colada" value="{{ old('n_colada', $producto->n_colada) }}"
+                    class="w-full px-3 py-2 border rounded-lg">
+            </div>
+
+            <!-- Paquete -->
+            <div class="mb-2">
+                <label for="n_paquete" class="block text-gray-700 font-bold mb-2">Paquete:</label>
+                <input type="text" id="n_paquete" name="n_paquete"
+                    value="{{ old('n_paquete', $producto->n_paquete) }}" class="w-full px-3 py-2 border rounded-lg">
+            </div>
+
+            <!-- Peso -->
+            <div class="mb-2">
+                <label for="peso_inicial" class="block text-gray-700 font-bold mb-2">Peso inicial (kg):</label>
+                <input type="number" step="0.01" min="0" id="peso_inicial" name="peso_inicial"
+                    value="{{ old('peso_inicial', $producto->peso_inicial) }}"
+                    class="w-full px-3 py-2 border rounded-lg">
+            </div>
+
+            <!-- Ubicación -->
+            <div class="mb-2">
+                <label for="ubicacion_id" class="block text-gray-700 font-bold mb-2">Ubicación:</label>
+                <input type="text" id="ubicacion_id" name="ubicacion_id"
+                    value="{{ old('ubicacion_id', $producto->ubicacion_id) }}"
+                    class="w-full px-3 py-2 border rounded-lg">
+            </div>
+
+            <!-- Otros -->
+            <div class="mb-2">
+                <label for="otros" class="block text-gray-700 font-bold mb-2">Otros:</label>
+                <input type="text" id="otros" name="otros" value="{{ old('otros', $producto->otros) }}"
+                    class="w-full px-3 py-2 border rounded-lg">
+            </div>
+
+            <button type="submit" class="w-full bg-green-600 text-white py-2 px-4 mt-4 rounded-lg hover:bg-green-700">
+                Guardar Cambios
+            </button>
+        </form>
     </div>
 </x-app-layout>

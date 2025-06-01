@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Producto;
+use App\Models\Ubicacion;
+use App\Models\User;
+use App\Models\Proveedor;
 use Illuminate\Http\Request;
 use App\Models\ProductoCodigo;
 use App\Models\ProductoBase;
@@ -11,6 +14,8 @@ use Exception;
 use Illuminate\Validation\ValidationException;
 use App\Exports\ProductosExport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class ProductoController extends Controller
 {
@@ -163,19 +168,24 @@ class ProductoController extends Controller
         if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
         }
-        return view('productos.edit', compact('producto'));
+        $ubicaciones = Ubicacion::all();
+        $usuarios = User::all();
+        $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
+        $proveedores = Proveedor::orderBy('nombre')->get();
+        return view('productos.edit', compact('producto', 'usuarios', 'productosBase', 'proveedores'));
     }
 
     public function update(Request $request, Producto $producto)
     {
-        DB::beginTransaction(); // Iniciar transacción
+        DB::beginTransaction();
+
         try {
-            // Mensajes personalizados de validación
+            // Mensajes personalizados
             $messages = [
                 'fabricante.in' => 'El fabricante debe ser MEGASA, GETAFE, SIDERURGICA SEVILLANA o NERVADUCTIL.',
                 'nombre.string' => 'El nombre debe ser una cadena de texto.',
                 'nombre.max' => 'El nombre no puede tener más de 255 caracteres.',
-                'tipo.in' => 'El tipo debe ser "encarretado" o "barras".',
+                'tipo.in' => 'El tipo debe ser "ENCARRETADO" o "BARRA".',
                 'diametro.in' => 'El diámetro debe ser 8, 10, 12, 16, 20, 25 o 32.',
                 'longitud.in' => 'La longitud debe ser 6, 12, 14, 15 o 16.',
                 'n_colada.string' => 'El número de colada debe ser una cadena de texto.',
@@ -195,33 +205,44 @@ class ProductoController extends Controller
                 'otros.string' => 'El campo "Otros" debe ser una cadena de texto.',
             ];
 
-            // Validación de datos
-            $validatedData = $request->validate([
-                'fabricante' => 'required|in:MEGASA,GETAFE,SIDERURGICA SEVILLANA,NERVADUCTIL',
-                'nombre' => 'nullable|string|max:255',
-                'tipo' => 'required|in:ENCARRETADO,BARRA',
-                'diametro' => 'required|in:8,10,12,16,20,25,32',
-                'longitud' => 'nullable|in:6,12,14,15,16',
-                'n_colada' => 'required|string|max:255',
-                'n_paquete' => 'required|string|max:255',
-                'peso_inicial' => 'required|numeric|between:0,9999999.99',
-                'peso_stock' => 'required|numeric|between:0,9999999.99',
-                'ubicacion_id' => 'nullable|integer|exists:ubicaciones,id',
-                'maquina_id' => 'nullable|integer|exists:maquinas,id',
-                'estado' => 'nullable|string|max:50',
-                'otros' => 'nullable|string',
+            // Validación
+            $validator = Validator::make($request->all(), [
+                'fabricante'    => 'required|in:MEGASA,GETAFE,SIDERURGICA SEVILLANA,NERVADUCTIL',
+                'nombre'        => 'nullable|string|max:255',
+                'tipo'          => 'required|in:ENCARRETADO,BARRA',
+                'diametro'      => 'required|in:8,10,12,16,20,25,32',
+                'longitud'      => 'nullable|in:6,12,14,15,16',
+                'n_colada'      => 'required|string|max:255',
+                'n_paquete'     => 'required|string|max:255',
+                'peso_inicial'  => 'required|numeric|between:0,9999999.99',
+                'peso_stock'    => 'required|numeric|between:0,9999999.99',
+                'ubicacion_id'  => 'nullable|integer|exists:ubicaciones,id',
+                'maquina_id'    => 'nullable|integer|exists:maquinas,id',
+                'estado'        => 'nullable|string|max:50',
+                'otros'         => 'nullable|string',
             ], $messages);
 
-            // Actualizar el producto con los datos validados
-            $producto->update($validatedData);
+            if ($validator->fails()) {
+                return redirect()->back()
+                    ->withErrors($validator)
+                    ->withInput();
+            }
 
-            DB::commit(); // Confirmar transacción
+            $data = $validator->validated();
 
-            // Redireccionar con mensaje de éxito
+            // Normaliza algunos campos si quieres asegurar consistencia en la base de datos
+            $data['fabricante'] = strtoupper($data['fabricante']);
+            $data['tipo'] = strtoupper($data['tipo']);
+            $data['estado'] = strtoupper($data['estado'] ?? '');
+
+            $producto->update($data);
+
+            DB::commit();
             return redirect()->route('productos.index')->with('success', 'Producto actualizado con éxito.');
-        } catch (Exception $e) {
-            DB::rollBack(); // Si ocurre un error, revertimos la transacción
-            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al actualizar producto: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ocurrió un error al actualizar el producto.')->withInput();
         }
     }
 
