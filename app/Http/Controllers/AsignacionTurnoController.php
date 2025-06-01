@@ -220,13 +220,18 @@ class AsignacionTurnoController extends Controller
                 while ($currentDate->lte($fechaFin)) {
                     $dateStr = $currentDate->toDateString();
 
+                    // ⛔ Evitar solo si es estado "vacaciones" y cae en fin de semana o festivo
                     if (
-                        in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
-                        in_array($dateStr, $festivos)
+                        $tipo === 'vacaciones' &&
+                        (
+                            in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
+                            in_array($dateStr, $festivos)
+                        )
                     ) {
                         $currentDate->addDay();
                         continue;
                     }
+
 
                     $asignacion = AsignacionTurno::where('user_id', $user->id)
                         ->whereDate('fecha', $dateStr)
