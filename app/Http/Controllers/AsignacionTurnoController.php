@@ -10,6 +10,7 @@ use App\Models\Obra;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
 class AsignacionTurnoController extends Controller
 {
@@ -186,7 +187,6 @@ class AsignacionTurnoController extends Controller
     public function store(Request $request)
     {
         try {
-            // 🧾 Validación básica de los datos recibidos
             $request->validate([
                 'user_id'      => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
@@ -194,7 +194,6 @@ class AsignacionTurnoController extends Controller
                 'tipo'         => 'required|string',
             ]);
 
-            // 🚫 Tipos que deben ir al método destroy
             if (in_array($request->tipo, ['eliminarEstado', 'eliminarTurnoEstado'])) {
                 return response()->json(['error' => 'Esta operación debe gestionarse por otro método.'], 400);
             }
@@ -207,7 +206,9 @@ class AsignacionTurnoController extends Controller
             $esTurno = in_array($tipo, $turnosValidos);
             $turno = $esTurno ? Turno::where('nombre', $tipo)->first() : null;
 
-            // 👥 Usuarios afectados
+            // 📅 Obtener array de fechas festivas
+            $festivos = collect($this->getFestivos())->pluck('start')->toArray();
+
             $usuarios = ($tipo === 'festivo')
                 ? User::all()
                 : collect([User::findOrFail($request->user_id)]);
@@ -219,25 +220,24 @@ class AsignacionTurnoController extends Controller
                 while ($currentDate->lte($fechaFin)) {
                     $dateStr = $currentDate->toDateString();
 
-
-                    $asignacion = AsignacionTurno::where('user_id', $user->id)
-                        ->whereDate('fecha', $dateStr)
-                        ->first();
-
-                    $estadoNuevo = $esTurno ? 'activo' : $tipo;
-                    //Evitar festivos y fines de semana
+                    // ❌ Saltar fines de semana y festivos si tipo es vacaciones
                     if (
-                        $estadoNuevo === 'vacaciones' &&
+                        $tipo === 'vacaciones' &&
                         (
                             in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
-                            ($asignacion && optional($asignacion->turno)->nombre === 'festivo')
+                            in_array($dateStr, $festivos)
                         )
                     ) {
                         $currentDate->addDay();
                         continue;
                     }
 
-                    // 🧮 Si se va a asignar vacaciones y aún no estaba asignado como tal
+                    $asignacion = AsignacionTurno::where('user_id', $user->id)
+                        ->whereDate('fecha', $dateStr)
+                        ->first();
+
+                    $estadoNuevo = $esTurno ? 'activo' : $tipo;
+
                     $debeRestarVacaciones = (
                         $estadoNuevo === 'vacaciones' &&
                         (!$asignacion || $asignacion->estado !== 'vacaciones')
@@ -253,7 +253,6 @@ class AsignacionTurnoController extends Controller
                         $user->decrement('dias_vacaciones');
                     }
 
-                    // ☑️ Si ya hay asignación, actualizamos
                     if ($asignacion) {
                         if (!$esTurno && $asignacion->estado !== $estadoNuevo) {
                             $asignacion->update(['estado' => $estadoNuevo]);
@@ -263,9 +262,7 @@ class AsignacionTurnoController extends Controller
                                 'maquina_id' => $maquinaId,
                             ]);
                         }
-                    }
-                    // ➕ Si no hay asignación, creamos una nueva
-                    else {
+                    } else {
                         AsignacionTurno::create([
                             'user_id'    => $user->id,
                             'fecha'      => $dateStr,
@@ -285,6 +282,57 @@ class AsignacionTurnoController extends Controller
         }
     }
 
+    private function getFestivos()
+    {
+        $response = Http::get("https://date.nager.at/api/v3/PublicHolidays/" . date('Y') . "/ES");
+
+        if ($response->failed()) {
+            return []; // Si la API falla, devolvemos un array vacío
+        }
+
+        $festivos = collect($response->json())->filter(function ($holiday) {
+            // Si no tiene 'counties', es un festivo NACIONAL
+            if (!isset($holiday['counties'])) {
+                return true;
+            }
+            // Si el festivo pertenece a Andalucía
+            return in_array('ES-AN', $holiday['counties']);
+        })->map(function ($holiday) {
+            return [
+                'title' => $holiday['localName'], // Nombre del festivo
+                'start' => Carbon::parse($holiday['date'])->toDateString(), // Fecha formateada correctamente
+                'backgroundColor' => '#ff0000', // Rojo para festivos
+                'borderColor' => '#b91c1c',
+                'textColor' => 'white',
+                'allDay' => true
+            ];
+        });
+
+        // Añadir festivos locales de Los Palacios y Villafranca
+        $festivosLocales = collect([
+            [
+                'title' => 'Festividad de Nuestra Señora de las Nieves',
+                'start' => date('Y') . '-08-05',
+                'backgroundColor' => '#ff0000',
+                'borderColor' => '#b91c1c',
+                'textColor' => 'white',
+                'editable' => true,
+                'allDay' => true
+            ],
+            [
+                'title' => 'Feria Los Palacios y Vfca',
+                'start' => date('Y') . '-09-25',
+                'backgroundColor' => '#ff0000',
+                'borderColor' => '#b91c1c',
+                'textColor' => 'white',
+                'editable' => true,
+                'allDay' => true
+            ]
+        ]);
+
+        // Combinar festivos nacionales, autonómicos y locales
+        return $festivos->merge($festivosLocales)->values()->toArray();
+    }
     public function destroy(Request $request)
     {
         try {
