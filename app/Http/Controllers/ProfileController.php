@@ -725,7 +725,6 @@ class ProfileController extends Controller
         $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
         $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
         $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
-        $turnoVacacionesId = Turno::where('nombre', 'vacaciones')->value('id');
 
         // Definir el inicio y fin del año actual
         $inicio = Carbon::now()->addDay()->startOfDay();
@@ -739,8 +738,6 @@ class ProfileController extends Controller
             ->where('estado', 'vacaciones')
             ->pluck('fecha')
             ->toArray();
-
-
 
         // Determinar el turno inicial según el tipo de turno del usuario
         if ($user->turno == 'diurno') {
@@ -785,20 +782,10 @@ class ProfileController extends Controller
             }
 
             if ($asignacion) {
-                // Si tiene estado vacaciones, actualizar turno_id pero mantener estado
-                if ($asignacion->estado === 'vacaciones') {
-                    $asignacion->update([
-                        'turno_id'   => $turnoAsignado,
-                        'maquina_id' => $user->maquina_id,
-                    ]);
-                } else {
-                    // Turno normal, actualizar turno_id y máquina
-                    $asignacion->update([
-                        'turno_id'   => $turnoAsignado,
-                        'maquina_id' => $user->maquina_id,
-                        'estado'     => 'activo', // por si acaso
-                    ]);
-                }
+                $asignacion->update([
+                    'turno_id'   => $turnoAsignado,
+                    'maquina_id' => $user->maquina_id,
+                ]);
             } else {
                 AsignacionTurno::create([
                     'user_id'    => $user->id,
