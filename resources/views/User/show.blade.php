@@ -35,7 +35,7 @@
                     <p><strong>Especialidad:</strong> <span
                             class="text-gray-600">{{ $user->maquina->nombre ?? 'N/A' }}</span></p>
                     <p id="vacaciones-restantes" class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
-                        <strong>Vacaciones Asignadas:</strong> {{ $diasVacaciones }}
+                        {{ $diasVacaciones }}
                     </p>
 
                 </div>
@@ -75,7 +75,7 @@
                 .then(data => {
                     const div = document.getElementById('vacaciones-restantes');
                     if (div && typeof data.dias !== 'undefined') {
-                        div.innerHTML = `<strong>Vacaciones disfrutadas:</strong> ${data.dias}`;
+                        div.innerHTML = `<strong>Vacaciones asignadas:</strong> ${data.dias}`;
                     }
                 })
                 .catch(error => {
