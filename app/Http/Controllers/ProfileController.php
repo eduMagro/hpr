@@ -404,90 +404,11 @@ class ProfileController extends Controller
             ->count();
 
         $turnos = Turno::all();
-        $coloresTurnos = $this->getColoresTurnosYEstado();
 
-        $eventosFichajes = $this->getEventosFichajes($user);
-        $festivos = $this->getFestivos();
 
-        $asignaciones = AsignacionTurno::where('user_id', $user->id)
-            ->with('turno')
-            ->get();
-
-        $eventosAsignaciones = $asignaciones->flatMap(function ($asig) use ($coloresTurnos) {
-            $eventos = [];
-
-            // Turno (si lo tiene)
-            if ($asig->turno) {
-                $turnoNombre = $asig->turno->nombre;
-                $color = $coloresTurnos[$turnoNombre] ?? [
-                    'bg' => '#708090',
-                    'border' => '#505d6e',
-                    'text' => '#FFFFFF'
-                ];
-
-                $eventos[] = [
-                    'title' => ucfirst($turnoNombre),
-                    'start' => $asig->fecha,
-                    'allDay' => true,
-                    'backgroundColor' => $color['bg'],
-                    'borderColor' => $color['border'],
-                    'textColor' => $color['text'],
-                ];
-            }
-
-            // Estado (si no es "activo")
-            if ($asig->estado && strtolower($asig->estado) !== 'activo') {
-                $estado = strtolower($asig->estado);
-                $color = $coloresTurnos[$estado] ?? [
-                    'bg' => '#6b7280',
-                    'border' => '#4b5563',
-                    'text' => '#FFFFFF'
-                ];
-
-                $eventos[] = [
-                    'title' => ucfirst($estado),
-                    'start' => $asig->fecha,
-                    'allDay' => true,
-                    'backgroundColor' => $color['bg'],
-                    'borderColor' => $color['border'],
-                    'textColor' => $color['text'],
-                ];
-            }
-
-            return $eventos;
-        });
-
-        $solicitudesVacaciones = VacacionesSolicitud::where('user_id', $user->id)
-            ->whereIn('estado', ['pendiente', 'denegada'])
-            ->get()
-            ->flatMap(function ($solicitud) {
-                $title = $solicitud->estado === 'pendiente' ? 'V. pendiente' : 'V. denegadas';
-                $color = $solicitud->estado === 'pendiente' ? '#fcdde8' : '#000000';
-                $textColor = $solicitud->estado === 'pendiente' ? 'black' : 'white';
-
-                return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
-                    ->map(function ($fecha) use ($title, $color, $textColor) {
-                        return [
-                            'title' => $title,
-                            'start' => $fecha->toDateString(),
-                            'end' => $fecha->copy()->addDay()->toDateString(),
-                            'allDay' => true,
-                            'backgroundColor' => $color,
-                            'borderColor' => $color,
-                            'textColor' => $textColor,
-                        ];
-                    });
-            })->values();
-
-        $eventos = $eventosFichajes
-            ->merge($eventosAsignaciones)
-            ->merge($festivos)
-            ->merge($solicitudesVacaciones);
 
         return view('User.show', compact(
             'user',
-            'eventos',
-            'coloresTurnos',
             'turnos',
             'faltasInjustificadas',
             'faltasJustificadas',
@@ -530,9 +451,9 @@ class ProfileController extends Controller
                 'text' => '#FFFFFF'
             ],
             'festivo' => [
-                'bg' => '#fbbf24',
-                'border' => '#f59e0b',
-                'text' => '#000000'
+                'bg' => '#ff0000', // Rojo para festivos
+                'border' => '#b91c1c',
+                'text' => 'white'
             ],
             'falta_justificada' => [
                 'bg' => '#808080',
@@ -896,6 +817,82 @@ class ProfileController extends Controller
 
         return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}, excluyendo los festivos.");
     }
+    public function eventosTurnos(User $user)
+    {
+        $colores = $this->getColoresTurnosYEstado();
+        $user->load('asignacionesTurnos.turno');
+
+        $eventos = collect();
+
+        // 1. Turnos (primero)
+        foreach ($user->asignacionesTurnos as $asig) {
+            if ($asig->turno) {
+                $nombre = $asig->turno->nombre;
+                $color = $colores[$nombre] ?? ['bg' => '#1d4ed8', 'border' => '#1e40af', 'text' => '#ffffff'];
+
+                $eventos->push([
+                    'title' => ucfirst($nombre),
+                    'start' => $asig->fecha,
+                    'allDay' => true,
+                    'backgroundColor' => $color['bg'],
+                    'borderColor' => $color['border'],
+                    'textColor' => $color['text'],
+                ]);
+            }
+        }
+
+        // 2. Estados (después de turnos)
+        foreach ($user->asignacionesTurnos as $asig) {
+            if ($asig->estado && strtolower($asig->estado) !== 'activo') {
+                $nombre = strtolower($asig->estado);
+                $color = $colores[$nombre] ?? ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => '#ffffff'];
+
+                $eventos->push([
+                    'title' => ucfirst($nombre),
+                    'start' => $asig->fecha,
+                    'allDay' => true,
+                    'backgroundColor' => $color['bg'],
+                    'borderColor' => $color['border'],
+                    'textColor' => $color['text'],
+                ]);
+            }
+        }
+
+        // 3. Fichajes
+        $eventos = $eventos->merge($this->getEventosFichajes($user));
+
+        // 4. Festivos
+        $eventos = $eventos->merge($this->getFestivos());
+
+        // 5. Vacaciones
+        $vacaciones = VacacionesSolicitud::where('user_id', $user->id)
+            ->whereIn('estado', ['pendiente', 'denegada'])
+            ->get()
+            ->flatMap(function ($solicitud) {
+                $title = $solicitud->estado === 'pendiente' ? 'V. pendiente' : 'V. denegadas';
+                $color = $solicitud->estado === 'pendiente' ? '#fcdde8' : '#000000';
+                $textColor = $solicitud->estado === 'pendiente' ? 'black' : 'white';
+
+                return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
+                    ->map(function ($fecha) use ($title, $color, $textColor) {
+                        return [
+                            'title' => $title,
+                            'start' => $fecha->toDateString(),
+                            'end' => $fecha->copy()->addDay()->toDateString(),
+                            'allDay' => true,
+                            'backgroundColor' => $color,
+                            'borderColor' => $color,
+                            'textColor' => $textColor,
+                        ];
+                    });
+            })->values();
+
+        $eventos = $eventos->merge($vacaciones);
+
+        return response()->json($eventos);
+    }
+
+
 
     public function destroy(Request $request, $id)
     {

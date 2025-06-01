@@ -105,6 +105,9 @@ Route::middleware('auth')->group(function () {
         ->name('asignaciones-turnos.destroy');
     Route::post('/asignaciones-turno/{id}/actualizar-puesto', [ProduccionController::class, 'actualizarPuesto']);
     Route::post('/fichar', [AsignacionTurnoController::class, 'fichar'])->name('fichar');
+    Route::get('/users/{user}/eventos-turnos', [ProfileController::class, 'eventosTurnos'])
+        ->name('users.eventos-turnos');
+
 
     Route::post('/generar-turnos', function (Request $request) {
         Artisan::call('turnos:generar-anuales');

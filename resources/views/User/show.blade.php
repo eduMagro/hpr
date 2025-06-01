@@ -69,10 +69,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             var calendarEl = document.getElementById('calendario');
 
-            // Cargar eventos y colores desde el backend
-            var eventosDesdeLaravel = {!! json_encode($eventos) !!};
-            var coloresTurnos = {!! json_encode($coloresTurnos) !!};
-
             // ✅ Recuperar vista y fecha guardadas
             const vistaGuardada = localStorage.getItem('ultimaVistaCalendario') || 'dayGridMonth';
             const fechaGuardada = localStorage.getItem('fechaCalendario');
@@ -101,7 +97,7 @@
                     localStorage.setItem('fechaCalendario', fechaActual);
                     localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
                 },
-                events: eventosDesdeLaravel,
+                events: '{{ route('users.eventos-turnos', $user->id) }}',
                 select: function(info) {
                     // Obtener fechas inicial y final
                     let fechaInicio = info.startStr;
@@ -185,16 +181,10 @@
                                     .then(response => response.json())
                                     .then(data => {
                                         if (data.success) {
-                                            Swal.fire({
-                                                title: "Turnos eliminados",
-                                                text: data.success,
-                                                icon: "success",
-                                                timer: 2000,
-                                                showConfirmButton: false
-                                            });
 
                                             eventosEnRango.forEach(event => event.remove());
-                                            location.reload();
+                                            calendar.refetchEvents();
+
                                         } else {
                                             Swal.fire({
                                                 title: "Error",
@@ -230,36 +220,9 @@
                                     .then(response => response.json())
                                     .then(data => {
                                         if (data.success) {
-
-
-                                            // Agregar eventos visuales
-                                            let currentDate = new Date(fechaInicio);
-                                            let endDate = new Date(fechaFin);
-                                            while (currentDate <= endDate) {
-                                                let color = coloresTurnos[
-                                                    tipoSeleccionado] || {
-                                                        bg: '#808080',
-                                                        border: '#606060'
-                                                    };
-
-                                                calendar.addEvent({
-                                                    title: tipoSeleccionado.charAt(
-                                                            0).toUpperCase() +
-                                                        tipoSeleccionado.slice(1),
-                                                    start: currentDate.toISOString()
-                                                        .split('T')[0],
-                                                    backgroundColor: color.bg,
-                                                    borderColor: color.border,
-                                                    textColor: 'white',
-                                                    allDay: true
-                                                });
-
-                                                currentDate.setDate(currentDate.getDate() +
-                                                    1);
-                                            }
-
                                             // ✅ Recarga completa de la página
-                                            location.reload();
+                                            calendar.refetchEvents();
+
                                         } else {
                                             Swal.fire({
                                                 title: "Error",
