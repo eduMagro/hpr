@@ -34,9 +34,10 @@
                             class="text-gray-600">{{ $user->categoria->nombre ?? 'N/A' }}</span></p>
                     <p><strong>Especialidad:</strong> <span
                             class="text-gray-600">{{ $user->maquina->nombre ?? 'N/A' }}</span></p>
-                    <p class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
+                    <p id="vacaciones-restantes" class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
                         <strong>Vacaciones restantes:</strong> {{ $user->dias_vacaciones }}
                     </p>
+
                 </div>
 
                 <!-- Resumen de asistencias -->
@@ -64,6 +65,19 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
 
+    <script>
+        function actualizarVacacionesRestantes() {
+            fetch('{{ route('users.vacaciones-restantes', $user->id) }}')
+                .then(response => response.json())
+                .then(data => {
+                    const div = document.getElementById('vacaciones-restantes');
+                    if (div && data.dias !== undefined) {
+                        div.innerHTML = `<strong>Vacaciones restantes:</strong> ${data.dias}`;
+                    }
+                })
+                .catch(error => console.error('Error al actualizar vacaciones:', error));
+        }
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -184,6 +198,7 @@
 
                                             eventosEnRango.forEach(event => event.remove());
                                             calendar.refetchEvents();
+                                            actualizarVacacionesRestantes();
 
                                         } else {
                                             Swal.fire({
@@ -222,6 +237,7 @@
                                         if (data.success) {
                                             // ✅ Recarga completa de la página
                                             calendar.refetchEvents();
+                                            actualizarVacacionesRestantes();
 
                                         } else {
                                             Swal.fire({
