@@ -10,5 +10,5 @@ class ProductoCodigo extends Model
 
     protected $table = 'productos_codigos';
 
-    protected $fillable = ['tipo', 'anio', 'ultimo_numero'];
+    protected $fillable = ['tipo', 'anio', 'mes', 'ultimo_numero'];
 }

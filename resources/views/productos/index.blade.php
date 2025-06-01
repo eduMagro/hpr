@@ -342,11 +342,29 @@
                 </table>
             </div>
         @else
+            <!-- Buscador por código -->
+            <div class="mb-4">
+                <form method="GET" action="{{ route('productos.index') }}"
+                    class="flex flex-col sm:flex-row gap-2 items-center">
+                    <input type="text" name="codigo" placeholder="Buscar por código..."
+                        value="{{ request('codigo') }}"
+                        class="w-full sm:w-64 px-4 py-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-semibold">
+                        Buscar
+                    </button>
+                    @if (request('codigo'))
+                        <a href="{{ route('productos.index') }}"
+                            class="text-sm text-gray-600 underline hover:text-gray-800">Limpiar</a>
+                    @endif
+                </form>
+            </div>
             <!-- Modo Tarjetas -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @forelse($registrosProductos as $producto)
                     <div class="bg-white shadow-md rounded-lg p-4">
-                        <h3 class="font-bold text-lg text-gray-700">ID Materia Prima: {{ $producto->id }}</h3>
+                        <h3 class="font-bold text-lg text-gray-700">ID: {{ $producto->id }}</h3>
+                        <h3 class="font-bold text-lg text-gray-700">Código: {{ $producto->codigo }}</h3>
                         <p><strong>Proveedor:</strong> {{ $producto->proveedor->nombre ?? '—' }}</p>
                         <p><strong>Tipo:</strong> {{ ucfirst($producto->productoBase->tipo ?? '—') }}</p>
                         <p><strong>Diámetro:</strong> {{ $producto->productoBase->diametro ?? '—' }}</p>

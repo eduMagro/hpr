@@ -67,47 +67,40 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ INDEX
     public function index(Request $request)
     {
-        // Inicializa la consulta de productos dados de alta (paquetes)
         $query = Producto::with('productoBase', 'ubicacion', 'maquina');
 
-        // Aplica los filtros si tienes una función para eso
         $query = $this->aplicarFiltros($query, $request);
 
-        // Orden dinámico
-        $sortBy = $request->input('sort_by', 'id');
-        $order = $request->input('order', 'asc');
+        // Orden por defecto: últimos creados primero
+        $sortBy = $request->input('sort_by', 'created_at');
+        $order = $request->input('order', 'desc');
         $query->orderBy($sortBy, $order);
 
-
-
-
-        // Paginación
         $perPage = $request->input('per_page', 10);
         $registrosProductos = $query->paginate($perPage)->appends($request->except('page'));
 
-        // Obtener el catálogo de productos base
         $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
 
-
-        // Devolver ambos conjuntos a la vista
         return view('productos.index', compact(
             'registrosProductos',
             'productosBase'
         ));
     }
 
+
     public function generarYExportar(Request $request)
     {
         $cantidad = intval($request->input('cantidad', 1));
-        $anio = now()->format('y');
+        $anio = now()->format('y'); // Año en dos dígitos
+        $mes = now()->format('m');  // Mes en dos dígitos
         $tipo = 'MP'; // fijo
 
         DB::beginTransaction();
 
         try {
-            // Obtener o crear el contador del tipo y año
+            // Obtener o crear el contador del tipo, año y mes
             $contador = ProductoCodigo::lockForUpdate()->firstOrCreate(
-                ['tipo' => $tipo, 'anio' => $anio],
+                ['tipo' => $tipo, 'anio' => $anio, 'mes' => $mes],
                 ['ultimo_numero' => 0]
             );
 
@@ -118,7 +111,7 @@ class ProductoController extends Controller
             $nuevosCodigos = [];
             for ($i = $desde; $i <= $hasta; $i++) {
                 $numero = str_pad($i, 4, '0', STR_PAD_LEFT);
-                $codigo = "$tipo$anio$numero";
+                $codigo = "$tipo$anio$mes$numero"; // Ahora incluye mes
                 $nuevosCodigos[] = (object)['codigo' => $codigo];
             }
 
@@ -127,13 +120,14 @@ class ProductoController extends Controller
             $contador->save();
 
             DB::commit();
-            $fecha = now()->format('Ymd_His'); // Ej: 20250529_211523
+            $fecha = now()->format('Ymd_His');
             return Excel::download(new ProductosExport(collect($nuevosCodigos)), "codigos_MP_$fecha.xlsx");
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', 'Error al generar los códigos: ' . $e->getMessage());
         }
     }
+
     //------------------------------------------------------------------------------------ SHOW
     public function show($id)
     {
@@ -165,9 +159,7 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ EDIT
     public function edit(Producto $producto)
     {
-        if (auth()->user()->rol !== 'oficina') {
-            return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
-        }
+
         $ubicaciones = Ubicacion::all();
         $usuarios = User::all();
         $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
@@ -180,71 +172,66 @@ class ProductoController extends Controller
         DB::beginTransaction();
 
         try {
-            // Mensajes personalizados
-            $messages = [
-                'fabricante.in' => 'El fabricante debe ser MEGASA, GETAFE, SIDERURGICA SEVILLANA o NERVADUCTIL.',
-                'nombre.string' => 'El nombre debe ser una cadena de texto.',
-                'nombre.max' => 'El nombre no puede tener más de 255 caracteres.',
-                'tipo.in' => 'El tipo debe ser "ENCARRETADO" o "BARRA".',
-                'diametro.in' => 'El diámetro debe ser 8, 10, 12, 16, 20, 25 o 32.',
-                'longitud.in' => 'La longitud debe ser 6, 12, 14, 15 o 16.',
-                'n_colada.string' => 'El número de colada debe ser una cadena de texto.',
-                'n_colada.max' => 'El número de colada no puede tener más de 255 caracteres.',
-                'n_paquete.string' => 'El número de paquete debe ser una cadena de texto.',
-                'n_paquete.max' => 'El número de paquete no puede tener más de 255 caracteres.',
-                'peso_inicial.required' => 'El peso inicial es obligatorio.',
-                'peso_inicial.numeric' => 'El peso inicial debe ser un número decimal.',
-                'peso_stock.required' => 'El peso en stock es obligatorio.',
-                'peso_stock.numeric' => 'El peso en stock debe ser un número decimal.',
-                'ubicacion_id.integer' => 'La ubicación debe ser un identificador válido.',
-                'ubicacion_id.exists' => 'La ubicación seleccionada no es válida.',
-                'maquina_id.integer' => 'La máquina debe ser un identificador válido.',
-                'maquina_id.exists' => 'La máquina seleccionada no es válida.',
-                'estado.string' => 'El estado debe ser una cadena de texto.',
-                'estado.max' => 'El estado no puede tener más de 50 caracteres.',
-                'otros.string' => 'El campo "Otros" debe ser una cadena de texto.',
-            ];
+            $validated = $request->validate([
+                'proveedor_id'      => 'required|exists:proveedores,id',
+                'producto_base_id'  => 'required|exists:productos_base,id',
+                'nombre'            => 'nullable|string|max:255',
+                'n_colada'          => 'required|string|max:255',
+                'n_paquete'         => 'required|string|max:255',
+                'peso_inicial'      => 'required|numeric|between:0,9999999.99',
+                'ubicacion_id'      => 'nullable|integer|exists:ubicaciones,id',
+                'maquina_id'        => 'nullable|integer|exists:maquinas,id',
+                'estado'            => 'nullable|string|max:50',
+                'otros'             => 'nullable|string|max:255',
+            ], [
+                'proveedor_id.required'      => 'El proveedor es obligatorio.',
+                'proveedor_id.exists'        => 'El proveedor seleccionado no es válido.',
+                'producto_base_id.required'  => 'El producto base es obligatorio.',
+                'producto_base_id.exists'    => 'El producto base seleccionado no es válido.',
+                'peso_inicial.*'             => 'El peso inicial debe ser un número válido mayor que 0.',
+                'ubicacion_id.exists'        => 'La ubicación seleccionada no es válida.',
+                'maquina_id.exists'          => 'La máquina seleccionada no es válida.',
+            ]);
 
-            // Validación
-            $validator = Validator::make($request->all(), [
-                'fabricante'    => 'required|in:MEGASA,GETAFE,SIDERURGICA SEVILLANA,NERVADUCTIL',
-                'nombre'        => 'nullable|string|max:255',
-                'tipo'          => 'required|in:ENCARRETADO,BARRA',
-                'diametro'      => 'required|in:8,10,12,16,20,25,32',
-                'longitud'      => 'nullable|in:6,12,14,15,16',
-                'n_colada'      => 'required|string|max:255',
-                'n_paquete'     => 'required|string|max:255',
-                'peso_inicial'  => 'required|numeric|between:0,9999999.99',
-                'peso_stock'    => 'required|numeric|between:0,9999999.99',
-                'ubicacion_id'  => 'nullable|integer|exists:ubicaciones,id',
-                'maquina_id'    => 'nullable|integer|exists:maquinas,id',
-                'estado'        => 'nullable|string|max:50',
-                'otros'         => 'nullable|string',
-            ], $messages);
+            // Opcional: si necesitas reflejar los datos del producto base también en el producto
+            $productoBase = ProductoBase::find($validated['producto_base_id']);
 
-            if ($validator->fails()) {
-                return redirect()->back()
-                    ->withErrors($validator)
-                    ->withInput();
+            if (!$productoBase) {
+                throw ValidationException::withMessages([
+                    'producto_base_id' => 'No se ha encontrado el producto base seleccionado.',
+                ]);
             }
 
-            $data = $validator->validated();
+            // Si los campos existen en la tabla productos y quieres copiarlos:
+            $validated['tipo']     = strtoupper($productoBase->tipo);
+            $validated['diametro'] = $productoBase->diametro;
+            $validated['longitud'] = $productoBase->longitud;
 
-            // Normaliza algunos campos si quieres asegurar consistencia en la base de datos
-            $data['fabricante'] = strtoupper($data['fabricante']);
-            $data['tipo'] = strtoupper($data['tipo']);
-            $data['estado'] = strtoupper($data['estado'] ?? '');
+            if (isset($validated['estado'])) {
+                $validated['estado'] = strtoupper($validated['estado']);
+            }
 
-            $producto->update($data);
+            $producto->update($validated);
 
             DB::commit();
             return redirect()->route('productos.index')->with('success', 'Producto actualizado con éxito.');
+        } catch (ValidationException $ve) {
+            DB::rollBack();
+            $errores = collect($ve->errors())
+                ->flatten()
+                ->map(fn($msg) => '• ' . $msg)
+                ->implode("\n");
+
+            return redirect()->back()->with('error', $errores)->withInput();
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al actualizar producto: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Ocurrió un error al actualizar el producto.')->withInput();
+            return redirect()->back()
+                ->with('error', 'Error inesperado: ' . $e->getMessage())
+                ->withInput();
         }
     }
+
 
     public function solicitarStock(Request $request)
     {

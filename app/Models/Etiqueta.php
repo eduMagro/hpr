@@ -46,19 +46,22 @@ class Etiqueta extends Model
     public static function generarCodigoEtiqueta(): string
     {
         $año = now()->year;
+        $mes = now()->format('m'); // Mes con dos dígitos
         $anyoCorto = substr($año, -2);
 
-        $ultimo = self::where('codigo', 'like', "ETQ-$anyoCorto-%")
+        $prefijo = "ETQ{$anyoCorto}{$mes}";
+
+        $ultimo = self::where('codigo', 'like', "{$prefijo}%")
             ->orderByDesc('codigo')
             ->value('codigo');
 
         $siguiente = 1;
         if ($ultimo) {
-            $partes = explode('-', $ultimo);
-            $siguiente = (int)($partes[2] ?? 0) + 1;
+            $num = (int)substr($ultimo, strlen($prefijo));
+            $siguiente = $num + 1;
         }
 
-        return sprintf("ETQ-%s-%03d", $anyoCorto, $siguiente);
+        return sprintf("%s%03d", $prefijo, $siguiente);
     }
 
     public static function generarCodigoSubEtiqueta(string $codigoPadre): string

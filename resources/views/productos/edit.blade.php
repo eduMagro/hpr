@@ -1,11 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('entradas.index') }}" class="text-blue-600">
-                {{ __('Entradas') }}
+            <a href="{{ route('productos.index') }}" class="text-blue-600">
+                {{ __('Materiales') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Editar Entrada de Material') }}
+            {{ __('Editar Material') }}
         </h2>
     </x-slot>
 
