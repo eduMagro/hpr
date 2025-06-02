@@ -172,9 +172,20 @@ class ProduccionController extends Controller
         $idsConEventos = collect($eventos)->pluck('trabajador.id')->unique();
         $trabajadoresSinEvento = $trabajadores->filter(fn($t) => !$idsConEventos->contains($t->id));
 
+        $registroFichajes = collect($eventos)
+            ->filter(fn($e) => isset($e['extendedProps']['entrada']) || isset($e['extendedProps']['salida']))
+            ->mapWithKeys(function ($evento) {
+                return [
+                    $evento['user_id'] => [
+                        'entrada' => $evento['extendedProps']['entrada'] ?? null,
+                        'salida' => $evento['extendedProps']['salida'] ?? null,
+                    ]
+                ];
+            });
+
         // Log::info('Trabajadores sin eventos:', $trabajadoresSinEvento->pluck('name')->toArray());
 
-        return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas'));
+        return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas', 'registroFichajes'));
     }
 
     public function actualizarPuesto(Request $request, $id)
