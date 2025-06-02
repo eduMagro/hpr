@@ -7,17 +7,7 @@
     </x-slot>
 
     <div class="px-6 py-4 relative" x-data="{ openModal: false, openModalSecciones: false, openNuevoDepartamentoModal: false, openNuevaSeccionModal: false, departamentoId: null, usuariosMarcados: [] }">
-        <!-- Botones -->
-        <div class="flex justify-between items-center mb-4 space-x-2">
-            <button @click="openNuevoDepartamentoModal = true"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow">
-                + Nuevo Departamento
-            </button>
-            <button @click="openNuevaSeccionModal = true"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow">
-                + Nueva Sección
-            </button>
-        </div>
+
 
         <!-- Tabla -->
         <div class="bg-white shadow rounded-lg overflow-x-auto">
@@ -104,11 +94,6 @@
                                         </ul>
                                     @endif
                                 </div>
-
-                                {{-- Botón para asignar secciones (en desarrollo futuro) --}}
-                                {{-- <button class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-3 rounded text-sm">
-            Asignar secciones
-        </button> --}}
                             </td>
                         </tr>
 
@@ -122,6 +107,257 @@
                 </tbody>
             </table>
         </div>
+        <!-- Tabla resumen de todos los departamentos -->
+        <!-- Botones para departamentos -->
+        <div class="mt-12 flex justify-start items-center mb-4 gap-4">
+
+            <h3 class="text-lg font-semibold text-gray-700">Departamentos</h3>
+            <button @click="openNuevoDepartamentoModal = true"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow">
+                + Nuevo Departamento
+            </button>
+        </div>
+
+        <div class="w-full mt-8 overflow-x-auto bg-white shadow-lg rounded-lg">
+            <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg" id="tablaDepartamentos">
+                <thead class="bg-blue-500 text-white">
+                    <tr class="text-center text-xs uppercase">
+                        <th class="px-4 py-2 text-left">Nombre</th>
+                        <th class="px-4 py-2 text-left">Descripción</th>
+                        <th class="px-4 py-2 text-left">Usuarios asignados</th>
+                        <th class="px-4 py-2 text-left">Secciones visibles</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($departamentos as $dep)
+                        <tr x-data="{
+                            editando: false,
+                            departamento: @js($dep),
+                            original: JSON.parse(JSON.stringify(@js($dep)))
+                        }" @dblclick="editando = true"
+                            @keydown.enter.stop.prevent="guardarDepartamento(departamento); editando = false"
+                            @keydown.escape="departamento = JSON.parse(JSON.stringify(original)); editando = false"
+                            :class="{ 'bg-yellow-100': editando }"
+                            class="border-t cursor-pointer hover:bg-blue-50 focus:outline-none" tabindex="0">
+
+
+
+                            <!-- Nombre -->
+                            <td class="px-4 py-2 border">
+                                <template x-if="!editando">
+                                    <span x-text="departamento.nombre"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="departamento.nombre"
+                                    class="form-input w-full">
+                            </td>
+
+                            <!-- Descripción -->
+                            <td class="px-4 py-2 border">
+                                <template x-if="!editando">
+                                    <span x-text="departamento.descripcion ?? '—'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="departamento.descripcion"
+                                    class="form-input w-full">
+                            </td>
+
+                            <!-- Usuarios asignados -->
+                            <td class="px-4 py-2 border text-center">
+                                {{ $dep->usuarios->count() }} usuario{{ $dep->usuarios->count() === 1 ? '' : 's' }}
+                            </td>
+
+                            <!-- Secciones visibles -->
+                            <td class="px-4 py-2 border text-center">
+                                {{ $dep->secciones->count() }} sección{{ $dep->secciones->count() === 1 ? '' : 'es' }}
+                            </td>
+
+                        </tr>
+                    @endforeach
+                </tbody>
+
+            </table>
+        </div>
+        <script>
+            function guardarDepartamento(departamento) {
+                fetch(`{{ url('/departamentos') }}/${departamento.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            nombre: departamento.nombre,
+                            descripcion: departamento.descripcion
+                        })
+                    })
+                    .then(async response => {
+                        const contentType = response.headers.get('content-type');
+                        let data = {};
+
+                        if (contentType && contentType.includes('application/json')) {
+                            data = await response.json();
+                        } else {
+                            const text = await response.text();
+                            throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0, 100));
+                        }
+
+                        if (response.ok && data.success) {
+                            // Se actualizó correctamente
+                        } else {
+                            let errorMsg = data.message || "Ha ocurrido un error inesperado.";
+                            if (data.errors) {
+                                errorMsg = Object.values(data.errors).flat().join("<br>");
+                            }
+
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error al actualizar",
+                                html: errorMsg,
+                                confirmButtonText: "OK",
+                                showCancelButton: true,
+                                cancelButtonText: "Reportar Error"
+                            }).then((result) => {
+                                if (result.dismiss === Swal.DismissReason.cancel) {
+                                    notificarProgramador(errorMsg);
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error de conexión",
+                            text: error.message || "No se pudo actualizar el departamento.",
+                            confirmButtonText: "OK"
+                        });
+                    });
+            }
+        </script>
+
+        <!-- Tabla resumen de todas las secciones -->
+        <!-- Botones para secciones -->
+        <div class="mt-12 flex justify-start items-center mb-4 gap-4">
+
+            <h3 class="text-lg font-semibold text-gray-700">Secciones</h3>
+            <button @click="openNuevaSeccionModal = true"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded shadow">
+                + Nueva Sección
+            </button>
+        </div>
+
+        <div class="w-full mt-8 overflow-x-auto bg-white shadow-lg rounded-lg">
+            <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
+                <thead class="bg-blue-500 text-white">
+                    <tr class="text-center text-xs uppercase">
+                        <th class="px-4 py-2 text-left">Nombre</th>
+                        <th class="px-4 py-2 text-left">Ruta</th>
+                        <th class="px-4 py-2 text-left">Icono</th>
+                        <th class="px-4 py-2 text-left">Departamentos asociados</th>
+                        <th class="px-4 py-2 text-left">Pagina Principal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($todasLasSecciones as $sec)
+                        <tr x-data="{
+                            editando: false,
+                            seccion: @js($sec),
+                            original: JSON.parse(JSON.stringify(@js($sec)))
+                        }" @dblclick="editando = true"
+                            @keydown.enter.stop.prevent="guardarSeccion(seccion); editando = false"
+                            @keydown.escape="seccion = JSON.parse(JSON.stringify(original)); editando = false"
+                            :class="{ 'bg-yellow-100': editando }"
+                            class="border-t cursor-pointer hover:bg-blue-50 focus:outline-none" tabindex="0">
+
+                            <!-- Nombre -->
+                            <td class="px-4 py-2 border">
+                                <template x-if="!editando">
+                                    <span x-text="seccion.nombre"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="seccion.nombre"
+                                    class="form-input w-full">
+                            </td>
+
+                            <!-- Ruta -->
+                            <td class="px-4 py-2 border">
+                                <template x-if="!editando">
+                                    <span x-text="seccion.ruta"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="seccion.ruta"
+                                    class="form-input w-full">
+                            </td>
+
+                            <!-- Icono -->
+                            <td class="px-4 py-2 border text-center">
+                                <template x-if="!editando">
+                                    <template x-if="seccion.icono">
+                                        <img :src="'{{ asset('') }}' + seccion.icono" alt="Icono"
+                                            class="h-6 mx-auto">
+                                    </template>
+                                    <template x-if="!seccion.icono">
+                                        <span class="text-gray-400 italic">Sin icono</span>
+                                    </template>
+                                </template>
+                                <input x-show="editando" type="text" x-model="seccion.icono"
+                                    class="form-input w-full">
+                            </td>
+
+                            <!-- Departamentos asociados -->
+                            <td class="px-4 py-2 border text-center">
+                                {{ $sec->departamentos->pluck('nombre')->join(', ') ?: 'Ninguno' }}
+                            </td>
+
+                            <!-- Mostrar en dashboard -->
+                            <td class="px-4 py-2 border text-center">
+                                <input type="checkbox" :checked="seccion.mostrar_en_dashboard"
+                                    @change="seccion.mostrar_en_dashboard = !seccion.mostrar_en_dashboard; guardarSeccion(seccion)"
+                                    class="form-checkbox h-5 w-5 text-blue-600 cursor-pointer">
+
+                            </td>
+
+
+                        </tr>
+                    @endforeach
+                </tbody>
+
+            </table>
+        </div>
+        <script>
+            function guardarSeccion(seccion) {
+                fetch(`{{ url('/secciones') }}/${seccion.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            nombre: seccion.nombre,
+                            ruta: seccion.ruta,
+                            icono: seccion.icono,
+                            mostrar_en_dashboard: seccion.mostrar_en_dashboard ? 1 : 0
+                        })
+                    })
+                    .then(async response => {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const data = await response.json();
+                            if (!data.success) {
+                                throw new Error(data.message || "Error al actualizar");
+                            }
+                        } else {
+                            const text = await response.text();
+                            throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0, 100));
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error de conexión",
+                            text: error.message || "No se pudo actualizar la sección.",
+                            confirmButtonText: "OK"
+                        });
+                    });
+            }
+        </script>
+
         <!-- Modal Nueva Sección -->
         <template x-if="openNuevaSeccionModal">
             <div class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center">
@@ -140,7 +376,8 @@
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700">Ruta (route name)</label>
                             <input type="text" name="ruta" required
-                                class="w-full p-2 border border-gray-300 rounded-lg" placeholder="ej: productos.index">
+                                class="w-full p-2 border border-gray-300 rounded-lg"
+                                placeholder="ej: productos.index">
                         </div>
 
                         <div class="mb-4">

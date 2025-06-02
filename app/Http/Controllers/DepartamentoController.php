@@ -6,6 +6,7 @@ use App\Models\Departamento;
 use App\Models\Seccion;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class DepartamentoController extends Controller
 {
@@ -71,15 +72,38 @@ class DepartamentoController extends Controller
 
     public function update(Request $request, Departamento $departamento)
     {
-        $request->validate([
-            'nombre' => 'required|string|max:100|unique:departamentos,nombre,' . $departamento->id,
-            'descripcion' => 'nullable|string',
+        $validated = $request->validate([
+            'nombre' => 'required|string|max:255',
+            'descripcion' => 'nullable|string|max:1000',
+        ], [
+            'nombre.required' => 'El nombre del departamento es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 255 caracteres.',
+            'descripcion.string' => 'La descripción debe ser una cadena de texto.',
+            'descripcion.max' => 'La descripción no puede superar los 1000 caracteres.',
         ]);
 
-        $departamento->update($request->only('nombre', 'descripcion'));
+        try {
+            $departamento->update($validated);
 
-        return redirect()->route('departamentos.index')->with('success', 'Departamento actualizado correctamente.');
+            // 👇 Esta respuesta es necesaria para que el fetch() la entienda
+            return response()->json([
+                'success' => true,
+                'message' => 'Departamento actualizado correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error al actualizar el departamento: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hubo un problema al actualizar el departamento.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
+
+
+
 
     public function destroy(Departamento $departamento)
     {

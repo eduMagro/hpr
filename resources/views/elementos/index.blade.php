@@ -228,24 +228,7 @@
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
-                        {{-- <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
-                            x-data="{
-                                editando: false,
-                                elemento: @js($elemento),
-                                inicializar() {
-                            
-                                    this.elemento.producto = this.elemento.producto || { id: '' };
-                                    this.elemento.producto2 = this.elemento.producto2 || { id: '' };
-                                    this.elemento.producto3 = this.elemento.producto3 || { id: '' };
-                                    this.elemento.figura = this.elemento.figura || '';
-                                    this.elemento.peso = this.elemento.peso || 0;
-                                    this.elemento.diametro = this.elemento.diametro || 0;
-                                    this.elemento.longitud = this.elemento.longitud || 0;
-                                    this.elemento.maquina = this.elemento.maquina || { nombre: 'N/A' };
-                                    this.elemento.maquina_2 = this.elemento.maquina_2 || { nombre: 'N/A' };
-                                    this.elemento.maquina_3 = this.elemento.maquina_3 || { nombre: 'N/A' };
-                                }
-                            }" x-init="inicializar()"> --}}
+
                         <tr tabindex="0" x-data="{
                             editando: false,
                             elemento: @js($elemento),

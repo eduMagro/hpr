@@ -12,6 +12,10 @@ class Seccion extends Model
         'nombre',
         'ruta',
         'icono',
+        'mostrar_en_dashboard',
+    ];
+    protected $casts = [
+        'mostrar_en_dashboard' => 'boolean',
     ];
 
     // ✅ Asegura que los timestamps estén activos

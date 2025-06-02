@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Seccion;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
 
 class SeccionController extends Controller
 {
@@ -58,10 +60,42 @@ class SeccionController extends Controller
     /**
      * Update the specified resource in storage.
      */
+
     public function update(Request $request, Seccion $seccion)
     {
-        //
+        try {
+            $validated = $request->validate([
+                'nombre' => 'required|string|max:255',
+                'ruta'   => 'nullable|string|max:255',
+                'icono'  => 'nullable|string|max:255',
+            ]);
+
+            // ⚠️ Aquí se actualiza con los campos validados + este booleano forzado
+            $seccion->update(array_merge($validated, [
+                'mostrar_en_dashboard' => $request->boolean('mostrar_en_dashboard'),
+            ]));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Sección actualizada correctamente.'
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de validación',
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error al actualizar la sección: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Hubo un problema al actualizar la sección.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
+
 
     /**
      * Remove the specified resource from storage.

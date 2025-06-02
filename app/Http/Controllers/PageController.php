@@ -27,7 +27,10 @@ class PageController extends Controller
             'alertas.index',
         ];
 
-        $secciones = Seccion::with('departamentos')->get();
+        $secciones = Seccion::with('departamentos')
+            ->where('mostrar_en_dashboard', true)
+            ->get();
+
 
         $items = $secciones->filter(function ($seccion) use ($esOperario, $esOficina, $departamentosUsuario, $permitidosOperario) {
             if ($esOperario) {
