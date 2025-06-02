@@ -19,7 +19,7 @@ class PasswordController extends Controller
         $authUser = auth()->user();
 
         // Verificar que solo los administradores puedan cambiar contraseñas
-        if ($authUser->categoria !== 'administrador') {
+        if ($authUser->rol !== 'oficina') {
             return redirect()->route('dashboard')->with('error', 'No tienes permiso para actualizar contraseñas.');
         }
 
