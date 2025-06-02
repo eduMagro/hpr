@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\Seccion;
+use App\Models\Departamento;
 
 class VerificarAccesoSeccion
 {
@@ -18,6 +19,16 @@ class VerificarAccesoSeccion
         $rutaActual = $request->route()->getName();
         $esOperario = $user->rol === 'operario';
         $esOficina = $user->rol === 'oficina';
+
+        $departamentoAdmin = Departamento::where('nombre', 'Administrador')->first();
+        $sinUsuariosAdmin = !$departamentoAdmin || !$departamentoAdmin->usuarios()->exists();
+
+        $sinSeccionesAsignadas = \App\Models\Seccion::whereDoesntHave('departamentos')->count() === \App\Models\Seccion::count();
+
+        if ($sinUsuariosAdmin || $sinSeccionesAsignadas) {
+            return $next($request);
+        }
+
 
         $permitidosOperario = [
             'maquinas.',
@@ -46,6 +57,7 @@ class VerificarAccesoSeccion
                 abort(403, 'No tienes permisos para esta sección.');
             }
         }
+
 
         return $next($request);
     }
