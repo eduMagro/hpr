@@ -194,4 +194,11 @@ class User extends Authenticatable
     {
         return $this->rol === 'oficina' || $this->rol === 'admin';
     }
+
+    public function departamentos()
+    {
+        return $this->belongsToMany(Departamento::class)
+            ->withPivot('rol_departamental')
+            ->withTimestamps();
+    }
 }

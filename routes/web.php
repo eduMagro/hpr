@@ -39,6 +39,7 @@ use App\Http\Controllers\NominaController;
 use App\Models\VacacionesSolicitud;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
+use App\Http\Controllers\DepartamentoController;
 
 Route::get('/', function () {
     return view('dashboard');
@@ -214,6 +215,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/politica-cookies', 'mostrarCookies')->name('politica.cookies');
         Route::post('/aceptar-politicas', 'aceptar')->name('aceptar.politicas');
     });
+    Route::resource('departamentos', DepartamentoController::class);
+    Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])
+        ->name('departamentos.asignar.usuarios');
 
     Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
 });

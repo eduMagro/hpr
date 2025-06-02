@@ -88,8 +88,8 @@
     function notificarProgramador(mensaje) {
         const urlActual = window.location.href;
         const mensajeCompleto = `
-         🔗 **URL:** ${urlActual}
-        📜 **Mensaje:** ${mensaje}
+     🔗 **URL:** ${urlActual}
+    📜 **Mensaje:** ${mensaje}
     `;
 
         fetch('/alertas/store', {
@@ -100,7 +100,7 @@
                 },
                 body: JSON.stringify({
                     mensaje: mensajeCompleto,
-                    destinatario_id: 1 // 🔹 Se asigna el destinatario como "programador"
+                    enviar_a_departamentos: ['programador']
                 })
             })
             .then(response => response.json())
@@ -108,11 +108,11 @@
                 if (data.success) {
                     Swal.fire({
                         title: "Notificación enviada",
-                        text: "El Departamento ha sido notificado.",
+                        text: "Los técnicos han sido notificados.",
                         icon: "success"
                     });
                 } else {
-                    console.error("⚠️ Error al enviar la alerta:", data.error);
+                    console.error("⚠️ Error al enviar la alerta:", data.error || data);
                 }
             })
             .catch(error => console.error("⚠️ Error inesperado:", error));

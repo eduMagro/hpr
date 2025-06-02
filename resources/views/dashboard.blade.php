@@ -92,7 +92,7 @@
                                 ],
                                 [
                                     'route' => 'alertas.index',
-                                    'label' => 'Alertas',
+                                    'label' => 'Mensajes',
                                     'icon' => asset('imagenes/iconos/alertas.png'),
                                 ],
                                 [

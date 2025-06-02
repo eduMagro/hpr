@@ -80,20 +80,40 @@ class AlertaController extends Controller
     {
         $user = Auth::user();
 
-        $alertas = Alerta::where(function ($query) use ($user) {
+        // Obtener nombre de la categoría del usuario (si tiene relación)
+        $categoriaNombre = optional($user->categoriaRelacion)->nombre ?? $user->categoria;
+
+        // Cargar alertas donde el usuario es remitente o receptor por rol/categoría/ID
+        $alertas = Alerta::where(function ($query) use ($user, $categoriaNombre) {
             $query->where('user_id_1', $user->id)
                 ->orWhere('user_id_2', $user->id)
                 ->orWhere('destino', $user->rol)
-                ->orWhere('destinatario', $user->categoria_id)
+                ->orWhere('destinatario', $categoriaNombre)
                 ->orWhere('destinatario_id', $user->id);
         })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        // Obtener registros de alertas leídas por este usuario
+        // Clasificar cada alerta como 'entrante' o 'saliente'
+        $alertas->getCollection()->transform(function ($alerta) use ($user, $categoriaNombre) {
+            $esEmisor = $alerta->user_id_1 === $user->id;
+
+            $esParaUsuario   = $alerta->destinatario_id === $user->id;
+            $esParaRol       = $alerta->destino === $user->rol;
+            $esParaCategoria = $alerta->destinatario === $categoriaNombre;
+
+            $esEntrante = !$esEmisor && ($esParaUsuario || $esParaRol || $esParaCategoria);
+
+            $alerta->tipo = $esEntrante ? 'entrante' : 'saliente';
+
+            return $alerta;
+        });
+
+        // Alertas leídas por el usuario
         $leidas = AlertaLeida::where('user_id', $user->id)->get()->keyBy('alerta_id');
         $alertasLeidas = $leidas->mapWithKeys(fn($r) => [$r->alerta_id => $r->leida_en])->all();
 
+        // Datos auxiliares para el formulario
         $roles = User::distinct()->pluck('rol')->filter()->values();
         $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
         $usuarios = User::orderBy('name')->get();
@@ -119,119 +139,167 @@ class AlertaController extends Controller
     {
         $user = auth()->user();
 
-        // Obtener IDs de alertas entrantes para este usuario
+        // Buscar alertas asignadas a este usuario (por ID, rol o categoría)
+        $alertasEntrantes = Alerta::where(function ($q) use ($user) {
+            $q->where('destinatario_id', $user->id)
+                ->orWhere('destino', $user->rol)
+                ->orWhere('destinatario', $user->categoria);
+        })->pluck('id');
+
+        // Buscar alertas de esa lista que el usuario aún no ha marcado como leídas
         $alertasLeidas = AlertaLeida::where('user_id', $user->id)
             ->whereNull('leida_en')
-            ->pluck('alerta_id');
-
-        // Verificar si esas alertas son realmente para él (rol, categoría o id)
-        $cantidad = Alerta::whereIn('id', $alertasLeidas)
-            ->where(function ($q) use ($user) {
-                $q->where('destinatario_id', $user->id)
-                    ->orWhere('destino', $user->rol)
-                    ->orWhere('destinatario', $user->categoria);
-            })
+            ->whereIn('alerta_id', $alertasEntrantes)
             ->count();
 
-        return response()->json(['cantidad' => $cantidad]);
+        return response()->json(['cantidad' => $alertasLeidas]);
     }
+
 
     public function store(Request $request)
     {
-        // Validar que se proporcione solo un destino: rol, categoría o destinatario_id
-        $request->validate([
-            'mensaje' => 'required|string',
-            'rol' => [
-                'nullable',
-                'string',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($value) && (!empty($request->categoria) || !empty($request->destinatario_id))) {
-                        $fail('No puedes seleccionar más de un destino. Elige solo uno entre rol, categoría o destinatario específico.');
-                    }
-                }
-            ],
-            'categoria' => [
-                'nullable',
-                'string',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($value) && (!empty($request->rol) || !empty($request->destinatario_id))) {
-                        $fail('No puedes seleccionar más de un destino. Elige solo uno entre rol, categoría o destinatario específico.');
-                    }
-                }
-            ],
-            'destinatario_id' => [
-                'nullable',
-                'integer',
-                'exists:users,id',
-                function ($attribute, $value, $fail) use ($request) {
-                    if (!empty($value) && (!empty($request->rol) || !empty($request->categoria))) {
-                        $fail('No puedes seleccionar un destinatario específico y además otro destino (rol o categoría).');
-                    }
-                }
-            ],
-        ], [
-            'mensaje.required' => 'El mensaje es obligatorio.',
-            'rol.string' => 'El rol debe ser una cadena de caracteres.',
-            'categoria.string' => 'La categoría debe ser una cadena de caracteres.',
-            'destinatario_id.integer' => 'El destinatario debe ser un número entero.',
-            'destinatario_id.exists' => 'El destinatario seleccionado no existe en la base de datos.',
-        ]);
+        $user = auth()->user();
+        $esOficina = $user->rol === 'oficina';
+        $usuariosDestino = collect(); // colección vacía
 
-        // Verificar que se haya seleccionado al menos un destino
-        if (empty($request->rol) && empty($request->categoria) && empty($request->destinatario_id)) {
-            return redirect()->back()->with(['error' => 'Debes elegir un destino: rol, categoría o destinatario específico.'], 500);
+        // 🔹 CASO 1: ENVÍO DIRECTO A DEPARTAMENTOS (API o JS)
+        if ($request->has('enviar_a_departamentos')) {
+            // Asegurar que siempre es un array
+            $departamentosRaw = $request->input('enviar_a_departamentos');
+
+            if (is_string($departamentosRaw)) {
+                $departamentos = array_map('trim', explode(',', $departamentosRaw));
+            } elseif (is_array($departamentosRaw)) {
+                $departamentos = array_map('trim', $departamentosRaw);
+            } else {
+                $departamentos = [];
+            }
+
+            // Validar mensaje
+            $request->validate([
+                'mensaje' => 'required|string',
+            ]);
+
+            // Obtener usuarios que pertenecen a alguno de esos departamentos
+            $usuariosDestino = User::whereHas('departamentos', function ($q) use ($departamentos) {
+                $q->whereIn('nombre', $departamentos);
+            })->get();
+
+            // Crear alerta
+            $alerta = Alerta::create([
+                'mensaje'   => $request->mensaje,
+                'user_id_1' => $user->id,
+                'user_id_2' => session()->get('companero_id', null),
+                'leida'     => false,
+            ]);
+
+            // Asignar como no leída a cada usuario receptor
+            foreach ($usuariosDestino as $usuario) {
+                AlertaLeida::firstOrCreate([
+                    'alerta_id' => $alerta->id,
+                    'user_id'   => $usuario->id,
+                ], [
+                    'leida_en' => null,
+                ]);
+            }
+
+            // Respuesta para JS o navegador
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true]);
+            }
+
+            return redirect()->back()->with('success', 'Alerta enviada correctamente.');
         }
 
-        try {
-            // Preparar los datos base de la alerta
+
+        // 🔹 CASO 2: USUARIO OFICINA CON FORMULARIO MANUAL
+        if ($esOficina) {
+            $request->validate([
+                'mensaje' => 'required|string',
+                'rol' => [
+                    'nullable',
+                    'string',
+                    function ($attribute, $value, $fail) use ($request) {
+                        if (!empty($value) && (!empty($request->categoria) || !empty($request->destinatario_id))) {
+                            $fail('No puedes seleccionar más de un destino. Elige solo uno entre rol, categoría o destinatario específico.');
+                        }
+                    }
+                ],
+                'categoria' => [
+                    'nullable',
+                    'string',
+                    function ($attribute, $value, $fail) use ($request) {
+                        if (!empty($value) && (!empty($request->rol) || !empty($request->destinatario_id))) {
+                            $fail('No puedes seleccionar más de un destino. Elige solo uno entre rol, categoría o destinatario específico.');
+                        }
+                    }
+                ],
+                'destinatario_id' => [
+                    'nullable',
+                    'integer',
+                    'exists:users,id',
+                    function ($attribute, $value, $fail) use ($request) {
+                        if (!empty($value) && (!empty($request->rol) || !empty($request->categoria))) {
+                            $fail('No puedes seleccionar un destinatario específico y además otro destino (rol o categoría).');
+                        }
+                    }
+                ],
+            ], [
+                'mensaje.required' => 'El mensaje es obligatorio.',
+                'rol.string' => 'El rol debe ser una cadena de caracteres.',
+                'categoria.string' => 'La categoría debe ser una cadena de caracteres.',
+                'destinatario_id.integer' => 'El destinatario debe ser un número entero.',
+                'destinatario_id.exists' => 'El destinatario seleccionado no existe en la base de datos.',
+            ]);
+
+            if (empty($request->rol) && empty($request->categoria) && empty($request->destinatario_id)) {
+                return redirect()->back()->with(['error' => 'Debes elegir un destino: rol, categoría o destinatario específico.'], 500);
+            }
+
             $data = [
                 'mensaje'   => $request->mensaje,
-                'user_id_1' => Auth::id(),
+                'user_id_1' => $user->id,
                 'user_id_2' => session()->get('companero_id', null),
                 'leida'     => false,
             ];
 
-            // Dependiendo del destino seleccionado, asignar los campos correspondientes.
             if (!empty($request->rol)) {
                 $data['destino'] = $request->rol;
-                $data['destinatario'] = null;
-                $data['destinatario_id'] = null;
-            } elseif (!empty($request->categoria)) {
-                $data['destinatario'] = $request->categoria;
-                $data['destino'] = null;
-                $data['destinatario_id'] = null;
-            } elseif (!empty($request->destinatario_id)) {
-                $data['destinatario_id'] = $request->destinatario_id;
-                $data['destino'] = null;
-                $data['destinatario'] = null;
-            }
-
-            $alerta = Alerta::create($data); // Guardamos la alerta y obtenemos su instancia
-
-            $usuariosDestino = collect(); // Colección vacía por defecto
-
-            // Determinar a quién se envía la alerta
-            if (!empty($request->rol)) {
                 $usuariosDestino = User::where('rol', $request->rol)->get();
             } elseif (!empty($request->categoria)) {
+                $data['destinatario'] = $request->categoria;
                 $usuariosDestino = User::where('categoria_id', $request->categoria)->get();
             } elseif (!empty($request->destinatario_id)) {
+                $data['destinatario_id'] = $request->destinatario_id;
                 $usuariosDestino = User::where('id', $request->destinatario_id)->get();
             }
 
-            // Crear registros en la tabla alertas_leidas
-            foreach ($usuariosDestino as $usuario) {
-                AlertaLeida::create([
-                    'alerta_id' => $alerta->id,
-                    'user_id' => $usuario->id,
-                    'leida_en' => null,
-                ]);
-            }
-            return redirect()->back()->with('success', 'Alerta enviada correctamente.');
-        } catch (ValidationException $e) {
-            return redirect()->back()->withErrors($e->errors());
-        } catch (\Exception $e) {
-            return redirect()->back()->with(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
+            $alerta = Alerta::create($data);
         }
+
+        // 🔹 CASO 3: USUARIO NORMAL ENVÍA A DEPARTAMENTOS POR DEFECTO
+        if (!$esOficina && !$request->has('enviar_a_departamentos')) {
+            $usuariosDestino = User::whereHas('departamentos', function ($q) {
+                $q->whereIn('nombre', ['rrhh', 'producción', 'administrador']);
+            })->get();
+
+            $alerta = Alerta::create([
+                'mensaje'   => $request->mensaje,
+                'user_id_1' => $user->id,
+                'user_id_2' => session()->get('companero_id', null),
+                'leida'     => false,
+            ]);
+        }
+
+        // Asignar lectura pendiente
+        foreach ($usuariosDestino as $destinatario) {
+            AlertaLeida::create([
+                'alerta_id' => $alerta->id,
+                'user_id'   => $destinatario->id,
+                'leida_en'  => null,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Alerta enviada correctamente.');
     }
 }

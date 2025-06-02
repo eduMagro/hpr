@@ -1,37 +1,36 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Lista de Alertas') }}
+            {{ __('Lista de Mensajes') }}
         </h2>
     </x-slot>
 
-    <div class="w-full px-6 py-4">
+    <div class="w-full px-2 sm:px-4 md:px-6 py-4">
+
         <div x-data="{ mostrarModal: false }">
-            @if (auth()->user()->rol == 'oficina')
-                <button @click="mostrarModal = true"
-                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 mb-2 rounded-lg">
-                    ➕ Nueva Alerta
-                </button>
+            <button @click="mostrarModal = true"
+                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 mb-2 rounded-lg">
+                ➕ Enviar mensaje a oficina
+            </button>
 
-                <!-- Modal de creación de alerta -->
-                <div x-show="mostrarModal"
-                    class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50"
-                    x-transition.opacity>
-                    <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
-                        <button @click="mostrarModal = false"
-                            class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
-                            ✖
-                        </button>
-                        <h2 class="text-lg font-semibold mb-4">📢 Crear Nueva Alerta</h2>
+            <!-- Modal de creación de alerta -->
+            <div x-show="mostrarModal"
+                class="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-50"
+                x-transition.opacity>
+                <div class="bg-white rounded-lg shadow-lg p-6 w-96 relative">
+                    <button @click="mostrarModal = false"
+                        class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">✖</button>
+                    <h2 class="text-lg font-semibold mb-4">📢 Enviar Mensaje</h2>
 
-                        <form method="POST" action="{{ route('alertas.store') }}">
-                            @csrf
-                            <div class="mb-4">
-                                <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
-                                <textarea id="mensaje" name="mensaje" rows="3"
-                                    class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
-                            </div>
+                    <form method="POST" action="{{ route('alertas.store') }}">
+                        @csrf
+                        <div class="mb-4">
+                            <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
+                            <textarea id="mensaje" name="mensaje" rows="3"
+                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
+                        </div>
 
+                        @if (auth()->user()->rol === 'oficina')
                             <div class="mb-4">
                                 <label for="rol" class="block text-sm font-semibold">Rol</label>
                                 <select id="rol" name="rol" class="w-full border rounded-lg p-2">
@@ -63,149 +62,91 @@
                                     @endforeach
                                 </select>
                             </div>
+                        @else
+                            <!-- Para usuarios que no son de oficina: ocultamos los campos -->
+                            <input type="hidden" name="enviar_a_departamentos" value="rrhh,producción,administrador">
+                        @endif
 
-                            <div class="flex justify-end space-x-2">
-                                <button type="button" @click="mostrarModal = false"
-                                    class="bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-lg">
-                                    Cancelar
-                                </button>
-                                <button type="submit"
-                                    class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
-                                    Guardar
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                        <div class="flex justify-end space-x-2">
+                            <button type="button" @click="mostrarModal = false"
+                                class="bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-lg">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
+                                Enviar
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            @endif
+            </div>
 
-            <!-- Tabla de Alertas -->
-            <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-                <table class="w-full border border-gray-300 rounded-lg">
+            <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+                <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-blue-500 text-white">
-                        <tr class="text-left text-sm uppercase">
-                            <th class="py-3 border text-center">Enviado por</th>
-                            <th class="py-3 border text-center">Mensaje</th>
-                            <th class="py-3 border text-center">Fecha</th>
-                            <th class="py-3 border text-center">Tipo</th>
-                            <th class="py-3 border text-center">Leida</th>
+                        <tr>
+
+                            <th class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider">Mensaje</th>
+                            <th
+                                class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider hidden sm:table-cell">
+                                Fecha</th>
                         </tr>
                     </thead>
-                    <tbody class="text-gray-700 text-sm">
-
+                    <tbody class="bg-white divide-y divide-gray-200 text-sm">
                         @forelse ($alertas as $alerta)
                             @php
-                                // Determinar si la alerta es entrante para el usuario
-                                $esEntrante =
-                                    ($alerta->destinatario_id && $alerta->destinatario_id == $user->id) ||
-                                    ($alerta->destino && $alerta->destino == $user->rol) ||
-                                    ($alerta->destinatario && $alerta->destinatario == $user->categoria);
-
-                                // Determinar si está no leída
-                                $noLeida = !isset($alertasLeidas[$alerta->id]) || is_null($alertasLeidas[$alerta->id]);
-
-                                // Pintar solo si es entrante y no leída
-                                $nueva = $esEntrante && $noLeida;
+                                $esEntrante = $alerta->tipo === 'entrante';
+                                $noLeida = $esEntrante && empty($alertasLeidas[$alerta->id]);
                             @endphp
 
-                            <tr class="{{ $nueva ? 'bg-yellow-100' : 'bg-white' }}"
+
+                            <tr class="{{ $noLeida ? 'bg-yellow-100' : 'bg-white' }}"
                                 data-alerta-id="{{ $alerta->id }}">
 
-                                {{-- Es un asolicitud de cambio de maquina? --}}
-                                @php
-                                    $esCambioMaquina = strpos($alerta->mensaje, 'Solicitud de cambio de máquina') === 0;
 
-                                    $elementoId = $etiquetaSubId = $origen = $destino = $maquinaDestinoId = null;
-
-                                    if ($esCambioMaquina) {
-                                        preg_match('/elemento\s#(\d+)/i', $alerta->mensaje, $matchElemento);
-                                        preg_match('/etiqueta\s([\d\.]+)\)/i', $alerta->mensaje, $matchEtiqueta);
-                                        preg_match('/Origen:\s([^,]+),/i', $alerta->mensaje, $matchOrigen);
-                                        preg_match('/Destino:\s(.+)$/i', $alerta->mensaje, $matchDestino);
-
-                                        $elementoId = $matchElemento[1] ?? null;
-                                        $etiquetaSubId = $matchEtiqueta[1] ?? null;
-                                        $origen = $matchOrigen[1] ?? null;
-                                        $destino = $matchDestino[1] ?? null;
-
-                                        // Buscar la máquina destino por nombre
-                                        $maquinaDestino = \App\Models\Maquina::where('nombre', trim($destino))->first();
-                                        $maquinaDestinoId = $maquinaDestino->id ?? 'null';
-                                    }
-                                @endphp
-                                <td class="px-2 py-3 text-center border">
+                                <td class="px-4 py-2 break-words">
                                     @php
-                                        $autor1 = $alerta->usuario1?->name;
-                                        $autor2 = $alerta->usuario2?->name;
+                                        $esCambioMaquina =
+                                            strpos($alerta->mensaje, 'Solicitud de cambio de máquina') === 0;
+                                        $esEntrante = $alerta->tipo === 'entrante';
                                     @endphp
 
-                                    @if ($autor1 && $autor2)
-                                        <span title="Usuario 1 y Usuario 2">{{ $autor1 }} y
-                                            {{ $autor2 }}</span>
-                                    @elseif ($autor1)
-                                        <span title="Usuario 1">{{ $autor1 }}</span>
-                                    @elseif ($autor2)
-                                        <span title="Usuario 2">{{ $autor2 }}</span>
+                                    @if ($alerta->tipo === 'entrante')
+                                        <span class="inline-block text-green-600 font-bold mr-1">📩</span>
+                                        {{-- Mensaje recibido --}}
                                     @else
-                                        <span class="text-gray-400 italic">Desconocido</span>
+                                        <span class="inline-block text-blue-600 font-bold mr-1">📤</span>
+                                        {{-- Mensaje enviado --}}
                                     @endif
-                                </td>
 
-                                <td class="px-2 py-3 text-center border">
-                                    @php
-                                        $esEntrante =
-                                            ($alerta->destinatario_id && $alerta->destinatario_id == $user->id) ||
-                                            ($alerta->destino && $alerta->destino == $user->rol) ||
-                                            ($alerta->destinatario && $alerta->destinatario == $user->categoria);
-                                    @endphp
 
-                                    @if ($esCambioMaquina && $etiquetaSubId && $origen && $destino && $esEntrante)
+
+                                    @if ($esCambioMaquina && $esAlertaEntrante && isset($elementoId, $origen, $destino, $maquinaDestinoId))
                                         <a href="#"
                                             onclick="abrirModalAceptarCambio('{{ $elementoId }}', '{{ $origen }}', '{{ $destino }}', '{{ $maquinaDestinoId }}', '{{ $alerta->id }}')"
                                             class="text-green-700 hover:underline font-semibold">
                                             {{ $alerta->mensaje }}
                                         </a>
                                     @else
-                                        <span class="text-gray-500">
-                                            {{ $alerta->mensaje }}
-                                        </span>
-                                    @endif
-                                </td>
-
-                                <td class="px-2 py-3 text-center border">{{ $alerta->created_at->diffForHumans() }}
-                                </td>
-                                <td class="px-2 py-3 text-center border">
-
-                                    @if ($esEntrante)
-                                        <span class="text-green-600 font-bold">⬇ Entrante</span>
-                                    @else
-                                        <span class="text-red-600 font-bold">⬆ Saliente</span>
+                                        <span class="text-gray-700">{{ $alerta->mensaje }}</span>
                                     @endif
 
                                 </td>
-                                <td class="px-2 py-3 text-center border">
-                                    @php
-                                        $leida =
-                                            isset($alertasLeidas[$alerta->id]) && !is_null($alertasLeidas[$alerta->id]);
-                                    @endphp
 
-                                    @if ($leida)
-                                        <span class="text-green-600 font-bold">✔ Sí</span>
-                                    @else
-                                        <span class="text-red-600 font-bold">✘ No</span>
-                                    @endif
+                                <td class="px-4 py-2 hidden sm:table-cell">{{ $alerta->created_at->diffForHumans() }}
                                 </td>
+
                             </tr>
-
                         @empty
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-gray-500">No hay alertas registradas
+                                <td colspan="5" class="text-center py-4 text-gray-500">No hay alertas registradas
                                 </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+
 
             <!-- Paginación -->
             <div class="mt-4 flex justify-center">
