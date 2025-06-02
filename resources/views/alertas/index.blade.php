@@ -85,7 +85,10 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-blue-500 text-white">
                         <tr>
-
+                            @if (auth()->user()->rol === 'oficina')
+                                <th class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider">Enviado
+                                    por</th>
+                            @endif
                             <th class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider">Mensaje</th>
                             <th
                                 class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider hidden sm:table-cell">
@@ -103,7 +106,11 @@
                             <tr class="{{ $noLeida ? 'bg-yellow-100' : 'bg-white' }}"
                                 data-alerta-id="{{ $alerta->id }}">
 
-
+                                @if (auth()->user()->rol === 'oficina')
+                                    <td class="px-4 py-2 text-center">
+                                        {{ $alerta->usuario1?->name ?? 'Desconocido' }}
+                                    </td>
+                                @endif
                                 <td class="px-4 py-2 break-words">
                                     @php
                                         $esCambioMaquina =
