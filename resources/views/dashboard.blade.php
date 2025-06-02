@@ -1,132 +1,31 @@
 <x-app-layout>
-    @php
-        $esOperario = auth()->user()->rol == 'operario';
-    @endphp
+
     <div class="py-4 lg:py-12 ">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div
                         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-6 justify-items-center">
-                        @php
-                            $items = [
-                                [
-                                    'route' => 'productos.index',
-                                    'label' => 'Materiales',
-                                    'icon' => asset('imagenes/iconos/materiales.png'),
-                                ],
-                                [
-                                    'route' => 'ubicaciones.index',
-                                    'label' => 'Ubicaciones',
-                                    'icon' => asset('imagenes/iconos/ubicaciones.png'),
-                                ],
-                                [
-                                    'route' => 'entradas.index',
-                                    'label' => 'Entradas',
-                                    'icon' => asset('imagenes/iconos/entradas.png'),
-                                ],
-                                [
-                                    'route' => 'salidas.index',
-                                    'label' => 'Salidas',
-                                    'icon' => asset('imagenes/iconos/salidas.png'),
-                                ],
-                                [
-                                    'route' => 'users.index',
-                                    'label' => 'Usuarios',
-                                    'icon' => asset('imagenes/iconos/usuarios.png'),
-                                ],
-                                [
-                                    'route' => 'movimientos.index',
-                                    'label' => 'Movimientos',
-                                    'icon' => asset('imagenes/iconos/movimientos.png'),
-                                ],
-                                [
-                                    'route' => 'maquinas.index',
-                                    'label' => 'Máquinas',
-                                    'icon' => asset('imagenes/iconos/maquinas.png'),
-                                ],
-                                [
-                                    'route' => 'planillas.index',
-                                    'label' => 'Planillas',
-                                    'icon' => asset('imagenes/iconos/planillas.png'),
-                                ],
-                                [
-                                    'route' => 'planificacion.index',
-                                    'label' => 'Planificación Portes',
-                                    'icon' => asset('imagenes/iconos/planificacion.png'),
-                                ],
-                                [
-                                    'route' => 'produccion.trabajadores', // Asegúrate de que esta ruta exista
-                                    'label' => 'Planificación Trabajadores',
-                                    'icon' => asset('imagenes/iconos/planificacion-trabajadores.png'), // Debes tener esta imagen
-                                ],
-                                [
-                                    'route' => 'produccion.maquinas', // Asegúrate de que esta ruta exista
-                                    'label' => 'Planificación Máquinas',
-                                    'icon' => asset('imagenes/iconos/planificacion-trabajadores.png'), // Debes tener esta imagen
-                                ],
-                                [
-                                    'route' => 'empresas.index',
-                                    'label' => 'Mi Empresa',
-                                    'icon' => asset('imagenes/iconos/empresas.png'),
-                                ],
-                                [
-                                    'route' => 'clientes.index',
-                                    'label' => 'Clientes',
-                                    'icon' => asset('imagenes/iconos/clientes.png'),
-                                ],
-                                [
-                                    'route' => 'empresas-transporte.index',
-                                    'label' => 'Transporte',
-                                    'icon' => asset('imagenes/iconos/empresas-transporte.png'),
-                                ],
-                                [
-                                    'route' => 'estadisticas.index',
-                                    'label' => 'Estadísticas',
-                                    'icon' => asset('imagenes/iconos/estadisticas.png'),
-                                ],
-                                [
-                                    'route' => null,
-                                    'label' => 'Mantenimiento',
-                                    'icon' => asset('imagenes/iconos/mantenimiento.png'),
-                                ],
-                                [
-                                    'route' => 'alertas.index',
-                                    'label' => 'Mensajes',
-                                    'icon' => asset('imagenes/iconos/alertas.png'),
-                                ],
-                                [
-                                    'route' => 'ayuda.index',
-                                    'label' => 'Ayuda',
-                                    'icon' => asset('imagenes/iconos/ayuda.png'),
-                                ],
-                            ];
-                        @endphp
 
                         @foreach ($items as $item)
                             @php
-                                $permitidosOperario = [
-                                    'maquinas.index',
-                                    'productos.index',
-                                    'users.index',
-                                    'alertas.index',
-                                ];
-
-                                // Si es operario y la ruta no está permitida, saltamos este ítem
+                                // Filtrado por permisos del operario
                                 if ($esOperario && !in_array($item['route'], $permitidosOperario)) {
                                     continue;
                                 }
+
+                                // Filtrado por departamentos si es oficina
+                                if ($esOficina && !array_intersect($departamentosUsuario, $item['departamentos'])) {
+                                    continue;
+                                }
                             @endphp
+
                             <a href="{{ $item['route'] ? route($item['route']) : '#' }}"
                                 class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative">
 
-                                {{-- Icono principal --}}
-                                <img src="{{ asset($item['icon']) }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2">
-
-                                {{-- Etiqueta --}}
+                                <img src="{{ $item['icon'] }}" alt="{{ $item['label'] }}" class="w-20 h-20 mb-2">
                                 <span class="text-sm font-medium text-gray-700">{{ $item['label'] }}</span>
 
-                                {{-- Icono de notificación para alertas --}}
                                 @if ($item['route'] === 'alertas.index')
                                     <img id="notificacion-alertas-icono"
                                         src="{{ asset('imagenes/iconos/notificacion.png') }}"
@@ -135,13 +34,13 @@
                             </a>
                         @endforeach
 
+
                     </div>
 
                 </div>
             </div>
         </div>
 
-        <!-- Modal Aceptación de Políticas -->
         <!-- Modal Aceptación de Políticas -->
         <div id="modal-politicas"
             class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50 hidden">

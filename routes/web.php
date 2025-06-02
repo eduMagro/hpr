@@ -40,10 +40,12 @@ use App\Models\VacacionesSolicitud;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 use App\Http\Controllers\DepartamentoController;
+use App\Http\Controllers\SeccionController;
+use App\Http\Controllers\PageController;
 
-Route::get('/', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/', [PageController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 
 Route::middleware('auth')->group(function () {
@@ -216,8 +218,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/aceptar-politicas', 'aceptar')->name('aceptar.politicas');
     });
     Route::resource('departamentos', DepartamentoController::class);
+
     Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])
         ->name('departamentos.asignar.usuarios');
+    // web.php
+    Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])
+        ->name('departamentos.asignarSecciones');
+
+    Route::resource('secciones', SeccionController::class);
 
     Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
 });

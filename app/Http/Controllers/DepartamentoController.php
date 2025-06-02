@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Departamento;
+use App\Models\Seccion;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -12,8 +13,10 @@ class DepartamentoController extends Controller
     {
         $departamentos = Departamento::with('usuarios')->get();
         $usuariosOficina = User::where('rol', 'oficina')->orderBy('name')->get();
+        $todasLasSecciones = Seccion::with('departamentos')->get();
 
-        return view('departamentos.index', compact('departamentos', 'usuariosOficina'));
+
+        return view('departamentos.index', compact('departamentos', 'usuariosOficina', 'todasLasSecciones'));
     }
     public function asignarUsuarios(Request $request, Departamento $departamento)
     {
@@ -34,6 +37,12 @@ class DepartamentoController extends Controller
         $departamento->usuarios()->sync($usuariosConRoles);
 
         return redirect()->back()->with('success', 'Asignación actualizada correctamente.');
+    }
+    // DepartamentoController.php
+    public function asignarSecciones(Request $request, Departamento $departamento)
+    {
+        $departamento->secciones()->sync($request->input('secciones', []));
+        return back()->with('success', 'Secciones asignadas correctamente.');
     }
 
 
