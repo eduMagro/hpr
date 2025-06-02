@@ -19,12 +19,9 @@
             @if (strtolower($maquina->tipo) !== 'grua')
 
                 <div class="w-full bg-white border shadow-md rounded-lg self-start sm:col-span-1 md:sticky md:top-4">
-                    <h3 class="block w-full bg-gray-200 font-bold text-xl text-center break-words p-2 rounded-md">
-                        {{ $maquina->codigo }}
-                    </h3>
                     <!-- Mostrar los productos en la máquina -->
 
-                    <ul class="list-none p-2 break-words">
+                    <ul class="list-none p-1 break-words">
                         @foreach ($productosBaseCompatibles as $productoBase)
                             @php
                                 $productoExistente = $maquina->productos->firstWhere(
@@ -36,49 +33,45 @@
                                 $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;
                             @endphp
 
-                            <li class="mb-4">
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <div class="flex flex-col">
+                            <li class="mb-1">
+                                <div class="flex items-center justify-between gap-2 flex-wrap">
+                                    <div class="text-sm">
                                         <span><strong>Ø</strong> {{ $productoBase->diametro }} mm</span>
-
                                         @if (strtoupper($productoBase->tipo) === 'BARRA')
-                                            <span><strong>L:</strong> {{ $productoBase->longitud }} m</span>
+                                            <span class="ml-2"><strong>L:</strong> {{ $productoBase->longitud }}
+                                                m</span>
                                         @endif
                                     </div>
 
-                                    {{-- Barra de progreso si existe el producto --}}
-                                    @if ($productoExistente)
-                                        <div id="progreso-container-{{ $productoExistente->id }}"
-                                            class="relative {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'w-20 h-20' : 'w-60 h-10' }} bg-gray-300 overflow-hidden rounded-lg">
-                                            <div class="absolute bottom-0 w-full"
-                                                style="{{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'height' : 'width' }}: {{ $porcentaje }}%; background-color: green;">
-                                            </div>
-                                            <span class="absolute top-2 left-2 text-white text-xs font-semibold">
-                                                {{ $pesoStock }} / {{ $pesoInicial }} kg
-                                            </span>
-                                        </div>
-                                    @endif
-
-                                    <!-- Botón solicitar recambio -->
-                                    <div class="mt-2 w-full">
-                                        <form method="POST" action="{{ route('movimientos.crear') }}">
-                                            @csrf
-                                            <input type="hidden" name="tipo" value="recarga_materia_prima">
-                                            <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
-                                            <input type="hidden" name="producto_base_id"
-                                                value="{{ $productoBase->id }}">
-                                            @if ($productoExistente)
-                                                <input type="hidden" name="producto_id"
-                                                    value="{{ $productoExistente->id }}">
-                                            @endif
-
-                                            <input type="hidden" name="descripcion"
-                                                value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
-                                            <button class="btn btn-warning">Solicitar recambio</button>
-                                        </form>
-                                    </div>
+                                    <form method="POST" action="{{ route('movimientos.crear') }}">
+                                        @csrf
+                                        <input type="hidden" name="tipo" value="recarga_materia_prima">
+                                        <input type="hidden" name="maquina_id" value="{{ $maquina->id }}">
+                                        <input type="hidden" name="producto_base_id" value="{{ $productoBase->id }}">
+                                        @if ($productoExistente)
+                                            <input type="hidden" name="producto_id"
+                                                value="{{ $productoExistente->id }}">
+                                        @endif
+                                        <input type="hidden" name="descripcion"
+                                            value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
+                                        <button class="btn btn-warning text-sm px-3 py-1">Solicitar</button>
+                                    </form>
                                 </div>
-                                <hr class="my-3">
+
+                                @if ($productoExistente)
+                                    <div id="progreso-container-{{ $productoExistente->id }}"
+                                        class="relative mt-2 {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'w-20 h-20' : 'w-full max-w-sm h-4' }} bg-gray-300 overflow-hidden rounded-lg">
+                                        <div class="absolute bottom-0 w-full"
+                                            style="{{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'height' : 'width' }}: {{ $porcentaje }}%; background-color: green;">
+                                        </div>
+                                        <span
+                                            class="absolute inset-0 flex items-center justify-center text-white text-xs font-semibold">
+                                            {{ $pesoStock }} / {{ $pesoInicial }} kg
+                                        </span>
+                                    </div>
+                                @endif
+
+                                <hr class="my-1">
                             </li>
                         @endforeach
 
