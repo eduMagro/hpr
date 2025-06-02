@@ -34,7 +34,7 @@
                     </x-slot>
 
                     <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit', ['id' => auth()->user()->id])">
+                        <x-dropdown-link :href="route('users.index')">
                             {{ __('Mi Perfil') }}
                         </x-dropdown-link>
 
@@ -70,7 +70,7 @@
 
     <!-- Responsive Navigation Menu -->
     <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden">
-        <div class="pt-2 pb-3 space-y-1">
+        {{-- <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Inicio') }}
             </x-responsive-nav-link>
@@ -95,7 +95,7 @@
             <x-responsive-nav-link :href="route('planillas.index')" :active="request()->routeIs('planillas.index')">
                 {{ __('Planillas') }}
             </x-responsive-nav-link>
-        </div>
+        </div> --}}
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200">
@@ -105,8 +105,7 @@
             </div>
 
             <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit', ['id' => auth()->user()->id])">
-
+                <x-responsive-nav-link :href="route('users.index')">
                     {{ __('Mi Perfil') }}
                 </x-responsive-nav-link>
 
