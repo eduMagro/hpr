@@ -135,6 +135,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('planificacion', PlanificacionController::class)->middleware('acceso.seccion:planificacion.index');
     Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
 
+    // === EMPRESAS TRANSPORTE ===
+    Route::resource('empresas-transporte', EmpresaTransporteController::class)
+        ->middleware('acceso.seccion:empresas-transporte.index');
+
+    Route::post('/update-field', [EmpresaTransporteController::class, 'updateField'])
+        ->middleware('acceso.seccion:empresas-transporte.index')
+        ->name('update.field');
+
     // === SALIDAS Y ESCANEO ===
     Route::resource('salidas', SalidaController::class)->middleware('acceso.seccion:salidas.index');
     Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaController::class, 'quitarPaquete'])->name('salidas.quitarPaquete');
