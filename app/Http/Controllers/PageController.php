@@ -49,6 +49,6 @@ class PageController extends Controller
             ];
         });
 
-        return view('dashboard', compact('items', 'esOperario', 'esOficina', 'departamentosUsuario'));
+        return view('dashboard', compact('items', 'esOperario', 'esOficina', 'departamentosUsuario', 'permitidosOperario'));
     }
 }
