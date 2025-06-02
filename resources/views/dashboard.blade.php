@@ -109,8 +109,6 @@
                                     'maquinas.index',
                                     'productos.index',
                                     'users.index',
-                                    'entradas.index',
-                                    'salidas.index',
                                     'alertas.index',
                                 ];
 
