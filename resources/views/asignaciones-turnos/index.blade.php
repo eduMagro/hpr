@@ -39,10 +39,31 @@
                 <thead class="bg-blue-500 text-white">
                     <tr>
                         <th class="p-2 border">ID Empleado</th>
-                        <th class="p-2 border">Empleado</th>
-                        <th class="p-2 border">Fecha</th>
-                        <th class="p-2 border">Turno</th>
-                        <th class="p-2 border">Máquina</th>
+                        <th class="p-2 border">
+                            <a
+                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'user_id', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
+                                Empleado
+                            </a>
+                        </th>
+                        <th class="p-2 border">
+                            <a
+                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'fecha', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
+                                Fecha
+                            </a>
+                        </th>
+                        <th class="p-2 border">
+                            <a
+                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'turno_id', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
+                                Turno
+                            </a>
+                        </th>
+                        <th class="p-2 border">
+                            <a
+                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'maquina_id', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
+                                Máquina
+                            </a>
+                        </th>
+
                         <th class="p-2 border">Entrada</th>
                         <th class="p-2 border">Salida</th>
                         <th class="p-2 border">Resumen</th>

@@ -21,16 +21,19 @@ class AsignacionTurnoController extends Controller
             ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'));
 
         if ($request->filled('trabajador')) {
-            $query->whereHas(
-                'user',
-                fn($q) =>
-                $q->where('name', 'like', '%' . $request->trabajador . '%')
-            );
+            $query->whereHas('user', fn($q) =>
+            $q->where('name', 'like', '%' . $request->trabajador . '%'));
         }
 
-        $asignaciones = $query->orderBy('fecha', 'desc')->paginate(15);
+        // Ordenar por fecha y turno lógico (por nombre o campo `orden`)
+        $query->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
+            ->orderBy('fecha', 'desc')
+            ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
+            ->select('asignaciones_turnos.*');
 
-        // Contadores de puntualidad
+        $asignaciones = $query->paginate(15)->withQueryString();
+
+        // ✅ Contadores de puntualidad
         $diasPuntuales = 0;
         $diasImpuntuales = 0;
         $diasSinFichaje = 0;
@@ -57,6 +60,7 @@ class AsignacionTurnoController extends Controller
             'diasSinFichaje'
         ));
     }
+
     public function fichar(Request $request)
     {
         // 🪵 Log inicial para depuración: muestra todos los datos que llegan en la petición
@@ -78,55 +82,52 @@ class AsignacionTurnoController extends Controller
                 return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
             }
 
-            $horaActual = now(); // 🕒 Hora actual del sistema
-
-            // 🧠 Lógica para encontrar el turno asignado correctamente, incluso para turno de noche
+            $horaActual = now();
 
             $asignacionTurno = $user->asignacionesTurnos()
                 ->whereIn('fecha', [
                     $horaActual->toDateString(),
-                    $horaActual->copy()->subDay()->toDateString()
+                    $horaActual->copy()->subDay()->toDateString(),
+                    $horaActual->copy()->addDay()->toDateString()
                 ])
-                ->with('turno') // Incluye información del turno
+                ->with('turno')
                 ->get()
                 ->first(function ($asignacion) use ($horaActual, $request) {
-
                     $turno = strtolower($asignacion->turno->nombre ?? '');
 
-                    // 🌓 CASO ESPECIAL: turno de noche (de 22:00 a 06:00)
-                    // CASO ESPECIAL: turno de noche
-                    if ($turno === 'noche') {
-                        if ($request->tipo === 'entrada') {
-                            // Si es entrada y es a partir de las 21:00, pertenece al día siguiente
-                            if ($horaActual->hour >= 21) {
-                                return $asignacion->fecha === $horaActual->copy()->addDay()->toDateString();
-                            }
-                            // Si es antes de las 21:00, pertenece al día actual
+                    if ($turno !== 'noche') {
+                        return $asignacion->fecha === $horaActual->toDateString();
+                    }
+
+                    if ($request->tipo === 'entrada') {
+                        // Entradas entre 20:00 y 23:59 → turno del día siguiente
+                        if ($horaActual->hour >= 20 && $horaActual->hour <= 23) {
+                            return $asignacion->fecha === $horaActual->copy()->addDay()->toDateString();
+                        }
+                        // Entradas entre 00:00 y 06:00 → turno del día actual
+                        if ($horaActual->hour < 6) {
                             return $asignacion->fecha === $horaActual->toDateString();
                         }
-
-                        if ($request->tipo === 'salida') {
-                            // Si es salida después de las 00:00 (hasta las 06:59), pertenece al mismo día
-                            if ($horaActual->hour < 7) {
-                                return $asignacion->fecha === $horaActual->toDateString();
-                            }
-                            // Si es salida después de las 07:00 (fuera de rango del turno noche)
-                            return false;
+                    } else {
+                        // Para salidas o cualquier otro caso, turno de noche termina a las 06:00
+                        if ($horaActual->hour < 6) {
+                            return $asignacion->fecha === $horaActual->copy()->subDay()->toDateString();
+                        } else {
+                            return $asignacion->fecha === $horaActual->toDateString();
                         }
                     }
 
-                    // 🕘 Otros turnos: normal, usa la fecha del día actual
-                    return $asignacion->fecha === $horaActual->toDateString();
+                    return false;
                 });
 
-            // ❌ Si no se encuentra asignación, se impide el fichaje
+
             if (!$asignacionTurno) {
                 return response()->json(['error' => 'No tienes un turno asignado para este día laboral.'], 403);
             }
 
-            // 🧾 Nombre del turno y fecha lógica asignada
             $turnoNombre = strtolower($asignacionTurno->turno->nombre);
             $fechaLogica = $asignacionTurno->fecha;
+
 
             // 📍 Verifica que el fichaje se está haciendo dentro del radio permitido de la obra
             $obra = Obra::findOrFail($request->obra_id);

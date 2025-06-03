@@ -6,11 +6,12 @@
                 {{ __('Usuarios') }}
             </a>
             <span class="mx-2">/</span>
-            {{ __('Calendario de Vacaciones Globales') }}
+            {{ __('Vacaciones') }}
         </h2>
     </x-slot>
 
-    <div class="container mx-auto px-4 py-6 space-y-12" id="contenedorCalendarios">
+    <div class="w-full max-w-7xl mx-auto py-6 space-y-12" id="contenedorCalendarios">
+
         {{-- Maquinistas --}}
         <div>
             <h3 class="text-xl font-semibold text-blue-700 mb-4">📥 Solicitudes pendientes · Maquinistas</h3>
@@ -21,7 +22,8 @@
             @endif
         </div>
         <!-- Calendario Maquinistas -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="w-full bg-white rounded-lg shadow-lg p-4 sm:p-6">
+
             <h3 class="text-lg font-semibold text-blue-700 mb-4">Vacaciones · Maquinistas</h3>
             <div id="calendario-maquinistas"></div>
         </div>
@@ -36,7 +38,8 @@
             @endif
         </div>
         <!-- Calendario Ferrallas -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="w-full bg-white rounded-lg shadow-lg p-4 sm:p-6">
+
             <h3 class="text-lg font-semibold text-blue-700 mb-4">Vacaciones · Ferrallas</h3>
             <div id="calendario-ferrallas"></div>
         </div>
@@ -51,7 +54,8 @@
             @endif
         </div>
         <!-- Calendario Oficina -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="w-full bg-white rounded-lg shadow-lg p-4 sm:p-6">
+
             <h3 class="text-lg font-semibold text-yellow-700 mb-4">Vacaciones · Oficina</h3>
             <div id="calendario-oficina"></div>
         </div>

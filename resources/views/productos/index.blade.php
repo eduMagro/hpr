@@ -381,13 +381,6 @@
                         <p><strong>Peso Inicial:</strong> {{ $producto->peso_inicial }} kg</p>
                         <p><strong>Peso Stock:</strong> {{ $producto->peso_stock }} kg</p>
                         <p><strong>Estado:</strong> {{ $producto->estado }}</p>
-                        <p><strong>Otros:</strong> {{ $producto->otros ?? 'N/A' }}</p>
-
-                        <button
-                            onclick="generateAndPrintQR('{{ $producto->id }}', '{{ $producto->n_paquete }}', 'MATERIA PRIMA')"
-                            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">QR</button>
-
-                        <div id="qrCanvas" style="display:none;"></div>
                         <hr class="m-2 border-gray-300">
 
                         @if (isset($producto->ubicacion->nombre))
@@ -455,7 +448,4 @@
         <div class="mt-4 flex justify-center">
             {{ $registrosProductos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
         </div>
-        <!-- SCRIPT PARA IMPRIMIR QR -->
-
-        <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
 </x-app-layout>

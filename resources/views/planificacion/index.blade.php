@@ -5,25 +5,72 @@
             {{ __('Planificación de Salidas') }}
         </h2>
     </x-slot>
-
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
     <!-- Contenedor de las dos columnas -->
-    <div class="py-6">
-        <div class="mb-4 pl-4 flex gap-2">
-            <button id="ver-todas" class="bg-gray-700 text-white px-3 py-1 rounded">Ver todas las obras</button>
-            <button id="ver-con-salidas" class="bg-blue-600 text-white px-3 py-1 rounded">Obras con salida
-                asociada</button>
+    <div class="w-full">
+        <!-- Acciones visibles en escritorio -->
+        <div class="hidden sm:flex sm:mt-0 w-full">
+            <button id="ver-todas"
+                class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none first:rounded-l-lg last:rounded-r-lg transition">
+                Ver todas las obras
+            </button>
+
+            <button id="ver-con-salidas"
+                class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none transition">
+                Obras con salida asociada
+            </button>
 
             <a href="{{ route('salidas.create') }}"
-                class="bg-green-600 text-white py-2 px-4 rounded-lg shadow-lg hover:bg-green-700 transition duration-300">
+                class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none transition">
                 Crear Nueva Salida
             </a>
-            <button id="toggle-fullscreen" class="bg-black text-white px-3 py-1 rounded">
+
+            <button id="toggle-fullscreen"
+                class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none last:rounded-r-lg transition">
                 Pantalla completa
             </button>
         </div>
+        <!-- Botonera responsive para planificación (solo en móvil) -->
+        <div class="sm:hidden relative" x-data="{ open: false }">
+            <!-- Botón que abre el menú -->
+            <button @click="open = !open"
+                class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow transition">
+                Opciones
+            </button>
+
+            <!-- Menú desplegable estilizado -->
+            <div x-show="open" x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95" @click.away="open = false"
+                class="absolute z-30 mt-0 w-1/2 bg-white border border-gray-200 rounded-b-lg shadow-xl overflow-hidden divide-y divide-gray-200"
+                x-cloak>
+
+                <button id="ver-todas"
+                    class="block w-full text-left px-4 py-3 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition text-sm font-medium">
+                    🏗️ Ver todas las obras
+                </button>
+
+                <button id="ver-con-salidas"
+                    class="block w-full text-left px-4 py-3 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition text-sm font-medium">
+                    🚚 Ver obras con salida
+                </button>
+
+                <a href="{{ route('salidas.create') }}"
+                    class="block px-4 py-3 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition text-sm font-medium">
+                    ➕ Crear Nueva Salida
+                </a>
+            </div>
+        </div>
+
+        <!-- Acciones visibles en escritorio -->
 
         <!-- 📅 Calendario (Derecha) -->
-        <div class="w-full bg-white">
+        <div class="w-full bg-white mt-4">
             <div id="calendario" class="w-full h-screen"></div>
 
         </div>
@@ -42,49 +89,7 @@
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
 
-    <style>
-        .fullscreen-calendario body,
-        .fullscreen-calendario html {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
 
-        .fullscreen-calendario #calendario {
-            position: fixed !important;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 40;
-            height: 100vh !important;
-            background-color: white;
-        }
-
-        .fullscreen-calendario #toggle-fullscreen {
-            display: block !important;
-        }
-
-        /* Ocultamos encabezados y filtros, pero NO la toolbar de FullCalendar */
-        .fullscreen-calendario header,
-        .fullscreen-calendario .mb-4:not(.fc-toolbar) {
-            display: none !important;
-        }
-    </style>
-
-    <script>
-        document.getElementById('toggle-fullscreen').addEventListener('click', () => {
-            document.body.classList.toggle('fullscreen-calendario');
-            calendar.updateSize();
-
-            const btn = document.getElementById('toggle-fullscreen');
-            if (document.body.classList.contains('fullscreen-calendario')) {
-                btn.textContent = 'Salir pantalla completa';
-            } else {
-                btn.textContent = 'Pantalla completa';
-            }
-        });
-    </script>
     <script>
         let calendar; // hacemos la variable accesible desde fuera
 

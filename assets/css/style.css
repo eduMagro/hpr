@@ -15,62 +15,70 @@ Author:	Ukieweb
 
 ================================================ */
 
-
 /* ------------------
     General setting
 -------------------- */
-*{
-    font-family: 'Open Sans', Helvetica, Arial, sans-serif;
+* {
+    font-family: "Open Sans", Helvetica, Arial, sans-serif;
     font-weight: 300;
 }
-html{
+html {
     height: 100%;
 }
-body{
+body {
     position: relative;
     height: 100%;
-    background-color: #8DDFEA;
+    background-color: #8ddfea;
 }
 
-h1, h2, h3, h4, h5, h6{
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     color: #ffffff;
 }
 
-p{
+p {
     font-weight: 300;
 }
 
-img{
+img {
     background-size: auto;
 }
 
-.error{
+.error {
     border-color: red !important;
 }
 
-::-webkit-input-placeholder { /* WebKit browsers */
-    color:    #ffffff;
+::-webkit-input-placeholder {
+    /* WebKit browsers */
+    color: #ffffff;
 }
-:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
-    color:    #ffffff;
-    opacity:  1;
+:-moz-placeholder {
+    /* Mozilla Firefox 4 to 18 */
+    color: #ffffff;
+    opacity: 1;
 }
-::-moz-placeholder { /* Mozilla Firefox 19+ */
-    color:    #ffffff;
-    opacity:  1;
+::-moz-placeholder {
+    /* Mozilla Firefox 19+ */
+    color: #ffffff;
+    opacity: 1;
 }
-:-ms-input-placeholder { /* Internet Explorer 10+ */
-    color:    #ffffff;
+:-ms-input-placeholder {
+    /* Internet Explorer 10+ */
+    color: #ffffff;
 }
 
-.container{
+.container {
     position: relative;
 }
 
 /* ------------------
     Button
 -------------------- */
-.btn{
+.btn {
     font-size: 18px;
     font-weight: 300;
     color: #ffffff;
@@ -92,7 +100,7 @@ img{
     cursor: pointer;
 }
 
-.btn:hover{
+.btn:hover {
     background: #0090c0;
     color: #ffffff;
     text-decoration: none;
@@ -101,17 +109,16 @@ img{
 /* ------------------
     Wrapper
 -------------------- */
-#wrapper{
+#wrapper {
     min-height: 100%;
     height: 100%;
     width: 100%;
 }
 
-
 /* ------------------
     Bear
 -------------------- */
-.bear{
+.bear {
     background-image: url("../img/bear.png");
     background-position: center;
     background-repeat: no-repeat;
@@ -121,11 +128,10 @@ img{
     position: relative;
 }
 
-
 /* ------------------
     Zzz
 -------------------- */
-.zzz{
+.zzz {
     background-image: url("../img/z-1.gif");
     background-position: center;
     background-repeat: no-repeat;
@@ -136,29 +142,28 @@ img{
     bottom: 155px;
 }
 
-
 /* ------------------
     Info
 --------------------*/
-.info{
+.info {
     position: relative;
     z-index: 999;
 }
 
-.info h1{
+.info h1 {
     font-size: 190px;
     font-weight: 700;
     margin-top: 60px;
     color: #222a4b;
 }
 
-.info h2{
+.info h2 {
     font-size: 50px;
     font-weight: 300;
     color: #00a9e1;
 }
 
-.info p{
+.info p {
     font-size: 20px;
     color: #000000;
 }

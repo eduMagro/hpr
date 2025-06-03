@@ -135,7 +135,8 @@
                 height: 'auto',
                 headerToolbar: {
                     left: 'prev,next today',
-                    center: 'title'
+                    center: 'title',
+                    right: ''
                 },
                 buttonText: {
                     today: 'Hoy'
