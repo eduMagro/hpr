@@ -11,41 +11,118 @@ use App\Models\AsignacionTurno;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Database\Eloquent\Builder; // ✅ Correcto
 
 class AsignacionTurnoController extends Controller
 {
+    public function aplicarFiltros($query, Request $request)
+    {
+        // 🔹 Filtro por ID
+        if ($request->filled('id')) {
+            $query->where('user_id', $request->input('id'));
+        }
+
+        if ($request->filled('empleado')) {
+            $query->whereHas(
+                'user',
+                fn($q) =>
+                $q->where('name', 'like', '%' . $request->empleado . '%')
+            );
+        }
+
+        if ($request->filled('fecha_inicio') && $request->filled('fecha_fin')) {
+            $query->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin]);
+        } elseif ($request->filled('fecha_inicio')) {
+            $query->where('fecha', '>=', $request->fecha_inicio);
+        } elseif ($request->filled('fecha_fin')) {
+            $query->where('fecha', '<=', $request->fecha_fin);
+        }
+
+        if ($request->filled('obra')) {
+            $query->whereHas(
+                'obra',
+                fn($q) =>
+                $q->where('obra', 'like', '%' . $request->obra . '%')
+            );
+        }
+
+        if ($request->filled('turno')) {
+            $query->whereHas(
+                'turno',
+                fn($q) =>
+                $q->where('nombre', 'like', '%' . $request->turno . '%')
+            );
+        }
+
+        if ($request->filled('maquina')) {
+            $query->whereHas(
+                'maquina',
+                fn($q) =>
+                $q->where('nombre', 'like', '%' . $request->maquina . '%')
+            );
+        }
+
+        if ($request->filled('entrada')) {
+            $query->where('entrada', 'like', '%' . $request->entrada . '%');
+        }
+
+        if ($request->filled('salida')) {
+            $query->where('salida', 'like', '%' . $request->salida . '%');
+        }
+
+        if ($request->filled('sort') && in_array($request->sort, ['user_id', 'fecha', 'turno_id', 'maquina_id'])) {
+            $direction = $request->direction === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($request->sort, $direction);
+        }
+
+        return $query;
+    }
+
+
     public function index(Request $request)
     {
         $query = AsignacionTurno::with(['user', 'turno', 'maquina'])
             ->whereDate('fecha', '<=', Carbon::yesterday())
             ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'));
 
-        if ($request->filled('trabajador')) {
-            $query->whereHas('user', fn($q) =>
-            $q->where('name', 'like', '%' . $request->trabajador . '%'));
-        }
-
         // Ordenar por fecha y turno lógico (por nombre o campo `orden`)
         $query->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
             ->orderBy('fecha', 'desc')
             ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
             ->select('asignaciones_turnos.*');
+        $query = $this->aplicarFiltros($query, $request);
 
         $asignaciones = $query->paginate(15)->withQueryString();
 
-        // ✅ Contadores de puntualidad
         $diasPuntuales = 0;
         $diasImpuntuales = 0;
         $diasSinFichaje = 0;
+        $diasSeVaAntes = 0;
 
         foreach ($asignaciones as $asignacion) {
-            $esperada = $asignacion->turno->hora_entrada ?? null;
-            $real = $asignacion->entrada;
+            $esperadaEntrada = $asignacion->turno->hora_entrada ?? null;
+            $esperadaSalida = $asignacion->turno->hora_salida ?? null;
 
-            if ($esperada && $real) {
-                $puntual = Carbon::parse($real)->lte(Carbon::parse($esperada));
-                $puntual ? $diasPuntuales++ : $diasImpuntuales++;
-            } elseif ($esperada && !$real) {
+            $realEntrada = $asignacion->entrada;
+            $realSalida = $asignacion->salida;
+
+            if ($esperadaEntrada && $realEntrada) {
+                $llegaTemprano = Carbon::parse($realEntrada)->lte(Carbon::parse($esperadaEntrada));
+                $seVaTarde = $realSalida && $esperadaSalida
+                    ? Carbon::parse($realSalida)->gte(Carbon::parse($esperadaSalida))
+                    : false;
+                $seVaAntes = $realSalida && $esperadaSalida
+                    ? Carbon::parse($realSalida)->lt(Carbon::parse($esperadaSalida))
+                    : false;
+
+                if ($llegaTemprano && $seVaTarde) {
+                    $diasPuntuales++;
+                } elseif (!$llegaTemprano && $seVaTarde) {
+                    $diasImpuntuales++;
+                } elseif ($llegaTemprano && $seVaAntes) {
+                    $diasSeVaAntes++;
+                }
+            } elseif ($esperadaEntrada && !$realEntrada) {
                 $diasSinFichaje++;
             }
         }
@@ -57,6 +134,7 @@ class AsignacionTurnoController extends Controller
             'diasTrabajados',
             'diasPuntuales',
             'diasImpuntuales',
+            'diasSeVaAntes',
             'diasSinFichaje'
         ));
     }
@@ -153,7 +231,10 @@ class AsignacionTurnoController extends Controller
                     $warning = 'Has fichado entrada fuera de tu horario.';
                 }
 
-                $asignacionTurno->update(['entrada' => $horaActual]);
+                $asignacionTurno->update([
+                    'entrada' => $horaActual,
+                    'obra_id' => $request->obra_id,
+                ]);
             }
 
             // Fichaje de salida
@@ -170,7 +251,10 @@ class AsignacionTurnoController extends Controller
                     $warning = 'Has fichado salida fuera de tu horario.';
                 }
 
-                $asignacionTurno->update(['salida' => $horaActual]);
+                $asignacionTurno->update([
+                    'salida' => $horaActual,
+                    'obra_id' => $request->obra_id,
+                ]);
             }
 
             return response()->json([

@@ -174,7 +174,7 @@
                                     <span x-text="planilla.codigo_limpio"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.codigo"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Código Cliente -->
@@ -183,7 +183,7 @@
                                     <span x-text="planilla.cliente.codigo ?? 'N/A'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.cliente.codigo"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Cliente -->
@@ -195,7 +195,7 @@
                                     </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.cliente.empresa"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Código Obra -->
@@ -204,7 +204,7 @@
                                     <span x-text="planilla.obra.cod_obra ?? 'N/A'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.obra.cod_obra"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- Obra -->
                             <td class="p-2 text-center border">
@@ -215,7 +215,7 @@
                                     </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.obra.obra"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Sección -->
@@ -224,7 +224,7 @@
                                     <span x-text="planilla.seccion ?? 'N/A'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.seccion"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Descripción -->
@@ -233,7 +233,7 @@
                                     <span x-text="planilla.descripcion ?? 'Sin descripción'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.descripcion"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Ensamblado -->
@@ -242,7 +242,7 @@
                                     <span x-text="planilla.ensamblado ?? 'Sin datos'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.ensamblado"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Comentario -->
@@ -251,7 +251,7 @@
                                     <span x-text="planilla.comentario ?? ' '"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.comentario"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Peso Fabricado -->
@@ -262,7 +262,7 @@
 
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.suma_peso_completados"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Peso Total -->
@@ -271,7 +271,7 @@
                                     <span x-text="planilla.peso_total_kg"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.peso_total_kg"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Estado -->
@@ -292,7 +292,7 @@
                                     <span x-text="planilla.fecha_inicio"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.fecha_inicio"
-                                    class="form-input w-full" placeholder="DD/MM/YYYY HH:mm">
+                                    class="form-control form-control-sm" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Fecha Finalización -->
@@ -301,7 +301,7 @@
                                     <span x-text="planilla.fecha_finalizacion"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="planilla.fecha_finalizacion"
-                                    class="form-input w-full" placeholder="DD/MM/YYYY HH:mm">
+                                    class="form-control form-control-sm" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Fecha Importación -->
@@ -316,7 +316,7 @@
                                 </template>
 
                                 <input x-show="editando" type="text" x-model="planilla.fecha_estimada_entrega"
-                                    class="form-input w-full" placeholder="DD/MM/YYYY HH:mm">
+                                    class="form-control form-control-sm" placeholder="DD/MM/YYYY HH:mm">
                             </td>
 
                             <!-- Usuario -->

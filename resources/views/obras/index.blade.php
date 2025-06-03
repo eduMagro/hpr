@@ -148,49 +148,50 @@
                                 <template x-if="!editando">
                                     <span x-text="obra.obra"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="obra.obra" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="obra.obra"
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="obra.cod_obra"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="obra.cod_obra"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="obra.cliente"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="obra.cliente"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="obra.cod_cliente"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="obra.cod_cliente"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="obra.latitud"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="obra.latitud"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="obra.longitud"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="obra.longitud"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-4 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="obra.distancia"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="obra.distancia"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-4 py-3 text-center border">
                                 <a href="https://www.google.com/maps?q={{ $obra->latitud }},{{ $obra->longitud }}"

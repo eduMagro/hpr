@@ -242,41 +242,47 @@
                                     <span x-text="usuario.name"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="usuario.name"
-                                    class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
+                                    class="form-control form-control-sm"
+                                    @keydown.enter.stop="guardarCambios(usuario)">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.email"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="usuario.email"
-                                    class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
+                                    class="form-control form-control-sm"
+                                    @keydown.enter.stop="guardarCambios(usuario)">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.movil_personal"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="usuario.movil_personal"
-                                    class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
+                                    class="form-control form-control-sm"
+                                    @keydown.enter.stop="guardarCambios(usuario)">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.movil_empresa"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="usuario.movil_empresa"
-                                    class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
+                                    class="form-control form-control-sm"
+                                    @keydown.enter.stop="guardarCambios(usuario)">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.dni"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="usuario.dni"
-                                    class="form-input w-full" @keydown.enter.stop="guardarCambios(usuario)">
+                                    class="form-control form-control-sm"
+                                    @keydown.enter.stop="guardarCambios(usuario)">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.empresa?.nombre ?? 'Sin empresa'"></span>
                                 </template>
-                                <select x-show="editando" x-model="usuario.empresa_id" class="form-input w-full"
+                                <select x-show="editando" x-model="usuario.empresa_id"
+                                    class="form-control form-control-sm"
                                     @keydown.enter.stop="guardarCambios(usuario)">
                                     <option value="">Selecciona empresa</option>
                                     @foreach ($empresas as $empresa)
@@ -288,7 +294,7 @@
                                 <template x-if="!editando">
                                     <span x-text="usuario.rol"></span>
                                 </template>
-                                <select x-show="editando" x-model="usuario.rol" class="form-input w-full">
+                                <select x-show="editando" x-model="usuario.rol" class="form-control form-control-sm">
                                     <option value="">Selecciona rol</option>
                                     <option value="oficina">Oficina</option>
                                     <option value="operario">Operario</option>
@@ -302,7 +308,8 @@
                                 </template>
 
                                 <!-- Select editable con Alpine -->
-                                <select x-show="editando" x-model="usuario.categoria_id" class="form-input w-full">
+                                <select x-show="editando" x-model="usuario.categoria_id"
+                                    class="form-control form-control-sm">
                                     <option value="">Selecciona cat.</option>
                                     @foreach ($categorias as $categoria)
                                         <option value="{{ $categoria->id }}">
@@ -317,7 +324,8 @@
                                         <span x-text="usuario.maquina?.nombre ?? 'Sin asignar'"></span>
                                     </template>
                                 </template>
-                                <select x-show="editando" x-model="usuario.maquina_id" class="form-input w-full">
+                                <select x-show="editando" x-model="usuario.maquina_id"
+                                    class="form-control form-control-sm">
                                     <option value="">Selecciona máq.</option>
                                     @foreach ($maquinas as $maquina)
                                         <option value="{{ $maquina->id }}">{{ $maquina->nombre ?? 'N/A' }}
@@ -330,7 +338,8 @@
                                     <span
                                         x-text="usuario.turno ? usuario.turno.charAt(0).toUpperCase() + usuario.turno.slice(1) : 'N/A'"></span>
                                 </template>
-                                <select x-show="editando" x-model="usuario.turno" class="form-input w-full">
+                                <select x-show="editando" x-model="usuario.turno"
+                                    class="form-control form-control-sm">
                                     <option value="">Selecciona turno</option>
                                     <option value="nocturno">Nocturno</option>
                                     <option value="diurno">Diurno</option>

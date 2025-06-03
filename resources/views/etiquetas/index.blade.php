@@ -200,7 +200,7 @@
                                         <span x-text="etiqueta.numero_etiqueta"></span>
                                     </template>
                                     <input x-show="editando" type="text" x-model="etiqueta.numero_etiqueta"
-                                        class="form-input w-full" @click.stop>
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Nombre (editable) -->
@@ -209,7 +209,7 @@
                                         <span x-text="etiqueta.nombre"></span>
                                     </template>
                                     <input x-show="editando" type="text" x-model="etiqueta.nombre"
-                                        class="form-input w-full" @click.stop>
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Peso (editable) -->
@@ -218,7 +218,7 @@
                                         <span x-text="etiqueta.peso"></span>
                                     </template>
                                     <input x-show="editando" type="text" x-model="etiqueta.peso"
-                                        class="form-input w-full" @click.stop>
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Fecha Inicio (editable) -->
@@ -227,7 +227,7 @@
                                         <span x-text="etiqueta.fecha_inicio"></span>
                                     </template>
                                     <input x-show="editando" type="date" x-model="etiqueta.fecha_inicio"
-                                        class="form-input w-full" @click.stop>
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Fecha Finalización (editable) -->
@@ -236,7 +236,7 @@
                                         <span x-text="etiqueta.fecha_finalizacion"></span>
                                     </template>
                                     <input x-show="editando" type="date" x-model="etiqueta.fecha_finalizacion"
-                                        class="form-input w-full" @click.stop>
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Fecha Inicio Ensamblado (editable) -->
@@ -245,8 +245,8 @@
                                         <span x-text="etiqueta.fecha_inicio_ensamblado"></span>
                                     </template>
                                     <input x-show="editando" type="date"
-                                        x-model="etiqueta.fecha_inicio_ensamblado" class="form-input w-full"
-                                        @click.stop>
+                                        x-model="etiqueta.fecha_inicio_ensamblado"
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Fecha Finalización Ensamblado (editable) -->
@@ -255,8 +255,8 @@
                                         <span x-text="etiqueta.fecha_finalizacion_ensamblado"></span>
                                     </template>
                                     <input x-show="editando" type="date"
-                                        x-model="etiqueta.fecha_finalizacion_ensamblado" class="form-input w-full"
-                                        @click.stop>
+                                        x-model="etiqueta.fecha_finalizacion_ensamblado"
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Fecha Inicio Soldadura (editable) -->
@@ -265,7 +265,7 @@
                                         <span x-text="etiqueta.fecha_inicio_soldadura"></span>
                                     </template>
                                     <input x-show="editando" type="date" x-model="etiqueta.fecha_inicio_soldadura"
-                                        class="form-input w-full" @click.stop>
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Fecha Finalización Soldadura (editable) -->
@@ -274,8 +274,8 @@
                                         <span x-text="etiqueta.fecha_finalizacion_soldadura"></span>
                                     </template>
                                     <input x-show="editando" type="date"
-                                        x-model="etiqueta.fecha_finalizacion_soldadura" class="form-input w-full"
-                                        @click.stop>
+                                        x-model="etiqueta.fecha_finalizacion_soldadura"
+                                        class="form-control form-control-sm" @click.stop>
                                 </td>
 
                                 <!-- Estado (editable mediante select) -->

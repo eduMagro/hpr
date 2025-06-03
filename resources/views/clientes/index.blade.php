@@ -130,63 +130,63 @@
                                     <span x-text="cliente.empresa"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.empresa"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="cliente.codigo"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.codigo"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="cliente.contacto1_telefono"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.contacto1_telefono"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="cliente.contacto1_email"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.contacto1_email"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="cliente.direccion"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.direccion"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="cliente.ciudad"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.ciudad"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="cliente.provincia"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.provincia"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="cliente.pais"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.pais"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="cliente.cif_nif"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="cliente.cif_nif"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
@@ -194,7 +194,8 @@
                                         {{ $cliente->activo ? 'Activo' : 'Inactivo' }}
                                     </span>
                                 </template>
-                                <select x-show="editando" x-model="cliente.activo" class="form-input w-full">
+                                <select x-show="editando" x-model="cliente.activo"
+                                    class="form-control form-control-sm">
                                     <option value="1">Sí</option>
                                     <option value="0">No</option>
                                 </select>

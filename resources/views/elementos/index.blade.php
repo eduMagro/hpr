@@ -250,12 +250,14 @@
                                 <template x-if="!editando">
                                     <span x-text="elemento.id"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="elemento.id" class="form-input w-full">
+                                <input x-show="editando" type="text" x-model="elemento.id"
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- CODIGO -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <input type="text" x-model="elemento.codigo" class="form-input w-full">
+                                    <input type="text" x-model="elemento.codigo"
+                                        class="form-control form-control-sm">
                                 </template>
                             </td>
                             <!-- PLANILLA -->
@@ -267,7 +269,7 @@
                                     </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.planilla.codigo_limpio"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- ETIQUETA -->
@@ -280,7 +282,7 @@
 
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.etiquetaRelacion.id"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- SUBETIQUETA -->
@@ -293,7 +295,7 @@
 
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.subetiquetas"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- PAQUETE -->
                             <td class="px-1 py-3 text-center border">
@@ -304,7 +306,7 @@
                                     </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.paquete_id"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- MAQUINA 1 -->
                             <td class="px-1 py-3 text-center border">
@@ -313,7 +315,8 @@
                                     <span x-text="elemento.maquina.nombre || 'N/A'"></span>
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
-                                <select x-show="editando" x-model="elemento.maquina_id" class="form-input w-full">
+                                <select x-show="editando" x-model="elemento.maquina_id"
+                                    class="form-control form-control-sm">
                                     <option value="">Seleccionar máquina</option>
                                     @foreach ($maquinas as $maquina)
                                         <option value="{{ $maquina->id }}">{{ $maquina->codigo }}</option>
@@ -328,7 +331,7 @@
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.maquina_id_2"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- MAQUINA 3 -->
@@ -339,7 +342,7 @@
                                 </template>
                                 <!-- En modo edición, se edita el id de la máquina -->
                                 <input x-show="editando" type="text" x-model="elemento.maquina_id_3"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- PRODUCTO 1 -->
@@ -351,7 +354,7 @@
                                     </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.producto_id"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- PRODUCTO 2 -->
                             <td class="px-1 py-3 text-center border">
@@ -362,7 +365,7 @@
                                     </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.producto_id_2"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- PRODUCTO 3 -->
                             <td class="px-1 py-3 text-center border">
@@ -373,7 +376,7 @@
                                     </a>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.producto_id_3"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- FIGURA -->
                             <td class="px-1 py-3 text-center border">
@@ -381,7 +384,7 @@
                                     <span x-text="elemento.figura"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.figura"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- PESO_KG -->
                             <td class="px-1 py-3 text-center border">
@@ -391,7 +394,7 @@
                                 </template>
                                 <!-- Edita el valor original -->
                                 <input x-show="editando" type="number" x-model="elemento.peso"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
 
                             </td>
                             <!-- DIAMETRO_MM -->
@@ -400,7 +403,7 @@
                                     <span x-text="elemento.diametro_mm"></span>
                                 </template>
                                 <input x-show="editando" type="number" x-model="elemento.diametro"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- LONGITUD_M -->
                             <td class="px-1 py-3 text-center border">
@@ -408,7 +411,7 @@
                                     <span x-text="elemento.longitud_m"></span>
                                 </template>
                                 <input x-show="editando" type="number" x-model="elemento.longitud"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
                             <!-- ESTADO -->
                             <td class="px-1 py-3 text-center border">
