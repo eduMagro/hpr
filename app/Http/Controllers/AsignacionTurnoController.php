@@ -186,7 +186,8 @@ class AsignacionTurnoController extends Controller
 
     private function validarHoraEntrada($turno, $horaActual)
     {
-        $hora = $horaActual->format('H:i');
+        // Convertir string a objeto Carbon
+        $hora = Carbon::createFromFormat('H:i:s', $horaActual)->format('H:i');
 
         return match ($turno) {
             'noche' => $hora >= '21:45' && $hora <= '22:30',
@@ -198,7 +199,7 @@ class AsignacionTurnoController extends Controller
 
     private function validarHoraSalida($turno, $horaActual)
     {
-        $hora = $horaActual->format('H:i');
+        $hora = Carbon::createFromFormat('H:i:s', $horaActual)->format('H:i');
 
         return match ($turno) {
             'noche' => $hora >= '05:45' && $hora <= '06:30',
