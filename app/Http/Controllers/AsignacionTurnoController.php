@@ -122,8 +122,14 @@ class AsignacionTurnoController extends Controller
                 } elseif ($llegaTemprano && $seVaAntes) {
                     $diasSeVaAntes++;
                 }
-            } elseif ($esperadaEntrada && !$realEntrada) {
-                $diasSinFichaje++;
+            } elseif ($esperadaEntrada) {
+                // Tiene turno
+                $hayEntrada = !empty($realEntrada);
+                $haySalida = !empty($realSalida);
+
+                if (!$hayEntrada || ($hayEntrada && !$haySalida)) {
+                    $diasSinFichaje++;
+                }
             }
         }
 
