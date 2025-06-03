@@ -536,12 +536,18 @@ class ProfileController extends Controller
             $eventos = [];
 
             if ($asignacion->entrada && strlen($asignacion->entrada) >= 5) {
-                $startEntrada = Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")->toIso8601String();
+                $startEntrada = Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")
+                    ->setTimezone('Europe/Madrid') // Forzar zona horaria correcta
+                    ->toIso8601String();
 
                 $eventos[] = [
-                    'title' => '',
+                    'title' => '', // Sin texto
                     'start' => $startEntrada,
-                    'color' => '#28a745',
+                    'end' => Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")
+                        ->addMinutes(1)
+                        ->setTimezone('Europe/Madrid')
+                        ->toIso8601String(),
+                    'color' => '#28a745', // Verde
                     'textColor' => '#ffffff',
                     'allDay' => false,
                     'display' => 'auto'
@@ -549,12 +555,18 @@ class ProfileController extends Controller
             }
 
             if ($asignacion->salida && strlen($asignacion->salida) >= 5) {
-                $startSalida = Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")->toIso8601String();
+                $startSalida = Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")
+                    ->setTimezone('Europe/Madrid')
+                    ->toIso8601String();
 
                 $eventos[] = [
                     'title' => '',
                     'start' => $startSalida,
-                    'color' => '#dc3545',
+                    'end' => Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")
+                        ->addMinutes(1)
+                        ->setTimezone('Europe/Madrid')
+                        ->toIso8601String(),
+                    'color' => '#dc3545', // Rojo
                     'textColor' => '#ffffff',
                     'allDay' => false,
                     'display' => 'auto'
