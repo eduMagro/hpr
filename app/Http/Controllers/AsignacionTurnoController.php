@@ -178,6 +178,7 @@ class AsignacionTurnoController extends Controller
                 'warning' => $warning
             ]);
         } catch (\Exception $e) {
+            Log::error('Error en fichaje', ['exception' => $e]);
             return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
         }
     }
