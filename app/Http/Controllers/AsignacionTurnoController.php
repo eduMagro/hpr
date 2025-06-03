@@ -57,34 +57,78 @@ class AsignacionTurnoController extends Controller
             'diasSinFichaje'
         ));
     }
-
     public function fichar(Request $request)
     {
-        Log::info('📩 Datos recibidos en store()', $request->all());
+        // 🪵 Log inicial para depuración: muestra todos los datos que llegan en la petición
+        Log::info('📩 Datos recibidos en fichar()', $request->all());
 
         try {
+            // ✅ Validación de los datos requeridos
             $request->validate([
                 'user_id' => 'required|exists:users,id',
                 'tipo' => 'required|in:entrada,salida',
                 'latitud' => 'required|numeric',
                 'longitud' => 'required|numeric',
                 'obra_id' => 'required|exists:obras,id',
-            ], [
-                'latitud.required' => 'La latitud es requerida.',
-                'latitud.numeric' => 'La latitud debe ser un número',
-                'longitud.required' => 'La longitud es requerida.',
-                'longitud.numeric' => 'La longitud debe ser un número.',
             ]);
 
+            // 🔐 Verifica que el usuario exista y sea operario
             $user = User::findOrFail($request->user_id);
-
             if ($user->rol !== 'operario') {
                 return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
             }
 
-            $fechaHoy = now()->toDateString();
-            $horaActual = now();
+            $horaActual = now(); // 🕒 Hora actual del sistema
 
+            // 🧠 Lógica para encontrar el turno asignado correctamente, incluso para turno de noche
+
+            $asignacionTurno = $user->asignacionesTurnos()
+                ->whereIn('fecha', [
+                    $horaActual->toDateString(),
+                    $horaActual->copy()->subDay()->toDateString()
+                ])
+                ->with('turno') // Incluye información del turno
+                ->get()
+                ->first(function ($asignacion) use ($horaActual, $request) {
+
+                    $turno = strtolower($asignacion->turno->nombre ?? '');
+
+                    // 🌓 CASO ESPECIAL: turno de noche (de 22:00 a 06:00)
+                    // CASO ESPECIAL: turno de noche
+                    if ($turno === 'noche') {
+                        if ($request->tipo === 'entrada') {
+                            // Si es entrada y es a partir de las 21:00, pertenece al día siguiente
+                            if ($horaActual->hour >= 21) {
+                                return $asignacion->fecha === $horaActual->copy()->addDay()->toDateString();
+                            }
+                            // Si es antes de las 21:00, pertenece al día actual
+                            return $asignacion->fecha === $horaActual->toDateString();
+                        }
+
+                        if ($request->tipo === 'salida') {
+                            // Si es salida después de las 00:00 (hasta las 06:59), pertenece al mismo día
+                            if ($horaActual->hour < 7) {
+                                return $asignacion->fecha === $horaActual->toDateString();
+                            }
+                            // Si es salida después de las 07:00 (fuera de rango del turno noche)
+                            return false;
+                        }
+                    }
+
+                    // 🕘 Otros turnos: normal, usa la fecha del día actual
+                    return $asignacion->fecha === $horaActual->toDateString();
+                });
+
+            // ❌ Si no se encuentra asignación, se impide el fichaje
+            if (!$asignacionTurno) {
+                return response()->json(['error' => 'No tienes un turno asignado para este día laboral.'], 403);
+            }
+
+            // 🧾 Nombre del turno y fecha lógica asignada
+            $turnoNombre = strtolower($asignacionTurno->turno->nombre);
+            $fechaLogica = $asignacionTurno->fecha;
+
+            // 📍 Verifica que el fichaje se está haciendo dentro del radio permitido de la obra
             $obra = Obra::findOrFail($request->obra_id);
             $distancia = $this->calcularDistancia(
                 $request->latitud,
@@ -92,53 +136,60 @@ class AsignacionTurnoController extends Controller
                 $obra->latitud,
                 $obra->longitud
             );
+
             Log::info('Distancia hasta la nave', ['distancia' => $distancia]);
 
             if ($distancia > $obra->distancia) {
                 return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
             }
 
-            // Buscar asignación de turno para hoy
-            $asignacionTurno = $user->asignacionesTurnos()->where('fecha', $fechaHoy)->first();
-
-            if (!$asignacionTurno) {
-                return response()->json(['error' => 'No tienes un turno asignado para hoy.'], 403);
-            }
-
-            $turnoNombre = strtolower($asignacionTurno->turno->nombre);
+            // ⚠️ Variable opcional para avisos fuera de horario
             $warning = null;
 
+            // 📥 Fichaje de ENTRADA
             if ($request->tipo === 'entrada') {
+                // Si ya se registró entrada previamente, se deniega
                 if ($asignacionTurno->entrada) {
-                    return response()->json(['error' => 'Ya has registrado una entrada hoy.'], 403);
+                    return response()->json(['error' => 'Ya has registrado una entrada.'], 403);
                 }
 
+                // Verifica si la hora de entrada es válida para el turno asignado
                 if (!$this->validarHoraEntrada($turnoNombre, $horaActual)) {
-                    $warning = 'Has fichado entrada fuera de tu horario de turno.';
+                    $warning = 'Has fichado entrada fuera de tu horario.';
                 }
 
+                // Registra la hora de entrada
                 $asignacionTurno->update(['entrada' => $horaActual]);
-            } elseif ($request->tipo === 'salida') {
+            }
+
+            // 📤 Fichaje de SALIDA
+            elseif ($request->tipo === 'salida') {
+                // No se puede fichar salida sin haber registrado una entrada antes
                 if (!$asignacionTurno->entrada) {
-                    return response()->json(['error' => 'No puedes registrar una salida sin haber registrado entrada.'], 403);
+                    return response()->json(['error' => 'No puedes registrar una salida sin haber fichado entrada.'], 403);
                 }
 
+                // Si ya existe una salida, se bloquea
                 if ($asignacionTurno->salida) {
-                    return response()->json(['error' => 'Ya has registrado una salida hoy.'], 403);
+                    return response()->json(['error' => 'Ya has registrado una salida.'], 403);
                 }
 
+                // Verifica si la hora de salida es válida para el turno asignado
                 if (!$this->validarHoraSalida($turnoNombre, $horaActual)) {
-                    $warning = 'Has fichado salida fuera de tu horario de turno.';
+                    $warning = 'Has fichado salida fuera de tu horario.';
                 }
 
+                // Registra la hora de salida
                 $asignacionTurno->update(['salida' => $horaActual]);
             }
 
+            // ✅ Todo correcto: devuelve éxito (y posible aviso si fuera de horario)
             return response()->json([
                 'success' => 'Fichaje registrado correctamente.',
                 'warning' => $warning
             ]);
         } catch (\Exception $e) {
+            // ❌ Error inesperado: log y respuesta con error 500
             return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
         }
     }
@@ -148,9 +199,9 @@ class AsignacionTurnoController extends Controller
         $hora = $horaActual->format('H:i');
 
         return match ($turno) {
+            'noche' => $hora >= '21:45' && $hora <= '22:30',
             'mañana' => $hora >= '05:45' && $hora <= '06:30',
             'tarde' => $hora >= '13:45' && $hora <= '14:30',
-            'noche' => $hora >= '21:45' && $hora <= '22:30',
             default => false,
         };
     }
@@ -160,9 +211,9 @@ class AsignacionTurnoController extends Controller
         $hora = $horaActual->format('H:i');
 
         return match ($turno) {
+            'noche' => $hora >= '05:45' && $hora <= '06:30',
             'mañana' => $hora >= '13:45' && $hora <= '14:30',
             'tarde' => $hora >= '21:45' && $hora <= '22:30',
-            'noche' => $hora >= '05:45' && $hora <= '06:30',
             default => false,
         };
     }
