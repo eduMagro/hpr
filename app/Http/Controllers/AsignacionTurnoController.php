@@ -186,8 +186,12 @@ class AsignacionTurnoController extends Controller
 
     private function validarHoraEntrada($turno, $horaActual)
     {
-        // Convertir string a objeto Carbon
-        $hora = Carbon::createFromFormat('H:i:s', $horaActual)->format('H:i');
+        try {
+            $hora = Carbon::createFromFormat('H:i:s', $horaActual)->format('H:i');
+        } catch (\Exception $e) {
+            Log::error("Formato inválido en horaActual (entrada): $horaActual");
+            return false;
+        }
 
         return match ($turno) {
             'noche' => $hora >= '21:45' && $hora <= '22:30',
@@ -199,7 +203,12 @@ class AsignacionTurnoController extends Controller
 
     private function validarHoraSalida($turno, $horaActual)
     {
-        $hora = Carbon::createFromFormat('H:i:s', $horaActual)->format('H:i');
+        try {
+            $hora = Carbon::createFromFormat('H:i:s', $horaActual)->format('H:i');
+        } catch (\Exception $e) {
+            Log::error("Formato inválido en horaActual (salida): $horaActual");
+            return false;
+        }
 
         return match ($turno) {
             'noche' => $hora >= '05:45' && $hora <= '06:30',
@@ -208,6 +217,7 @@ class AsignacionTurnoController extends Controller
             default => false,
         };
     }
+
 
     /**
      * Calcula la distancia en metros entre dos puntos geográficos usando la fórmula de Haversine.
