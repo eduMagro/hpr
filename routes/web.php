@@ -76,7 +76,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('productos', ProductoController::class)->middleware('acceso.seccion:productos.index');
     Route::post('/productos/crear-desde-recepcion', [PedidoController::class, 'crearDesdeRecepcion'])->name('productos.crear.desde.recepcion');
     Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
-
+    Route::middleware(['acceso.seccion:productos.index'])->group(function () {
+        Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])->name('productos.consumir');
+        Route::post('/productos/generar-exportar', [ProductoController::class, 'generarYExportar'])->name('productos.generar.exportar');
+    });
     Route::resource('ubicaciones', UbicacionController::class)->middleware('acceso.seccion:ubicaciones.index');
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
 

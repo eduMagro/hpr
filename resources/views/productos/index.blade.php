@@ -8,9 +8,8 @@
     </x-slot>
 
     <div class="w-full px-6 py-4">
-
-        @if (Auth::user()->rol === 'oficina')
-
+        <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
+        <div class="hidden md:block">
             <button onclick="abrirModal()"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow">
                 Generar códigos
@@ -341,7 +340,10 @@
                     </tbody>
                 </table>
             </div>
-        @else
+        </div>
+
+        <!-- 📱 Tarjetas solo en pantallas pequeñas -->
+        <div class="block md:hidden">
             <!-- Buscador por código -->
             <div class="mb-4">
                 <form method="GET" action="{{ route('productos.index') }}"
@@ -366,9 +368,14 @@
                         <h3 class="font-bold text-lg text-gray-700">ID: {{ $producto->id }}</h3>
                         <h3 class="font-bold text-lg text-gray-700">Código: {{ $producto->codigo }}</h3>
                         <p><strong>Proveedor:</strong> {{ $producto->proveedor->nombre ?? '—' }}</p>
-                        <p><strong>Tipo:</strong> {{ ucfirst($producto->productoBase->tipo ?? '—') }}</p>
-                        <p><strong>Diámetro:</strong> {{ $producto->productoBase->diametro ?? '—' }}</p>
-                        <p><strong>Longitud:</strong> {{ $producto->productoBase->longitud ?? '—' }}</p>
+                        <p>
+                            <strong>Características:</strong>
+                            {{ strtoupper($producto->productoBase->tipo ?? '—') }}
+                            |
+                            Ø{{ $producto->productoBase->diametro ?? '—' }}
+                            {{ $producto->productoBase->longitud ? '| ' . $producto->productoBase->longitud . ' m' : '' }}
+                        </p>
+
                         <p><strong>Nº Colada:</strong> {{ $producto->n_colada }}</p>
                         <p><strong>Nº Paquete:</strong> {{ $producto->n_paquete }}</p>
                         <p><strong>Peso Inicial:</strong> {{ $producto->peso_inicial }} kg</p>
@@ -404,16 +411,37 @@
                             @endphp
 
                             @if ($esOficina || $esGruista)
-                                <div class="flex flex-col space-y-2 items-center">
+                                <div class="flex flex-wrap gap-2 mt-4 w-full">
                                     <a href="{{ route('productos.show', $producto->id) }}"
-                                        class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
+                                        class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                        Ver
+                                    </a>
                                     <a href="{{ route('productos.edit', $producto->id) }}"
-                                        class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
+                                        class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                        Editar
+                                    </a>
                                     <a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
-                                        class="text-green-500 hover:text-green-700 text-sm">Mover</a>
-                                    <x-boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                                        class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                        Mover
+                                    </a>
+                                    <a href="{{ route('productos.consumir', $producto->id) }}"
+                                        onclick="return confirm('¿Estás seguro de que quieres consumir este producto?')"
+                                        class="flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                        Consumir
+                                    </a>
+                                    <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
+                                        class="flex-1">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            onclick="return confirm('¿Estás seguro de que quieres eliminar este producto?')"
+                                            class="w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-2 rounded shadow">
+                                            Eliminar
+                                        </button>
+                                    </form>
                                 </div>
                             @endif
+
                         </td>
 
                     </div>
@@ -421,7 +449,7 @@
                     <div class="col-span-3 text-center py-4">No hay productos disponibles.</div>
                 @endforelse
             </div>
-        @endif
+        </div>
 
         <!-- Paginación -->
         <div class="mt-4 flex justify-center">

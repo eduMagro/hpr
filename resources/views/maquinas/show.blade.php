@@ -9,11 +9,11 @@
         </h2>
     </x-slot>
 
-    <div class="mx-auto px-4 py-6">
+    <div class="w-full sm:px-4 py-6">
+
+
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
-
-
             <!-- --------------------------------------------------------------- Información de la máquina --------------------------------------------------------------- -->
             {{-- SI NO ES GRUA --}}
             @if (strtolower($maquina->tipo) !== 'grua')
@@ -379,14 +379,12 @@
 
                 </div>
             @endif
-
             <!-- --------------------------------------------------------------- Planificación para la máquina agrupada por etiquetas --------------------------------------------------------------- -->
-
             {{-- SI ES GRUA --}}
             @if (stripos($maquina->tipo, 'grua') !== false)
                 <div class="w-full sm:col-span-8">
                     {{-- 🟡 PENDIENTES --}}
-                    <div class="mb-4 flex justify-end">
+                    <div class="mb-4 flex justify-center">
                         <button onclick="abrirModalMovimientoLibre()"
                             class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow">
                             ➕ Crear Movimiento Libre
@@ -395,7 +393,6 @@
 
                     <div class="bg-red-200 border border-red-400 rounded-lg p-4 mt-4">
                         <h3 class="text-base sm:text-lg font-bold text-red-800 mb-3">📦 Movimientos Pendientes</h3>
-
                         @if ($movimientosPendientes->isEmpty())
                             <p class="text-gray-600 text-sm">No hay movimientos pendientes actualmente.</p>
                         @else
