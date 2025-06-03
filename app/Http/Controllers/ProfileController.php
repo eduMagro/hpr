@@ -537,21 +537,23 @@ class ProfileController extends Controller
 
             if ($asignacion->entrada) {
                 $eventos[] = [
-                    'title' => 'Entrada',
+                    'title' => '', // Sin texto
                     'start' => Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")->toIso8601String(),
                     'color' => '#28a745', // Verde
                     'textColor' => '#ffffff',
-                    'allDay' => false
+                    'allDay' => false,
+                    'display' => 'auto' // o 'list-item' si usas vista de lista
                 ];
             }
 
             if ($asignacion->salida) {
                 $eventos[] = [
-                    'title' => 'Salida',
+                    'title' => '',
                     'start' => Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")->toIso8601String(),
                     'color' => '#dc3545', // Rojo
                     'textColor' => '#ffffff',
-                    'allDay' => false
+                    'allDay' => false,
+                    'display' => 'auto'
                 ];
             }
 
