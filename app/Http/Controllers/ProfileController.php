@@ -535,22 +535,26 @@ class ProfileController extends Controller
         return $user->asignacionesTurnos->flatMap(function ($asignacion) {
             $eventos = [];
 
-            if ($asignacion->entrada) {
+            if ($asignacion->entrada && strlen($asignacion->entrada) >= 5) {
+                $startEntrada = Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")->toIso8601String();
+
                 $eventos[] = [
-                    'title' => '', // Sin texto
-                    'start' => Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")->toIso8601String(),
-                    'color' => '#28a745', // Verde
+                    'title' => '',
+                    'start' => $startEntrada,
+                    'color' => '#28a745',
                     'textColor' => '#ffffff',
                     'allDay' => false,
-                    'display' => 'auto' // o 'list-item' si usas vista de lista
+                    'display' => 'auto'
                 ];
             }
 
-            if ($asignacion->salida) {
+            if ($asignacion->salida && strlen($asignacion->salida) >= 5) {
+                $startSalida = Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")->toIso8601String();
+
                 $eventos[] = [
                     'title' => '',
-                    'start' => Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")->toIso8601String(),
-                    'color' => '#dc3545', // Rojo
+                    'start' => $startSalida,
+                    'color' => '#dc3545',
                     'textColor' => '#ffffff',
                     'allDay' => false,
                     'display' => 'auto'
@@ -560,6 +564,7 @@ class ProfileController extends Controller
             return $eventos;
         });
     }
+
 
     /**
      * Función para oscurecer un color en hexadecimal.
