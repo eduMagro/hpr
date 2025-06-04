@@ -87,6 +87,7 @@ class AsignacionTurnoController extends Controller
             ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
             ->orderBy('fecha', 'desc')
             ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
+            ->orderBy('asignaciones_turnos.id') // 🟡 Añade este orden estable
             ->select('asignaciones_turnos.*');
 
         $query = $this->aplicarFiltros($query, $request);
