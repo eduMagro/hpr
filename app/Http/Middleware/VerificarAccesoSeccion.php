@@ -37,8 +37,8 @@ class VerificarAccesoSeccion
         if ($sinUsuariosAdmin || $sinSeccionesAsignadas) {
             return $next($request);
         }
-        Log::info('✅ Ruta actual: ' . $rutaActual);
-        Log::info('✅ Usuario: ' . $user->name . ' | Rol: ' . $user->rol);
+        // Log::info('✅ Ruta actual: ' . $rutaActual);
+        // Log::info('✅ Usuario: ' . $user->name . ' | Rol: ' . $user->rol);
 
         // Permitir solo ciertas rutas a operarios
         $permitidosOperario = ['maquinas.', 'productos.', 'users.', 'alertas.', 'entradas.', 'pedidos.'];

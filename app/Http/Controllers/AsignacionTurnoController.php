@@ -396,6 +396,8 @@ class AsignacionTurnoController extends Controller
     public function store(Request $request)
     {
         try {
+            Log::info('📥 Inicio del método store', $request->all());
+
             $request->validate([
                 'user_id'      => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
@@ -404,19 +406,21 @@ class AsignacionTurnoController extends Controller
             ]);
 
             if (in_array($request->tipo, ['eliminarEstado', 'eliminarTurnoEstado'])) {
+                Log::warning('⚠️ Tipo inválido para este método: ' . $request->tipo);
                 return response()->json(['error' => 'Esta operación debe gestionarse por otro método.'], 400);
             }
 
             $tipo = $request->tipo;
             $fechaInicio = Carbon::parse($request->fecha_inicio);
             $fechaFin = Carbon::parse($request->fecha_fin);
+            Log::info("🗓 Rango de fechas: $fechaInicio a $fechaFin");
 
             $turnosValidos = Turno::pluck('nombre')->toArray();
             $esTurno = in_array($tipo, $turnosValidos);
             $turno = $esTurno ? Turno::where('nombre', $tipo)->first() : null;
 
-            // 📅 Obtener array de fechas festivas
             $festivos = collect($this->getFestivos())->pluck('start')->toArray();
+            Log::info('🎉 Festivos cargados', $festivos);
 
             $usuarios = ($tipo === 'festivo')
                 ? User::all()
@@ -425,49 +429,61 @@ class AsignacionTurnoController extends Controller
             foreach ($usuarios as $user) {
                 $maquinaId = $user->maquina?->id;
                 $currentDate = $fechaInicio->copy();
+                Log::info("👤 Procesando usuario: {$user->name} (ID: {$user->id})");
 
-                while ($currentDate->lte($fechaFin)) {
+                // Vacaciones: calcular tope antes del bucle principal
+                $diasSolicitados = 0;
+                if ($tipo === 'vacaciones') {
+                    $inicioAño = Carbon::now()->startOfYear();
+                    $yaDisfrutados = $user->asignacionesTurnos()
+                        ->where('estado', 'vacaciones')
+                        ->where('fecha', '>=', $inicioAño)
+                        ->count();
 
-                    // ⛔ Evitar solo si es estado "vacaciones" y cae en fin de semana o festivo
-                    // 💡 Solo para vacaciones, controlar el tope
-                    if ($tipo === 'vacaciones') {
-                        $inicioAño = Carbon::now()->startOfYear();
-                        $yaDisfrutados = $user->asignacionesTurnos()
-                            ->where('estado', 'vacaciones')
-                            ->where('fecha', '>=', $inicioAño)
-                            ->count();
+                    $tempDate = $fechaInicio->copy();
+                    while ($tempDate->lte($fechaFin)) {
+                        $tempStr = $tempDate->toDateString();
 
-                        $diasSolicitados = 0;
+                        if (
+                            !in_array($tempDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) &&
+                            !in_array($tempStr, $festivos)
+                        ) {
+                            $asignacion = AsignacionTurno::where('user_id', $user->id)
+                                ->whereDate('fecha', $tempStr)
+                                ->first();
 
-                        $tempDate = $fechaInicio->copy();
-                        while ($tempDate->lte($fechaFin)) {
-                            $dateStr = $tempDate->toDateString();
-
-                            if (
-                                !in_array($tempDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) &&
-                                !in_array($dateStr, $festivos)
-                            ) {
-                                $asignacion = AsignacionTurno::where('user_id', $user->id)
-                                    ->whereDate('fecha', $dateStr)
-                                    ->first();
-
-                                if (!$asignacion || $asignacion->estado !== 'vacaciones') {
-                                    $diasSolicitados++;
-                                }
+                            if (!$asignacion || $asignacion->estado !== 'vacaciones') {
+                                $diasSolicitados++;
                             }
-
-                            $tempDate->addDay();
                         }
 
-                        $totalPermitido = $user->vacaciones_totales ?? 22;
-
-                        if (($yaDisfrutados + $diasSolicitados) > $totalPermitido) {
-                            return response()->json([
-                                'error' => "El usuario {$user->name} ya tiene {$yaDisfrutados} días asignados y está intentando asignar {$diasSolicitados} más. Su tope es de {$totalPermitido} días de vacaciones anuales."
-                            ], 400);
-                        }
+                        $tempDate->addDay();
                     }
 
+                    $totalPermitido = $user->vacaciones_totales ?? 22;
+
+                    Log::info("🧮 Vacaciones - ya disfrutadas: $yaDisfrutados, solicitadas: $diasSolicitados, tope: $totalPermitido");
+
+                    if (($yaDisfrutados + $diasSolicitados) > $totalPermitido) {
+                        $msg = "El usuario {$user->name} ya tiene {$yaDisfrutados} días y quiere añadir {$diasSolicitados}. Máximo: {$totalPermitido}.";
+                        Log::warning('❌ Límite de vacaciones superado: ' . $msg);
+                        return response()->json(['error' => $msg], 400);
+                    }
+                }
+
+                while ($currentDate->lte($fechaFin)) {
+                    $dateStr = $currentDate->toDateString();
+                    Log::info("📆 Procesando fecha: $dateStr");
+
+                    // 🚫 Saltar fines de semana y festivos si es vacaciones
+                    if (
+                        $tipo === 'vacaciones' &&
+                        (in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) || in_array($dateStr, $festivos))
+                    ) {
+                        Log::info("⏭ Día no hábil para vacaciones: $dateStr");
+                        $currentDate->addDay();
+                        continue;
+                    }
 
                     $asignacion = AsignacionTurno::where('user_id', $user->id)
                         ->whereDate('fecha', $dateStr)
@@ -478,11 +494,13 @@ class AsignacionTurnoController extends Controller
                     if ($asignacion) {
                         if (!$esTurno && $asignacion->estado !== $estadoNuevo) {
                             $asignacion->update(['estado' => $estadoNuevo]);
+                            Log::info("✏️ Actualizada asignación {$asignacion->id} con nuevo estado: $estadoNuevo");
                         } elseif ($esTurno && $asignacion->turno_id !== $turno->id) {
                             $asignacion->update([
                                 'turno_id'   => $turno->id,
                                 'maquina_id' => $maquinaId,
                             ]);
+                            Log::info("✏️ Actualizada asignación {$asignacion->id} con nuevo turno: {$turno->nombre}");
                         }
                     } else {
                         AsignacionTurno::create([
@@ -492,14 +510,17 @@ class AsignacionTurnoController extends Controller
                             'turno_id'   => $esTurno ? $turno->id : null,
                             'maquina_id' => $esTurno ? $maquinaId : null,
                         ]);
+                        Log::info("➕ Asignación creada para fecha $dateStr, estado $estadoNuevo");
                     }
 
                     $currentDate->addDay();
                 }
             }
 
+            Log::info('✅ Asignación completada con éxito');
             return response()->json(['success' => 'Asignación completada.']);
         } catch (\Exception $e) {
+            Log::error('❌ Error en store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Error al registrar el turno: ' . $e->getMessage()], 500);
         }
     }
