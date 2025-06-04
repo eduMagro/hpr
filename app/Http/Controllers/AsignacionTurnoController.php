@@ -83,52 +83,63 @@ class AsignacionTurnoController extends Controller
     {
         $query = AsignacionTurno::with(['user', 'turno', 'maquina'])
             ->whereDate('fecha', '<=', Carbon::yesterday())
-            ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'));
-
-        // Ordenar por fecha y turno lógico (por nombre o campo `orden`)
-        $query->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
+            ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
+            ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
             ->orderBy('fecha', 'desc')
             ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
             ->select('asignaciones_turnos.*');
+
+        // Aplicar filtros
         $query = $this->aplicarFiltros($query, $request);
 
+        // Copia del query antes de paginar
+        $queryFiltrado = clone $query;
+
+        // Paginación para la vista
         $asignaciones = $query->paginate(15)->withQueryString();
 
+        // Inicializar contadores
         $diasPuntuales = 0;
         $diasImpuntuales = 0;
         $diasSinFichaje = 0;
         $diasSeVaAntes = 0;
+        $diasTrabajados = 0;
 
-        foreach ($asignaciones as $asignacion) {
-            $esperadaEntrada = $asignacion->turno->hora_entrada ?? null;
-            $esperadaSalida = $asignacion->turno->hora_salida ?? null;
+        // Solo calcular si hay filtros activos
+        if ($request->filled(['empleado', 'fecha_inicio', 'fecha_fin', 'obra', 'turno', 'maquina', 'entrada', 'salida'])) {
+            $todasAsignaciones = $queryFiltrado->get();
+            $diasTrabajados = $todasAsignaciones->count();
 
-            $realEntrada = $asignacion->entrada;
-            $realSalida = $asignacion->salida;
+            foreach ($todasAsignaciones as $asignacion) {
+                $esperadaEntrada = $asignacion->turno->hora_entrada ?? null;
+                $esperadaSalida = $asignacion->turno->hora_salida ?? null;
 
-            if ($esperadaEntrada && $realEntrada) {
-                $llegaTemprano = Carbon::parse($realEntrada)->lte(Carbon::parse($esperadaEntrada));
-                $seVaTarde = $realSalida && $esperadaSalida
-                    ? Carbon::parse($realSalida)->gte(Carbon::parse($esperadaSalida))
-                    : false;
-                $seVaAntes = $realSalida && $esperadaSalida
-                    ? Carbon::parse($realSalida)->lt(Carbon::parse($esperadaSalida))
-                    : false;
+                $realEntrada = $asignacion->entrada;
+                $realSalida = $asignacion->salida;
 
-                if ($llegaTemprano && $seVaTarde) {
-                    $diasPuntuales++;
-                } elseif (!$llegaTemprano && $seVaTarde) {
-                    $diasImpuntuales++;
-                } elseif ($llegaTemprano && $seVaAntes) {
-                    $diasSeVaAntes++;
-                }
-            } elseif ($esperadaEntrada) {
-                // Tiene turno
-                $hayEntrada = !empty($realEntrada);
-                $haySalida = !empty($realSalida);
+                if ($esperadaEntrada && $realEntrada) {
+                    $llegaTemprano = Carbon::parse($realEntrada)->lte(Carbon::parse($esperadaEntrada));
+                    $seVaTarde = $realSalida && $esperadaSalida
+                        ? Carbon::parse($realSalida)->gte(Carbon::parse($esperadaSalida))
+                        : false;
+                    $seVaAntes = $realSalida && $esperadaSalida
+                        ? Carbon::parse($realSalida)->lt(Carbon::parse($esperadaSalida))
+                        : false;
 
-                if (!$hayEntrada || ($hayEntrada && !$haySalida)) {
-                    $diasSinFichaje++;
+                    if ($llegaTemprano && $seVaTarde) {
+                        $diasPuntuales++;
+                    } elseif (!$llegaTemprano && $seVaTarde) {
+                        $diasImpuntuales++;
+                    } elseif ($llegaTemprano && $seVaAntes) {
+                        $diasSeVaAntes++;
+                    }
+                } elseif ($esperadaEntrada) {
+                    $hayEntrada = !empty($realEntrada);
+                    $haySalida = !empty($realSalida);
+
+                    if (!$hayEntrada || ($hayEntrada && !$haySalida)) {
+                        $diasSinFichaje++;
+                    }
                 }
             }
         }
