@@ -8,6 +8,7 @@ use App\Models\Elemento;
 use App\Models\Maquina;
 use App\Models\Etiqueta;
 use App\Models\Obra;
+use App\Models\User;
 use App\Models\Cliente;
 use Illuminate\Support\Facades\DB;
 use App\Imports\PlanillaImport;
@@ -102,7 +103,7 @@ class PlanillaController extends Controller
         $filtros = [];
 
         if ($request->filled('users_id')) {
-            $nombreUsuario = User::find($request->users_id)?->name ?? 'Desconocido';
+            $nombreUsuario = User::find($request->users_id)?->nombre_completo ?? 'Desconocido';
             $filtros[] = 'Responsable: <strong>' . $nombreUsuario . '</strong>';
         }
 
@@ -309,7 +310,7 @@ class PlanillaController extends Controller
                 'fecha_finalizacion' => $this->getOrdenamiento('fecha_finalizacion', 'Fecha Finalización'),
                 'fecha_importacion' => $this->getOrdenamiento('fecha_importacion', 'Fecha Importación'),
                 'fecha_entrega' => $this->getOrdenamiento('fecha_entrega', 'Fecha Entrega'),
-                'name' => $this->getOrdenamiento('name', 'Usuario'),
+                'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Usuario'),
             ];
 
             // 6️⃣ Aplicar paginación y mantener filtros al cambiar de página

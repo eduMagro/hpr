@@ -13,6 +13,8 @@
                 <p class="font-bold text-base text-blue-800">
                     <span>
                         {{ $asignaciones->first()->user->name ?? '—' }}
+                        {{ $asignaciones->first()->user->primer_apellido ?? '—' }}
+                        {{ $asignaciones->first()->user->segundo_apellido ?? '—' }}
                     </span>
                 </p>
 
@@ -56,7 +58,8 @@
                 <div
                     class="border {{ $bg }} rounded-xl shadow p-4 flex flex-col items-center text-sm text-gray-800">
                     <div class="text-3xl mb-2">{{ $medalla ?? '🎖️' }}</div>
-                    <div class="font-bold text-base text-center">{{ $dato['usuario']->name }}</div>
+                    <div class="font-bold text-base text-center">{{ $dato['usuario']->name }}
+                        {{ $dato['usuario']->primer_apellido }} {{ $dato['usuario']->segundo_apellido }}</div>
                     <div class="mt-2 space-y-1 text-xs text-center">
                         <p><span class="text-blue-600 font-semibold">Minutos de adelanto:</span>
                             {{ $dato['minutos_adelanto'] }} min</p>
@@ -179,7 +182,10 @@
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
 
                             <td class="px-2 py-2 border">{{ $asignacion->user->id }}</td>
-                            <td class="px-2 py-2 border">{{ $asignacion->user->name ?? '—' }}</td>
+                            <td class="px-2 py-2 border">
+                                {{ $asignacion->user->name ?? '—' }} {{ $asignacion->user->primer_apellido ?? '—' }}
+                                {{ $asignacion->user->segundo_apellido ?? '—' }}
+                            </td>
                             <td class="px-2 py-2 border">
                                 {{ \Carbon\Carbon::parse($asignacion->fecha)->format('d/m/Y') }}
                             </td>

@@ -38,6 +38,12 @@ class ProfileController extends Controller
         if ($request->filled('name')) {
             $filtros[] = 'Nombre: <strong>' . $request->name . '</strong>';
         }
+        if ($request->filled('primer_apellido')) {
+            $filtros[] = 'Primer Apellido: <strong>' . $request->primer_apellido . '</strong>';
+        }
+        if ($request->filled('segundo_apellido')) {
+            $filtros[] = 'Segundo Apellido: <strong>' . $request->segundo_apellido . '</strong>';
+        }
 
         if ($request->filled('email')) {
             $filtros[] = 'Email: <strong>' . $request->email . '</strong>';
@@ -133,6 +139,15 @@ class ProfileController extends Controller
         // Filtrar por nombre
         if ($request->filled('name')) {
             $query->where('users.name', 'like', '%' . $request->input('name') . '%');
+        }
+        // Filtrar por primer apellido
+        if ($request->filled('primer_apellido')) {
+            $query->where('users.primer_apellido', 'like', '%' . $request->input('primer_apellido') . '%');
+        }
+
+        // Filtrar por segundo apellido
+        if ($request->filled('segundo_apellido')) {
+            $query->where('users.segundo_apellido', 'like', '%' . $request->input('segundo_apellido') . '%');
         }
 
         // Filtrar por email
@@ -647,6 +662,8 @@ class ProfileController extends Controller
             // Validar los datos con mensajes personalizados
             $request->validate([
                 'name' => 'required|string|max:50',
+                'primer_apellido' => 'nullable|string|max:100',
+                'segundo_apellido' => 'nullable|string|max:100',
                 'email' => 'required|email|max:255|unique:users,email,' . $id,
                 'movil_personal' => 'nullable|string|max:255',
                 'movil_empresa' => 'nullable|string|max:255',
@@ -666,6 +683,11 @@ class ProfileController extends Controller
                 'name.required' => 'El nombre es obligatorio.',
                 'name.string' => 'El nombre debe ser un texto válido.',
                 'name.max' => 'El nombre no puede superar los 50 caracteres.',
+
+                'primer_apellido.string' => 'El primer apellido debe ser texto.',
+                'primer_apellido.max' => 'El primer apellido no puede superar los 100 caracteres.',
+                'segundo_apellido.string' => 'El segundo apellido debe ser texto.',
+                'segundo_apellido.max' => 'El segundo apellido no puede superar los 100 caracteres.',
 
                 'email.required' => 'El correo electrónico es obligatorio.',
                 'email.email' => 'Debe ingresar un correo electrónico válido.',
@@ -691,6 +713,8 @@ class ProfileController extends Controller
             }
             $resultado = $usuario->update([
                 'name' => $request->name,
+                'primer_apellido' => $request->primer_apellido,
+                'segundo_apellido' => $request->segundo_apellido,
                 'email' => $request->email,
                 'movil_personal' => $request->movil_personal,
                 'movil_empresa' => $request->movil_empresa,
@@ -701,6 +725,7 @@ class ProfileController extends Controller
                 'maquina_id' => $request->maquina_id,
                 'turno' => $request->turno,
             ]);
+
 
             if (!$resultado) {
                 return response()->json(['error' => 'No se pudo actualizar el usuario.'], 500);

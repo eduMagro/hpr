@@ -44,7 +44,10 @@
                                 });
                             @endphp
                             <tr class="{{ $operario->estado == 'trabajando' ? 'bg-green-100' : '' }}">
-                                <td class="px-4 py-2 text-sm text-gray-900 font-medium">{{ $operario->name }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-900 font-medium">
+                                    {{ trim("{$operario->name} {$operario->primer_apellido} {$operario->segundo_apellido}") }}
+                                </td>
+
                                 <td class="px-4 py-2 text-sm text-gray-700">
                                     {{ $operario->categoria->nombre ?? $operario->categoria_id }}
                                 </td>

@@ -99,6 +99,8 @@
                     <tr class="text-center text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['id'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['name'] !!}</th>
+                        <th class="p-2 border">1er Apellido</th>
+                        <th class="p-2 border">2º Apellido</th>
                         <th class="p-2 border">{!! $ordenables['email'] !!}</th>
                         <th class="p-2 border">Móvil Personal</th>
                         <th class="p-2 border">Móvil Empresa</th>
@@ -119,6 +121,15 @@
                                 <input type="text" name="name" value="{{ request('name') }}"
                                     class="form-control form-control-sm" />
                             </th>
+                            <th class="p-1 border">
+                                <input type="text" name="primer_apellido" value="{{ request('primer_apellido') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="segundo_apellido" value="{{ request('segundo_apellido') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+
                             <th class="p-1 border">
                                 <input type="text" name="email" value="{{ request('email') }}"
                                     class="form-control form-control-sm" />
@@ -245,6 +256,24 @@
                                     class="form-control form-control-sm"
                                     @keydown.enter.stop="guardarCambios(usuario)">
                             </td>
+                            <td class="px-2 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="usuario.primer_apellido"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="usuario.primer_apellido"
+                                    class="form-control form-control-sm"
+                                    @keydown.enter.stop="guardarCambios(usuario)">
+                            </td>
+
+                            <td class="px-2 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="usuario.segundo_apellido"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="usuario.segundo_apellido"
+                                    class="form-control form-control-sm"
+                                    @keydown.enter.stop="guardarCambios(usuario)">
+                            </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.email"></span>

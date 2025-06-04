@@ -403,7 +403,7 @@
                                             <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
                                             <p><strong>Descripción:</strong> {{ $mov->descripcion }}</p>
                                             <p><strong>Solicitado por:</strong>
-                                                {{ optional($mov->solicitadoPor)->name ?? 'N/A' }}</p>
+                                                {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
                                             <p><strong>Fecha:</strong> {{ $mov->created_at->format('d/m/Y H:i') }}</p>
 
                                             @if (strtolower($mov->tipo) === 'bajada de paquete')
@@ -470,9 +470,9 @@
                                             <p><strong>Tipo:</strong> {{ ucfirst($mov->tipo) }}</p>
                                             <p><strong>Descripción:</strong> {{ $mov->descripcion }}</p>
                                             <p><strong>Solicitado por:</strong>
-                                                {{ optional($mov->solicitadoPor)->name ?? 'N/A' }}</p>
+                                                {{ optional($mov->solicitadoPor)->nombre_completo ?? 'N/A' }}</p>
                                             <p><strong>Ejecutado por:</strong>
-                                                {{ optional($mov->ejecutadoPor)->name ?? 'N/A' }}</p>
+                                                {{ optional($mov->ejecutadoPor)->nombre_completo ?? 'N/A' }}</p>
                                             <p><strong>Fecha completado:</strong>
                                                 {{ $mov->updated_at->format('d/m/Y H:i') }}</p>
                                         </div>

@@ -29,6 +29,8 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'primer_apellido',
+        'segundo_apellido',
         'email',
         'movil_personal',
         'movil_empresa',
@@ -52,6 +54,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+    protected $appends = ['nombre_completo'];
 
     /**
      * Get the attributes that should be cast.
@@ -69,6 +72,10 @@ class User extends Authenticatable
         return $this->belongsToMany(Alerta::class, 'alertas_users')
             ->withPivot('leida_en')
             ->withTimestamps();
+    }
+    public function getNombreCompletoAttribute()
+    {
+        return trim("{$this->name} {$this->primer_apellido} {$this->segundo_apellido}");
     }
 
     public function getApellidosNombreAttribute()

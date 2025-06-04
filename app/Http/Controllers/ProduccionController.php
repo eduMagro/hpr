@@ -126,7 +126,7 @@ class ProduccionController extends Controller
 
                         $eventos[] = [
                             'id' => 'turno-' . $asignacionTurno->id,
-                            'title' => $trabajador->name,
+                            'title' => $trabajador->nombre_completo,
                             'start' => $start,
                             'end' => $end,
                             'resourceId' => $resourceId,

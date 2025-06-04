@@ -1,23 +1,78 @@
 <x-app-layout>
     <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Lista de Planillas') }}
+    @php
+        $rutaActual = request()->route()->getName();
+    @endphp
 
-            <span class="mx-2">/</span>
-            <a href="{{ route('paquetes.index') }}" class="text-blue-600">
-                {{ __('Paquetes') }}
-            </a>
-            <span class="mx-2">/</span>
-            <a href="{{ route('etiquetas.index') }}" class="text-blue-600">
-                {{ __('Etiquetas') }}
-            </a>
-            <span class="mx-2">/</span>
-            <a href="{{ route('elementos.index') }}" class="text-blue-600">
-                {{ __('Elementos') }}
-            </a>
-        </h2>
-    </x-slot>
+    @if (auth()->user()->rol !== 'operario')
+        <div class="w-full" x-data="{ open: false }">
+            <!-- Menú móvil -->
+            <div class="sm:hidden relative" x-data="{ open: false }">
+                <button @click="open = !open"
+                    class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow transition">
+                    Opciones
+                </button>
+
+                <div x-show="open" x-transition @click.away="open = false"
+                    class="absolute z-30 mt-0 w-1/2 bg-white border border-gray-200 rounded-b-lg shadow-xl overflow-hidden divide-y divide-gray-200"
+                    x-cloak>
+
+                    <a href="{{ route('planillas.index') }}"
+                        class="block px-2 py-3 transition text-sm font-medium 
+                    {{ $rutaActual === 'planillas.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        📄 Planillas
+                    </a>
+
+                    <a href="{{ route('paquetes.index') }}"
+                        class="block px-2 py-3 transition text-sm font-medium 
+                    {{ $rutaActual === 'paquetes.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        📦 Paquetes
+                    </a>
+
+                    <a href="{{ route('etiquetas.index') }}"
+                        class="block px-2 py-3 transition text-sm font-medium 
+                    {{ $rutaActual === 'etiquetas.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        🏷️ Etiquetas
+                    </a>
+
+                    <a href="{{ route('elementos.index') }}"
+                        class="block px-2 py-3 transition text-sm font-medium 
+                    {{ $rutaActual === 'elementos.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        🔩 Elementos
+                    </a>
+                </div>
+            </div>
+
+            <!-- Menú escritorio -->
+            <div class="hidden sm:flex sm:mt-0 w-full">
+                <a href="{{ route('planillas.index') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none first:rounded-l-lg transition font-semibold
+                {{ $rutaActual === 'planillas.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    📄 Planillas
+                </a>
+
+                <a href="{{ route('paquetes.index') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
+                {{ $rutaActual === 'paquetes.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    📦 Paquetes
+                </a>
+
+                <a href="{{ route('etiquetas.index') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
+                {{ $rutaActual === 'etiquetas.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    🏷️ Etiquetas
+                </a>
+
+                <a href="{{ route('elementos.index') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
+                {{ $rutaActual === 'elementos.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    🔩 Elementos
+                </a>
+            </div>
+        </div>
+    @endif
+
+
 
     <div class="w-full px-6 py-4">
 
@@ -61,7 +116,7 @@
                         <th class="p-2 border">{!! $ordenables['fecha_finalizacion'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['fecha_importacion'] ?? '' !!}</th>
                         <th class="p-2 border">{!! $ordenables['fecha_entrega'] !!}</th>
-                        <th class="p-2 border">{!! $ordenables['name'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['nombre_completo'] !!}</th>
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
@@ -321,7 +376,7 @@
 
                             <!-- Usuario -->
                             <td class="p-2 text-center border">
-                                <span x-text="planilla.user?.name ?? 'Desconocido'"></span>
+                                <span x-text="planilla.user?.nombre_completo ?? 'Desconocido'"></span>
                             </td>
 
                             <!-- Acciones (solo se muestran las opciones de ver y eliminar) -->
