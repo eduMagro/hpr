@@ -576,4 +576,9 @@ class AsignacionTurnoController extends Controller
             return response()->json(['error' => 'Error al eliminar los turnos: ' . $e->getMessage()], 500);
         }
     }
+
+    public function show($id)
+    {
+        abort(404); // o simplemente return response('No disponible', 404);
+    }
 }
