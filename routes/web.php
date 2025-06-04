@@ -58,7 +58,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('proveedores', ProveedorController::class)->middleware('acceso.seccion:proveedores.index');
 
     // === ENTRADAS Y PEDIDOS ===
-    Route::resource('entradas', EntradaController::class)->middleware('acceso.seccion:entradas.index');
+    Route::resource('entradas', EntradaController::class)->middleware('acceso.seccion');
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
 
     Route::resource('pedidos_globales', PedidoGlobalController::class)->middleware('acceso.seccion:pedidos-globales.index');

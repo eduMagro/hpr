@@ -32,7 +32,7 @@ class VerificarAccesoSeccion
         $departamentoAdmin = Departamento::where('nombre', 'Administrador')->first();
         $sinUsuariosAdmin = !$departamentoAdmin || !$departamentoAdmin->usuarios()->exists();
 
-        $sinSeccionesAsignadas = \App\Models\Seccion::whereDoesntHave('departamentos')->count() === \App\Models\Seccion::count();
+        $sinSeccionesAsignadas = Seccion::whereDoesntHave('departamentos')->count() === Seccion::count();
 
         if ($sinUsuariosAdmin || $sinSeccionesAsignadas) {
             return $next($request);
