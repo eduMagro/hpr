@@ -1,23 +1,24 @@
 <x-app-layout>
     <x-slot name="title">Entradas - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Entradas de Material') }}
-            <span class="mx-2">/</span>
-            <a href="{{ route('pedidos.index') }}" class="text-blue-600">
-                {{ __('Pedidos de Compra') }}
-            </a>
-            <span class="mx-2">/</span>
-            <a href="{{ route('pedidos_globales.index') }}" class="text-blue-600">
-                {{ __('Pedidos Globales') }}
-            </a>
-            <span class="mx-2">/</span>
-            <a href="{{ route('proveedores.index') }}" class="text-blue-600">
-                {{ __('Proveedores') }}
-            </a>
-        </h2>
-    </x-slot>
-
+    @if (auth()->user()->rol !== 'operario')
+        <x-slot name="header">
+            <h2 class="text-lg font-semibold text-gray-800">
+                {{ __('Entradas de Material') }}
+                <span class="mx-2">/</span>
+                <a href="{{ route('pedidos.index') }}" class="text-blue-600">
+                    {{ __('Pedidos de Compra') }}
+                </a>
+                <span class="mx-2">/</span>
+                <a href="{{ route('pedidos_globales.index') }}" class="text-blue-600">
+                    {{ __('Pedidos Globales') }}
+                </a>
+                <span class="mx-2">/</span>
+                <a href="{{ route('proveedores.index') }}" class="text-blue-600">
+                    {{ __('Proveedores') }}
+                </a>
+            </h2>
+        </x-slot>
+    @endif
     <div class="w-full p-4 sm:p-4">
 
         <!-- Botón para crear una nueva entrada con estilo Bootstrap -->

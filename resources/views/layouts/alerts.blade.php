@@ -24,8 +24,6 @@
                 if (result.dismiss === Swal.DismissReason.cancel) {
                     notificarProgramador("Se han detectado errores en la validación de datos.");
                 }
-            }).then(() => {
-                window.location.reload(); // Recarga la página tras el mensaje
             });
         });
     </script>
@@ -74,8 +72,6 @@
                     text: "{{ $warning }}",
                     timer: 5000,
                     showConfirmButton: false
-                }).then(() => {
-                    window.location.reload(); // Recarga la página tras el mensaje
                 });
             @endforeach
         });

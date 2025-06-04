@@ -17,7 +17,7 @@ use Exception;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
-
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 
 class EntradaController extends Controller
@@ -50,7 +50,7 @@ class EntradaController extends Controller
     // Mostrar todas las entradas
     public function index(Request $request)
     {
-        // 🔐 Si el usuario es operario, redirigir a pedidos
+        // // 🔐 Si el usuario es operario, redirigir a pedidos
         if (auth()->user()->rol === 'operario') {
             return redirect()->route('pedidos.index');
         }
@@ -203,7 +203,10 @@ class EntradaController extends Controller
     // Mostrar el formulario de creación
     public function create()
     {
-        $ubicaciones = Ubicacion::all();
+        $ubicaciones = Ubicacion::all()->map(function ($ubicacion) {
+            $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
+            return $ubicacion;
+        });
         $usuarios = User::all();
         $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
         $proveedores = Proveedor::orderBy('nombre')->get();
@@ -216,31 +219,31 @@ class EntradaController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
-                'codigo'          => 'required|string|unique:productos,codigo|max:20',
-                'proveedor_id'    => 'required|exists:proveedores,id',
-                'albaran'         => 'required|string|min:1|max:30',
-                'pedido_id'       => 'nullable|exists:pedidos,id',
-                'producto_base_id' => 'required|exists:productos_base,id',
-                'n_colada'        => 'required|string|max:50',
-                'n_paquete'       => 'required|string|max:50',
-                'peso'            => 'required|numeric|min:1',
-                'ubicacion'       => 'nullable|integer|exists:ubicaciones,id',
-                'otros'           => 'nullable|string|max:255',
+                'codigo'            => 'required|string|unique:productos,codigo|max:20',
+                'codigo_2'          => 'nullable|string|unique:productos,codigo|max:20',
+                'proveedor_id'      => 'required|exists:proveedores,id',
+                'albaran'           => 'required|string|min:1|max:30',
+                'pedido_id'         => 'nullable|exists:pedidos,id',
+                'producto_base_id'  => 'required|exists:productos_base,id',
+                'n_colada'          => 'required|string|max:50',
+                'n_paquete'         => 'required|string|max:50',
+                'n_colada_2'        => 'nullable|string|max:50',
+                'n_paquete_2'       => 'nullable|string|max:50',
+                'peso'              => 'required|numeric|min:1',
+                'ubicacion'         => 'nullable|integer|exists:ubicaciones,id',
+                'otros'             => 'nullable|string|max:255',
             ], [
                 'codigo.required' => 'El código generado es obligatorio.',
                 'codigo.unique'   => 'Ese código ya existe.',
-                'proveedor_id.required' => 'El proveedor es obligatorio.',
-                'albaran.required'      => 'El número de albarán es obligatorio.',
-                'producto_base_id.required' => 'Debes seleccionar un producto base.',
-                'producto_base_id.exists'   => 'El producto base no es válido.',
-                'n_colada.required'    => 'El número de colada es obligatorio.',
-                'n_paquete.required'   => 'El número de paquete es obligatorio.',
-                'peso.required'        => 'El peso es obligatorio.',
+                'codigo_2.unique' => 'El segundo código ya existe.',
+                // otros mensajes...
             ]);
 
             $productoBase = ProductoBase::findOrFail($request->producto_base_id);
+            $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
+            $pesoPorPaquete = $esDoble ? round($request->peso / 2, 3) : $request->peso;
 
-            // Crear entrada
+            // Crear entrada principal
             $entrada = Entrada::create([
                 'albaran'     => $request->albaran,
                 'usuario_id'  => auth()->id(),
@@ -249,31 +252,54 @@ class EntradaController extends Controller
                 'otros'       => $request->otros ?? null,
             ]);
 
-            // Crear el producto
-            $producto = Producto::create([
+            // Primer producto
+            $producto1 = Producto::create([
                 'codigo'           => $request->codigo,
                 'producto_base_id' => $request->producto_base_id,
                 'proveedor_id'     => $request->proveedor_id,
                 'n_colada'         => $request->n_colada,
                 'n_paquete'        => $request->n_paquete,
-                'peso_inicial'     => $request->peso,
-                'peso_stock'       => $request->peso,
+                'peso_inicial'     => $pesoPorPaquete,
+                'peso_stock'       => $pesoPorPaquete,
                 'estado'           => 'almacenado',
                 'ubicacion_id'     => $request->ubicacion,
                 'maquina_id'       => null,
                 'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
             ]);
 
-            // Relación entrada-producto
             EntradaProducto::create([
                 'entrada_id'   => $entrada->id,
-                'producto_id'  => $producto->id,
+                'producto_id'  => $producto1->id,
                 'ubicacion_id' => $request->ubicacion,
                 'users_id'     => auth()->id(),
             ]);
 
+            // Segundo producto si aplica
+            if ($esDoble) {
+                $producto2 = Producto::create([
+                    'codigo'           => $request->codigo_2,
+                    'producto_base_id' => $request->producto_base_id,
+                    'proveedor_id'     => $request->proveedor_id,
+                    'n_colada'         => $request->n_colada_2,
+                    'n_paquete'        => $request->n_paquete_2,
+                    'peso_inicial'     => $pesoPorPaquete,
+                    'peso_stock'       => $pesoPorPaquete,
+                    'estado'           => 'almacenado',
+                    'ubicacion_id'     => $request->ubicacion,
+                    'maquina_id'       => null,
+                    'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
+                ]);
+
+                EntradaProducto::create([
+                    'entrada_id'   => $entrada->id,
+                    'producto_id'  => $producto2->id,
+                    'ubicacion_id' => $request->ubicacion,
+                    'users_id'     => auth()->id(),
+                ]);
+            }
+
             DB::commit();
-            return redirect()->route('entradas.index')->with('success', 'Entrada registrada correctamente.');
+            return redirect()->route('productos.index')->with('success', 'Entrada registrada correctamente.');
         } catch (ValidationException $e) {
             DB::rollBack();
             return redirect()->back()->withErrors($e->errors())->withInput();

@@ -25,6 +25,7 @@ class PageController extends Controller
             'productos.index',
             'users.index',
             'alertas.index',
+            'entradas.index',
         ];
 
         $secciones = Seccion::with('departamentos')
