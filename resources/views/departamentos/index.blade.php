@@ -195,14 +195,13 @@
                             class="border-t cursor-pointer hover:bg-blue-50 focus:outline-none" tabindex="0">
 
 
-
                             <!-- Nombre -->
                             <td class="px-4 py-2 border">
                                 <template x-if="!editando">
                                     <span x-text="departamento.nombre"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="departamento.nombre"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Descripción -->
@@ -211,7 +210,7 @@
                                     <span x-text="departamento.descripcion ?? '—'"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="departamento.descripcion"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Usuarios asignados -->
@@ -327,7 +326,7 @@
                                     <span x-text="seccion.nombre"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.nombre"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Ruta -->
@@ -336,7 +335,7 @@
                                     <span x-text="seccion.ruta"></span>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.ruta"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Icono -->
@@ -351,7 +350,7 @@
                                     </template>
                                 </template>
                                 <input x-show="editando" type="text" x-model="seccion.icono"
-                                    class="form-input w-full">
+                                    class="form-control form-control-sm">
                             </td>
 
                             <!-- Departamentos asociados -->
@@ -360,12 +359,13 @@
                             </td>
 
                             <!-- Mostrar en dashboard -->
+                            <!-- Mostrar en dashboard -->
                             <td class="px-4 py-2 border text-center">
                                 <input type="checkbox" :checked="seccion.mostrar_en_dashboard"
-                                    @change="seccion.mostrar_en_dashboard = !seccion.mostrar_en_dashboard; guardarSeccion(seccion)"
+                                    @change="toggleMostrarDashboard"
                                     class="form-checkbox h-5 w-5 text-blue-600 cursor-pointer">
-
                             </td>
+
 
 
                         </tr>

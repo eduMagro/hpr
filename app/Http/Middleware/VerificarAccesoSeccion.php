@@ -23,11 +23,6 @@ class VerificarAccesoSeccion
         }
         $rutaActual = $request->route()->getName(); // ej: departamentos.edit
 
-        // ⚠️ Permitir crear o guardar secciones libremente
-        if (in_array($rutaActual, ['secciones.create', 'secciones.store'])) {
-            return $next($request);
-        }
-
         $seccionBase = Str::before($rutaActual, '.'); // ej: departamentos
 
         $esOperario = $user->rol === 'operario';
