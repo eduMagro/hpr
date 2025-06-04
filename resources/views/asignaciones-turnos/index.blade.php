@@ -184,7 +184,8 @@
                                 {{ \Carbon\Carbon::parse($asignacion->fecha)->format('d/m/Y') }}
                             </td>
                             <td class="px-2 py-2 border">{{ $asignacion->obra_id->obra ?? '—' }}</td>
-                            <td class="px-2 py-2 border">{{ $asignacion->turno->nombre ?? '—' }}</td>
+                            <td class="px-2 py-2 border">
+                                {{ $asignacion->turno->nombre ?? '—' }}({{ $asignacion->estado }})</td>
                             <td class="px-2 py-2 border">{{ $asignacion->maquina->nombre ?? '—' }}</td>
 
                             @php
