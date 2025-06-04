@@ -62,21 +62,75 @@
                                 {{-- Usuarios asignados --}}
                                 <div>
                                     <h4 class="text-md font-semibold text-gray-700 mb-1">Usuarios asignados</h4>
+
                                     @if ($departamento->usuarios->isEmpty())
                                         <p class="text-gray-500">Sin usuarios asignados.</p>
                                     @else
-                                        <ul class="list-disc pl-5 text-gray-800 space-y-1">
+                                        <ul class="space-y-2">
                                             @foreach ($departamento->usuarios as $usuario)
-                                                <li>
-                                                    {{ $usuario->name }}
-                                                    <span class="text-sm text-gray-500">
-                                                        ({{ $usuario->email }}{{ $usuario->pivot->rol_departamental ? ' – ' . $usuario->pivot->rol_departamental : '' }})
-                                                    </span>
+                                                <li class="flex flex-wrap items-center justify-between gap-4">
+                                                    <div class="flex items-center gap-4 flex-wrap">
+                                                        <span class="font-semibold text-gray-800">
+                                                            {{ $usuario->name }}
+                                                        </span>
+                                                        <span class="text-sm text-gray-500">
+                                                            ({{ $usuario->email }}{{ $usuario->pivot->rol_departamental ? ' – ' . $usuario->pivot->rol_departamental : '' }})
+                                                        </span>
+
+                                                        {{-- ✅ Checkboxes juntos al nombre --}}
+                                                        <label class="flex items-center gap-1 text-sm text-gray-700">
+                                                            <input type="checkbox"
+                                                                @change="actualizarPermisos({{ $departamento->id }}, {{ $usuario->id }}, 'ver', $event.target.checked)"
+                                                                {{ $departamento->secciones->every(fn($s) => $s->permisosAcceso->where('user_id', $usuario->id)->first()?->puede_ver) ? 'checked' : '' }}>
+                                                            Ver
+                                                        </label>
+
+                                                        <label class="flex items-center gap-1 text-sm text-gray-700">
+                                                            <input type="checkbox"
+                                                                @change="actualizarPermisos({{ $departamento->id }}, {{ $usuario->id }}, 'crear', $event.target.checked)"
+                                                                {{ $departamento->secciones->every(fn($s) => $s->permisosAcceso->where('user_id', $usuario->id)->first()?->puede_crear) ? 'checked' : '' }}>
+                                                            Crear
+                                                        </label>
+
+                                                        <label class="flex items-center gap-1 text-sm text-gray-700">
+                                                            <input type="checkbox"
+                                                                @change="actualizarPermisos({{ $departamento->id }}, {{ $usuario->id }}, 'editar', $event.target.checked)"
+                                                                {{ $departamento->secciones->every(fn($s) => $s->permisosAcceso->where('user_id', $usuario->id)->first()?->puede_editar) ? 'checked' : '' }}>
+                                                            Editar
+                                                        </label>
+                                                    </div>
                                                 </li>
                                             @endforeach
                                         </ul>
                                     @endif
                                 </div>
+
+                                <script>
+                                    function actualizarPermisos(departamentoId, userId, tipo, valor) {
+                                        fetch(`/departamentos/${departamentoId}/permisos`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                                },
+                                                body: JSON.stringify({
+                                                    user_id: userId,
+                                                    accion: tipo,
+                                                    valor: valor
+                                                })
+                                            })
+                                            .then(response => response.json())
+                                            .then(data => {
+                                                if (!data.success) {
+                                                    console.error('❌ Error al guardar permisos:', data.message);
+                                                }
+                                            })
+                                            .catch(error => {
+                                                console.error('❌ Error de red:', error);
+                                            });
+                                    }
+                                </script>
+
 
                                 {{-- Secciones asignadas --}}
                                 <div>
@@ -510,6 +564,79 @@
                 </div>
             </div>
         </template>
+        <!-- ───────────── Modal Permisos ───────────── -->
+        <div x-show="openPermisosModal" x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+
+            <div @click.away="openPermisosModal = false"
+                class="bg-white w-full max-w-3xl rounded-lg shadow-lg p-6 space-y-6 overflow-y-auto max-h-[90vh]">
+
+                <h3 class="text-xl font-semibold text-gray-800 mb-2">
+                    Permisos por sección
+                </h3>
+
+                <!-- Selector de usuario (solo los asignados al departamento) -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Usuario</label>
+                    <select x-model="selectedUserId" class="w-full border rounded px-3 py-2">
+                        <option value="" disabled selected>— Selecciona usuario —</option>
+                        @foreach ($departamento->usuarios as $u)
+                            <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Tabla de secciones y permisos -->
+                <template x-if="selectedUserId">
+                    <form method="POST" :action="`{{ url('departamentos') }}/${departamentoId}/permisos`">
+                        @csrf
+                        <input type="hidden" name="user_id" :value="selectedUserId">
+
+                        <table class="w-full table-auto text-sm">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-700">
+                                    <th class="px-4 py-2 text-left">Sección</th>
+                                    <th class="px-4 py-2 text-center">Ver</th>
+                                    <th class="px-4 py-2 text-center">Crear</th>
+                                    <th class="px-4 py-2 text-center">Editar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($departamento->secciones as $s)
+                                    @php
+                                        $perm = $s->permisosAcceso->firstWhere('user_id', $u->id ?? null);
+                                    @endphp
+                                    <tr class="border-t">
+                                        <td class="px-4 py-2">{{ $s->nombre }}</td>
+
+                                        @foreach (['ver', 'crear', 'editar'] as $accion)
+                                            <td class="px-4 py-2 text-center">
+                                                <input type="checkbox"
+                                                    :checked="permisos[{{ $s->id }}]?.puede_ver"
+                                                    :name="`permisos[{{ $s->id }}][ver]`">
+
+                                            </td>
+                                        @endforeach
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+
+                        <div class="mt-6 text-right">
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                                Guardar
+                            </button>
+                        </div>
+                    </form>
+                </template>
+
+                <div class="text-right">
+                    <button @click="openPermisosModal = false" class="mt-4 text-gray-600 hover:underline">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
 
     </div>
 </x-app-layout>

@@ -26,4 +26,10 @@ class Seccion extends Model
     {
         return $this->belongsToMany(Departamento::class, 'departamento_seccion');
     }
+
+
+    public function permisosAcceso()
+    {
+        return $this->hasMany(PermisoAcceso::class);
+    }
 }

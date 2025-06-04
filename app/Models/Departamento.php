@@ -23,8 +23,14 @@ class Departamento extends Model
             ->withPivot('rol_departamental')
             ->withTimestamps();
     }
+
     public function secciones()
     {
-        return $this->belongsToMany(Seccion::class);
+        return $this->belongsToMany(Seccion::class, 'departamento_seccion');
+    }
+
+    public function permisosAcceso()
+    {
+        return $this->hasMany(PermisoAcceso::class);
     }
 }

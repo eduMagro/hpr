@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\Seccion;
 use App\Models\Departamento;
+use App\Models\PermisoAcceso;
 use Illuminate\Support\Facades\Log;
 
 class VerificarAccesoSeccion
@@ -16,7 +17,10 @@ class VerificarAccesoSeccion
     {
         $user = Auth::user();
         if (!$user) abort(403, 'No autenticado.');
-
+        // ✅ Acceso total para Eduardo
+        if ($user->email === 'eduardo.magro@pacoreyes.com') {
+            return $next($request);
+        }
         $rutaActual = $request->route()->getName(); // ej: departamentos.edit
 
         // ⚠️ Permitir crear o guardar secciones libremente
@@ -49,22 +53,33 @@ class VerificarAccesoSeccion
         }
 
 
-        // Validación para oficina basada en el nombre de la sección
         if ($esOficina) {
-            $departamentosUsuario = $user->departamentos->pluck('id')->toArray();
+            $rutaCompleta = $request->route()->getName(); // ej: usuarios.edit
+            $accion = Str::afterLast($rutaCompleta, '.'); // ej: 'edit', 'index', 'create', 'destroy'
 
-            $seccion = Seccion::whereRaw('LOWER(ruta) LIKE ?', [strtolower($seccionBase) . '.%'])
-                ->with('departamentos')
-                ->first();
+            $seccionBase = Str::before($rutaCompleta, '.');
 
+            $seccion = Seccion::whereRaw('LOWER(ruta) LIKE ?', [strtolower($seccionBase) . '.%'])->first();
+            if (!$seccion) abort(403, 'Sección no registrada.');
 
-            if (!$seccion) {
-                abort(403, 'Sección no registrada.');
+            $permisos = PermisoAcceso::where('user_id', $user->id)
+                ->where('seccion_id', $seccion->id)
+                ->get();
+
+            if ($permisos->isEmpty()) {
+                abort(403, 'No tienes permisos asignados para esta sección.');
             }
 
-            $idsDepSeccion = $seccion->departamentos->pluck('id')->toArray();
-            if (!array_intersect($departamentosUsuario, $idsDepSeccion)) {
-                abort(403, 'No tienes permisos para esta sección.');
+            $autorizado = false;
+
+            foreach ($permisos as $permiso) {
+                if ($accion === 'index' && $permiso->puede_ver) $autorizado = true;
+                if (in_array($accion, ['edit', 'update']) && $permiso->puede_editar) $autorizado = true;
+                if (in_array($accion, ['create', 'store']) && $permiso->puede_crear) $autorizado = true;
+            }
+
+            if (!$autorizado) {
+                abort(403, 'No tienes permisos suficientes para esta acción.');
             }
         }
 

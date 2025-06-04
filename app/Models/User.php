@@ -201,4 +201,9 @@ class User extends Authenticatable
             ->withPivot('rol_departamental')
             ->withTimestamps();
     }
+
+    public function permisosAcceso()
+    {
+        return $this->hasMany(PermisoAcceso::class);
+    }
 }

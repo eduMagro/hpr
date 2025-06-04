@@ -396,7 +396,7 @@ class AsignacionTurnoController extends Controller
     public function store(Request $request)
     {
         try {
-            Log::info('📥 Inicio del método store', $request->all());
+            // Log::info('📥 Inicio del método store', $request->all());
 
             $request->validate([
                 'user_id'      => 'required|exists:users,id',
@@ -413,14 +413,14 @@ class AsignacionTurnoController extends Controller
             $tipo = $request->tipo;
             $fechaInicio = Carbon::parse($request->fecha_inicio);
             $fechaFin = Carbon::parse($request->fecha_fin);
-            Log::info("🗓 Rango de fechas: $fechaInicio a $fechaFin");
+            // Log::info("🗓 Rango de fechas: $fechaInicio a $fechaFin");
 
             $turnosValidos = Turno::pluck('nombre')->toArray();
             $esTurno = in_array($tipo, $turnosValidos);
             $turno = $esTurno ? Turno::where('nombre', $tipo)->first() : null;
 
             $festivos = collect($this->getFestivos())->pluck('start')->toArray();
-            Log::info('🎉 Festivos cargados', $festivos);
+            // Log::info('🎉 Festivos cargados', $festivos);
 
             $usuarios = ($tipo === 'festivo')
                 ? User::all()
@@ -429,7 +429,7 @@ class AsignacionTurnoController extends Controller
             foreach ($usuarios as $user) {
                 $maquinaId = $user->maquina?->id;
                 $currentDate = $fechaInicio->copy();
-                Log::info("👤 Procesando usuario: {$user->name} (ID: {$user->id})");
+                // Log::info("👤 Procesando usuario: {$user->name} (ID: {$user->id})");
 
                 // Vacaciones: calcular tope antes del bucle principal
                 $diasSolicitados = 0;
@@ -462,25 +462,25 @@ class AsignacionTurnoController extends Controller
 
                     $totalPermitido = $user->vacaciones_totales ?? 22;
 
-                    Log::info("🧮 Vacaciones - ya disfrutadas: $yaDisfrutados, solicitadas: $diasSolicitados, tope: $totalPermitido");
+                    // Log::info("🧮 Vacaciones - ya disfrutadas: $yaDisfrutados, solicitadas: $diasSolicitados, tope: $totalPermitido");
 
                     if (($yaDisfrutados + $diasSolicitados) > $totalPermitido) {
                         $msg = "El usuario {$user->name} ya tiene {$yaDisfrutados} días y quiere añadir {$diasSolicitados}. Máximo: {$totalPermitido}.";
-                        Log::warning('❌ Límite de vacaciones superado: ' . $msg);
+                        // Log::warning('❌ Límite de vacaciones superado: ' . $msg);
                         return response()->json(['error' => $msg], 400);
                     }
                 }
 
                 while ($currentDate->lte($fechaFin)) {
                     $dateStr = $currentDate->toDateString();
-                    Log::info("📆 Procesando fecha: $dateStr");
+                    // Log::info("📆 Procesando fecha: $dateStr");
 
                     // 🚫 Saltar fines de semana y festivos si es vacaciones
                     if (
                         $tipo === 'vacaciones' &&
                         (in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) || in_array($dateStr, $festivos))
                     ) {
-                        Log::info("⏭ Día no hábil para vacaciones: $dateStr");
+                        // Log::info("⏭ Día no hábil para vacaciones: $dateStr");
                         $currentDate->addDay();
                         continue;
                     }
@@ -494,13 +494,13 @@ class AsignacionTurnoController extends Controller
                     if ($asignacion) {
                         if (!$esTurno && $asignacion->estado !== $estadoNuevo) {
                             $asignacion->update(['estado' => $estadoNuevo]);
-                            Log::info("✏️ Actualizada asignación {$asignacion->id} con nuevo estado: $estadoNuevo");
+                            // Log::info("✏️ Actualizada asignación {$asignacion->id} con nuevo estado: $estadoNuevo");
                         } elseif ($esTurno && $asignacion->turno_id !== $turno->id) {
                             $asignacion->update([
                                 'turno_id'   => $turno->id,
                                 'maquina_id' => $maquinaId,
                             ]);
-                            Log::info("✏️ Actualizada asignación {$asignacion->id} con nuevo turno: {$turno->nombre}");
+                            // Log::info("✏️ Actualizada asignación {$asignacion->id} con nuevo turno: {$turno->nombre}");
                         }
                     } else {
                         AsignacionTurno::create([
@@ -510,14 +510,14 @@ class AsignacionTurnoController extends Controller
                             'turno_id'   => $esTurno ? $turno->id : null,
                             'maquina_id' => $esTurno ? $maquinaId : null,
                         ]);
-                        Log::info("➕ Asignación creada para fecha $dateStr, estado $estadoNuevo");
+                        // Log::info("➕ Asignación creada para fecha $dateStr, estado $estadoNuevo");
                     }
 
                     $currentDate->addDay();
                 }
             }
 
-            Log::info('✅ Asignación completada con éxito');
+            // Log::info('✅ Asignación completada con éxito');
             return response()->json(['success' => 'Asignación completada.']);
         } catch (\Exception $e) {
             Log::error('❌ Error en store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);

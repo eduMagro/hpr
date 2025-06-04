@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Departamento;
 use App\Models\Seccion;
 use App\Models\User;
+use App\Models\PermisoAcceso;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -15,7 +16,6 @@ class DepartamentoController extends Controller
         $departamentos = Departamento::with('usuarios')->get();
         $usuariosOficina = User::where('rol', 'oficina')->orderBy('name')->get();
         $todasLasSecciones = Seccion::with('departamentos')->get();
-
 
         return view('departamentos.index', compact('departamentos', 'usuariosOficina', 'todasLasSecciones'));
     }
@@ -42,11 +42,54 @@ class DepartamentoController extends Controller
     // DepartamentoController.php
     public function asignarSecciones(Request $request, Departamento $departamento)
     {
-        $departamento->secciones()->sync($request->input('secciones', []));
+        // 🔸 IDs de secciones actuales
+        $seccionesAnteriores = $departamento->secciones()->pluck('secciones.id')->toArray();
+
+        // 🔸 IDs de secciones nuevas
+        $nuevasSecciones = $request->input('secciones', []);
+
+        // 🔸 Secciones que han sido eliminadas
+        $seccionesEliminadas = array_diff($seccionesAnteriores, $nuevasSecciones);
+
+        // 🔸 Eliminar los permisos relacionados a esas secciones
+        if (!empty($seccionesEliminadas)) {
+            \App\Models\PermisoAcceso::where('departamento_id', $departamento->id)
+                ->whereIn('seccion_id', $seccionesEliminadas)
+                ->delete();
+        }
+
+        // 🔸 Actualizar las nuevas relaciones
+        $departamento->secciones()->sync($nuevasSecciones);
+
         return back()->with('success', 'Secciones asignadas correctamente.');
     }
 
 
+    public function actualizarPermiso(Request $request, Departamento $departamento)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'accion'  => 'required|in:ver,crear,editar',
+            'valor'   => 'required|boolean',
+        ]);
+
+        // Obtener todas las secciones de ese departamento
+        $secciones = $departamento->secciones;
+
+        foreach ($secciones as $seccion) {
+            $permiso = PermisoAcceso::firstOrNew([
+                'user_id'        => $validated['user_id'],
+                'departamento_id' => $departamento->id,
+                'seccion_id'     => $seccion->id,
+            ]);
+
+            $campo = 'puede_' . $validated['accion'];
+            $permiso->$campo = $validated['valor'];
+            $permiso->save();
+        }
+
+        return response()->json(['success' => true]);
+    }
 
     public function create()
     {
@@ -101,9 +144,6 @@ class DepartamentoController extends Controller
             ], 500);
         }
     }
-
-
-
 
     public function destroy(Departamento $departamento)
     {
