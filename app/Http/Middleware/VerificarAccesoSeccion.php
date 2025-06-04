@@ -39,7 +39,7 @@ class VerificarAccesoSeccion
         }
 
         // Permitir solo ciertas rutas a operarios
-        $permitidosOperario = ['maquinas.', 'productos.', 'users.', 'alertas.'];
+        $permitidosOperario = ['maquinas.', 'productos.', 'users.', 'alertas.', 'entradas.'];
         if ($esOperario && !Str::startsWith($rutaActual, $permitidosOperario)) {
             abort(403, 'Operario sin acceso.');
         }
