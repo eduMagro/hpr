@@ -83,11 +83,12 @@ class AsignacionTurnoController extends Controller
         // 1. QUERY BASE (filtros normales con empleado)
         $query = AsignacionTurno::with(['user', 'turno', 'maquina'])
             ->whereDate('fecha', '<=', Carbon::today())
+            ->where('estado', 'activo') // ✅ Solo registros activos
             ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
             ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
             ->orderBy('fecha', 'desc')
             ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
-            ->orderBy('asignaciones_turnos.id') // 🟡 Añade este orden estable
+            ->orderBy('asignaciones_turnos.id') // 🟡 Orden estable
             ->select('asignaciones_turnos.*');
 
         $query = $this->aplicarFiltros($query, $request);
