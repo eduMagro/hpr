@@ -425,20 +425,21 @@
                                         Mover
                                     </a>
                                     <a href="{{ route('productos.consumir', $producto->id) }}"
-                                        onclick="return confirm('¿Estás seguro de que quieres consumir este producto?')"
-                                        class="flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
+                                        data-consumir="{{ route('productos.consumir', $producto->id) }}"
+                                        class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Consumir
                                     </a>
+
                                     <form action="{{ route('productos.destroy', $producto->id) }}" method="POST"
-                                        class="flex-1">
+                                        class="form-eliminar flex-1">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
-                                            onclick="return confirm('¿Estás seguro de que quieres eliminar este producto?')"
-                                            class="w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-2 rounded shadow">
+                                            class="btn-eliminar w-full bg-gray-500 hover:bg-gray-600 text-white text-sm font-semibold py-2 px-2 rounded shadow">
                                             Eliminar
                                         </button>
                                     </form>
+
                                 </div>
                             @endif
 
@@ -455,4 +456,53 @@
         <div class="mt-4 flex justify-center">
             {{ $registrosProductos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Confirmar consumir
+                document.querySelectorAll('.btn-consumir').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const url = this.dataset.consumir;
+
+                        Swal.fire({
+                            title: '¿Estás seguro?',
+                            text: "Esta materia prima se marcará como consumida.",
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#d33',
+                            cancelButtonColor: '#3085d6',
+                            confirmButtonText: 'Sí, consumir',
+                            cancelButtonText: 'Cancelar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = url;
+                            }
+                        });
+                    });
+                });
+
+                // Confirmar eliminación
+                document.querySelectorAll('.form-eliminar').forEach(form => {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+
+                        Swal.fire({
+                            title: '¿Estás seguro?',
+                            text: "Esta acción eliminará la materia prima de forma permanente.",
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#6c757d',
+                            cancelButtonColor: '#3085d6',
+                            confirmButtonText: 'Sí, eliminar',
+                            cancelButtonText: 'Cancelar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                form.submit();
+                            }
+                        });
+                    });
+                });
+            });
+        </script>
+
 </x-app-layout>
