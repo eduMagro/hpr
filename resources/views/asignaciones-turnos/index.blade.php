@@ -97,14 +97,11 @@
                                 <input type="text" name="maquina" value="{{ request('maquina') }}"
                                     class="form-control form-control-sm" />
                             </th>
-                            <th class="p-1 border">
-                                <input type="text" name="entrada" value="{{ request('entrada') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <input type="text" name="salida" value="{{ request('salida') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
+                            <input type="time" name="entrada" value="{{ request('entrada') }}"
+                                class="form-control form-control-sm" step="60" />
+                            <input type="time" name="salida" value="{{ request('salida') }}"
+                                class="form-control form-control-sm" step="60" />
+
                             <th class="p-1 border">
                                 <button type="submit" class="btn btn-sm btn-info px-2">
                                     <i class="fas fa-search"></i>
