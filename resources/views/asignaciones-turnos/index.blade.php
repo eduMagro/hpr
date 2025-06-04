@@ -45,9 +45,9 @@
                     };
 
                     $bg = match ($index) {
-                        0 => 'bg-yellow-300 border-yellow-600 text-yellow-900', // 🥇 Oro
+                        0 => 'bg-yellow-300 border-yellow-600 text-gray-800', // 🥇 Oro
                         1 => 'bg-gray-300 border-gray-500 text-gray-800', // 🥈 Plata
-                        2 => 'bg-amber-500 border-amber-700 text-white', // 🥉 Bronce
+                        2 => 'bg-amber-500 border-amber-700 text-gray-800', // 🥉 Bronce
                         default => 'bg-white border-gray-200 text-gray-800',
                     };
 
@@ -185,7 +185,7 @@
                             </td>
                             <td class="px-2 py-2 border">{{ $asignacion->obra_id->obra ?? '—' }}</td>
                             <td class="px-2 py-2 border">
-                                {{ $asignacion->turno->nombre ?? '—' }}({{ $asignacion->estado }})</td>
+                                {{ $asignacion->turno->nombre ?? '—' }}</td>
                             <td class="px-2 py-2 border">{{ $asignacion->maquina->nombre ?? '—' }}</td>
 
                             @php
