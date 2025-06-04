@@ -537,16 +537,12 @@ class ProfileController extends Controller
 
             if ($asignacion->entrada && strlen($asignacion->entrada) >= 5) {
                 $startEntrada = Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")
-                    ->setTimezone('Europe/Madrid') // Forzar zona horaria correcta
-                    ->toIso8601String();
+                    ->setTimezone('Europe/Madrid');
 
                 $eventos[] = [
-                    'title' => '', // Sin texto
-                    'start' => $startEntrada,
-                    'end' => Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")
-                        ->addMinutes(1)
-                        ->setTimezone('Europe/Madrid')
-                        ->toIso8601String(),
+                    'title' => '',
+                    'start' => $startEntrada->toIso8601String(),
+                    'end' => $startEntrada->copy()->addMinutes(1)->toIso8601String(),
                     'color' => '#28a745', // Verde
                     'textColor' => '#ffffff',
                     'allDay' => false,
@@ -556,16 +552,12 @@ class ProfileController extends Controller
 
             if ($asignacion->salida && strlen($asignacion->salida) >= 5) {
                 $startSalida = Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")
-                    ->setTimezone('Europe/Madrid')
-                    ->toIso8601String();
+                    ->setTimezone('Europe/Madrid');
 
                 $eventos[] = [
                     'title' => '',
-                    'start' => $startSalida,
-                    'end' => Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")
-                        ->addMinutes(1)
-                        ->setTimezone('Europe/Madrid')
-                        ->toIso8601String(),
+                    'start' => $startSalida->toIso8601String(),
+                    'end' => $startSalida->copy()->addMinutes(1)->toIso8601String(),
                     'color' => '#dc3545', // Rojo
                     'textColor' => '#ffffff',
                     'allDay' => false,
@@ -576,6 +568,7 @@ class ProfileController extends Controller
             return $eventos;
         });
     }
+
 
 
     /**
