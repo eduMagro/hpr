@@ -99,7 +99,7 @@ class VacacionesController extends Controller
 
         $eventosMaquinistas = $vacacionesMaquinistas->map(function ($asignacion) {
             return [
-                'title' => $asignacion->user->name,
+                'title' => $asignacion->user->nombre_completo,
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
                 'backgroundColor' => '#f87171',
                 'borderColor' => '#dc2626',
@@ -113,7 +113,7 @@ class VacacionesController extends Controller
 
         $eventosFerrallas = $vacacionesFerrallas->map(function ($asignacion) {
             return [
-                'title' => $asignacion->user->name,
+                'title' => $asignacion->user->nombre_completo,
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
                 'backgroundColor' => '#f87171',
                 'borderColor' => '#dc2626',
@@ -127,7 +127,7 @@ class VacacionesController extends Controller
 
         $eventosOficina = $vacacionesOficina->map(function ($asignacion) {
             return [
-                'title' => $asignacion->user->name,
+                'title' => $asignacion->user->nombre_completo,
                 'start' => Carbon::parse($asignacion->fecha)->toIso8601String(),
                 'backgroundColor' => '#f87171',
                 'borderColor' => '#dc2626',

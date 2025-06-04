@@ -3,7 +3,7 @@
     <x-slot name="header">
         <div>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __(auth()->user()->name) }}
+                {{ __(auth()->user()->nombre_completo) }}
             </h2>
         </div>
     </x-slot>
@@ -12,33 +12,37 @@
             display: none !important;
         }
     </style>
-
+    @php
+        $rutaActual = request()->route()->getName();
+    @endphp
     @if (Auth::check() && Auth::user()->rol == 'oficina')
         <div class="w-full" x-data="{ open: false }">
-            <!-- CONTENEDOR CON X-DATA -->
+            <!-- Menú móvil -->
             <div class="sm:hidden relative" x-data="{ open: false }">
-                <!-- Botón que abre el menú -->
                 <button @click="open = !open"
                     class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow transition">
                     Opciones
                 </button>
 
-                <!-- Menú desplegable estilizado -->
-                <div x-show="open" x-transition:enter="transition ease-out duration-200"
-                    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                    x-transition:leave="transition ease-in duration-150"
-                    x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
-                    @click.away="open = false"
+                <div x-show="open" x-transition @click.away="open = false"
                     class="absolute z-30 mt-0 w-1/2 bg-white border border-gray-200 rounded-b-lg shadow-xl overflow-hidden divide-y divide-gray-200"
                     x-cloak>
 
+                    <a href="{{ route('users.index') }}"
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('users.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        📋 Usuarios
+                    </a>
+
                     <a href="{{ route('register') }}"
-                        class="block px-2 py-3 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition text-sm font-medium">
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('register') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
                         📋 Registrar Usuario
                     </a>
 
                     <a href="{{ route('vacaciones.index') }}"
-                        class="relative block px-2 py-3 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition text-sm font-medium">
+                        class="relative block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('vacaciones.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
                         🌴 Vacaciones
                         @isset($totalSolicitudesPendientes)
                             @if ($totalSolicitudesPendientes > 0)
@@ -51,22 +55,30 @@
                     </a>
 
                     <a href="{{ route('asignaciones-turnos.index') }}"
-                        class="block px-2 py-3 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition text-sm font-medium">
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('asignaciones-turnos.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
                         ⏱️ Registros
                     </a>
                 </div>
             </div>
 
-
-            <!-- Acciones visibles en escritorio -->
+            <!-- Menú escritorio -->
             <div class="hidden sm:flex sm:mt-0 w-full">
+                <a href="{{ route('users.index') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none first:rounded-l-lg transition font-semibold
+                {{ request()->routeIs('users.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    📋 Usuarios
+                </a>
+
                 <a href="{{ route('register') }}"
-                    class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none first:rounded-l-lg last:rounded-r-lg transition">
+                    class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
+                {{ request()->routeIs('register') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
                     📋 Registrar Usuario
                 </a>
 
                 <a href="{{ route('vacaciones.index') }}"
-                    class="relative flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none transition">
+                    class="relative flex-1 text-center px-4 py-2 rounded-none transition font-semibold
+                {{ request()->routeIs('vacaciones.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
                     🌴 Vacaciones
                     @isset($totalSolicitudesPendientes)
                         @if ($totalSolicitudesPendientes > 0)
@@ -79,12 +91,14 @@
                 </a>
 
                 <a href="{{ route('asignaciones-turnos.index') }}"
-                    class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none last:rounded-r-lg transition">
+                    class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
+                {{ request()->routeIs('asignaciones-turnos.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
                     ⏱️ Registros Entrada y Salida
                 </a>
             </div>
-
         </div>
+
+
 
         @if (count($filtrosActivos))
             <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
@@ -98,9 +112,7 @@
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-center text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['id'] !!}</th>
-                        <th class="p-2 border">{!! $ordenables['name'] !!}</th>
-                        <th class="p-2 border">1er Apellido</th>
-                        <th class="p-2 border">2º Apellido</th>
+                        <th class="p-2 border">{!! $ordenables['nombre_completo'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['email'] !!}</th>
                         <th class="p-2 border">Móvil Personal</th>
                         <th class="p-2 border">Móvil Empresa</th>
@@ -118,15 +130,7 @@
                         <form method="GET" action="{{ route('users.index') }}">
                             <th class="p-1 border"></th> <!-- ID: sin filtro directo -->
                             <th class="p-1 border">
-                                <input type="text" name="name" value="{{ request('name') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <input type="text" name="primer_apellido" value="{{ request('primer_apellido') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <input type="text" name="segundo_apellido" value="{{ request('segundo_apellido') }}"
+                                <input type="text" name="nombre_completo" value="{{ request('nombre_completo') }}"
                                     class="form-control form-control-sm" />
                             </th>
 
@@ -250,26 +254,9 @@
 
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="usuario.name"></span>
+                                    <span x-text="usuario.nombre_completo"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="usuario.name"
-                                    class="form-control form-control-sm"
-                                    @keydown.enter.stop="guardarCambios(usuario)">
-                            </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="usuario.primer_apellido"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="usuario.primer_apellido"
-                                    class="form-control form-control-sm"
-                                    @keydown.enter.stop="guardarCambios(usuario)">
-                            </td>
-
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="usuario.segundo_apellido"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="usuario.segundo_apellido"
+                                <input x-show="editando" type="text" x-model="usuario.nombre_completo"
                                     class="form-control form-control-sm"
                                     @keydown.enter.stop="guardarCambios(usuario)">
                             </td>

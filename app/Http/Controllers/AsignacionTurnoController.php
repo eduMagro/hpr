@@ -21,14 +21,13 @@ class AsignacionTurnoController extends Controller
         if ($request->filled('id')) {
             $query->where('user_id', $request->input('id'));
         }
-
         if ($request->filled('empleado')) {
-            $query->whereHas(
-                'user',
-                fn($q) =>
-                $q->where('name', 'like', '%' . $request->empleado . '%')
-            );
+            $query->whereHas('user', function ($q) use ($request) {
+                $valor = $request->empleado;
+                $q->whereRaw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido) LIKE ?", ["%{$valor}%"]);
+            });
         }
+
 
         if ($request->filled('fecha_inicio') && $request->filled('fecha_fin')) {
             $query->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin]);

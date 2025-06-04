@@ -37,6 +37,9 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'primer_apellido' => ['required', 'string', 'max:255'],
+            'segundo_apellido' => ['nullable', 'string', 'max:255'],
+
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
             'movil_personal' => ['nullable', 'string', 'lowercase', 'max:255', 'unique:users,movil_personal'],
             'movil_empresa' => ['nullable', 'string', 'lowercase', 'max:255', 'unique:users,movil_empresa'],
@@ -44,20 +47,24 @@ class RegisteredUserController extends Controller
                 'required',
                 'string',
                 'max:9',
-                'regex:/^(?:\d{8}[A-Z]|[XYZ]\d{7}[A-Z])$/', // Soporta DNI y NIE
+                'regex:/^(?:\d{8}[A-Z]|[XYZ]\d{7}[A-Z])$/',
                 'unique:' . User::class
             ],
-            'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'], // Campo rol
-
+            'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'],
             'categoria' => ['string', 'max:255'],
-
-            'turno' => ['string', 'max:255', 'in:diurno,nocturno,mañana,flexible'], // Campo turno añadido
-
+            'turno' => ['string', 'max:255', 'in:diurno,nocturno,mañana,flexible'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
             'name.required' => 'El nombre es obligatorio.',
             'name.string' => 'El nombre debe ser un texto válido.',
             'name.max' => 'El nombre no puede superar los 255 caracteres.',
+
+            'primer_apellido.required' => 'El primer apellido es obligatorio.',
+            'primer_apellido.string' => 'El primer apellido debe ser un texto válido.',
+            'primer_apellido.max' => 'El primer apellido no puede superar los 255 caracteres.',
+
+            'segundo_apellido.string' => 'El segundo apellido debe ser un texto válido.',
+            'segundo_apellido.max' => 'El segundo apellido no puede superar los 255 caracteres.',
 
             'email.required' => 'El correo electrónico es obligatorio.',
             'email.string' => 'El correo electrónico debe ser un texto válido.',
@@ -98,9 +105,10 @@ class RegisteredUserController extends Controller
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
-
         $user = User::create([
             'name' => $request->name,
+            'primer_apellido' => $request->primer_apellido,
+            'segundo_apellido' => $request->segundo_apellido,
             'email' => $request->email,
             'movil_personal' => $request->movil_personal,
             'movil_empresa' => $request->movil_empresa,

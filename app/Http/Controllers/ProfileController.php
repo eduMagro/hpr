@@ -35,14 +35,8 @@ class ProfileController extends Controller
     {
         $filtros = [];
 
-        if ($request->filled('name')) {
-            $filtros[] = 'Nombre: <strong>' . $request->name . '</strong>';
-        }
-        if ($request->filled('primer_apellido')) {
-            $filtros[] = 'Primer Apellido: <strong>' . $request->primer_apellido . '</strong>';
-        }
-        if ($request->filled('segundo_apellido')) {
-            $filtros[] = 'Segundo Apellido: <strong>' . $request->segundo_apellido . '</strong>';
+        if ($request->filled('nombre_completo')) {
+            $filtros[] = 'Nombre: <strong>' . $request->nombre_completo . '</strong>';
         }
 
         if ($request->filled('email')) {
@@ -89,7 +83,7 @@ class ProfileController extends Controller
 
         if ($request->filled('sort')) {
             $sorts = [
-                'nombre' => 'Nombre',
+                'nombre_completo' => 'Nombre',
                 'email' => 'Email',
                 'dni' => 'DNI',
                 'empresa' => 'Empresa',
@@ -137,18 +131,13 @@ class ProfileController extends Controller
             $query->where('id', $request->id);
         }
         // Filtrar por nombre
-        if ($request->filled('name')) {
-            $query->where('users.name', 'like', '%' . $request->input('name') . '%');
-        }
-        // Filtrar por primer apellido
-        if ($request->filled('primer_apellido')) {
-            $query->where('users.primer_apellido', 'like', '%' . $request->input('primer_apellido') . '%');
+        if ($request->filled('nombre_completo')) {
+            $valor = $request->input('nombre_completo');
+            $query->where(function ($q) use ($valor) {
+                $q->whereRaw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido) LIKE ?", ["%{$valor}%"]);
+            });
         }
 
-        // Filtrar por segundo apellido
-        if ($request->filled('segundo_apellido')) {
-            $query->where('users.segundo_apellido', 'like', '%' . $request->input('segundo_apellido') . '%');
-        }
 
         // Filtrar por email
         if ($request->filled('email')) {
@@ -243,7 +232,7 @@ class ProfileController extends Controller
 
         $ordenables = [
             'id' => $this->getOrdenamiento('id', 'ID'),
-            'name' => $this->getOrdenamiento('name', 'Nombre'),
+            'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Nombre'),
             'email' => $this->getOrdenamiento('email', 'Email'),
             'dni' => $this->getOrdenamiento('dni', 'DNI'),
             'empresa' => $this->getOrdenamiento('empresa', 'Empresa'),
