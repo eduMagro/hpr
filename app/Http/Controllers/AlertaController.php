@@ -24,7 +24,7 @@ class AlertaController extends Controller
         $query->orderBy('id', 'desc');
 
         // Filtrar por destino (rol) o destinatario (categoría), excepto administradores
-        if ($usuario->name !== 'Eduardo Magro Lemus') {
+        if ($usuario->nombre_completo !== 'Eduardo Magro Lemus') {
             $query->where(function ($q) use ($usuario) {
                 $q->where('destino', $usuario->rol)
                     ->orWhere('destinatario', $usuario->categoria)
@@ -75,7 +75,6 @@ class AlertaController extends Controller
         $perPage = request('per_page', 10);
         return $query->paginate($perPage);
     }
-
 
     public function index()
     {
@@ -192,7 +191,14 @@ class AlertaController extends Controller
             $usuariosDestino = User::whereHas('departamentos', function ($q) use ($departamentos) {
                 $q->whereIn('nombre', $departamentos);
             })->get();
+            // ⚠️ Si no hay usuarios, devolver error
+            if ($usuariosDestino->isEmpty()) {
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'No hay usuarios en los departamentos seleccionados.'], 422);
+                }
 
+                return redirect()->back()->withErrors(['departamentos' => 'No hay usuarios en los departamentos seleccionados.'])->withInput();
+            }
             // Crear alerta
             $alerta = Alerta::create([
                 'mensaje'   => $request->mensaje,

@@ -141,6 +141,8 @@ Route::middleware('auth')->group(function () {
     // === EMPRESAS TRANSPORTE ===
     Route::resource('empresas-transporte', EmpresaTransporteController::class)
         ->middleware('acceso.seccion:empresas-transporte.index');
+    Route::resource('camiones', CamionController::class)
+        ->middleware('acceso.seccion:camiones.index');
 
     Route::post('/update-field', [EmpresaTransporteController::class, 'updateField'])
         ->middleware('acceso.seccion:empresas-transporte.index')

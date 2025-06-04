@@ -148,7 +148,7 @@
                                 @if ($movimiento->solicitadoPor)
                                     <a href="{{ route('users.index', ['id' => $movimiento->solicitadoPor->id]) }}"
                                         class="text-blue-500 hover:underline">
-                                        {{ $movimiento->solicitadoPor->name }}
+                                        {{ $movimiento->solicitadoPor->nombre_completo }}
                                     </a>
                                 @else
                                     <span class="text-gray-400 text-center align-middle">—</span>
@@ -159,7 +159,7 @@
                                 @if ($movimiento->ejecutadoPor)
                                     <a href="{{ route('users.index', ['id' => $movimiento->ejecutadoPor->id]) }}"
                                         class="text-green-600 hover:underline">
-                                        {{ $movimiento->ejecutadoPor->name }}
+                                        {{ $movimiento->ejecutadoPor->nombre_completo }}
                                     </a>
                                 @else
                                     <span class="text-gray-400 text-center align-middle">—</span>
