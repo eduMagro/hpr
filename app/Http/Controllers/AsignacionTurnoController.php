@@ -157,7 +157,8 @@ class AsignacionTurnoController extends Controller
         $asignacionesPorUsuario = $asignacionesRanking->groupBy('user_id');
 
         foreach ($asignacionesPorUsuario as $userId => $asignacionesUsuario) {
-            $minutosAcumulados = 0;
+            $minutosAdelanto = 0;
+            $minutosRetraso = 0;
             $diasAdelantado = 0;
 
             foreach ($asignacionesUsuario as $asignacion) {
@@ -169,21 +170,27 @@ class AsignacionTurnoController extends Controller
                     $real = Carbon::parse($asignacion->fecha . ' ' . $realEntrada);
 
                     if ($real->lt($esperada)) {
-                        $minutos = $real->diffInMinutes($esperada); // 💡 Invertido para obtener el número positivo correcto
-                        $minutosAcumulados += $minutos;
+                        $minutos = $real->diffInMinutes($esperada);
+                        $minutosAdelanto += $minutos;
                         $diasAdelantado++;
+                    } elseif ($real->gt($esperada)) {
+                        $minutos = $esperada->diffInMinutes($real);
+                        $minutosRetraso += $minutos;
                     }
                 }
             }
 
-            if ($minutosAcumulados > 0) {
+            $minutosNetos = $minutosAdelanto - $minutosRetraso;
+
+            if ($minutosNetos > 0) {
                 $estadisticasPuntualidad[] = [
                     'usuario' => $asignacionesUsuario->first()->user,
-                    'minutos_adelanto' => $minutosAcumulados,
+                    'minutos_adelanto' => $minutosNetos,
                     'dias_adelantado' => $diasAdelantado
                 ];
             }
         }
+
 
         $estadisticasPuntualidad = collect($estadisticasPuntualidad)
             ->sortByDesc('minutos_adelanto')
