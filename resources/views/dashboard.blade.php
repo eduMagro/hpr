@@ -10,7 +10,12 @@
                         @foreach ($items as $item)
                             @php
                                 // Filtrado por permisos del operario
-                                if ($esOperario && !in_array($item['route'], $permitidosOperario)) {
+                                if (
+                                    $esOperario &&
+                                    !collect($permitidosOperario)->contains(
+                                        fn($p) => Str::startsWith($item['route'], $p),
+                                    )
+                                ) {
                                     continue;
                                 }
 

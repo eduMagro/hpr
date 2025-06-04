@@ -16,7 +16,7 @@ if (!function_exists('usuarioTieneAcceso')) {
                 'users.index',
                 'alertas.index',
                 'productos.index',
-                'users.index',
+                'ayuda.index',
                 'maquinas.index',
             ];
             return in_array($ruta, $permitidosOperario);

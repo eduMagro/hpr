@@ -40,7 +40,7 @@ class VerificarAccesoSeccion
         // Log::info('✅ Usuario: ' . $user->name . ' | Rol: ' . $user->rol);
 
         // Permitir solo ciertas rutas a operarios
-        $permitidosOperario = ['maquinas.', 'productos.', 'users.', 'alertas.', 'entradas.', 'pedidos.', 'ayuda.'];
+        $permitidosOperario = ['maquinas.', 'productos.', 'users.', 'alertas.', 'entradas.', 'pedidos.'];
 
         if ($esOperario && !Str::startsWith($rutaActual, $permitidosOperario)) {
             Log::info('🚫 Ruta denegada para operario: ' . $rutaActual);
