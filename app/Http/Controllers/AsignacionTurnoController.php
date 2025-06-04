@@ -78,9 +78,9 @@ class AsignacionTurnoController extends Controller
         return $query;
     }
 
-
     public function index(Request $request)
     {
+        // 1. QUERY BASE (filtros normales con empleado)
         $query = AsignacionTurno::with(['user', 'turno', 'maquina'])
             ->whereDate('fecha', '<=', Carbon::yesterday())
             ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
@@ -89,35 +89,32 @@ class AsignacionTurnoController extends Controller
             ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
             ->select('asignaciones_turnos.*');
 
-        // Aplicar filtros
         $query = $this->aplicarFiltros($query, $request);
-
-        // Copia del query antes de paginar
-        $queryFiltrado = clone $query;
-
-        // Paginación para la vista
         $asignaciones = $query->paginate(15)->withQueryString();
 
-        // Inicializar contadores
+        // 2. Estadísticas del trabajador (cuando se filtra por nombre)
+        $asignacionesFiltradas = (clone $query)->get();
+
+        $diasAsignados = 0;
+        $diasFichados = 0;
         $diasPuntuales = 0;
         $diasImpuntuales = 0;
-        $diasSinFichaje = 0;
         $diasSeVaAntes = 0;
-        $diasTrabajados = 0;
+        $diasSinFichaje = 0;
 
-        // Solo calcular si hay filtros activos
-        if ($request->filled(['empleado', 'fecha_inicio', 'fecha_fin', 'obra', 'turno', 'maquina', 'entrada', 'salida'])) {
-            $todasAsignaciones = $queryFiltrado->get();
-            $diasTrabajados = $todasAsignaciones->count();
+        foreach ($asignacionesFiltradas as $asignacion) {
+            $esperadaEntrada = $asignacion->turno->hora_entrada ?? null;
+            $esperadaSalida = $asignacion->turno->hora_salida ?? null;
 
-            foreach ($todasAsignaciones as $asignacion) {
-                $esperadaEntrada = $asignacion->turno->hora_entrada ?? null;
-                $esperadaSalida = $asignacion->turno->hora_salida ?? null;
+            $realEntrada = $asignacion->entrada;
+            $realSalida = $asignacion->salida;
 
-                $realEntrada = $asignacion->entrada;
-                $realSalida = $asignacion->salida;
+            if ($esperadaEntrada) {
+                $diasAsignados++;
 
-                if ($esperadaEntrada && $realEntrada) {
+                if ($realEntrada) {
+                    $diasFichados++;
+
                     $llegaTemprano = Carbon::parse($realEntrada)->lte(Carbon::parse($esperadaEntrada));
                     $seVaTarde = $realSalida && $esperadaSalida
                         ? Carbon::parse($realSalida)->gte(Carbon::parse($esperadaSalida))
@@ -133,28 +130,78 @@ class AsignacionTurnoController extends Controller
                     } elseif ($llegaTemprano && $seVaAntes) {
                         $diasSeVaAntes++;
                     }
-                } elseif ($esperadaEntrada) {
-                    $hayEntrada = !empty($realEntrada);
-                    $haySalida = !empty($realSalida);
-
-                    if (!$hayEntrada || ($hayEntrada && !$haySalida)) {
-                        $diasSinFichaje++;
-                    }
+                } else {
+                    $diasSinFichaje++;
                 }
             }
         }
 
-        $diasTrabajados = $asignaciones->count();
+        // 3. Ranking por minutos adelantados (solo mes actual)
+        $requestSinEmpleado = $request->except('empleado');
+        $inicioMes = Carbon::now()->startOfMonth();
+        $finMes = Carbon::now()->endOfMonth();
+
+        $queryRanking = AsignacionTurno::with(['user', 'turno'])
+            ->whereBetween('fecha', [$inicioMes, $finMes])
+            ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
+            ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
+            ->orderBy('fecha', 'desc')
+            ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
+            ->select('asignaciones_turnos.*');
+
+        $queryRanking = $this->aplicarFiltros($queryRanking, new \Illuminate\Http\Request($requestSinEmpleado));
+        $asignacionesRanking = $queryRanking->get();
+
+        $estadisticasPuntualidad = [];
+        $asignacionesPorUsuario = $asignacionesRanking->groupBy('user_id');
+
+        foreach ($asignacionesPorUsuario as $userId => $asignacionesUsuario) {
+            $minutosAcumulados = 0;
+            $diasAdelantado = 0;
+
+            foreach ($asignacionesUsuario as $asignacion) {
+                $esperadaEntrada = $asignacion->turno->hora_entrada ?? null;
+                $realEntrada = $asignacion->entrada;
+
+                if ($esperadaEntrada && $realEntrada) {
+                    $esperada = Carbon::parse($asignacion->fecha . ' ' . $esperadaEntrada);
+                    $real = Carbon::parse($asignacion->fecha . ' ' . $realEntrada);
+
+                    if ($real->lt($esperada)) {
+                        $minutos = $real->diffInMinutes($esperada); // 💡 Invertido para obtener el número positivo correcto
+                        $minutosAcumulados += $minutos;
+                        $diasAdelantado++;
+                    }
+                }
+            }
+
+            if ($minutosAcumulados > 0) {
+                $estadisticasPuntualidad[] = [
+                    'usuario' => $asignacionesUsuario->first()->user,
+                    'minutos_adelanto' => $minutosAcumulados,
+                    'dias_adelantado' => $diasAdelantado
+                ];
+            }
+        }
+
+        $estadisticasPuntualidad = collect($estadisticasPuntualidad)
+            ->sortByDesc('minutos_adelanto')
+            ->take(3)
+            ->values();
 
         return view('asignaciones-turnos.index', compact(
             'asignaciones',
-            'diasTrabajados',
+            'diasAsignados',
+            'diasFichados',
             'diasPuntuales',
             'diasImpuntuales',
             'diasSeVaAntes',
-            'diasSinFichaje'
+            'diasSinFichaje',
+            'estadisticasPuntualidad'
         ));
     }
+
+
 
     public function fichar(Request $request)
     {

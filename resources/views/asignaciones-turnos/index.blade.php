@@ -8,21 +8,62 @@
 
     <div class="w-full px-6 py-4">
 
-        @if (request('empleado') && $diasTrabajados + $diasSinFichaje > 0)
+        @if (request('empleado') && $diasAsignados > 0)
             <div class="mb-4 text-sm text-gray-800 bg-gray-50 p-4 rounded shadow border leading-relaxed space-y-1">
                 <p class="font-bold text-base text-blue-800">
                     <span>
                         {{ $asignaciones->first()->user->name ?? '—' }}
                     </span>
                 </p>
-                <p><strong>🧾 Total de días con asignación:</strong> {{ $diasTrabajados + $diasSinFichaje }}</p>
-                <p><span class="text-blue-600">📅 Días trabajados:</span> {{ $diasTrabajados }}</p>
+
+                <p><span class="text-blue-600">📋 Días asignados (con turno):</span> {{ $diasAsignados }}</p>
+                <p><span class="text-indigo-600">🕐 Días fichados (con entrada real):</span> {{ $diasFichados }}</p>
+                <p><span class="text-yellow-600">⚠️ No fichó:</span> {{ $diasSinFichaje }}</p>
                 <p><span class="text-green-600">✅ Puntual (entra y sale bien):</span> {{ $diasPuntuales }}</p>
                 <p><span class="text-red-600">❌ Llega tarde:</span> {{ $diasImpuntuales }}</p>
                 <p><span class="text-purple-600">🔄 Se va antes:</span> {{ $diasSeVaAntes }}</p>
-                <p><span class="text-yellow-600">⚠️ No fichó:</span> {{ $diasSinFichaje }}</p>
             </div>
         @endif
+
+        <h3 class="text-lg font-bold mt-6 mb-4 text-blue-700">
+            ⏱️ Ranking Puntualidad ({{ \Carbon\Carbon::now()->locale('es')->translatedFormat('F Y') }})
+        </h3>
+
+        @if ($estadisticasPuntualidad->isEmpty())
+            <p class="text-sm text-gray-500 italic">No hay trabajadores con minutos de adelanto registrados este mes.
+            </p>
+        @endif
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            @foreach ($estadisticasPuntualidad as $index => $dato)
+                @php
+                    $medalla = match ($index) {
+                        0 => '🥇',
+                        1 => '🥈',
+                        2 => '🥉',
+                        default => null,
+                    };
+
+                    $bg = match ($index) {
+                        0 => 'bg-yellow-300 border-yellow-600 text-yellow-900', // 🥇 Oro
+                        1 => 'bg-gray-300 border-gray-500 text-gray-800', // 🥈 Plata
+                        2 => 'bg-amber-500 border-amber-700 text-white', // 🥉 Bronce
+                        default => 'bg-white border-gray-200 text-gray-800',
+                    };
+
+                @endphp
+
+                <div
+                    class="border {{ $bg }} rounded-xl shadow p-4 flex flex-col items-center text-sm text-gray-800">
+                    <div class="text-3xl mb-2">{{ $medalla ?? '🎖️' }}</div>
+                    <div class="font-bold text-base text-center">{{ $dato['usuario']->name }}</div>
+                    <div class="mt-2 space-y-1 text-xs text-center">
+                        <p><span class="text-blue-600 font-semibold">Minutos de adelanto:</span>
+                            {{ $dato['minutos_adelanto'] }} min</p>
+                    </div>
+                </div>
+            @endforeach
+        </div>
 
 
         <!-- Tabla de asignaciones -->
