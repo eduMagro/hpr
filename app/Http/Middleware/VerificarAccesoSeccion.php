@@ -37,12 +37,17 @@ class VerificarAccesoSeccion
         if ($sinUsuariosAdmin || $sinSeccionesAsignadas) {
             return $next($request);
         }
+        Log::info('✅ Ruta actual: ' . $rutaActual);
+        Log::info('✅ Usuario: ' . $user->name . ' | Rol: ' . $user->rol);
 
         // Permitir solo ciertas rutas a operarios
         $permitidosOperario = ['maquinas.', 'productos.', 'users.', 'alertas.', 'entradas.'];
+
         if ($esOperario && !Str::startsWith($rutaActual, $permitidosOperario)) {
+            Log::info('🚫 Ruta denegada para operario: ' . $rutaActual);
             abort(403, 'Operario sin acceso.');
         }
+
 
         // Validación para oficina basada en el nombre de la sección
         if ($esOficina) {
