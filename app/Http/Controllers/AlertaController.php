@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Alerta;
 use App\Models\AlertaLeida;
 use App\Models\User;
+use App\Models\Departamento;
 use App\Models\Categoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -179,6 +180,13 @@ class AlertaController extends Controller
             $request->validate([
                 'mensaje' => 'required|string',
             ]);
+
+            $departamentosPermitidos = Departamento::pluck('nombre')->toArray();
+
+            $departamentos = array_filter(
+                array_map('trim', is_array($departamentosRaw) ? $departamentosRaw : explode(',', $departamentosRaw)),
+                fn($nombre) => in_array($nombre, $departamentosPermitidos)
+            );
 
             // Obtener usuarios que pertenecen a alguno de esos departamentos
             $usuariosDestino = User::whereHas('departamentos', function ($q) use ($departamentos) {

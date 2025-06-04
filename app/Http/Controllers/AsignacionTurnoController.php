@@ -490,6 +490,37 @@ class AsignacionTurnoController extends Controller
         // Combinar festivos nacionales, autonómicos y locales
         return $festivos->merge($festivosLocales)->values()->toArray();
     }
+
+    public function update(Request $request, $id)
+    {
+        try {
+            $asignacion = AsignacionTurno::findOrFail($id);
+
+            // Validar los campos que puedes editar en línea
+            $validated = $request->validate([
+                'fecha' => 'nullable|date',
+                'entrada' => 'nullable|date_format:H:i',
+                'salida' => 'nullable|date_format:H:i',
+                'maquina_id' => 'nullable|exists:maquinas,id',
+                'obra_id' => 'nullable|exists:obras,id',
+            ]);
+
+            $asignacion->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Asignación actualizada correctamente.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Error actualizando asignación', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar la asignación.',
+                'errors' => ['exception' => $e->getMessage()]
+            ], 500);
+        }
+    }
+
     public function destroy(Request $request)
     {
         try {

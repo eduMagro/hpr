@@ -100,7 +100,7 @@
                 },
                 body: JSON.stringify({
                     mensaje: mensajeCompleto,
-                    enviar_a_departamentos: ['programador']
+                    enviar_a_departamentos: ['Programador']
                 })
             })
             .then(response => response.json())

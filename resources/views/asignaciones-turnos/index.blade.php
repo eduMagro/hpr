@@ -133,7 +133,7 @@
                                 editando = false;
                               }
                             }"
-                            @keydown.enter.stop="guardarCambios(asignacion); editando = false"
+                            @keydown.enter.stop="guardarCambios(asignacion, original); editando = false"
                             :class="{ 'bg-yellow-100': editando }"
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
 
@@ -209,14 +209,14 @@
         </div>
     </div>
     <script>
-        function guardarCambios(asignación) {
-            fetch(`{{ route('asignaciones-turnos.update', '') }}/${asignación.id}`, {
+        function guardarCambios(asignacionData, originalData) {
+            fetch(`{{ route('asignaciones-turnos.update', '') }}/${asignacionData.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: JSON.stringify(asignación)
+                    body: JSON.stringify(asignacionData)
                 })
                 .then(async response => {
                     const contentType = response.headers.get('content-type');
@@ -226,8 +226,7 @@
                         data = await response.json();
                     } else {
                         const text = await response.text();
-                        throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0,
-                            100)); // corta para no saturar
+                        throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0, 100));
                     }
 
                     if (response.ok && data.success) {
@@ -250,14 +249,21 @@
                                 notificarProgramador(errorMsg);
                             }
                         });
+
+                        // Revertir
+                        Object.assign(asignacionData, JSON.parse(JSON.stringify(originalData)));
                     }
                 })
-                .catch(error => {
-                    // Este catch ahora captura errores de red y errores de tipo (como HTML no válido)
+                .catch(async error => {
+                    console.error("❌ Error en Fetch:", error);
+
+                    // Revertir si falla la conexión
+                    Object.assign(asignacionData, JSON.parse(JSON.stringify(originalData)));
+
                     Swal.fire({
                         icon: "error",
                         title: "Error de conexión",
-                        text: error.message || "No se pudo actualizar la asignación. Inténtalo nuevamente.",
+                        html: "No se pudo actualizar la asignación. Inténtalo nuevamente.",
                         confirmButtonText: "OK"
                     });
                 });
