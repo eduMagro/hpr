@@ -427,7 +427,6 @@ class AsignacionTurnoController extends Controller
                 $currentDate = $fechaInicio->copy();
 
                 while ($currentDate->lte($fechaFin)) {
-                    $dateStr = $currentDate->toDateString();
 
                     // ⛔ Evitar solo si es estado "vacaciones" y cae en fin de semana o festivo
                     // 💡 Solo para vacaciones, controlar el tope
