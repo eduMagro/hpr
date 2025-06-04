@@ -529,47 +529,37 @@ class ProfileController extends Controller
     }
 
 
-
     protected function getEventosFichajes($user)
     {
         return $user->asignacionesTurnos->flatMap(function ($asignacion) {
-            $eventos = [];
+            if (
+                $asignacion->entrada && $asignacion->salida &&
+                strlen($asignacion->entrada) >= 5 && strlen($asignacion->salida) >= 5
+            ) {
 
-            if ($asignacion->entrada && strlen($asignacion->entrada) >= 5) {
-                $startEntrada = Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")
-                    ->setTimezone('Europe/Madrid');
+                // Crear instancias base
+                $start = Carbon::parse("{$asignacion->fecha} {$asignacion->entrada}")->setTimezone('Europe/Madrid');
+                $end = Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")->setTimezone('Europe/Madrid');
 
-                $eventos[] = [
-                    'title' => '',
-                    'start' => $startEntrada->toIso8601String(),
-                    'end' => $startEntrada->copy()->addMinutes(1)->toIso8601String(),
-                    'color' => '#28a745', // Verde
+                // Si la salida es anterior a la entrada, asumimos que es al día siguiente
+                if ($end->lt($start)) {
+                    $end->addDay();
+                }
+
+                return [[
+                    'title' => 'Turno',
+                    'start' => $start->toIso8601String(),
+                    'end' => $end->toIso8601String(),
+                    'color' => '#007bff',
                     'textColor' => '#ffffff',
                     'allDay' => false,
-                    'display' => 'auto'
-                ];
+                    'display' => 'auto',
+                ]];
             }
 
-            if ($asignacion->salida && strlen($asignacion->salida) >= 5) {
-                $startSalida = Carbon::parse("{$asignacion->fecha} {$asignacion->salida}")
-                    ->setTimezone('Europe/Madrid');
-
-                $eventos[] = [
-                    'title' => '',
-                    'start' => $startSalida->toIso8601String(),
-                    'end' => $startSalida->copy()->addMinutes(1)->toIso8601String(),
-                    'color' => '#dc3545', // Rojo
-                    'textColor' => '#ffffff',
-                    'allDay' => false,
-                    'display' => 'auto'
-                ];
-            }
-
-            return $eventos;
+            return [];
         });
     }
-
-
 
     /**
      * Función para oscurecer un color en hexadecimal.
