@@ -97,11 +97,14 @@
                                 <input type="text" name="maquina" value="{{ request('maquina') }}"
                                     class="form-control form-control-sm" />
                             </th>
-                            <input type="time" name="entrada" value="{{ request('entrada') }}"
-                                class="form-control form-control-sm" step="60" />
-                            <input type="time" name="salida" value="{{ request('salida') }}"
-                                class="form-control form-control-sm" step="60" />
-
+                            <th class="p-1 border">
+                                <input type="text" name="entrada" value="{{ request('entrada') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
+                            <th class="p-1 border">
+                                <input type="text" name="salida" value="{{ request('salida') }}"
+                                    class="form-control form-control-sm" />
+                            </th>
                             <th class="p-1 border">
                                 <button type="submit" class="btn btn-sm btn-info px-2">
                                     <i class="fas fa-search"></i>
@@ -207,6 +210,14 @@
     </div>
     <script>
         function guardarCambios(asignacionData, originalData) {
+            // Recortar segundos si vienen en formato HH:MM:SS
+            if (asignacionData.entrada && asignacionData.entrada.length === 8) {
+                asignacionData.entrada = asignacionData.entrada.slice(0, 5); // "22:05:00" → "22:05"
+            }
+            if (asignacionData.salida && asignacionData.salida.length === 8) {
+                asignacionData.salida = asignacionData.salida.slice(0, 5);
+            }
+
             fetch(`{{ route('asignaciones-turnos.update', '') }}/${asignacionData.id}`, {
                     method: 'PUT',
                     headers: {
