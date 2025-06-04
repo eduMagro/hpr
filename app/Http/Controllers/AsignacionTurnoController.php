@@ -82,7 +82,7 @@ class AsignacionTurnoController extends Controller
     {
         // 1. QUERY BASE (filtros normales con empleado)
         $query = AsignacionTurno::with(['user', 'turno', 'maquina'])
-            ->whereDate('fecha', '<=', Carbon::yesterday())
+            ->whereDate('fecha', '<=', Carbon::today())
             ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
             ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
             ->orderBy('fecha', 'desc')
