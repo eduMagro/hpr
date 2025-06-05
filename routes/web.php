@@ -48,7 +48,7 @@ Route::get('/', [PageController::class, 'index'])
 Route::middleware('auth')->group(function () {
     // === PERFIL DE USUARIO ===
     Route::get('/users/{id}/edit', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/users/{id}', [ProfileController::class, 'update'])->name('profile.update');
+    // Route::patch('/users/{id}', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/users/{id}', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::put('/actualizar-especialidad/{operario}', [ProfileController::class, 'actualizarEspecialidad']);
