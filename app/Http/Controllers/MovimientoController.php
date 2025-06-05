@@ -221,16 +221,18 @@ class MovimientoController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return back()->withErrors($validator)->withInput();
         }
 
+
         if ($request->ubicacion_destino && $request->maquina_destino) {
-            return response()->json(['error' => 'No puedes elegir una ubicación y una máquina a la vez como destino']);
+            return back()->with('error', 'No puedes elegir una ubicación y una máquina a la vez como destino')->withInput();
         }
 
         if (!$request->ubicacion_destino && !$request->maquina_destino) {
-            return response()->json(['error' => 'No has elegido destino']);
+            return back()->with('error', 'No has elegido destino')->withInput();
         }
+
 
         try {
             DB::transaction(function () use ($request, $tipoMovimiento) {
