@@ -67,26 +67,67 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ INDEX
     public function index(Request $request)
     {
-        $query = Producto::with('productoBase', 'ubicacion', 'maquina');
+        // 🔹 Cargar relaciones necesarias y solo las columnas que usas
+        $query = Producto::with([
+            'productoBase:id,tipo,diametro,longitud',
+            'proveedor:id,nombre',
+            'ubicacion:id,nombre',
+            'maquina:id,nombre'
+        ])->select([
+            'id',
+            'codigo',
+            'proveedor_id',
+            'producto_base_id',
+            'n_colada',
+            'n_paquete',
+            'peso_inicial',
+            'peso_stock',
+            'estado',
+            'ubicacion_id',
+            'maquina_id',
+            'created_at'
+        ]);
 
+        // 🔹 Aplicar filtros personalizados (si ya los tienes en un método aparte)
         $query = $this->aplicarFiltros($query, $request);
 
-        // Orden por defecto: últimos creados primero
-        $sortBy = $request->input('sort_by', 'created_at');
-        $order = $request->input('order', 'desc');
+        // 🔹 Ordenamiento (con fallback seguro)
+        $sortBy = in_array($request->input('sort_by'), [
+            'id',
+            'codigo',
+            'proveedor',
+            'tipo',
+            'diametro',
+            'longitud',
+            'n_colada',
+            'n_paquete',
+            'peso_inicial',
+            'peso_stock',
+            'estado',
+            'ubicacion',
+            'created_at'
+        ]) ? $request->input('sort_by') : 'created_at';
+
+        $order = $request->input('order') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $order);
 
-        $perPage = $request->input('per_page', 10);
+        // 🔹 Paginación segura
+        $perPage = is_numeric($request->input('per_page')) ? (int) $request->input('per_page') : 10;
+        $perPage = min(max($perPage, 5), 100); // mínimo 5, máximo 100
+
         $registrosProductos = $query->paginate($perPage)->appends($request->except('page'));
 
-        $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
+        // 🔹 Lista de productos base ordenada (puede cachearse si no cambia)
+        $productosBase = Cache::rememberForever('productos_base_lista', function () {
+            return ProductoBase::select('id', 'tipo', 'diametro', 'longitud')
+                ->orderBy('tipo')
+                ->orderBy('diametro')
+                ->orderBy('longitud')
+                ->get();
+        });
 
-        return view('productos.index', compact(
-            'registrosProductos',
-            'productosBase'
-        ));
+        return view('productos.index', compact('registrosProductos', 'productosBase'));
     }
-
 
     public function generarYExportar(Request $request)
     {

@@ -32,4 +32,20 @@ class Seccion extends Model
     {
         return $this->hasMany(PermisoAcceso::class);
     }
+    // En Seccion.php
+    public static function dashboardItems()
+    {
+        return Cache::rememberForever('dashboard_items', function () {
+            return self::with('departamentos:id')
+                ->select('id', 'nombre', 'ruta', 'icono')
+                ->where('mostrar_en_dashboard', true)
+                ->get()
+                ->map(fn($s) => [
+                    'route' => $s->ruta,
+                    'label' => $s->nombre,
+                    'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
+                    'departamentos' => $s->departamentos->pluck('id')->toArray(),
+                ]);
+        });
+    }
 }
