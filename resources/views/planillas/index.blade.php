@@ -90,12 +90,7 @@
             </form>
 
         </div>
-        @if (count($filtrosActivos))
-            <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
-                <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
-            </div>
-        @endif
-
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- TABLA DE PLANILLAS -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
@@ -107,10 +102,10 @@
                         <th class="p-2 border">{!! $ordenables['cod_obra'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['nom_obra'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['seccion'] !!}</th>
-                        <th class="p-2 border">{!! $ordenables['descripcion'] !!}</th>
+                        <th class="p-2 border">Descripción</th>
                         <th class="p-2 border">{!! $ordenables['ensamblado'] !!}</th>
-                        <th class="p-2 border">{!! $ordenables['comentario'] !!}</th>
-                        <th class="p-2 border">{!! $ordenables['peso_fabricado'] !!}</th>
+                        <th class="p-2 border">Comentario</th>
+                        <th class="p-2 border">peso fabricado</th>
                         <th class="p-2 border">{!! $ordenables['peso_total'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['estado'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['fecha_inicio'] !!}</th>
@@ -179,9 +174,8 @@
                                     value="{{ request('fecha_entrega') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="name" value="{{ request('name') }}" />
+                                <x-tabla.input name="nombre_completo" value="{{ request('nombre_completo') }}" />
                             </th>
-
                             <x-tabla.botones-filtro ruta="planillas.index" />
                         </form>
                     </tr>

@@ -102,10 +102,12 @@ class PlanillaController extends Controller
     {
         $filtros = [];
 
-        if ($request->filled('users_id')) {
-            $nombreUsuario = User::find($request->users_id)?->nombre_completo ?? 'Desconocido';
-            $filtros[] = 'Responsable: <strong>' . $nombreUsuario . '</strong>';
+        if ($request->filled('nombre_completo')) {
+            $usuario = User::where(DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"), 'like', '%' . $request->nombre_completo . '%')->first();
+
+            $filtros[] = 'Responsable: <strong>' . ($usuario?->nombre_completo ?? $request->nombre_completo) . '</strong>';
         }
+
 
         if ($request->filled('codigo')) {
             $filtros[] = 'Código Planilla: <strong>' . $request->codigo . '</strong>';
@@ -178,23 +180,32 @@ class PlanillaController extends Controller
         $isSorted = $currentSort === $columna;
         $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
 
-        $icon = $isSorted
-            ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down')
-            : 'fas fa-sort';
+        $icon = '';
+        if ($isSorted) {
+            $icon = $currentOrder === 'asc'
+                ? '▲' // flecha hacia arriba
+                : '▼'; // flecha hacia abajo
+        } else {
+            $icon = '⇅'; // símbolo de orden genérico
+        }
 
         $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
 
-        return '<a href="' . $url . '" class="text-white text-decoration-none">' .
-            $titulo . ' <i class="' . $icon . '"></i></a>';
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
+
 
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltros($query, Request $request)
     {
         // Filtro por usuario
-        if ($request->filled('users_id')) {
-            $query->where('users_id', $request->users_id);
+        if ($request->filled('nombre_completo')) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where(DB::raw("CONCAT(users.name, ' ', users.primer_apellido, ' ', users.segundo_apellido)"), 'like', '%' . $request->nombre_completo . '%');
+            });
         }
+
 
         // Filtro por código (columna directa)
         if ($request->filled('codigo')) {
@@ -272,16 +283,15 @@ class PlanillaController extends Controller
         $order = $request->input('order', 'desc');
 
         // Validar sortBy para evitar SQL injection
-        $allowedSorts = ['fecha_estimada_entrega', 'created_at', 'fecha_finalizacion', 'codigo']; // ajusta según tus columnas
+        $allowedSorts = ['fecha_estimada_entrega', 'created_at', 'fecha_finalizacion', 'codigo', 'codigo_cliente', 'peso_total']; // Incluido 'peso_total' en las columnas permitidas para ordenamiento
         if (!in_array($sortBy, $allowedSorts)) {
-            $sortBy = 'fecha_estimada_entrega';
+            $sortBy = 'fecha_estimada_entrega'; // Valor por defecto si no está en la lista
         }
 
         $query->orderBy($sortBy, $order);
 
         return $query;
     }
-
 
     //------------------------------------------------------------------------------------ INDEX()
     public function index(Request $request)
@@ -296,6 +306,7 @@ class PlanillaController extends Controller
             // 3️⃣ Definir columnas ordenables para la vista (cabecera de la tabla)
             $ordenables = [
                 'codigo' => $this->getOrdenamiento('codigo', 'Código'),
+                'codigo_cliente' => $this->getOrdenamiento('codigo_cliente', 'Código Cliente'),
                 'cliente' => $this->getOrdenamiento('cliente', 'Cliente'),
                 'cod_obra' => $this->getOrdenamiento('cod_obra', 'Código Obra'),
                 'nom_obra' => $this->getOrdenamiento('nom_obra', 'Obra'),
@@ -312,6 +323,7 @@ class PlanillaController extends Controller
                 'fecha_entrega' => $this->getOrdenamiento('fecha_entrega', 'Fecha Entrega'),
                 'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Usuario'),
             ];
+
 
             // 6️⃣ Aplicar paginación y mantener filtros al cambiar de página
             $perPage = $request->input('per_page', 10);
