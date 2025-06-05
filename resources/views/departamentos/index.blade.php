@@ -71,7 +71,7 @@
                                                 <li class="flex flex-wrap items-center justify-between gap-4">
                                                     <div class="flex items-center gap-4 flex-wrap">
                                                         <span class="font-semibold text-gray-800">
-                                                            {{ $usuario->name }}
+                                                            {{ $usuario->nombre_completo }}
                                                         </span>
                                                         <span class="text-sm text-gray-500">
                                                             ({{ $usuario->email }}{{ $usuario->pivot->rol_departamental ? ' – ' . $usuario->pivot->rol_departamental : '' }})
@@ -470,7 +470,7 @@
                                     <input type="checkbox" name="usuarios[]" :value="'{{ $usuario->id }}'"
                                         :checked="usuariosMarcados.includes({{ $usuario->id }})"
                                         class="rounded border-gray-300 text-blue-600 shadow-sm">
-                                    <span>{{ $usuario->name }}
+                                    <span>{{ $usuario->nombre_completo }}
                                         <span class="text-sm text-gray-500">({{ $usuario->email }})</span>
                                     </span>
                                 </label>
@@ -581,7 +581,8 @@
                     <select x-model="selectedUserId" class="w-full border rounded px-3 py-2">
                         <option value="" disabled selected>— Selecciona usuario —</option>
                         @foreach ($departamento->usuarios as $u)
-                            <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
+                            <option value="{{ $u->id }}">{{ $u->nombre_completo }} ({{ $u->email }})
+                            </option>
                         @endforeach
                     </select>
                 </div>

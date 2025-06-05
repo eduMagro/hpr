@@ -210,7 +210,12 @@
                 const data = new FormData();
                 data.append('_token', '{{ csrf_token() }}');
                 nuevasAlertas.forEach(id => data.append('alerta_ids[]', id));
-                navigator.sendBeacon("{{ route('alertas.marcarLeidas') }}", data);
+
+                fetch("{{ route('alertas.marcarLeidas') }}", {
+                    method: "POST",
+                    body: data,
+                    keepalive: true
+                });
             }
         });
 
