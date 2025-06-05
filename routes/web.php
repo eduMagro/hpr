@@ -13,7 +13,7 @@ use App\Http\Controllers\PedidoGlobalController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\UbicacionController;
 use App\Http\Controllers\EstadisticasController;
-use App\Http\Controllers\EmpresaTransportecontroller;
+use App\Http\Controllers\EmpresaTransporteController;
 use App\Http\Controllers\PlanificacionController;
 use App\Http\Controllers\MaquinaController;
 use App\Http\Controllers\MovimientoController;
