@@ -28,6 +28,7 @@
                         📋 Usuarios
                     </a>
 
+
                     <a href="{{ route('register') }}"
                         class="block px-2 py-3 transition text-sm font-medium
                     {{ request()->routeIs('register') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
@@ -91,7 +92,9 @@
                 </a>
             </div>
         </div>
-
+        <x-tabla.boton-azul href="{{ route('usuarios.exportar') }}">
+            📥 Exportar Usuarios
+        </x-tabla.boton-azul>
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- TABLA DE USUARIOS -->

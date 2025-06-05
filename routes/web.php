@@ -52,6 +52,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/users/{id}', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::put('/actualizar-especialidad/{operario}', [ProfileController::class, 'actualizarEspecialidad']);
+    Route::get('/exportar-usuarios', [ProfileController::class, 'exportarUsuarios'])->name('usuarios.exportar');
 
     // === CLIENTES Y PROVEEDORES ===
     Route::resource('clientes', ClienteController::class)->middleware('acceso.seccion:clientes.index');

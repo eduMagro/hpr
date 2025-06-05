@@ -34,7 +34,7 @@ class ElementoController extends Controller
             $query->where(function ($q) use ($buscar) {
                 $q->where('id', 'like', "%$buscar%")
                     ->orWhere('figura', 'like', "%$buscar%")
-                    ->orWhere('subetiquetas', 'like', "%$buscar%")
+                    ->orWhere('etiqueta_sub_id', 'like', "%$buscar%")
                     ->orWhereHas('planilla', function ($q) use ($buscar) {
                         $q->where('codigo', 'like', "%$buscar%");
                     })
@@ -54,7 +54,7 @@ class ElementoController extends Controller
         $filters = [
             'id' => 'id',
             'figura' => 'figura',
-            'subetiquetas' => 'subetiqueta',
+            'etiqueta_sub_id' => 'etiqueta_sub_id',
             'paquete_id' => 'paquete_id',
         ];
 
@@ -73,12 +73,15 @@ class ElementoController extends Controller
         }
 
         // 🧩 Relaciones con otras tablas
+        if ($request->filled('codigo_planilla')) {
+            $input = $request->codigo_planilla;
 
-        // Planilla
-        if ($request->has('codigo_planilla') && $request->codigo_planilla) {
-            $query->whereHas('planilla', function ($q) use ($request) {
-                $q->where('codigo', 'like', "%{$request->codigo_planilla}%");
+            $query = $query->get()->filter(function ($elemento) use ($input) {
+                return str_contains($elemento->planilla?->codigo_limpio ?? '', $input);
             });
+
+            // ✅ Ordenamiento sobre la colección
+            $query = $query->sortByDesc('created_at');
         }
 
         // Etiqueta
@@ -147,17 +150,43 @@ class ElementoController extends Controller
 
         $sortBy = $request->filled('sort_by') && in_array($request->input('sort_by'), $allowedSortColumns)
             ? $request->input('sort_by')
-            : 'created_at'; // Default seguro
+            : 'created_at';
 
         $order = $request->filled('order') && in_array($request->input('order'), ['asc', 'desc'])
             ? $request->input('order')
-            : 'desc'; // Default seguro
+            : 'desc';
 
-        $query->orderBy($sortBy, $order);
+        if ($query instanceof \Illuminate\Database\Eloquent\Builder) {
+            $query->orderBy($sortBy, $order);
+        } elseif ($query instanceof \Illuminate\Support\Collection) {
+            $query = $order === 'desc'
+                ? $query->sortByDesc($sortBy)
+                : $query->sortBy($sortBy);
+        }
 
         return $query;
     }
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
 
+        $icon = '';
+        if ($isSorted) {
+            $icon = $currentOrder === 'asc'
+                ? '▲' // flecha hacia arriba
+                : '▼'; // flecha hacia abajo
+        } else {
+            $icon = '⇅'; // símbolo de orden genérico
+        }
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+    }
     public function index(Request $request)
     {
         $query = Elemento::with([
@@ -170,26 +199,47 @@ class ElementoController extends Controller
             'producto2',
             'producto3',
             'paquete',
-        ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
+        ])->orderBy('created_at', 'desc');
 
-        // Aplicar los filtros utilizando un método separado
+        // Aplicar filtros
         $query = $this->aplicarFiltros($query, $request);
 
-        // Aplicar paginación y mantener filtros en la URL
+        // Paginación
         $elementos = $query->paginate(10)->appends($request->query());
 
-        // Asegurar que etiquetaRelacion siempre tenga un objeto válido
+        // Asegurar relación etiqueta
         $elementos->getCollection()->transform(function ($elemento) {
             $elemento->etiquetaRelacion = $elemento->etiquetaRelacion ?? (object) ['id' => '', 'nombre' => ''];
             return $elemento;
         });
 
-        // Obtener todas las máquinas de la tabla "maquinas"
+        // Todas las máquinas
         $maquinas = Maquina::all();
 
-        // Pasar las variables a la vista
-        return view('elementos.index', compact('elementos', 'maquinas'));
+        // Definir columnas ordenables para la vista
+        $ordenables = [
+            'id' => $this->getOrdenamiento('id', 'ID'),
+            'codigo' => $this->getOrdenamiento('codigo', 'Código Elemento'),
+            'codigo_planilla' => $this->getOrdenamiento('codigo_planilla', 'Planilla'),
+            'etiqueta' => $this->getOrdenamiento('etiqueta', 'Etiqueta'),
+            'subetiqueta' => $this->getOrdenamiento('subetiqueta', 'SubEtiqueta'),
+            'paquete_id' => $this->getOrdenamiento('paquete_id', 'Paquete'),
+            'maquina' => $this->getOrdenamiento('maquina', 'Maq. 1'),
+            'maquina_2' => $this->getOrdenamiento('maquina_2', 'Maq. 2'),
+            'maquina3' => $this->getOrdenamiento('maquina3', 'Maq. 3'),
+            'producto1' => $this->getOrdenamiento('producto1', 'M. Prima 1'),
+            'producto2' => $this->getOrdenamiento('producto2', 'M. Prima 2'),
+            'producto3' => $this->getOrdenamiento('producto3', 'M. Prima 3'),
+            'figura' => $this->getOrdenamiento('figura', 'Figura'),
+            'peso' => $this->getOrdenamiento('peso', 'Peso (kg)'),
+            'diametro' => $this->getOrdenamiento('diametro', 'Diámetro (mm)'),
+            'longitud' => $this->getOrdenamiento('longitud', 'Longitud (m)'),
+            'estado' => $this->getOrdenamiento('estado', 'Estado'),
+        ];
+
+        return view('elementos.index', compact('elementos', 'maquinas', 'ordenables'));
     }
+
     public function dividirElemento(Request $request)
     {
         // Validar entrada

@@ -102,65 +102,96 @@
             </form>
 
             <!-- Tabla con formularios de búsqueda -->
+            <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
             <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
                 <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
-                    <thead class="bg-blue-500 text-white">
-                        <tr class="text-left text-xs text-center uppercase">
-                            <th class="p-2 border">ID
-                                <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                    <input type="text" name="id"
-                                        class="w-full p-2 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </th>
-                            <th class="p-2 border">SubEtiqueta
-                                <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                    <input type="text" name="id"
-                                        class="w-full p-2 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </th>
-                            <th class="p-2 border">Planilla
-                                <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                    <input type="text" name="codigo_planilla"
-                                        class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </th>
+                    <thead class="bg-blue-500 text-white text-10">
+                        <tr class="text-center text-xs uppercase">
+                            <th class="p-2 border">{!! $ordenables['id'] ?? 'ID' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['subetiqueta'] ?? 'SubEtiqueta' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['codigo_planilla'] ?? 'Planilla' !!}</th>
                             <th class="p-2 border">Op 1</th>
                             <th class="p-2 border">Op 2</th>
                             <th class="p-2 border">Ens 1</th>
                             <th class="p-2 border">Ens 2</th>
                             <th class="p-2 border">Sol 1</th>
                             <th class="p-2 border">Sol 2</th>
-                            {{-- <th class="px-4 py-3 border">Paquete</th> --}}
-                            <th class="p-2 border">Número de Etiqueta
-                                <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                    <input type="text" name="numero_etiqueta"
-                                        class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </th>
-                            <th class="p-2 border">Nombre
-                                <form method="GET" action="{{ route('etiquetas.index') }}" class="mt-2">
-                                    <input type="text" name="nombre"
-                                        class="w-full px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
-                                </form>
-                            </th>
-                            <th class="p-2 border">Peso (kg)</th>
-                            {{-- <th class="px-4 py-3 border">Ubicación</th> --}}
+                            <th class="p-2 border">{!! $ordenables['numero_etiqueta'] ?? 'Número de Etiqueta' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['nombre'] ?? 'Nombre' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['peso'] ?? 'Peso (kg)' !!}</th>
                             <th class="p-2 border">Inicio Fabricación</th>
                             <th class="p-2 border">Final Fabricación</th>
                             <th class="p-2 border">Inicio Ensamblado</th>
-
                             <th class="p-2 border">Final Ensamblado</th>
                             <th class="p-2 border">Inicio Soldadura</th>
                             <th class="p-2 border">Final Soldadura</th>
-                            <th class="p-2 border">Estado</th>
+                            <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
                             <th class="p-2 border">Acciones</th>
                         </tr>
+
+                        <tr class="text-center text-xs uppercase">
+                            <form method="GET" action="{{ route('etiquetas.index') }}">
+                                <th class="p-1 border">
+                                    <x-tabla.input name="id" value="{{ request('id') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input name="subetiqueta" value="{{ request('subetiqueta') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input name="codigo_planilla" value="{{ request('codigo_planilla') }}" />
+                                </th>
+                                <th class="p-1 border"></th> {{-- Op 1 --}}
+                                <th class="p-1 border"></th> {{-- Op 2 --}}
+                                <th class="p-1 border"></th> {{-- Ens 1 --}}
+                                <th class="p-1 border"></th> {{-- Ens 2 --}}
+                                <th class="p-1 border"></th> {{-- Sol 1 --}}
+                                <th class="p-1 border"></th> {{-- Sol 2 --}}
+                                <th class="p-1 border">
+                                    <x-tabla.input name="numero_etiqueta" value="{{ request('numero_etiqueta') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input name="nombre" value="{{ request('nombre') }}" />
+                                </th>
+                                <th class="p-1 border"></th> {{-- Peso --}}
+                                <th class="p-1 border">
+                                    <x-tabla.input type="date" name="inicio_fabricacion"
+                                        value="{{ request('inicio_fabricacion') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input type="date" name="final_fabricacion"
+                                        value="{{ request('final_fabricacion') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input type="date" name="inicio_ensamblado"
+                                        value="{{ request('inicio_ensamblado') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input type="date" name="final_ensamblado"
+                                        value="{{ request('final_ensamblado') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input type="date" name="inicio_soldadura"
+                                        value="{{ request('inicio_soldadura') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input type="date" name="final_soldadura"
+                                        value="{{ request('final_soldadura') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.select name="estado" :options="[
+                                        'pendiente' => 'Pendiente',
+                                        'fabricando' => 'Fabricando',
+                                        'ensamblando' => 'Ensamblando',
+                                        'soldando' => 'Soldando',
+                                        'completada' => 'Completada',
+                                    ]" :selected="request('estado')"
+                                        empty="Todos" />
+                                </th>
+                                <x-tabla.botones-filtro ruta="etiquetas.index" />
+                            </form>
+                        </tr>
                     </thead>
+
                     <tbody class="text-gray-700 text-sm">
                         @forelse ($etiquetas as $etiqueta)
                             <tr tabindex="0" x-data="{

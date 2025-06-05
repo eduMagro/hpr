@@ -23,6 +23,74 @@ use Carbon\Carbon;
 
 class etiquetaController extends Controller
 {
+    private function aplicarFiltros($query, Request $request)
+    {
+        $query->when($request->filled('id'), fn($q) => $q->where('id', $request->id));
+
+        $query->when($request->filled('estado'), fn($q) => $q->where('estado', $request->estado));
+
+        if ($request->filled('codigo_planilla')) {
+            $planillas = Planilla::where('codigo', 'LIKE', '%' . $request->codigo_planilla . '%')->pluck('id');
+
+            if ($planillas->isNotEmpty()) {
+                $query->whereIn('planilla_id', $planillas);
+            } else {
+                session()->flash('error', 'No se encontraron planillas con ese código.');
+            }
+        }
+
+        // Añadir más filtros aquí si agregas nuevos campos en el encabezado
+    }
+    private function filtrosActivos(Request $request): array
+    {
+        $filtros = [];
+
+        if ($request->filled('id')) {
+            $filtros[] = 'ID: <strong>' . $request->id . '</strong>';
+        }
+
+        if ($request->filled('codigo_planilla')) {
+            $filtros[] = 'Código Planilla: <strong>' . $request->codigo_planilla . '</strong>';
+        }
+
+        if ($request->filled('estado')) {
+            $estado = ucfirst($request->estado);
+            $filtros[] = 'Estado: <strong>' . $estado . '</strong>';
+        }
+
+        if ($request->filled('numero_etiqueta')) {
+            $filtros[] = 'Número de Etiqueta: <strong>' . $request->numero_etiqueta . '</strong>';
+        }
+
+        if ($request->filled('nombre')) {
+            $filtros[] = 'Nombre: <strong>' . $request->nombre . '</strong>';
+        }
+
+        // Agrega más condiciones según los campos filtrables
+
+        return $filtros;
+    }
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = '';
+        if ($isSorted) {
+            $icon = $currentOrder === 'asc'
+                ? '▲' // flecha hacia arriba
+                : '▼'; // flecha hacia abajo
+        } else {
+            $icon = '⇅'; // símbolo de orden genérico
+        }
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+    }
     public function index(Request $request)
     {
         $query = Etiqueta::with([
@@ -35,37 +103,41 @@ class etiquetaController extends Controller
             'soldador2',
             'ensamblador1',
             'ensamblador2'
-        ])->orderBy('created_at', 'desc'); // Ordenar por fecha de creación descendente
+        ])->orderBy('created_at', 'desc');
 
-        // Filtrar por ID si está presente
-        $query->when($request->filled('id'), function ($q) use ($request) {
-            $q->where('id', $request->id);
-        });
+        $this->aplicarFiltros($query, $request);
 
-        // Filtrar por Estado si está presente
-        $query->when($request->filled('estado'), function ($q) use ($request) {
-            $q->where('estado', $request->estado);
-        });
+        $ordenables = [
+            'id' => $this->getOrdenamiento('id', 'ID'),
+            'codigo' => $this->getOrdenamiento('codigo', 'Código'),
+            'codigo_planilla' => $this->getOrdenamiento('codigo_planilla', 'Planilla'),
+            'etiqueta' => $this->getOrdenamiento('etiqueta', 'Etiqueta'),
+            'subetiqueta' => $this->getOrdenamiento('subetiqueta', 'SubEtiqueta'),
+            'paquete_id' => $this->getOrdenamiento('paquete_id', 'Paquete'),
+            'maquina' => $this->getOrdenamiento('maquina', 'Maq. 1'),
+            'maquina_2' => $this->getOrdenamiento('maquina_2', 'Maq. 2'),
+            'maquina3' => $this->getOrdenamiento('maquina3', 'Maq. 3'),
+            'producto1' => $this->getOrdenamiento('producto1', 'M. Prima 1'),
+            'producto2' => $this->getOrdenamiento('producto2', 'M. Prima 2'),
+            'producto3' => $this->getOrdenamiento('producto3', 'M. Prima 3'),
+            'figura' => $this->getOrdenamiento('figura', 'Figura'),
+            'peso' => $this->getOrdenamiento('peso', 'Peso (kg)'),
+            'diametro' => $this->getOrdenamiento('diametro', 'Diámetro'),
+            'longitud' => $this->getOrdenamiento('longitud', 'Longitud'),
+            'estado' => $this->getOrdenamiento('estado', 'Estado'),
+        ];
+        // 6️⃣ Aplicar paginación y mantener filtros al cambiar de página
+        $perPage = $request->input('per_page', 10);
+        $etiquetas = $query->paginate($perPage)->appends($request->except('page'));
 
-        // Filtrar por Código de Planilla con búsqueda parcial (LIKE)
-        if ($request->filled('codigo_planilla')) {
-            $planillas = Planilla::where('codigo', 'LIKE', '%' . $request->codigo_planilla . '%')->pluck('id');
-
-            if ($planillas->isNotEmpty()) {
-                $query->whereIn('planilla_id', $planillas);
-            } else {
-                return redirect()->back()->with('error', 'No se encontraron planillas con ese código.');
-            }
-        }
-
-        // Paginación de la tabla
-        $etiquetas = $query->paginate(10)->appends($request->query());
-
-        // Obtener todas las etiquetas con elementos (sin paginar) para JavaScript
         $etiquetasJson = Etiqueta::with('elementos')->get();
 
-        return view('etiquetas.index', compact('etiquetas', 'etiquetasJson'));
+        $filtrosActivos = $this->filtrosActivos($request);
+
+
+        return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
     }
+
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
         DB::beginTransaction();

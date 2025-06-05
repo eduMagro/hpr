@@ -199,11 +199,10 @@
         <!-- Tabla de elementos con scroll horizontal -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white">
+                <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <!-- Encabezados con orden dinámico -->
                         <th class="p-2 border">{!! ordenarColumnaElemento('id', 'ID') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('codigo', 'Codigo Elemento') !!}</th>
+                        <th class="p-2 border">{!! ordenarColumnaElemento('codigo', 'Código Elemento') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('codigo_planilla', 'Planilla') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('etiqueta', 'Etiqueta') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('subetiqueta', 'SubEtiqueta') !!}</th>
@@ -222,59 +221,26 @@
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
-                    <form method="GET" action="{{ route('elementos.index') }}">
-                        <tr class="text-center text-xs uppercase">
-                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'paquete_id', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura'] as $campo)
-                                <th class="py-3 border">
-                                    <input type="text" name="{{ $campo }}" value="{{ request($campo) }}"
-                                        class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Buscar">
+                    <tr class="text-center text-xs uppercase">
+                        <form method="GET" action="{{ route('elementos.index') }}">
+                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'paquete_id', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura', 'peso', 'diametro', 'longitud'] as $campo)
+                                <th class="p-1 border">
+                                    <x-tabla.input name="{{ $campo }}" value="{{ request($campo) }}" />
                                 </th>
                             @endforeach
 
-                            <!-- Peso, diámetro, longitud: sin filtro -->
-                            <th class="py-3 border">
-                                <input type="text" name="peso" value="{{ request('peso') }}"
-                                    class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Buscar">
-                            </th>
-                            <th class="py-3 border">
-                                <input type="text" name="diametro" value="{{ request('diametro') }}"
-                                    class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Buscar">
-                            </th>
-                            <th class="py-3 border">
-                                <input type="text" name="longitud" value="{{ request('longitud') }}"
-                                    class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Buscar">
+                            <th class="p-1 border">
+                                <x-tabla.select name="estado" :options="[
+                                    'pendiente' => 'Pendiente',
+                                    'fabricando' => 'Fabricando',
+                                    'fabricado' => 'Fabricado',
+                                    'montaje' => 'Montaje',
+                                ]" :selected="request('estado')" empty="Todos" />
                             </th>
 
-
-                            <!-- Estado con select -->
-                            <th class="py-3 border">
-                                <select name="estado"
-                                    class="w-full px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Todos</option>
-                                    <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
-                                        Pendiente</option>
-                                    <option value="fabricando"
-                                        {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando</option>
-                                    <option value="fabricado" {{ request('estado') == 'fabricado' ? 'selected' : '' }}>
-                                        Fabricado</option>
-                                    <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>
-                                        Montaje</option>
-                                </select>
-                            </th>
-
-                            <!-- Botón buscar y limpiar -->
-                            <th class="py-3 border flex gap-1 justify-center">
-                                <button type="submit" class="btn btn-sm btn-info px-2"><i
-                                        class="fas fa-search"></i></button>
-                                <a href="{{ route('elementos.index') }}" class="btn btn-sm btn-warning px-2"><i
-                                        class="fas fa-undo"></i></a>
-                            </th>
-                        </tr>
-                    </form>
+                            <x-tabla.botones-filtro ruta="elementos.index" />
+                        </form>
+                    </tr>
                 </thead>
 
                 <tbody class="text-gray-700 text-sm">

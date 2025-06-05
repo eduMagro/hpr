@@ -16,6 +16,102 @@ use Illuminate\Support\Facades\DB;
 
 class PaqueteController extends Controller
 {
+
+    private function aplicarFiltros(Request $request, $query)
+    {
+        if ($request->filled('id') && is_numeric($request->id)) {
+            $query->where('id', intval($request->id));
+        }
+        // Filtro por código_limpio (accesor en planilla)
+        if ($request->filled('planilla')) {
+            $input = $request->planilla;
+            $paquetes = $paquetes->filter(function ($paquete) use ($input) {
+                return str_contains($paquete->planilla?->codigo_limpio ?? '', $input);
+            });
+        }
+
+        if ($request->filled('ubicacion')) {
+            $query->whereHas(
+                'ubicacion',
+                fn($q) => $q->where('nombre', 'like', '%' . $request->ubicacion . '%')
+            );
+        }
+
+        if ($request->filled('peso')) {
+            $query->where('peso', '>=', $request->peso);
+        }
+
+        if ($request->filled('created_at_from')) {
+            $query->whereDate('created_at', '=', $request->created_at_from);
+        }
+
+        if ($request->filled('fecha_limite_reparto_from')) {
+            $query->whereHas(
+                'planilla',
+                fn($q) => $q->whereDate('fecha_estimada_entrega', '=', $request->fecha_limite_reparto_from)
+            );
+        }
+
+        return $query;
+    }
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = '';
+        if ($isSorted) {
+            $icon = $currentOrder === 'asc'
+                ? '▲' // flecha hacia arriba
+                : '▼'; // flecha hacia abajo
+        } else {
+            $icon = '⇅'; // símbolo de orden genérico
+        }
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+    }
+    private function filtrosActivos(Request $request): array
+    {
+        $filtros = [];
+
+        if ($request->filled('id')) {
+            $filtros[] = 'ID: <strong>' . e($request->id) . '</strong>';
+        }
+
+        if ($request->filled('planilla')) {
+            $filtros[] = 'Planilla: <strong>' . e($request->planilla) . '</strong>';
+        }
+
+        if ($request->filled('ubicacion')) {
+            $filtros[] = 'Ubicación: <strong>' . e($request->ubicacion) . '</strong>';
+        }
+
+        if ($request->filled('peso')) {
+            $filtros[] = 'Peso ≥ <strong>' . e($request->peso) . ' kg</strong>';
+        }
+
+        if ($request->filled('created_at_from')) {
+            $filtros[] = 'Desde creación: <strong>' . e($request->created_at_from) . '</strong>';
+        }
+
+        if ($request->filled('fecha_limite_reparto_from')) {
+            $filtros[] = 'Desde entrega estimada: <strong>' . e($request->fecha_limite_reparto_from) . '</strong>';
+        }
+
+        if ($request->filled('sort')) {
+            $orden = $request->order === 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . e($request->sort) . "</strong> en orden <strong>$orden</strong>";
+        }
+
+        return $filtros;
+    }
+
+
     /**
      * Muestra la lista de paquetes.
      *
@@ -27,31 +123,55 @@ class PaqueteController extends Controller
     {
         $query = Paquete::with(['planilla', 'ubicacion', 'elementos'])
             ->orderBy('created_at', 'desc');
+        $query = $this->aplicarFiltros($request, $query);
+        // Ordenamiento
+        $sortBy = $request->input('sort');
+        $order = $request->input('order', 'asc');
+        $allowedSorts = ['id', 'planilla_id', 'peso', 'created_at', 'fecha_limite_reparto'];
 
-        // Filtro por ID
-        if ($request->filled('id')) {
-            $query->where('id', $request->input('id'));
+        if (in_array($sortBy, $allowedSorts)) {
+            if ($sortBy === 'fecha_limite_reparto') {
+                $query->join('planillas', 'paquetes.planilla_id', '=', 'planillas.id')
+                    ->orderBy('planillas.fecha_estimada_entrega', $order)
+                    ->select('paquetes.*');
+            } else {
+                $query->orderBy($sortBy, $order);
+            }
         }
-        // Filtro por planilla (ID o código)
-        if ($request->filled('planilla')) {
-            $planillaInput = $request->input('planilla');
-            $query->where(function ($q) use ($planillaInput) {
-                $q->where('planilla_id', $planillaInput)
-                    ->orWhereHas('planilla', function ($subQuery) use ($planillaInput) {
-                        $subQuery->where('codigo', 'like', '%' . $planillaInput . '%');
-                    });
-            });
-        }
 
-        // Obtener paquetes con paginación
-        $paquetes = $query->paginate(10)->appends($request->query());
+        $paquetes = $query->get();
 
-        // Ordenar manualmente los elementos de cada paquete
-        foreach ($paquetes as $paquete) {
+
+        // Convertir a LengthAwarePaginator manual
+        $currentPage = request()->get('page', 1);
+        $perPage = 10;
+        $offset = ($currentPage - 1) * $perPage;
+        $paginados = new \Illuminate\Pagination\LengthAwarePaginator(
+            $paquetes->slice($offset, $perPage)->values(),
+            $paquetes->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        foreach ($paginados as $paquete) {
             $paquete->elementos = $paquete->elementos->sortBy('id')->values();
         }
 
-        return view('paquetes.index', compact('paquetes'));
+        $ordenables = [
+            'id' => $this->getOrdenamiento('id', 'ID'),
+            'planilla_id' => $this->getOrdenamiento('planilla_id', 'Planilla'),
+            'peso' => $this->getOrdenamiento('peso', 'Peso (Kg)'),
+            'created_at' => $this->getOrdenamiento('created_at', 'Fecha Creación'),
+            'fecha_limite_reparto' => $this->getOrdenamiento('fecha_limite_reparto', 'Fecha Límite Reparto'),
+        ];
+
+        $filtrosActivos = $this->filtrosActivos($request);
+        return view('paquetes.index', [
+            'paquetes' => $paginados,
+            'ordenables' => $ordenables,
+            'filtrosActivos' => $filtrosActivos
+        ]);
     }
     /**
      * Crea un nuevo paquete y asocia las etiquetas y elementos.

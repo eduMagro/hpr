@@ -27,10 +27,17 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Models\Nomina;
+use App\Exports\UsersExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProfileController extends Controller
 {
 
+
+    public function exportarUsuarios()
+    {
+        return Excel::download(new UsersExport, 'usuarios.xlsx');
+    }
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];

@@ -73,44 +73,47 @@
     @endif
 
     <div class="w-full p-4 sm:p-6">
-
         <!-- Contenedor de la tabla -->
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[800px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white">
-                    <tr class="text-left text-sm text-center uppercase">
-                        <th class="p-2 border">ID
-                            <!-- Formulario de búsqueda por ID -->
-                            <form method="GET" action="{{ route('paquetes.index') }}" class="mt-2 flex space-x-2">
-                                <input type="text" name="id"
-                                    class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Buscar">
-                                <button type="submit"
-                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                    Filtrar
-                                </button>
-                            </form>
-                        </th>
-                        <th class="p-2 border">Planilla
-                            <!-- Formulario de búsqueda por ID -->
-                            <form method="GET" action="{{ route('paquetes.index') }}" class="mt-2 flex space-x-2">
-                                <input type="text" name="planilla"
-                                    class="w-20 px-2 py-1 text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500"
-                                    placeholder="Buscar">
-                                <button type="submit"
-                                    class="bg-blue-500 text-white px-2 py-1 rounded-md hover:bg-blue-600 hidden">
-                                    Filtrar
-                                </button>
-                            </form>
-                        </th>
-                        <th class="p-2 border">Ubicación</th>
-                        <th class="p-2 border">Elementos</th>
-                        <th class="p-2 border">Peso (Kg)</th>
-                        <th class="p-2 border">Fecha Creación</th>
-                        <th class="p-2 border">Fecha Límite Reparto</th>
-                        <th class="p-2 border text-center">Acciones</th>
+                <thead class="bg-blue-500 text-white text-10">
+                    <tr class="text-center text-xs uppercase">
+                        <th class="p-2 border">{!! $ordenables['id'] ?? 'ID' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['planilla'] ?? 'Planilla' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['ubicacion'] ?? 'Ubicación' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['elementos'] ?? 'Elementos' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['peso'] ?? 'Peso (Kg)' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['created_at'] ?? 'Fecha Creación' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['fecha_limite'] ?? 'Fecha Límite Reparto' !!}</th>
+                        <th class="p-2 border">Acciones</th>
+                    </tr>
+
+                    <tr class="text-center text-xs uppercase">
+                        <form method="GET" action="{{ route('paquetes.index') }}">
+                            <th class="p-1 border">
+                                <x-tabla.input name="id" value="{{ request('id') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="planilla" value="{{ request('planilla') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="ubicacion" value="{{ request('ubicacion') }}" />
+                            </th>
+                            <th class="p-1 border"></th> {{-- Elementos: sin filtro --}}
+                            <th class="p-1 border"></th> {{-- Peso: sin filtro --}}
+                            <th class="p-1 border">
+                                <x-tabla.input type="date" name="created_at" value="{{ request('created_at') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input type="date" name="fecha_limite"
+                                    value="{{ request('fecha_limite') }}" />
+                            </th>
+                            <x-tabla.botones-filtro ruta="paquetes.index" />
+                        </form>
                     </tr>
                 </thead>
+
                 </tbody>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($paquetes as $paquete)
