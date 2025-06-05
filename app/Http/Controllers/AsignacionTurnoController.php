@@ -227,11 +227,11 @@ class AsignacionTurnoController extends Controller
 
             $user = User::findOrFail($request->user_id);
             if ($user->rol !== 'operario') {
-                return back()->with('error', 'No tienes permisos para fichar.');
+                return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
             }
 
-            $ahora = now();
-            $horaActual = $ahora->format('H:i:s');
+            $ahora = now();                     // datetime completo
+            $horaActual = $ahora->format('H:i:s'); // solo la hora como string
 
             // Buscar turno correspondiente
             $asignacionTurno = $user->asignacionesTurnos()
@@ -250,13 +250,16 @@ class AsignacionTurnoController extends Controller
                     }
 
                     if ($request->tipo === 'entrada') {
+                        // Entre 20:00 y 23:59 → turno del día siguiente
                         if ($ahora->hour >= 20 && $ahora->hour <= 23) {
                             return $asignacion->fecha === $ahora->copy()->addDay()->toDateString();
                         }
+                        // Entre 00:00 y 06:00 → turno del mismo día
                         if ($ahora->hour < 6) {
                             return $asignacion->fecha === $ahora->toDateString();
                         }
                     } else {
+                        // SALIDA: si antes de 06:00 → pertenece al turno del día anterior
                         if ($ahora->hour < 6) {
                             return $asignacion->fecha === $ahora->copy()->subDay()->toDateString();
                         }
@@ -267,7 +270,7 @@ class AsignacionTurnoController extends Controller
                 });
 
             if (!$asignacionTurno) {
-                return back()->with('error', 'No tienes un turno asignado para este día laboral.');
+                return response()->json(['error' => 'No tienes un turno asignado para este día laboral.'], 403);
             }
 
             $turnoNombre = strtolower($asignacionTurno->turno->nombre);
@@ -285,14 +288,15 @@ class AsignacionTurnoController extends Controller
             Log::info('Distancia hasta la nave', ['distancia' => $distancia]);
 
             if ($distancia > $obra->distancia) {
-                return back()->with('error', 'No puedes fichar fuera de la nave de trabajo.');
+                return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
             }
 
             $warning = null;
 
+            // Fichaje de entrada
             if ($request->tipo === 'entrada') {
                 if ($asignacionTurno->entrada) {
-                    return back()->with('error', 'Ya has registrado una entrada.');
+                    return response()->json(['error' => 'Ya has registrado una entrada.'], 403);
                 }
 
                 if (!$this->validarHoraEntrada($turnoNombre, $horaActual)) {
@@ -303,13 +307,16 @@ class AsignacionTurnoController extends Controller
                     'entrada' => $horaActual,
                     'obra_id' => $request->obra_id,
                 ]);
-            } elseif ($request->tipo === 'salida') {
+            }
+
+            // Fichaje de salida
+            elseif ($request->tipo === 'salida') {
                 if (!$asignacionTurno->entrada) {
-                    return back()->with('error', 'No puedes registrar una salida sin haber fichado entrada.');
+                    return response()->json(['error' => 'No puedes registrar una salida sin haber fichado entrada.'], 403);
                 }
 
                 if ($asignacionTurno->salida) {
-                    return back()->with('error', 'Ya has registrado una salida.');
+                    return response()->json(['error' => 'Ya has registrado una salida.'], 403);
                 }
 
                 if (!$this->validarHoraSalida($turnoNombre, $horaActual)) {
@@ -322,11 +329,13 @@ class AsignacionTurnoController extends Controller
                 ]);
             }
 
-            return back()->with('success', 'Fichaje registrado correctamente.')
-                ->with('warning', $warning);
+            return response()->json([
+                'success' => 'Fichaje registrado correctamente.',
+                'warning' => $warning
+            ]);
         } catch (\Exception $e) {
             Log::error('Error en fichaje', ['exception' => $e]);
-            return back()->with('error', 'Error al registrar el fichaje: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
         }
     }
 
