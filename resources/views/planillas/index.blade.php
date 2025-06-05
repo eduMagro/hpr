@@ -90,7 +90,7 @@
             </form>
 
         </div>
-        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
+
         <!-- TABLA DE PLANILLAS -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
