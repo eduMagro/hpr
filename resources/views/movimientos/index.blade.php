@@ -9,73 +9,12 @@
     <div class="w-full px-6 py-4">
         <!-- Botón para crear un nuevo movimiento con estilo Bootstrap -->
         <div class="mb-4">
-            <a href="{{ route('movimientos.create') }}" class="btn btn-primary">
-                Crear Movimiento
-            </a>
-            <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosBusqueda">
-                🔍 Filtros Avanzados
-            </button>
+            <x-tabla.boton-azul :href="route('movimientos.create')">
+                ➕ Crear Nuevo Movimiento
+            </x-tabla.boton-azul>
+
+
         </div>
-        <div id="filtrosBusqueda" class="collapse">
-            <form method="GET" action="{{ route('movimientos.index') }}" class="card card-body shadow-sm">
-                <div class="row g-3">
-
-                    <!-- Filtros de texto -->
-                    <div class="col-md-4">
-                        <input type="text" name="movimiento_id" class="form-control" placeholder="ID de Movimiento"
-                            value="{{ request('movimiento_id') }}">
-                    </div>
-                    {{-- <div class="col-md-4">
-                        <input type="text" name="usuario" class="form-control" placeholder="Nombre de Usuario"
-                            value="{{ request('usuario') }}">
-                    </div> --}}
-
-                    <!-- Filtros de búsqueda por Producto o Paquete -->
-                    <div class="col-md-4">
-                        <input type="text" name="producto_id" class="form-control" placeholder="ID Producto"
-                            value="{{ request('producto_id') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="paquete_id" class="form-control" placeholder="ID Paquete"
-                            value="{{ request('paquete_id') }}">
-                    </div>
-
-                    <!-- Filtros de fechas -->
-                    <div class="col-md-4">
-                        <label for="fecha_inicio">Desde:</label>
-                        <input type="date" name="fecha_inicio" class="form-control"
-                            value="{{ request('fecha_inicio') }}">
-                    </div>
-                    <div class="col-md-4">
-                        <label for="fecha_finalizacion">Hasta:</label>
-                        <input type="date" name="fecha_finalizacion" class="form-control"
-                            value="{{ request('fecha_finalizacion') }}">
-                    </div>
-
-                    <!-- Registros por página -->
-                    <div class="col-md-4">
-                        <label for="per_page">Mostrar:</label>
-                        <select name="per_page" class="form-control">
-                            <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
-                            <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25</option>
-                            <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
-                        </select>
-                    </div>
-
-                    <!-- Botones -->
-                    <div class="col-12 d-flex justify-content-between mt-3">
-                        <button type="submit" class="btn btn-info">
-                            <i class="fas fa-search"></i> Buscar
-                        </button>
-                        <a href="{{ route('movimientos.index') }}" class="btn btn-warning">
-                            <i class="fas fa-undo"></i> Resetear Filtros
-                        </a>
-                    </div>
-
-                </div>
-            </form>
-        </div>
-
 
         <div class="overflow-x-auto bg-white shadow-md rounded-lg">
             <table class="min-w-full table-auto">
@@ -214,9 +153,7 @@
             </table>
 
         </div>
-        <div class="mt-4 flex justify-center">
-            {{ $registrosMovimientos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-        </div>
+        <x-tabla.paginacion :paginador="$registrosMovimientos" />
         <!-- SCRIPT PARA IMPRIMIR QR -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script>

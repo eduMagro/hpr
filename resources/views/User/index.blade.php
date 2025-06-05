@@ -1,12 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Usuarios - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <div>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __(auth()->user()->nombre_completo) }}
-            </h2>
-        </div>
-    </x-slot>
+
     <style>
         [x-cloak] {
             display: none !important;
@@ -98,13 +92,7 @@
             </div>
         </div>
 
-
-
-        @if (count($filtrosActivos))
-            <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
-                <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
-            </div>
-        @endif
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- TABLA DE USUARIOS -->
         <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
@@ -129,102 +117,55 @@
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('users.index') }}">
                             <th class="p-1 border"></th> <!-- ID: sin filtro directo -->
+
                             <th class="p-1 border">
-                                <input type="text" name="nombre_completo" value="{{ request('nombre_completo') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="nombre_completo" :value="request('nombre_completo')" />
                             </th>
 
                             <th class="p-1 border">
-                                <input type="text" name="email" value="{{ request('email') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="email" :value="request('email')" />
                             </th>
-                            <th class="p-1 border">
-                                <input type="text" name="movil_personal" value="{{ request('movil_personal') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <input type="text" name="movil_empresa" value="{{ request('movil_empresa') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <input type="text" name="dni" value="{{ request('dni') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border">
-                                <select name="empresa_id" class="form-control form-control-sm">
-                                    <option value="">Todas</option>
-                                    @foreach ($empresas as $empresa)
-                                        <option value="{{ $empresa->id }}"
-                                            {{ request('empresa_id') == $empresa->id ? 'selected' : '' }}>
-                                            {{ $empresa->nombre }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </th>
-                            <th class="p-1 border">
-                                <select name="rol" class="form-control form-control-sm">
-                                    <option value="">Todos</option>
-                                    @foreach ($roles as $rol)
-                                        <option value="{{ $rol }}"
-                                            {{ request('rol') == $rol ? 'selected' : '' }}>
-                                            {{ ucfirst($rol) }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </th>
-                            <th class="p-1 border">
-                                <select name="categoria_id" class="form-control form-control-sm">
-                                    <option value="">Todas</option>
-                                    @foreach ($categorias as $categoria)
-                                        <option value="{{ $categoria->id }}"
-                                            {{ request('categoria_id') == $categoria->id ? 'selected' : '' }}>
-                                            {{ $categoria->nombre }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </th>
-                            <th class="p-1 border">
-                                <select name="maquina_id" class="form-control form-control-sm">
-                                    <option value="">Todas</option>
-                                    @foreach ($maquinas as $maquina)
-                                        <option value="{{ $maquina->id }}"
-                                            {{ request('maquina') == $maquina->id ? 'selected' : '' }}>
-                                            {{ $maquina->nombre }}
-                                        </option>
-                                    @endforeach
 
-                                </select>
-                            </th>
                             <th class="p-1 border">
-                                <select name="turno" class="form-control form-control-sm">
-                                    <option value="">Todos</option>
-                                    @foreach ($turnos as $turno)
-                                        <option value="{{ $turno }}"
-                                            {{ request('turno') == $turno ? 'selected' : '' }}>
-                                            {{ ucfirst($turno) }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <x-tabla.input name="movil_personal" :value="request('movil_personal')" />
                             </th>
+
                             <th class="p-1 border">
-                                <select name="estado" class="form-control form-control-sm">
-                                    <option value="">Todos</option>
-                                    <option value="activo" {{ request('estado') == 'activo' ? 'selected' : '' }}>
-                                        Activo
-                                    </option>
-                                    <option value="inactivo" {{ request('estado') == 'inactivo' ? 'selected' : '' }}>
-                                        Inactivo</option>
-                                </select>
+                                <x-tabla.input name="movil_empresa" :value="request('movil_empresa')" />
                             </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.input name="dni" :value="request('dni')" />
+                            </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.select name="empresa_id" :options="$empresas->pluck('nombre', 'id')" :selected="request('empresa_id')" empty="Todas" />
+                            </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.select name="rol" :options="collect($roles)->mapWithKeys(fn($r) => [$r => ucfirst($r)])" :selected="request('rol')" empty="Todos" />
+                            </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.select name="categoria_id" :options="$categorias->pluck('nombre', 'id')" :selected="request('categoria_id')"
+                                    empty="Todas" />
+                            </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.select name="maquina_id" :options="$maquinas->pluck('nombre', 'id')" :selected="request('maquina')"
+                                    empty="Todas" />
+                            </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.select name="turno" :options="collect($turnos)->mapWithKeys(fn($t) => [$t => ucfirst($t)])" :selected="request('turno')" empty="Todos" />
+                            </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.select name="estado" :options="['activo' => 'Activo', 'inactivo' => 'Inactivo']" :selected="request('estado')" empty="Todos" />
+                            </th>
+
                             <th class="p-1 border"></th>
-                            <th class="p-1 border text-center">
-                                <button type="submit" class="btn btn-sm btn-info px-2">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                                <a href="{{ route('users.index') }}" class="btn btn-sm btn-warning px-2">
-                                    <i class="fas fa-undo"></i>
-                                </a>
-                            </th>
+                            <x-tabla.botones-filtro ruta="users.index" />
                         </form>
                     </tr>
 
@@ -256,112 +197,105 @@
                                 <template x-if="!editando">
                                     <span x-text="usuario.nombre_completo"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="usuario.nombre_completo"
-                                    class="form-control form-control-sm"
-                                    @keydown.enter.stop="guardarCambios(usuario)">
+                                <x-tabla.input x-show="editando" x-model="usuario.nombre_completo"
+                                    @keydown.enter.stop="guardarCambios(usuario)" />
                             </td>
 
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.email"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="usuario.email"
-                                    class="form-control form-control-sm"
-                                    @keydown.enter.stop="guardarCambios(usuario)">
+                                <x-tabla.input x-show="editando" x-model="usuario.email"
+                                    @keydown.enter.stop="guardarCambios(usuario)" />
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.movil_personal"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="usuario.movil_personal"
-                                    class="form-control form-control-sm"
-                                    @keydown.enter.stop="guardarCambios(usuario)">
+                                <x-tabla.input x-show="editando" x-model="usuario.movil_personal"
+                                    @keydown.enter.stop="guardarCambios(usuario)" />
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.movil_empresa"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="usuario.movil_empresa"
-                                    class="form-control form-control-sm"
-                                    @keydown.enter.stop="guardarCambios(usuario)">
+                                <x-tabla.input x-show="editando" x-model="usuario.movil_empresa"
+                                    @keydown.enter.stop="guardarCambios(usuario)" />
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.dni"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="usuario.dni"
-                                    class="form-control form-control-sm"
-                                    @keydown.enter.stop="guardarCambios(usuario)">
+                                <x-tabla.input x-show="editando" x-model="usuario.dni"
+                                    @keydown.enter.stop="guardarCambios(usuario)" />
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.empresa?.nombre ?? 'Sin empresa'"></span>
                                 </template>
-                                <select x-show="editando" x-model="usuario.empresa_id"
-                                    class="form-control form-control-sm"
+                                <x-tabla.select-edicion x-show="editando" x-model="usuario.empresa_id"
                                     @keydown.enter.stop="guardarCambios(usuario)">
                                     <option value="">Selecciona empresa</option>
                                     @foreach ($empresas as $empresa)
                                         <option value="{{ $empresa->id }}">{{ $empresa->nombre }}</option>
                                     @endforeach
-                                </select>
+                                </x-tabla.select-edicion>
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span x-text="usuario.rol"></span>
                                 </template>
-                                <select x-show="editando" x-model="usuario.rol" class="form-control form-control-sm">
+                                <x-tabla.select-edicion x-show="editando" x-model="usuario.rol">
                                     <option value="">Selecciona rol</option>
                                     <option value="oficina">Oficina</option>
                                     <option value="operario">Operario</option>
                                     <option value="visitante">Visitante</option>
-                                </select>
+                                </x-tabla.select-edicion>
                             </td>
+
                             <td class="px-2 py-3 text-center border">
-                                <!-- Mostrar nombre de categoría si no está editando -->
                                 <template x-if="!editando">
                                     <span x-text="usuario.categoria?.nombre ?? 'Sin asignar'"></span>
                                 </template>
-
-                                <!-- Select editable con Alpine -->
-                                <select x-show="editando" x-model="usuario.categoria_id"
-                                    class="form-control form-control-sm">
+                                <x-tabla.select-edicion x-show="editando" x-model="usuario.categoria_id">
                                     <option value="">Selecciona cat.</option>
                                     @foreach ($categorias as $categoria)
-                                        <option value="{{ $categoria->id }}">
-                                            {{ ucfirst($categoria->nombre) }}
+                                        <option value="{{ $categoria->id }}">{{ ucfirst($categoria->nombre) }}
                                         </option>
                                     @endforeach
-                                </select>
+                                </x-tabla.select-edicion>
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <template x-if="!editando">
-                                        <span x-text="usuario.maquina?.nombre ?? 'Sin asignar'"></span>
-                                    </template>
+                                    <span x-text="usuario.maquina?.nombre ?? 'Sin asignar'"></span>
                                 </template>
-                                <select x-show="editando" x-model="usuario.maquina_id"
-                                    class="form-control form-control-sm">
+                                <x-tabla.select-edicion x-show="editando" x-model="usuario.maquina_id">
                                     <option value="">Selecciona máq.</option>
                                     @foreach ($maquinas as $maquina)
-                                        <option value="{{ $maquina->id }}">{{ $maquina->nombre ?? 'N/A' }}
-                                        </option>
+                                        <option value="{{ $maquina->id }}">{{ $maquina->nombre ?? 'N/A' }}</option>
                                     @endforeach
-                                </select>
+                                </x-tabla.select-edicion>
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
                                     <span
                                         x-text="usuario.turno ? usuario.turno.charAt(0).toUpperCase() + usuario.turno.slice(1) : 'N/A'"></span>
                                 </template>
-                                <select x-show="editando" x-model="usuario.turno"
-                                    class="form-control form-control-sm">
+                                <x-tabla.select-edicion x-show="editando" x-model="usuario.turno">
                                     <option value="">Selecciona turno</option>
                                     <option value="nocturno">Nocturno</option>
                                     <option value="diurno">Diurno</option>
                                     <option value="mañana">Mañana</option>
-                                </select>
+                                </x-tabla.select-edicion>
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 @if ($user->isOnline())
                                     <span class="text-green-600">En línea</span>
@@ -377,9 +311,9 @@
                                     <input type="hidden" id="usuario_turno_{{ $user->id }}"
                                         value="{{ $user->turno }}">
                                     <button type="button"
-                                        class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-1 px-1 rounded"
+                                        class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded"
                                         onclick="confirmarGenerarTurnos({{ $user->id }})">
-                                        Generar Turnos
+                                        Turnos
                                     </button>
                                 </form>
                             </td>
@@ -406,11 +340,7 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4 flex justify-center">
-            {{ $registrosUsuarios->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-
-        </div>
-        </div>
+        <x-tabla.paginacion :paginador="$registrosUsuarios" />
     @else
         {{-- ------------------------------- FICHAJE MODO OPERARIO -------------------------------- --}}
         <div class="flex justify-between items-center w-full gap-4 p-4">

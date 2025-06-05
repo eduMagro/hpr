@@ -7,99 +7,90 @@
     </x-slot>
 
 
-    <div x-data="{ modalObra: false }" class="container mx-auto px-4 py-6">
-        <div class="mb-4 flex items-center space-x-4">
-            <!-- Botón para abrir el modal -->
-            <button @click="modalObra = true" class="btn btn-primary">➕ Nuevo Cliente</button>
-            <!-- Botón para desplegar los filtros -->
-            <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#filtrosBusqueda">
-                🔍 Filtros Avanzados
-            </button>
-        </div>
-        <!-- FORMULARIO DE FILTROS -->
-        <div id="filtrosBusqueda" class="collapse mt-3">
-            <form method="GET" action="{{ route('clientes.index') }}" class="card card-body shadow-sm">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <!-- Filtro: Empresa -->
-                        <input type="text" name="empresa" class="form-control" placeholder="Buscar por empresa"
-                            value="{{ request('empresa') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: Obra -->
-                        <input type="text" name="obra" class="form-control" placeholder="Buscar por obra"
-                            value="{{ request('obra') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: Código -->
-                        <input type="text" name="codigo" class="form-control" placeholder="Buscar por código"
-                            value="{{ request('codigo') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: Teléfono -->
-                        <input type="text" name="telefono" class="form-control" placeholder="Buscar por teléfono"
-                            value="{{ request('telefono') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: Email -->
-                        <input type="text" name="email" class="form-control" placeholder="Buscar por email"
-                            value="{{ request('email') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: Ciudad -->
-                        <input type="text" name="ciudad" class="form-control" placeholder="Buscar por ciudad"
-                            value="{{ request('ciudad') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: Provincia -->
-                        <input type="text" name="provincia" class="form-control" placeholder="Buscar por provincia"
-                            value="{{ request('provincia') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: País -->
-                        <input type="text" name="pais" class="form-control" placeholder="Buscar por país"
-                            value="{{ request('pais') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: CIF/NIF -->
-                        <input type="text" name="cif_nif" class="form-control" placeholder="Buscar por CIF/NIF"
-                            value="{{ request('cif_nif') }}">
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: Estado Activo -->
-                        <select name="activo" class="form-control">
-                            <option value="">-- Filtrar por Estado --</option>
-                            <option value="1" {{ request('activo') == '1' ? 'selected' : '' }}>Activo</option>
-                            <option value="0" {{ request('activo') == '0' ? 'selected' : '' }}>Inactivo
-                            </option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <!-- Filtro: Número de registros por página -->
-                        <select name="per_page" class="form-control">
-                            <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10 registros
-                            </option>
-                            <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25 registros
-                            </option>
-                            <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50 registros
-                            </option>
-                            <option value="100" {{ request('per_page') == '100' ? 'selected' : '' }}>100
-                                registros</option>
-                        </select>
-                    </div>
-                </div>
+    <div x-data="{ modalObra: false }">
+        <!-- Botón para abrir -->
+        <x-tabla.boton-azul @click="modalObra = true">
+            ➕ Nuevo Cliente
+        </x-tabla.boton-azul>
 
-                <!-- Botones de acción -->
-                <div class="d-flex justify-content-between mt-3">
-                    <button type="submit" class="btn btn-info">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
-                    <a href="{{ route('clientes.index') }}" class="btn btn-warning">
-                        <i class="fas fa-undo"></i> Resetear Filtros
-                    </a>
-                </div>
-            </form>
+        <!-- Modal -->
+        <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" x-show="modalObra"
+            x-transition x-cloak>
+            <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl">
+                <h3 class="text-xl font-semibold mb-6 text-gray-800">Crear Nuevo Cliente</h3>
+
+                <form action="{{ route('clientes.store') }}" method="POST" class="space-y-6">
+                    @csrf
+
+                    {{-- Contenedor en dos columnas --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="empresa" class="block text-sm font-semibold text-gray-700 mb-1">Nombre de la
+                                Empresa</label>
+                            <x-tabla.input name="empresa" required />
+                        </div>
+
+                        <div>
+                            <label for="codigo" class="block text-sm font-semibold text-gray-700 mb-1">Código</label>
+                            <x-tabla.input name="codigo" required />
+                        </div>
+
+                        <div>
+                            <label for="telefono"
+                                class="block text-sm font-semibold text-gray-700 mb-1">Teléfono</label>
+                            <x-tabla.input name="telefono" />
+                        </div>
+
+                        <div>
+                            <label for="email" class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                            <x-tabla.input type="email" name="email" />
+                        </div>
+
+                        <div>
+                            <label for="direccion"
+                                class="block text-sm font-semibold text-gray-700 mb-1">Dirección</label>
+                            <x-tabla.input name="direccion" />
+                        </div>
+
+                        <div>
+                            <label for="ciudad" class="block text-sm font-semibold text-gray-700 mb-1">Ciudad</label>
+                            <x-tabla.input name="ciudad" />
+                        </div>
+
+                        <div>
+                            <label for="provincia"
+                                class="block text-sm font-semibold text-gray-700 mb-1">Provincia</label>
+                            <x-tabla.input name="provincia" />
+                        </div>
+
+                        <div>
+                            <label for="pais" class="block text-sm font-semibold text-gray-700 mb-1">País</label>
+                            <x-tabla.input name="pais" />
+                        </div>
+
+                        <div>
+                            <label for="cif_nif" class="block text-sm font-semibold text-gray-700 mb-1">CIF/NIF</label>
+                            <x-tabla.input name="cif_nif" />
+                        </div>
+
+                        <div>
+                            <label for="activo" class="block text-sm font-semibold text-gray-700 mb-1">Activo</label>
+                            <x-tabla.select name="activo" :options="['1' => 'Sí', '0' => 'No']" />
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <x-tabla.boton-azul type="button" @click="modalObra = false"
+                            class="bg-gray-500 hover:bg-gray-600">
+                            Cancelar
+                        </x-tabla.boton-azul>
+                        <x-tabla.boton-azul type="submit">Guardar</x-tabla.boton-azul>
+                    </div>
+                </form>
+            </div>
         </div>
+
+
         <!-- TABLA DE CLIENTES -->
         <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
             <table class="w-full border border-gray-300 rounded-lg">
@@ -222,72 +213,12 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4 flex justify-center">{{ $clientes->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-        </div>
-        <!-- Modal para crear cliente -->
-
-        <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" x-show="modalObra"
-            x-transition>
-            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
-                <h3 class="text-xl font-semibold mb-4">Crear Nuevo Cliente</h3>
-                <form action="{{ route('clientes.store') }}" method="POST">
-                    @csrf
-                    <!-- Contenedor de dos columnas -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="mb-3">
-                            <label>Nombre de la Empresa</label>
-                            <input type="text" name="empresa" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Código</label>
-                            <input type="text" name="codigo" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label>Teléfono</label>
-                            <input type="text" name="telefono" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Email</label>
-                            <input type="email" name="email" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Dirección</label>
-                            <input type="text" name="direccion" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Ciudad</label>
-                            <input type="text" name="ciudad" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Provincia</label>
-                            <input type="text" name="provincia" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>País</label>
-                            <input type="text" name="pais" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>CIF/NIF</label>
-                            <input type="text" name="cif_nif" class="form-control">
-                        </div>
-                        <div class="mb-3">
-                            <label>Activo</label>
-                            <select name="activo" class="form-control">
-                                <option value="1">Sí</option>
-                                <option value="0">No</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-2">
-                        <button type="button" class="btn btn-secondary" @click="modalObra = false">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Guardar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <x-tabla.paginacion :paginador="$clientes" />
 
     </div>
+
+
+
     <script>
         function guardarCambios(cliente) {
             console.log('hola');

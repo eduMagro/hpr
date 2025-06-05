@@ -9,19 +9,10 @@
     <div class="container mx-auto px-4 py-6">
         <!-- Botón para crear una nueva máquina -->
         <div class="mb-4">
-            <a href="{{ route('maquinas.create') }}" class="btn btn-primary">
-                Crear Nueva Máquina
-            </a>
+            <x-tabla.boton-azul :href="route('maquinas.create')">
+                ➕ Crear Nueva Máquina
+            </x-tabla.boton-azul>
         </div>
-
-        <!-- Formulario de búsqueda de máquinas -->
-        <form method="GET" action="{{ route('maquinas.index') }}" class="form-inline mt-3 mb-3">
-            <input type="text" name="nombre" class="form-control mb-3" placeholder="Buscar por código de máquina"
-                value="{{ request('nombre') }}">
-            <button type="submit" class="btn btn-info ml-2">
-                <i class="fas fa-search"></i> Buscar
-            </button>
-        </form>
 
         <!-- Lista de máquinas en grid responsive -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

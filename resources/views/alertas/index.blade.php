@@ -156,9 +156,7 @@
 
 
             <!-- Paginación -->
-            <div class="mt-4 flex justify-center">
-                {{ $alertas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-            </div>
+            <x-tabla.paginacion :paginador="$alertas" />
         </div>
     </div>
 

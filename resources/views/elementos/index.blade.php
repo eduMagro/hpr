@@ -174,11 +174,8 @@
 
 
     <div class="w-full p-4 sm:p-2">
-        @if (count($filtrosActivos))
-            <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
-                <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
-            </div>
-        @endif
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
+
         @php
             function ordenarColumnaElemento($columna, $titulo)
             {
@@ -279,7 +276,6 @@
                         </tr>
                     </form>
                 </thead>
-
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
@@ -504,10 +500,7 @@
             </table>
         </div>
 
-        <div class="mt-4 flex justify-center">
-            {{ $elementos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-
-        </div>
+        <x-tabla.paginacion :paginador="$elementos" />
         <!-- Modal -->
         <div id="modal-dibujo"
             class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">

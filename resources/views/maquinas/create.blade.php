@@ -4,137 +4,101 @@
             {{ __('Crear Máquinas') }}
         </h2>
     </x-slot>
-    <!-- Mostrar errores de validación -->
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    <!-- Mostrar mensajes de éxito o error -->
-    @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
-    @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
 
-    <div class="container mt-5">
-        <div class="row justify-content-center mb-4">
-            <div class="col-md-8">
-                <div class="card shadow-lg border-0">
-                    <div class="card-header bg-primary text-white text-center">
-                        <h2 class="text-uppercase">Crear Máquina</h2>
-                    </div>
-                    <div class="card-body">
-                        <form action="{{ route('maquinas.store') }}" method="POST">
-                            @csrf
+    <div class="py-8">
+        <div class="max-w-2xl mx-auto px-4">
+            <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+                <div class="bg-blue-600 text-white text-center py-4">
+                    <h2 class="text-lg font-bold uppercase">Crear Máquina</h2>
+                </div>
+                <div class="p-6">
+                    <form action="{{ route('maquinas.store') }}" method="POST" class="space-y-5">
+                        @csrf
 
-                            <!-- Código de la máquina -->
-                            <div class="form-group mb-4">
-                                <label for="codigo" class="form-label fw-bold text-uppercase">Código de la Máquina
-                                    *</label>
-                                <input type="text" id="codigo" name="codigo" class="form-control form-control-lg"
-                                    placeholder="Introduce el código de la máquina" required>
-                            </div>
+                        {{-- Código --}}
+                        <div>
+                            <label for="codigo" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Código de la Máquina *
+                            </label>
+                            <x-tabla.input name="codigo" placeholder="Introduce el código de la máquina" required />
+                        </div>
 
-                            <!-- Nombre de la máquina -->
-                            <div class="form-group mb-4">
-                                <label for="nombre" class="form-label fw-bold text-uppercase">Nombre de la Máquina
-                                    *</label>
-                                <input type="text" id="nombre" name="nombre" class="form-control form-control-lg"
-                                    placeholder="Introduce el nombre de la máquina" required>
-                            </div>
+                        {{-- Nombre --}}
+                        <div>
+                            <label for="nombre" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Nombre de la Máquina *
+                            </label>
+                            <x-tabla.input name="nombre" placeholder="Introduce el nombre de la máquina" required />
+                        </div>
 
-                            <!-- Tipo de máquina -->
-                            <div class="form-group mb-4">
-                                <label for="tipo" class="form-label fw-bold text-uppercase">Tipo de Máquina
-                                </label>
-                                <select id="tipo" name="tipo" class="form-control form-control-lg">
-                                    <option value="" disabled selected>Selecciona su función</option>
-                                    <option value="cortadora_dobladora">Cortadora y Dobladora</option>
-                                    <option value="ensambladora">Ensambladora</option>
-                                    <option value="soldadora">Soldadora</option>
-                                    <option value="cortadora manual">Cortadora Manual</option>
-                                    <option value="dobladora manual">Dobladora Manual</option>
-                                </select>
-                            </div>
+                        {{-- Tipo --}}
+                        <div>
+                            <label for="tipo" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Tipo de Máquina
+                            </label>
+                            <x-tabla.select name="tipo" :options="[
+                                'cortadora_dobladora' => 'Cortadora y Dobladora',
+                                'ensambladora' => 'Ensambladora',
+                                'soldadora' => 'Soldadora',
+                                'cortadora manual' => 'Cortadora Manual',
+                                'dobladora manual' => 'Dobladora Manual',
+                            ]" empty="Selecciona su función" />
+                        </div>
 
-                            <!-- Diámetro mínimo -->
-                            <div class="form-group mb-4">
-                                <label for="diametro_min" class="form-label fw-bold text-uppercase">Diámetro Mínimo
-                                </label>
-                                <select id="diametro_min" name="diametro_min" class="form-control form-control-lg">
-                                    <option value="" disabled selected>Selecciona un diámetro mínimo</option>
-                                    <option value="8">8</option>
-                                    <option value="10">10</option>
-                                    <option value="12">12</option>
-                                    <option value="16">16</option>
-                                    <option value="20">20</option>
-                                    <option value="25">25</option>
-                                    <option value="32">32</option>
-                                </select>
-                            </div>
+                        {{-- Diámetro mínimo --}}
+                        <div>
+                            <label for="diametro_min" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Diámetro Mínimo
+                            </label>
+                            <x-tabla.select name="diametro_min" :options="array_combine([8, 10, 12, 16, 20, 25, 32], [8, 10, 12, 16, 20, 25, 32])"
+                                empty="Selecciona un diámetro mínimo" />
+                        </div>
 
-                            <!-- Diámetro máximo -->
-                            <div class="form-group mb-4">
-                                <label for="diametro_max" class="form-label fw-bold text-uppercase">Diámetro Máximo
-                                </label>
-                                <select id="diametro_max" name="diametro_max" class="form-control form-control-lg">
-                                    <option value="" disabled selected>Selecciona un diámetro máximo</option>
-                                    <option value="8">8</option>
-                                    <option value="10">10</option>
-                                    <option value="12">12</option>
-                                    <option value="16">16</option>
-                                    <option value="20">20</option>
-                                    <option value="25">25</option>
-                                    <option value="32">32</option>
-                                </select>
-                            </div>
+                        {{-- Diámetro máximo --}}
+                        <div>
+                            <label for="diametro_max" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Diámetro Máximo
+                            </label>
+                            <x-tabla.select name="diametro_max" :options="array_combine([8, 10, 12, 16, 20, 25, 32], [8, 10, 12, 16, 20, 25, 32])"
+                                empty="Selecciona un diámetro máximo" />
+                        </div>
 
-                            <!-- Peso mínimo -->
-                            <div class="form-group mb-4">
-                                <label for="peso_min" class="form-label fw-bold text-uppercase">Peso Mínimo</label>
-                                <select id="peso_min" name="peso_min" class="form-control form-control-lg">
-                                    <option value="" disabled selected>Selecciona un peso mínimo</option>
-                                    <option value="3000">3000 kg</option>
-                                    <option value="5000">5000 kg</option>
-                                    <option value="barras">Barras</option>
-                                </select>
-                            </div>
+                        {{-- Peso mínimo --}}
+                        <div>
+                            <label for="peso_min" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Peso Mínimo
+                            </label>
+                            <x-tabla.select name="peso_min" :options="[
+                                '3000' => '3000 kg',
+                                '5000' => '5000 kg',
+                                'barras' => 'Barras',
+                            ]" empty="Selecciona un peso mínimo" />
+                        </div>
 
-                            <!-- Peso máximo -->
-                            <div class="form-group mb-4">
-                                <label for="peso_max" class="form-label fw-bold text-uppercase">Peso Máximo</label>
-                                <select id="peso_max" name="peso_max" class="form-control form-control-lg">
-                                    <option value="" disabled selected>Selecciona un peso máximo</option>
-                                    <option value="3000">3000 kg</option>
-                                    <option value="5000">5000 kg</option>
-                                    <option value="barras">Barras</option>
-                                </select>
-                            </div>
+                        {{-- Peso máximo --}}
+                        <div>
+                            <label for="peso_max" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Peso Máximo
+                            </label>
+                            <x-tabla.select name="peso_max" :options="[
+                                '3000' => '3000 kg',
+                                '5000' => '5000 kg',
+                                'barras' => 'Barras',
+                            ]" empty="Selecciona un peso máximo" />
+                        </div>
 
-                            <!-- Botón para enviar -->
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-success btn-lg">Registrar Máquina</button>
-                            </div>
-                        </form>
-
-                    </div>
-                    <div class="card-footer text-center text-muted">
-                        <small>Todos los campos con * son obligatorios.</small>
-                    </div>
+                        {{-- Botón --}}
+                        <div class="flex justify-center">
+                            <x-tabla.boton-azul type="submit">
+                                💾 Registrar Máquina
+                            </x-tabla.boton-azul>
+                        </div>
+                    </form>
+                </div>
+                <div class="bg-gray-100 text-center text-gray-500 text-sm py-2">
+                    <small>Todos los campos con * son obligatorios.</small>
                 </div>
             </div>
         </div>
     </div>
-
-
 </x-app-layout>

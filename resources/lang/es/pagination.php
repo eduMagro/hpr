@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 return [
-    'next'     => 'Siguiente &raquo;',
     'previous' => '&laquo; Anterior',
-    'showing'  => 'Mostrando :from - :to de :total registros',
+    'next' => 'Siguiente &raquo;',
+    'showing' => 'Mostrando',
+    'to' => 'a',
+    'of' => 'de',
+    'results' => 'resultados',
 ];

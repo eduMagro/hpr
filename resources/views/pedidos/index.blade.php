@@ -72,15 +72,8 @@
         </div>
     @endif
 
-
-
     <div class="px-4 py-6">
 
-        @if (count($filtrosActivos))
-            <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
-                <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
-            </div>
-        @endif
         @if (auth()->user()->rol === 'oficina')
 
             <div class="mb-6"> <!-- Tabla stock -->
@@ -355,6 +348,7 @@
                     </div>
                 </div>
             </div>
+            <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
             <!-- Tabla pedidos  -->
             <div class="overflow-x-auto bg-white shadow rounded-lg">
                 <table class="w-full border-collapse text-sm text-center">
@@ -376,69 +370,50 @@
                         <tr class="text-center text-xs uppercase">
                             <form method="GET" action="{{ route('pedidos.index') }}">
                                 <th class="p-1 border">
-                                    <input type="text" name="codigo" value="{{ request('codigo') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="codigo" type="text" :value="request('codigo')"
+                                        class="w-full text-xs" />
                                 </th>
+
                                 <th class="p-1 border">
-                                    <select name="pedido_global_id" class="form-control form-control-sm">
-                                        <option value="">Todos</option>
-                                        @foreach ($pedidosGlobales as $pg)
-                                            <option value="{{ $pg->id }}"
-                                                {{ request('pedido_global_id') == $pg->id ? 'selected' : '' }}>
-                                                {{ $pg->codigo }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <x-tabla.select name="pedido_global_id" :options="$pedidosGlobales->pluck('codigo', 'id')" :selected="request('pedido_global_id')"
+                                        empty="Todos" class="w-full text-xs" />
                                 </th>
+
                                 <th class="p-1 border">
-                                    <select name="proveedor_id" class="form-control form-control-sm">
-                                        <option value="">Todos</option>
-                                        @foreach ($proveedores as $proveedor)
-                                            <option value="{{ $proveedor->id }}"
-                                                {{ request('proveedor_id') == $proveedor->id ? 'selected' : '' }}>
-                                                {{ $proveedor->nombre }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <x-tabla.select name="proveedor_id" :options="$proveedores->pluck('nombre', 'id')" :selected="request('proveedor_id')"
+                                        empty="Todos" class="w-full text-xs" />
                                 </th>
+
                                 <th class="p-1 border"></th>
                                 <th class="p-1 border"></th>
+
                                 <th class="p-1 border">
-                                    <input type="date" name="fecha_pedido" value="{{ request('fecha_pedido') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="fecha_pedido" type="date" :value="request('fecha_pedido')"
+                                        class="w-full text-xs" />
                                 </th>
+
                                 <th class="p-1 border">
-                                    <input type="date" name="fecha_entrega"
-                                        value="{{ request('fecha_entrega') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="fecha_entrega" type="date" :value="request('fecha_entrega')"
+                                        class="w-full text-xs" />
                                 </th>
+
                                 <th class="p-1 border">
-                                    <select name="estado" class="form-control form-control-sm">
-                                        <option value="">Todos</option>
-                                        <option value="pendiente"
-                                            {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
-                                            Pendiente</option>
-                                        <option value="parcial"
-                                            {{ request('estado') == 'parcial' ? 'selected' : '' }}>
-                                            Parcial</option>
-                                        <option value="completo"
-                                            {{ request('estado') == 'completo' ? 'selected' : '' }}>
-                                            Completo</option>
-                                        <option value="cancelado"
-                                            {{ request('estado') == 'cancelado' ? 'selected' : '' }}>
-                                            Cancelado</option>
-                                    </select>
+                                    <x-tabla.select name="estado" :options="[
+                                        'pendiente' => 'Pendiente',
+                                        'parcial' => 'Parcial',
+                                        'completo' => 'Completo',
+                                        'cancelado' => 'Cancelado',
+                                    ]" :selected="request('estado')" empty="Todos"
+                                        class="w-full text-xs" />
                                 </th>
+
                                 <th class="p-1 border text-center"></th>
                                 <th class="p-1 border text-center"></th>
-                                <th class="p-1 border text-center">
-                                    <button type="submit" class="btn btn-sm btn-info px-2"><i
-                                            class="fas fa-search"></i></button>
-                                    <a href="{{ route('pedidos.index') }}" class="btn btn-sm btn-warning px-2"><i
-                                            class="fas fa-undo"></i></a>
-                                </th>
+
+                                <x-tabla.botones-filtro ruta="pedidos.index" />
                             </form>
                         </tr>
+
                     </thead>
 
                     <tbody>
@@ -582,10 +557,7 @@
 
 
             </div>
-
-            <div class="mt-4">
-                {{ $pedidos->links('vendor.pagination.bootstrap-5') }}
-            </div>
+            <x-tabla.paginacion :paginador="$pedidos" />
 
         @endif
         {{-- ---------------------------------------------------- ROL OPERARIO ---------------------------------------------------- --}}

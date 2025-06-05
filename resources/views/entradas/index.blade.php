@@ -124,9 +124,7 @@
             </table>
         </div>
 
-        <div class="mt-4 flex justify-center">
-            {{ $entradas->onEachSide(1)->links('vendor.pagination.bootstrap-5') }}
-        </div>
+        <x-tabla.paginacion :paginador="$entradas" />
 
     </div>
     <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>

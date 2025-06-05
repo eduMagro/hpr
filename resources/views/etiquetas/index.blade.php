@@ -365,9 +365,7 @@
                 </table>
             </div>
 
-            <div class="mt-4 flex justify-center">
-                {{ $etiquetas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-            </div>
+            <x-tabla.paginacion :paginador="$etiquetas" />
             <!-- Modal con Canvas para Dibujar las Dimensiones -->
             <div id="modal-dibujo"
                 class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">

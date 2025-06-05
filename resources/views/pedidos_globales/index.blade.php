@@ -74,15 +74,12 @@
 
 
     <div class="px-4 py-6">
-        @if (count($filtrosActivos))
-            <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
-                <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
-            </div>
-        @endif
+
         <button onclick="abrirModalPedidoGlobal()"
             class="px-4 py-2 mb-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
             ➕ Crear Pedido Global
         </button>
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <div class="overflow-x-auto bg-white shadow rounded-lg">
             <table class="w-full border-collapse text-sm text-center">
                 <thead class="bg-blue-500 text-white text-10">
@@ -99,38 +96,33 @@
                     <tr class="text-xs uppercase">
                         <form method="GET" action="{{ route('pedidos_globales.index') }}">
                             <th class="p-1 border">
-                                <input type="text" name="codigo" value="{{ request('codigo') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="codigo" type="text" :value="request('codigo')" class="w-full text-xs" />
                             </th>
+
                             <th class="p-1 border">
-                                <input type="text" name="proveedor" value="{{ request('proveedor') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="proveedor" type="text" :value="request('proveedor')"
+                                    class="w-full text-xs" />
                             </th>
+
                             <th class="p-1 border"></th>
                             <th class="p-1 border"></th>
                             <th class="p-1 border"></th>
+
                             <th class="p-1 border">
-                                <select name="estado" class="form-control form-control-sm">
-                                    <option value="">Todos</option>
-                                    <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
-                                        Pendiente</option>
-                                    <option value="en curso" {{ request('estado') == 'en curso' ? 'selected' : '' }}>En
-                                        curso</option>
-                                    <option value="completado"
-                                        {{ request('estado') == 'completado' ? 'selected' : '' }}>Completado</option>
-                                    <option value="cancelado" {{ request('estado') == 'cancelado' ? 'selected' : '' }}>
-                                        Cancelado</option>
-                                </select>
+                                <x-tabla.select name="estado" :options="[
+                                    'pendiente' => 'Pendiente',
+                                    'en curso' => 'En curso',
+                                    'completado' => 'Completado',
+                                    'cancelado' => 'Cancelado',
+                                ]" :selected="request('estado')" empty="Todos"
+                                    class="w-full text-xs" />
                             </th>
+
                             <th class="p-1 border"></th>
-                            <th class="p-1 border">
-                                <button type="submit" class="btn btn-sm btn-info px-2"><i
-                                        class="fas fa-search"></i></button>
-                                <a href="{{ route('pedidos_globales.index') }}" class="btn btn-sm btn-warning px-2"><i
-                                        class="fas fa-undo"></i></a>
-                            </th>
+                            <x-tabla.botones-filtro ruta="pedidos_globales.index" />
                         </form>
                     </tr>
+
                 </thead>
 
                 <tbody>

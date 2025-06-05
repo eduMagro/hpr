@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Categoria;
 use App\Models\Turno;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -24,8 +25,9 @@ class RegisteredUserController extends Controller
         if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
         }
+        $categorias = Categoria::orderBy('nombre')->get(); // Puedes añadir select('id', 'nombre') si quieres optimizar
 
-        return view('auth.register');
+        return view('auth.register', compact('categorias'));
     }
 
     /**
@@ -51,7 +53,7 @@ class RegisteredUserController extends Controller
                 'unique:' . User::class
             ],
             'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'],
-            'categoria' => ['string', 'max:255'],
+            'categoria_id' => ['required', 'exists:categorias,id'],
             'turno' => ['string', 'max:255', 'in:diurno,nocturno,mañana,flexible'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
@@ -94,8 +96,8 @@ class RegisteredUserController extends Controller
             'rol.max' => 'El rol no puede superar los 255 caracteres.',
             'rol.in' => 'El rol debe ser uno de los siguientes: operario, oficina o visitante.',
 
-            'categoria.string' => 'La categoría debe ser un texto válido.',
-            'categoria.max' => 'La categoría no puede superar los 255 caracteres.',
+            'categoria_id.required' => 'La categoría es obligatoria.',
+            'categoria_id.exists' => 'La categoría seleccionada no es válida.',
 
             'turno.string' => 'El turno debe ser un texto válido.',
             'turno.max' => 'El turno no puede superar los 255 caracteres.',
@@ -114,7 +116,7 @@ class RegisteredUserController extends Controller
             'movil_empresa' => $request->movil_empresa,
             'dni' => $request->dni,
             'rol' => $request->rol,
-            'categoria' => $request->categoria,
+            'categoria_id' => $request->categoria_id,
             'turno' => $request->turno,
             'password' => Hash::make($request->password),
         ]);

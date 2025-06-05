@@ -10,9 +10,11 @@
     <div class="w-full px-6 py-4">
         <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
         <div class="mb-4 flex justify-center space-x-2">
-            <a href="{{ route('entradas.create') }}" class="btn btn-primary">
-                Crear Nueva Entrada
-            </a>
+            <x-tabla.boton-azul :href="route('entradas.create')">
+                ➕ Crear Nueva Entrada
+            </x-tabla.boton-azul>
+
+
         </div>
 
         <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
@@ -183,11 +185,7 @@
                 }
             @endphp
 
-            @if (count($filtrosActivos))
-                <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
-                    <strong>Filtros aplicados:</strong> {!! implode(', ', $filtrosActivos) !!}
-                </div>
-            @endif
+            <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
             @php
                 function ordenarColumna($columna, $titulo)
@@ -236,62 +234,53 @@
                         <tr class="text-center text-xs uppercase">
                             <form method="GET" action="{{ route('productos.index') }}">
                                 <th class="p-1 border">
-                                    <input type="text" name="id" value="{{ request('id') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="id" type="text" :value="request('id')"
+                                        class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="codigo" value="{{ request('codigo') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="codigo" type="text" :value="request('codigo')"
+                                        class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="proveedor" value="{{ request('proveedor') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="proveedor" type="text" :value="request('proveedor')"
+                                        class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="tipo" value="{{ request('tipo') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="tipo" type="text" :value="request('tipo')"
+                                        class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="diametro" value="{{ request('diametro') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="diametro" type="text" :value="request('diametro')"
+                                        class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="longitud" value="{{ request('longitud') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="longitud" type="text" :value="request('longitud')"
+                                        class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="num_colada" value="{{ request('num_colada') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="num_colada" type="text" :value="request('num_colada')"
+                                        class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="num_paquete" value="{{ request('num_paquete') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="num_paquete" type="text" :value="request('num_paquete')"
+                                        class="w-full text-xs" />
                                 </th>
-                                <th class="p-1 border"></th> <!-- Peso Inicial: sin filtro por ahora -->
-                                <th class="p-1 border"></th> <!-- Peso Stock: sin filtro por ahora -->
+                                <th class="p-1 border"></th> <!-- Peso Inicial -->
+                                <th class="p-1 border"></th> <!-- Peso Stock -->
                                 <th class="p-1 border">
-                                    <select name="estado" class="form-control form-control-sm">
-                                        <option value="">Todos</option>
-                                        <option value="almacenado"
-                                            {{ request('estado') == 'almacenado' ? 'selected' : '' }}>Almacenado
-                                        </option>
-                                        <option value="fabricando"
-                                            {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando
-                                        </option>
-                                        <option value="consumido"
-                                            {{ request('estado') == 'consumido' ? 'selected' : '' }}>Consumido</option>
-                                    </select>
+                                    <x-tabla.select name="estado" :options="[
+                                        'almacenado' => 'Almacenado',
+                                        'fabricando' => 'Fabricando',
+                                        'consumido' => 'Consumido',
+                                    ]" :selected="request('estado')"
+                                        empty="Todos" class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <input type="text" name="ubicacion" value="{{ request('ubicacion') }}"
-                                        class="form-control form-control-sm" />
+                                    <x-tabla.input name="ubicacion" type="text" :value="request('ubicacion')"
+                                        class="w-full text-xs" />
                                 </th>
-                                <th class="p-1 border text-center">
-                                    <button type="submit" class="btn btn-sm btn-info px-2"><i
-                                            class="fas fa-search"></i></button>
-                                    <a href="{{ route('productos.index') }}" class="btn btn-sm btn-warning px-2"><i
-                                            class="fas fa-undo"></i></a>
-                                </th>
+
+                                <x-tabla.botones-filtro ruta="productos.index" />
                             </form>
                         </tr>
 
@@ -299,24 +288,24 @@
                     <tbody class="text-gray-700 text-sm">
                         @forelse($registrosProductos as $producto)
                             <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer">
-                                <td class="px-4 py-3 text-center border">{{ $producto->id }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->codigo ?? 'N/A' }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->proveedor->nombre ?? '—' }}
+                                <td class="px-2 py-3 text-center border">{{ $producto->id }}</td>
+                                <td class="px-2 py-3 text-center border">{{ $producto->codigo ?? 'N/A' }}</td>
+                                <td class="px-2 py-3 text-center border">{{ $producto->proveedor->nombre ?? '—' }}
                                 </td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="px-2 py-3 text-center border">
                                     {{ ucfirst($producto->productoBase->tipo ?? '—') }}</td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="px-2 py-3 text-center border">
                                     {{ $producto->productoBase->diametro ?? '—' }}
                                 </td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="px-2 py-3 text-center border">
                                     {{ $producto->productoBase->longitud ?? '—' }}
                                 </td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->n_colada }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->n_paquete }}</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->peso_inicial }} kg</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->peso_stock }} kg</td>
-                                <td class="px-4 py-3 text-center border">{{ $producto->estado }}</td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="px-2 py-3 text-center border">{{ $producto->n_colada }}</td>
+                                <td class="px-2 py-3 text-center border">{{ $producto->n_paquete }}</td>
+                                <td class="px-2 py-3 text-center border">{{ $producto->peso_inicial }} kg</td>
+                                <td class="px-2 py-3 text-center border">{{ $producto->peso_stock }} kg</td>
+                                <td class="px-2 py-3 text-center border">{{ $producto->estado }}</td>
+                                <td class="px-2 py-3 text-center border">
                                     @if (isset($producto->ubicacion->nombre))
                                         {{ $producto->ubicacion->nombre }}
                                     @elseif (isset($producto->maquina->nombre))
@@ -325,7 +314,7 @@
                                         No está ubicada
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-center border">
+                                <td class="px-2 py-3 text-center border">
                                     <div class="flex flex-col space-y-2 items-center">
                                         <a href="{{ route('productos.show', $producto->id) }}"
                                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
@@ -403,7 +392,7 @@
                         <p class="text-gray-600 mt-2">{{ $producto->created_at->format('d/m/Y H:i') }}</p>
 
                         <hr class="my-2 border-gray-300">
-                        <td class="px-4 py-3 text-center border">
+                        <td class="px-2 py-3 text-center border">
                             @php
                                 $usuario = auth()->user();
                                 $esOficina = $usuario->rol === 'oficina';
@@ -453,9 +442,7 @@
         </div>
 
         <!-- Paginación -->
-        <div class="mt-4 flex justify-center">
-            {{ $registrosProductos->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-        </div>
+        <x-tabla.paginacion :paginador="$registrosProductos" />
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // Confirmar consumir

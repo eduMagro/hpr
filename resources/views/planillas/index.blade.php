@@ -72,22 +72,23 @@
         </div>
     @endif
 
-
-
     <div class="w-full px-6 py-4">
-
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
             <!-- Formulario de importación -->
-            <form method="post" action="{{ route('planillas.import') }}" enctype="multipart/form-data"
-                class="form-cargando flex items-center gap-x-2">
+            <form method="POST" action="{{ route('planillas.import') }}" enctype="multipart/form-data"
+                class="form-cargando flex items-center gap-2">
                 @csrf
-                <input type="file" name="file" id="file" class="form-control file:mr-2">
 
-                <button type="submit" class="btn btn-primary btn-cargando flex items-center gap-x-2">
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                {{-- Campo de archivo --}}
+                <x-tabla.input type="file" name="file" id="file" class="file:mr-2" />
+
+                {{-- Botón importar --}}
+                <x-tabla.boton-azul type="submit" class="btn-cargando flex items-center gap-2">
+                    <span class="spinner-border spinner-border-sm hidden" role="status" aria-hidden="true"></span>
                     <span class="texto">IMPORTAR</span>
-                </button>
+                </x-tabla.boton-azul>
             </form>
+
         </div>
         @if (count($filtrosActivos))
             <div class="alert alert-info text-sm mt-2 mb-4 shadow-sm">
@@ -123,82 +124,65 @@
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('planillas.index') }}">
                             <th class="p-1 border">
-                                <input type="text" name="codigo" value="{{ request('codigo') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="codigo_cliente" value="{{ request('codigo_cliente') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="codigo_cliente" value="{{ request('codigo_cliente') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="cliente" value="{{ request('cliente') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="cliente" value="{{ request('cliente') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="cod_obra" value="{{ request('cod_obra') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="cod_obra" value="{{ request('cod_obra') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="nom_obra" value="{{ request('nom_obra') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <!-- Sección -->
-                            <th class="p-1 border"> <input type="text" name="seccion"
-                                    value="{{ request('seccion') }}" class="form-control form-control-sm" /></th>
-                            <!-- Descripción -->
-                            <th class="p-1 border">
-                                <input type="text" name="descripcion" value="{{ request('descripcion') }}"
-                                    class="form-control form-control-sm" />
-                            </th>
-                            <th class="p-1 border"> <input type="text" name="ensamblado"
-                                    value="{{ request('ensamblado') }}" class="form-control form-control-sm" /></th>
-                            <!-- Comentario -->
-                            <th class="p-1 border"> <input type="text" name="comentario"
-                                    value="{{ request('comentario') }}" class="form-control form-control-sm" /></th>
-                            <th class="p-1 border"></th> <!-- Peso Fabricado -->
-                            <th class="p-1 border"></th> <!-- Peso Total -->
-                            <th class="p-1 border">
-                                <select name="estado" class="form-control form-control-sm">
-                                    <option value="">Todos</option>
-                                    <option value="pendiente"
-                                        {{ request('estado') == 'pendiente' ? 'selected' : '' }}>
-                                        Pendiente</option>
-                                    <option value="fabricando"
-                                        {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando</option>
-                                    <option value="completada"
-                                        {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada</option>
-                                    <option value="montaje" {{ request('estado') == 'montaje' ? 'selected' : '' }}>
-                                        Montaje</option>
-                                </select>
+                                <x-tabla.input name="nom_obra" value="{{ request('nom_obra') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="date" name="fecha_inicio" value="{{ request('fecha_inicio') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="seccion" value="{{ request('seccion') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="date" name="fecha_finalizacion"
-                                    value="{{ request('fecha_finalizacion') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="descripcion" value="{{ request('descripcion') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="date" name="fecha_importacion"
-                                    value="{{ request('fecha_importacion') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="ensamblado" value="{{ request('ensamblado') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="date" name="fecha_entrega" value="{{ request('fecha_entrega') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="comentario" value="{{ request('comentario') }}" />
+                            </th>
+                            <th class="p-1 border"></th> {{-- Peso Fabricado --}}
+                            <th class="p-1 border"></th> {{-- Peso Total --}}
+
+                            <th class="p-1 border">
+                                <x-tabla.select name="estado" :options="[
+                                    'pendiente' => 'Pendiente',
+                                    'fabricando' => 'Fabricando',
+                                    'completada' => 'Completada',
+                                    'montaje' => 'Montaje',
+                                ]" :selected="request('estado')" empty="Todos" />
+                            </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.input type="date" name="fecha_inicio"
+                                    value="{{ request('fecha_inicio') }}" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="name" value="{{ request('name') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input type="date" name="fecha_finalizacion"
+                                    value="{{ request('fecha_finalizacion') }}" />
                             </th>
-                            <th class="p-1 border text-center">
-                                <button type="submit" class="btn btn-sm btn-info px-2"><i
-                                        class="fas fa-search"></i></button>
-                                <a href="{{ route('planillas.index') }}" class="btn btn-sm btn-warning px-2"><i
-                                        class="fas fa-undo"></i></a>
+                            <th class="p-1 border">
+                                <x-tabla.input type="date" name="fecha_importacion"
+                                    value="{{ request('fecha_importacion') }}" />
                             </th>
+                            <th class="p-1 border">
+                                <x-tabla.input type="date" name="fecha_entrega"
+                                    value="{{ request('fecha_entrega') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="name" value="{{ request('name') }}" />
+                            </th>
+
+                            <x-tabla.botones-filtro ruta="planillas.index" />
                         </form>
                     </tr>
 
@@ -405,8 +389,7 @@
             </table>
         </div>
 
-        <div class="mt-4 flex justify-center">{{ $planillas->onEachSide(2)->links('vendor.pagination.bootstrap-5') }}
-        </div>
+        <x-tabla.paginacion :paginador="$planillas" />
         <script>
             function guardarCambios(planilla) {
                 fetch(`{{ route('planillas.update', '') }}/${planilla.id}`, {

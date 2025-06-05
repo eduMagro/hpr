@@ -198,51 +198,37 @@
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('asignaciones-turnos.index') }}">
                             <th class="p-1 border">
-                                <input type="text" name="id" value="{{ request('id') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="id" type="text" :value="request('id')" class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="empleado" value="{{ request('empleado') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="empleado" type="text" :value="request('empleado')"
+                                    class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
                                 <div class="flex flex-row space-x-1">
-                                    <input type="date" name="fecha_inicio" value="{{ request('fecha_inicio') }}"
-                                        class="form-control form-control-sm text-xs" />
-                                    <input type="date" name="fecha_fin" value="{{ request('fecha_fin') }}"
-                                        class="form-control form-control-sm text-xs" />
+                                    <x-tabla.input name="fecha_inicio" type="date" :value="request('fecha_inicio')"
+                                        class="text-xs w-full" />
+                                    <x-tabla.input name="fecha_fin" type="date" :value="request('fecha_fin')"
+                                        class="text-xs w-full" />
                                 </div>
                             </th>
-                            <th class="p-2 border">
-                                <input type="text" name="obra" value="{{ request('obra') }}"
-                                    class="form-control form-control-sm" />
+                            <th class="p-1 border">
+                                <x-tabla.input name="obra" type="text" :value="request('obra')" class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="turno" value="{{ request('turno') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="turno" type="text" :value="request('turno')" class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="maquina" value="{{ request('maquina') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="maquina" type="text" :value="request('maquina')" class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="entrada" value="{{ request('entrada') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="entrada" type="text" :value="request('entrada')" class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
-                                <input type="text" name="salida" value="{{ request('salida') }}"
-                                    class="form-control form-control-sm" />
+                                <x-tabla.input name="salida" type="text" :value="request('salida')"
+                                    class="w-full text-xs" />
                             </th>
-                            <th class="p-1 border">
-                                <button type="submit" class="btn btn-sm btn-info px-2">
-                                    <i class="fas fa-search"></i>
-                                </button>
-
-                                <a href="{{ route('asignaciones-turnos.index') }}"
-                                    class="btn btn-sm btn-warning px-2">
-                                    <i class="fas fa-undo"></i>
-                                </a>
-                            </th>
+                            <x-tabla.botones-filtro ruta="asignaciones-turnos.index" />
                         </form>
                     </tr>
 
@@ -304,7 +290,8 @@
                             <td class="px-2 py-2 border">
                                 <template x-if="editando">
                                     <input type="time" x-model="asignacion.entrada"
-                                        class="form-control form-control-sm" />
+                                        class="w-50 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
                                 </template>
                                 <template x-if="!editando">
                                     <span x-text="asignacion.entrada || '—'"></span>
@@ -315,7 +302,8 @@
                             <td class="px-2 py-2 border">
                                 <template x-if="editando">
                                     <input type="time" x-model="asignacion.salida"
-                                        class="form-control form-control-sm" />
+                                        class="w-50 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+
                                 </template>
                                 <template x-if="!editando">
                                     <span x-text="asignacion.salida || '—'"></span>
@@ -339,9 +327,7 @@
 
 
         </div>
-        <div class="mt-4 flex justify-center">
-            {{ $asignaciones->links('vendor.pagination.bootstrap-5') }}
-        </div>
+        <x-tabla.paginacion :paginador="$asignaciones" />
     </div>
     <script>
         function guardarCambios(asignacionData, originalData) {
