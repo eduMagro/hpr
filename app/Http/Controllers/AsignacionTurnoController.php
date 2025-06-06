@@ -209,8 +209,6 @@ class AsignacionTurnoController extends Controller
         ));
     }
 
-
-
     public function fichar(Request $request)
     {
         Log::info('📩 Datos recibidos en fichar()', $request->all());
@@ -339,7 +337,6 @@ class AsignacionTurnoController extends Controller
         }
     }
 
-
     private function validarHoraEntrada($turno, $horaActual)
     {
         try {
@@ -373,7 +370,6 @@ class AsignacionTurnoController extends Controller
             default => false,
         };
     }
-
 
     /**
      * Calcula la distancia en metros entre dos puntos geográficos usando la fórmula de Haversine.
@@ -524,7 +520,6 @@ class AsignacionTurnoController extends Controller
         }
     }
 
-
     private function getFestivos()
     {
         $response = Http::get("https://date.nager.at/api/v3/PublicHolidays/" . date('Y') . "/ES");
@@ -666,5 +661,32 @@ class AsignacionTurnoController extends Controller
     public function show($id)
     {
         abort(404); // o simplemente return response('No disponible', 404);
+    }
+
+    public function asignarObra(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'obra_id' => 'required|exists:obras,id',
+            'fecha'   => 'required|date',
+        ]);
+
+        // Buscar la asignación de turno de ese día para ese usuario
+        $asignacion = AsignacionTurno::where('user_id', $request->user_id)
+            ->whereDate('fecha', Carbon::parse($request->fecha))
+            ->first();
+
+        if (!$asignacion) {
+            return response()->json(['error' => 'No se encontró una asignación de turno para ese trabajador en esa fecha.'], 404);
+        }
+
+        $asignacion->obra_id = $request->obra_id;
+        $asignacion->save();
+
+        return response()->json([
+            'success' => true,
+            'id' => $asignacion->id,
+            'obra_id' => $asignacion->obra_id,
+        ]);
     }
 }

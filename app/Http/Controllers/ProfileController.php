@@ -146,7 +146,6 @@ class ProfileController extends Controller
             });
         }
 
-
         // Filtrar por email
         if ($request->filled('email')) {
             $query->where('users.email', 'like', '%' . $request->input('email') . '%');
@@ -160,10 +159,10 @@ class ProfileController extends Controller
             $query->where('users.movil_empresa', 'like', '%' . $request->input('movil_empresa') . '%');
         }
 
-        // Filtrar por empresa
-        if ($request->filled('empresa')) {
-            $query->where('users.empresa', 'like', '%' . $request->input('empresa') . '%');
+        if ($request->filled('empresa_id')) {
+            $query->where('empresa_id', $request->empresa_id);
         }
+
 
         // Filtrar por rol
         if ($request->filled('rol')) {
@@ -174,8 +173,6 @@ class ProfileController extends Controller
         if ($request->filled('maquina_id')) {
             $query->where('maquina_id', $request->input('maquina_id'));
         }
-
-
 
         // Obtener la fecha de hoy
         $hoy = Carbon::today()->toDateString();

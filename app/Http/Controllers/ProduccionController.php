@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Maquina;
 use App\Models\Planilla;
 use App\Models\Elemento;
+use App\Models\Empresa;
+use App\Models\Obra;
 use App\Models\User;
 use App\Models\Turno;
 use App\Models\AsignacionTurno;
@@ -16,9 +18,7 @@ use Carbon\Carbon;
 
 class ProduccionController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    //---------------------------------------------------------- PLANIFICACION TRABAJADORES ALMACEN
     public function trabajadores()
     {
         $estadoProduccionMaquinas = Maquina::selectRaw('maquinas.*, (
@@ -398,6 +398,47 @@ class ProduccionController extends Controller
 
         return response()->json(['success' => true]);
     }
+    //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
+    public function trabajadoresObra()
+    {
+        // 1. Obtener la empresa por nombre
+        $hprServicios = Empresa::where('nombre', 'HPR Servicios en Obra S.L.')->firstOrFail();
+
+        // 2. Obtener los trabajadores de esa empresa con rol 'operario'
+        $trabajadores = User::with(['asignacionesTurnos.turno', 'categoria'])
+            ->where('empresa_id', $hprServicios->id)
+            ->where('rol', 'operario')
+            ->get();
+        $hoy = Carbon::today();
+        $limite = $hoy->copy()->addDays(30);
+
+        $trabajadoresSinObra = User::with(['asignacionesTurnos' => function ($q) use ($hoy, $limite) {
+            $q->whereBetween('fecha', [$hoy, $limite])
+                ->where(function ($q) {
+                    $q->whereNull('obra_id')
+                        ->orWhereHas('obra', fn($sub) => $sub->where('estado', '!=', 'activo'));
+                });
+        }, 'categoria', 'maquina'])
+            ->where('rol', 'operario')
+            ->where('empresa_id', $hprServicios->id)
+            ->whereHas('asignacionesTurnos', function ($q) use ($hoy, $limite) {
+                $q->whereBetween('fecha', [$hoy, $limite])
+                    ->where(function ($q) {
+                        $q->whereNull('obra_id')
+                            ->orWhereHas('obra', fn($sub) => $sub->where('estado', '!=', 'activo'));
+                    });
+            })
+            ->get();
+        // 3. Obtener las obras activas como resources
+        $obrasActivas = Obra::where('estado', 'activa')->get();
+
+        $resources = $obrasActivas->map(fn($obra) => [
+            'id' => $obra->id,
+            'title' => $obra->obra,
+        ]);
+        return view('produccion.trabajadoresObra', compact('trabajadores', 'trabajadoresSinObra', 'resources'));
+    }
+
 
     /**
      * Show the form for creating a new resource.

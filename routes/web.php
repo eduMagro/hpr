@@ -113,6 +113,7 @@ Route::middleware('auth')->group(function () {
     })->name('generar-turnos');
     Route::post('/profile/generar-turnos/{user}', [ProfileController::class, 'generarTurnos'])->name('profile.generar.turnos');
     Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
+    Route::post('/asignaciones-turno/asignar-obra', [AsignacionTurnoController::class, 'asignarObra']);
 
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class)->middleware('acceso.seccion:maquinas.index');
@@ -121,6 +122,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/maquinas/{id}/json', [MaquinaController::class, 'showJson'])->name('maquinas.json');
 
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.trabajadores');
+    Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.trabajadoresObra');
     Route::get('/produccion/maquinas', [ProduccionController::class, 'maquinas'])->name('produccion.maquinas');
 
     // === MOVIMIENTOS ===
