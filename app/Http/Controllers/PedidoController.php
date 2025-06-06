@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Proveedor;
+use App\Models\Fabricante;
+use App\Models\Distribuidor;
 use App\Models\PedidoGlobal;
 use App\Models\Pedido;
 use App\Models\Producto;
@@ -39,10 +40,10 @@ class PedidoController extends Controller
             }
         }
 
-        if ($request->filled('proveedor_id')) {
-            $proveedor = Proveedor::find($request->proveedor_id);
-            if ($proveedor) {
-                $filtros[] = 'Proveedor: <strong>' . $proveedor->nombre . '</strong>';
+        if ($request->filled('fabricante_id')) {
+            $fabricante = Fabricante::find($request->fabricante_id);
+            if ($fabricante) {
+                $filtros[] = 'Fabricante: <strong>' . $fabricante->nombre . '</strong>';
             }
         }
 
@@ -63,7 +64,7 @@ class PedidoController extends Controller
                 'fecha_pedido' => 'Fecha pedido',
                 'fecha_entrega' => 'Entrega estimada',
                 'estado' => 'Estado',
-                'proveedor' => 'Proveedor',
+                'fabricante_id' => 'Fabricante',
                 'peso_total' => 'Peso total',
             ];
             $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
@@ -102,8 +103,8 @@ class PedidoController extends Controller
             $query->where('pedido_global_id', $request->pedido_global_id);
         }
 
-        if ($request->filled('proveedor_id')) {
-            $query->where('proveedor_id', $request->proveedor_id);
+        if ($request->filled('fabricante_id')) {
+            $query->where('fabricante_id', $request->fabricante_id);
         }
 
         if ($request->filled('fecha_pedido')) {
@@ -130,7 +131,7 @@ class PedidoController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Pedido::with(['proveedor', 'productos', 'pedidoGlobal'])->latest();
+        $query = Pedido::with(['fabricante', 'productos', 'pedidoGlobal'])->latest();
 
         // Si el usuario autenticado es operario, solo puede ver pedidos pendientes o parciales
         if (auth()->user()->rol === 'operario') {
@@ -160,11 +161,12 @@ class PedidoController extends Controller
         });
 
         $filtrosActivos = $this->filtrosActivosPedidos($request);
-        $proveedores = Proveedor::select('id', 'nombre')->get();
+        $fabricantes = Fabricante::select('id', 'nombre')->get();
+        $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
         $ordenables = [
             'codigo' => $this->getOrdenamientoPedidos('codigo', 'Código'),
-            'proveedor' => $this->getOrdenamientoPedidos('proveedor', 'Proveedor'),
+            'fabricante' => $this->getOrdenamientoPedidos('fabricante', 'Fabricante'),
             'peso_total' => $this->getOrdenamientoPedidos('peso_total', 'Peso total'),
             'fecha_pedido' => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
             'fecha_entrega' => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Estimada Entrega'),
@@ -294,7 +296,7 @@ class PedidoController extends Controller
         // Obtener obras activas
         $obrasActivas = Obra::where('estado', 'activa')->orderBy('obra')->get();
 
-        return view('pedidos.index', compact('pedidos', 'obrasActivas', 'stockData', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'proveedores', 'filtrosActivos', 'ordenables', 'proveedores', 'pedidosGlobales',));
+        return view('pedidos.index', compact('pedidos', 'obrasActivas', 'stockData', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'fabricantes', 'filtrosActivos', 'ordenables', 'distribuidores', 'pedidosGlobales',));
     }
 
     public function recepcion($id)
@@ -350,7 +352,7 @@ class PedidoController extends Controller
             $producto = Producto::create([
                 'codigo'           => $request->codigo,
                 'producto_base_id' => $productoBaseId,
-                'proveedor_id' => $pedido->proveedor_id,
+                'fabricante_id' => $pedido->fabricante_id,
                 'n_colada' => $nColada,
                 'n_paquete' => $nPaquete,
                 'peso_inicial' => $peso,
@@ -438,7 +440,7 @@ class PedidoController extends Controller
                 'n_paquete' => 'nullable|string|max:50|unique:productos,n_paquete',
                 'ubicacion_id' => 'required|exists:ubicaciones,id',
                 'otros' => 'nullable|string|max:255',
-                'proveedor_id' => 'required|exists:proveedores,id',
+                'fabricante_id' => 'required|exists:fabricantes,id',
             ], [
                 'producto_base_id.required' => 'El producto base es obligatorio.',
                 'producto_base_id.exists' => 'El producto base no es válido.',
@@ -460,13 +462,13 @@ class PedidoController extends Controller
                 'otros.string' => 'El campo de observaciones debe ser texto.',
                 'otros.max' => 'El campo de observaciones no puede tener más de 255 caracteres.',
 
-                'proveedor_id.required' => 'El proveedor es obligatorio.',
-                'proveedor_id.exists' => 'El proveedor no es válido.',
+                'fabricante_id.required' => 'El fabricante es obligatorio.',
+                'fabricante_id.exists' => 'El fabricante no es válido.',
             ]);
 
             $producto = Producto::create([
                 'producto_base_id' => $validated['producto_base_id'],
-                'proveedor_id' => $validated['proveedor_id'],
+                'fabricante_id' => $validated['fabricante_id'],
                 'n_colada' => $validated['n_colada'] ?? null,
                 'n_paquete' => $validated['n_paquete'],
                 'peso_inicial' => $validated['peso'],
@@ -536,15 +538,15 @@ class PedidoController extends Controller
 
         $request->validate([
             'seleccionados' => 'required|array',
-            'fabricante_id' => 'required|exists:proveedores,id',
+            'fabricante_id' => 'required|exists:fabricantes,id',
             'obra_id' => 'required|exists:obras,id',
             'fecha_entrega' => 'required|date|after_or_equal:today',
         ], [
             'seleccionados.required' => 'Debes seleccionar al menos un producto.',
             'seleccionados.array' => 'El formato de los productos seleccionados no es válido.',
 
-            'fabricante_id.required' => 'El proveedor es obligatorio.',
-            'fabricante_id.exists' => 'El proveedor seleccionado no es válido.',
+            'fabricante_id.required' => 'El fabricante es obligatorio.',
+            'fabricante_id.exists' => 'El fabricante seleccionado no es válido.',
 
             'fecha_entrega.required' => 'La fecha estimada de entrega es obligatoria.',
             'fecha_entrega.date' => 'La fecha estimada debe ser una fecha válida.',
@@ -552,7 +554,7 @@ class PedidoController extends Controller
         ]);
 
 
-        $pedidoGlobal = PedidoGlobal::where('proveedor_id', $request->fabricante_id)
+        $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
             ->whereIn('estado', [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
             ->orderByRaw("FIELD(estado, ?, ?)", [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
             ->first();
@@ -565,7 +567,7 @@ class PedidoController extends Controller
             'codigo' => Pedido::generarCodigo(),
             'pedido_global_id' => $pedidoGlobal->id,
             'estado' => 'pendiente',
-            'proveedor_id' => $request->fabricante_id,
+            'fabricante_id' => $request->fabricante_id,
             'obra_id' => $request->obra_id,
             'fecha_pedido' => now(),
             'fecha_entrega' => $request->fecha_entrega,
@@ -611,7 +613,7 @@ class PedidoController extends Controller
      */
     public function show($id)
     {
-        $pedido = Pedido::with(['productos', 'proveedor', 'obra'])->findOrFail($id);
+        $pedido = Pedido::with(['productos', 'fabricante', 'obra'])->findOrFail($id);
 
         // puedes comentar esto si no se usa en la vista directamente
         $mailable = new PedidoCreado(
@@ -642,10 +644,10 @@ class PedidoController extends Controller
 
         ];
 
-        // Email del proveedor
-        $emailProveedor = $pedido->proveedor->email;
+        // Email del fabricante
+        $emailFabricante = $pedido->fabricante->email;
 
-        Mail::to($emailProveedor)->send(
+        Mail::to($emailFabricante)->send(
             new PedidoCreado(
                 $pedido,
                 'compras@pacoreyes.com',
@@ -660,7 +662,7 @@ class PedidoController extends Controller
 
     private function crearPedidoDesdeRequest(Request $request): Pedido
     {
-        $pedidoGlobal = PedidoGlobal::where('proveedor_id', $request->fabricante_id)
+        $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
             ->whereIn('estado', [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
             ->orderByRaw("FIELD(estado, ?, ?)", [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
             ->first();
@@ -674,7 +676,7 @@ class PedidoController extends Controller
             'codigo' => Pedido::generarCodigo(),
             'pedido_global_id' => $pedidoGlobal?->id,
             'estado' => 'pendiente',
-            'proveedor_id' => $request->fabricante_id,
+            'fabricante_id' => $request->fabricante_id,
             'fecha_pedido' => now(),
             'fecha_entrega' => $request->fecha_entrega,
         ]);
@@ -724,7 +726,7 @@ class PedidoController extends Controller
             // Validación de datos con mensajes personalizados
             $validated = $request->validate([
                 'codigo' => 'required|string|max:50|unique:pedidos,codigo,' . $pedido->id,
-                'proveedor_id' => 'required|exists:proveedores,id',
+                'fabricante_id' => 'required|exists:fabricantes,id',
                 'fecha_pedido' => 'nullable|date_format:Y-m-d',
                 'fecha_entrega' => 'nullable|date_format:Y-m-d|after_or_equal:fecha_pedido',
                 'estado' => 'required|in:pendiente,parcial,completo,cancelado',
@@ -733,8 +735,8 @@ class PedidoController extends Controller
                 'codigo.string' => 'El código debe ser una cadena de texto.',
                 'codigo.max' => 'El código no puede tener más de 50 caracteres.',
                 'codigo.unique' => 'Ya existe un pedido con ese código.',
-                'proveedor_id.required' => 'Debe seleccionar un proveedor.',
-                'proveedor_id.exists' => 'El proveedor seleccionado no es válido.',
+                'fabricante_id.required' => 'Debe seleccionar un fabricante.',
+                'fabricante_id.exists' => 'El fabricante seleccionado no es válido.',
                 'fecha_pedido.date_format' => 'La fecha del pedido debe tener el formato día-mes-año.',
                 'fecha_entrega.date_format' => 'La fecha estimada debe tener el formato día-mes-año.',
                 'fecha_entrega.after_or_equal' => 'La fecha estimada no puede ser anterior a la fecha del pedido.',
@@ -742,7 +744,7 @@ class PedidoController extends Controller
                 'estado.in' => 'El estado seleccionado no es válido.',
             ]);
 
-            if ($pedido->fecha_pedido === null && !empty($validated['proveedor_id'])) {
+            if ($pedido->fecha_pedido === null && !empty($validated['fabricante_id'])) {
                 $validated['fecha_pedido'] = now()->toDateString();
             } else {
                 unset($validated['fecha_pedido']); // evitar que se sobreescriba

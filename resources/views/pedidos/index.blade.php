@@ -35,9 +35,9 @@
                         🌐 Pedidos Globales
                     </a>
 
-                    <a href="{{ route('proveedores.index') }}"
+                    <a href="{{ route('fabricantes.index') }}"
                         class="block px-2 py-3 transition text-sm font-medium 
-                    {{ $rutaActual === 'proveedores.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                    {{ $rutaActual === 'fabricantes.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
                         🏭 Proveedores
                     </a>
                 </div>
@@ -63,9 +63,9 @@
                     🌐 Pedidos Globales
                 </a>
 
-                <a href="{{ route('proveedores.index') }}"
+                <a href="{{ route('fabricantes.index') }}"
                     class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
-                {{ $rutaActual === 'proveedores.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                {{ $rutaActual === 'fabricantes.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
                     🏭 Proveedores
                 </a>
             </div>
@@ -289,9 +289,9 @@
                                         fabricante:</label>
                                     <select name="fabricante_id" id="fabricante"
                                         class="w-full border border-gray-300 rounded px-3 py-2">
-                                        <option value="">-- Elige un proveedor --</option>
-                                        @foreach ($proveedores as $proveedor)
-                                            <option value="{{ $proveedor->id }}">{{ $proveedor->nombre }}</option>
+                                        <option value="">-- Elige un fabricante --</option>
+                                        @foreach ($fabricantes as $fabricante)
+                                            <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -380,7 +380,7 @@
                                 </th>
 
                                 <th class="p-1 border">
-                                    <x-tabla.select name="proveedor_id" :options="$proveedores->pluck('nombre', 'id')" :selected="request('proveedor_id')"
+                                    <x-tabla.select name="fabricante_id" :options="$fabricantes->pluck('nombre', 'id')" :selected="request('fabricante_id')"
                                         empty="Todos" class="w-full text-xs" />
                                 </th>
 

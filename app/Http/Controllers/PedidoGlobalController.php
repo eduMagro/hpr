@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PedidoGlobal;
-use App\Models\Proveedor;
+use App\Models\Fabricante;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
@@ -23,9 +23,9 @@ class PedidoGlobalController extends Controller
             $query->where('estado', $request->estado);
         }
 
-        if ($request->filled('proveedor')) {
-            $query->whereHas('proveedor', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->proveedor . '%');
+        if ($request->filled('fabricante')) {
+            $query->whereHas('fabricante', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->fabricante . '%');
             });
         }
 
@@ -43,8 +43,8 @@ class PedidoGlobalController extends Controller
             $filtros[] = 'Código global: <strong>' . $request->codigo . '</strong>';
         }
 
-        if ($request->filled('proveedor')) {
-            $filtros[] = 'Proveedor: <strong>' . $request->proveedor . '</strong>';
+        if ($request->filled('fabricante')) {
+            $filtros[] = 'Fabricante: <strong>' . $request->fabricante . '</strong>';
         }
 
         if ($request->filled('estado')) {
@@ -54,7 +54,7 @@ class PedidoGlobalController extends Controller
         if ($request->filled('sort')) {
             $sorts = [
                 'codigo' => 'Código',
-                'proveedor' => 'Proveedor',
+                'fabricante' => 'Fabricante',
                 'cantidad_total' => 'Cantidad total',
                 'estado' => 'Estado',
             ];
@@ -87,7 +87,7 @@ class PedidoGlobalController extends Controller
 
     public function index(Request $request)
     {
-        $query = PedidoGlobal::with(['proveedor', 'pedidos']);
+        $query = PedidoGlobal::with(['fabricante', 'pedidos']);
 
         // Aplicar filtros
         $this->aplicarFiltrosPedidosGlobales($query, $request);
@@ -99,21 +99,21 @@ class PedidoGlobalController extends Controller
         $filtrosActivos = $this->filtrosActivosPedidosGlobales($request);
         $ordenables = [
             'codigo' => $this->getOrdenamientoPedidosGlobales('codigo', 'Código'),
-            'proveedor' => $this->getOrdenamientoPedidosGlobales('proveedor', 'Proveedor'),
+            'fabricante' => $this->getOrdenamientoPedidosGlobales('fabricante', 'Fabricante'),
             'cantidad_total' => $this->getOrdenamientoPedidosGlobales('cantidad_total', 'Cantidad total'),
             'estado' => $this->getOrdenamientoPedidosGlobales('estado', 'Estado'),
         ];
 
-        $proveedores = Proveedor::select('id', 'nombre')->get();
+        $fabricantes = Fabricante::select('id', 'nombre')->get();
 
-        return view('pedidos_globales.index', compact('pedidosGlobales', 'filtrosActivos', 'ordenables', 'proveedores'));
+        return view('pedidos_globales.index', compact('pedidosGlobales', 'filtrosActivos', 'ordenables', 'fabricantes'));
     }
 
     // Mostrar formulario de creación
     public function create()
     {
-        $proveedores = Proveedor::orderBy('nombre')->get();
-        return view('pedidos_globales.create', compact('proveedores'));
+        $fabricantes = Fabricante::orderBy('nombre')->get();
+        return view('pedidos_globales.create', compact('fabricantes'));
     }
 
     public function store(Request $request)
@@ -122,14 +122,14 @@ class PedidoGlobalController extends Controller
             // Validación de datos
             $validated = $request->validate([
                 'cantidad_total' => 'required|numeric|min:0',
-                'proveedor_id' => 'nullable|exists:proveedores,id',
+                'fabricante_id' => 'nullable|exists:fabricantes,id',
             ]);
 
             // Crear nuevo pedido global
             $pedidoGlobal = new PedidoGlobal();
             $pedidoGlobal->codigo = PedidoGlobal::generarCodigo();
             $pedidoGlobal->cantidad_total = $validated['cantidad_total'];
-            $pedidoGlobal->proveedor_id = $validated['proveedor_id'];
+            $pedidoGlobal->fabricante_id = $validated['fabricante_id'];
             $pedidoGlobal->estado = 'pendiente';
             $pedidoGlobal->save();
 
@@ -185,14 +185,14 @@ class PedidoGlobalController extends Controller
             // Validar los datos
             $request->validate([
                 'cantidad_total' => 'required|numeric|min:0',
-                'proveedor_id' => 'nullable|exists:proveedores,id',
+                'fabricante_id' => 'nullable|exists:fabricantes,id',
                 'estado' => 'required|string|in:pendiente,en curso,completado,cancelado',
             ], [
                 'cantidad_total.required' => 'La cantidad total es obligatoria.',
                 'cantidad_total.numeric' => 'La cantidad debe ser un número.',
                 'cantidad_total.min' => 'La cantidad no puede ser negativa.',
 
-                'proveedor_id.exists' => 'El proveedor seleccionado no existe.',
+                'fabricante_id.exists' => 'El fabricante seleccionado no existe.',
 
                 'estado.required' => 'El estado es obligatorio.',
                 'estado.string' => 'El estado debe ser una cadena de texto.',
@@ -208,7 +208,7 @@ class PedidoGlobalController extends Controller
             // Actualizar campos
             $resultado = $pedido->update([
                 'cantidad_total' => $request->cantidad_total,
-                'proveedor_id' => $request->proveedor_id,
+                'fabricante_id' => $request->fabricante_id,
                 'estado' => $request->estado,
             ]);
 

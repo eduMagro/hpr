@@ -222,7 +222,7 @@ class MaquinaController extends Controller
         if (stripos($maquina->tipo, 'grua') !== false) {
             $ubicacionesDisponiblesPorProductoBase = [];
 
-            $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion', 'pedido.proveedor'])
+            $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion', 'pedido.fabricante'])
                 ->where('estado', 'pendiente')
                 ->orderBy('prioridad', 'asc')
                 ->get();

@@ -17,7 +17,7 @@ class PedidoGlobal extends Model
         'codigo',
         'descripcion',
         'cantidad_total',
-        'proveedor_id',
+        'fabricante_id',
         'estado'
     ];
 
@@ -70,10 +70,10 @@ class PedidoGlobal extends Model
         return $this->hasMany(Pedido::class, 'pedido_global_id');
     }
 
-    // Relación con proveedor
-    public function proveedor()
+    // Relación con fabricante
+    public function fabricante()
     {
-        return $this->belongsTo(Proveedor::class, 'proveedor_id');
+        return $this->belongsTo(Fabricante::class, 'fabricante_id');
     }
 
     // Accesor para calcular la cantidad restante

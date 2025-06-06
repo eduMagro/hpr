@@ -28,7 +28,7 @@ use App\Http\Controllers\ObraController;
 use App\Http\Controllers\AsignacionTurnoController;
 use App\Http\Controllers\CamionController;
 use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\DistribuidorController;
 use App\Http\Controllers\PoliticaController;
 use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\EmpresaController;
@@ -56,7 +56,8 @@ Route::middleware('auth')->group(function () {
 
     // === CLIENTES Y PROVEEDORES ===
     Route::resource('clientes', ClienteController::class)->middleware('acceso.seccion:clientes.index');
-    Route::resource('proveedores', ProveedorController::class)->middleware('acceso.seccion:proveedores.index');
+    Route::resource('fabricantes', FabricanteController::class)->middleware('acceso.seccion:fabricantes.index');
+    Route::resource('distribuidores', DistribuidorController::class)->middleware('acceso.seccion:distribuidores.index');
 
     // === ENTRADAS Y PEDIDOS ===
     Route::resource('entradas', EntradaController::class)->middleware('acceso.seccion');
@@ -89,6 +90,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.actualizar');
     Route::get('/users/{user}/resumen-asistencia', [ProfileController::class, 'resumenAsistencia'])->name('users.resumen-asistencia');
     Route::get('/users/{user}/eventos-turnos', [ProfileController::class, 'eventosTurnos'])->name('users.eventos-turnos');
+    Route::post('/admin/usuarios/{user}/cerrar-sesiones', [ProfileController::class, 'cerrarSesionesDeUsuario'])
+        ->middleware(['auth', 'can:ver-usuarios'])
+        ->name('usuarios.cerrarSesiones');
+
 
     Route::resource('vacaciones', VacacionesController::class)->middleware('acceso.seccion:vacaciones.index');
     Route::post('/vacaciones/solicitar', [VacacionesController::class, 'store'])->name('vacaciones.solicitar');

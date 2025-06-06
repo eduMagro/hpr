@@ -12,7 +12,8 @@ class Pedido extends Model
     protected $fillable = [
         'codigo',
         'pedido_global_id',
-        'proveedor_id',
+        'fabricante_id',
+        'distribuidor_id',
         'obra_id',
         'fecha_pedido',
         'fecha_entrega',
@@ -59,9 +60,9 @@ class Pedido extends Model
         return $prefix . $númeroFormateado;
     }
 
-    public function proveedor()
+    public function fabricante()
     {
-        return $this->belongsTo(Proveedor::class);
+        return $this->belongsTo(Fabricante::class);
     }
     public function obra()
     {

@@ -2,21 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Distribuidor;
 use Illuminate\Http\Request;
-use App\Models\Proveedor;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
 
-class ProveedorController extends Controller
+class DistribuidorController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $proveedores = Proveedor::orderBy('nombre')->get();
-
-        return view('proveedores.index', compact('proveedores'));
+        //
     }
-
 
     /**
      * Show the form for creating a new resource.
@@ -37,7 +36,7 @@ class ProveedorController extends Controller
             'telefono' => 'required|string|max:20',
             'email'    => 'required|email|max:255',
         ], [
-            'nombre.required'   => 'El nombre del proveedor es obligatorio.',
+            'nombre.required'   => 'El nombre del fabricante es obligatorio.',
             'nombre.max'        => 'El nombre no puede tener más de 255 caracteres.',
 
             'nif.required'      => 'El NIF es obligatorio.',
@@ -51,21 +50,20 @@ class ProveedorController extends Controller
             'email.max'         => 'El email no puede tener más de 255 caracteres.',
         ]);
 
-        Proveedor::create([
+        Distribuidor::create([
             'nombre'   => $validated['nombre'],
             'nif'      => $validated['nif'],
             'telefono' => $validated['telefono'],
             'email'    => $validated['email'],
         ]);
 
-        return redirect()->route('proveedores.index')->with('success', 'Proveedor creado correctamente.');
+        return redirect()->route('fabricantes.index')->with('success', 'Distribuidor creado correctamente.');
     }
-
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Distribuidor $distribuidor)
     {
         //
     }
@@ -73,7 +71,7 @@ class ProveedorController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Distribuidor $distribuidor)
     {
         //
     }
@@ -84,7 +82,7 @@ class ProveedorController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            $proveedor = Proveedor::findOrFail($id);
+            $fabricante = Distribuidor::findOrFail($id);
 
             // Normalizar campos vacíos
             $request->merge([
@@ -100,7 +98,7 @@ class ProveedorController extends Controller
                 'telefono' => 'nullable|string|max:30',
                 'email'    => 'nullable|email|max:100',
             ], [
-                'nombre.required' => 'El nombre del proveedor es obligatorio.',
+                'nombre.required' => 'El nombre del fabricante es obligatorio.',
                 'nombre.string'   => 'El nombre debe ser una cadena de texto.',
                 'nombre.max'      => 'El nombre no debe superar los 255 caracteres.',
 
@@ -114,17 +112,17 @@ class ProveedorController extends Controller
                 'email.max'       => 'El correo no debe superar los 100 caracteres.',
             ]);
 
-            $proveedor->update($validatedData);
+            $fabricante->update($validatedData);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Proveedor actualizado correctamente',
-                'data'    => $proveedor->fresh()
+                'message' => 'Fabricante actualizado correctamente',
+                'data'    => $fabricante->fresh()
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Proveedor no encontrado'
+                'message' => 'Fabricante no encontrado'
             ], 404);
         } catch (ValidationException $e) {
             return response()->json([
@@ -135,21 +133,17 @@ class ProveedorController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar el proveedor: ' . $e->getMessage()
+                'message' => 'Error al actualizar el fabricante: ' . $e->getMessage()
             ], 500);
         }
     }
 
 
-
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy(Distribuidor $distribuidor)
     {
-        $proveedor = Proveedor::findOrFail($id);
-        $proveedor->delete();
-
-        return redirect()->route('proveedores.index')->with('success', 'Proveedor eliminado correctamente.');
+        //
     }
 }

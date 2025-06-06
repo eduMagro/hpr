@@ -10,7 +10,8 @@ use App\Models\Producto;
 use App\Models\Pedido;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
-use App\Models\Proveedor;
+use App\Models\Fabricante;
+use App\Models\Distribuidor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -61,7 +62,8 @@ class EntradaController extends Controller
             // Aplica los filtros mediante un método separado
             $query = $this->aplicarFiltros($query, $request);
 
-            $proveedores = Proveedor::select('id', 'nombre')->get();
+            $fabricantes = Fabricante::select('id', 'nombre')->get();
+            $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
             // Obtener las entradas paginadas, ordenadas por fecha de creación
             $entradas = $query->orderBy('created_at', 'desc')->paginate(10);
@@ -187,7 +189,7 @@ class EntradaController extends Controller
             }
 
             // Devolver la vista con las entradas
-            return view('entradas.index', compact('entradas', 'stockData', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'proveedores'));
+            return view('entradas.index', compact('entradas', 'stockData', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'fabricantes'));
         } catch (ValidationException $e) {
             // Manejo de excepciones de validación
             return redirect()->back()
@@ -209,9 +211,9 @@ class EntradaController extends Controller
         });
         $usuarios = User::all();
         $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
-        $proveedores = Proveedor::orderBy('nombre')->get();
+        $fabricantes = Fabricante::orderBy('nombre')->get();
 
-        return view('entradas.create', compact('ubicaciones', 'usuarios', 'productosBase', 'proveedores'));
+        return view('entradas.create', compact('ubicaciones', 'usuarios', 'productosBase', 'fabricantes'));
     }
 
     public function store(Request $request)
@@ -221,7 +223,7 @@ class EntradaController extends Controller
             $request->validate([
                 'codigo'            => 'required|string|unique:productos,codigo|max:20',
                 'codigo_2'          => 'nullable|string|unique:productos,codigo|max:20',
-                'proveedor_id'      => 'required|exists:proveedores,id',
+                'fabricante_id'      => 'required|exists:fabricantes,id',
                 'albaran'           => 'required|string|min:1|max:30',
                 'pedido_id'         => 'nullable|exists:pedidos,id',
                 'producto_base_id'  => 'required|exists:productos_base,id',
@@ -256,7 +258,7 @@ class EntradaController extends Controller
             $producto1 = Producto::create([
                 'codigo'           => $request->codigo,
                 'producto_base_id' => $request->producto_base_id,
-                'proveedor_id'     => $request->proveedor_id,
+                'fabricante_id'     => $request->fabricante_id,
                 'n_colada'         => $request->n_colada,
                 'n_paquete'        => $request->n_paquete,
                 'peso_inicial'     => $pesoPorPaquete,
@@ -279,7 +281,7 @@ class EntradaController extends Controller
                 $producto2 = Producto::create([
                     'codigo'           => $request->codigo_2,
                     'producto_base_id' => $request->producto_base_id,
-                    'proveedor_id'     => $request->proveedor_id,
+                    'fabricante_id'     => $request->fabricante_id,
                     'n_colada'         => $request->n_colada_2,
                     'n_paquete'        => $request->n_paquete_2,
                     'peso_inicial'     => $pesoPorPaquete,

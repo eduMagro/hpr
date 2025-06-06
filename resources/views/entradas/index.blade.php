@@ -35,9 +35,9 @@
                         🌐 Pedidos Globales
                     </a>
 
-                    <a href="{{ route('proveedores.index') }}"
+                    <a href="{{ route('fabricantes.index') }}"
                         class="block px-2 py-3 transition text-sm font-medium 
-                    {{ $rutaActual === 'proveedores.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                    {{ $rutaActual === 'fabricantes.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
                         🏭 Proveedores
                     </a>
                 </div>
@@ -63,9 +63,9 @@
                     🌐 Pedidos Globales
                 </a>
 
-                <a href="{{ route('proveedores.index') }}"
+                <a href="{{ route('fabricantes.index') }}"
                     class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
-                {{ $rutaActual === 'proveedores.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                {{ $rutaActual === 'fabricantes.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
                     🏭 Proveedores
                 </a>
             </div>

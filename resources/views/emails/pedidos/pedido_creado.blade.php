@@ -43,7 +43,7 @@
                             <h2 style="color: #1f2937; font-size: 20px; margin-bottom: 10px;">📦 Confirmación de pedido
                             </h2>
                             <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-                                Estimado proveedor, {{ $pedido->proveedor->nombre }}<br>
+                                Estimado proveedor, {{ $pedido->fabricante->nombre }}<br>
                                 Le informamos que se ha generado un nuevo pedido a fecha
                                 {{ $pedido->created_at->format('d/m/Y') }}
                                 con

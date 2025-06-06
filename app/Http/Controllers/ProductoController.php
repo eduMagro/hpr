@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Producto;
 use App\Models\Ubicacion;
 use App\Models\User;
-use App\Models\Proveedor;
+use App\Models\Fabricante;
 use Illuminate\Http\Request;
 use App\Models\ProductoCodigo;
 use App\Models\ProductoBase;
@@ -71,13 +71,13 @@ class ProductoController extends Controller
         // 🔹 Cargar relaciones necesarias y solo las columnas que usas
         $query = Producto::with([
             'productoBase:id,tipo,diametro,longitud',
-            'proveedor:id,nombre',
+            'fabricante:id,nombre',
             'ubicacion:id,nombre',
             'maquina:id,nombre'
         ])->select([
             'id',
             'codigo',
-            'proveedor_id',
+            'fabricante_id',
             'producto_base_id',
             'n_colada',
             'n_paquete',
@@ -96,7 +96,7 @@ class ProductoController extends Controller
         $sortBy = in_array($request->input('sort_by'), [
             'id',
             'codigo',
-            'proveedor',
+            'fabricante',
             'tipo',
             'diametro',
             'longitud',
@@ -205,8 +205,8 @@ class ProductoController extends Controller
         $ubicaciones = Ubicacion::all();
         $usuarios = User::all();
         $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
-        $proveedores = Proveedor::orderBy('nombre')->get();
-        return view('productos.edit', compact('producto', 'usuarios', 'productosBase', 'proveedores'));
+        $fabricantes = Fabricante::orderBy('nombre')->get();
+        return view('productos.edit', compact('producto', 'usuarios', 'productosBase', 'fabricantes'));
     }
 
     public function update(Request $request, Producto $producto)
@@ -215,7 +215,7 @@ class ProductoController extends Controller
 
         try {
             $validated = $request->validate([
-                'proveedor_id'      => 'required|exists:proveedores,id',
+                'fabricante_id'      => 'required|exists:fabricantes,id',
                 'producto_base_id'  => 'required|exists:productos_base,id',
                 'nombre'            => 'nullable|string|max:255',
                 'n_colada'          => 'required|string|max:255',
@@ -226,8 +226,8 @@ class ProductoController extends Controller
                 'estado'            => 'nullable|string|max:50',
                 'otros'             => 'nullable|string|max:255',
             ], [
-                'proveedor_id.required'      => 'El proveedor es obligatorio.',
-                'proveedor_id.exists'        => 'El proveedor seleccionado no es válido.',
+                'fabricante_id.required'      => 'El fabricante es obligatorio.',
+                'fabricante_id.exists'        => 'El fabricante seleccionado no es válido.',
                 'producto_base_id.required'  => 'El producto base es obligatorio.',
                 'producto_base_id.exists'    => 'El producto base seleccionado no es válido.',
                 'peso_inicial.*'             => 'El peso inicial debe ser un número válido mayor que 0.',

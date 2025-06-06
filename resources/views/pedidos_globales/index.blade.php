@@ -35,9 +35,9 @@
                         🌐 Pedidos Globales
                     </a>
 
-                    <a href="{{ route('proveedores.index') }}"
+                    <a href="{{ route('fabricantes.index') }}"
                         class="block px-2 py-3 transition text-sm font-medium 
-                    {{ $rutaActual === 'proveedores.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                    {{ $rutaActual === 'fabricantes.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
                         🏭 Proveedores
                     </a>
                 </div>
@@ -63,9 +63,9 @@
                     🌐 Pedidos Globales
                 </a>
 
-                <a href="{{ route('proveedores.index') }}"
+                <a href="{{ route('fabricantes.index') }}"
                     class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
-                {{ $rutaActual === 'proveedores.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                {{ $rutaActual === 'fabricantes.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
                     🏭 Proveedores
                 </a>
             </div>
@@ -85,7 +85,7 @@
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
-                        <th class="p-2 border">{!! $ordenables['proveedor'] ?? 'Proveedor' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                         <th class="p-2 border">{!! $ordenables['cantidad_total'] ?? 'Cantidad Total' !!}</th>
                         <th class="p-2 border">Cantidad Restante</th>
                         <th class="p-2 border">Progreso</th>
@@ -100,7 +100,7 @@
                             </th>
 
                             <th class="p-1 border">
-                                <x-tabla.input name="proveedor" type="text" :value="request('proveedor')"
+                                <x-tabla.input name="fabricante" type="text" :value="request('fabricante')"
                                     class="w-full text-xs" />
                             </th>
 
@@ -147,16 +147,16 @@
                             <!-- Código (no editable) -->
                             <td class="p-2 border" x-text="pedido.codigo"></td>
 
-                            <!-- Proveedor -->
+                            <!-- Fabricante -->
                             <td class="p-2 border">
                                 <template x-if="!editando">
-                                    <span x-text="pedido.proveedor?.nombre ?? 'N/A' "></span>
+                                    <span x-text="pedido.fabricante?.nombre ?? 'N/A' "></span>
                                 </template>
-                                <select x-show="editando" x-model="pedido.proveedor_id" class="form-input w-full">
+                                <select x-show="editando" x-model="pedido.fabricante_id" class="form-input w-full">
                                     <option value="">Selecciona</option>
-                                    @foreach ($proveedores as $prov)
-                                        <option value="{{ $prov->id }}">
-                                            {{ $prov->nombre }}</option>
+                                    @foreach ($fabricantes as $fab)
+                                        <option value="{{ $fab->id }}">
+                                            {{ $fab->nombre }}</option>
                                     @endforeach
                                 </select>
                             </td>
@@ -247,11 +247,11 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="proveedor_id" class="block text-sm font-medium text-gray-700">Proveedor</label>
-                    <select name="proveedor_id" class="form-select w-full">
+                    <label for="fabricante_id" class="block text-sm font-medium text-gray-700">Fabricante</label>
+                    <select name="fabricante_id" class="form-select w-full">
                         <option value="">-- Seleccionar --</option>
-                        @foreach ($proveedores as $proveedor)
-                            <option value="{{ $proveedor->id }}">{{ $proveedor->nombre }}</option>
+                        @foreach ($fabricantes as $fabricante)
+                            <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
                         @endforeach
                     </select>
                 </div>

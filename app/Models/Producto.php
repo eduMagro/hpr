@@ -14,7 +14,7 @@ class Producto extends Model
     protected $fillable = [
         'codigo',
         'producto_base_id',
-        'proveedor_id',
+        'fabricante_id',
         'n_colada',
         'n_paquete',
         'peso_inicial',
@@ -106,8 +106,8 @@ class Producto extends Model
     {
         return $this->belongsTo(ProductoBase::class);
     }
-    public function proveedor()
+    public function fabricante()
     {
-        return $this->belongsTo(Proveedor::class);
+        return $this->belongsTo(Fabricante::class);
     }
 }

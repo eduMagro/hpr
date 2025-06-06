@@ -26,9 +26,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Pagination\LengthAwarePaginator;
-use App\Models\Nomina;
+use App\Models\Session;
 use App\Exports\UsersExport;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Session as FacadeSession;
 
 class ProfileController extends Controller
 {
@@ -618,8 +619,19 @@ class ProfileController extends Controller
 
         // Buscar el usuario que se quiere editar
         $user = User::findOrFail($id);
-
-        return view('profile.edit', compact('user'));
+        $sesiones = Session::where('user_id', $user->id)
+            ->orderByDesc('last_activity')
+            ->get()
+            ->map(function ($sesion) {
+                return [
+                    'id' => $sesion->id,
+                    'ip_address' => $sesion->ip_address,
+                    'user_agent' => $sesion->user_agent,
+                    'ultima_actividad' => \Carbon\Carbon::createFromTimestamp($sesion->last_activity)->format('d/m/Y H:i:s'),
+                    'actual' => $sesion->id === FacadeSession::getId(), // comparado con el del admin, puede omitirse
+                ];
+            });
+        return view('profile.edit', compact('user', 'sesiones'));
     }
     /**
      * Update the user's profile information.
@@ -973,6 +985,14 @@ class ProfileController extends Controller
 
         // Combinar festivos nacionales, autonómicos y locales
         return $festivos->merge($festivosLocales)->values()->toArray();
+    }
+    public function cerrarSesionesDeUsuario(User $user)
+    {
+        $cerradas = Session::where('user_id', $user->id)->delete();
+
+        $user->forceFill(['remember_token' => null])->save();
+
+        return back()->with('success', "🛑 Se han cerrado $cerradas sesión(es) activas del usuario {$user->nombre_completo}.");
     }
 
     private function getResumenAsistencia(User $user): array

@@ -128,8 +128,8 @@
                 if (request('codigo')) {
                     $filtrosActivos[] = 'Código: <strong>' . request('codigo') . '</strong>';
                 }
-                if (request('proveedor')) {
-                    $filtrosActivos[] = 'Proveedor: <strong>' . request('proveedor') . '</strong>';
+                if (request('fabricante')) {
+                    $filtrosActivos[] = 'Fabricante: <strong>' . request('fabricante') . '</strong>';
                 }
                 if (request('tipo')) {
                     $filtrosActivos[] = 'Tipo: <strong>' . request('tipo') . '</strong>';
@@ -162,7 +162,7 @@
                 if (request('sort')) {
                     $sorts = [
                         'id' => 'ID',
-                        'proveedor' => 'Proveedor',
+                        'fabricante' => 'Fabricante',
                         'tipo' => 'Tipo',
                         'diametro' => 'Diámetro',
                         'longitud' => 'Longitud',
@@ -219,7 +219,7 @@
                         <tr class="text-center text-xs uppercase">
                             <th class="p-2 border">{!! ordenarColumna('id', 'ID Materia Prima') !!}</th>
                             <th class="p-2 border">{!! ordenarColumna('codigo', 'Código') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('proveedor', 'Proveedor') !!}</th>
+                            <th class="p-2 border">{!! ordenarColumna('fabricante', 'Fabricante') !!}</th>
                             <th class="p-2 border">{!! ordenarColumna('tipo', 'Tipo') !!}</th>
                             <th class="p-2 border">{!! ordenarColumna('diametro', 'Diámetro') !!}</th>
                             <th class="p-2 border">{!! ordenarColumna('longitud', 'Longitud') !!}</th>
@@ -242,7 +242,7 @@
                                         class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <x-tabla.input name="proveedor" type="text" :value="request('proveedor')"
+                                    <x-tabla.input name="fabricante" type="text" :value="request('fabricante')"
                                         class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
@@ -290,7 +290,7 @@
                             <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer">
                                 <td class="px-2 py-3 text-center border">{{ $producto->id }}</td>
                                 <td class="px-2 py-3 text-center border">{{ $producto->codigo ?? 'N/A' }}</td>
-                                <td class="px-2 py-3 text-center border">{{ $producto->proveedor->nombre ?? '—' }}
+                                <td class="px-2 py-3 text-center border">{{ $producto->fabricante->nombre ?? '—' }}
                                 </td>
                                 <td class="px-2 py-3 text-center border">
                                     {{ ucfirst($producto->productoBase->tipo ?? '—') }}</td>
@@ -315,7 +315,7 @@
                                     @endif
                                 </td>
                                 <td class="px-2 py-3 text-center border">
-                                    <div class="flex flex-col space-y-2 items-center">
+                                    <div class="flex flex-row space-x-2 items-center">
                                         <a href="{{ route('productos.show', $producto->id) }}"
                                             class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
                                         <a href="{{ route('productos.edit', $producto->id) }}"
@@ -363,7 +363,7 @@
                     <div class="bg-white shadow-md rounded-lg p-4">
                         <h3 class="font-bold text-lg text-gray-700">ID: {{ $producto->id }}</h3>
                         <h3 class="font-bold text-lg text-gray-700">Código: {{ $producto->codigo }}</h3>
-                        <p><strong>Proveedor:</strong> {{ $producto->proveedor->nombre ?? '—' }}</p>
+                        <p><strong>Fabricante:</strong> {{ $producto->fabricante->nombre ?? '—' }}</p>
                         <p>
                             <strong>Características:</strong>
                             {{ strtoupper($producto->productoBase->tipo ?? '—') }}

@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Proveedor extends Model
+class Distribuidor extends Model
 {
-    protected $table = 'proveedores';
+    use HasFactory;
+
+    protected $table = 'distribuidores';
 
     protected $fillable = [
         'nombre',
