@@ -72,12 +72,14 @@ class ProductoController extends Controller
         $query = Producto::with([
             'productoBase:id,tipo,diametro,longitud',
             'fabricante:id,nombre',
+            'entrada:id,albaran',
             'ubicacion:id,nombre',
             'maquina:id,nombre'
         ])->select([
             'id',
             'codigo',
             'fabricante_id',
+            'entrada_id',
             'producto_base_id',
             'n_colada',
             'n_paquete',
@@ -273,7 +275,6 @@ class ProductoController extends Controller
                 ->withInput();
         }
     }
-
 
     public function solicitarStock(Request $request)
     {

@@ -244,6 +244,8 @@ class EntradaController extends Controller
             $productoBase = ProductoBase::findOrFail($request->producto_base_id);
             $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
             $pesoPorPaquete = $esDoble ? round($request->peso / 2, 3) : $request->peso;
+            $codigo1 = strtoupper($request->codigo);
+            $codigo2 = strtoupper($request->codigo_2);
 
             // Crear entrada principal
             $entrada = Entrada::create([
@@ -256,9 +258,10 @@ class EntradaController extends Controller
 
             // Primer producto
             $producto1 = Producto::create([
-                'codigo'           => $request->codigo,
+                'codigo'           => $codigo1,
                 'producto_base_id' => $request->producto_base_id,
                 'fabricante_id'     => $request->fabricante_id,
+                'entrada_id'       => $entrada->id,
                 'n_colada'         => $request->n_colada,
                 'n_paquete'        => $request->n_paquete,
                 'peso_inicial'     => $pesoPorPaquete,
@@ -269,19 +272,14 @@ class EntradaController extends Controller
                 'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
             ]);
 
-            EntradaProducto::create([
-                'entrada_id'   => $entrada->id,
-                'producto_id'  => $producto1->id,
-                'ubicacion_id' => $request->ubicacion,
-                'users_id'     => auth()->id(),
-            ]);
 
             // Segundo producto si aplica
             if ($esDoble) {
                 $producto2 = Producto::create([
-                    'codigo'           => $request->codigo_2,
+                    'codigo'           => $codigo2,
                     'producto_base_id' => $request->producto_base_id,
                     'fabricante_id'     => $request->fabricante_id,
+                    'entrada_id'   => $entrada->id,
                     'n_colada'         => $request->n_colada_2,
                     'n_paquete'        => $request->n_paquete_2,
                     'peso_inicial'     => $pesoPorPaquete,
@@ -290,13 +288,6 @@ class EntradaController extends Controller
                     'ubicacion_id'     => $request->ubicacion,
                     'maquina_id'       => null,
                     'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
-                ]);
-
-                EntradaProducto::create([
-                    'entrada_id'   => $entrada->id,
-                    'producto_id'  => $producto2->id,
-                    'ubicacion_id' => $request->ubicacion,
-                    'users_id'     => auth()->id(),
                 ]);
             }
 
@@ -310,8 +301,6 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
         }
     }
-
-
 
     public function edit($id)
     {
@@ -359,7 +348,7 @@ class EntradaController extends Controller
         $entrada->estado = 'cerrado';
         $entrada->save();
 
-        return redirect()->back()->with('success', 'Albarán cerrado correctamente.');
+        return redirect()->route('dashboard')->with('success', 'Albarán cerrado correctamente.');
     }
 
 

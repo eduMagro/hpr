@@ -593,7 +593,6 @@
                     </div>
                 </div>
 
-
             </div>
             <x-tabla.paginacion :paginador="$pedidos" />
 
@@ -601,13 +600,18 @@
         {{-- ---------------------------------------------------- ROL OPERARIO ---------------------------------------------------- --}}
         @if (Auth::user()->rol === 'operario')
             <div class="p-4 w-full max-w-4xl mx-auto">
-                <form method="GET" action="{{ route('pedidos.index') }}"
-                    class="flex flex-col sm:flex-row gap-2 mb-6">
-                    <input type="text" name="codigo" value="{{ request('codigo') }}"
-                        class="form-control form-control-sm flex-grow"
-                        placeholder="Introduce el código del pedido (ej: PC25/0003)">
-                    <button type="submit" class="btn btn-primary text-sm">Buscar</button>
-                </form>
+                <div class="px-4 flex justify-center">
+                    <form method="GET" action="{{ route('pedidos.index') }}"
+                        class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3 flex flex-col sm:flex-row gap-2 mb-6">
+                        <x-tabla.input name="codigo" value="{{ request('codigo') }}" class="flex-grow"
+                            placeholder="Introduce el código del pedido (ej: PC25/0003)" />
+
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">
+                            🔍 Buscar
+                        </button>
+                    </form>
+                </div>
 
                 @php
                     $codigo = request('codigo');
@@ -621,17 +625,50 @@
 
                 @if ($codigo)
                     @if ($pedidosFiltrados->isEmpty())
-                        <div class="text-red-500 text-sm text-center">No se encontraron pedidos con el código
-                            <strong>{{ $codigo }}</strong>.
+                        <div class="text-red-500 text-sm text-center">
+                            No se encontraron pedidos con el código <strong>{{ $codigo }}</strong>.
                         </div>
                     @else
-                        <div class="bg-white shadow rounded-lg overflow-x-auto">
+                        {{-- Vista tipo tarjeta en móvil --}}
+                        <div class="grid gap-4 sm:hidden">
+                            @foreach ($pedidosFiltrados as $pedido)
+                                <div class="bg-white shadow rounded-lg p-4 text-sm border">
+                                    <div><span class="font-semibold">Código:</span> {{ $pedido->codigo }}</div>
+                                    <div><span class="font-semibold">Fabricante:</span>
+                                        {{ $pedido->fabricante->nombre ?? '—' }}</div>
+                                    <div><span class="font-semibold">Distribuidor:</span>
+                                        {{ $pedido->fabricante->distribuidor ?? '—' }}</div>
+                                    <div><span class="font-semibold">Fecha Pedido:</span>
+                                        {{ optional($pedido->fecha_pedido)->format('d/m/Y') }}
+                                    </div>
+                                    <div><span class="font-semibold">Fecha Entrega:</span>
+                                        {{ optional($pedido->fecha_entrega)->format('d/m/Y') }}
+                                    </div>
+                                    <div>
+                                        <span class="font-semibold">Peso Total:</span>
+                                        {{ $pedido->peso_total !== null ? round($pedido->peso_total, 0) . ' kg' : '—' }}
+                                    </div>
+                                    <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
+                                    <div class="mt-2">
+                                        <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
+                                            class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
+                                            Recepcionar
+                                        </a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Vista tabla en escritorio --}}
+                        <div class="hidden sm:block bg-white shadow rounded-lg overflow-x-auto mt-4">
                             <table class="w-full border text-sm text-center">
                                 <thead class="bg-blue-600 text-white uppercase text-xs">
                                     <tr>
                                         <th class="px-3 py-2 border">Código</th>
                                         <th class="px-3 py-2 border">Fabricante</th>
                                         <th class="px-3 py-2 border">Distribuidor</th>
+                                        <th class="px-3 py-2 border">Fecha Entrega</th>
+                                        <th class="px-3 py-2 border">Peso Total</th>
                                         <th class="px-3 py-2 border">Estado</th>
                                         <th class="px-3 py-2 border">Acciones</th>
                                     </tr>
@@ -642,10 +679,19 @@
                                             <td class="px-3 py-2">{{ $pedido->codigo }}</td>
                                             <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
                                             <td class="px-3 py-2">{{ $pedido->fabricante->distribuidor ?? '—' }}</td>
+                                            <td class="px-3 py-2">
+                                                {{ optional($pedido->fecha_pedido)->format('d/m/Y') }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{ optional($pedido->fecha_entrega)->format('d/m/Y') }}
+                                            </td>
+                                            <td class="px-3 py-2">
+                                                {{ $pedido->peso_total !== null ? round($pedido->peso_total, 0) . ' kg' : '—' }}
+                                            </td>
                                             <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
                                             <td class="px-3 py-2">
                                                 <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
-                                                    class="btn btn-success btn-sm">
+                                                    class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
                                                     Recepcionar
                                                 </a>
                                             </td>
@@ -656,6 +702,7 @@
                         </div>
                     @endif
                 @endif
+
             </div>
         @endif
 

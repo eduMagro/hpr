@@ -25,6 +25,7 @@ class PageController extends Controller
         $permitidosOperario = [
             'maquinas.index',
             'productos.index',
+            'pedidos.index',
             'users.index',
             'alertas.index',
             'entradas.index',

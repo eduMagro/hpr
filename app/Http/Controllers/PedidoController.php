@@ -22,6 +22,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PedidoController extends Controller
 {
@@ -311,7 +312,7 @@ class PedidoController extends Controller
 
     public function recepcion($id)
     {
-        $pedido = Pedido::with(['productos', 'entradas.productos'])->findOrFail($id);
+        $pedido = Pedido::with(['productos'])->findOrFail($id);
 
         // Calcular cuánto se ha recepcionado por producto_base_id
         $recepcionadoPorProducto = [];
@@ -329,8 +330,12 @@ class PedidoController extends Controller
             $yaRecepcionado = $recepcionadoPorProducto[$idBase] ?? 0;
             $producto->pendiente = max(0, $producto->pivot->cantidad - $yaRecepcionado);
         });
+        $ubicaciones = Ubicacion::all()->map(function ($ubicacion) {
+            $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
+            return $ubicacion;
+        });
 
-        return view('pedidos.recepcion', compact('pedido'));
+        return view('pedidos.recepcion', compact('pedido', 'ubicaciones'));
     }
 
     public function procesarRecepcion(Request $request, $id)
@@ -342,68 +347,84 @@ class PedidoController extends Controller
                 return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
             }
 
-            $productoBaseId = $request->input('producto_base_id');
+            // Validación básica
+            $request->validate([
+                'codigo'        => 'required|string|unique:productos,codigo|max:20',
+                'codigo_2'      => 'nullable|string|unique:productos,codigo|max:20',
+                'producto_base_id' => 'required|exists:productos_base,id',
+                'peso'          => 'required|numeric|min:1',
+                'n_colada'      => 'required|string|max:50',
+                'n_paquete'     => 'required|string|max:50',
+                'n_colada_2'    => 'nullable|string|max:50',
+                'n_paquete_2'   => 'nullable|string|max:50',
+                'ubicacion_id'  => 'required|exists:ubicaciones,id',
+            ]);
+
+            $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
             $peso = floatval($request->input('peso'));
-            $nColada = $request->input('n_colada');
-            $nPaquete = $request->input('n_paquete');
-            $ubicacionId = $request->input('ubicacion_id');
-            $otros = $request->input('otros');
+            $pesoPorPaquete = $esDoble ? round($peso / 2, 3) : $peso;
 
             if ($peso <= 0) {
                 return redirect()->back()->with('error', 'El peso del paquete debe ser mayor que cero.');
             }
 
-            $ubicacion = Ubicacion::find($ubicacionId);
+            $ubicacion = Ubicacion::find($request->ubicacion_id);
             if (!$ubicacion) {
-                return redirect()->back()->with('error', "Ubicación no encontrada: '{$ubicacionId}'");
+                return redirect()->back()->with('error', "Ubicación no encontrada: '{$request->ubicacion_id}'");
             }
 
-            // Crear producto
-            $producto = Producto::create([
-                'codigo'           => $request->codigo,
-                'producto_base_id' => $productoBaseId,
-                'fabricante_id' => $pedido->fabricante_id,
-                'n_colada' => $nColada,
-                'n_paquete' => $nPaquete,
-                'peso_inicial' => $peso,
-                'peso_stock' => $peso,
-                'estado' => 'almacenado',
-                'ubicacion_id' => $ubicacion->id,
-                'maquina_id' => null,
-                'otros' => $otros,
+            // Buscar o crear entrada abierta
+            $entrada = Entrada::firstOrCreate(
+                ['pedido_id' => $pedido->id, 'estado' => 'abierto'],
+                [
+                    'albaran'     => $this->generarCodigoAlbaran(),
+                    'usuario_id'  => auth()->id(),
+                    'peso_total'  => 0,
+                    'otros'       => 'Entrada generada desde recepción de pedido',
+                ]
+            );
+            $codigo1 = strtoupper($request->codigo);
+            $codigo2 = strtoupper($request->codigo_2);
+
+            // Crear primer producto con entrada_id asignado
+            Producto::create([
+                'codigo'           => $codigo1,
+                'producto_base_id' => $request->producto_base_id,
+                'fabricante_id'    => $pedido->fabricante_id,
+                'entrada_id'       => $entrada->id, // ✅ Aquí se asigna
+                'n_colada'         => $request->n_colada,
+                'n_paquete'        => $request->n_paquete,
+                'peso_inicial'     => $pesoPorPaquete,
+                'peso_stock'       => $pesoPorPaquete,
+                'estado'           => 'almacenado',
+                'ubicacion_id'     => $ubicacion->id,
+                'maquina_id'       => null,
+                'otros'            => $request->otros ?? null,
             ]);
 
-            // Buscar entrada abierta
-            $entrada = Entrada::where('pedido_id', $pedido->id)
-                ->where('estado', 'abierto')
-                ->latest()
-                ->first();
-
-            // Si no existe, la creamos
-            if (!$entrada) {
-                $entrada = Entrada::create([
-                    'albaran' => $this->generarCodigoAlbaran(),
-                    'pedido_id' => $pedido->id,
-                    'peso_total' => 0,
-                    'usuario_id' => auth()->id(),
-                    'otros' => 'Entrada generada desde recepción de pedido',
-                    'estado' => 'abierto',
+            // Segundo producto si aplica
+            if ($esDoble) {
+                Producto::create([
+                    'codigo'           => $codigo2,
+                    'producto_base_id' => $request->producto_base_id,
+                    'fabricante_id'    => $pedido->fabricante_id,
+                    'entrada_id'       => $entrada->id, // ✅ También aquí
+                    'n_colada'         => $request->n_colada_2,
+                    'n_paquete'        => $request->n_paquete_2,
+                    'peso_inicial'     => $pesoPorPaquete,
+                    'peso_stock'       => $pesoPorPaquete,
+                    'estado'           => 'almacenado',
+                    'ubicacion_id'     => $ubicacion->id,
+                    'maquina_id'       => null,
+                    'otros'            => $request->otros ?? null,
                 ]);
             }
 
-            // Crear línea en entrada_producto
-            EntradaProducto::create([
-                'entrada_id' => $entrada->id,
-                'producto_id' => $producto->id,
-                'ubicacion_id' => $ubicacion->id,
-                'users_id' => auth()->id(),
-            ]);
-
-            // Sumar peso
+            // Sumar peso total
             $entrada->peso_total += $peso;
             $entrada->save();
 
-            // Verificar si el pedido debe pasar a estado "completado" o "parcial"
+            // Verificar si el pedido debe cambiar de estado
             $pesoSuministrado = $pedido->entradas()->sum('peso_total');
             $pesoPedido = $pedido->productos->sum(fn($p) => $p->pivot->cantidad);
             $margen = 0.005;
@@ -411,13 +432,14 @@ class PedidoController extends Controller
             $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
             $pedido->save();
 
-            return redirect()->back()->with('success', 'Producto recepcionado correctamente.');
+            return redirect()->back()->with('success', 'Producto(s) recepcionado(s) correctamente.');
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error: ' . $e->getMessage());
         }
     }
+
 
     public function generarCodigoAlbaran()
     {

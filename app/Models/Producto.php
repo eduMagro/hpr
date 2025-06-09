@@ -15,6 +15,7 @@ class Producto extends Model
         'codigo',
         'producto_base_id',
         'fabricante_id',
+        'entrada_id',
         'n_colada',
         'n_paquete',
         'peso_inicial',
@@ -24,10 +25,7 @@ class Producto extends Model
         'estado',
         'otros',
     ];
-    public function getIdMpAttribute()
-    {
-        return 'MP' . $this->id;
-    }
+
     public $timestamps = true;
     protected $casts = [
         'created_at' => 'datetime',
@@ -46,16 +44,8 @@ class Producto extends Model
 
     public function entrada()
     {
-        return $this->hasOneThrough(
-            Entrada::class,
-            EntradaProducto::class,
-            'producto_id',     // Foreign key on entrada_producto
-            'id',              // Foreign key on entrada
-            'id',              // Local key on producto
-            'entrada_id'       // Local key on entrada_producto
-        );
+        return $this->belongsTo(Entrada::class);
     }
-
 
     /**
      * Relación con la tabla 'ubicaciones'
