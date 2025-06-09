@@ -99,6 +99,7 @@
                         @forelse ($alertas as $alerta)
                             @php
                                 $esEntrante = $alerta->tipo === 'entrante';
+                                $esSaliente = !$esEntrante;
                                 $noLeida = $esEntrante && empty($alertasLeidas[$alerta->id]);
                             @endphp
 
@@ -135,8 +136,12 @@
                                             {{ $alerta->mensaje }}
                                         </a>
                                     @else
+                                        @php
+
+                                        @endphp
+
                                         <a href="#"
-                                            onclick="marcarAlertaLeida({{ $alerta->id }}, this.closest('tr'), @js($alerta->mensaje_completo))"
+                                            onclick="event.stopPropagation(); marcarAlertaLeida({{ $alerta->id }}, this.closest('tr'), @js($alerta->mensaje_completo), {{ $esSaliente ? 'true' : 'false' }})"
                                             class="text-gray-700 hover:underline">
                                             {{ $alerta->mensaje_corto }}
                                         </a>
@@ -180,6 +185,19 @@
                     Cerrar
                 </button>
             </div>
+
+            <div class="flex justify-center gap-4 mt-6 hidden" id="botonesEdicion">
+
+                <button onclick="editarAlerta()"
+                    class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg">
+                    ✏️ Editar
+                </button>
+                <button onclick="eliminarAlerta()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
+                    🗑 Eliminar
+                </button>
+            </div>
+
+
         </div>
     </div>
 
@@ -228,7 +246,13 @@
             console.log("Nuevas alertas detectadas:", nuevasAlertas); // Depuración
         });
 
-        function marcarAlertaLeida(id, fila, mensaje = '') {
+        let alertaActualId = null;
+        let alertaActualEsSaliente = false;
+
+        function marcarAlertaLeida(id, fila, mensaje = '', esSaliente = false) {
+            alertaActualId = id;
+            alertaActualEsSaliente = esSaliente;
+
             if (fila.classList.contains('bg-yellow-100')) {
                 fila.classList.remove('bg-yellow-100');
                 fila.classList.add('bg-white');
@@ -243,8 +267,11 @@
                 });
             }
 
-            // Mostrar el modal con el mensaje
             document.getElementById('contenidoMensaje').textContent = mensaje;
+
+            // Mostrar/ocultar botones de editar/eliminar
+            document.getElementById('botonesEdicion').classList.toggle('hidden', !esSaliente);
+
             document.getElementById('modalVerMensaje').classList.remove('hidden');
         }
 
@@ -252,6 +279,45 @@
             document.getElementById('modalVerMensaje').classList.add('hidden');
         }
 
+
+        function eliminarAlerta() {
+            Swal.fire({
+                title: '¿Eliminar alerta?',
+                text: "Esta acción no se puede deshacer.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#aaa',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/alertas/${alertaActualId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    }).then(response => {
+                        if (response.ok) {
+                            Swal.fire('Eliminado', 'La alerta fue eliminada.', 'success')
+                                .then(() => location.reload());
+                        } else {
+                            Swal.fire('Error', 'No se pudo eliminar la alerta.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function editarAlerta() {
+            const nuevoMensaje = prompt("Editar mensaje:", document.getElementById('contenidoMensaje').textContent.trim());
+            if (nuevoMensaje !== null) {
+                guardarAlerta({
+                    id: alertaActualId,
+                    mensaje: nuevoMensaje
+                });
+            }
+        }
 
 
 
