@@ -104,7 +104,9 @@
 
 
                             <tr class="{{ $noLeida ? 'bg-yellow-100' : 'bg-white' }}"
-                                data-alerta-id="{{ $alerta->id }}">
+                                data-alerta-id="{{ $alerta->id }}"
+                                onclick="marcarAlertaLeida({{ $alerta->id }}, this)">
+
 
                                 @if (auth()->user()->rol === 'oficina')
                                     <td class="px-4 py-2 text-center">
@@ -130,8 +132,7 @@
 
                                     @if ($esCambioMaquina && $esAlertaEntrante && isset($elementoId, $origen, $destino, $maquinaDestinoId))
                                         <a href="#"
-                                            onclick="abrirModalAceptarCambio('{{ $elementoId }}', '{{ $origen }}', '{{ $destino }}', '{{ $maquinaDestinoId }}', '{{ $alerta->id }}')"
-                                            class="text-green-700 hover:underline font-semibold">
+                                            onclick="marcarAlertaLeida({{ $alerta->id }}, this.closest('tr')); abrirModalAceptarCambio('{{ $elementoId }}', '{{ $origen }}', '{{ $destino }}', '{{ $maquinaDestinoId }}', '{{ $alerta->id }}')">
                                             {{ $alerta->mensaje }}
                                         </a>
                                     @else
@@ -205,19 +206,27 @@
             console.log("Nuevas alertas detectadas:", nuevasAlertas); // Depuración
         });
 
-        window.addEventListener("beforeunload", function() {
-            if (nuevasAlertas.length > 0) {
-                const data = new FormData();
-                data.append('_token', '{{ csrf_token() }}');
-                nuevasAlertas.forEach(id => data.append('alerta_ids[]', id));
 
-                fetch("{{ route('alertas.marcarLeidas') }}", {
-                    method: "POST",
-                    body: data,
-                    keepalive: true
-                });
-            }
-        });
+        function marcarAlertaLeida(id, fila) {
+            // Evitar marcar si ya tiene clase blanca (ya está leída)
+            if (!fila.classList.contains('bg-yellow-100')) return;
+
+            // Actualizar estilo visual
+            fila.classList.remove('bg-yellow-100');
+            fila.classList.add('bg-white');
+
+            // Enviar al backend
+            const data = new FormData();
+            data.append('_token', '{{ csrf_token() }}');
+            data.append('alerta_ids[]', id);
+
+            fetch("{{ route('alertas.marcarLeidas') }}", {
+                method: 'POST',
+                body: data
+            });
+        }
+
+
 
         function abrirModalAceptarCambio(elementoId, origen, destino, maquinaDestinoId = null, alertaId = null) {
             // Asigna los valores al modal
