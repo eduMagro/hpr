@@ -139,23 +139,53 @@ class AlertaController extends Controller
     }
     public function sinLeer()
     {
-        $user = auth()->user();
+        try {
+            $user = auth()->user();
 
-        // Buscar alertas asignadas a este usuario (por ID, rol o categoría)
-        $alertasEntrantes = Alerta::where(function ($q) use ($user) {
-            $q->where('destinatario_id', $user->id)
-                ->orWhere('destino', $user->rol)
-                ->orWhere('destinatario', $user->categoria);
-        })->pluck('id');
+            if (!$user) {
+                Log::warning('🔐 Usuario no autenticado al acceder a alertas/sin-leer');
+                return response()->json(['error' => 'No autenticado'], 401);
+            }
 
-        // Buscar alertas de esa lista que el usuario aún no ha marcado como leídas
-        $alertasLeidas = AlertaLeida::where('user_id', $user->id)
-            ->whereNull('leida_en')
-            ->whereIn('alerta_id', $alertasEntrantes)
-            ->count();
+            Log::info('👤 Usuario autenticado', ['id' => $user->id, 'rol' => $user->rol, 'categoria' => $user->categoria]);
 
-        return response()->json(['cantidad' => $alertasLeidas]);
+            $alertasEntrantes = Alerta::where(function ($q) use ($user) {
+                $q->where('destinatario_id', $user->id)
+                    ->orWhere('destino', $user->rol)
+                    ->orWhere('destinatario', $user->categoria);
+            })->pluck('id');
+
+            Log::info('🔎 Alertas entrantes encontradas', ['total' => $alertasEntrantes->count()]);
+
+            $alertasLeidas = AlertaLeida::where('user_id', $user->id)
+                ->whereNull('leida_en')
+                ->whereIn('alerta_id', $alertasEntrantes)
+                ->count();
+
+            Log::info('📬 Alertas sin leer', ['cantidad' => $alertasLeidas]);
+
+            return response()->json(['cantidad' => $alertasLeidas]);
+        } catch (\Throwable $e) {
+            Log::error('❌ Error en sinLeer()', [
+                'mensaje' => $e->getMessage(),
+                'linea' => $e->getLine(),
+                'archivo' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'error' => 'Error interno del servidor',
+                'mensaje' => config('app.debug') ? $e->getMessage() : 'Ocurrió un error'
+            ], 500);
+        }
     }
+
+    public function show($id)
+    {
+        // Solo para evitar el error por ahora
+        return redirect()->route('alertas.index');
+    }
+
 
     public function update(Request $request, $id)
     {
