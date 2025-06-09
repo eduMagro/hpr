@@ -21,7 +21,7 @@ use Exception;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-class etiquetaController extends Controller
+class EtiquetaController extends Controller
 {
     private function aplicarFiltros($query, Request $request)
     {

@@ -390,14 +390,6 @@ class SalidaController extends Controller
                     ->where('obra_id', $obraId)
                     ->update([$field => $value]);
             }
-            if ($field === 'fecha_salida') {
-                dd([
-                    'salida_id' => $salida->id,
-                    'valor_recibido' => $value,
-                    'valor_parseado' => Carbon::parse($value)->format('Y-m-d'),
-                    'antes_de_guardar' => $salida->fecha_salida
-                ]);
-            }
 
             return response()->json([
                 'success' => true,

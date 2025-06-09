@@ -55,7 +55,7 @@
     <!-- end Content Wrapper -->
     <!-- Scripts -->
     <script src="assets/js/jquery-3.3.1.min.js" type="text/javascript"></script>
-    <script src="assets/boostrap-files/js/bootstrap.min.js" type="text/javascript"></script>
+    <script src="assets/bootstrap-files/js/bootstrap.min.js" type="text/javascript"></script>
     <script src="assets/js/modernizr.custom.js" type="text/javascript"></script>
     <script src="assets/js/scripts.js" type="text/javascript"></script>
   </body>
