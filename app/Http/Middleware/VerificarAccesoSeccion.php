@@ -68,7 +68,7 @@ class VerificarAccesoSeccion
             $autorizado = false;
 
             foreach ($permisos as $permiso) {
-                if ($accion === 'index' && $permiso->puede_ver) $autorizado = true;
+                if (in_array($accion, ['index', 'show']) && $permiso->puede_ver) $autorizado = true;
                 if (in_array($accion, ['edit', 'update']) && $permiso->puede_editar) $autorizado = true;
                 if (in_array($accion, ['create', 'store']) && $permiso->puede_crear) $autorizado = true;
             }

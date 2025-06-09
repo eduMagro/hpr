@@ -665,28 +665,47 @@ class AsignacionTurnoController extends Controller
 
     public function asignarObra(Request $request)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'obra_id' => 'required|exists:obras,id',
-            'fecha'   => 'required|date',
-        ]);
+        try {
+            $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'obra_id' => 'required|exists:obras,id',
+                'fecha'   => 'required|date',
+            ]);
 
-        // Buscar la asignación de turno de ese día para ese usuario
-        $asignacion = AsignacionTurno::where('user_id', $request->user_id)
-            ->whereDate('fecha', Carbon::parse($request->fecha))
-            ->first();
+            // Buscar la asignación de turno de ese día para ese usuario
+            $asignacion = AsignacionTurno::where('user_id', $request->user_id)
+                ->whereDate('fecha', \Carbon\Carbon::parse($request->fecha))
+                ->first();
 
-        if (!$asignacion) {
-            return response()->json(['error' => 'No se encontró una asignación de turno para ese trabajador en esa fecha.'], 404);
+            if (!$asignacion) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No se encontró una asignación de turno para ese trabajador en esa fecha.'
+                ], 404);
+            }
+
+            $asignacion->obra_id = $request->obra_id;
+            $asignacion->save();
+
+            return response()->json([
+                'success' => true,
+                'id' => $asignacion->id,
+                'obra_id' => $asignacion->obra_id,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Error de validación.',
+                'messages' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('❌ Error en asignarObra(): ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Error interno del servidor.',
+                'message' => $e->getMessage(),
+            ], 500);
         }
-
-        $asignacion->obra_id = $request->obra_id;
-        $asignacion->save();
-
-        return response()->json([
-            'success' => true,
-            'id' => $asignacion->id,
-            'obra_id' => $asignacion->obra_id,
-        ]);
     }
 }

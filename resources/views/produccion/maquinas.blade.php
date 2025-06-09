@@ -1,10 +1,64 @@
 <x-app-layout>
     <x-slot name="title">Planificación por Máquina</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Planificación de Máquinas y Planillas') }}
-        </h2>
-    </x-slot>
+    @php
+        $rutaActual = request()->route()->getName();
+    @endphp
+    @if (Auth::check() && Auth::user()->rol == 'oficina')
+        <div class="w-full" x-data="{ open: false }">
+            <!-- Menú móvil -->
+            <div class="sm:hidden relative" x-data="{ open: false }">
+                <button @click="open = !open"
+                    class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow transition">
+                    Opciones
+                </button>
+
+                <div x-show="open" x-transition @click.away="open = false"
+                    class="absolute z-30 mt-0 w-1/2 bg-white border border-gray-200 rounded-b-lg shadow-xl overflow-hidden divide-y divide-gray-200"
+                    x-cloak>
+
+                    <a href="{{ route('produccion.maquinas') }}"
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('users.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        📋 Planificación Planillas
+                    </a>
+
+
+                    <a href="{{ route('produccion.trabajadores') }}"
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('register') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        📋 Planificación Trabajadores Máquina
+                    </a>
+
+                    <a href="{{ route('produccion.trabajadoresObra') }}"
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('asignaciones-turnos.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        ⏱️ Planificación Trabajadores Obra
+                    </a>
+                </div>
+            </div>
+
+            <!-- Menú escritorio -->
+            <div class="hidden sm:flex sm:mt-0 w-full">
+                <a href="{{ route('produccion.maquinas') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none first:rounded-l-lg transition font-semibold
+                {{ request()->routeIs('users.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    📋 Planificación Planillas
+                </a>
+
+                <a href="{{ route('produccion.maquinas') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
+                {{ request()->routeIs('register') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    📋 Planificación Trabajadores Almacén
+                </a>
+
+                <a href="{{ route('produccion.trabajadoresObra') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
+                {{ request()->routeIs('asignaciones-turnos.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    ⏱️ Planificación Trabajadores Obra
+                </a>
+            </div>
+        </div>
+    @endif
 
     <div class="py-6">
         @if (!empty($erroresPlanillas))
@@ -45,7 +99,8 @@
         @foreach ($maquinas as $maquina)
             <div class="bg-white shadow rounded-lg p-3">
                 <h3 class="text-sm font-semibold mb-1 text-center">{{ $maquina->nombre }}</h3>
-                <canvas id="grafico-maquina-{{ $maquina->id }}" width="280" height="200" class="mx-auto"></canvas>
+                <canvas id="grafico-maquina-{{ $maquina->id }}" width="280" height="200"
+                    class="mx-auto"></canvas>
             </div>
         @endforeach
     </div>

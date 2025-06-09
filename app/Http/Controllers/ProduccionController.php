@@ -436,7 +436,32 @@ class ProduccionController extends Controller
             'id' => $obra->id,
             'title' => $obra->obra,
         ]);
-        return view('produccion.trabajadoresObra', compact('trabajadores', 'trabajadoresSinObra', 'resources'));
+
+        $eventos = [];
+
+        foreach ($trabajadores as $trabajador) {
+            foreach ($trabajador->asignacionesTurnos as $asignacion) {
+                $turno = $asignacion->turno;
+                if (!$turno || !$asignacion->obra_id) continue; // solo si tiene obra válida
+
+                $horaEntrada = $turno->hora_entrada ?? '08:00:00';
+                $horaSalida  = $turno->hora_salida ?? '16:00:00';
+
+                $eventos[] = [
+                    'id' => 'turno-' . $asignacion->id,
+                    'title' => $trabajador->nombre_completo,
+                    'start' => $asignacion->fecha . 'T' . $horaEntrada,
+                    'end' => $asignacion->fecha . 'T' . $horaSalida,
+                    'resourceId' => $asignacion->obra_id,
+                    'extendedProps' => [
+                        'user_id' => $trabajador->id,
+                        'categoria_nombre' => $trabajador->categoria?->nombre,
+                        'especialidad_nombre' => $trabajador->maquina?->nombre,
+                    ],
+                ];
+            }
+        }
+        return view('produccion.trabajadoresObra', compact('trabajadores', 'trabajadoresSinObra', 'resources', 'eventos'));
     }
 
 

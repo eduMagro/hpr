@@ -1,10 +1,64 @@
 <x-app-layout>
     <x-slot name="title">Planificación por Obra</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Planificación de Trabajadores por Obra') }}
-        </h2>
-    </x-slot>
+    @php
+        $rutaActual = request()->route()->getName();
+    @endphp
+    @if (Auth::check() && Auth::user()->rol == 'oficina')
+        <div class="w-full" x-data="{ open: false }">
+            <!-- Menú móvil -->
+            <div class="sm:hidden relative" x-data="{ open: false }">
+                <button @click="open = !open"
+                    class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow transition">
+                    Opciones
+                </button>
+
+                <div x-show="open" x-transition @click.away="open = false"
+                    class="absolute z-30 mt-0 w-1/2 bg-white border border-gray-200 rounded-b-lg shadow-xl overflow-hidden divide-y divide-gray-200"
+                    x-cloak>
+
+                    <a href="{{ route('produccion.maquinas') }}"
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('users.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        📋 Planificación Planillas
+                    </a>
+
+
+                    <a href="{{ route('produccion.trabajadores') }}"
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('register') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        📋 Planificación Trabajadores Máquina
+                    </a>
+
+                    <a href="{{ route('produccion.trabajadoresObra') }}"
+                        class="block px-2 py-3 transition text-sm font-medium
+                    {{ request()->routeIs('asignaciones-turnos.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
+                        ⏱️ Planificación Trabajadores Obra
+                    </a>
+                </div>
+            </div>
+
+            <!-- Menú escritorio -->
+            <div class="hidden sm:flex sm:mt-0 w-full">
+                <a href="{{ route('produccion.maquinas') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none first:rounded-l-lg transition font-semibold
+                {{ request()->routeIs('users.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    📋 Planificación Planillas
+                </a>
+
+                <a href="{{ route('produccion.maquinas') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
+                {{ request()->routeIs('register') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    📋 Planificación Trabajadores Almacén
+                </a>
+
+                <a href="{{ route('produccion.trabajadoresObra') }}"
+                    class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
+                {{ request()->routeIs('asignaciones-turnos.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
+                    ⏱️ Planificación Trabajadores Obra
+                </a>
+            </div>
+        </div>
+    @endif
     <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full md:w-full">
         <h3 class="font-bold text-gray-800 mb-2">Trabajadores sin asignar</h3>
 
@@ -17,8 +71,6 @@
             @endforeach
         </div>
     </div>
-
-
     <div class="py-6">
         <!-- Calendario -->
         <div class="w-full bg-white">
@@ -51,7 +103,7 @@
         let calendarioObras;
 
         const resources = @json($resources);
-        const trabajadores = @json($trabajadores);
+        const trabajadores = @json($eventos);
         console.log(trabajadores);
 
         function inicializarCalendarioObras() {
@@ -92,7 +144,8 @@
                     else if (hora >= 14 && hora < 22) turnoId = 2;
                     else turnoId = 3;
 
-                    fetch('/asignaciones-turno', {
+                    fetch('/asignaciones-turno/asignar-obra', {
+
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -107,7 +160,12 @@
                         })
                         .then(res => res.json())
                         .then(data => {
-                            calendar.addEvent({
+                            if (!data || !data.id || !data.hora_entrada || !data.hora_salida) {
+                                console.error('❌ Datos incompletos recibidos:', data);
+                                return;
+                            }
+
+                            calendarioObras.addEvent({
                                 id: 'turno-' + data.id,
                                 title: data.nombre,
                                 start: fecha + 'T' + data.hora_entrada,
@@ -119,6 +177,9 @@
                                     especialidad_nombre: data.especialidad
                                 }
                             });
+
+                            // Opcional: eliminar de la lista externa si quieres
+                            document.querySelector(`[data-id="${userId}"]`)?.remove();
                         });
                 },
                 eventContent(arg) {
