@@ -157,6 +157,26 @@ class AlertaController extends Controller
         return response()->json(['cantidad' => $alertasLeidas]);
     }
 
+    public function update(Request $request, $id)
+    {
+        $alerta = Alerta::findOrFail($id);
+
+        $validated = $request->validate([
+            'mensaje' => 'required|string|max:1000',
+        ]);
+
+        $alerta->mensaje = $validated['mensaje'];
+        $alerta->save();
+
+        return response()->json(['success' => true]);
+    }
+    public function destroy($id)
+    {
+        $alerta = Alerta::findOrFail($id);
+        $alerta->delete();
+
+        return response()->json(['success' => true]);
+    }
 
     public function store(Request $request)
     {

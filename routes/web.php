@@ -180,13 +180,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/simulacion-inversa', [NominaController::class, 'simularDesdeNeto'])->name('nomina.inversa.calcular');
 
     // === ALERTAS Y ESTADISTICAS ===
-    Route::get('/alertas', [AlertaController::class, 'index'])->name('alertas.index');
+    Route::resource('alertas', AlertaController::class);
+
     Route::post('/alertas/marcar-leidas', [AlertaController::class, 'marcarLeidas'])->name('alertas.marcarLeidas');
-    Route::post('/alertas/store', [AlertaController::class, 'store'])->name('alertas.store');
-    Route::put('/alertas/{alerta}', [AlertaController::class, 'update'])->name('alertas.update');
-    Route::delete('/alertas/{alerta}', [AlertaController::class, 'destroy'])->name('alertas.destroy');
     Route::get('/alertas/sin-leer', [AlertaController::class, 'sinLeer'])->name('alertas.sinLeer');
     Route::get('/estadisticas', [EstadisticasController::class, 'index'])->name('estadisticas.index');
+
 
     // === POLÍTICAS Y AYUDA ===
     Route::controller(PoliticaController::class)->group(function () {

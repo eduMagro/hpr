@@ -103,10 +103,9 @@
                                 $noLeida = $esEntrante && empty($alertasLeidas[$alerta->id]);
                             @endphp
 
-                            <tr class="{{ $noLeida ? 'bg-yellow-100' : 'bg-white' }}"
+                            <tr class="cursor-pointer hover:bg-gray-100 {{ $noLeida ? 'bg-yellow-100' : 'bg-white' }}"
                                 data-alerta-id="{{ $alerta->id }}"
-                                onclick="marcarAlertaLeida({{ $alerta->id }}, this, @js($alerta->mensaje))">
-
+                                onclick="marcarAlertaLeida({{ $alerta->id }}, this, @js($alerta->mensaje_completo), {{ $esSaliente ? 'true' : 'false' }})">
 
                                 <td class="px-4 py-2 text-center">
                                     {{ $alerta->usuario1?->nombre_completo ?? 'Desconocido' }}
@@ -136,15 +135,7 @@
                                             {{ $alerta->mensaje }}
                                         </a>
                                     @else
-                                        @php
-
-                                        @endphp
-
-                                        <a href="#"
-                                            onclick="event.stopPropagation(); marcarAlertaLeida({{ $alerta->id }}, this.closest('tr'), @js($alerta->mensaje_completo), {{ $esSaliente ? 'true' : 'false' }})"
-                                            class="text-gray-700 hover:underline">
-                                            {{ $alerta->mensaje_corto }}
-                                        </a>
+                                        <span class="text-gray-700">{{ $alerta->mensaje_corto }}</span>
                                     @endif
 
 
@@ -177,7 +168,12 @@
 
             <h2 class="text-xl font-bold mb-4">📩 Mensaje</h2>
 
+            <!-- Mensaje en modo lectura -->
             <p id="contenidoMensaje" class="text-gray-800 whitespace-pre-wrap"></p>
+
+            <!-- Mensaje en modo edición (inicialmente oculto) -->
+            <textarea id="textareaMensaje" class="w-full mt-2 p-2 border rounded-lg hidden text-gray-800" rows="4"></textarea>
+
 
             <div class="flex justify-end mt-6">
                 <button onclick="cerrarModalMensaje()"
@@ -187,15 +183,28 @@
             </div>
 
             <div class="flex justify-center gap-4 mt-6 hidden" id="botonesEdicion">
-
-                <button onclick="editarAlerta()"
-                    class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg">
+                <button onclick="iniciarEdicionAlerta()"
+                    class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg" id="botonEditar">
                     ✏️ Editar
                 </button>
-                <button onclick="eliminarAlerta()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
+
+                <div id="botonesGuardarCancelar" class="hidden flex gap-2">
+                    <button onclick="guardarEdicionAlerta()"
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
+                        💾 Guardar
+                    </button>
+                    <button onclick="cancelarEdicionAlerta()"
+                        class="px-4 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-lg">
+                        Cancelar
+                    </button>
+                </div>
+
+                <button onclick="eliminarAlerta()"
+                    class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
                     🗑 Eliminar
                 </button>
             </div>
+
 
 
         </div>
@@ -242,7 +251,6 @@
                 const id = row.dataset.alertaId;
                 if (id) nuevasAlertas.push(id);
             });
-
             console.log("Nuevas alertas detectadas:", nuevasAlertas); // Depuración
         });
 
@@ -268,9 +276,14 @@
             }
 
             document.getElementById('contenidoMensaje').textContent = mensaje;
+            document.getElementById('textareaMensaje').value = mensaje;
 
-            // Mostrar/ocultar botones de editar/eliminar
+            // Mostrar u ocultar los controles según tipo
             document.getElementById('botonesEdicion').classList.toggle('hidden', !esSaliente);
+            document.getElementById('textareaMensaje').classList.add('hidden');
+            document.getElementById('contenidoMensaje').classList.remove('hidden');
+            document.getElementById('botonEditar').classList.remove('hidden');
+            document.getElementById('botonesGuardarCancelar').classList.add('hidden');
 
             document.getElementById('modalVerMensaje').classList.remove('hidden');
         }
@@ -278,7 +291,6 @@
         function cerrarModalMensaje() {
             document.getElementById('modalVerMensaje').classList.add('hidden');
         }
-
 
         function eliminarAlerta() {
             Swal.fire({
@@ -309,20 +321,80 @@
             });
         }
 
-        function editarAlerta() {
-            const nuevoMensaje = prompt("Editar mensaje:", document.getElementById('contenidoMensaje').textContent.trim());
-            if (nuevoMensaje !== null) {
-                guardarAlerta({
-                    id: alertaActualId,
-                    mensaje: nuevoMensaje
-                });
-            }
+        function iniciarEdicionAlerta() {
+            document.getElementById('contenidoMensaje').classList.add('hidden');
+            document.getElementById('textareaMensaje').classList.remove('hidden');
+            document.getElementById('botonEditar').classList.add('hidden');
+            document.getElementById('botonesGuardarCancelar').classList.remove('hidden');
         }
 
+        function cancelarEdicionAlerta() {
+            document.getElementById('textareaMensaje').classList.add('hidden');
+            document.getElementById('contenidoMensaje').classList.remove('hidden');
+            document.getElementById('botonEditar').classList.remove('hidden');
+            document.getElementById('botonesGuardarCancelar').classList.add('hidden');
+        }
 
+        function guardarEdicionAlerta() {
+            const nuevoMensaje = document.getElementById('textareaMensaje').value.trim();
+
+            if (!nuevoMensaje) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Mensaje vacío',
+                    text: 'Debes escribir un mensaje antes de guardar.'
+                });
+                return;
+            }
+
+            guardarAlerta({
+                id: alertaActualId,
+                mensaje: nuevoMensaje
+            });
+        }
+
+        function guardarAlerta(alerta) {
+            fetch(`/alertas/${alerta.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        mensaje: alerta.mensaje
+                    })
+                })
+                .then(async response => {
+                    const data = await response.json().catch(() => ({}));
+                    if (response.ok && data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Mensaje actualizado',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => location.reload());
+                    } else {
+                        let mensaje = data.error || 'Error inesperado';
+                        if (typeof mensaje === 'object') {
+                            mensaje = Object.values(mensaje).flat().join('\n');
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: mensaje
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de conexión',
+                        text: error.message || 'No se pudo actualizar la alerta.'
+                    });
+                });
+        }
 
         function abrirModalAceptarCambio(elementoId, origen, destino, maquinaDestinoId = null, alertaId = null) {
-            // Asigna los valores al modal
             document.getElementById('elementoModal').textContent = elementoId;
             document.getElementById('origenModal').textContent = origen;
             document.getElementById('destinoModal').textContent = destino;
@@ -334,11 +406,12 @@
             }
 
             const form = document.getElementById('formAceptarCambio');
-            form.action = `/elementos/${elementoId}/cambio-maquina?alerta_id=${alertaId}`; // importante
+            form.action = `/elementos/${elementoId}/cambio-maquina?alerta_id=${alertaId}`;
 
             document.getElementById('modalConfirmacionCambio').classList.remove('hidden');
         }
     </script>
+
 
 
 </x-app-layout>
