@@ -107,7 +107,7 @@ class AlertaController extends Controller
 
             // Añadir versión corta y completa del mensaje
             $alerta->mensaje_completo = $alerta->mensaje;
-            $alerta->mensaje_corto = Str::words($alerta->mensaje, 10, '...');
+            $alerta->mensaje_corto = Str::words($alerta->mensaje, 4, '...');
 
             return $alerta;
         });
