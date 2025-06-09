@@ -194,6 +194,7 @@
                         <th class="p-2 border">Entrada</th>
                         <th class="p-2 border">Salida</th>
                         <th class="p-2 border">Resumen</th>
+                        <th class="p-2 border">Acciones</th>
                     </tr>
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('asignaciones-turnos.index') }}">
@@ -227,6 +228,9 @@
                             <th class="p-1 border">
                                 <x-tabla.input name="salida" type="text" :value="request('salida')"
                                     class="w-full text-xs" />
+                            </th>
+                            <th class="p-1 border">
+
                             </th>
                             <x-tabla.botones-filtro ruta="asignaciones-turnos.index" />
                         </form>
@@ -312,6 +316,14 @@
 
                             <td class="px-2 py-2 border text-xs font-bold">
                                 {!! $puntual !!}
+                            </td>
+                            <td class="px-2 py-2 border text-xs font-bold">
+                                <template x-if="editando">
+                                    <button @click="guardarCambios(usuario); editando = false"
+                                        class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
+                                        Guardar
+                                    </button>
+                                </template>
                             </td>
 
                         </tr>
