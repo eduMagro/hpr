@@ -421,7 +421,7 @@
 
                                             @if (strtolower($mov->tipo) === 'recarga materia prima')
                                                 <button
-                                                    onclick='abrirModalMovimiento(
+                                                    onclick='abrirModalRecarga(
                                                         @json($mov->id),
                                                         @json($mov->tipo),
                                                         "",
@@ -437,13 +437,22 @@
                                                     ✅ Ejecutar recarga
                                                 </button>
                                             @endif
-                                            @if (strtolower($mov->tipo) === 'descarga materia prima' && $mov->pedido)
-                                                <button
-                                                    onclick='abrirModalPedidoDesdeMovimiento(@json($mov->pedido))'
-                                                    style="background-color: orange; color: white;"
-                                                    class="text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto border border-black">
-                                                    🏗️ Ver pedido
-                                                </button>
+                                            @if (strtolower($mov->tipo) === 'descarga materia prima')
+                                                <div class="flex flex-col sm:flex-row gap-2 w-full">
+                                                    @if ($mov->pedido)
+                                                        <button
+                                                            onclick='abrirModalPedidoDesdeMovimiento(@json($mov->pedido))'
+                                                            style="background-color: orange; color: white;"
+                                                            class="text-sm px-3 py-2 rounded w-full sm:w-auto border border-black">
+                                                            🏗️ Ver pedido
+                                                        </button>
+                                                    @endif
+                                                    <button
+                                                        onclick="abrirModalDescarga({{ $mov->id }}, '{{ $mov->descripcion }}')"
+                                                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded w-full sm:w-auto">
+                                                        ✅ Ejecutar descarga
+                                                    </button>
+                                                </div>
                                             @endif
                                         </div>
                                     </li>
@@ -551,13 +560,48 @@
                         </div>
                     </div>
 
+                    {{-- 🔄 MODAL BAJADA PAQUETE --}}
+                    <div id="modalBajadaPaquete"
+                        class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
+                        <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-4 sm:mx-0">
+                            <h2 class="text-lg font-bold mb-4 text-center text-gray-800">📦 Registrar Bajada de Paquete</h2>
+
+                            <p id="bajada_descripcion" class="text-sm text-gray-600 mb-4"></p>
+
+                            <form method="POST" action="{{ route('movimientos.store') }}" id="form-bajada-paquete">
+                                @csrf
+                                <input type="hidden" name="tipo" value="paquete">
+                                <input type="hidden" name="movimiento_id" id="bajada_movimiento_id">
+
+                                <div class="mb-4">
+                                    <label for="bajada_codigo_paquete" class="block font-semibold mb-1">QR Paquete</label>
+                                    <input type="text" name="codigo_paquete" id="bajada_codigo_paquete"
+                                        class="w-full border rounded px-3 py-2" placeholder="Escanea QR del paquete" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="bajada_ubicacion_destino" class="block font-semibold mb-1">QR Ubicación destino</label>
+                                    <input type="text" name="ubicacion_destino" id="bajada_ubicacion_destino"
+                                        class="w-full border rounded px-3 py-2" placeholder="Escanea QR de la ubicación" required>
+                                </div>
+
+                                <div class="flex justify-end gap-3 mt-6">
+                                    <button type="button" onclick="cerrarModalBajadaPaquete()"
+                                        class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     {{-- 🔄 MODAL RECARGA --}}
-                    <div id="modalMovimiento"
+                    <div id="modalRecarga"
                         class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
                         <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-4 sm:mx-0">
 
                             <h2 class="text-lg sm:text-xl font-bold mb-4 text-center text-gray-800">
-                                Registrar Movimiento
+                                Registrar Recarga de Materia Prima
                             </h2>
 
                             <!-- Información tipo tabla -->
@@ -613,7 +657,7 @@
                                 </div>
 
                                 <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6">
-                                    <button type="button" onclick="cerrarModalMovimiento()"
+                                    <button type="button" onclick="cerrarModalRecarga()"
                                         class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg w-full sm:w-auto text-sm sm:text-base">
                                         Cancelar
                                     </button>
@@ -625,7 +669,38 @@
                             </form>
                         </div>
                     </div>
-                    {{-- 🔄 MODAL DESCARGA MATERIA PRIMA --}}
+
+                    {{-- 🔄 MODAL DESCARGA DE MATERIA PRIMA --}}
+                    <div id="modalDescarga" class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
+                        <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-4 sm:mx-0">
+                            <h2 class="text-lg font-bold mb-4 text-center text-gray-800">⬇️ Registrar Descarga de Materia Prima</h2>
+
+                            <p id="descarga_descripcion" class="text-sm text-gray-600 mb-4"></p>
+
+                            <form method="POST" action="{{ route('movimientos.store') }}" id="form-descarga-mp">
+                                @csrf
+                                <input type="hidden" name="tipo" value="descarga materia prima">
+                                <input type="hidden" name="movimiento_id" id="descarga_movimiento_id">
+
+                                <div class="mb-4">
+                                    <label for="descarga_codigo_producto" class="block font-semibold mb-1">QR Producto</label>
+                                    <input type="text" name="codigo_producto" id="descarga_codigo_producto" class="w-full border rounded px-3 py-2" placeholder="Escanea QR del producto" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="descarga_ubicacion_destino" class="block font-semibold mb-1">QR Ubicación destino</label>
+                                    <input type="text" name="ubicacion_destino" id="descarga_ubicacion_destino" class="w-full border rounded px-3 py-2" placeholder="Escanea QR de la ubicación" required>
+                                </div>
+
+                                <div class="flex justify-end gap-3 mt-6">
+                                    <button type="button" onclick="cerrarModalDescarga()" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
+                                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    {{-- 🔍 MODAL VER PEDIDO --}}
                     <div id="modal-ver-pedido"
                         class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
                         <div class="bg-white w-full max-w-2xl rounded shadow-lg p-6 relative">
@@ -680,7 +755,7 @@
                             }
                         });
 
-                        function abrirModalMovimiento(id, tipo, productoId, maquinaId, productoBaseId, ubicacionesSugeridas, maquinaNombre,
+                        function abrirModalRecarga(id, tipo, productoId, maquinaId, productoBaseId, ubicacionesSugeridas, maquinaNombre,
                             tipoBase, diametroBase, longitudBase) {
                             document.getElementById('modal_tipo').value = tipo;
                             document.getElementById('modal_maquina_id').value = maquinaId;
@@ -706,8 +781,8 @@
                                 document.getElementById('ubicaciones-actuales').classList.add('hidden');
                             }
 
-                            document.getElementById('modalMovimiento').classList.remove('hidden');
-                            document.getElementById('modalMovimiento').classList.add('flex');
+                            document.getElementById('modalRecarga').classList.remove('hidden');
+                            document.getElementById('modalRecarga').classList.add('flex');
 
                             // Focus en el campo QR
                             setTimeout(() => {
@@ -715,9 +790,9 @@
                             }, 100);
                         }
 
-                        function cerrarModalMovimiento() {
-                            document.getElementById('modalMovimiento').classList.add('hidden');
-                            document.getElementById('modalMovimiento').classList.remove('flex');
+                        function cerrarModalRecarga() {
+                            document.getElementById('modalRecarga').classList.add('hidden');
+                            document.getElementById('modalRecarga').classList.remove('flex');
                         }
 
                         function abrirModalMovimientoLibre() {
@@ -731,6 +806,44 @@
                         function cerrarModalMovimientoLibre() {
                             document.getElementById('modalMovimientoLibre').classList.add('hidden');
                             document.getElementById('modalMovimientoLibre').classList.remove('flex');
+                        }
+
+                        function abrirModalMovimientoLibreDesdeMovimiento(id, paqueteId, ubicacionOrigen, descripcion) {
+                            document.getElementById('modalBajadaPaquete').classList.remove('hidden');
+                            document.getElementById('modalBajadaPaquete').classList.add('flex');
+
+                            document.getElementById('bajada_movimiento_id').value = id;
+                            document.getElementById('bajada_codigo_paquete').value = '';
+                            document.getElementById('bajada_ubicacion_destino').value = '';
+                            document.getElementById('bajada_descripcion').textContent = descripcion || '';
+
+                            setTimeout(() => {
+                                document.getElementById('bajada_codigo_paquete')?.focus();
+                            }, 100);
+                        }
+
+                        function cerrarModalBajadaPaquete() {
+                            document.getElementById('modalBajadaPaquete').classList.add('hidden');
+                            document.getElementById('modalBajadaPaquete').classList.remove('flex');
+                        }
+
+                        function abrirModalDescarga(id, descripcion) {
+                            document.getElementById('modalDescarga').classList.remove('hidden');
+                            document.getElementById('modalDescarga').classList.add('flex');
+
+                            document.getElementById('descarga_movimiento_id').value = id;
+                            document.getElementById('descarga_codigo_producto').value = '';
+                            document.getElementById('descarga_ubicacion_destino').value = '';
+                            document.getElementById('descarga_descripcion').textContent = descripcion || '';
+
+                            setTimeout(() => {
+                                document.getElementById('descarga_codigo_producto')?.focus();
+                            }, 100);
+                        }
+
+                        function cerrarModalDescarga() {
+                            document.getElementById('modalDescarga').classList.add('hidden');
+                            document.getElementById('modalDescarga').classList.remove('flex');
                         }
 
                         // Mostrar/ocultar campos según tipo
