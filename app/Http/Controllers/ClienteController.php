@@ -16,16 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 class ClienteController extends Controller
 {
-    public function index(Request $request)
-    {
-        // Obtener clientes aplicando filtros
-        $clientes = $this->aplicarFiltros($request);
-        // Agregar campo 'activo' a cada cliente
-        foreach ($clientes as $cliente) {
-            $cliente->activo = $cliente->obras()->where('estado', 'activa')->exists();
-        }
-        return view('clientes.index', compact('clientes'));
-    }
+
 
     /**
      * Aplica filtros a la consulta de clientes según los parámetros de la solicitud.
@@ -33,18 +24,14 @@ class ClienteController extends Controller
     private function aplicarFiltros(Request $request)
     {
         // Iniciar la consulta con las relaciones necesarias
-        $query = Cliente::with('obras');
+        $query = Cliente::query();
+
 
         // Aplicar filtros si están presentes en la solicitud
         if ($request->filled('empresa')) {
             $query->where('empresa', 'like', '%' . $request->empresa . '%');
         }
-        // Filtrar por obra (buscando en la relación 'obras')
-        if ($request->filled('obra')) {
-            $query->whereHas('obras', function ($q) use ($request) {
-                $q->where('obra', 'like', '%' . $request->obra . '%');
-            });
-        }
+
 
         if ($request->filled('codigo')) {
             $query->where('codigo', 'like', '%' . $request->codigo . '%');
@@ -67,15 +54,161 @@ class ClienteController extends Controller
         if ($request->filled('cif_nif')) {
             $query->where('cif_nif', 'like', '%' . $request->cif_nif . '%');
         }
-        if ($request->filled('activo')) {
-            $query->where('activo', $request->activo);
+        // Buscar por obras asociadas
+        if ($request->filled('obra') || $request->filled('codigo_obra')) {
+            $obraQuery = \App\Models\Obra::query();
+
+            if ($request->filled('obra')) {
+                $obraQuery->where('obra', 'like', '%' . $request->obra . '%');
+            }
+
+            if ($request->filled('cod_obra')) {
+                $obraQuery->where('cod_obra', $request->cod_obra);
+            }
+
+
+            $clienteIds = $obraQuery->pluck('cliente_id')->unique()->toArray();
+
+            // Si no hay resultados, evitar mostrar todos
+            if (count($clienteIds) > 0) {
+                $query->whereIn('id', $clienteIds);
+            } else {
+                // Si no se encuentra ninguna obra, forzamos resultado vacío
+                $query->whereRaw('0 = 1');
+            }
         }
 
         // Obtener número de registros por página, por defecto 10
         $perPage = $request->get('per_page', 10);
 
         // Devolver clientes paginados con los filtros aplicados
-        return $query->paginate($perPage);
+        return $query->with('obras')->paginate($perPage);
+    }
+    private function filtrosActivos(Request $request): array
+    {
+        $filtros = [];
+
+
+        if ($request->filled('empresa')) {
+            $filtros[] = 'Empresa: <strong>' . $request->empresa . '</strong>';
+        }
+
+        if ($request->filled('codigo')) {
+            $filtros[] = 'Código Planilla: <strong>' . $request->codigo . '</strong>';
+        }
+
+        if ($request->filled('codigo_cliente')) {
+            $filtros[] = 'Código cliente: <strong>' . $request->codigo_cliente . '</strong>';
+        }
+
+        if ($request->filled('cliente')) {
+            $filtros[] = 'Cliente: <strong>' . $request->cliente . '</strong>';
+        }
+
+        if ($request->filled('cod_obra')) {
+            $filtros[] = 'Código obra: <strong>' . $request->cod_obra . '</strong>';
+        }
+
+        if ($request->filled('nom_obra')) {
+            $filtros[] = 'Obra: <strong>' . $request->nom_obra . '</strong>';
+        }
+
+
+        if ($request->filled('seccion')) {
+            $filtros[] = 'Sección: <strong>' . $request->seccion . '</strong>';
+        }
+
+        if ($request->filled('descripcion')) {
+            $filtros[] = 'Descripción: <strong>' . $request->descripcion . '</strong>';
+        }
+
+        if ($request->filled('ensamblado')) {
+            $filtros[] = 'Ensamblado: <strong>' . $request->ensamblado . '</strong>';
+        }
+
+        if ($request->filled('estado')) {
+            $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
+        }
+
+        if ($request->filled('fecha_finalizacion')) {
+            $filtros[] = 'Fecha finalización: <strong>' . $request->fecha_finalizacion . '</strong>';
+        }
+        if ($request->filled('fecha_importacion')) {
+            $filtros[] = 'Fecha importación: <strong>' . $request->fecha_importacion . '</strong>';
+        }
+        if ($request->filled('fecha_estimada_entrega')) {
+            $filtros[] = 'Fecha estimada entrega: <strong>' . $request->fecha_estimada_entrega . '</strong>';
+        }
+
+        if ($request->filled('sort')) {
+            $sorts = [
+                'fecha_estimada_entrega' => 'Entrega estimada',
+                'estado' => 'Estado',
+                'seccion' => 'Sección',
+                'peso_total' => 'Peso total',
+            ];
+            $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
+        }
+
+        if ($request->filled('per_page')) {
+            $filtros[] = 'Mostrando <strong>' . $request->per_page . '</strong> registros por página';
+        }
+        if ($request->filled('codigo_obra')) {
+            $filtros[] = 'Código de Obra: <strong>' . $request->codigo_obra . '</strong>';
+        }
+
+        if ($request->filled('obra')) {
+            $filtros[] = 'Nombre de Obra: <strong>' . $request->obra . '</strong>';
+        }
+
+        return $filtros;
+    }
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = '';
+        if ($isSorted) {
+            $icon = $currentOrder === 'asc'
+                ? '▲' // flecha hacia arriba
+                : '▼'; // flecha hacia abajo
+        } else {
+            $icon = '⇅'; // símbolo de orden genérico
+        }
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+    }
+    public function index(Request $request)
+    {
+        $clientes = $this->aplicarFiltros($request);
+
+        foreach ($clientes as $cliente) {
+            $cliente->activo = $cliente->obras()->where('estado', 'activa')->exists();
+        }
+
+        $ordenables = [
+            'id' => $this->getOrdenamiento('id', 'ID'),
+            'empresa' => $this->getOrdenamiento('empresa', 'Empresa'),
+            'codigo' => $this->getOrdenamiento('codigo', 'Código'),
+            'contacto1_telefono' => $this->getOrdenamiento('contacto1_telefono', 'Teléfono'),
+            'contacto1_email' => $this->getOrdenamiento('contacto1_email', 'Email'),
+            'ciudad' => $this->getOrdenamiento('ciudad', 'Ciudad'),
+            'provincia' => $this->getOrdenamiento('provincia', 'Provincia'),
+            'pais' => $this->getOrdenamiento('pais', 'País'),
+            'cif_nif' => $this->getOrdenamiento('cif_nif', 'CIF/NIF'),
+            'activo' => $this->getOrdenamiento('activo', 'Activo'),
+        ];
+
+        $filtrosActivos = $this->filtrosActivos($request);
+
+        return view('clientes.index', compact('clientes', 'ordenables', 'filtrosActivos'));
     }
 
 

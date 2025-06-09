@@ -119,7 +119,7 @@
                                                 <a href="{{ route('salidas.show', $salida->id) }}"
                                                     class="text-blue-600 hover:text-blue-800">Ver</a>
                                                 @if (auth()->user()->rol === 'oficina' || strtolower(auth()->user()->name) === 'alberto mayo martin')
-                                                    <x-boton-eliminar :action="route('salidas.destroy', $salida->id)" />
+                                                    <x-tabla.boton-eliminar :action="route('salidas.destroy', $salida->id)" />
                                                 @endif
 
                                             </td>

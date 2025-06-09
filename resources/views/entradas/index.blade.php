@@ -111,7 +111,7 @@
                                     class="text-blue-600 hover:underline text-sm">Ver</a> |
                                 <a href="{{ route('entradas.edit', $entrada->id) }}"
                                     class="text-yellow-600 hover:underline text-sm">Editar</a> |
-                                <x-boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
+                                <x-tabla.boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
                             </td>
                         </tr>
                     @empty

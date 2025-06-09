@@ -318,15 +318,18 @@
                                 {!! $puntual !!}
                             </td>
                             <td class="px-2 py-2 border text-xs font-bold">
-                                <template x-if="editando">
-                                    <button @click="guardarCambios(asignacion, original); editando = false"
-                                        class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
-                                        Guardar
-                                    </button>
-                                </template>
-
+                                <div class="flex items-center space-x-2 justify-center">
+                                    <!-- Mostrar solo en modo edición -->
+                                    <x-tabla.boton-guardar x-show="editando"
+                                        @click="guardarCambios(asignacion, original); editando = false" />
+                                    <!-- Mostrar solo cuando NO está en modo edición -->
+                                    <template x-if="!editando">
+                                        <div class="flex items-center space-x-2">
+                                            <x-tabla.boton-ver :href="route('users.show', $asignacion->user->id)" />
+                                        </div>
+                                    </template>
+                                </div>
                             </td>
-
                         </tr>
                     @empty
                         <tr>

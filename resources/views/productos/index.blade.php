@@ -314,17 +314,27 @@
                                         No está ubicada
                                     @endif
                                 </td>
-                                <td class="px-2 py-3 text-center border">
-                                    <div class="flex flex-row space-x-2 items-center">
-                                        <a href="{{ route('productos.show', $producto->id) }}"
-                                            class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
+                                <td class="px-2 py-2 border text-xs font-bold">
+                                    <div class="flex items-center space-x-2 justify-center">
+                                        {{-- Editar: va a la ruta productos.edit --}}
                                         <a href="{{ route('productos.edit', $producto->id) }}"
-                                            class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                                        <a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
-                                            class="text-green-500 hover:text-green-700 text-sm">Mover</a>
-                                        <x-boton-eliminar :action="route('productos.destroy', $producto->id)" />
+                                            class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
+                                            title="Editar">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                            </svg>
+                                        </a>
+
+                                        {{-- Ver --}}
+                                        <x-tabla.boton-ver :href="route('productos.show', $producto->id)" />
+
+                                        {{-- Eliminar --}}
+                                        <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" />
                                     </div>
                                 </td>
+
 
                             </tr>
                         @empty

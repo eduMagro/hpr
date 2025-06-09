@@ -8,10 +8,22 @@
 
 
     <div x-data="{ modalObra: false }">
-        <!-- Botón para abrir -->
-        <x-tabla.boton-azul @click="modalObra = true">
-            ➕ Nuevo Cliente
-        </x-tabla.boton-azul>
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+            <x-tabla.boton-azul @click="modalObra = true">
+                ➕ Nuevo Cliente
+            </x-tabla.boton-azul>
+
+            <form method="GET" action="{{ route('clientes.index') }}" class="flex flex-wrap gap-2 items-center">
+                <x-tabla.input name="codigo_obra" value="{{ request('cod_obra') }}" placeholder="Código de obra"
+                    class="w-40" />
+                <x-tabla.input name="obra" value="{{ request('obra') }}" placeholder="Nombre de obra"
+                    class="w-52" />
+                <x-tabla.botones-filtro ruta="clientes.index" />
+
+            </form>
+        </div>
+
+
 
         <!-- Modal -->
         <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" x-show="modalObra"
@@ -90,118 +102,134 @@
             </div>
         </div>
 
-
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- TABLA DE CLIENTES -->
         <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
             <table class="w-full border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white">
                     <tr class="text-left text-sm uppercase">
-                        <th class="py-3 px-2 border text-center">ID</th>
-                        <th class="px-2 py-3 text-center border">Empresa</th>
-                        <th class="px-2 py-3 text-center border">Código</th>
-                        <th class="px-2 py-3 text-center border">Teléfono</th>
-                        <th class="px-2 py-3 text-center border">Email</th>
-                        <th class="px-2 py-3 text-center border">Dirección</th>
-                        <th class="px-2 py-3 text-center border">Ciudad</th>
-                        <th class="px-2 py-3 text-center border">Provincia</th>
-                        <th class="px-2 py-3 text-center border">País</th>
-                        <th class="px-2 py-3 text-center border">CIF/NIF</th>
-                        <th class="px-2 py-3 text-center border">Activo</th>
-                        <th class="px-2 py-3 text-center border">Acciones</th>
+                        <th class="p-2 border text-center">{!! $ordenables['id'] !!}</th>
+                        <th class="p-2 border text-center">{!! $ordenables['empresa'] !!}</th>
+                        <th class="p-2 border text-center">{!! $ordenables['codigo'] !!}</th>
+                        <th class="p-2 border text-center">{!! $ordenables['contacto1_telefono'] !!}</th>
+                        <th class="p-2 border text-center">{!! $ordenables['contacto1_email'] !!}</th>
+                        <th class="p-2 border text-center">Dirección</th>
+                        <th class="p-2 border text-center">{!! $ordenables['ciudad'] !!}</th>
+                        <th class="p-2 border text-center">{!! $ordenables['provincia'] !!}</th>
+                        <th class="p-2 border text-center">{!! $ordenables['pais'] !!}</th>
+                        <th class="p-2 border text-center">{!! $ordenables['cif_nif'] !!}</th>
+                        <th class="p-2 border text-center">{!! $ordenables['activo'] !!}</th>
+                        <th class="p-2 border text-center">Acciones</th>
+
+                    </tr>
+                    <tr class="text-left text-sm uppercase">
+                        <form method="GET" action="{{ route('clientes.index') }}">
+                            <th class="p-1 border">
+                                <x-tabla.input name="id" value="{{ request('id') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="empresa" value="{{ request('empresa') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="telefono" value="{{ request('telefono') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="email" value="{{ request('email') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="direccion" value="{{ request('direccion') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="ciudad" value="{{ request('ciudad') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="provincia" value="{{ request('provincia') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="pais" value="{{ request('pais') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="cif_nif" value="{{ request('cif_nif') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.select name="activo" :options="['1' => 'Sí', '0' => 'No']" :selected="request('activo')" empty="Todos" />
+                            </th>
+                            <x-tabla.botones-filtro ruta="clientes.index" />
+                        </form>
                     </tr>
                 </thead>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($clientes as $cliente)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer"
-                            x-data="{ editando: false, cliente: @js($cliente) }">
+                            x-data="{ editando: false, cliente: @js($cliente), original: JSON.parse(JSON.stringify(@js($cliente))) }"
+                            @dblclick="if (!$event.target.closest('input')) {
+                                editando = !editando;
+                                if (!editando) cliente = JSON.parse(JSON.stringify(original));
+                            }"
+                            @keydown.enter.stop="guardarCambios(cliente); editando = false"
+                            :class="{ 'bg-yellow-100': editando }">
 
-                            <td class="px-2 py-3 text-center border" x-text="cliente.id"></td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.empresa"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.empresa"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border" x-text="cliente.id"></td>
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span x-text="cliente.empresa"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.empresa" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.codigo"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.codigo"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span x-text="cliente.codigo"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.codigo" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.contacto1_telefono"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.contacto1_telefono"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span
+                                        x-text="cliente.contacto1_telefono"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.contacto1_telefono" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.contacto1_email"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.contacto1_email"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span x-text="cliente.contacto1_email"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.contacto1_email" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.direccion"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.direccion"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span x-text="cliente.direccion"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.direccion" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.ciudad"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.ciudad"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span x-text="cliente.ciudad"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.ciudad" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.provincia"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.provincia"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span x-text="cliente.provincia"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.provincia" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.pais"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.pais"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span x-text="cliente.pais"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.pais" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <span x-text="cliente.cif_nif"></span>
-                                </template>
-                                <input x-show="editando" type="text" x-model="cliente.cif_nif"
-                                    class="form-control form-control-sm">
+                            <td class="px-2 py-2 text-center border">
+                                <template x-if="!editando"><span x-text="cliente.cif_nif"></span></template>
+                                <x-tabla.input x-show="editando" x-model="cliente.cif_nif" />
                             </td>
-                            <td class="px-2 py-3 text-center border">
+                            <td class="px-2 py-2 text-center border">
                                 <template x-if="!editando">
-                                    <span class="{{ $cliente->activo ? 'text-green-500' : 'text-red-500' }}">
-                                        {{ $cliente->activo ? 'Activo' : 'Inactivo' }}
-                                    </span>
+                                    <span :class="cliente.activo ? 'text-green-500' : 'text-red-500'"
+                                        x-text="cliente.activo ? 'Activo' : 'Inactivo'"></span>
                                 </template>
-                                <select x-show="editando" x-model="cliente.activo"
-                                    class="form-control form-control-sm">
-                                    <option value="1">Sí</option>
-                                    <option value="0">No</option>
-                                </select>
+
                             </td>
-                            <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
-                                <a href="{{ route('clientes.show', $cliente->id) }}"
-                                    class="text-green-500 hover:underline">Ver</a>
-                                <span> | </span>
-                                <button @click.stop="editando = !editando">
-                                    <span x-show="!editando">✏️</span>
-                                    <span x-show="editando" class="mr-2">✖</span>
-                                    <span x-show="editando" @click.stop="guardarCambios(cliente)">✅</span>
-                                </button>
-                                <span> | </span>
-                                <x-boton-eliminar :action="route('clientes.destroy', $cliente->id)" />
+                            <td class="px-2 py-2 text-center border">
+                                <div class="flex justify-center items-center space-x-2">
+                                    <x-tabla.boton-guardar x-show="editando"
+                                        @click="guardarCambios(cliente); editando = false" />
+                                    <x-tabla.boton-cancelar-edicion x-show="editando" @click="editando = false" />
+                                    <template x-if="!editando">
+                                        <div class="flex items-center space-x-2">
+                                            <x-tabla.boton-editar @click="editando = true" />
+                                            <x-tabla.boton-ver :href="route('clientes.show', $cliente->id)" />
+                                            <x-tabla.boton-eliminar :action="route('clientes.destroy', $cliente->id)" />
+                                        </div>
+                                    </template>
+                                </div>
                             </td>
                         </tr>
                     @empty

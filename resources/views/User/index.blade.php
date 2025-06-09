@@ -320,18 +320,32 @@
                                     </button>
                                 </form>
                             </td>
-                            <td class="py-3 border flex flex-row gap-2 justify-center items-center text-center">
-                                <template x-if="editando">
-                                    <button @click="guardarCambios(usuario); editando = false"
-                                        class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
-                                        Guardar
-                                    </button>
-                                </template>
-                                <a href="{{ route('users.show', $user->id) }}"
-                                    class="text-green-500 hover:underline">Ver</a>
-                                <span> | </span>
-                                <a href="{{ route('users.edit', $user->id) }}"
-                                    class="text-green-500 hover:underline">Editar</a>
+
+                            <td class="px-2 py-2 border text-xs font-bold">
+                                <div class="flex items-center space-x-2 justify-center">
+                                    <!-- Mostrar solo en modo edición -->
+                                    <x-tabla.boton-guardar x-show="editando"
+                                        @click="guardarCambios(usuario); editando = false" />
+                                    <x-tabla.boton-cancelar-edicion @click="editando = false" x-show="editando" />
+
+                                    <!-- Mostrar solo cuando NO está en modo edición -->
+                                    <template x-if="!editando">
+                                        <div class="flex items-center space-x-2">
+                                            <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
+                                            <x-tabla.boton-ver :href="route('users.show', $user->id)" />
+                                            <a href="{{ route('users.edit', $user->id) }}"
+                                                class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    viewBox="0 0 24 24" fill="currentColor">
+                                                    <path fill-rule="evenodd"
+                                                        d="M11.983 2c.529 0 .96.388 1.025.912l.118.998a7.97 7.97 0 0 1 1.575.645l.892-.516a1.033 1.033 0 0 1 1.4.375l.503.87a1.03 1.03 0 0 1-.208 1.286l-.76.625c.063.32.104.648.123.982l.994.168a1.032 1.032 0 0 1 .873 1.017v1.003a1.032 1.032 0 0 1-.873 1.017l-.994.168a8.114 8.114 0 0 1-.123.982l.76.625c.361.296.463.808.208 1.286l-.503.87a1.033 1.033 0 0 1-1.4.375l-.892-.516a7.968 7.968 0 0 1-1.575.645l-.118.998a1.032 1.032 0 0 1-1.025.912h-1.002a1.032 1.032 0 0 1-1.025-.912l-.118-.998a7.97 7.97 0 0 1-1.575-.645l-.892.516a1.033 1.033 0 0 1-1.4-.375l-.503-.87a1.03 1.03 0 0 1 .208-1.286l.76-.625a8.114 8.114 0 0 1-.123-.982l-.994-.168a1.032 1.032 0 0 1-.873-1.017v-1.003a1.032 1.032 0 0 1 .873-1.017l.994-.168c.019-.334.06-.662.123-.982l-.76-.625a1.03 1.03 0 0 1-.208-1.286l.503-.87a1.033 1.033 0 0 1 1.4-.375l.892.516c.494-.29 1.02-.52 1.575-.645l.118-.998A1.032 1.032 0 0 1 10.981 2h1.002zm-1.232 10a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0z"
+                                                        clip-rule="evenodd" />
+                                                </svg>
+                                            </a>
+
+                                        </div>
+                                    </template>
+                                </div>
                             </td>
                         </tr>
                     @empty
@@ -697,31 +711,44 @@
         function confirmarGenerarTurnos(userId) {
             let usuarioTurno = document.getElementById("usuario_turno_" + userId).value;
 
-            if (usuarioTurno === "diurno") {
-                Swal.fire({
-                    title: "Selecciona el turno inicial",
-                    text: "¿Con qué turno quieres comenzar para el turno diurno?",
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonText: "Mañana",
-                    cancelButtonText: "Tarde",
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33"
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        document.getElementById("turno_inicio_" + userId).value = "mañana";
-                    } else if (result.dismiss === Swal.DismissReason.cancel) {
-                        document.getElementById("turno_inicio_" + userId).value = "tarde";
-                    } else {
-                        return;
-                    }
+            Swal.fire({
+                title: "¿Estás seguro?",
+                text: "⚠️ Esta acción generará turnos hasta final de año y reemplazará los actuales. Exceptuando Vacaciones y Festivos",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Sí, continuar",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33"
+            }).then((respuestaConfirmacion) => {
+                if (!respuestaConfirmacion.isConfirmed) return;
 
+                if (usuarioTurno === "diurno") {
+                    Swal.fire({
+                        title: "Selecciona el turno inicial",
+                        text: "¿Con qué turno quieres comenzar para el turno diurno?",
+                        icon: "question",
+                        showCancelButton: true,
+                        confirmButtonText: "Mañana",
+                        cancelButtonText: "Tarde",
+                        confirmButtonColor: "#3085d6",
+                        cancelButtonColor: "#d33"
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.getElementById("turno_inicio_" + userId).value = "mañana";
+                        } else if (result.dismiss === Swal.DismissReason.cancel) {
+                            document.getElementById("turno_inicio_" + userId).value = "tarde";
+                        } else {
+                            return;
+                        }
+
+                        document.getElementById("form-generar-turnos-" + userId).submit();
+                    });
+                } else {
+                    // No es turno diurno, así que se envía directamente tras confirmación
                     document.getElementById("form-generar-turnos-" + userId).submit();
-                });
-            } else {
-                // Si el turno no es diurno, simplemente envía el formulario sin preguntar
-                document.getElementById("form-generar-turnos-" + userId).submit();
-            }
+                }
+            });
         }
     </script>
 </x-app-layout>

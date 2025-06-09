@@ -442,18 +442,38 @@
                                 </select>
                             </td>
                             <!-- Botones -->
-                            <td class="px-1 py-3 text-center border flex flex-col gap-2">
-                                <a href="#" class="text-blue-500 hover:text-blue-700 abrir-modal-dibujo"
-                                    data-id="{{ $elemento->id }}" data-dimensiones="{{ $elemento->dimensiones }}"
-                                    data-peso="{{ $elemento->peso_kg }}">
-                                    Ver
-                                </a>
-                                <button @click.stop="editando = !editando">
-                                    <span x-show="!editando">✏️</span>
-                                    <span x-show="editando" class="mr-2">✖</span>
-                                    <span x-show="editando" @click.stop="guardarCambios(elemento)">✅</span>
-                                </button>
-                                <x-boton-eliminar :action="route('elementos.destroy', $elemento->id)" />
+
+                            <td class="px-1 py-2 border text-xs font-bold">
+                                <div class="flex items-center space-x-2 justify-center">
+                                    <!-- Mostrar solo en modo edición -->
+                                    <x-tabla.boton-guardar x-show="editando"
+                                        @click="guardarCambios(elemento); editando = false" />
+                                    <x-tabla.boton-cancelar-edicion @click="editando = false" x-show="editando" />
+
+                                    <!-- Mostrar solo cuando NO está en modo edición -->
+                                    <template x-if="!editando">
+                                        <div class="flex items-center space-x-2">
+                                            <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
+                                            <a href="#"
+                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo"
+                                                data-id="{{ $elemento->id }}"
+                                                data-dimensiones="{{ $elemento->dimensiones }}"
+                                                data-peso="{{ $elemento->peso_kg }}">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </a>
+
+                                            <x-tabla.boton-eliminar :action="route('elementos.destroy', $elemento->id)" />
+
+                                        </div>
+                                    </template>
+                                </div>
                             </td>
                         </tr>
                     @empty

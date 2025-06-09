@@ -46,6 +46,12 @@ class PedidoController extends Controller
                 $filtros[] = 'Fabricante: <strong>' . $fabricante->nombre . '</strong>';
             }
         }
+        if ($request->filled('distribuidor_id')) {
+            $distribuidor = Fabricante::find($request->distribuidor_id);
+            if ($distribuidor) {
+                $filtros[] = 'Distribuidor: <strong>' . $distribuidor->nombre . '</strong>';
+            }
+        }
 
         if ($request->filled('fecha_pedido')) {
             $filtros[] = 'Fecha pedido: <strong>' . $request->fecha_pedido . '</strong>';
@@ -105,6 +111,9 @@ class PedidoController extends Controller
 
         if ($request->filled('fabricante_id')) {
             $query->where('fabricante_id', $request->fabricante_id);
+        }
+        if ($request->filled('distribuidor_id')) {
+            $query->where('distribuidor_id', $request->distribuidor_id);
         }
 
         if ($request->filled('fecha_pedido')) {
@@ -167,6 +176,7 @@ class PedidoController extends Controller
         $ordenables = [
             'codigo' => $this->getOrdenamientoPedidos('codigo', 'Código'),
             'fabricante' => $this->getOrdenamientoPedidos('fabricante', 'Fabricante'),
+            'distribuidor' => $this->getOrdenamientoPedidos('distribuidor', 'Distribuidor'),
             'peso_total' => $this->getOrdenamientoPedidos('peso_total', 'Peso total'),
             'fecha_pedido' => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
             'fecha_entrega' => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Estimada Entrega'),
@@ -558,11 +568,17 @@ class PedidoController extends Controller
             ->whereIn('estado', [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
             ->orderByRaw("FIELD(estado, ?, ?)", [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
             ->first();
+        if (!$pedidoGlobal) {
+            return back()->withErrors([
+                'fabricante_id' => 'No existe un pedido global activo para este fabricante.',
+            ])->withInput();
+        }
 
         if ($pedidoGlobal && $pedidoGlobal->estado === PedidoGlobal::ESTADO_PENDIENTE) {
             $pedidoGlobal->estado = PedidoGlobal::ESTADO_EN_CURSO;
             $pedidoGlobal->save();
         }
+
         $pedido = Pedido::create([
             'codigo' => Pedido::generarCodigo(),
             'pedido_global_id' => $pedidoGlobal->id,

@@ -156,18 +156,38 @@
                             <td class="p-2 text-center border">
                                 {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
                             </td>
-                            <td class="p-2 text-center border flex flex-row justify-center gap-4">
-                                <button
-                                    onclick="generateAndPrintQR('{{ $paquete->id }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')"
-                                    class="p-2 bg-green-500 text-white rounded hover:bg-green-600"><i
-                                        class="fas fa-qrcode"></i>
-                                </button>
-                                <button onclick="mostrarDibujo({{ $paquete->id }})"
-                                    class="text-blue-500 hover:underline">
-                                    Ver
-                                </button>
-                                <x-boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
+                            <td class="px-2 py-2 border text-xs font-bold">
+                                <div class="flex items-center space-x-2 justify-center">
+                                    {{-- Guardar / Cancelar (solo si vas a permitir edición en el futuro) --}}
+                                    <x-tabla.boton-guardar x-show="editando"
+                                        @click="guardarCambios(paquete); editando = false" />
+                                    <x-tabla.boton-cancelar-edicion x-show="editando" @click="editando = false" />
+
+                                    {{-- Mostrar solo si NO está en modo edición --}}
+                                    <template x-if="!editando">
+                                        <div class="flex items-center space-x-2">
+                                            {{-- Botón ver dibujo del paquete --}}
+                                            <button @click="mostrarDibujo({{ $paquete->id }})"
+                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                                title="Ver dibujo">
+                                                <i class="fas fa-eye text-xs"></i>
+                                            </button>
+
+                                            {{-- Botón QR --}}
+                                            <button
+                                                @click="generateAndPrintQR('{{ $paquete->id }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')"
+                                                class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                                title="Generar QR">
+                                                <i class="fas fa-qrcode text-xs"></i>
+                                            </button>
+
+                                            {{-- Botón eliminar (componente) --}}
+                                            <x-tabla.boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
+                                        </div>
+                                    </template>
+                                </div>
                             </td>
+
                         </tr>
                     @empty
                         <tr>
@@ -192,7 +212,8 @@
                 <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
                 <!-- Contenedor desplazable -->
                 <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
-                    <canvas id="canvas-dibujo" width="800" height="600" class="border max-w-full h-auto"></canvas>
+                    <canvas id="canvas-dibujo" width="800" height="600"
+                        class="border max-w-full h-auto"></canvas>
                 </div>
             </div>
         </div>

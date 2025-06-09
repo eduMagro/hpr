@@ -212,7 +212,7 @@
                                         Guardar
                                     </button>
                                 </template>
-                                <x-boton-eliminar :action="route('pedidos_globales.destroy', $pedido->id)" />
+                                <x-tabla.boton-eliminar :action="route('pedidos_globales.destroy', $pedido->id)" />
                             </td>
                         </tr>
                     @empty

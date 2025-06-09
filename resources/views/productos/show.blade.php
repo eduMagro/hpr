@@ -49,18 +49,37 @@
 
                     <hr class="my-2 border-gray-300">
 
-                    <div class="mt-2 flex justify-between">
-                        {{-- sweet alert para eliminar --}}
-                        <x-boton-eliminar :action="route('productos.destroy', $detalles_producto->id)" />
-                        <!-- Enlace para editar -->
-                        <a href="{{ route('productos.edit', $detalles_producto->id) }}"
-                            class="text-blue-500 hover:text-blue-700 text-sm">Editar</a>
-                        <a href="{{ route('movimientos.create', ['producto_id' => $detalles_producto->id]) }}"
-                            class="text-green-500 hover:text-green-700 text-sm">Mover</a>
+                    <div class="mt-2 flex space-x-2 justify-between">
 
-                        <a href="{{ route('productos.show', $detalles_producto->id) }}"
-                            class="text-blue-500 hover:text-blue-700 text-sm">Ver</a>
+                        {{-- Botón editar (como enlace con estilo de componente) --}}
+                        <a href="{{ route('productos.edit', $detalles_producto->id) }}"
+                            class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
+                            title="Editar">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                        </a>
+
+                        {{-- Botón ver (componente ya existente) --}}
+                        <x-tabla.boton-ver :href="route('productos.show', $detalles_producto->id)" />
+                        {{-- Botón mover (personalizado con icono) --}}
+                        <a href="{{ route('movimientos.create', ['producto_id' => $detalles_producto->id]) }}"
+                            class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                            title="Mover">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M7 11.5V6.75a1.25 1.25 0 112.5 0v5.25M9.5 11.5V4.75a1.25 1.25 0 112.5 0v6.75M12 11.5V5.75a1.25 1.25 0 112.5 0v5.75M14.5 11.5V8.25a1.25 1.25 0 112.5 0v5.75m0 0v.75a4.25 4.25 0 01-8.5 0v-.75" />
+                            </svg>
+                        </a>
+
+
+                        {{-- Botón eliminar (componente ya existente) --}}
+                        <x-tabla.boton-eliminar :action="route('productos.destroy', $detalles_producto->id)" />
                     </div>
+
                 </div>
             @else
                 <div class="col-span-3 text-center py-4">No hay productos disponibles.</div>

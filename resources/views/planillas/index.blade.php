@@ -90,7 +90,7 @@
             </form>
 
         </div>
-
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- TABLA DE PLANILLAS -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
@@ -357,18 +357,23 @@
                                 <span x-text="planilla.user?.nombre_completo ?? 'Desconocido'"></span>
                             </td>
 
-                            <!-- Acciones (solo se muestran las opciones de ver y eliminar) -->
-                            <td class="p-2 text-center border">
-                                <template x-if="editando">
-                                    <button @click="guardarCambios(planilla); editando = false"
-                                        class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
-                                        Guardar
-                                    </button>
-                                </template>
-                                <a href="{{ route('planillas.show', $planilla->id) }}"
-                                    class="text-green-500 hover:underline">Ver</a>
-                                <br>
-                                <x-boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
+                            <td class="px-2 py-2 border text-xs font-bold">
+                                <div class="flex items-center space-x-2 justify-center">
+                                    <!-- Mostrar solo en modo edición -->
+                                    <x-tabla.boton-guardar x-show="editando"
+                                        @click="guardarCambios(planilla); editando = false" />
+                                    <x-tabla.boton-cancelar-edicion @click="editando = false" x-show="editando" />
+
+                                    <!-- Mostrar solo cuando NO está en modo edición -->
+                                    <template x-if="!editando">
+                                        <div class="flex items-center space-x-2">
+                                            <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
+                                            <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />
+                                            <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
+
+                                        </div>
+                                    </template>
+                                </div>
                             </td>
                         </tr>
                     @empty

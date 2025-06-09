@@ -145,7 +145,7 @@
                             </td>
 
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
-                                <x-boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
+                                <x-tabla.boton-eliminar :action="route('movimientos.destroy', $movimiento->id)" />
                             </td>
                         </tr>
                     @endforeach

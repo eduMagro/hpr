@@ -295,6 +295,20 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                {{-- Selector de distribuidor --}}
+                                <div class="text-left mt-4">
+                                    <label for="distribuidor"
+                                        class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
+                                        distribuidor:</label>
+                                    <select name="distribuidor_id" id="distribuidor"
+                                        class="w-full border border-gray-300 rounded px-3 py-2">
+                                        <option value="">-- Elige un distribuidor --</option>
+                                        @foreach ($distribuidores as $distribuidor)
+                                            <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
                                 {{-- Campo de fecha estimada de entrega --}}
                                 <div class="text-left">
@@ -356,7 +370,8 @@
                         <tr class="text-center text-xs uppercase">
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['proveedor'] ?? 'Proveedor' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
                             <th class="p-2 border">Cantidad Restante</th>
                             <th class="p-2 border">{!! $ordenables['peso_total'] ?? 'peso_total' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
@@ -383,6 +398,10 @@
                                     <x-tabla.select name="fabricante_id" :options="$fabricantes->pluck('nombre', 'id')" :selected="request('fabricante_id')"
                                         empty="Todos" class="w-full text-xs" />
                                 </th>
+                                <th class="p-1 border">
+                                    <x-tabla.select name="distribuidor_id" :options="$distribuidores->pluck('nombre', 'id')" :selected="request('distribuidor_id')"
+                                        empty="Todos" class="w-full text-xs" />
+                                </th>
 
                                 <th class="p-1 border"></th>
                                 <th class="p-1 border"></th>
@@ -403,8 +422,8 @@
                                         'parcial' => 'Parcial',
                                         'completo' => 'Completo',
                                         'cancelado' => 'Cancelado',
-                                    ]" :selected="request('estado')" empty="Todos"
-                                        class="w-full text-xs" />
+                                    ]" :selected="request('estado')"
+                                        empty="Todos" class="w-full text-xs" />
                                 </th>
 
                                 <th class="p-1 border text-center"></th>
@@ -445,10 +464,16 @@
                                     <span x-text="pedido.pedido_global?.codigo ?? 'N/A'"></span>
                                 </td>
 
-                                <!-- Proveedor -->
+                                <!-- Fabricante -->
                                 <td class="border px-3 py-2">
-                                    <span x-text="pedido.proveedor?.nombre ?? 'N/A'"></span>
+                                    <span x-text="pedido.fabricante?.nombre ?? 'N/A'"></span>
                                 </td>
+
+                                <!-- Distribuidor -->
+                                <td class="border px-3 py-2">
+                                    <span x-text="pedido.distribuidor?.nombre ?? 'N/A'"></span>
+                                </td>
+
 
                                 <!-- Cantidad recepcionada -->
                                 <td class="border px-3 py-2">
@@ -479,40 +504,53 @@
                                 <td class="border px-3 py-2 capitalize">{{ $pedido->estado }}</td>
                                 <td class="border px-3 py-2">{{ $pedido->productos->count() }}</td>
                                 <td class="border px-3 py-2">{{ $pedido->fecha_creacion_formateada }}</td>
-                                <td class="border px-3 py-2 space-x-2">
-                                    @if (in_array($pedido->estado, ['pendiente', 'parcial']))
-                                        <form method="POST" action="{{ route('pedidos.activar', $pedido->id) }}"
-                                            class="inline">
-                                            @csrf
-                                            @method('PUT')
-                                            <button type="submit"
-                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow">
-                                                Activar
-                                            </button>
-                                        </form>
-                                    @else
-                                        <button disabled
-                                            class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-60 cursor-not-allowed">
-                                            Activar
-                                        </button>
-                                    @endif
 
-                                    <template x-if="editando">
-                                        <button @click="guardarCambios(pedido); editando = false"
-                                            class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
-                                            Guardar
-                                        </button>
-                                    </template>
-                                    <a href="javascript:void(0)" class="text-blue-600 hover:underline text-sm"
-                                        onclick='mostrarProductosModal(@json($pedido->productos_formateados))'>
-                                        Ver
-                                    </a>
-                                    <x-boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />
-                                    @if ($pedido->estado !== 'completo')
-                                        <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
-                                            class="text-green-600 hover:underline">Recepcionar</a>
-                                    @endif
-                                </td>
+                                <td class="px-1 py-2 border text-xs font-bold">
+                                    <div class="flex items-center space-x-2 justify-center">
+                                        <!-- Mostrar solo en modo edición -->
+                                        <x-tabla.boton-guardar x-show="editando"
+                                            @click="guardarCambios(elemento); editando = false" />
+                                        <x-tabla.boton-cancelar-edicion @click="editando = false" x-show="editando" />
+
+                                        <!-- Mostrar solo cuando NO está en modo edición -->
+                                        <template x-if="!editando">
+                                            <div class="flex items-center space-x-2">
+                                                @if (in_array($pedido->estado, ['pendiente', 'parcial']))
+                                                    <form method="POST"
+                                                        action="{{ route('pedidos.activar', $pedido->id) }}"
+                                                        class="inline">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <button type="submit"
+                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow">
+                                                            Activar
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <button disabled
+                                                        class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-60 cursor-not-allowed">
+                                                        Activar
+                                                    </button>
+                                                @endif
+                                                <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
+                                                <a href="javascript:void(0)"
+                                                    @click="mostrarProductosModal(@js($pedido->productos_formateados))"
+                                                    class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </a>
+
+                                                <x-tabla.boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />
+
+                                            </div>
+                                        </template>
+                                    </div>
                             </tr>
                         @empty
                             <tr>
@@ -592,7 +630,8 @@
                                 <thead class="bg-blue-600 text-white uppercase text-xs">
                                     <tr>
                                         <th class="px-3 py-2 border">Código</th>
-                                        <th class="px-3 py-2 border">Proveedor</th>
+                                        <th class="px-3 py-2 border">Fabricante</th>
+                                        <th class="px-3 py-2 border">Distribuidor</th>
                                         <th class="px-3 py-2 border">Estado</th>
                                         <th class="px-3 py-2 border">Acciones</th>
                                     </tr>
@@ -601,7 +640,8 @@
                                     @foreach ($pedidosFiltrados as $pedido)
                                         <tr class="border-b hover:bg-blue-50">
                                             <td class="px-3 py-2">{{ $pedido->codigo }}</td>
-                                            <td class="px-3 py-2">{{ $pedido->proveedor->nombre ?? '—' }}</td>
+                                            <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
+                                            <td class="px-3 py-2">{{ $pedido->fabricante->distribuidor ?? '—' }}</td>
                                             <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
                                             <td class="px-3 py-2">
                                                 <a href="{{ route('pedidos.recepcion', $pedido->id) }}"

@@ -193,18 +193,39 @@
                                 <input x-show="editando" type="text" x-model="obra.distancia"
                                     class="form-control form-control-sm">
                             </td>
-                            <td class="px-4 py-3 text-center border">
-                                <a href="https://www.google.com/maps?q={{ $obra->latitud }},{{ $obra->longitud }}"
-                                    target="_blank" class="text-blue-500 hover:underline">
-                                    Mapa
-                                </a>
-                                <button @click.stop="editando = !editando">
-                                    <span x-show="!editando">✏️</span>
-                                    <span x-show="editando">✖</span>
-                                    <span x-show="editando" @click.stop="guardarCambios(obra)">✅</span>
-                                </button>
-                                <x-boton-eliminar :action="route('obras.destroy', $obra->id)" />
+                            <td class="px-2 py-2 border text-xs font-bold">
+                                <div class="flex items-center space-x-2 justify-center">
+                                    {{-- Botones en modo edición --}}
+                                    <x-tabla.boton-guardar x-show="editando"
+                                        @click="guardarCambios(obra); editando = false" />
+                                    <x-tabla.boton-cancelar-edicion x-show="editando" @click="editando = false" />
+
+                                    {{-- Botones cuando NO está editando --}}
+                                    <template x-if="!editando">
+                                        <div class="flex items-center space-x-2">
+                                            {{-- Enlace a Google Maps --}}
+                                            <a href="https://www.google.com/maps?q={{ $obra->latitud }},{{ $obra->longitud }}"
+                                                target="_blank"
+                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                                title="Ver en mapa">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M9 20l-5.447-2.724A2 2 0 013 15.382V6.618a2 2 0 011.553-1.894L9 2m0 0l6 3m0 0l5.447 2.724A2 2 0 0121 8.618v8.764a2 2 0 01-1.553 1.894L15 22m0 0l-6-3" />
+                                                </svg>
+                                            </a>
+
+                                            {{-- Editar --}}
+                                            <x-tabla.boton-editar @click="editando = true" />
+
+                                            {{-- Eliminar --}}
+                                            <x-tabla.boton-eliminar :action="route('obras.destroy', $obra->id)" />
+                                        </div>
+                                    </template>
+                                </div>
                             </td>
+
                         </tr>
                     @empty
                         <tr>

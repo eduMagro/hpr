@@ -166,11 +166,44 @@
                                             class="form-input w-full">
                                     </td>
 
-                                    <td class="px-2 py-3 text-center border">
-                                        <a href="{{ route('obras.show', $obra->id) }}"
-                                            class="text-blue-500 hover:underline">Ver</a>
-                                        <x-boton-eliminar :action="route('obras.destroy', $obra->id)" />
+                                    <td class="px-2 py-2 border text-xs font-bold">
+                                        <div class="flex items-center space-x-2 justify-center">
+                                            {{-- Botones en modo edición --}}
+                                            <x-tabla.boton-guardar x-show="editando"
+                                                @click="guardarCambios(obra); editando = false" />
+                                            <x-tabla.boton-cancelar-edicion x-show="editando"
+                                                @click="editando = false" />
+
+                                            {{-- Botones cuando NO está editando --}}
+                                            <template x-if="!editando">
+                                                <div class="flex items-center space-x-2">
+                                                    {{-- Enlace a Google Maps --}}
+                                                    <a href="https://www.google.com/maps?q={{ $obra->latitud }},{{ $obra->longitud }}"
+                                                        target="_blank"
+                                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                                        title="Ver en mapa">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                            stroke-width="2" stroke-linecap="round"
+                                                            stroke-linejoin="round">
+                                                            <!-- Mapa estilo pliegue -->
+                                                            <polyline
+                                                                points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6" />
+                                                            <!-- Pin de ubicación -->
+                                                            <circle cx="12" cy="10" r="2" />
+                                                        </svg>
+                                                    </a>
+
+                                                    {{-- Editar --}}
+                                                    <x-tabla.boton-editar @click="editando = true" />
+
+                                                    {{-- Eliminar --}}
+                                                    <x-tabla.boton-eliminar :action="route('obras.destroy', $obra->id)" />
+                                                </div>
+                                            </template>
+                                        </div>
                                     </td>
+
                                 </tr>
                             @endforeach
                         </tbody>

@@ -168,7 +168,7 @@
 
                         <!-- Acciones finales: eliminar, editar, iniciar sesión -->
                         <div class="mt-4 flex justify-between items-center">
-                            <x-boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
+                            <x-tabla.boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
                             <a href="javascript:void(0);"
                                 class="text-blue-500 hover:text-blue-700 text-sm open-edit-modal"
                                 data-id="{{ $maquina->id }}">

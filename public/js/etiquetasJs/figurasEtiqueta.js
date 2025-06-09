@@ -183,7 +183,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ctx.restore();
     }
 
-    function mostrarDibujo(etiquetaId) {
+    function mostrar(etiquetaId) {
         const etiqueta = window.etiquetasConElementos.find(
             (e) => e.id == etiquetaId
         );
@@ -207,5 +207,5 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    window.mostrarDibujo = mostrarDibujo;
+    window.mostrar = mostrar;
 });

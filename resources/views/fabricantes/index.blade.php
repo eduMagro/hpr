@@ -196,7 +196,7 @@
                                 </td>
 
                                 <td class="px-3 py-2 space-x-2">
-                                    <x-boton-eliminar :action="route('fabricantes.destroy', $fabricante->id)" />
+                                    <x-tabla.boton-eliminar :action="route('fabricantes.destroy', $fabricante->id)" />
                                 </td>
                             </tr>
                         @empty
@@ -377,7 +377,7 @@
                                 </td>
 
                                 <td class="px-3 py-2 space-x-2">
-                                    <x-boton-eliminar :action="route('distribuidores.destroy', $distribuidor->id)" />
+                                    <x-tabla.boton-eliminar :action="route('distribuidores.destroy', $distribuidor->id)" />
                                 </td>
                             </tr>
                         @empty
