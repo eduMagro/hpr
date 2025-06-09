@@ -42,32 +42,35 @@
                         <td style="padding: 30px;">
                             <h2 style="color: #1f2937; font-size: 20px; margin-bottom: 10px;">📦 Confirmación de pedido
                             </h2>
+                            @php
+                                $proveedorNombre =
+                                    $pedido->fabricante->nombre ?? ($pedido->distribuidor->nombre ?? 'Proveedor');
+                            @endphp
+
                             <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-                                Estimado proveedor, {{ $pedido->fabricante->nombre }}<br>
+                                Estimado proveedor, {{ $proveedorNombre }}<br>
                                 Le informamos que se ha generado un nuevo pedido a fecha
                                 {{ $pedido->created_at->format('d/m/Y') }}
-                                con
-                                los siguientes datos:
+                                con los siguientes datos:
                             </p>
 
                             <table style="width: 100%; font-size: 15px; color: #111827; margin-bottom: 24px;">
                                 <tr>
-                                    <td style="padding: 8px 0;"><strong>Código:</strong></td>
-                                    <td style="padding: 8px 0;">{{ $pedido->codigo }}</td>
+                                    <td style="padding: 6px 0;"><strong>Código:</strong> {{ $pedido->codigo }}</td>
                                 </tr>
                                 <tr>
-                                    <td style="padding: 8px 0;"><strong>Fecha de entrega:</strong></td>
-                                    <td style="padding: 8px 0;">
-                                        {{ \Carbon\Carbon::parse($pedido->fecha_entrega)->format('d/m/Y') }}</td>
-
+                                    <td style="padding: 6px 0;">
+                                        <strong>Fecha de entrega:</strong>
+                                        {{ \Carbon\Carbon::parse($pedido->fecha_entrega)->format('d/m/Y') }}
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <td style="padding: 8px 0;"><strong>Lugar de entrega:</strong></td>
-                                    <td style="padding: 8px 0;">
-                                        {{ $pedido->obra->obra ?? 'N/A' }}</td>
-
+                                    <td style="padding: 6px 0;">
+                                        <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra ?? 'N/A' }}
+                                    </td>
                                 </tr>
                             </table>
+
 
                             <h3 style="color: #1f2937; margin-bottom: 8px;">📋 Productos solicitados:</h3>
 

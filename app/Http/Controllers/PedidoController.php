@@ -347,17 +347,49 @@ class PedidoController extends Controller
                 return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
             }
 
-            // Validación básica
             $request->validate([
-                'codigo'        => 'required|string|unique:productos,codigo|max:20',
-                'codigo_2'      => 'nullable|string|unique:productos,codigo|max:20',
+                'codigo'           => 'required|string|unique:productos,codigo|max:20',
+                'codigo_2'         => 'nullable|string|unique:productos,codigo|max:20',
                 'producto_base_id' => 'required|exists:productos_base,id',
-                'peso'          => 'required|numeric|min:1',
-                'n_colada'      => 'required|string|max:50',
-                'n_paquete'     => 'required|string|max:50',
-                'n_colada_2'    => 'nullable|string|max:50',
-                'n_paquete_2'   => 'nullable|string|max:50',
-                'ubicacion_id'  => 'required|exists:ubicaciones,id',
+                'peso'             => 'required|numeric|min:1',
+                'n_colada'         => 'required|string|max:50',
+                'n_paquete'        => 'required|string|max:50',
+                'n_colada_2'       => 'nullable|string|max:50',
+                'n_paquete_2'      => 'nullable|string|max:50',
+                'ubicacion_id'     => 'required|exists:ubicaciones,id',
+            ], [
+                'codigo.required'      => 'El código del primer paquete es obligatorio.',
+                'codigo.string'        => 'El código del primer paquete debe ser una cadena de texto.',
+                'codigo.unique'        => 'El código del primer paquete ya existe en el sistema.',
+                'codigo.max'           => 'El código del primer paquete no puede superar los 20 caracteres.',
+
+                'codigo_2.string'      => 'El código del segundo paquete debe ser una cadena de texto.',
+                'codigo_2.unique'      => 'El código del segundo paquete ya existe en el sistema.',
+                'codigo_2.max'         => 'El código del segundo paquete no puede superar los 20 caracteres.',
+
+                'producto_base_id.required' => 'Debes seleccionar un producto base.',
+                'producto_base_id.exists'   => 'El producto base seleccionado no existe.',
+
+                'peso.required'        => 'El peso total del paquete es obligatorio.',
+                'peso.numeric'         => 'El peso debe ser un número válido.',
+                'peso.min'             => 'El peso mínimo permitido es 1 kg.',
+
+                'n_colada.required'    => 'El número de colada del primer paquete es obligatorio.',
+                'n_colada.string'      => 'El número de colada debe ser texto.',
+                'n_colada.max'         => 'El número de colada no puede superar los 50 caracteres.',
+
+                'n_paquete.required'   => 'El número de paquete del primer paquete es obligatorio.',
+                'n_paquete.string'     => 'El número de paquete debe ser texto.',
+                'n_paquete.max'        => 'El número de paquete no puede superar los 50 caracteres.',
+
+                'n_colada_2.string'    => 'El número de colada del segundo paquete debe ser texto.',
+                'n_colada_2.max'       => 'El número de colada del segundo paquete no puede superar los 50 caracteres.',
+
+                'n_paquete_2.string'   => 'El número de paquete del segundo paquete debe ser texto.',
+                'n_paquete_2.max'      => 'El número de paquete del segundo paquete no puede superar los 50 caracteres.',
+
+                'ubicacion_id.required' => 'Debes seleccionar una ubicación para almacenar el paquete.',
+                'ubicacion_id.exists'   => 'La ubicación seleccionada no existe.',
             ]);
 
             $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
@@ -569,21 +601,33 @@ class PedidoController extends Controller
     {
 
         $request->validate([
-            'seleccionados' => 'required|array',
-            'fabricante_id' => 'required|exists:fabricantes,id',
-            'obra_id' => 'required|exists:obras,id',
-            'fecha_entrega' => 'required|date|after_or_equal:today',
+            'seleccionados'    => 'required|array',
+            'obra_id'          => 'required|exists:obras,id',
+            'fecha_entrega'    => 'required|date|after_or_equal:today',
+            'fabricante_id'    => 'nullable|exists:fabricantes,id',
+            'distribuidor_id'  => 'nullable|exists:distribuidores,id',
         ], [
-            'seleccionados.required' => 'Debes seleccionar al menos un producto.',
-            'seleccionados.array' => 'El formato de los productos seleccionados no es válido.',
+            'seleccionados.required' => 'Selecciona al menos un producto para generar el pedido.',
+            'seleccionados.array'    => 'El formato de los productos seleccionados no es válido.',
 
-            'fabricante_id.required' => 'El fabricante es obligatorio.',
-            'fabricante_id.exists' => 'El fabricante seleccionado no es válido.',
+            'obra_id.required'       => 'Debes indicar la obra a la que se destina el pedido.',
+            'obra_id.exists'         => 'La obra seleccionada no existe en el sistema.',
 
-            'fecha_entrega.required' => 'La fecha estimada de entrega es obligatoria.',
-            'fecha_entrega.date' => 'La fecha estimada debe ser una fecha válida.',
-            'fecha_entrega.after_or_equal' => 'La fecha de entrega no puede ser anterior a hoy.',
+            'fecha_entrega.required'     => 'Indica la fecha estimada de entrega del material.',
+            'fecha_entrega.date'         => 'La fecha de entrega no es válida.',
+            'fecha_entrega.after_or_equal' => 'La fecha de entrega debe ser hoy o una fecha futura.',
+
+            'fabricante_id.exists'   => 'El fabricante seleccionado no es válido.',
+            'distribuidor_id.exists' => 'El distribuidor seleccionado no es válido.',
         ]);
+
+        if (!$request->fabricante_id && !$request->distribuidor_id) {
+            return back()->withErrors(['fabricante_id' => 'Debes seleccionar un fabricante o un distribuidor.'])->withInput();
+        }
+
+        if ($request->fabricante_id && $request->distribuidor_id) {
+            return back()->withErrors(['fabricante_id' => 'Solo puedes seleccionar un fabricante o un distribuidor, no ambos.'])->withInput();
+        }
 
 
         $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
@@ -602,13 +646,14 @@ class PedidoController extends Controller
         }
 
         $pedido = Pedido::create([
-            'codigo' => Pedido::generarCodigo(),
-            'pedido_global_id' => $pedidoGlobal->id,
-            'estado' => 'pendiente',
-            'fabricante_id' => $request->fabricante_id,
-            'obra_id' => $request->obra_id,
-            'fecha_pedido' => now(),
-            'fecha_entrega' => $request->fecha_entrega,
+            'codigo'           => Pedido::generarCodigo(),
+            'pedido_global_id' => $pedidoGlobal->id ?? null,
+            'estado'           => 'pendiente',
+            'fabricante_id'    => $request->fabricante_id,
+            'distribuidor_id'  => $request->distribuidor_id,
+            'obra_id'          => $request->obra_id,
+            'fecha_pedido'     => now(),
+            'fecha_entrega'    => $request->fecha_entrega,
         ]);
 
         $pesoTotal = 0;
@@ -674,29 +719,59 @@ class PedidoController extends Controller
 
     public function enviarCorreo($id, Request $request)
     {
-        $pedido = Pedido::with('productos')->findOrFail($id);
+        $pedido = Pedido::with(['productos', 'fabricante', 'distribuidor'])->findOrFail($id);
 
-        // Correos base
-        $ccEmails = [
-            'eduardo.magro@pacoreyes.com',
+        // 📤 Obtener contacto y nombre visible del remitente
+        $contacto = $this->obtenerContactoPedido($pedido);
 
-        ];
+        if (!$contacto['email']) {
+            return back()->with('error', 'El contacto asignado no tiene correo electrónico.');
+        }
 
-        // Email del fabricante
-        $emailFabricante = $pedido->fabricante->email;
+        // 📌 Correos en copia
+        $ccEmails = ['eduardo.magro@pacoreyes.com'];
 
-        Mail::to($emailFabricante)->send(
-            new PedidoCreado(
-                $pedido,
-                'compras@pacoreyes.com',
-                'Pedidos - Hierros Paco Reyes',
-                $ccEmails
-            )
+        // 📧 Dirección de respuesta dinámica
+        $replyToEmail = auth()->user()->email ?? 'noreply@pacoreyes.com';
+        $replyToName  = auth()->user()->name  ?? 'Usuario no identificado';
+
+        // ✉️ Preparar el Mailable
+        $mailable = new PedidoCreado(
+            $pedido,
+            'compras@pacoreyes.com',      // From visible
+            $contacto['nombre'],          // Nombre del remitente visible
+            $ccEmails,                    // CC
+            $replyToEmail,                // Respuestas a
+            $replyToName
         );
 
+        // 🚀 Enviar
+        Mail::to($contacto['email'])->send($mailable);
 
         return redirect()->route('pedidos.index')->with('success', 'Correo enviado correctamente.');
     }
+    private function obtenerContactoPedido($pedido): array
+    {
+        if ($pedido->fabricante && $pedido->fabricante->email) {
+            return [
+                'email'  => $pedido->fabricante->email,
+                'nombre' => 'Hierros Paco Reyes',
+            ];
+        }
+
+        if ($pedido->distribuidor && $pedido->distribuidor->email) {
+            return [
+                'email'  => $pedido->distribuidor->email,
+                'nombre' => 'Hierros Paco Reyes',
+            ];
+        }
+
+        return [
+            'email'  => null,
+            'nombre' => null,
+        ];
+    }
+
 
     private function crearPedidoDesdeRequest(Request $request): Pedido
     {

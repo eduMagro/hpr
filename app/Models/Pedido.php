@@ -64,6 +64,10 @@ class Pedido extends Model
     {
         return $this->belongsTo(Fabricante::class);
     }
+    public function distribuidor()
+    {
+        return $this->belongsTo(Distribuidor::class);
+    }
     public function obra()
     {
         return $this->belongsTo(Obra::class);
