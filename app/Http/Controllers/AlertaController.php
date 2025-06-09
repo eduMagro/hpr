@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class AlertaController extends Controller
 {
@@ -80,10 +81,8 @@ class AlertaController extends Controller
     {
         $user = Auth::user();
 
-        // Obtener nombre de la categoría del usuario (si tiene relación)
         $categoriaNombre = optional($user->categoriaRelacion)->nombre ?? $user->categoria;
 
-        // Cargar alertas donde el usuario es remitente o receptor por rol/categoría/ID
         $alertas = Alerta::where(function ($query) use ($user, $categoriaNombre) {
             $query->where('user_id_1', $user->id)
                 ->orWhere('user_id_2', $user->id)
@@ -94,7 +93,7 @@ class AlertaController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        // Clasificar cada alerta como 'entrante' o 'saliente'
+        // Clasificar cada alerta y añadir mensajes
         $alertas->getCollection()->transform(function ($alerta) use ($user, $categoriaNombre) {
             $esEmisor = $alerta->user_id_1 === $user->id;
 
@@ -106,20 +105,23 @@ class AlertaController extends Controller
 
             $alerta->tipo = $esEntrante ? 'entrante' : 'saliente';
 
+            // Añadir versión corta y completa del mensaje
+            $alerta->mensaje_completo = $alerta->mensaje;
+            $alerta->mensaje_corto = Str::words($alerta->mensaje, 10, '...');
+
             return $alerta;
         });
 
-        // Alertas leídas por el usuario
         $leidas = AlertaLeida::where('user_id', $user->id)->get()->keyBy('alerta_id');
         $alertasLeidas = $leidas->mapWithKeys(fn($r) => [$r->alerta_id => $r->leida_en])->all();
 
-        // Datos auxiliares para el formulario
         $roles = User::distinct()->pluck('rol')->filter()->values();
         $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
         $usuarios = User::orderBy('name')->get();
 
         return view('alertas.index', compact('alertas', 'user', 'roles', 'categorias', 'usuarios', 'alertasLeidas'));
     }
+
 
     public function marcarLeidas(Request $request)
     {

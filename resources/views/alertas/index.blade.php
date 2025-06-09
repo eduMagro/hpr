@@ -85,10 +85,10 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-blue-500 text-white">
                         <tr>
-                            @if (auth()->user()->rol === 'oficina')
-                                <th class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider">Enviado
-                                    por</th>
-                            @endif
+
+                            <th class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider">Enviado
+                                por</th>
+
                             <th class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider">Mensaje</th>
                             <th
                                 class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider hidden sm:table-cell">
@@ -102,17 +102,15 @@
                                 $noLeida = $esEntrante && empty($alertasLeidas[$alerta->id]);
                             @endphp
 
-
                             <tr class="{{ $noLeida ? 'bg-yellow-100' : 'bg-white' }}"
                                 data-alerta-id="{{ $alerta->id }}"
-                                onclick="marcarAlertaLeida({{ $alerta->id }}, this)">
+                                onclick="marcarAlertaLeida({{ $alerta->id }}, this, @js($alerta->mensaje))">
 
 
-                                @if (auth()->user()->rol === 'oficina')
-                                    <td class="px-4 py-2 text-center">
-                                        {{ $alerta->usuario1?->nombre_completo ?? 'Desconocido' }}
-                                    </td>
-                                @endif
+                                <td class="px-4 py-2 text-center">
+                                    {{ $alerta->usuario1?->name ?? 'Desconocido' }}
+                                </td>
+
                                 <td class="px-4 py-2 break-words">
                                     @php
                                         $esCambioMaquina =
@@ -132,12 +130,18 @@
 
                                     @if ($esCambioMaquina && $esAlertaEntrante && isset($elementoId, $origen, $destino, $maquinaDestinoId))
                                         <a href="#"
-                                            onclick="marcarAlertaLeida({{ $alerta->id }}, this.closest('tr')); abrirModalAceptarCambio('{{ $elementoId }}', '{{ $origen }}', '{{ $destino }}', '{{ $maquinaDestinoId }}', '{{ $alerta->id }}')">
+                                            onclick="marcarAlertaLeida({{ $alerta->id }}, this.closest('tr')); abrirModalAceptarCambio('{{ $elementoId }}', '{{ $origen }}', '{{ $destino }}', '{{ $maquinaDestinoId }}', '{{ $alerta->id }}')"
+                                            class="text-blue-700 hover:underline">
                                             {{ $alerta->mensaje }}
                                         </a>
                                     @else
-                                        <span class="text-gray-700">{{ $alerta->mensaje }}</span>
+                                        <a href="#"
+                                            onclick="marcarAlertaLeida({{ $alerta->id }}, this.closest('tr'), @js($alerta->mensaje_completo))"
+                                            class="text-gray-700 hover:underline">
+                                            {{ $alerta->mensaje_corto }}
+                                        </a>
                                     @endif
+
 
                                 </td>
 
@@ -158,6 +162,24 @@
 
             <!-- Paginación -->
             <x-tabla.paginacion :paginador="$alertas" />
+        </div>
+    </div>
+    <!-- Modal de mensaje -->
+    <div id="modalVerMensaje" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg relative">
+            <button onclick="cerrarModalMensaje()"
+                class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">✖</button>
+
+            <h2 class="text-xl font-bold mb-4">📩 Mensaje</h2>
+
+            <p id="contenidoMensaje" class="text-gray-800 whitespace-pre-wrap"></p>
+
+            <div class="flex justify-end mt-6">
+                <button onclick="cerrarModalMensaje()"
+                    class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">
+                    Cerrar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -206,25 +228,30 @@
             console.log("Nuevas alertas detectadas:", nuevasAlertas); // Depuración
         });
 
+        function marcarAlertaLeida(id, fila, mensaje = '') {
+            if (fila.classList.contains('bg-yellow-100')) {
+                fila.classList.remove('bg-yellow-100');
+                fila.classList.add('bg-white');
 
-        function marcarAlertaLeida(id, fila) {
-            // Evitar marcar si ya tiene clase blanca (ya está leída)
-            if (!fila.classList.contains('bg-yellow-100')) return;
+                const data = new FormData();
+                data.append('_token', '{{ csrf_token() }}');
+                data.append('alerta_ids[]', id);
 
-            // Actualizar estilo visual
-            fila.classList.remove('bg-yellow-100');
-            fila.classList.add('bg-white');
+                fetch("{{ route('alertas.marcarLeidas') }}", {
+                    method: 'POST',
+                    body: data
+                });
+            }
 
-            // Enviar al backend
-            const data = new FormData();
-            data.append('_token', '{{ csrf_token() }}');
-            data.append('alerta_ids[]', id);
-
-            fetch("{{ route('alertas.marcarLeidas') }}", {
-                method: 'POST',
-                body: data
-            });
+            // Mostrar el modal con el mensaje
+            document.getElementById('contenidoMensaje').textContent = mensaje;
+            document.getElementById('modalVerMensaje').classList.remove('hidden');
         }
+
+        function cerrarModalMensaje() {
+            document.getElementById('modalVerMensaje').classList.add('hidden');
+        }
+
 
 
 
