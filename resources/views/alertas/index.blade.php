@@ -174,14 +174,6 @@
             <!-- Mensaje en modo edición (inicialmente oculto) -->
             <textarea id="textareaMensaje" class="w-full mt-2 p-2 border rounded-lg hidden text-gray-800" rows="4"></textarea>
 
-
-            <div class="flex justify-end mt-6">
-                <button onclick="cerrarModalMensaje()"
-                    class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">
-                    Cerrar
-                </button>
-            </div>
-
             <div class="flex justify-center gap-4 mt-6 hidden" id="botonesEdicion">
                 <button onclick="iniciarEdicionAlerta()"
                     class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg" id="botonEditar">
@@ -199,8 +191,7 @@
                     </button>
                 </div>
 
-                <button onclick="eliminarAlerta()"
-                    class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
+                <button onclick="eliminarAlerta()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
                     🗑 Eliminar
                 </button>
             </div>
