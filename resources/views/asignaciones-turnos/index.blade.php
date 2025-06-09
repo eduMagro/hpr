@@ -319,7 +319,7 @@
                             </td>
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <template x-if="editando">
-                                    <button @click="guardarCambios(usuario); editando = false"
+                                    <button @click="guardarCambios(asignacionData); editando = false"
                                         class="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow">
                                         Guardar
                                     </button>
