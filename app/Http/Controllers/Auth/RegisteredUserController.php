@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Categoria;
+use App\Models\Empresa;
 use App\Models\Turno;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -26,8 +27,9 @@ class RegisteredUserController extends Controller
             return redirect()->route('users.index')->with('abort', 'No tienes los permisos necesarios.');
         }
         $categorias = Categoria::orderBy('nombre')->get(); // Puedes añadir select('id', 'nombre') si quieres optimizar
+        $empresas = Empresa::orderBy('nombre')->get(); // Puedes añadir select('id', 'nombre') si quieres optimizar
 
-        return view('auth.register', compact('categorias'));
+        return view('auth.register', compact('categorias', 'empresas'));
     }
 
     /**
@@ -52,6 +54,7 @@ class RegisteredUserController extends Controller
                 'regex:/^(?:\d{8}[A-Z]|[XYZ]\d{7}[A-Z])$/',
                 'unique:' . User::class
             ],
+            'empresa_id' => ['required', 'exists:empresas,id'],
             'rol' => ['required', 'string', 'max:255', 'in:operario,oficina,visitante'],
             'categoria_id' => ['required', 'exists:categorias,id'],
             'turno' => ['string', 'max:255', 'in:diurno,nocturno,mañana,flexible'],
@@ -91,6 +94,9 @@ class RegisteredUserController extends Controller
             'dni.regex' => 'El DNI debe tener el formato correcto (8 números seguidos de una letra).',
             'dni.unique' => 'Este DNI ya está registrado.',
 
+            'empresa_id.required' => 'La empresa es obligatoria.',
+            'empresa_id.exists' => 'La empresa seleccionada no es válida.',
+
             'rol.required' => 'El rol es obligatorio.',
             'rol.string' => 'El rol debe ser un texto válido.',
             'rol.max' => 'El rol no puede superar los 255 caracteres.',
@@ -115,6 +121,7 @@ class RegisteredUserController extends Controller
             'movil_personal' => $request->movil_personal,
             'movil_empresa' => $request->movil_empresa,
             'dni' => $request->dni,
+            'empresa_id' => $request->empresa_id,
             'rol' => $request->rol,
             'categoria_id' => $request->categoria_id,
             'turno' => $request->turno,

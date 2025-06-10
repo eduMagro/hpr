@@ -157,6 +157,21 @@
                     <x-input-error :messages="$errors->get('movil_empresa')" class="{{ $errorClass }}" />
                 </div>
 
+                {{-- EMPRESA --}}
+                <div>
+                    <label for="empresa_id" class="{{ $labelClass }}">Empresa</label>
+                    <select id="empresa_id" name="empresa_id" class="{{ $inputClass }}" required>
+                        <option value="" disabled selected>Selecciona una empresa</option>
+                        @foreach ($empresas as $empresa)
+                            <option value="{{ $empresa->id }}"
+                                {{ old('empresa_id') == $empresa->id ? 'selected' : '' }}>
+                                {{ ucfirst($empresa->nombre) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <x-input-error :messages="$errors->get('empresa_id')" class="{{ $errorClass }}" />
+                </div>
+
                 {{-- ROL --}}
                 <div>
                     <label for="rol" class="{{ $labelClass }}">Rol</label>
