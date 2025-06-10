@@ -141,7 +141,7 @@ class RegisteredUserController extends Controller
             ]);
 
             return back()->withInput()->withErrors([
-                'general' => 'Ha ocurrido un error al registrar el usuario. Inténtalo de nuevo más tarde.'
+                'general' => 'Ha ocurrido un error al registrar el usuario: ' . $e->getMessage(),
             ]);
         }
     }
