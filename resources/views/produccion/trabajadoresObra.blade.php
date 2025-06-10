@@ -249,7 +249,7 @@
                                     .then(data => {
                                         if (data.success) {
                                             info.event.remove();
-                                            Swal.fire('✅ Eliminado', data.message, 'success');
+
                                         } else {
                                             Swal.fire('❌ Error', data.message, 'error');
                                         }
