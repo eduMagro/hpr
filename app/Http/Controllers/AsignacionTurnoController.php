@@ -665,47 +665,42 @@ class AsignacionTurnoController extends Controller
 
     public function asignarObra(Request $request)
     {
-        try {
-            $request->validate([
-                'user_id' => 'required|exists:users,id',
-                'obra_id' => 'required|exists:obras,id',
-                'fecha'   => 'required|date',
-            ]);
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'fecha' => 'required|date',
+            'obra_id' => 'required|exists:obras,id'
+        ]);
 
-            // Buscar la asignación de turno de ese día para ese usuario
-            $asignacion = AsignacionTurno::where('user_id', $request->user_id)
-                ->whereDate('fecha', \Carbon\Carbon::parse($request->fecha))
-                ->first();
+        // Buscar asignación de turno para ese día
+        $asignacion = AsignacionTurno::where('user_id', $validated['user_id'])
+            ->where('fecha', $validated['fecha'])
+            ->first();
 
-            if (!$asignacion) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'No se encontró una asignación de turno para ese trabajador en esa fecha.'
-                ], 404);
-            }
+        // Si no existe, se crea
+        if (!$asignacion) {
+            $asignacion = new AsignacionTurno();
+            $asignacion->user_id = $validated['user_id'];
+            $asignacion->fecha = $validated['fecha'];
 
-            $asignacion->obra_id = $request->obra_id;
-            $asignacion->save();
-
-            return response()->json([
-                'success' => true,
-                'id' => $asignacion->id,
-                'obra_id' => $asignacion->obra_id,
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Error de validación.',
-                'messages' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('❌ Error en asignarObra(): ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Error interno del servidor.',
-                'message' => $e->getMessage(),
-            ], 500);
+            // Si tienes un turno por defecto, por ejemplo el de mañana (ID = 1)
+            $asignacion->turno_id = 1;
         }
+
+        // Asignar o actualizar obra
+        $asignacion->obra_id = $validated['obra_id'];
+        $asignacion->save();
+
+        $user = $asignacion->user()->with('categoria', 'maquina')->first();
+        $turno = $asignacion->turno;
+
+        return response()->json([
+            'success' => true,
+            'message' => '✅ Obra asignada correctamente',
+            'asignacion' => $asignacion,
+            'user' => $user,
+            'turno' => $turno,
+            'fecha' => $validated['fecha'],
+            'obra_id' => $validated['obra_id']
+        ]);
     }
 }

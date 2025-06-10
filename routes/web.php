@@ -113,7 +113,7 @@ Route::middleware('auth')->group(function () {
     })->name('generar-turnos');
     Route::post('/profile/generar-turnos/{user}', [ProfileController::class, 'generarTurnos'])->name('profile.generar.turnos');
     Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
-    Route::post('/asignaciones-turno/asignar-obra', [AsignacionTurnoController::class, 'asignarObra']);
+    Route::post('/asignaciones-turno/asignar-obra', [AsignacionTurnoController::class, 'asignarObra'])->name('asignaciones-turno.asignarObra');
 
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class)->middleware('acceso.seccion:maquinas.index');

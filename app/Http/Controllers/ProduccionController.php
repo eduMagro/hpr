@@ -404,31 +404,12 @@ class ProduccionController extends Controller
         // 1. Obtener la empresa por nombre
         $hprServicios = Empresa::where('nombre', 'HPR Servicios en Obra S.L.')->firstOrFail();
 
-        // 2. Obtener los trabajadores de esa empresa con rol 'operario'
-        $trabajadores = User::with(['asignacionesTurnos.turno', 'categoria'])
+        // 2. Obtener todos los trabajadores de esa empresa con rol 'operario'
+        $trabajadores = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
             ->where('empresa_id', $hprServicios->id)
             ->where('rol', 'operario')
             ->get();
-        $hoy = Carbon::today();
-        $limite = $hoy->copy()->addDays(30);
 
-        $trabajadoresSinObra = User::with(['asignacionesTurnos' => function ($q) use ($hoy, $limite) {
-            $q->whereBetween('fecha', [$hoy, $limite])
-                ->where(function ($q) {
-                    $q->whereNull('obra_id')
-                        ->orWhereHas('obra', fn($sub) => $sub->where('estado', '!=', 'activo'));
-                });
-        }, 'categoria', 'maquina'])
-            ->where('rol', 'operario')
-            ->where('empresa_id', $hprServicios->id)
-            ->whereHas('asignacionesTurnos', function ($q) use ($hoy, $limite) {
-                $q->whereBetween('fecha', [$hoy, $limite])
-                    ->where(function ($q) {
-                        $q->whereNull('obra_id')
-                            ->orWhereHas('obra', fn($sub) => $sub->where('estado', '!=', 'activo'));
-                    });
-            })
-            ->get();
         // 3. Obtener las obras activas como resources
         $obrasActivas = Obra::where('estado', 'activa')->get();
 
@@ -461,9 +442,13 @@ class ProduccionController extends Controller
                 ];
             }
         }
-        return view('produccion.trabajadoresObra', compact('trabajadores', 'trabajadoresSinObra', 'resources', 'eventos'));
-    }
 
+        return view('produccion.trabajadoresObra', [
+            'trabajadores' => $trabajadores,
+            'resources' => $resources,
+            'eventos' => $eventos
+        ]);
+    }
 
     /**
      * Show the form for creating a new resource.

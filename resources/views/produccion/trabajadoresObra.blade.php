@@ -1,8 +1,10 @@
 <x-app-layout>
     <x-slot name="title">Planificación por Obra</x-slot>
+
     @php
         $rutaActual = request()->route()->getName();
     @endphp
+
     @if (Auth::check() && Auth::user()->rol == 'oficina')
         <div class="w-full" x-data="{ open: false }">
             <!-- Menú móvil -->
@@ -21,7 +23,6 @@
                     {{ request()->routeIs('users.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
                         📋 Planificación Planillas
                     </a>
-
 
                     <a href="{{ route('produccion.trabajadores') }}"
                         class="block px-2 py-3 transition text-sm font-medium
@@ -45,10 +46,10 @@
                     📋 Planificación Planillas
                 </a>
 
-                <a href="{{ route('produccion.maquinas') }}"
+                <a href="{{ route('produccion.trabajadores') }}"
                     class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
                 {{ request()->routeIs('register') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    📋 Planificación Trabajadores Almacén
+                    📋 Planificación Trabajadores Máquina
                 </a>
 
                 <a href="{{ route('produccion.trabajadoresObra') }}"
@@ -59,18 +60,25 @@
             </div>
         </div>
     @endif
-    <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full md:w-full">
-        <h3 class="font-bold text-gray-800 mb-2">Trabajadores sin asignar</h3>
 
+    <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full md:w-full mt-4">
+        <h3 class="font-bold text-gray-800 mb-2">Trabajadores de HPR</h3>
         <div id="external-events" class="grid grid-cols-2 md:grid-cols-6 gap-2">
-            @foreach ($trabajadoresSinObra as $t)
+            @foreach ($trabajadores as $t)
                 <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
-                    data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}">
+                    data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
+                    data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
                     {{ $t->nombre_completo }}
+                    <div class="text-[10px] text-gray-600">
+                        {{ $t->categoria?->nombre }} @if ($t->maquina)
+                            · {{ $t->maquina?->nombre }}
+                        @endif
+                    </div>
                 </div>
             @endforeach
         </div>
     </div>
+
     <div class="py-6">
         <!-- Calendario -->
         <div class="w-full bg-white">
@@ -94,7 +102,9 @@
                 return {
                     title: eventEl.dataset.title,
                     extendedProps: {
-                        user_id: eventEl.dataset.id
+                        user_id: eventEl.dataset.id,
+                        categoria_nombre: eventEl.dataset.categoria,
+                        especialidad_nombre: eventEl.dataset.especialidad
                     }
                 };
             }
@@ -103,8 +113,7 @@
         let calendarioObras;
 
         const resources = @json($resources);
-        const trabajadores = @json($eventos);
-        console.log(trabajadores);
+        const eventos = @json($eventos);
 
         function inicializarCalendarioObras() {
             if (calendarioObras) {
@@ -120,66 +129,97 @@
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: ''
+                    right: 'resourceTimelineDay,resourceTimelineWeek'
                 },
                 editable: true,
                 resourceAreaHeaderContent: 'Obras Activas',
                 resources: resources,
-                events: trabajadores,
+                events: eventos,
                 eventClick(info) {
                     const userId = info.event.extendedProps.user_id;
                     if (userId) {
                         window.location.href = "{{ route('users.show', ':id') }}".replace(':id', userId);
                     }
                 },
-                droppable: true, // Permite soltar eventos desde fuera
+                eventReceive(info) {
+                    // Evitar que FullCalendar agregue el evento automáticamente
+                    info.event.remove(); // elimina cualquier evento "fantasma"
+                },
+                droppable: true,
                 drop: function(info) {
                     const userId = info.draggedEl.dataset.id;
                     const obraId = info.resource?.id;
                     const fecha = info.dateStr;
-                    const hora = info.date.getHours();
 
-                    let turnoId = null;
-                    if (hora >= 6 && hora < 14) turnoId = 1;
-                    else if (hora >= 14 && hora < 22) turnoId = 2;
-                    else turnoId = 3;
+                    // Crea un evento visual provisional (con ID temporal)
+                    const eventoTemporal = calendarioObras.addEvent({
+                        id: 'temp-' + Date.now() + '-' + userId,
+                        title: info.draggedEl.dataset.title,
+                        start: fecha + 'T06:00:00',
+                        end: fecha + 'T14:00:00',
+                        resourceId: obraId,
+                        extendedProps: {
+                            user_id: userId,
+                            provisional: true
+                        }
+                    });
 
-                    fetch('/asignaciones-turno/asignar-obra', {
-
+                    fetch('{{ route('asignaciones-turno.asignarObra') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
                             },
                             body: JSON.stringify({
                                 user_id: userId,
                                 obra_id: obraId,
-                                fecha: fecha,
-                                turno_id: turnoId
+                                fecha: fecha
                             })
                         })
                         .then(res => res.json())
                         .then(data => {
-                            if (!data || !data.id || !data.hora_entrada || !data.hora_salida) {
-                                console.error('❌ Datos incompletos recibidos:', data);
-                                return;
+                            if (data.success) {
+                                // Eliminar cualquier evento existente del mismo user_id y fecha
+                                calendarioObras.getEvents().forEach(ev => {
+                                    if (ev.extendedProps.user_id == data.user.id && ev.startStr
+                                        .startsWith(data.fecha)) {
+                                        ev.remove();
+                                    }
+                                });
+
+                                // Añadir el evento confirmado
+                                calendarioObras.addEvent({
+                                    id: 'turno-' + data.asignacion.id,
+                                    title: data.user.nombre_completo,
+                                    start: data.fecha + 'T06:00:00',
+                                    end: data.fecha + 'T14:00:00',
+                                    resourceId: data.obra_id,
+                                    extendedProps: {
+                                        user_id: data.user.id,
+                                        categoria_nombre: data.user.categoria?.nombre,
+                                        especialidad_nombre: data.user.maquina?.nombre
+                                    }
+                                });
+
+                                eventoTemporal.remove();
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: data.message
+                                });
+                                eventoTemporal.remove();
                             }
-
-                            calendarioObras.addEvent({
-                                id: 'turno-' + data.id,
-                                title: data.nombre,
-                                start: fecha + 'T' + data.hora_entrada,
-                                end: fecha + 'T' + data.hora_salida,
-                                resourceId: obraId,
-                                extendedProps: {
-                                    user_id: userId,
-                                    categoria_nombre: data.categoria,
-                                    especialidad_nombre: data.especialidad
-                                }
+                        })
+                        .catch(error => {
+                            console.error('❌ Error en la solicitud:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error de red',
+                                text: 'No se pudo completar la solicitud.'
                             });
-
-                            // Opcional: eliminar de la lista externa si quieres
-                            document.querySelector(`[data-id="${userId}"]`)?.remove();
+                            eventoTemporal.remove();
                         });
                 },
                 eventContent(arg) {
@@ -188,7 +228,7 @@
                         html: `
                             <div class="px-2 py-1 text-xs font-semibold">
                                 <span>${arg.event.title}</span>
-                                <span class="block text-[10px] opacity-80">${props.categoria_nombre ?? ''} · ${props.especialidad_nombre ?? ''}</span>
+                                <span class="block text-[10px] opacity-80">${props.categoria_nombre ?? ''} ${props.especialidad_nombre ? '· ' + props.especialidad_nombre : ''}</span>
                             </div>
                         `
                     };
@@ -214,45 +254,37 @@
                     headerContent: 'Obra'
                 }],
                 eventDrop(info) {
-                    // Aquí puedes hacer una actualización similar al cambio de máquina
-                    const nuevaObraId = info.event.getResources()?.[0]?.id;
-                    const asignacionId = info.event.id.replace(/^turno-/, '');
-                    const nuevaFecha = info.event.startStr;
+                    const asignacionId = info.event.id.replace('turno-', '');
+                    const nuevaObraId = info.event.getResources()[0].id;
+                    const nuevaFecha = info.event.startStr.split('T')[0];
 
-                    fetch('/asignaciones-turno/asignar-obra', {
-                            method: 'POST',
+                    fetch(`/asignaciones-turnos/${asignacionId}/update-obra`, {
+                            method: 'PUT',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
                             body: JSON.stringify({
-                                user_id: userId,
-                                obra_id: obraId,
-                                fecha: fecha
+                                obra_id: nuevaObraId,
+                                fecha: nuevaFecha
                             })
                         })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                console.log('✅ Asignación de obra actualizada:', data);
-                                // Puedes opcionalmente añadir el evento al calendario si era nuevo
-                            } else {
-                                throw new Error(data.error || 'Error desconocido');
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Error al actualizar');
                             }
+                            return response.json();
                         })
                         .catch(error => {
-                            console.error('❌ Error al asignar obra:', error);
+                            console.error('Error:', error);
                             info.revert();
                         });
-
                 }
             });
 
             calendarioObras.render();
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            inicializarCalendarioObras();
-        });
+        document.addEventListener('DOMContentLoaded', inicializarCalendarioObras);
     </script>
 </x-app-layout>
