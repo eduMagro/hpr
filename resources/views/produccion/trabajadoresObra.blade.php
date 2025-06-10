@@ -62,7 +62,7 @@
     @endif
 
     <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full md:w-full mt-4">
-        <h3 class="font-bold text-gray-800 mb-2">Trabajadores de HPR</h3>
+        <h3 class="font-bold text-gray-800 mb-2">Trabajadores de HPR Servicios</h3>
         <div id="external-events" class="grid grid-cols-2 md:grid-cols-6 gap-2">
             @foreach ($trabajadores as $t)
                 <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
