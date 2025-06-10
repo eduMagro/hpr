@@ -41,6 +41,16 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // 🔧 Preprocesamiento de los campos
+        $request->merge([
+            'email' => strtolower($request->email),
+            'movil_personal' => $request->movil_personal ? preg_replace('/\D+/', '', $request->movil_personal) : null,
+            'movil_empresa' => $request->movil_empresa ? preg_replace('/\D+/', '', $request->movil_empresa) : null,
+            'name' => ucwords(strtolower($request->name)),
+            'primer_apellido' => ucwords(strtolower($request->primer_apellido)),
+            'segundo_apellido' => $request->segundo_apellido ? ucwords(strtolower($request->segundo_apellido)) : null,
+        ]);
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'primer_apellido' => ['required', 'string', 'max:255'],
