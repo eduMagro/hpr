@@ -416,6 +416,7 @@ class ProduccionController extends Controller
         $resources = $obrasActivas->map(fn($obra) => [
             'id' => $obra->id,
             'title' => $obra->obra,
+            'codigo' => $obra->cod_obra, // <-- asegúrate de que esta columna exista en la tabla `obras`
         ]);
 
         $eventos = [];

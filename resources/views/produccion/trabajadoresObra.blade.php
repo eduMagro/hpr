@@ -79,7 +79,7 @@
         </div>
     </div>
 
-    <div class="py-6">
+    <div class="p-4">
         <!-- Calendario -->
         <div class="w-full bg-white">
             <div id="calendario-obras" class="h-[80vh] w-full"></div>
@@ -139,6 +139,18 @@
                 editable: true,
                 resourceAreaHeaderContent: 'Obras Activas',
                 resources: resources,
+                resourceAreaColumns: [{
+                        field: 'codigo', // este campo debe existir en tu array `resources`
+                        headerContent: 'Código',
+                        width: 20
+                    },
+                    {
+                        field: 'title',
+                        headerContent: 'Obra',
+                        width: 100
+                    }
+                ],
+
                 events: eventos,
                 eventClick(info) {
                     const userId = info.event.extendedProps.user_id;
@@ -295,10 +307,6 @@
                         }
                     }
                 },
-                resourceAreaColumns: [{
-                    field: 'title',
-                    headerContent: 'Obra'
-                }],
                 eventDrop(info) {
                     const asignacionId = info.event.id.replace('turno-', '');
                     const nuevaObraId = info.event.getResources()[0].id;
