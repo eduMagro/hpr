@@ -273,8 +273,9 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-            // Crear el paquete
-            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal);
+            $codigo = Paquete::generarCodigo(); // ← Aquí generas el código
+            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal, $codigo); // ← Se lo pasas
+
 
             // Crear movimiento de paquete pendiente
             Movimiento::create([
@@ -288,7 +289,8 @@ class PaqueteController extends Controller
             ]);
 
             // Asignar los elementos al paquete
-            $this->asignarItemsAPaquete($todosElementos->pluck('id')->toArray(), $paquete->id);
+            $this->asignarEtiquetasAPaquete($etiquetasSubIds, $paquete->id);
+
             session(['elementos_reempaquetados' => $todosElementos->pluck('id')->toArray()]);
 
             DB::commit();
@@ -297,6 +299,7 @@ class PaqueteController extends Controller
                 'success' => true,
                 'message' => 'Paquete creado correctamente.',
                 'paquete_id' => $paquete->id,
+                'codigo_paquete' => $codigo,
                 'codigo_planilla' => $codigo_planilla,
             ], 201);
         } catch (Exception $e) {
@@ -402,19 +405,21 @@ class PaqueteController extends Controller
      * @return Paquete
      * @throws Exception
      */
-    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal)
+    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $codigo)
     {
         try {
             return Paquete::create([
-                'planilla_id' => $planillaId,
-                'ubicacion_id' => $ubicacionId,
-                'peso' => $pesoTotal ?? 0,
+                'planilla_id'   => $planillaId,
+                'ubicacion_id'  => $ubicacionId,
+                'peso'          => $pesoTotal ?? 0,
+                'codigo'        => $codigo,
             ]);
         } catch (Exception $e) {
             Log::error('Error al crear paquete: ' . $e->getMessage());
             throw new Exception('No se pudo crear el paquete: ' . $e->getMessage());
         }
     }
+
 
     /**
      * Asigna los elementos al paquete.
@@ -423,24 +428,27 @@ class PaqueteController extends Controller
      * @param int $paqueteId
      * @throws Exception
      */
-    private function asignarItemsAPaquete($elementos, $paqueteId)
+    private function asignarEtiquetasAPaquete(array $subIds, int $paqueteId)
     {
         try {
-            $elementosYaAsignados = Elemento::whereIn('id', $elementos)
+            // Verificar si alguna etiqueta ya tiene un paquete asignado
+            $etiquetasYaAsignadas = Etiqueta::whereIn('etiqueta_sub_id', $subIds)
                 ->whereNotNull('paquete_id')
-                ->pluck('id')
+                ->pluck('etiqueta_sub_id')
                 ->toArray();
 
-            if (count($elementosYaAsignados) > 0) {
-                Log::warning('Elementos ya asignados a otro paquete: ' . implode(', ', $elementosYaAsignados));
+            if (count($etiquetasYaAsignadas) > 0) {
+                Log::warning('Etiquetas ya asignadas a otro paquete: ' . implode(', ', $etiquetasYaAsignadas));
             }
 
-            Elemento::whereIn('id', $elementos)->update(['paquete_id' => $paqueteId]);
+            // Asignar el paquete a las etiquetas
+            Etiqueta::whereIn('etiqueta_sub_id', $subIds)->update(['paquete_id' => $paqueteId]);
         } catch (Exception $e) {
-            Log::error('Error al asignar paquete: ' . $e->getMessage());
-            throw new Exception('Error al asignar items a paquete: ' . $e->getMessage());
+            Log::error('Error al asignar paquete a etiquetas: ' . $e->getMessage());
+            throw new Exception('Error al asignar paquete a etiquetas: ' . $e->getMessage());
         }
     }
+
 
     /**
      * Elimina un paquete y desasocia sus elementos.

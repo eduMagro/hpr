@@ -1,16 +1,40 @@
 <x-app-layout>
     <x-slot name="title">{{ $maquina->nombre }} - {{ config('app.name') }}</x-slot>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            <strong>{{ $maquina->nombre }}</strong>,
-            {{ $usuario1->name }} @if ($usuario2)
-                y {{ $usuario2->name }}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-2 sm:mb-0">
+                <strong>{{ $maquina->nombre }}</strong>,
+                {{ $usuario1->name }}
+                @if ($usuario2)
+                    y {{ $usuario2->name }}
+                @endif
+            </h2>
+
+            @if ($turnoHoy)
+                <form method="POST" action="{{ route('turno.cambiarMaquina') }}" class="flex items-center gap-2">
+                    @csrf
+                    <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id }}">
+
+                    <select name="nueva_maquina_id" class="border rounded px-2 py-1 text-sm">
+                        @foreach ($maquinas as $maquina)
+                            <option value="{{ $maquina->id }}"
+                                {{ $maquina->id == $turnoHoy->maquina_id ? 'selected' : '' }}>
+                                {{ $maquina->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <button type="submit"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm">
+                        Cambiar máquina
+                    </button>
+                </form>
             @endif
-        </h2>
+        </div>
     </x-slot>
 
-    <div class="w-full sm:px-4 py-6">
 
+    <div class="w-full sm:px-4 py-6">
 
         <!-- Grid principal -->
         <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
@@ -54,7 +78,12 @@
                                         @endif
                                         <input type="hidden" name="descripcion"
                                             value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
-                                        <button class="btn btn-warning text-sm px-3 py-1">Solicitar</button>
+                                        <button
+                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-3 py-1 rounded transition">
+                                            Solicitar
+                                        </button>
+
+
                                     </form>
                                 </div>
 
@@ -425,7 +454,7 @@
 
                                             @if (strtolower($mov->tipo) === 'recarga materia prima')
                                                 <button
-                                                    onclick='abrirModalMovimiento(
+                                                    onclick='abrirModalRecargaMateriaPrima(
                                                         @json($mov->id),
                                                         @json($mov->tipo),
                                                         "",
@@ -488,38 +517,65 @@
                     <!-- Paginador para completados -->
                     <div class="mt-4 flex justify-center gap-2" id="paginador-movimientos-completados"></div>
 
-                    {{-- 🔄 MODAL BAJADA PAQUETE --}}
-                    <div id="modalBajadaPaquete"
+                    {{-- 🔄 MODAL MOVIMIENTO LIBRE --}}
+                    <div id="modalMovimientoLibre"
                         class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
                         <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-4 sm:mx-0">
-                            <h2 class="text-lg font-bold mb-4 text-center text-gray-800">📦 Registrar Bajada de Paquete
-                            </h2>
+                            <h2 class="text-lg font-bold mb-4 text-center text-gray-800">➕ Crear Movimiento Libre</h2>
 
-                            <p id="bajada_descripcion" class="text-sm text-gray-600 mb-4"></p>
-
-                            <form method="POST" action="{{ route('movimientos.store') }}" id="form-bajada-paquete">
+                            <form method="POST" action="{{ route('movimientos.store') }}"
+                                id="form-movimiento-libre">
                                 @csrf
-                                <input type="hidden" name="tipo" value="paquete">
-                                <input type="hidden" name="movimiento_id" id="bajada_movimiento_id">
+                                <input type="hidden" name="tipo" value="movimiento libre">
 
+                                <!-- Tipo de Movimiento -->
                                 <div class="mb-4">
-                                    <label for="bajada_codigo_paquete" class="block font-semibold mb-1">QR
-                                        Paquete</label>
-                                    <input type="text" name="codigo_paquete" id="bajada_codigo_paquete"
-                                        class="w-full border rounded px-3 py-2" placeholder="Escanea QR del paquete"
-                                        required>
+                                    <label for="tipo_movimiento" class="block font-semibold mb-1">Tipo de
+                                        Movimiento</label>
+                                    <select id="tipo_movimiento" name="tipo_movimiento"
+                                        class="form-select w-full border rounded px-3 py-2">
+                                        <option value="producto">Materia Prima</option>
+                                        <option value="paquete">Paquete</option>
+                                    </select>
                                 </div>
 
-                                <div class="mb-4">
-                                    <label for="bajada_ubicacion_destino" class="block font-semibold mb-1">QR
-                                        Ubicación destino</label>
-                                    <input type="text" name="ubicacion_destino" id="bajada_ubicacion_destino"
-                                        class="w-full border rounded px-3 py-2"
-                                        placeholder="Escanea QR de la ubicación" required>
+                                <!-- QR Producto -->
+                                <div id="producto-section" class="mb-4">
+                                    <label for="producto_id" class="block font-semibold mb-1">QR Materia Prima</label>
+                                    <input type="text" name="producto_id" id="producto_id"
+                                        class="w-full border rounded px-3 py-2" placeholder="Escanea QR del producto">
                                 </div>
 
+                                <!-- QR Paquete -->
+                                <div id="paquete-section" class="mb-4 hidden">
+                                    <label for="paquete_id" class="block font-semibold mb-1">QR Paquete</label>
+                                    <input type="text" name="paquete_id" id="paquete_id"
+                                        class="w-full border rounded px-3 py-2" placeholder="Escanea QR del paquete">
+                                </div>
+                                <!-- QR Ubicación Destino -->
+                                <div class="mb-4">
+                                    <label for="ubicacion_destino" class="block font-semibold mb-1">QR Ubicación
+                                        Destino</label>
+                                    <input type="text" name="ubicacion_destino" id="ubicacion_destino"
+                                        class="w-full border rounded px-3 py-2 text-sm sm:text-base"
+                                        placeholder="Escanea el QR de la ubicación de destino">
+                                </div>
+
+                                <!-- Máquina Destino -->
+                                <div class="mb-4">
+                                    <label for="maquina_id" class="block font-semibold mb-1">Máquina Destino</label>
+                                    <select id="maquina_id" name="maquina_destino"
+                                        class="form-select w-full border rounded px-3 py-2">
+                                        <option value="">Seleccionar máquina</option>
+                                        @foreach ($maquinas as $maquina)
+                                            <option value="{{ $maquina->id }}">{{ $maquina->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Botones -->
                                 <div class="flex justify-end gap-3 mt-6">
-                                    <button type="button" onclick="cerrarModalBajadaPaquete()"
+                                    <button type="button" onclick="cerrarModalMovimientoLibre()"
                                         class="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg">Cancelar</button>
                                     <button type="submit"
                                         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Registrar</button>
@@ -527,6 +583,53 @@
                             </form>
                         </div>
                     </div>
+
+                    {{-- 🔄 MODAL BAJADA PAQUETE --}}
+                    <div id="modal-bajada-paquete"
+                        class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
+                        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                            <h2 class="text-xl font-bold mb-4">Reubicar paquete</h2>
+
+                            <p class="mb-2 text-sm text-gray-700"><strong>Descripción:</strong> <span
+                                    id="descripcion_paquete"></span></p>
+
+                            <form method="POST" action="{{ route('movimientos.store') }}">
+                                @csrf
+
+                                <input type="hidden" name="tipo" value="bajada de paquete">
+                                <input type="hidden" name="movimiento_id" id="movimiento_id">
+                                <input type="hidden" name="paquete_id" id="paquete_id">
+                                <input type="hidden" name="ubicacion_origen" id="ubicacion_origen">
+                                <div class="mb-4">
+                                    <label for="verificar_paquete"
+                                        class="block text-sm font-medium text-gray-700">Escanea el paquete</label>
+                                    <input type="text" id="verificar_paquete" name="verificar_paquete" autofocus
+                                        class="w-full mt-1 border rounded px-3 py-2"
+                                        placeholder="Escanea el código del paquete"
+                                        oninput="verificarPaqueteEscaneado(this)">
+                                    <p id="estado_verificacion" class="text-sm mt-1"></p>
+                                </div>
+
+                                <!-- Ubicación destino -->
+                                <div class="mb-4">
+                                    <label for="ubicacion_destino"
+                                        class="block text-sm font-medium text-gray-700">Nueva ubicación</label>
+                                    <input type="text" name="ubicacion_destino" id="ubicacion_destino" required
+                                        class="w-full mt-1 border rounded px-3 py-2"
+                                        placeholder="Escanea o escribe la ubicación destino">
+                                </div>
+
+                                <!-- Botones -->
+                                <div class="flex justify-end space-x-2">
+                                    <button type="button" onclick="cerrarModalBajadaPaquete()"
+                                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Cancelar</button>
+                                    <button type="submit"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Confirmar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
 
                     {{-- 🔄 MODAL RECARGA --}}
                     <div id="modalMovimiento"
@@ -657,7 +760,8 @@
                             }
                         });
 
-                        function abrirModalMovimiento(id, tipo, productoId, maquinaId, productoBaseId, ubicacionesSugeridas, maquinaNombre,
+                        function abrirModalRecargaMateriaPrima(id, tipo, productoId, maquinaId, productoBaseId, ubicacionesSugeridas,
+                            maquinaNombre,
                             tipoBase, diametroBase, longitudBase) {
                             document.getElementById('modal_tipo').value = tipo;
                             document.getElementById('modal_maquina_id').value = maquinaId;
@@ -692,7 +796,7 @@
                             }, 100);
                         }
 
-                        function cerrarModalMovimiento() {
+                        function cerrarModalRecargaMateriaPrima() {
                             document.getElementById('modalMovimiento').classList.add('hidden');
                             document.getElementById('modalMovimiento').classList.remove('flex');
                         }
@@ -708,64 +812,6 @@
                         function cerrarModalMovimientoLibre() {
                             document.getElementById('modalMovimientoLibre').classList.add('hidden');
                             document.getElementById('modalMovimientoLibre').classList.remove('flex');
-                        }
-
-                        document.addEventListener('DOMContentLoaded', function() {
-                            const tipoSelect = document.getElementById('tipo_movimiento');
-                            const productoSection = document.getElementById('producto-section');
-                            const paqueteSection = document.getElementById('paquete-section');
-                            const productoInput = document.getElementById('producto_id_mov_libre');
-                            const paqueteInput = document.getElementById('paquete_id_mov_libre');
-
-                            tipoSelect.addEventListener('change', function() {
-                                if (this.value === 'producto') {
-                                    productoSection.classList.remove('hidden');
-                                    paqueteSection.classList.add('hidden');
-                                    setTimeout(() => productoInput?.focus(), 100);
-                                } else {
-                                    productoSection.classList.add('hidden');
-                                    paqueteSection.classList.remove('hidden');
-                                    setTimeout(() => paqueteInput?.focus(), 100);
-                                }
-                            });
-
-                            // Forzar visibilidad inicial correcta
-                            tipoSelect.dispatchEvent(new Event('change'));
-                        });
-
-                        function abrirModalMovimientoLibreDesdeMovimiento(movimientoId, paqueteId, ubicacionOrigen, descripcion) {
-                            const modal = document.getElementById('modalMovimientoLibre');
-                            if (!modal) return;
-
-                            modal.classList.remove('hidden');
-                            modal.classList.add('flex');
-
-                            const tipoSelect = document.getElementById('tipo_movimiento');
-                            tipoSelect.value = 'paquete';
-                            tipoSelect.disabled = true;
-
-                            document.getElementById('producto_id_mov_libre').value = '';
-                            document.getElementById('paquete_id_mov_libre').value = paqueteId;
-                            document.getElementById('ubicacion_destino').value = '';
-                            document.getElementById('maquina_id').value = '';
-
-                            document.getElementById('producto-section').classList.add('hidden');
-                            document.getElementById('paquete-section').classList.remove('hidden');
-
-                            setTimeout(() => {
-                                document.getElementById('paquete_id_mov_libre')?.focus();
-                            }, 100);
-                        }
-
-                        function cerrarModalMovimientoLibre() {
-                            const modal = document.getElementById('modalMovimientoLibre');
-                            if (modal) {
-                                modal.classList.add('hidden');
-                                modal.classList.remove('flex');
-                            }
-
-                            const tipoSelect = document.getElementById('tipo_movimiento');
-                            tipoSelect.disabled = false;
                         }
 
                         // Mostrar/ocultar campos según tipo
@@ -785,6 +831,48 @@
                             });
                         });
 
+                        let paqueteEsperadoId = null;
+
+                        function abrirModalBajadaPaquete(data) {
+                            document.getElementById('movimiento_id').value = data.id;
+                            document.getElementById('paquete_id').value = data.paquete_id;
+                            document.getElementById('ubicacion_origen').value = data.ubicacion_origen;
+                            document.getElementById('descripcion_paquete').innerText = data.descripcion;
+
+                            paqueteEsperadoId = data.paquete_id;
+                            document.getElementById('verificar_paquete').value = '';
+                            document.getElementById('estado_verificacion').innerText = '';
+                            document.getElementById('verificar_paquete').classList.remove('border-green-500', 'border-red-500');
+
+                            document.getElementById('modal-bajada-paquete').classList.remove('hidden');
+                        }
+
+                        function verificarPaqueteEscaneado(input) {
+                            const valor = input.value.trim();
+                            const estado = document.getElementById('estado_verificacion');
+
+                            if (valor === '') {
+                                estado.innerText = '';
+                                input.classList.remove('border-green-500', 'border-red-500');
+                                return;
+                            }
+
+                            if (valor === String(paqueteEsperadoId)) {
+                                estado.innerText = '✅ Paquete verificado correctamente';
+                                estado.className = 'text-green-600 text-sm mt-1';
+                                input.classList.add('border-green-500');
+                                input.classList.remove('border-red-500');
+                            } else {
+                                estado.innerText = '❌ El paquete escaneado no coincide';
+                                estado.className = 'text-red-600 text-sm mt-1';
+                                input.classList.add('border-red-500');
+                                input.classList.remove('border-green-500');
+                            }
+                        }
+
+                        function cerrarModalBajadaPaquete() {
+                            document.getElementById('modal-bajada-paquete').classList.add('hidden');
+                        }
 
                         function abrirModalPedidoDesdeMovimiento(pedido) {
                             if (!pedido) return;
@@ -793,14 +881,15 @@
                             const modal = document.getElementById('modal-ver-pedido');
 
                             contenedor.innerHTML = `
-                    <p><strong>Código:</strong> ${pedido.codigo}</p>
-                    <p><strong>Estado:</strong> ${pedido.estado}</p>
-                    <p><strong>Proveedor:</strong> ${pedido.proveedor?.nombre ?? '—'}</p>
+            <p><strong>Código:</strong> ${pedido.codigo}</p>
+            <p><strong>Estado:</strong> ${pedido.estado}</p>
+            <p><strong>Proveedor:</strong> ${pedido.proveedor?.nombre ?? '—'}</p>
 
-                    <a href="/pedidos/${pedido.id}/recepcion" class="btn btn-success mt-4 inline-block">
-                        Ir a recepcionarlo
-                    </a>
-                    `;
+            <a href="/pedidos/${pedido.id}/recepcion"
+                class="btn btn-success mt-4 inline-block">
+                Ir a recepcionarlo
+            </a>
+        `;
 
                             modal.classList.remove('hidden');
                         }
@@ -812,7 +901,6 @@
                 </div>
             @endif
 
-            <!-- Modal Reportar Incidencia (Actualizado) -->
             <!-- Modal para Cambiar Estado de la Máquina -->
             <div id="modalIncidencia"
                 class="hidden fixed inset-0 z-50 bg-gray-900 bg-opacity-50 flex items-center justify-center">
@@ -908,34 +996,6 @@
 
         <script>
             //--------------------------------------------------------------------------------------------------------
-            function abrirModalBajadaPaquete(datos) {
-                console.log("🟢 Datos recibidos:", datos);
-
-                const {
-                    id,
-                    paquete_id,
-                    ubicacion_origen,
-                    descripcion
-                } = datos;
-
-                const modal = document.getElementById('modalMovimientoLibre');
-                if (!modal) return;
-
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-
-                // Asegúrate de que estos IDs estén bien
-                document.getElementById('tipo_movimiento').value = 'paquete';
-                document.getElementById('producto_id').value = ''; // limpio si era producto
-                document.getElementById('paquete_id_mov_libre').value = paquete_id;
-                document.getElementById('ubicacion_destino').value = '';
-                document.getElementById('maquina_id').value = '';
-
-                setTimeout(() => {
-                    document.getElementById("ubicacion_destino")?.focus();
-                }, 100);
-            }
-
 
             function abrirModalCambioElemento(elementoId) {
                 document.getElementById('modalCambioMaquina').classList.remove('hidden');
@@ -1080,7 +1140,7 @@
                 // Crear QR en div temporal
                 const tempQR = document.createElement("div");
                 document.body.appendChild(tempQR);
-                const qrSize = 140;
+                const qrSize = 50;
 
                 new QRCode(tempQR, {
                     text: etiquetaSubId.toString(),
@@ -1154,8 +1214,8 @@
     }
 
     .qr-box img {
-        width: 140px;
-        height: 140px;
+        width: 50px;
+        height: 50px;
     }
 
     .proceso {
@@ -1258,8 +1318,8 @@
                     await new Promise(resolve => {
                         new QRCode(tempQR, {
                             text: id.toString(),
-                            width: 140,
-                            height: 140
+                            width: 50,
+                            height: 50
                         });
 
                         setTimeout(() => {

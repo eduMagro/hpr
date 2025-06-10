@@ -12,14 +12,30 @@ class Paquete extends Model
     protected $table = 'paquetes'; // Nombre de la tabla en la BD
 
     protected $fillable = [
+        'codigo',
         'ubicacion_id',
         'planilla_id',
         'peso'
     ];
-    public function getIdPqAttribute()
+    public static function generarCodigo()
     {
-        return 'PQ' . $this->id;
+        $year = now()->format('y');
+        $month = now()->format('m');
+
+        $ultimoCodigo = self::where('codigo', 'LIKE', "P{$year}{$month}%")
+            ->orderBy('codigo', 'desc')
+            ->value('codigo');
+
+        if ($ultimoCodigo) {
+            $ultimoNumero = intval(substr($ultimoCodigo, 5));
+            $nuevoNumero = str_pad($ultimoNumero + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            $nuevoNumero = '0001';
+        }
+
+        return "P{$year}{$month}{$nuevoNumero}";
     }
+
     public function planilla()
     {
         return $this->belongsTo(Planilla::class, 'planilla_id');

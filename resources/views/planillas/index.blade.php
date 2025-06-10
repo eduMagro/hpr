@@ -76,17 +76,14 @@
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
             <!-- Formulario de importación -->
             <form method="POST" action="{{ route('planillas.import') }}" enctype="multipart/form-data"
-                class="form-cargando flex items-center gap-2">
+                x-data="{ cargando: false }" x-on:submit="cargando = true" class="form-cargando flex items-center gap-2">
                 @csrf
 
                 {{-- Campo de archivo --}}
                 <x-tabla.input type="file" name="file" id="file" class="file:mr-2" />
 
                 {{-- Botón importar --}}
-                <x-tabla.boton-azul type="submit" class="btn-cargando flex items-center gap-2">
-                    <span class="spinner-border spinner-border-sm hidden" role="status" aria-hidden="true"></span>
-                    <span class="texto">IMPORTAR</span>
-                </x-tabla.boton-azul>
+                <x-boton-submit texto="Importar" color="blue" />
             </form>
 
         </div>

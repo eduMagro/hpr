@@ -80,6 +80,7 @@
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['id'] ?? 'ID' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                         <th class="p-2 border">{!! $ordenables['planilla'] ?? 'Planilla' !!}</th>
                         <th class="p-2 border">{!! $ordenables['ubicacion'] ?? 'Ubicación' !!}</th>
                         <th class="p-2 border">{!! $ordenables['elementos'] ?? 'Elementos' !!}</th>
@@ -93,6 +94,9 @@
                         <form method="GET" action="{{ route('paquetes.index') }}">
                             <th class="p-1 border">
                                 <x-tabla.input name="id" value="{{ request('id') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.input name="planilla" value="{{ request('planilla') }}" />
@@ -120,6 +124,7 @@
 
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
+                            <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
                             <td class="p-2 text-center border">
                                 <a href="{{ route('planillas.index', ['planilla_id' => $paquete->planilla->id]) }}"
                                     class="text-blue-500 hover:underline">
@@ -156,37 +161,38 @@
                             <td class="p-2 text-center border">
                                 {{ optional($paquete->planilla->fecha_estimada_reparto)->format('d/m/Y') ?? 'No disponible' }}
                             </td>
-                            <td class="px-2 py-2 border text-xs font-bold">
-                                <div class="flex items-center space-x-2 justify-center">
-                                    {{-- Guardar / Cancelar (solo si vas a permitir edición en el futuro) --}}
-                                    <x-tabla.boton-guardar x-show="editando"
-                                        @click="guardarCambios(paquete); editando = false" />
-                                    <x-tabla.boton-cancelar-edicion x-show="editando" @click="editando = false" />
+                            <td class="p-2 text-center border">
+                                <div class="flex flex-row justify-center items-center gap-3">
+                                    {{-- Botón QR --}}
+                                    <button
+                                        onclick="generateAndPrintQR('{{ $paquete->codigo }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')"
+                                        class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                        title="Generar QR">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M4 4h4v4H4V4zm6 0h4v4h-4V4zm6 0h4v4h-4V4zM4 10h4v4H4v-4zm6 10h4v-4h-4v4zm6 0h4v-4h-4v4z" />
+                                        </svg>
+                                    </button>
 
-                                    {{-- Mostrar solo si NO está en modo edición --}}
-                                    <template x-if="!editando">
-                                        <div class="flex items-center space-x-2">
-                                            {{-- Botón ver dibujo del paquete --}}
-                                            <button @click="mostrarDibujo({{ $paquete->id }})"
-                                                class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
-                                                title="Ver dibujo">
-                                                <i class="fas fa-eye text-xs"></i>
-                                            </button>
-
-                                            {{-- Botón QR --}}
-                                            <button
-                                                @click="generateAndPrintQR('{{ $paquete->id }}', '{{ $paquete->planilla->codigo_limpio }}', 'PAQUETE')"
-                                                class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
-                                                title="Generar QR">
-                                                <i class="fas fa-qrcode text-xs"></i>
-                                            </button>
-
-                                            {{-- Botón eliminar (componente) --}}
-                                            <x-tabla.boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
-                                        </div>
-                                    </template>
+                                    {{-- Botón ver dibujo --}}
+                                    {{-- Botón Ver --}}
+                                    <button @click="mostrarDibujo({{ $paquete->id }})"
+                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
+                                        title="Ver dibujo del paquete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    </button>
+                                    {{-- Botón eliminar --}}
+                                    <x-tabla.boton-eliminar :action="route('paquetes.destroy', $paquete->id)" />
                                 </div>
                             </td>
+
 
                         </tr>
                     @empty

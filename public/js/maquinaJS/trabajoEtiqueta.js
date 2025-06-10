@@ -68,7 +68,13 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (!response.ok) {
-                showErrorAlert(data.error || "Error desconocido.");
+                console.error("Respuesta no OK:", response.status, data);
+                showErrorAlert(
+                    data?.error ||
+                        `Error ${response.status}: ${
+                            data?.message || "respuesta no válida"
+                        }`
+                );
                 return;
             }
 

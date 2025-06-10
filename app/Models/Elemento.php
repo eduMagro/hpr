@@ -53,20 +53,25 @@ class Elemento extends Model
     public static function generarCodigo(): string
     {
         $año = now()->year;
+        $mes = now()->format('m'); // Mes con dos dígitos
         $anyoCorto = substr($año, -2);
+        $prefijo = "EL{$anyoCorto}{$mes}"; // Ej: EL2506
 
-        $ultimo = self::where('codigo', 'like', "EL-$anyoCorto-%")
+        // Buscar el último código que empiece por el prefijo
+        $ultimo = self::where('codigo', 'like', "{$prefijo}%")
             ->orderByDesc('codigo')
             ->value('codigo');
 
         $siguiente = 1;
         if ($ultimo) {
-            $partes = explode('-', $ultimo); // EL-25-012
-            $siguiente = (int)($partes[2] ?? 0) + 1;
+            $num = (int)substr($ultimo, strlen($prefijo));
+            $siguiente = $num + 1;
         }
 
-        return sprintf("EL-%s-%03d", $anyoCorto, $siguiente);
+
+        return sprintf("%s%03d", $prefijo, $siguiente);
     }
+
     /**
      * Indica si el modelo debe gestionar las marcas de tiempo.
      *

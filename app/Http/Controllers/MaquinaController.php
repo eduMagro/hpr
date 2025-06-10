@@ -433,6 +433,15 @@ class MaquinaController extends Controller
             ])->values(),
         ])->values();
 
+
+        // ---------------------------------------------------------------
+        // 11) Calcular el turno que tiene el usuario autenticado hoy
+        // ---------------------------------------------------------------
+        $turnoHoy = AsignacionTurno::where('user_id', auth()->id())
+            ->whereDate('fecha', now())
+            ->with('maquina') // si quieres info adicional de la máquina
+            ->first();
+
         // ---------------------------------------------------------------
         // 11) Retornar vista con todos los datos precargados
         // ---------------------------------------------------------------
@@ -452,7 +461,8 @@ class MaquinaController extends Controller
             'productosBaseCompatibles',
             'pedidosActivos',
             'elementosAgrupados',
-            'elementosAgrupadosScript'
+            'elementosAgrupadosScript',
+            'turnoHoy'
         ));
     }
 
@@ -544,6 +554,24 @@ class MaquinaController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    // TurnoController.php
+    public function cambiarMaquina(Request $request)
+    {
+        $request->validate([
+            'asignacion_id' => 'required|exists:asignaciones_turnos,id',
+            'nueva_maquina_id' => 'required|exists:maquinas,id',
+        ]);
+
+        $asignacion = AsignacionTurno::findOrFail($request->asignacion_id);
+        $asignacion->maquina_id = $request->nueva_maquina_id;
+        $asignacion->save();
+
+        return redirect()
+            ->route('maquinas.index')
+            ->with('success', 'Máquina actualizada correctamente.');
+    }
+
     public function cambiarEstado(Request $request, $id)
     {
         $request->validate([
