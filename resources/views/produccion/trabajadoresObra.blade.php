@@ -131,6 +131,11 @@
                     center: 'title',
                     right: 'resourceTimelineDay,resourceTimelineWeek'
                 },
+                buttonText: {
+                    today: 'Hoy',
+                    week: 'Semana',
+                    day: 'Día'
+                },
                 editable: true,
                 resourceAreaHeaderContent: 'Obras Activas',
                 resources: resources,
