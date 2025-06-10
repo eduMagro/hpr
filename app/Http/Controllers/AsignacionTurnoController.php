@@ -703,4 +703,23 @@ class AsignacionTurnoController extends Controller
             'obra_id' => $validated['obra_id']
         ]);
     }
+    public function quitarObra($id)
+    {
+        $asignacion = AsignacionTurno::find($id);
+
+        if (!$asignacion) {
+            return response()->json([
+                'success' => false,
+                'message' => '❌ Asignación no encontrada.'
+            ]);
+        }
+
+        $asignacion->obra_id = null;
+        $asignacion->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => '🗑️ Obra eliminada correctamente.'
+        ]);
+    }
 }

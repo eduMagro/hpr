@@ -222,6 +222,47 @@
                             eventoTemporal.remove();
                         });
                 },
+                eventDidMount(info) {
+                    info.el.addEventListener('contextmenu', function(e) {
+                        e.preventDefault(); // Evita el menú del navegador
+
+                        Swal.fire({
+                            title: '¿Eliminar asignación de obra?',
+                            text: "Esto quitará la obra del trabajador en ese turno.",
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'Sí, eliminar'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                const asignacionId = info.event.id.replace('turno-', '');
+
+                                fetch(`/asignaciones-turno/${asignacionId}/quitar-obra`, {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                        }
+                                    })
+                                    .then(res => res.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            info.event.remove();
+                                            Swal.fire('✅ Eliminado', data.message, 'success');
+                                        } else {
+                                            Swal.fire('❌ Error', data.message, 'error');
+                                        }
+                                    })
+                                    .catch(err => {
+                                        console.error(err);
+                                        Swal.fire('❌ Error', 'No se pudo quitar la obra.',
+                                            'error');
+                                    });
+                            }
+                        });
+                    });
+                },
                 eventContent(arg) {
                     const props = arg.event.extendedProps;
                     return {
