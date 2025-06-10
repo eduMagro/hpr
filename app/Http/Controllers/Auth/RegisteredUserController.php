@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redirect;
 
 class RegisteredUserController extends Controller
 {
@@ -112,25 +114,36 @@ class RegisteredUserController extends Controller
             'password.required' => 'La contraseña es obligatoria.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
+        try {
+            $user = User::create([
+                'name' => $request->name,
+                'primer_apellido' => $request->primer_apellido,
+                'segundo_apellido' => $request->segundo_apellido,
+                'email' => $request->email,
+                'movil_personal' => $request->movil_personal,
+                'movil_empresa' => $request->movil_empresa,
+                'dni' => $request->dni,
+                'empresa_id' => $request->empresa_id,
+                'rol' => $request->rol,
+                'categoria_id' => $request->categoria_id,
+                'turno' => $request->turno,
+                'password' => Hash::make($request->password),
+            ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'primer_apellido' => $request->primer_apellido,
-            'segundo_apellido' => $request->segundo_apellido,
-            'email' => $request->email,
-            'movil_personal' => $request->movil_personal,
-            'movil_empresa' => $request->movil_empresa,
-            'dni' => $request->dni,
-            'empresa_id' => $request->empresa_id,
-            'rol' => $request->rol,
-            'categoria_id' => $request->categoria_id,
-            'turno' => $request->turno,
-            'password' => Hash::make($request->password),
-        ]);
+            event(new Registered($user));
 
-        event(new Registered($user));
+            return redirect()->route('users.index')->with('success', 'Usuario creado correctamente.');
+        } catch (\Exception $e) {
+            Log::error('Error al registrar usuario: ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
-        return redirect(route('users.index', absolute: false));
+            return back()->withInput()->withErrors([
+                'general' => 'Ha ocurrido un error al registrar el usuario. Inténtalo de nuevo más tarde.'
+            ]);
+        }
     }
 
     /**
