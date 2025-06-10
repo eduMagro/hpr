@@ -20,7 +20,8 @@
                 <label for="cantidad_paquetes" class="block text-gray-700 font-bold mb-2">
                     ¿Cuántos paquetes quieres registrar?
                 </label>
-                <select id="cantidad_paquetes" name="cantidad_paquetes" class="w-full px-3 py-2 border rounded-lg"
+                <select id="cantidad_paquetes" name="cantidad_paquetes"
+                    class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     x-model="paquetes">
                     <option value="1">1 paquete</option>
                     <option value="2">2 paquetes</option>
@@ -34,12 +35,15 @@
                 <div class="mb-4">
                     <label for="codigo" class="block text-gray-700 font-bold mb-2">Código (escaneado):</label>
                     <input type="text" id="codigo" name="codigo" value="{{ old('codigo') }}" required
-                        placeholder="Escanee el código MP..." class="w-full px-3 py-2 border rounded-lg" autofocus>
+                        placeholder="Escanee el código MP..."
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autofocus>
                 </div>
 
                 <div class="mb-4">
                     <label for="fabricante_id" class="block text-gray-700 font-bold mb-2">Fabricante:</label>
-                    <select id="fabricante_id" name="fabricante_id" required class="w-full px-3 py-2 border rounded-lg">
+                    <select id="fabricante_id" name="fabricante_id" required
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">Seleccione un fabricante</option>
                         @foreach ($fabricantes as $fabricante)
                             <option value="{{ $fabricante->id }}"
@@ -55,13 +59,13 @@
                     <input type="text" id="albaran" name="albaran" value="{{ old('albaran', 'Entrada manual') }}"
                         required pattern="[A-Za-z0-9 ]{5,30}"
                         title="Debe contener entre 5 y 30 caracteres alfanuméricos"
-                        class="w-full px-3 py-2 border rounded-lg">
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
                 <div class="mb-4">
                     <label for="producto_base_id" class="block text-gray-700 font-bold mb-2">Producto base:</label>
                     <select id="producto_base_id" name="producto_base_id" required
-                        class="w-full px-3 py-2 border rounded-lg">
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="" disabled>Seleccione un producto base</option>
                         @foreach ($productosBase as $producto)
                             <option value="{{ $producto->id }}"
@@ -76,13 +80,13 @@
                 <div class="mb-2">
                     <label for="n_colada" class="block text-gray-700">Colada:</label>
                     <input type="text" id="n_colada" name="n_colada" value="{{ old('n_colada') }}" required
-                        class="w-full px-3 py-2 border rounded-lg">
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
                 <div class="mb-2">
                     <label for="n_paquete" class="block text-gray-700">Paquete:</label>
                     <input type="text" id="n_paquete" name="n_paquete" value="{{ old('n_paquete') }}" required
-                        class="w-full px-3 py-2 border rounded-lg">
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
 
@@ -91,19 +95,20 @@
                 <h3 class="text-blue-700 font-semibold text-base mb-2">🧱 Segundo paquete</h3>
                 <input type="text" id="codigo_2" name="codigo_2" :required="paquetes === '2'"
                     x-show="paquetes === '2'" value="{{ old('codigo_2') }}"
-                    placeholder="Escanee el segundo código MP..." class="w-full px-3 py-2 border rounded-lg">
+                    placeholder="Escanee el segundo código MP..."
+                    class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
 
 
                 <div class="mb-2">
                     <label for="n_colada_2" class="block text-gray-700">Nº Colada:</label>
                     <input type="text" id="n_colada_2" name="n_colada_2" value="{{ old('n_colada_2') }}"
-                        class="w-full px-3 py-2 border rounded-lg">
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
                 <div class="mb-2">
                     <label for="n_paquete_2" class="block text-gray-700">Nº Paquete:</label>
                     <input type="text" id="n_paquete_2" name="n_paquete_2" value="{{ old('n_paquete_2') }}"
-                        class="w-full px-3 py-2 border rounded-lg">
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
             </div>
 
@@ -112,13 +117,16 @@
                 <div class="mb-2">
                     <label for="peso" class="block text-gray-700">Peso (kg):</label>
                     <input type="number" id="peso" name="peso" value="{{ old('peso') }}" required
-                        min="1" step="0.01" class="w-full px-3 py-2 border rounded-lg" x-model="peso">
+                        min="1" step="0.01"
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        x-model="peso">
                     <p class="text-sm text-gray-500 mt-1" x-show="paquetes === '2'">
                         Introduce el <strong>peso total de ambos paquetes</strong>. Se dividirá automáticamente.
                     </p>
                 </div>
 
-                <select id="ubicacion" name="ubicacion" class="w-full px-3 py-2 mt-2 border rounded-lg"
+                <select id="ubicacion" name="ubicacion"
+                    class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     x-model="ubicacion" required>
                     <option value="">Seleccione una ubicación</option>
                     @foreach ($ubicaciones as $ubicacion)
