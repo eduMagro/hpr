@@ -121,10 +121,14 @@ class PaqueteController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Paquete::with(['planilla', 'ubicacion', 'elementos'])
+        // Carga las relaciones necesarias, incluyendo etiquetas y sus elementos
+        $query = Paquete::with(['planilla', 'ubicacion', 'etiquetas.elementos'])
             ->orderBy('created_at', 'desc');
+
+        // Aplicar filtros
         $query = $this->aplicarFiltros($request, $query);
-        // Ordenamiento
+
+        // Ordenamiento dinámico
         $sortBy = $request->input('sort');
         $order = $request->input('order', 'asc');
         $allowedSorts = ['id', 'planilla_id', 'peso', 'created_at', 'fecha_limite_reparto'];
@@ -141,11 +145,11 @@ class PaqueteController extends Controller
 
         $paquetes = $query->get();
 
-
-        // Convertir a LengthAwarePaginator manual
+        // Paginación manual
         $currentPage = request()->get('page', 1);
         $perPage = 10;
         $offset = ($currentPage - 1) * $perPage;
+
         $paginados = new \Illuminate\Pagination\LengthAwarePaginator(
             $paquetes->slice($offset, $perPage)->values(),
             $paquetes->count(),
@@ -154,10 +158,47 @@ class PaqueteController extends Controller
             ['path' => request()->url(), 'query' => request()->query()]
         );
 
-        foreach ($paginados as $paquete) {
-            $paquete->elementos = $paquete->elementos->sortBy('id')->values();
-        }
+        $paquetesConEtiquetas = Paquete::with('etiquetas')->get()->mapWithKeys(function ($paquete) {
+            return [$paquete->codigo => $paquete->etiquetas->pluck('etiqueta_sub_id')];
+        });
+        $paquetes = Paquete::with('etiquetas.elementos', 'planilla', 'ubicacion')->get();
 
+        $paquetesJson = $paquetes->map(function ($p) {
+            return [
+                'id' => $p->id,
+                'codigo' => $p->codigo,
+                'etiquetas' => $p->etiquetas->map(function ($e) {
+                    return [
+                        'id' => $e->id,
+                        'etiqueta_sub_id' => $e->etiqueta_sub_id,
+                        'nombre' => $e->nombre,
+                        'codigo' => $e->codigo,
+                        'peso_kg' => $e->peso_kg,
+                    ];
+                }),
+            ];
+        });
+
+        $elementosAgrupadosScript = Etiqueta::with('elementos')->get()->map(function ($etiqueta) {
+            return [
+                'etiqueta' => [
+                    'id' => $etiqueta->id,
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id,
+                ],
+                'elementos' => $etiqueta->elementos->map(function ($e) {
+                    return [
+                        'id' => $e->id,
+                        'dimensiones' => $e->dimensiones,
+                        'barras' => $e->barras,
+                        'peso' => $e->peso_kg,
+                        'diametro' => $e->diametro,
+                    ];
+                }),
+            ];
+        });
+
+
+        // Opciones de ordenamiento
         $ordenables = [
             'id' => $this->getOrdenamiento('id', 'ID'),
             'planilla_id' => $this->getOrdenamiento('planilla_id', 'Planilla'),
@@ -167,12 +208,17 @@ class PaqueteController extends Controller
         ];
 
         $filtrosActivos = $this->filtrosActivos($request);
+
         return view('paquetes.index', [
             'paquetes' => $paginados,
+            'paquetesJson' => $paquetesJson,
             'ordenables' => $ordenables,
-            'filtrosActivos' => $filtrosActivos
+            'filtrosActivos' => $filtrosActivos,
+            'paquetesConEtiquetas' => $paquetesConEtiquetas,
+            'elementosAgrupadosScript' => $elementosAgrupadosScript
         ]);
     }
+
     /**
      * Crea un nuevo paquete y asocia las etiquetas y elementos.
      *
@@ -336,14 +382,14 @@ class PaqueteController extends Controller
         $etiquetasSubIds = collect($items)->where('type', 'etiqueta')->pluck('id')->toArray();
         $elementosIds = collect($items)->where('type', 'elemento')->pluck('id')->toArray();
 
-        // Buscar las etiquetas por su sub_id (no por id normal)
         $etiquetas = Etiqueta::whereIn('etiqueta_sub_id', $etiquetasSubIds)
             ->with(['planilla', 'elementos'])
             ->get();
 
+
         if (count($etiquetas) < count($etiquetasSubIds)) {
-            $subIdsEncontrados = $etiquetas->pluck('etiqueta_sub_id')->toArray();
-            $faltantes = array_diff($etiquetasSubIds, $subIdsEncontrados);
+            $idsEncontrados = $etiquetas->pluck('etiqueta_sub_id')->toArray(); // ✅ pluck del mismo campo
+            $faltantes = array_diff($etiquetasSubIds, $idsEncontrados);
             $warnings['etiquetas_no_encontradas'] = array_values($faltantes);
         }
 
@@ -358,10 +404,10 @@ class PaqueteController extends Controller
         // Validar que las etiquetas estén completas
         foreach ($etiquetas as $etiqueta) {
             if (!$etiqueta->planilla) {
-                $warnings['etiquetas_incompletas'][] = $etiqueta->etiqueta_sub_id;
+                $warnings['etiquetas_incompletas'][] = $etiqueta->id;
             }
             if ($etiqueta->elementos->isEmpty() && !$etiqueta->pesoTotal) {
-                $warnings['etiquetas_incompletas'][] = $etiqueta->etiqueta_sub_id;
+                $warnings['etiquetas_incompletas'][] = $etiqueta->id;
             }
         }
 
@@ -372,29 +418,17 @@ class PaqueteController extends Controller
             }
         }
 
-        // Obtener los elementos asociados a las etiquetas filtrados por máquina
-        $elementosIdsDesdeEtiquetas = $etiquetas->flatMap(function ($etiqueta) use ($maquinaId) {
-            return $etiqueta->elementos
-                ->where('maquina_id', $maquinaId)
-                ->pluck('id');
-        })->toArray();
+        // Verificar si las etiquetas ya tienen paquete asignado
+        $etiquetasConPaquete = $etiquetas->filter(function ($etiqueta) {
+            return !is_null($etiqueta->paquete_id);
+        })->pluck('id')->toArray();
 
-        // Combinar
-        $todosElementosIds = array_unique(array_merge($elementosIdsDesdeEtiquetas, $elementosIds));
-
-        // Verificar si ya tienen paquete
-        $elementosOcupados = Elemento::whereIn('id', $todosElementosIds)
-            ->whereNotNull('paquete_id')
-            ->pluck('id')
-            ->toArray();
-
-        if (!empty($elementosOcupados)) {
-            $warnings['elementos_ocupados'] = $elementosOcupados;
+        if (!empty($etiquetasConPaquete)) {
+            $warnings['etiquetas_ocupadas'] = $etiquetasConPaquete;
         }
 
         return !empty($warnings) ? $warnings : null;
     }
-
 
     /**
      * Crea un nuevo paquete.
@@ -420,7 +454,6 @@ class PaqueteController extends Controller
         }
     }
 
-
     /**
      * Asigna los elementos al paquete.
      *
@@ -441,8 +474,9 @@ class PaqueteController extends Controller
                 Log::warning('Etiquetas ya asignadas a otro paquete: ' . implode(', ', $etiquetasYaAsignadas));
             }
 
-            // Asignar el paquete a las etiquetas
-            Etiqueta::whereIn('etiqueta_sub_id', $subIds)->update(['paquete_id' => $paqueteId]);
+            // Asignar el paquete a las etiquetas correctas
+            Etiqueta::whereIn('etiqueta_sub_id', $subIds)
+                ->update(['paquete_id' => $paqueteId]);
         } catch (Exception $e) {
             Log::error('Error al asignar paquete a etiquetas: ' . $e->getMessage());
             throw new Exception('Error al asignar paquete a etiquetas: ' . $e->getMessage());

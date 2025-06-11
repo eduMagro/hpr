@@ -248,6 +248,7 @@ class MaquinaController extends Controller
                             'id' => $p->ubicacion->id,
                             'nombre' => $p->ubicacion->nombre,
                             'producto_id' => $p->id,
+                            'codigo' => $p->codigo,
                         ])->unique('id')->values()->toArray();
 
                     $ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] = $ubicaciones;

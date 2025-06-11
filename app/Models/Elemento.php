@@ -144,10 +144,6 @@ class Elemento extends Model
         return $this->belongsTo(Producto::class, 'producto_id_3');
     }
 
-    public function paquete()
-    {
-        return $this->belongsTo(Paquete::class, 'paquete_id');
-    }
 
     // Longitudes
     public function getLongitudCmAttribute()

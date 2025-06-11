@@ -28,117 +28,66 @@ document
 function agregarItem() {
     const qrItem = document.getElementById("qrItem");
     const itemCode = qrItem.value.trim();
-    const itemType = document
-        .getElementById("itemType")
-        .value.trim()
-        .toLowerCase();
-    let peso = 0;
 
-    console.log("Intentando agregar item:", { itemCode, itemType });
-
-    // Validación: QR vacío
+    // Validación: campo vacío
     if (!itemCode) {
         Swal.fire({
             icon: "warning",
-            title: "QR Inválido",
-            text: "Por favor, escanee un QR válido.",
-            confirmButtonColor: "#3085d6",
+            title: "Código vacío",
+            text: "Por favor, escanea o introduce un código válido de subetiqueta.",
         });
         return;
     }
 
-    // Validación: Evitar duplicados
+    // Validación: evitar duplicados
     if (items.some((i) => i.id === itemCode)) {
         Swal.fire({
             icon: "error",
-            title: "Item Duplicado",
-            text: "Este item ya ha sido agregado.",
-            confirmButtonColor: "#d33",
+            title: "Etiqueta duplicada",
+            text: "Esta etiqueta ya está en la lista.",
         });
         qrItem.value = "";
         return;
     }
 
-    // Procesamiento según tipo de item
-    if (itemType === "etiqueta") {
-        const etiqueta = etiquetasData.find((e) => {
-            console.log(
-                "Comparando",
-                String(e.codigo),
-                "con",
-                String(itemCode)
-            );
-            return String(e.codigo).trim() === String(itemCode).trim();
+    // Buscar la etiqueta en los datos precargados
+    const etiqueta = etiquetasData.find(
+        (e) => String(e.codigo).trim() === itemCode
+    );
+
+    if (!etiqueta) {
+        Swal.fire({
+            icon: "error",
+            title: "Etiqueta no encontrada",
+            text: "No se encontró la etiqueta en los datos disponibles.",
         });
+        return;
+    }
 
-        if (etiqueta) {
-            // Si la etiqueta tiene un array de elementos, se calcula el peso sumando cada uno
-            if (
-                Array.isArray(etiqueta.elementos) &&
-                etiqueta.elementos.length > 0
-            ) {
-                peso = etiqueta.elementos.reduce((total, elementoId) => {
-                    const elementoObj = pesosElementos.find(
-                        (item) => String(item.id) === String(elementoId)
-                    );
-                    return (
-                        total + (elementoObj ? parseFloat(elementoObj.peso) : 0)
-                    );
-                }, 0);
-            } else if (etiqueta.pesoTotal) {
-                // Si no hay elementos, se usa el peso total definido en la etiqueta
-                peso = parseFloat(etiqueta.pesoTotal) || 0;
-            } else {
-                Swal.fire({
-                    icon: "error",
-                    title: "Etiqueta sin datos",
-                    text: "La etiqueta no tiene elementos asociados ni un peso total definido.",
-                    confirmButtonColor: "#d33",
-                });
-                return;
-            }
-        } else {
-            Swal.fire({
-                icon: "error",
-                title: "Etiqueta no encontrada",
-                text: "No se encontró la etiqueta en los datos precargados.",
-                confirmButtonColor: "#d33",
-            });
-            return;
-        }
-    } else if (itemType === "elemento") {
-        // Para tipo 'elemento', se busca el objeto en los datos precargados
-        const elementoObj = pesosElementos.find(
-            (item) => String(item.id).trim() === String(itemCode).trim()
-        );
-        if (elementoObj) {
-            peso = parseFloat(elementoObj.peso) || 0;
-        } else {
-            Swal.fire({
-                icon: "error",
-                title: "Elemento no encontrado",
-                text: "No se encontró el elemento en los datos precargados.",
-                confirmButtonColor: "#d33",
-            });
-            return;
-        }
+    // Calcular el peso de la etiqueta
+    let peso = 0;
+    if (Array.isArray(etiqueta.elementos) && etiqueta.elementos.length > 0) {
+        peso = etiqueta.elementos.reduce((total, id) => {
+            const el = pesosElementos.find((e) => e.id == id);
+            return total + (el ? parseFloat(el.peso) : 0);
+        }, 0);
+    } else if (etiqueta.pesoTotal) {
+        peso = parseFloat(etiqueta.pesoTotal) || 0;
     } else {
-        // Otros tipos: se utiliza el input de peso manual
-        const itemPesoInput = document.getElementById("itemPeso");
-        peso = itemPesoInput ? parseFloat(itemPesoInput.value.trim()) : 0;
+        Swal.fire({
+            icon: "error",
+            title: "Etiqueta incompleta",
+            text: "La etiqueta no tiene elementos ni peso definido.",
+        });
+        return;
     }
 
-    // Se crea el nuevo item y se agrega al arreglo
-    const newItem = { id: itemCode, type: itemType, peso: peso };
+    // Agregar a la lista
+    const newItem = { id: itemCode, type: "etiqueta", peso };
     items.push(newItem);
-    console.log("Item agregado. Lista actualizada:", newItem);
 
-    // Reiniciar el valor del input QR y, si corresponde, del input de peso
+    // Limpiar input y actualizar la lista visual
     qrItem.value = "";
-    if (itemType !== "etiqueta") {
-        const itemPesoInput = document.getElementById("itemPeso");
-        if (itemPesoInput) itemPesoInput.value = "";
-    }
     actualizarLista();
 }
 
@@ -147,11 +96,10 @@ function agregarItem() {
  * - Elimina un item de la lista por su código.
  ***************************************/
 function eliminarItem(itemCode) {
-    console.log("Eliminando item:", itemCode);
     const index = items.findIndex((i) => i.id === itemCode);
     if (index > -1) {
         items.splice(index, 1);
-        console.log("Item eliminado. Lista actualizada:", items);
+
         actualizarLista();
     }
 }
@@ -168,9 +116,10 @@ function actualizarLista() {
 
     items.forEach((item) => {
         const listItem = document.createElement("li");
-        listItem.textContent = `${item.type.toUpperCase()}: ${
-            item.id
-        } - Peso: ${(parseFloat(item.peso) || 0).toFixed(2)} kg`;
+        listItem.textContent = `${item.id} – ${(
+            parseFloat(item.peso) || 0
+        ).toFixed(2)} kg`;
+
         listItem.dataset.code = item.id;
 
         const removeButton = document.createElement("button");
@@ -188,6 +137,7 @@ function actualizarLista() {
     );
     const totalItem = document.createElement("li");
     totalItem.textContent = `Total: ${totalPeso.toFixed(2)} kg`;
+
     totalItem.style.fontWeight = "bold";
     itemsList.appendChild(totalItem);
 }
@@ -199,34 +149,40 @@ function actualizarLista() {
  * - Muestra mensajes de error o éxito completos.
  ***************************************/
 function crearPaquete() {
-    console.log(
-        "Iniciando la creación del paquete con items:",
-        JSON.stringify(items, null, 2)
-    );
+    console.log("Iniciando la creación del paquete con etiquetas:", items);
 
     if (items.length === 0) {
         Swal.fire({
             icon: "warning",
-            title: "Sin Items",
-            text: "No has agregado ningún item a la lista.",
-            confirmButtonColor: "#3085d6",
+            title: "Sin etiquetas",
+            text: "No has agregado ninguna etiqueta a la lista.",
         });
         return;
     }
 
-    // Función para enviar la solicitud a /paquetes
+    if (
+        typeof maquinaId === "undefined" ||
+        typeof ubicacionId === "undefined"
+    ) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de configuración",
+            text: "No se ha definido correctamente la máquina o la ubicación.",
+        });
+        return;
+    }
+
     const enviarSolicitudPaquete = (confirmar = false) => {
         const bodyData = {
             items: items.map((item) => ({
-                ...item,
-                id: item.id,
+                id: item.id, // es el código de subetiqueta
+                type: "etiqueta",
             })),
             maquina_id: parseInt(maquinaId),
             ubicacion_id: parseInt(ubicacionId),
+            ...(confirmar && { confirmar: true }),
         };
-        if (confirmar) {
-            bodyData.confirmar = true;
-        }
+
         return fetch("/paquetes", {
             method: "POST",
             headers: {
@@ -240,14 +196,12 @@ function crearPaquete() {
         });
     };
 
-    // Se realiza la llamada directamente a /paquetes
     enviarSolicitudPaquete(false)
         .then(async (response) => {
             let data;
             try {
-                data = await response.clone().json(); // Intentamos parsear JSON
-            } catch (jsonError) {
-                // Si no es JSON, interpretamos como error grave
+                data = await response.clone().json();
+            } catch {
                 throw new Error(
                     `Error inesperado del servidor (Código ${response.status})`
                 );
@@ -255,28 +209,33 @@ function crearPaquete() {
 
             if (!response.ok) {
                 throw new Error(
-                    data.message ||
-                        `Error del servidor (Código ${response.status})`
+                    data.message || `Error del servidor (${response.status})`
                 );
             }
+
             return data;
         })
         .then((data) => {
             if (data.success) {
                 return data;
-            } else if (data.warning) {
-                // Si se recibe warning, se muestra una confirmación al usuario
+            }
+
+            if (data.warning) {
                 let mensajeAdicional =
-                    data.warning.message ||
-                    "Algunos elementos ya están asignados a otro paquete.";
-                if (
-                    data.warning.elementos_ocupados &&
-                    data.warning.elementos_ocupados.length > 0
-                ) {
-                    mensajeAdicional += `<br><br><strong>Elementos en un paquete:</strong> ${data.warning.elementos_ocupados.join(
+                    "Algunos elementos presentan advertencias:";
+
+                if (data.warning.etiquetas_ocupadas?.length) {
+                    mensajeAdicional += `<br><br><strong>Etiquetas ya empaquetadas:</strong> ${data.warning.etiquetas_ocupadas.join(
                         ", "
                     )}`;
                 }
+
+                if (data.warning.etiquetas_incompletas?.length) {
+                    mensajeAdicional += `<br><strong>Etiquetas incompletas:</strong> ${data.warning.etiquetas_incompletas.join(
+                        ", "
+                    )}`;
+                }
+
                 return Swal.fire({
                     icon: "warning",
                     title: "Advertencia",
@@ -291,7 +250,9 @@ function crearPaquete() {
                         return enviarSolicitudPaquete(true).then((response) => {
                             if (!response.ok) {
                                 return response.json().then((errData) => {
-                                    throw errData;
+                                    throw new Error(
+                                        errData.message || "Error al confirmar."
+                                    );
                                 });
                             }
                             return response.json();
@@ -300,43 +261,32 @@ function crearPaquete() {
                         throw new Error("Operación cancelada por el usuario.");
                     }
                 });
-            } else {
-                throw new Error(
-                    data.message || "Error desconocido al crear el paquete."
-                );
             }
+
+            throw new Error(
+                data.message || "Error desconocido al crear el paquete."
+            );
         })
         .then((data) => {
             if (data.success) {
                 Swal.fire({
                     icon: "success",
                     title: "Éxito",
-                    html: `Paquete creado con éxito. Código: <strong>${data.codigo_paquete}</strong> <br>
-                          <button onclick="generateAndPrintQR('${data.codigo_paquete}', '${data.codigo_planilla}', 'PAQUETE')"
-                                   class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">QR</button>`,
-                })
-                    .then(() => {
-                        // Reinicia la lista de items
-                        items.length = 0;
-                        document.getElementById("itemsList").innerHTML = "";
-                    })
-                    .then(() => {
-                        window.location.reload();
-                    });
-            } else {
-                throw new Error(
-                    data.message || "Error desconocido al crear el paquete."
-                );
+                    html: `Paquete creado correctamente. <br>Código: <strong>${data.codigo_paquete}</strong><br>
+                           <button onclick="generateAndPrintQR('${data.codigo_paquete}', '${data.codigo_planilla}', 'PAQUETE')"
+                                   class="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">📄 Imprimir QR</button>`,
+                }).then(() => {
+                    items.length = 0;
+                    document.getElementById("itemsList").innerHTML = "";
+                    window.location.reload();
+                });
             }
         })
         .catch((error) => {
             Swal.fire({
                 icon: "error",
                 title: "Error en Controlador",
-                text: `No se pudo crear el paquete. Detalles: ${
-                    error.message || JSON.stringify(error)
-                }`,
-                confirmButtonColor: "#d33",
+                text: `No se pudo crear el paquete. Detalles: ${error.message}`,
             });
         });
 }

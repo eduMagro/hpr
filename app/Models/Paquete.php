@@ -48,10 +48,6 @@ class Paquete extends Model
     {
         return $this->hasMany(Etiqueta::class, 'paquete_id');
     }
-    public function elementos()
-    {
-        return $this->hasMany(Elemento::class, 'paquete_id');
-    }
 
     /**
      * Relación uno a uno con Ubicación (Un paquete tiene una única ubicación)

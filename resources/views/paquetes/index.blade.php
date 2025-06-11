@@ -134,26 +134,37 @@
                             <td class="p-2 text-center border">
                                 {{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}</td>
                             <td class="p-2 text-center border">
-                                @if ($paquete->elementos->isNotEmpty())
-                                    @foreach ($paquete->elementos as $elemento)
-                                        <ul class="text-sm">
-                                            <li>
-                                                <a href="{{ route('etiquetas.index', ['id' => $elemento->etiquetaRelacion->id]) }}"
-                                                    class="text-blue-500 hover:underline">
-                                                    {{ $elemento->etiquetaRelacion->nombre }}
-                                                    (#{{ $elemento->etiquetaRelacion->id }})
-                                                </a>
-                                                <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
-                                                    class="text-green-500 hover:underline">
-                                                    #{{ $elemento->id }} - FIGURA {{ $elemento->figura }}
-                                                </a>
-                                            </li>
-                                        </ul>
+                                @if ($paquete->etiquetas->isNotEmpty())
+                                    @foreach ($paquete->etiquetas as $etiqueta)
+                                        <p class="font-semibold text-blue-700">
+                                            🏷️ <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
+                                                class="hover:underline">
+                                                {{ $etiqueta->nombre }}{{ $etiqueta->codigo }}
+                                            </a> –
+                                            {{ $etiqueta->peso_kg }}
+                                        </p>
+                                        @if ($etiqueta->elementos->isNotEmpty())
+                                            <ul class="ml-2 text-sm text-gray-700">
+                                                @foreach ($etiqueta->elementos as $elemento)
+                                                    <li>
+                                                        <a href="{{ route('elementos.index', ['id' => $elemento->id]) }}"
+                                                            class="text-green-600 hover:underline">
+                                                            {{ $elemento->codigo }} – {{ $elemento->figura }}
+                                                            – {{ $elemento->peso_kg }}
+                                                        </a>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @else
+                                            <p class="ml-2 text-gray-500 text-xs">Sin elementos registrados</p>
+                                        @endif
+                                        <hr>
                                     @endforeach
                                 @else
                                     <span class="text-gray-500">Vacío</span>
                                 @endif
                             </td>
+
                             <td class="p-2 text-center border">{{ $paquete->peso }} Kg
                             </td>
                             <td class="p-2 text-center border">{{ $paquete->created_at->format('d/m/Y H:i') }}
@@ -175,9 +186,8 @@
                                         </svg>
                                     </button>
 
-                                    {{-- Botón ver dibujo --}}
                                     {{-- Botón Ver --}}
-                                    <button @click="mostrarDibujo({{ $paquete->id }})"
+                                    <button onclick="mostrarDetallePaquete({{ $paquete->id }})"
                                         class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center"
                                         title="Ver dibujo del paquete">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -206,28 +216,128 @@
 
         <!-- Paginación -->
         <x-tabla.paginacion :paginador="$paquetes" />
-        <!-- Modal con Canvas para Dibujar las Dimensiones -->
-        <div id="modal-dibujo"
-            class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
-            <div
-                class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
-                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
-                    ✖
+
+        <!-- Modal de Detalle de Paquete (Dinamico) -->
+        <div id="modal-detalle-paquete"
+            class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-center items-center z-50">
+            <div class="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
+                {{-- Botón Imprimir todas --}}
+                <button x-data="{
+                    cargando: false,
+                    async imprimir() {
+                        this.cargando = true;
+                
+                        // Esperar 1 frame real para que el DOM actualice el spinner
+                        await new Promise(resolve => requestAnimationFrame(resolve));
+                
+                        // Esperar un poco más si hay canvas implicados
+                        await new Promise(resolve => setTimeout(resolve, 30));
+                
+                        await imprimirTodasDelPaquete({{ $paquete->id }});
+                
+                        this.cargando = false;
+                    }
+                }" x-on:click="imprimir" x-bind:disabled="cargando"
+                    class="w-6 h-6 bg-orange-100 text-orange-600 rounded hover:bg-orange-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Imprimir todas las etiquetas del paquete">
+
+                    <span x-show="!cargando">🖨️</span>
+
+                    <svg x-show="cargando" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                            stroke-width="4" />
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v4l3.536-3.536A9 9 0 103 12h4z" />
+                    </svg>
                 </button>
 
-                <h2 class="text-xl font-semibold mb-4 text-center">Elementos del paquete</h2>
-                <!-- Contenedor desplazable -->
-                <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
-                    <canvas id="canvas-dibujo" width="800" height="600"
-                        class="border max-w-full h-auto"></canvas>
+
+                <button onclick="cerrarModalDetalle()"
+                    class="absolute top-2 right-2 text-red-600 hover:text-red-800 text-xl font-bold">✖</button>
+
+                <h2 class="text-2xl font-bold mb-4 text-center">🏷️ Etiquetas del Paquete</h2>
+
+                <div id="contenido-detalle-paquete" class="space-y-4">
+                    <!-- Aquí se insertarán dinámicamente las etiquetas del paquete -->
                 </div>
+
+
+
             </div>
         </div>
-        <script src="{{ asset('js/paquetesJs/figurasPaquete.js') }}" defer></script>
+
+
         <script>
-            window.paquetes = @json($paquetes->items());
+            function mostrarDetallePaquete(paqueteId) {
+                const paquete = window.paquetes.find(p => p.id === paqueteId);
+                if (!paquete || !paquete.etiquetas) return;
+
+                const contenedor = document.getElementById('contenido-detalle-paquete');
+                contenedor.innerHTML = '';
+
+                paquete.etiquetas.forEach((etiqueta) => {
+                    const safeId = etiqueta.etiqueta_sub_id.replace(/\./g, '_');
+                    const html = `
+        <div class="bg-orange-300 border border-black p-4 shadow-md rounded-md">
+            <div class="flex justify-between">
+                <h3 class="text-lg font-bold text-gray-900">
+                    ${etiqueta.etiqueta_sub_id} - ${etiqueta.nombre || 'Sin nombre'}
+                </h3>
+            </div>
+            <p><strong>Código:</strong> ${etiqueta.codigo}</p>
+            <p><strong>Peso:</strong> ${etiqueta.peso_kg} kg</p>
+            <canvas id="canvas-imprimir-etiqueta-${safeId}" class="w-full border mt-2" height="100"></canvas>
+        </div>
+    `;
+                    contenedor.insertAdjacentHTML('beforeend', html);
+                });
+
+
+
+                document.getElementById('modal-detalle-paquete').classList.remove('hidden');
+
+                // Espera a que el DOM esté pintado para llamar a la función de dibujo
+                setTimeout(() => {
+                    const etiquetasFiltradas = window.elementosAgrupadosScript.filter(({
+                            etiqueta
+                        }) =>
+                        paquete.etiquetas.some(e => e.etiqueta_sub_id === etiqueta.etiqueta_sub_id)
+                    );
+
+                    dibujarCanvasParaEtiquetas(etiquetasFiltradas);
+
+                }, 100);
+            }
+
+            function cerrarModalDetalle() {
+                document.getElementById('modal-detalle-paquete').classList.add('hidden');
+            }
+
+            //......................................................................................
+
+            window.paquetes = @json($paquetesJson);
+            window.elementosAgrupadosScript = @json($elementosAgrupadosScript);
         </script>
         <!-- SCRIPT PARA IMPRIMIR QR -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
+        <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script>
+        <script>
+            function imprimirTodasDelPaquete(paqueteId) {
+                return new Promise((resolve) => {
+                    const paquete = window.paquetes.find(p => p.id === paqueteId);
+                    if (!paquete || !paquete.etiquetas) return resolve();
+
+                    const etiquetaIds = paquete.etiquetas.map(e => e.etiqueta_sub_id.replace(/\./g, '_'));
+
+                    // Esperar a que canvas estén dibujados si es necesario
+                    setTimeout(() => {
+                        imprimirEtiquetasLote(etiquetaIds);
+                        resolve();
+                    }, 10);
+                });
+            }
+        </script>
+
 </x-app-layout>

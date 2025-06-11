@@ -136,13 +136,6 @@ class MovimientoController extends Controller
 
                         $maquina = Maquina::find($request->maquina_id);
 
-                        if ($request->filled('producto_id')) {
-                            $productoReferencia = Producto::with('productoBase')->find($request->producto_id);
-                            $productoBase = $productoReferencia->productoBase;
-                        } else {
-                            $productoBase = ProductoBase::find($request->producto_base_id);
-                        }
-
                         $tipo = strtolower($productoBase->tipo ?? 'N/A');
                         $diametro = $productoBase->diametro ?? '?';
                         $longitud = $productoBase->longitud ?? '?';
@@ -169,19 +162,24 @@ class MovimientoController extends Controller
 
                     //__________________________________ MOVIMIENTO PAQUETE __________________________________
                     case 'paquete':
-                        $paquete = Paquete::find($request->paquete_id);
+                        $paquete = Paquete::findOrFail($request->paquete_id);
+
+                        $nombreUbicacion = optional($paquete->ubicacion)->nombre ?? 'desconocida';
+                        $descripcion = "Se solicita mover el paquete #{$paquete->codigo} desde {$nombreUbicacion}";
 
                         Movimiento::create([
-                            'paquete_id' => $paquete->id,
-                            'ubicacion_origen' => $paquete->ubicacion_id,
-                            'maquina_origen' => $paquete->maquina_id,
-                            'ubicacion_destino' => $request->ubicacion_destino,
-                            'maquina_id' => null,
-                            'estado' => 'pendiente',
-                            'prioridad'         => 3,
-                            'users_id' => auth()->id(),
+                            'tipo'               => 'Movimiento de paquete',
+                            'paquete_id'         => $paquete->id,
+                            'ubicacion_origen'   => $paquete->ubicacion_id,
+                            'maquina_origen'     => $paquete->maquina_id,
+                            'estado'             => 'pendiente',
+                            'prioridad'          => 3,
+                            'fecha_solicitud'    => now(),
+                            'solicitado_por'     => auth()->id(),
+                            'descripcion'        => $descripcion,
                         ]);
                         break;
+
 
                     default:
                         throw new \Exception('Tipo de movimiento no reconocido.');
@@ -241,8 +239,9 @@ class MovimientoController extends Controller
                 $producto = null;
                 $paquete = null;
 
-                if ($request->codigo_producto) {
-                    $producto = Producto::with('productoBase')->where('codigo', $request->codigo_producto)->firstOrFail();
+
+                if ($request->filled('codigo_producto')) {
+                    $producto = Producto::with('productoBase', 'ubicacion')->where('codigo', $request->codigo_producto)->firstOrFail();
                 }
 
                 if ($request->codigo_paquete) {

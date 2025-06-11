@@ -16,10 +16,9 @@
                     <input type="hidden" name="asignacion_id" value="{{ $turnoHoy->id }}">
 
                     <select name="nueva_maquina_id" class="border rounded px-2 py-1 text-sm">
-                        @foreach ($maquinas as $maquina)
-                            <option value="{{ $maquina->id }}"
-                                {{ $maquina->id == $turnoHoy->maquina_id ? 'selected' : '' }}>
-                                {{ $maquina->nombre }}
+                        @foreach ($maquinas as $m)
+                            <option value="{{ $m->id }}" {{ $m->id == $turnoHoy->maquina_id ? 'selected' : '' }}>
+                                {{ $m->nombre }}
                             </option>
                         @endforeach
                     </select>
@@ -32,8 +31,6 @@
             @endif
         </div>
     </x-slot>
-
-
     <div class="w-full sm:px-4 py-6">
 
         <!-- Grid principal -->
@@ -326,28 +323,22 @@
                         <!-- Sistema de inputs para crear paquetes -->
                         <div class="bg-gray-100 border p-2 mb-2 shadow-md rounded-lg">
                             <h3 class="font-bold text-xl">Crear Paquete</h3>
+
                             <div class="mb-2">
-                                <label for="itemType" class="block text-gray-700 font-semibold">Selecciona el
-                                    tipo:</label>
-                                <select id="itemType" class="border rounded p-2 w-full">
-                                    <option value="Etiqueta">Etiqueta</option>
-                                    <option value="Elemento">Elemento</option>
-                                </select>
-                            </div>
-                            <div class="mb-2">
-                                <label for="qrItem" class="block text-gray-700 font-semibold">Escanear
-                                    QR:</label>
+                                <label for="qrItem" class="block text-gray-700 font-semibold">Escanea
+                                    etiqueta:</label>
                                 <input type="text" id="qrItem" class="border rounded p-2 w-full"
-                                    placeholder="Escanea o ingresa un código QR">
+                                    placeholder="Escanea o introduce el código (ej: ETQ250003)">
                             </div>
 
-                            <!-- Listado dinámico de items -->
+                            <!-- Listado dinámico de etiquetas -->
                             <div class="mb-4">
-                                <h4 class="font-semibold text-gray-700 mb-2">Items agregados:</h4>
+                                <h4 class="font-semibold text-gray-700 mb-2">Etiquetas en el carro:</h4>
                                 <ul id="itemsList" class="list-disc pl-6 space-y-2">
-                                    <!-- Los items se agregarán aquí dinámicamente -->
+                                    <!-- Se rellenan dinámicamente -->
                                 </ul>
                             </div>
+
 
                             <!-- Botón para crear el paquete -->
                             <button id="crearPaqueteBtn"
@@ -455,17 +446,17 @@
                                             @if (strtolower($mov->tipo) === 'recarga materia prima')
                                                 <button
                                                     onclick='abrirModalRecargaMateriaPrima(
-                                                        @json($mov->id),
-                                                        @json($mov->tipo),
-                                                        "",
-                                                        @json($mov->maquina_destino),
-                                                        @json($mov->producto_base_id),
-                                                        @json($ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] ?? []),
-                                                        @json(optional($mov->maquinaDestino)->nombre ?? 'Máquina desconocida'),
-                                                        @json(optional($mov->productoBase)->tipo ?? ''),
-                                                        @json(optional($mov->productoBase)->diametro ?? ''),
-                                                        @json(optional($mov->productoBase)->longitud ?? '')
-                                                    )'
+        @json($mov->id),
+        @json($mov->tipo),
+        @json(optional($mov->producto)->codigo), // <-- aquí el código, no el ID
+        @json($mov->maquina_destino),
+        @json($mov->producto_base_id),
+        @json($ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] ?? []),
+        @json(optional($mov->maquinaDestino)->nombre ?? 'Máquina desconocida'),
+        @json(optional($mov->productoBase)->tipo ?? ''),
+        @json(optional($mov->productoBase)->diametro ?? ''),
+        @json(optional($mov->productoBase)->longitud ?? '')
+    )'
                                                     class="bg-green-600 hover:bg-green-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
                                                     ✅ Ejecutar recarga
                                                 </button>
@@ -516,7 +507,6 @@
                     </div>
                     <!-- Paginador para completados -->
                     <div class="mt-4 flex justify-center gap-2" id="paginador-movimientos-completados"></div>
-
                     {{-- 🔄 MODAL MOVIMIENTO LIBRE --}}
                     <div id="modalMovimientoLibre"
                         class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
@@ -583,7 +573,6 @@
                             </form>
                         </div>
                     </div>
-
                     {{-- 🔄 MODAL BAJADA PAQUETE --}}
                     <div id="modal-bajada-paquete"
                         class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 hidden">
@@ -629,9 +618,7 @@
                             </form>
                         </div>
                     </div>
-
-
-                    {{-- 🔄 MODAL RECARGA --}}
+                    {{-- 🔄 MODAL RECARGA MP --}}
                     <div id="modalMovimiento"
                         class="fixed inset-0 z-50 bg-black bg-opacity-50 hidden items-center justify-center">
                         <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md mx-4 sm:mx-0">
@@ -687,13 +674,13 @@
                                         class="font-semibold text-gray-700 block mb-2 text-sm sm:text-base">
                                         🔍 Escanea el QR del producto
                                     </label>
-                                    <input type="text" name="producto_id" id="modal_producto_id"
+                                    <input type="text" name="codigo_producto" id="modal_producto_id"
                                         class="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-green-400"
                                         placeholder="Ej. QR del producto..." autofocus required>
                                 </div>
 
                                 <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6">
-                                    <button type="button" onclick="cerrarModalMovimiento()"
+                                    <button type="button" onclick="cerrarModalRecargaMateriaPrima()"
                                         class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg w-full sm:w-auto text-sm sm:text-base">
                                         Cancelar
                                     </button>
@@ -719,7 +706,6 @@
                             </div>
                         </div>
                     </div>
-
                     {{-- Scripts --}}
                     <script>
                         document.addEventListener('DOMContentLoaded', function() {
@@ -760,12 +746,12 @@
                             }
                         });
 
-                        function abrirModalRecargaMateriaPrima(id, tipo, productoId, maquinaId, productoBaseId, ubicacionesSugeridas,
-                            maquinaNombre,
-                            tipoBase, diametroBase, longitudBase) {
+                        function abrirModalRecargaMateriaPrima(id, tipo, productoCodigo, maquinaId, productoBaseId, ubicacionesSugeridas,
+                            maquinaNombre, tipoBase, diametroBase, longitudBase) {
+
                             document.getElementById('modal_tipo').value = tipo;
                             document.getElementById('modal_maquina_id').value = maquinaId;
-                            document.getElementById('modal_producto_id').value = '';
+                            document.getElementById('modal_producto_id').value = productoCodigo; // ← aquí va el código
                             document.getElementById('modal_producto_base_id').value = productoBaseId;
 
                             document.getElementById('maquina-nombre-destino').textContent = maquinaNombre;
@@ -780,7 +766,8 @@
                                 document.getElementById('ubicaciones-actuales').classList.remove('hidden');
                                 ubicacionesSugeridas.forEach(u => {
                                     const li = document.createElement('li');
-                                    li.textContent = `${u.nombre} (MP ID: ${u.producto_id})`;
+                                    li.textContent = `${u.nombre} (Código: ${u.codigo})`;
+
                                     lista.appendChild(li);
                                 });
                             } else {
@@ -795,6 +782,7 @@
                                 document.getElementById("modal_producto_id")?.focus();
                             }, 100);
                         }
+
 
                         function cerrarModalRecargaMateriaPrima() {
                             document.getElementById('modalMovimiento').classList.add('hidden');
@@ -880,19 +868,35 @@
                             const contenedor = document.getElementById('contenidoPedido');
                             const modal = document.getElementById('modal-ver-pedido');
 
-                            contenedor.innerHTML = `
-            <p><strong>Código:</strong> ${pedido.codigo}</p>
-            <p><strong>Estado:</strong> ${pedido.estado}</p>
-            <p><strong>Proveedor:</strong> ${pedido.proveedor?.nombre ?? '—'}</p>
+                            const proveedor =
+                                pedido.fabricante_id && pedido.fabricante?.nombre ?
+                                pedido.fabricante.nombre :
+                                (pedido.distribuidor?.nombre ?? '—');
 
-            <a href="/pedidos/${pedido.id}/recepcion"
-                class="btn btn-success mt-4 inline-block">
-                Ir a recepcionarlo
-            </a>
-        `;
+                            const pesoRedondeado = Math.round(pedido.peso_total || 0) + ' kg';
+
+                            const fechaEntrega = pedido.fecha_entrega ?
+                                new Date(pedido.fecha_entrega).toLocaleDateString('es-ES') :
+                                '—';
+
+                            contenedor.innerHTML = `
+                               <p><strong>Proveedor:</strong> ${proveedor}</p>
+        <p><strong>Código:</strong> ${pedido.codigo}</p>
+        <p><strong>Estado:</strong> ${pedido.estado}</p>
+        <p><strong>Peso Total:</strong> ${pesoRedondeado}</p>
+        <p><strong>Fecha Entrega:</strong> ${fechaEntrega}</p>
+     
+
+        <a href="/pedidos/${pedido.id}/recepcion"
+           class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow inline-block mt-4">
+            Ir a recepcionarlo
+        </a>
+    `;
 
                             modal.classList.remove('hidden');
                         }
+
+
 
                         function cerrarModalPedido() {
                             document.getElementById('modal-ver-pedido').classList.add('hidden');
@@ -945,7 +949,6 @@
                     </form>
                 </div>
             </div>
-
 
             <!-- Modal Chequeo de Máquina (Oculto por defecto) -->
             <div id="modalCheckeo"
@@ -1002,8 +1005,6 @@
                 document.getElementById('cambio-elemento-id').value = elementoId;
             }
 
-
-
             function cerrarModalCambio() {
                 document.getElementById('modalCambioMaquina').classList.add('hidden');
 
@@ -1013,7 +1014,6 @@
                 document.getElementById('maquinaDestino').value = '';
                 document.getElementById('campoOtroMotivo').classList.add('hidden');
             }
-
 
             function mostrarCampoOtro() {
                 const select = document.getElementById('motivoSelect');
@@ -1426,10 +1426,39 @@
 </head>
 <body>
     ${etiquetas.join('')}
-    <script>
-        window.print();
-        setTimeout(() => window.close(), 500);
-    <\/script>
+   <script>
+    window.onload = () => {
+        const images = document.images;
+        let loaded = 0;
+        const total = images.length;
+
+        if (total === 0) {
+            window.print();
+            setTimeout(() => window.close(), 1000);
+            return;
+        }
+
+        for (const img of images) {
+            if (img.complete) {
+                loaded++;
+            } else {
+                img.onload = img.onerror = () => {
+                    loaded++;
+                    if (loaded === total) {
+                        window.print();
+                        setTimeout(() => window.close(), 1000);
+                    }
+                };
+            }
+        }
+
+        if (loaded === total) {
+            window.print();
+            setTimeout(() => window.close(), 1000);
+        }
+    };
+<\/script>
+
 </body>
 </html>`);
                 printWindow.document.close();
