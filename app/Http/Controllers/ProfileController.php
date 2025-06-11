@@ -33,8 +33,6 @@ use Illuminate\Support\Facades\Session as FacadeSession;
 
 class ProfileController extends Controller
 {
-
-
     public function exportarUsuarios()
     {
         return Excel::download(new UsersExport, 'usuarios.xlsx');
@@ -415,7 +413,6 @@ class ProfileController extends Controller
         ));
     }
 
-
     protected function getColoresTurnosYEstado(): array
     {
         // Colores base para turnos
@@ -484,7 +481,6 @@ class ProfileController extends Controller
         return array_merge($turnosColoreados->toArray(), $estados);
     }
 
-
     protected function getEventosTurnos($user)
     {
         $coloresTurnos = $this->getColoresTurnosYEstado();
@@ -537,8 +533,6 @@ class ProfileController extends Controller
         });
     }
 
-
-
     protected function getEventosFichajes($user)
     {
         return $user->asignacionesTurnos->flatMap(function ($asignacion) {
@@ -577,8 +571,6 @@ class ProfileController extends Controller
             return $eventos;
         });
     }
-
-
 
     /**
      * Función para oscurecer un color en hexadecimal.
@@ -716,14 +708,23 @@ class ProfileController extends Controller
             if (!$usuario) {
                 return response()->json(['error' => 'Usuario no encontrado.'], 404);
             }
+            // 💡 Normalización
+            $nombre = ucfirst(mb_strtolower($request->name));
+            $apellido1 = $request->primer_apellido ? ucfirst(mb_strtolower($request->primer_apellido)) : null;
+            $apellido2 = $request->segundo_apellido ? ucfirst(mb_strtolower($request->segundo_apellido)) : null;
+            $email = strtolower($request->email);
+            $movil_personal = $request->movil_personal ? str_replace(' ', '', $request->movil_personal) : null;
+            $movil_empresa = $request->movil_empresa ? str_replace(' ', '', $request->movil_empresa) : null;
+            $dni = $request->dni ? strtoupper($request->dni) : null;
+
             $resultado = $usuario->update([
-                'name' => $request->name,
-                'primer_apellido' => $request->primer_apellido,
-                'segundo_apellido' => $request->segundo_apellido,
-                'email' => $request->email,
-                'movil_personal' => $request->movil_personal,
-                'movil_empresa' => $request->movil_empresa,
-                'dni' => $request->dni,
+                'name' => $nombre,
+                'primer_apellido' => $apellido1,
+                'segundo_apellido' => $apellido2,
+                'email' => $email,
+                'movil_personal' => $movil_personal,
+                'movil_empresa' => $movil_empresa,
+                'dni' => $dni,
                 'empresa_id' => $request->empresa_id,
                 'rol' => $request->rol,
                 'categoria_id' => $request->categoria_id,
@@ -745,8 +746,18 @@ class ProfileController extends Controller
 
             return response()->json(['success' => 'Usuario actualizado correctamente.']);
         } catch (ValidationException $e) {
+            Log::error('Error de validación al actualizar usuario ID ' . $id, [
+                'errores' => $e->errors(),
+                'input' => $request->all()
+            ]);
             return response()->json(['error' => $e->errors()], 422);
         } catch (Exception $e) {
+            Log::error('Excepción al actualizar usuario ID ' . $id, [
+                'mensaje' => $e->getMessage(),
+                'linea' => $e->getLine(),
+                'archivo' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }
     }

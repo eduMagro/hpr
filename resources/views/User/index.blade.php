@@ -1,6 +1,5 @@
 <x-app-layout>
     <x-slot name="title">Usuarios - {{ config('app.name') }}</x-slot>
-
     <style>
         [x-cloak] {
             display: none !important;
@@ -198,10 +197,18 @@
 
                             <td class="px-2 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <span x-text="usuario.nombre_completo"></span>
+                                    <span
+                                        x-text="`${usuario.name} ${usuario.primer_apellido} ${usuario.segundo_apellido}`"></span>
                                 </template>
-                                <x-tabla.input x-show="editando" x-model="usuario.nombre_completo"
-                                    @keydown.enter.stop="guardarCambios(usuario)" />
+
+                                <template x-if="editando">
+                                    <div class="flex flex-row gap-1">
+                                        <x-tabla.input x-model="usuario.name" placeholder="Nombre" />
+                                        <x-tabla.input x-model="usuario.primer_apellido" placeholder="Apellido 1" />
+                                        <x-tabla.input x-model="usuario.segundo_apellido" placeholder="Apellido 2"
+                                            @keydown.enter.stop="guardarCambios(usuario)" />
+                                    </div>
+                                </template>
                             </td>
 
                             <td class="px-2 py-3 text-center border">
@@ -682,7 +689,6 @@
                         if (typeof mensaje === 'object') {
                             mensaje = Object.values(mensaje).flat().join('\n');
                         }
-
                         throw new Error(mensaje);
                     }
 
