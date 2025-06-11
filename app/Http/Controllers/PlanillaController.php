@@ -194,8 +194,6 @@ class PlanillaController extends Controller
         return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
             '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
-
-
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltros($query, Request $request)
     {
@@ -292,7 +290,6 @@ class PlanillaController extends Controller
 
         return $query;
     }
-
     //------------------------------------------------------------------------------------ INDEX()
     public function index(Request $request)
     {
@@ -354,7 +351,6 @@ class PlanillaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
     {
@@ -395,13 +391,11 @@ class PlanillaController extends Controller
             ]
         ]);
     }
-
     //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
         return view('planillas.create');
     }
-
     //------------------------------------------------------------------------------------ IMPORT()
 
     public function import(Request $request)
@@ -421,6 +415,10 @@ class PlanillaController extends Controller
         DB::beginTransaction();
 
         try {
+            $planillasOmitidas = [];
+            $planillasImportadas = 0;
+
+
             $file = $request->file('file');
             $importedData = \Maatwebsite\Excel\Facades\Excel::toArray([], $file);
             $firstSheet = $importedData[0] ?? [];
@@ -446,16 +444,28 @@ class PlanillaController extends Controller
             foreach ($groupedByCodigo as $codigo => $rows) {
                 $pesoTotal = array_reduce($rows, fn($carry, $row) => $carry + (float)($row[34] ?? 0), 0);
 
-                $nomObra = trim(Str::lower($rows[0][3] ?? ''));
-                $nomCliente = trim(Str::lower($rows[0][1] ?? ''));
+                $codigoObra = trim($rows[0][2] ?? ''); // Ajusta el índice si el código está en otra columna
 
-                $obra = Obra::whereRaw('LOWER(TRIM(obra)) = ?', [$nomObra])->first();
-                $cliente = Cliente::whereRaw('LOWER(TRIM(empresa)) = ?', [$nomCliente])->first();
+                $obra = Obra::where('cod_obra', $codigoObra)->first();
 
-                if (!$obra || !$cliente) {
+                if (!$obra) {
                     DB::rollBack();
                     return redirect()->route('planillas.index')
-                        ->with('error', 'La obra o el cliente del archivo no coinciden con los registros.');
+                        ->with('error', 'No se encontró una obra con el código proporcionado: ' . $codigoObra);
+                }
+
+                $cliente = $obra->cliente; // Asumiendo que la relación está definida correctamente en el modelo Obra
+
+                if (!$cliente) {
+                    DB::rollBack();
+                    return redirect()->route('planillas.index')
+                        ->with('error', 'No se encontró el cliente asociado a la obra con código: ' . $codigoObra);
+                }
+
+                // 🛑 Comprobación de planilla ya existente
+                if (Planilla::where('codigo', $codigo)->exists()) {
+                    $planillasOmitidas[] = $codigo;
+                    continue;
                 }
 
                 $planilla = Planilla::create([
@@ -472,6 +482,7 @@ class PlanillaController extends Controller
                     'tiempo_fabricacion' => 0,
                     'fecha_estimada_entrega' => now()->addDays(7),
                 ]);
+                $planillasImportadas++;
 
                 $filasAgrupadasPorEtiqueta = [];
                 foreach ($rows as $row) {
@@ -598,14 +609,35 @@ class PlanillaController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('planillas.index')->with('success', 'Planillas importadas con éxito.');
+            $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s) correctamente. ";
+
+            if (!empty($planillasOmitidas)) {
+                $mensaje .= ' ⚠️ Se omitieron por estar ya registradas: ' . implode(', ', $planillasOmitidas) . '.';
+            }
+
+            return redirect()->route('planillas.index')->with('success', $mensaje);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            Log::warning('⚠️ Validación fallida al importar planillas.', [
+                'errores' => $e->errors(),
+            ]);
+
+            return redirect()->route('planillas.index')
+                ->withErrors($e->errors())
+                ->withInput();
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->route('planillas.index')->with('error', 'Hubo un problema al importar las planillas: ' . $e->getMessage());
+            Log::error('❌ Error al importar planillas: ' . $e->getMessage(), [
+                'exception' => $e,
+                'linea' => $e->getLine(),
+                'archivo' => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()->route('planillas.index')
+                ->with('error', 'Hubo un problema al importar las planillas. Revisa los registros para más detalles.');
         }
     }
-
-
     //------------------------------------------------------------------------------------ CALCULARTIEMPOSELEMENTO()
     private function calcularTiemposElemento(array $row)
     {
@@ -623,7 +655,6 @@ class PlanillaController extends Controller
             'tiempo_fabricacion' => $tiempoFabricacion,
         ];
     }
-
     //------------------------------------------------------------------------------------ STORE()
     public function store(Request $request)
     {
@@ -695,7 +726,6 @@ class PlanillaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-
     public function update(Request $request, $id)
     {
         try {
@@ -817,11 +847,7 @@ class PlanillaController extends Controller
             ], 500);
         }
     }
-
-
-
     //------------------------------------------------------------------------------------ DESTROY()
-
     // Eliminar una planilla y sus elementos asociados
     public function destroy($id)
     {

@@ -102,7 +102,7 @@
                     {{ strtoupper(substr($user->name, 0, 1)) }}
                 </div>
                 <div>
-                    <h3 class="text-xl font-semibold">{{ $user->name }}</h3>
+                    <h3 class="text-xl font-semibold">{{ $user->nombre_completo }}</h3>
                     <p class="text-gray-500 text-sm">{{ $user->rol }}</p>
                 </div>
             </div>

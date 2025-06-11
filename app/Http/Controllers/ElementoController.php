@@ -55,7 +55,7 @@ class ElementoController extends Controller
             'id' => 'id',
             'figura' => 'figura',
             'etiqueta_sub_id' => 'etiqueta_sub_id',
-            'paquete_id' => 'paquete_id',
+
         ];
 
         foreach ($filters as $requestKey => $column) {
@@ -146,7 +146,7 @@ class ElementoController extends Controller
         }
 
         // 🏷️ Ordenación dinámica
-        $allowedSortColumns = ['created_at', 'id', 'figura', 'subetiqueta', 'paquete_id'];
+        $allowedSortColumns = ['created_at', 'id', 'figura', 'subetiqueta'];
 
         $sortBy = $request->filled('sort_by') && in_array($request->input('sort_by'), $allowedSortColumns)
             ? $request->input('sort_by')
@@ -198,7 +198,6 @@ class ElementoController extends Controller
             'producto',
             'producto2',
             'producto3',
-            'paquete',
         ])->orderBy('created_at', 'desc');
 
         // Aplicar filtros
@@ -223,7 +222,6 @@ class ElementoController extends Controller
             'codigo_planilla' => $this->getOrdenamiento('codigo_planilla', 'Planilla'),
             'etiqueta' => $this->getOrdenamiento('etiqueta', 'Etiqueta'),
             'subetiqueta' => $this->getOrdenamiento('subetiqueta', 'SubEtiqueta'),
-            'paquete_id' => $this->getOrdenamiento('paquete_id', 'Paquete'),
             'maquina' => $this->getOrdenamiento('maquina', 'Maq. 1'),
             'maquina_2' => $this->getOrdenamiento('maquina_2', 'Maq. 2'),
             'maquina3' => $this->getOrdenamiento('maquina3', 'Maq. 3'),
@@ -534,7 +532,6 @@ class ElementoController extends Controller
             $validated = $request->validate([
                 'planilla_id'   => 'nullable|integer|exists:planillas,id',
                 'etiqueta_id'   => 'nullable|integer|exists:etiquetas,id',
-                'paquete_id'    => 'nullable|integer|exists:paquetes,id',
                 'maquina_id'    => 'nullable|integer|exists:maquinas,id',
                 'maquina_id_2'  => 'nullable|integer|exists:maquinas,id',
                 'maquina_id_3'  => 'nullable|integer|exists:maquinas,id',
@@ -554,8 +551,6 @@ class ElementoController extends Controller
                 'planilla_id.exists'    => 'La planilla especificada en planilla_id no existe.',
                 'etiqueta_id.integer'   => 'El campo etiqueta_id debe ser un número entero.',
                 'etiqueta_id.exists'    => 'La etiqueta especificada en etiqueta_id no existe.',
-                'paquete_id.integer'    => 'El campo paquete_id debe ser un número entero.',
-                'paquete_id.exists'     => 'El paquete especificado en paquete_id no existe.',
                 'maquina_id.integer'    => 'El campo maquina_id debe ser un número entero.',
                 'maquina_id.exists'     => 'La máquina especificada en maquina_id no existe.',
                 'maquina_id_2.integer'  => 'El campo maquina_id_2 debe ser un número entero.',

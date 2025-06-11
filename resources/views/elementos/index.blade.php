@@ -106,10 +106,6 @@
             $filtrosActivos[] = 'Subetiqueta: <strong>' . request('subetiqueta') . '</strong>';
         }
 
-        if (request('paquete_id')) {
-            $filtrosActivos[] = 'Paquete ID: <strong>' . request('paquete_id') . '</strong>';
-        }
-
         if (request('maquina')) {
             $filtrosActivos[] = 'Máquina 1: <strong>' . request('maquina') . '</strong>';
         }
@@ -162,7 +158,6 @@
                 'id' => 'ID',
                 'figura' => 'Figura',
                 'subetiqueta' => 'Subetiqueta',
-                'paquete_id' => 'Paquete ID',
             ];
             $orden = request('order') == 'desc' ? 'descendente' : 'ascendente';
             $filtrosActivos[] =
@@ -206,7 +201,6 @@
                         <th class="p-2 border">{!! ordenarColumnaElemento('codigo_planilla', 'Planilla') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('etiqueta', 'Etiqueta') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('subetiqueta', 'SubEtiqueta') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('paquete_id', 'Paquete') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('maquina', 'Maq. 1') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('maquina_2', 'Maq. 2') !!}</th>
                         <th class="p-2 border">{!! ordenarColumnaElemento('maquina3', 'Maq. 3') !!}</th>
@@ -223,7 +217,7 @@
 
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('elementos.index') }}">
-                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'paquete_id', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura', 'peso', 'diametro', 'longitud'] as $campo)
+                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura', 'peso', 'diametro', 'longitud'] as $campo)
                                 <th class="p-1 border">
                                     <x-tabla.input name="{{ $campo }}" value="{{ request($campo) }}" />
                                 </th>
@@ -273,10 +267,12 @@
                             <!-- CODIGO -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
-                                    <input type="text" x-model="elemento.codigo"
-                                        class="form-control form-control-sm">
+                                    <span x-text="elemento.codigo"></span>
                                 </template>
+                                <input x-show="editando" type="text" x-model="elemento.codigo"
+                                    class="form-control form-control-sm">
                             </td>
+
                             <!-- PLANILLA -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
@@ -314,17 +310,7 @@
                                 <input x-show="editando" type="text" x-model="elemento.subetiquetas"
                                     class="form-control form-control-sm">
                             </td>
-                            <!-- PAQUETE -->
-                            <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <a href="{{ route('paquetes.index', ['id' => $elemento->paquete_id]) }}"
-                                        class="text-blue-500 hover:underline">
-                                        {{ $elemento->paquete_id ?? 'N/A' }}
-                                    </a>
-                                </template>
-                                <input x-show="editando" type="text" x-model="elemento.paquete_id"
-                                    class="form-control form-control-sm">
-                            </td>
+
                             <!-- MAQUINA 1 -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
