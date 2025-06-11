@@ -434,7 +434,6 @@ class MaquinaController extends Controller
             ])->values(),
         ])->values();
 
-
         // ---------------------------------------------------------------
         // 11) Calcular el turno que tiene el usuario autenticado hoy
         // ---------------------------------------------------------------
