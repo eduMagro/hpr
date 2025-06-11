@@ -313,26 +313,24 @@ function computePathPoints(dims) {
 // Script principal
 // =======================
 document.addEventListener("DOMContentLoaded", () => {
-    console.log("🟢 Script cargado. Elementos agrupados:", elementos);
-
+    const elementos = window.elementosAgrupadosScript;
     if (!elementos) {
-        console.error("❌ 'elementosAgrupadosScript' no está definido.");
+        console.error(
+            "La variable 'elementosAgrupadosScript' no está definida."
+        );
         return;
     }
 
     elementos.forEach((grupo) => {
-        console.log("🎯 Procesando grupo con etiqueta:", grupo.etiqueta);
-
         const canvas = document.getElementById(
             `canvas-etiqueta-${grupo.etiqueta?.id}`
         );
         if (!canvas) {
             console.warn(
-                `⚠️ Canvas no encontrado para etiqueta ID: ${grupo.etiqueta?.id}`
+                `Canvas no encontrado para etiqueta ID: ${grupo.etiqueta?.id}`
             );
             return;
         }
-
         const clickableIDs = [];
         const parent = canvas.parentElement;
         const canvasWidth = parent.clientWidth;
