@@ -456,22 +456,22 @@
                     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-end">
 
                     <x-tabla.input name="codigo" label="Código" value="{{ request('codigo') }}"
-                        placeholder="Buscar por QR..." / autofocus>
+                        placeholder="Buscar por QR..." autofocus />
 
-                        <select id="producto_base_id" name="producto_base_id"
-                            class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="" disabled selected>Seleccione un producto base</option>
-                            <option value="">NINGUNO</option>
-                            @foreach ($productosBase as $producto)
-                                <option value="{{ $producto->id }}"
-                                    {{ old('producto_base_id') == $producto->id ? 'selected' : '' }}>
-                                    {{ strtoupper($producto->tipo) }} |
-                                    Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
+                    <select id="producto_base_id" name="producto_base_id"
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="" disabled selected>Seleccione un producto base</option>
+                        <option value="">NINGUNO</option>
+                        @foreach ($productosBase as $producto)
+                            <option value="{{ $producto->id }}"
+                                {{ old('producto_base_id') == $producto->id ? 'selected' : '' }}>
+                                {{ strtoupper($producto->tipo) }} |
+                                Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
 
-                        <x-tabla.botones-filtro ruta="productos.index" />
+                    <x-tabla.botones-filtro ruta="productos.index" />
                 </form>
             </div>
 
