@@ -49,6 +49,10 @@
                                     'producto_base_id',
                                     $productoBase->id,
                                 );
+                                // Omitir si está consumido
+                                if ($productoExistente && $productoExistente->estado === 'consumido') {
+                                    continue;
+                                }
                                 $pesoStock = $productoExistente->peso_stock ?? 0;
                                 $pesoInicial = $productoExistente->peso_inicial ?? 0;
                                 $porcentaje = $pesoInicial > 0 ? ($pesoStock / $pesoInicial) * 100 : 0;

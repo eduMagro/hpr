@@ -292,7 +292,7 @@ class MovimientoController extends Controller
                         $producto->update([
                             'ubicacion_id' => $request->ubicacion_destino,
                             'maquina_id'   => $request->maquina_destino,
-                            'estado'       => $request->ubicacion_destino ? 'almacenado' : 'fabricando',
+                            'estado'       => $request->ubicacion_destino ? 'almacenado' : 'consumido',
                         ]);
                         break;
 
@@ -339,7 +339,7 @@ class MovimientoController extends Controller
                         $producto->update([
                             'ubicacion_id' => $request->ubicacion_destino,
                             'maquina_id'   => $request->maquina_destino,
-                            'estado'       => $request->ubicacion_destino ? 'almacenado' : 'fabricando',
+                            'estado'       => $request->ubicacion_destino ? 'almacenado' : 'consumido',
                         ]);
                         break;
 
