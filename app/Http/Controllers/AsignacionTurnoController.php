@@ -92,6 +92,9 @@ class AsignacionTurnoController extends Controller
 
         $query = $this->aplicarFiltros($query, $request);
         $asignaciones = $query->paginate(15)->withQueryString();
+        $turnos = Turno::where('nombre', '!=', 'festivo')
+            ->orderBy('nombre')
+            ->get();
 
         // 2. Estadísticas del trabajador (cuando se filtra por nombre)
         $asignacionesFiltradas = (clone $query)->get();
@@ -205,7 +208,8 @@ class AsignacionTurnoController extends Controller
             'diasImpuntuales',
             'diasSeVaAntes',
             'diasSinFichaje',
-            'estadisticasPuntualidad'
+            'estadisticasPuntualidad',
+            'turnos'
         ));
     }
 
@@ -391,42 +395,39 @@ class AsignacionTurnoController extends Controller
     public function store(Request $request)
     {
         try {
-            // Log::info('📥 Inicio del método store', $request->all());
-
             $request->validate([
                 'user_id'      => 'required|exists:users,id',
                 'fecha_inicio' => 'required|date',
                 'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
                 'tipo'         => 'required|string',
+                'entrada'      => 'nullable|date_format:H:i',
+                'salida'       => 'nullable|date_format:H:i',
+                'obra_id'      => 'nullable|exists:obras,id',
+                'maquina_id'   => 'nullable|exists:maquinas,id',
             ]);
 
             if (in_array($request->tipo, ['eliminarEstado', 'eliminarTurnoEstado'])) {
-                Log::warning('⚠️ Tipo inválido para este método: ' . $request->tipo);
                 return response()->json(['error' => 'Esta operación debe gestionarse por otro método.'], 400);
             }
 
             $tipo = $request->tipo;
             $fechaInicio = Carbon::parse($request->fecha_inicio);
             $fechaFin = Carbon::parse($request->fecha_fin);
-            // Log::info("🗓 Rango de fechas: $fechaInicio a $fechaFin");
 
             $turnosValidos = Turno::pluck('nombre')->toArray();
             $esTurno = in_array($tipo, $turnosValidos);
             $turno = $esTurno ? Turno::where('nombre', $tipo)->first() : null;
 
             $festivos = collect($this->getFestivos())->pluck('start')->toArray();
-            // Log::info('🎉 Festivos cargados', $festivos);
 
             $usuarios = ($tipo === 'festivo')
                 ? User::all()
                 : collect([User::findOrFail($request->user_id)]);
 
             foreach ($usuarios as $user) {
-                $maquinaId = $user->maquina?->id;
+                $maquinaAsignada = $request->maquina_id ?? $user->maquina?->id;
                 $currentDate = $fechaInicio->copy();
-                // Log::info("👤 Procesando usuario: {$user->name} (ID: {$user->id})");
 
-                // Vacaciones: calcular tope antes del bucle principal
                 $diasSolicitados = 0;
                 if ($tipo === 'vacaciones') {
                     $inicioAño = Carbon::now()->startOfYear();
@@ -438,7 +439,6 @@ class AsignacionTurnoController extends Controller
                     $tempDate = $fechaInicio->copy();
                     while ($tempDate->lte($fechaFin)) {
                         $tempStr = $tempDate->toDateString();
-
                         if (
                             !in_array($tempDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) &&
                             !in_array($tempStr, $festivos)
@@ -451,31 +451,25 @@ class AsignacionTurnoController extends Controller
                                 $diasSolicitados++;
                             }
                         }
-
                         $tempDate->addDay();
                     }
 
                     $totalPermitido = $user->vacaciones_totales ?? 22;
 
-                    // Log::info("🧮 Vacaciones - ya disfrutadas: $yaDisfrutados, solicitadas: $diasSolicitados, tope: $totalPermitido");
-
                     if (($yaDisfrutados + $diasSolicitados) > $totalPermitido) {
                         $msg = "El usuario {$user->name} ya tiene {$yaDisfrutados} días y quiere añadir {$diasSolicitados}. Máximo: {$totalPermitido}.";
-                        // Log::warning('❌ Límite de vacaciones superado: ' . $msg);
                         return response()->json(['error' => $msg], 400);
                     }
                 }
 
                 while ($currentDate->lte($fechaFin)) {
                     $dateStr = $currentDate->toDateString();
-                    // Log::info("📆 Procesando fecha: $dateStr");
 
-                    // 🚫 Saltar fines de semana y festivos si es vacaciones
                     if (
                         $tipo === 'vacaciones' &&
-                        (in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) || in_array($dateStr, $festivos))
+                        (in_array($currentDate->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
+                            in_array($dateStr, $festivos))
                     ) {
-                        // Log::info("⏭ Día no hábil para vacaciones: $dateStr");
                         $currentDate->addDay();
                         continue;
                     }
@@ -486,39 +480,44 @@ class AsignacionTurnoController extends Controller
 
                     $estadoNuevo = $esTurno ? 'activo' : $tipo;
 
+                    $datos = [];
+
+                    if ($esTurno || $tipo !== 'activo') {
+                        $datos['estado'] = $estadoNuevo;
+                        $datos['turno_id'] = $esTurno ? $turno->id : null;
+                        $datos['maquina_id'] = $esTurno ? $maquinaAsignada : $request->maquina_id;
+                    }
+
+                    if ($request->has('entrada')) {
+                        $datos['entrada'] = $request->entrada;
+                    }
+                    if ($request->has('salida')) {
+                        $datos['salida'] = $request->salida;
+                    }
+                    if ($request->has('obra_id')) {
+                        $datos['obra_id'] = $request->obra_id;
+                    }
+
                     if ($asignacion) {
-                        if (!$esTurno && $asignacion->estado !== $estadoNuevo) {
-                            $asignacion->update(['estado' => $estadoNuevo]);
-                            // Log::info("✏️ Actualizada asignación {$asignacion->id} con nuevo estado: $estadoNuevo");
-                        } elseif ($esTurno && $asignacion->turno_id !== $turno->id) {
-                            $asignacion->update([
-                                'turno_id'   => $turno->id,
-                                'maquina_id' => $maquinaId,
-                            ]);
-                            // Log::info("✏️ Actualizada asignación {$asignacion->id} con nuevo turno: {$turno->nombre}");
-                        }
+                        $asignacion->update($datos);
                     } else {
-                        AsignacionTurno::create([
-                            'user_id'    => $user->id,
-                            'fecha'      => $dateStr,
-                            'estado'     => $estadoNuevo,
-                            'turno_id'   => $esTurno ? $turno->id : null,
-                            'maquina_id' => $esTurno ? $maquinaId : null,
-                        ]);
-                        // Log::info("➕ Asignación creada para fecha $dateStr, estado $estadoNuevo");
+                        AsignacionTurno::create(array_merge($datos, [
+                            'user_id' => $user->id,
+                            'fecha'   => $dateStr,
+                        ]));
                     }
 
                     $currentDate->addDay();
                 }
             }
 
-            // Log::info('✅ Asignación completada con éxito');
             return response()->json(['success' => 'Asignación completada.']);
         } catch (\Exception $e) {
-            Log::error('❌ Error en store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['error' => 'Error al registrar el turno: ' . $e->getMessage()], 500);
+            Log::error('❌ Error en store fusionado: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Error al registrar la asignación.'], 500);
         }
     }
+
 
     private function getFestivos()
     {

@@ -403,8 +403,9 @@ class MaquinaController extends Controller
 
         function debeSerExcluido($e)
         {
-            return !is_null($e->paquete_id) && strtolower($e->estado) === 'fabricado';
+            return $e->estado === 'fabricado' && !is_null(optional($e->etiquetaRelacion)->paquete_id);
         }
+
 
         $elementosFiltrados = $elementosMaquina->filter(function ($e) use ($maquina) {
             if (stripos($maquina->tipo, 'ensambladora') !== false) {

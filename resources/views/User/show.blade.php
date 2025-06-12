@@ -117,8 +117,6 @@
                             class="text-gray-600">{{ $user->categoria->nombre ?? 'N/A' }}</span></p>
                     <p><strong>Especialidad:</strong> <span
                             class="text-gray-600">{{ $user->maquina->nombre ?? 'N/A' }}</span></p>
-
-
                 </div>
 
                 <!-- Resumen de asistencias -->
@@ -131,10 +129,8 @@
                         <p><strong>Días de baja: </strong> {{ $resumen['diasBaja'] }}</p>
                     </div>
                 </div>
-
             </div>
         </div>
-
 
         <div class="bg-white rounded-lg shadow-lg">
             <div id="calendario"></div>
@@ -145,8 +141,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
-    <!-- JS separado -->
-    <script src="{{ asset('js/usuario-detalle.js') }}"></script>
 
     <script>
         function actualizarResumenAsistencia() {
@@ -173,18 +167,16 @@
                 });
         }
     </script>
-
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var calendarEl = document.getElementById('calendario');
+            const calendarEl = document.getElementById('calendario');
             actualizarResumenAsistencia();
-            // ✅ Recuperar vista y fecha guardadas
+
             const vistaGuardada = localStorage.getItem('ultimaVistaCalendario') || 'dayGridMonth';
             const fechaGuardada = localStorage.getItem('fechaCalendario');
 
-            var calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: vistaGuardada,
                 initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
                 locale: 'es',
                 height: 'auto',
@@ -194,90 +186,119 @@
                     center: 'title',
                     right: ''
                 },
-                // ✅ Guardar la vista y fecha actual cada vez que cambia
-                datesSet: function(info) {
-                    let fechaActual = info.startStr;
+                // ✅ EVENTO CLICK: SOLO PARA FICHAJES (entrada/salida)
+                eventClick: function(info) {
+                    const evento = info.event;
+                    const props = evento.extendedProps;
 
-                    if (calendar.view.type === 'dayGridMonth') {
-                        const middleDate = new Date(info.start);
-                        middleDate.setDate(middleDate.getDate() + 15); // Aproximadamente mitad del mes
-                        fechaActual = middleDate.toISOString().split('T')[0];
-                    }
+                    if (!props || !props.asignacion_id || !props.tipo) return;
 
-                    localStorage.setItem('fechaCalendario', fechaActual);
-                    localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
+                    Swal.fire({
+                        title: `Editar ${props.tipo === 'salida' ? 'Salida' : 'Entrada'}`,
+                        html: `
+                        <p><strong>Fecha:</strong> ${props.fecha}</p>
+                        <input type="time" id="nuevaHora" class="swal2-input" value="${props.tipo === 'salida' ? props.salida : props.entrada}">
+                    `,
+                        showDenyButton: true,
+                        denyButtonText: 'Borrar',
+                        showCancelButton: true,
+                        confirmButtonText: 'Guardar',
+                        cancelButtonText: 'Cancelar',
+                        preConfirm: () => ({
+                            hora: document.getElementById('nuevaHora').value,
+                            campo: props.tipo,
+                            fecha: props.fecha,
+                            estado: props.estado_original ?? 'activo'
+                        })
+                    }).then(({
+                        isConfirmed,
+                        isDenied,
+                        value
+                    }) => {
+                        if (!isConfirmed && !isDenied) return;
+
+                        actualizarHora({
+                            estado: value.estado,
+                            fecha: value.fecha,
+                            campo: value.campo,
+                            hora: isDenied ? null : value.hora
+                        });
+                    });
                 },
-                events: '{{ route('users.eventos-turnos', $user->id) }}',
-                select: function(info) {
-                    // Obtener fechas inicial y final
-                    let fechaInicio = info.startStr;
-                    let fechaFinObj = new Date(info.end);
-                    fechaFinObj.setDate(fechaFinObj.getDate()); // Ajuste para que sea inclusiva
-                    let fechaFin = fechaFinObj.toISOString().split('T')[0];
 
-                    // Generar HTML condicionalmente según si se selecciona un solo día o un rango
-                    let mensajeFecha = fechaInicio === fechaFin ?
+                // ✅ SELECT DE DÍAS: ASIGNACIÓN DE TURNOS, VACACIONES, ETC.
+                select: function(info) {
+                    const fechaInicio = info.startStr;
+                    const fechaFinObj = new Date(info.end);
+                    fechaFinObj.setDate(fechaFinObj.getDate()); // para que sea inclusiva
+                    const fechaFin = fechaFinObj.toISOString().split('T')[0];
+
+                    const mensajeFecha = fechaInicio === fechaFin ?
                         `<p>${fechaInicio}</p>` :
                         `<p>Desde: ${fechaInicio}</p><p>Hasta: ${fechaFin}</p>`;
 
                     Swal.fire({
                         title: "Selecciona un turno",
                         html: `
-                    ${mensajeFecha}
-                  <select id="tipo-dia" class="swal2-select">
-  <option value="eliminarTurnoEstado">🗑 Eliminar Turno</option>
-
-
-    @foreach ($turnos as $turno)
-        <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
-    @endforeach
-<option value="eliminarEstado">🗑 Eliminar Estado</option>
-    <option value="vacaciones">🏖 Vacaciones</option>
-    <option value="baja">🤒 Baja</option>
-    <option value="justificada">✅ Falta Justificada</option>
-    <option value="injustificada">❌ Falta Injustificada</option>
-</select>
-
-                `,
+                        ${mensajeFecha}
+                        <select id="tipo-dia" class="swal2-select">
+                            <option value="eliminarTurnoEstado">🗑 Eliminar Turno</option>
+                            @foreach ($turnos as $turno)
+                                <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
+                            @endforeach
+                            <option value="eliminarEstado">🗑 Eliminar Estado</option>
+                            <option value="vacaciones">🏖 Vacaciones</option>
+                            <option value="baja">🤒 Baja</option>
+                            <option value="justificada">✅ Falta Justificada</option>
+                            <option value="injustificada">❌ Falta Injustificada</option>
+                        </select>
+                    `,
                         showCancelButton: true,
                         confirmButtonText: "Registrar",
                         cancelButtonText: "Cancelar",
-                        preConfirm: () => {
-                            return document.getElementById("tipo-dia").value;
-                        }
+                        preConfirm: () => document.getElementById("tipo-dia").value
                     }).then((result) => {
-                        if (result.isConfirmed) {
-                            let tipoSeleccionado = result.value;
+                        if (!result.isConfirmed) return;
 
-                            if (tipoSeleccionado === "eliminarTurnoEstado" ||
-                                tipoSeleccionado === "eliminarEstado") {
-                                let eventosEnRango = calendar.getEvents().filter(event => {
-                                    let eventDate = event.startStr;
-                                    return eventDate >= fechaInicio && eventDate <=
-                                        fechaFin;
-                                });
+                        const tipoSeleccionado = result.value;
+                        if (tipoSeleccionado === "eliminarTurnoEstado" || tipoSeleccionado ===
+                            "eliminarEstado") {
+                            const mensajeConfirmacion = tipoSeleccionado ===
+                                "eliminarTurnoEstado" ?
+                                "¿Estás seguro de que quieres eliminar el turno? Esto también eliminará cualquier estado asignado (vacaciones, baja...) y las horas de entrada y salida." :
+                                "¿Seguro que quieres eliminar solo el estado? Las horas de entrada y salida y el turno se mantendrán.";
 
-                                // Detectar si es tipo "festivo" (todos los eventos en rango con título "Festivo")
-                                let todosSonFestivo = eventosEnRango.length > 0 &&
+                            Swal.fire({
+                                title: "Confirmar eliminación",
+                                text: mensajeConfirmacion,
+                                icon: "warning",
+                                showCancelButton: true,
+                                confirmButtonText: "Sí, eliminar",
+                                cancelButtonText: "Cancelar"
+                            }).then(confirmacion => {
+                                if (!confirmacion.isConfirmed) return;
+
+                                const eventosEnRango = calendar.getEvents().filter(
+                                    event => {
+                                        const eventDate = event.startStr;
+                                        return eventDate >= fechaInicio &&
+                                            eventDate <= fechaFin;
+                                    });
+
+                                const todosSonFestivo = eventosEnRango.length > 0 &&
                                     eventosEnRango.every(e => e.title?.toLowerCase() ===
                                         "festivo");
 
-                                let body = {
+                                const body = {
                                     fecha_inicio: fechaInicio,
                                     fecha_fin: fechaFin
                                 };
 
                                 if (todosSonFestivo) {
-                                    body.tipo_turno =
-                                        "festivo"; // eliminar de todos los usuarios
+                                    body.tipo_turno = "festivo";
                                 } else {
-                                    body.user_id =
-                                        "{{ $user->id }}"; // solo del usuario actual
-
-                                    // ✅ Para diferenciar si es eliminar turno o eliminar estado
-                                    body.tipo =
-                                        tipoSeleccionado; // directamente lo que viene del select
-
+                                    body.user_id = "{{ $user->id }}";
+                                    body.tipo = tipoSeleccionado;
                                 }
 
                                 fetch("{{ route('asignaciones-turnos.destroy') }}", {
@@ -291,72 +312,114 @@
                                     .then(response => response.json())
                                     .then(data => {
                                         if (data.success) {
-
-                                            eventosEnRango.forEach(event => event.remove());
+                                            eventosEnRango.forEach(event => event
+                                                .remove());
                                             calendar.refetchEvents();
-                                            setTimeout(actualizarResumenAsistencia, 200);
+                                            setTimeout(actualizarResumenAsistencia,
+                                                200);
+                                            Swal.fire("Eliminado",
+                                                "Los turnos han sido eliminados correctamente.",
+                                                "success");
                                         } else {
-                                            Swal.fire({
-                                                title: "Error",
-                                                text: data.error,
-                                                icon: "error"
-                                            });
+                                            Swal.fire("Error", data.error, "error");
                                         }
                                     })
                                     .catch(error => {
                                         console.error("Error:", error);
-                                        Swal.fire({
-                                            title: "Error",
-                                            text: "Ocurrió un problema al eliminar los turnos.",
-                                            icon: "error"
-                                        });
+                                        Swal.fire("Error",
+                                            "Ocurrió un problema al eliminar los turnos.",
+                                            "error");
                                     });
-
-                            } else {
-                                // Petición para asignar turno o estado
-                                fetch("{{ route('asignaciones-turnos.store') }}", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                                        },
-                                        body: JSON.stringify({
-                                            user_id: "{{ $user->id }}",
-                                            fecha_inicio: fechaInicio,
-                                            fecha_fin: fechaFin,
-                                            tipo: tipoSeleccionado
-                                        })
+                            });
+                        } else {
+                            // ✅ Asignación de nuevo turno o estado
+                            fetch("{{ route('asignaciones-turnos.store') }}", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                    },
+                                    body: JSON.stringify({
+                                        user_id: "{{ $user->id }}",
+                                        fecha_inicio: fechaInicio,
+                                        fecha_fin: fechaFin,
+                                        tipo: tipoSeleccionado
                                     })
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            // ✅ Recarga completa de la página
-                                            calendar.refetchEvents();
-                                            setTimeout(actualizarResumenAsistencia, 200);
-                                        } else {
-                                            Swal.fire({
-                                                title: "Error",
-                                                text: data.error,
-                                                icon: "error"
-                                            });
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error("Error:", error);
-                                        Swal.fire({
-                                            title: "Error",
-                                            text: "Ocurrió un problema al registrar los turnos.",
-                                            icon: "error"
-                                        });
-                                    });
-                            }
-
+                                })
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        calendar.refetchEvents();
+                                        setTimeout(actualizarResumenAsistencia, 200);
+                                    } else {
+                                        Swal.fire("Error", data.error, "error");
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error("Error:", err);
+                                    Swal.fire("Error",
+                                        "Ocurrió un problema al registrar los turnos.",
+                                        "error");
+                                });
                         }
                     });
-                }
+                },
+
+                // ✅ Guardar vista actual y fecha para recordar posición
+                datesSet: function(info) {
+                    let fechaActual = info.startStr;
+                    if (calendar.view.type === 'dayGridMonth') {
+                        const middleDate = new Date(info.start);
+                        middleDate.setDate(middleDate.getDate() + 15);
+                        fechaActual = middleDate.toISOString().split('T')[0];
+                    }
+                    localStorage.setItem('fechaCalendario', fechaActual);
+                    localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
+                },
+
+                events: '{{ route('users.eventos-turnos', $user->id) }}'
             });
+
+            // ✅ Función para actualizar solo fichajes
+            function actualizarHora({
+                estado,
+                fecha,
+                campo,
+                hora
+            }) {
+                const body = {
+                    user_id: "{{ $user->id }}",
+                    fecha_inicio: fecha,
+                    fecha_fin: fecha,
+                    tipo: estado,
+                    [campo]: hora
+                };
+
+                fetch("{{ route('asignaciones-turnos.store') }}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                        },
+                        body: JSON.stringify(body)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            calendar.refetchEvents();
+                            setTimeout(actualizarResumenAsistencia, 200);
+                        } else {
+                            Swal.fire("Error", data.error, "error");
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Error:", err);
+                        Swal.fire("Error", "No se pudo guardar el cambio", "error");
+                    });
+            }
 
             calendar.render();
         });
     </script>
+
 </x-app-layout>

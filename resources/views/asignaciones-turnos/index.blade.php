@@ -267,7 +267,22 @@
                             </td>
                             <td class="px-2 py-2 border">{{ $asignacion->obra_id->obra ?? '—' }}</td>
                             <td class="px-2 py-2 border">
-                                {{ $asignacion->turno->nombre ?? '—' }}</td>
+                                <template x-if="editando">
+                                    <select x-model="asignacion.turno_id"
+                                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">—</option>
+                                        @foreach ($turnos as $turno)
+                                            <option value="{{ $turno->id }}">{{ $turno->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </template>
+                                <template x-if="!editando">
+                                    <span>
+                                        {{ $asignacion->turno->nombre ?? '—' }}
+                                    </span>
+                                </template>
+                            </td>
+
                             <td class="px-2 py-2 border">{{ $asignacion->maquina->nombre ?? '—' }}</td>
 
                             @php
@@ -346,22 +361,36 @@
         <x-tabla.paginacion :paginador="$asignaciones" />
     </div>
     <script>
+        // Carga el mapa ID -> nombre del turno
+        const turnosPorId = @json($turnos->pluck('nombre', 'id'));
+
         function guardarCambios(asignacionData, originalData) {
-            // Recortar segundos si vienen en formato HH:MM:SS
             if (asignacionData.entrada && asignacionData.entrada.length === 8) {
-                asignacionData.entrada = asignacionData.entrada.slice(0, 5); // "22:05:00" → "22:05"
+                asignacionData.entrada = asignacionData.entrada.slice(0, 5);
             }
             if (asignacionData.salida && asignacionData.salida.length === 8) {
                 asignacionData.salida = asignacionData.salida.slice(0, 5);
             }
 
-            fetch(`{{ route('asignaciones-turnos.update', '') }}/${asignacionData.id}`, {
-                    method: 'PUT',
+            const payload = {
+                user_id: asignacionData.user_id,
+                fecha_inicio: asignacionData.fecha,
+                fecha_fin: asignacionData.fecha,
+                turno_id: asignacionData.turno_id,
+                tipo: turnosPorId[asignacionData.turno_id] ?? (asignacionData.estado || 'manual'),
+                entrada: asignacionData.entrada,
+                salida: asignacionData.salida,
+                maquina_id: asignacionData.maquina_id,
+                obra_id: asignacionData.obra_id,
+            };
+
+            fetch(`{{ route('asignaciones-turnos.store') }}`, {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: JSON.stringify(asignacionData)
+                    body: JSON.stringify(payload)
                 })
                 .then(async response => {
                     const contentType = response.headers.get('content-type');
@@ -395,14 +424,12 @@
                             }
                         });
 
-                        // Revertir
                         Object.assign(asignacionData, JSON.parse(JSON.stringify(originalData)));
                     }
                 })
                 .catch(async error => {
                     console.error("❌ Error en Fetch:", error);
 
-                    // Revertir si falla la conexión
                     Object.assign(asignacionData, JSON.parse(JSON.stringify(originalData)));
 
                     Swal.fire({
@@ -414,4 +441,5 @@
                 });
         }
     </script>
+
 </x-app-layout>

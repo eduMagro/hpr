@@ -399,9 +399,6 @@ class ProfileController extends Controller
     {
         $user = User::with(['asignacionesTurnos.turno'])->findOrFail($id);
         $inicioAño = Carbon::now()->startOfYear();
-
-
-
         $turnos = Turno::all();
 
         $resumen = $this->getResumenAsistencia($user);
@@ -543,13 +540,21 @@ class ProfileController extends Controller
                     ->setTimezone('Europe/Madrid');
 
                 $eventos[] = [
-                    'title' => '',
+                    'id' => 'entrada-' . $asignacion->id,
+                    'title' => 'Entrada',
                     'start' => $startEntrada->toIso8601String(),
                     'end' => $startEntrada->copy()->addMinutes(1)->toIso8601String(),
                     'color' => '#28a745', // Verde
                     'textColor' => '#ffffff',
                     'allDay' => false,
-                    'display' => 'auto'
+                    'display' => 'auto',
+                    'extendedProps' => [
+                        'tipo' => 'entrada',
+                        'asignacion_id' => $asignacion->id,
+                        'fecha' => $asignacion->fecha,
+                        'entrada' => $asignacion->entrada,
+                        'salida' => $asignacion->salida,
+                    ],
                 ];
             }
 
@@ -558,13 +563,21 @@ class ProfileController extends Controller
                     ->setTimezone('Europe/Madrid');
 
                 $eventos[] = [
-                    'title' => '',
+                    'id' => 'salida-' . $asignacion->id,
+                    'title' => 'Salida',
                     'start' => $startSalida->toIso8601String(),
                     'end' => $startSalida->copy()->addMinutes(1)->toIso8601String(),
                     'color' => '#dc3545', // Rojo
                     'textColor' => '#ffffff',
                     'allDay' => false,
-                    'display' => 'auto'
+                    'display' => 'auto',
+                    'extendedProps' => [
+                        'tipo' => 'salida',
+                        'asignacion_id' => $asignacion->id,
+                        'fecha' => $asignacion->fecha,
+                        'entrada' => $asignacion->entrada,
+                        'salida' => $asignacion->salida,
+                    ],
                 ];
             }
 

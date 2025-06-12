@@ -121,7 +121,56 @@
                 </tbody>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($paquetes as $paquete)
+                        <!-- Modal de Detalle de Paquete (Dinamico) -->
+                        <div id="modal-detalle-paquete"
+                            class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-center items-center z-50">
+                            <div
+                                class="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
+                                {{-- Botón Imprimir todas --}}
+                                <button x-data="{
+                                    cargando: false,
+                                    async imprimir() {
+                                        this.cargando = true;
+                                
+                                        // Esperar 1 frame real para que el DOM actualice el spinner
+                                        await new Promise(resolve => requestAnimationFrame(resolve));
+                                
+                                        // Esperar un poco más si hay canvas implicados
+                                        await new Promise(resolve => setTimeout(resolve, 30));
+                                
+                                        await imprimirTodasDelPaquete({{ $paquete->id }});
+                                
+                                        this.cargando = false;
+                                    }
+                                }" x-on:click="imprimir" x-bind:disabled="cargando"
+                                    class="w-6 h-6 bg-orange-100 text-orange-600 rounded hover:bg-orange-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Imprimir todas las etiquetas del paquete">
 
+                                    <span x-show="!cargando">🖨️</span>
+
+                                    <svg x-show="cargando" class="h-4 w-4 animate-spin"
+                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                            stroke="currentColor" stroke-width="4" />
+                                        <path class="opacity-75" fill="currentColor"
+                                            d="M4 12a8 8 0 018-8v4l3.536-3.536A9 9 0 103 12h4z" />
+                                    </svg>
+                                </button>
+
+
+                                <button onclick="cerrarModalDetalle()"
+                                    class="absolute top-2 right-2 text-red-600 hover:text-red-800 text-xl font-bold">✖</button>
+
+                                <h2 class="text-2xl font-bold mb-4 text-center">🏷️ Etiquetas del Paquete</h2>
+
+                                <div id="contenido-detalle-paquete" class="space-y-4">
+                                    <!-- Aquí se insertarán dinámicamente las etiquetas del paquete -->
+                                </div>
+
+
+
+                            </div>
+                        </div>
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200">
                             <td class="p-2 text-center border">{{ $paquete->id }}</td>
                             <td class="p-2 text-center border">{{ $paquete->codigo }}</td>
@@ -217,55 +266,7 @@
         <!-- Paginación -->
         <x-tabla.paginacion :paginador="$paquetes" />
 
-        <!-- Modal de Detalle de Paquete (Dinamico) -->
-        <div id="modal-detalle-paquete"
-            class="hidden fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-center items-center z-50">
-            <div class="bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
-                {{-- Botón Imprimir todas --}}
-                <button x-data="{
-                    cargando: false,
-                    async imprimir() {
-                        this.cargando = true;
-                
-                        // Esperar 1 frame real para que el DOM actualice el spinner
-                        await new Promise(resolve => requestAnimationFrame(resolve));
-                
-                        // Esperar un poco más si hay canvas implicados
-                        await new Promise(resolve => setTimeout(resolve, 30));
-                
-                        await imprimirTodasDelPaquete({{ $paquete->id }});
-                
-                        this.cargando = false;
-                    }
-                }" x-on:click="imprimir" x-bind:disabled="cargando"
-                    class="w-6 h-6 bg-orange-100 text-orange-600 rounded hover:bg-orange-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Imprimir todas las etiquetas del paquete">
 
-                    <span x-show="!cargando">🖨️</span>
-
-                    <svg x-show="cargando" class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg"
-                        fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                            stroke-width="4" />
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8v4l3.536-3.536A9 9 0 103 12h4z" />
-                    </svg>
-                </button>
-
-
-                <button onclick="cerrarModalDetalle()"
-                    class="absolute top-2 right-2 text-red-600 hover:text-red-800 text-xl font-bold">✖</button>
-
-                <h2 class="text-2xl font-bold mb-4 text-center">🏷️ Etiquetas del Paquete</h2>
-
-                <div id="contenido-detalle-paquete" class="space-y-4">
-                    <!-- Aquí se insertarán dinámicamente las etiquetas del paquete -->
-                </div>
-
-
-
-            </div>
-        </div>
 
 
         <script>
