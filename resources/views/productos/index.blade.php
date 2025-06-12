@@ -458,7 +458,7 @@
                     <x-tabla.input name="codigo" label="Código" value="{{ request('codigo') }}"
                         placeholder="Buscar por QR..." />
 
-                    <select id="producto_base_id" name="producto_base_id" required
+                    <select id="producto_base_id" name="producto_base_id"
                         class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="" disabled selected>Seleccione un producto base</option>
                         <option value="">NINGUNO</option>
