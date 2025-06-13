@@ -95,7 +95,10 @@ class PlanillaController extends Controller
                 $maquinaSeleccionada = $maquina;
             }
         }
-
+        if (! $maquinaSeleccionada) {
+            Log::warning("⚠️ No se encontró máquina para el diámetro $diametro y longitud $longitud.");
+            return null; // o throw new \Exception("Sin máquina compatible");
+        }
         return $maquinaSeleccionada?->id ?? null;
     }
     private function filtrosActivos(Request $request): array
@@ -529,6 +532,12 @@ class PlanillaController extends Controller
                         $ensamblado = $row[4] ?? null;
 
                         $maquina_id = $this->asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planilla->id);
+                        // Si no hay máquina válida, registramos advertencia
+                        if (!$maquina_id) {
+                            $advertencias[] = "Fila {$row[21]} sin máquina compatible (planilla {$codigo}).";
+                            continue;
+                        }
+
                         $gruposPorMaquina[$maquina_id][] = ['row' => $row, 'maquina_id' => $maquina_id];
                     }
 
@@ -549,7 +558,7 @@ class PlanillaController extends Controller
 
                         OrdenPlanilla::create([
                             'planilla_id' => $planilla->id,
-                            'maquina_id' => $maquina_id,
+                            'maquina_id' => $maquina_id ?? null,
                             'posicion' => $ultimaPosicion + 1,
                         ]);
                         // Agrupar elementos duplicados
@@ -626,8 +635,12 @@ class PlanillaController extends Controller
             DB::commit();
             $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s) correctamente. ";
 
-            if (!empty($planillasOmitidas)) {
-                $mensaje .= ' ⚠️ Se omitieron por estar ya registradas: ' . implode(', ', $planillasOmitidas) . '.';
+            $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s).";
+            if ($planillasOmitidas) {
+                $mensaje .= ' ⚠️ Omitidas por duplicado: ' . implode(', ', $planillasOmitidas) . '.';
+            }
+            if ($advertencias) {
+                $mensaje .= ' ⚠️ Advertencias: ' . implode(' | ', $advertencias);
             }
 
             return redirect()->route('planillas.index')->with('success', $mensaje);

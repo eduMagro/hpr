@@ -83,34 +83,34 @@
 <script>
     function notificarProgramador(mensaje) {
         const urlActual = window.location.href;
-        const mensajeCompleto = `
-     🔗 **URL:** ${urlActual}
-    📜 **Mensaje:** ${mensaje}
-    `;
+        const mensajeCompleto = `🔗 URL: ${urlActual}\n📜 Mensaje: ${mensaje}`;
 
-        fetch('/alertas/store', {
+        fetch("{{ route('alertas.store') }}", { // usa el helper de ruta
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    'Accept': 'application/json', // <-- importante
+                    'X-CSRF-TOKEN': document
+                        .querySelector('meta[name="csrf-token"]')
+                        .content
                 },
                 body: JSON.stringify({
                     mensaje: mensajeCompleto,
                     enviar_a_departamentos: ['Programador']
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        title: "Notificación enviada",
-                        text: "Los técnicos han sido notificados.",
-                        icon: "success"
-                    });
-                } else {
-                    console.error("⚠️ Error al enviar la alerta:", data.error || data);
+            .then(async resp => {
+                if (!resp.ok) { // capturamos 405, 500, etc.
+                    const texto = await resp.text();
+                    throw new Error(`HTTP ${resp.status}: ${texto}`);
                 }
+                return resp.json(); // ya estamos seguros de que ES JSON
             })
-            .catch(error => console.error("⚠️ Error inesperado:", error));
+            .then(data => {
+                Swal.fire('Notificación enviada',
+                    'Los técnicos han sido notificados.',
+                    'success');
+            })
+            .catch(err => console.error('⚠️ Error:', err));
     }
 </script>
