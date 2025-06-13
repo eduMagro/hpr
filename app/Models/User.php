@@ -214,7 +214,7 @@ class User extends Authenticatable
         return $this->departamentos()
             ->where(function ($q) {
                 // Ejemplo 1 - por slug del departamento
-                $q->where('slug', 'administrador');
+                $q->where('nombre', 'administrador');
 
                 // Ejemplo 2 - por nombre
                 // $q->orWhere('nombre', 'Administrador');
