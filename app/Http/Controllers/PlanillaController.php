@@ -480,6 +480,12 @@ class PlanillaController extends Controller
 
 
             foreach ($groupedByCodigo as $codigo => $rows) {
+
+                // 👉 Verifica si ya existe una planilla con este código
+                if (Planilla::where('codigo', $codigo)->exists()) {
+                    $planillasOmitidas[] = $codigo;
+                    continue;
+                }
                 $pesoTotal = array_reduce($rows, fn($carry, $row) => $carry + (float)($row[34] ?? 0), 0);
 
                 $codigoObra = trim($rows[0][2] ?? ''); // Ajusta el índice si el código está en otra columna
@@ -653,17 +659,28 @@ class PlanillaController extends Controller
             return redirect()->route('planillas.index')
                 ->withErrors($e->errors())
                 ->withInput();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {          // \Throwable = Exception + Error
             DB::rollBack();
-            Log::error('❌ Error al importar planillas: ' . $e->getMessage(), [
-                'exception' => $e,
-                'linea' => $e->getLine(),
-                'archivo' => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
+
+            // 1) Regístralo con todo el detalle
+            Log::error('❌ Error al importar planillas', [
+                'mensaje'  => $e->getMessage(),
+                'linea'    => $e->getLine(),
+                'archivo'  => $e->getFile(),
+                'trace'    => $e->getTraceAsString(),
             ]);
 
-            return redirect()->route('planillas.index')
-                ->with('error', 'Hubo un problema al importar las planillas. Revisa los registros para más detalles.');
+            // 2) Construye un texto claro para el usuario
+            //    (muestra el tipo de excepción y sólo el mensaje)
+            $msg = class_basename($e) . ': ' . $e->getMessage();
+
+            //    ⚠️  Si el mensaje es muy largo, limítalo:
+            // use Illuminate\Support\Str;
+            // $msg = Str::limit($msg, 180);
+
+            return redirect()
+                ->route('planillas.index')
+                ->with('error', $msg);     // En la vista => session('error')
         }
     }
 
