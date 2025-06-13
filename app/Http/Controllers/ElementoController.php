@@ -79,12 +79,18 @@ class ElementoController extends Controller
                 $q->where('codigo', 'like', "%{$input}%");
             });
         }
+        if ($request->filled('codigo')) {
+            $query->where('codigo', 'like', '%' . $request->codigo . '%');
+        }
 
         // Etiqueta
         if ($request->has('etiqueta') && $request->etiqueta) {
             $query->whereHas('etiquetaRelacion', function ($q) use ($request) {
                 $q->where('id', $request->etiqueta);
             });
+        }
+        if ($request->filled('subetiqueta')) {
+            $query->where('etiqueta_sub_id', 'like', '%' . $request->subetiqueta . '%');
         }
 
         // Máquinas

@@ -27,9 +27,11 @@ class EtiquetaController extends Controller
     {
         $query->when($request->filled('id'), fn($q) => $q->where('id', $request->id));
 
-        $query->when($request->filled('estado'), fn($q) => $q->where('estado', $request->estado));
+        $query->when($request->filled('codigo'), fn($q) => $q->where('codigo', $request->codigo));
+
         $query->when($request->filled('etiqueta_sub_id'), fn($q) => $q->where('etiqueta_sub_id', $request->etiqueta_sub_id));
 
+        $query->when($request->filled('estado'), fn($q) => $q->where('estado', $request->estado));
         if ($request->filled('codigo_planilla')) {
             $planillas = Planilla::where('codigo', 'LIKE', '%' . $request->codigo_planilla . '%')->pluck('id');
 
@@ -50,6 +52,9 @@ class EtiquetaController extends Controller
             $filtros[] = 'ID: <strong>' . $request->id . '</strong>';
         }
 
+        if ($request->filled('codigo')) {
+            $filtros[] = 'Código: <strong>' . $request->codigo . '</strong>';
+        }
         if ($request->filled('codigo_planilla')) {
             $filtros[] = 'Código Planilla: <strong>' . $request->codigo_planilla . '</strong>';
         }
