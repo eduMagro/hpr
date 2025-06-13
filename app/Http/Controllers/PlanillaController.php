@@ -297,7 +297,7 @@ class PlanillaController extends Controller
     public function index(Request $request)
     {
 
-        $user     = Auth::user();
+        $user = auth()->user();
         $esAdmin  = $user->esAdminDepartamento();   // ⬅️ nuevo helper
 
         try {
