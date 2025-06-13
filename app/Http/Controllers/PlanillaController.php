@@ -305,7 +305,7 @@ class PlanillaController extends Controller
             $query = Planilla::with(['user', 'elementos', 'cliente', 'obra']);
             // Filtro “solo mis planillas” salvo admins
             if (! $esAdmin) {
-                $query->where('user_id', $user->id);    // Ajusta el nombre de columna
+                $query->where('users_id', $user->id);    // Ajusta el nombre de columna
             }
 
             // 2️⃣ Aplicar filtros desde el formulario (usando método personalizado)
