@@ -418,9 +418,9 @@ class PlanillaController extends Controller
         DB::beginTransaction();
 
         try {
-            $planillasOmitidas = [];
+            $planillasOmitidas   = [];
             $planillasImportadas = 0;
-
+            $advertencias        = [];
 
             $file = $request->file('file');
             $importedData = \Maatwebsite\Excel\Facades\Excel::toArray([], $file);
@@ -639,15 +639,16 @@ class PlanillaController extends Controller
             }
 
             DB::commit();
-            $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s) correctamente. ";
-
             $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s).";
+
             if ($planillasOmitidas) {
                 $mensaje .= ' ⚠️ Omitidas por duplicado: ' . implode(', ', $planillasOmitidas) . '.';
             }
-            if ($advertencias) {
+
+            if ($advertencias) {   // <-- now it’s always defined, maybe still empty
                 $mensaje .= ' ⚠️ Advertencias: ' . implode(' | ', $advertencias);
             }
+
 
             return redirect()->route('planillas.index')->with('success', $mensaje);
         } catch (\Illuminate\Validation\ValidationException $e) {
