@@ -440,6 +440,41 @@ class PlanillaController extends Controller
                 $codigo = $row[10] ?? 'Sin código';
                 $groupedByCodigo[$codigo][] = $row;
             }
+            $primerRow = $filteredData[0] ?? null;
+
+            if (!$primerRow) {
+                DB::rollBack();
+                return redirect()->route('planillas.index')->with('error', 'No se encontraron datos válidos para determinar cliente y obra.');
+            }
+
+            $codigoCliente = trim($primerRow[0] ?? null);
+            $nombreCliente = trim($primerRow[1] ?? 'Cliente sin nombre');
+
+            $codigoObra = trim($primerRow[2] ?? null);
+            $nombreObra = trim($primerRow[3] ?? 'Obra sin nombre');
+
+            if (!$codigoCliente || !$codigoObra) {
+                DB::rollBack();
+                return redirect()->route('planillas.index')->with('error', 'Faltan códigos de cliente u obra en el archivo.');
+            }
+
+            $cliente = Cliente::where('codigo', $codigoCliente)->first();
+            if (!$cliente) {
+                $cliente = Cliente::create([
+                    'codigo' => $codigoCliente,
+                    'empresa' => $nombreCliente,
+                ]);
+            }
+
+            $obra = Obra::where('cod_obra', $codigoObra)->first();
+            if (!$obra) {
+                $obra = Obra::create([
+                    'cod_obra' => $codigoObra,
+                    'cliente_id' => $cliente->id,
+                    'obra' => $nombreObra,
+                ]);
+            }
+
 
             foreach ($groupedByCodigo as $codigo => $rows) {
                 $pesoTotal = array_reduce($rows, fn($carry, $row) => $carry + (float)($row[34] ?? 0), 0);
@@ -447,26 +482,6 @@ class PlanillaController extends Controller
                 $codigoObra = trim($rows[0][2] ?? ''); // Ajusta el índice si el código está en otra columna
 
                 $obra = Obra::where('cod_obra', $codigoObra)->first();
-
-                if (!$obra) {
-                    DB::rollBack();
-                    return redirect()->route('planillas.index')
-                        ->with('error', 'No se encontró una obra con el código proporcionado: ' . $codigoObra);
-                }
-
-                $cliente = $obra->cliente; // Asumiendo que la relación está definida correctamente en el modelo Obra
-
-                if (!$cliente) {
-                    DB::rollBack();
-                    return redirect()->route('planillas.index')
-                        ->with('error', 'No se encontró el cliente asociado a la obra con código: ' . $codigoObra);
-                }
-
-                // 🛑 Comprobación de planilla ya existente
-                if (Planilla::where('codigo', $codigo)->exists()) {
-                    $planillasOmitidas[] = $codigo;
-                    continue;
-                }
 
                 $planilla = Planilla::create([
                     'users_id' => auth()->id(),
