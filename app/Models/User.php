@@ -209,7 +209,21 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function esAdminDepartamento(): bool
+    {
+        return $this->departamentos()
+            ->where(function ($q) {
+                // Ejemplo 1 - por slug del departamento
+                $q->where('slug', 'administrador');
 
+                // Ejemplo 2 - por nombre
+                // $q->orWhere('nombre', 'Administrador');
+
+                // Ejemplo 3 - por rol en el pivot
+                // $q->orWherePivot('rol_departamental', 'administrador');
+            })
+            ->exists();
+    }
     public function permisosAcceso()
     {
         return $this->hasMany(PermisoAcceso::class);

@@ -296,9 +296,17 @@ class PlanillaController extends Controller
     //------------------------------------------------------------------------------------ INDEX()
     public function index(Request $request)
     {
+
+        $user     = Auth::user();
+        $esAdmin  = $user->esAdminDepartamento();   // ⬅️ nuevo helper
+
         try {
             // 1️⃣ Iniciar la consulta base con relaciones
             $query = Planilla::with(['user', 'elementos', 'cliente', 'obra']);
+            // Filtro “solo mis planillas” salvo admins
+            if (! $esAdmin) {
+                $query->where('user_id', $user->id);    // Ajusta el nombre de columna
+            }
 
             // 2️⃣ Aplicar filtros desde el formulario (usando método personalizado)
             $query = $this->aplicarFiltros($query, $request);
