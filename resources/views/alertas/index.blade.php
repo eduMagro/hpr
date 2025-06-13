@@ -108,7 +108,17 @@
                                 onclick="marcarAlertaLeida({{ $alerta->id }}, this, @js($alerta->mensaje_completo), {{ $esSaliente ? 'true' : 'false' }})">
 
                                 <td class="px-4 py-2 text-center">
-                                    {{ $alerta->usuario1?->nombre_completo ?? 'Desconocido' }}
+                                    @php $usuario = $alerta->usuario1; @endphp
+
+                                    @if ($usuario)
+                                        @if ($usuario->rol === 'oficina')
+                                            {{ $usuario->email === 'eduardo.magro@pacoreyes.com' ? 'Dpto. Informática' : 'Dpto. RRHH' }}
+                                        @else
+                                            {{ $usuario->nombre_completo }}
+                                        @endif
+                                    @else
+                                        Desconocido
+                                    @endif
                                 </td>
 
                                 <td class="px-4 py-2 break-words">

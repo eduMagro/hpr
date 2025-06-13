@@ -209,6 +209,7 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+
     public function permisosAcceso()
     {
         return $this->hasMany(PermisoAcceso::class);
