@@ -93,6 +93,39 @@ class EtiquetaController extends Controller
     }
     public function index(Request $request)
     {
+        // 1️⃣  Columnas que SÍ se pueden ordenar
+        $sortable = [
+            'id',
+            'codigo',
+            'codigo_planilla',
+            'etiqueta',
+            'etiqueta_sub_id',
+            'paquete_id',
+            'maquina',
+            'maquina_2',
+            'maquina3',
+            'producto1',
+            'producto2',
+            'producto3',
+            'figura',
+            'peso',
+            'diametro',
+            'longitud',
+            'estado',
+            'created_at',
+        ];
+
+        // 2️⃣  Obtener sort & order, con valores por defecto seguros
+        $sort  = $request->input('sort', 'created_at');
+        $order = $request->input('order', 'desc');
+
+        // Normalizar y validar
+        if (! in_array($sort, $sortable)) {
+            $sort = 'created_at';
+        }
+        $order = $order === 'asc' ? 'asc' : 'desc';
+
+        // 3️⃣  Construir la consulta
         $query = Etiqueta::with([
             'planilla',
             'elementos',
@@ -102,40 +135,48 @@ class EtiquetaController extends Controller
             'soldador1',
             'soldador2',
             'ensamblador1',
-            'ensamblador2'
-        ])->orderBy('created_at', 'desc');
+            'ensamblador2',
+        ])
+            ->whereNotNull('etiqueta_sub_id')
+            ->orderBy($sort, $order);          // ← aquí aplicamos lo elegido
 
+        // 4️⃣  Resto de la lógica
         $this->aplicarFiltros($query, $request);
 
-        $ordenables = [
-            'id' => $this->getOrdenamiento('id', 'ID'),
-            'codigo' => $this->getOrdenamiento('codigo', 'Código'),
-            'codigo_planilla' => $this->getOrdenamiento('codigo_planilla', 'Planilla'),
-            'etiqueta' => $this->getOrdenamiento('etiqueta', 'Etiqueta'),
-            'subetiqueta' => $this->getOrdenamiento('subetiqueta', 'SubEtiqueta'),
-            'paquete_id' => $this->getOrdenamiento('paquete_id', 'Paquete'),
-            'maquina' => $this->getOrdenamiento('maquina', 'Maq. 1'),
-            'maquina_2' => $this->getOrdenamiento('maquina_2', 'Maq. 2'),
-            'maquina3' => $this->getOrdenamiento('maquina3', 'Maq. 3'),
-            'producto1' => $this->getOrdenamiento('producto1', 'M. Prima 1'),
-            'producto2' => $this->getOrdenamiento('producto2', 'M. Prima 2'),
-            'producto3' => $this->getOrdenamiento('producto3', 'M. Prima 3'),
-            'figura' => $this->getOrdenamiento('figura', 'Figura'),
-            'peso' => $this->getOrdenamiento('peso', 'Peso (kg)'),
-            'diametro' => $this->getOrdenamiento('diametro', 'Diámetro'),
-            'longitud' => $this->getOrdenamiento('longitud', 'Longitud'),
-            'estado' => $this->getOrdenamiento('estado', 'Estado'),
-        ];
-        // 6️⃣ Aplicar paginación y mantener filtros al cambiar de página
-        $perPage = $request->input('per_page', 10);
+        $perPage   = $request->input('per_page', 10);
         $etiquetas = $query->paginate($perPage)->appends($request->except('page'));
 
-        $etiquetasJson = Etiqueta::with('elementos')->get();
-
+        $etiquetasJson = Etiqueta::with('elementos')
+            ->whereNotNull('etiqueta_sub_id')->get();
         $filtrosActivos = $this->filtrosActivos($request);
 
+        // 5️⃣  Seguir usando tu helper para los encabezados
+        $ordenables = [
+            'id'            => $this->getOrdenamiento('id', 'ID'),
+            'codigo'        => $this->getOrdenamiento('codigo', 'Código'),
+            'codigo_planilla' => $this->getOrdenamiento('codigo_planilla', 'Planilla'),
+            'etiqueta'      => $this->getOrdenamiento('etiqueta', 'Etiqueta'),
+            'etiqueta_sub_id'   => $this->getOrdenamiento('etiqueta_sub_id', 'etiqueta_sub_id'),
+            'paquete_id'    => $this->getOrdenamiento('paquete_id', 'Paquete'),
+            'maquina'       => $this->getOrdenamiento('maquina', 'Maq. 1'),
+            'maquina_2'     => $this->getOrdenamiento('maquina_2', 'Maq. 2'),
+            'maquina3'      => $this->getOrdenamiento('maquina3', 'Maq. 3'),
+            'producto1'     => $this->getOrdenamiento('producto1', 'M. Prima 1'),
+            'producto2'     => $this->getOrdenamiento('producto2', 'M. Prima 2'),
+            'producto3'     => $this->getOrdenamiento('producto3', 'M. Prima 3'),
+            'figura'        => $this->getOrdenamiento('figura', 'Figura'),
+            'peso'          => $this->getOrdenamiento('peso', 'Peso (kg)'),
+            'diametro'      => $this->getOrdenamiento('diametro', 'Diámetro'),
+            'longitud'      => $this->getOrdenamiento('longitud', 'Longitud'),
+            'estado'        => $this->getOrdenamiento('estado', 'Estado'),
+        ];
 
-        return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
+        return view('etiquetas.index', compact(
+            'etiquetas',
+            'etiquetasJson',
+            'ordenables',
+            'filtrosActivos'
+        ));
     }
 
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)

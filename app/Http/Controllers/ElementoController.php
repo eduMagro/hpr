@@ -72,16 +72,12 @@ class ElementoController extends Controller
             $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
         }
 
-        // 🧩 Relaciones con otras tablas
         if ($request->filled('codigo_planilla')) {
             $input = $request->codigo_planilla;
 
-            $query = $query->get()->filter(function ($elemento) use ($input) {
-                return str_contains($elemento->planilla?->codigo_limpio ?? '', $input);
+            $query->whereHas('planilla', function ($q) use ($input) {
+                $q->where('codigo', 'like', "%{$input}%");
             });
-
-            // ✅ Ordenamiento sobre la colección
-            $query = $query->sortByDesc('created_at');
         }
 
         // Etiqueta
@@ -484,7 +480,7 @@ class ElementoController extends Controller
                 'message' => "Subetiqueta $nuevoSubId y nuevo elemento creados correctamente.",
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error al dividir elemento: ' . $e->getMessage());
+            Log::error('Error al dividir elemento: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error interno: ' . $e->getMessage(),

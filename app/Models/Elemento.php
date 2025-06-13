@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Elemento extends Model
 {
@@ -52,24 +53,24 @@ class Elemento extends Model
     protected $appends = ['longitud_cm', 'longitud_m', 'peso_kg', 'diametro_mm'];
     public static function generarCodigo(): string
     {
-        $año = now()->year;
-        $mes = now()->format('m'); // Mes con dos dígitos
-        $anyoCorto = substr($año, -2);
-        $prefijo = "EL{$anyoCorto}{$mes}"; // Ej: EL2506
+        return DB::transaction(function () {
+            $prefijo = 'EL' . now()->format('ym'); // EL2506
 
-        // Buscar el último código que empiece por el prefijo
-        $ultimo = self::where('codigo', 'like', "{$prefijo}%")
-            ->orderByDesc('codigo')
-            ->value('codigo');
+            // Obtener el número mayor ya usado después del prefijo
+            $ultimo = self::where('codigo', 'like', "$prefijo%")
+                ->lockForUpdate()
+                ->orderByDesc(DB::raw("CAST(SUBSTRING(codigo, LENGTH('$prefijo') + 1) AS UNSIGNED)"))
+                ->value('codigo');
 
-        $siguiente = 1;
-        if ($ultimo) {
-            $num = (int)substr($ultimo, strlen($prefijo));
-            $siguiente = $num + 1;
-        }
+            $siguiente = 1;
 
+            if ($ultimo) {
+                $numero = (int)substr($ultimo, strlen($prefijo));
+                $siguiente = $numero + 1;
+            }
 
-        return sprintf("%s%03d", $prefijo, $siguiente);
+            return $prefijo . $siguiente; // Sin límite de dígitos
+        });
     }
 
     /**

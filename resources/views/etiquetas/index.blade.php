@@ -107,8 +107,10 @@
                 <table class="w-full min-w-[1200px] border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white text-10">
                         <tr class="text-center text-xs uppercase">
+
                             <th class="p-2 border">{!! $ordenables['id'] ?? 'ID' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['subetiqueta'] ?? 'SubEtiqueta' !!}</th>
+                            <th class="p-2 border">Codigo</th>
+                            <th class="p-2 border">Codigo SubEtiqueta</th>
                             <th class="p-2 border">{!! $ordenables['codigo_planilla'] ?? 'Planilla' !!}</th>
                             <th class="p-2 border">Op 1</th>
                             <th class="p-2 border">Op 2</th>
@@ -131,11 +133,15 @@
 
                         <tr class="text-center text-xs uppercase">
                             <form method="GET" action="{{ route('etiquetas.index') }}">
+
                                 <th class="p-1 border">
                                     <x-tabla.input name="id" value="{{ request('id') }}" />
                                 </th>
                                 <th class="p-1 border">
-                                    <x-tabla.input name="subetiqueta" value="{{ request('subetiqueta') }}" />
+                                    <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input name="etiqueta_sub_id" value="{{ request('etiqueta_sub_id') }}" />
                                 </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="codigo_planilla" value="{{ request('codigo_planilla') }}" />
@@ -211,7 +217,9 @@
                                 :class="{ 'bg-yellow-100': editando }"
                                 class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
                                 <!-- ID (no editable) -->
+
                                 <td class="p-2 text-center border">{{ $etiqueta->id }}</td>
+                                <td class="p-2 text-center border">{{ $etiqueta->codigo }}</td>
                                 <td class="p-2 text-center border">{{ $etiqueta->etiqueta_sub_id }}</td>
 
                                 <!-- Planilla (no editable) -->

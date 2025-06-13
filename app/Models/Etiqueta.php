@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Etiqueta extends Model
 {
@@ -45,41 +46,47 @@ class Etiqueta extends Model
 
     public static function generarCodigoEtiqueta(): string
     {
-        $año = now()->year;
-        $mes = now()->format('m'); // Mes con dos dígitos
-        $anyoCorto = substr($año, -2);
+        return DB::transaction(function () {
+            // Prefijo por año+mes, p. ej. ETQ2506
+            $prefijo = 'ET' . now()->format('ym');
 
-        $prefijo = "ETQ{$anyoCorto}{$mes}";
+            $ultimo = self::where('codigo', 'like', "$prefijo%")
+                ->where('codigo', 'not like', "$prefijo%.%") // ⚠️ ignora subetiquetas como ET2506999.1
+                ->lockForUpdate()
+                ->orderByDesc(DB::raw(
+                    "CAST(SUBSTRING(codigo, LENGTH('$prefijo') + 1) AS UNSIGNED)"
+                ))
+                ->value('codigo');
 
-        $ultimo = self::where('codigo', 'like', "{$prefijo}%")
-            ->orderByDesc('codigo')
-            ->value('codigo');
 
-        $siguiente = 1;
-        if ($ultimo) {
-            $num = (int)substr($ultimo, strlen($prefijo));
-            $siguiente = $num + 1;
-        }
+            $siguiente = $ultimo
+                ? (int)substr($ultimo, strlen($prefijo)) + 1
+                : 1;
 
-        return sprintf("%s%03d", $prefijo, $siguiente);
+            // ➜ sin str_pad → sufijo indefinido: 1…999, 1000, 1001, ...
+            return $prefijo . $siguiente;
+        });
     }
-
     public static function generarCodigoSubEtiqueta(string $codigoPadre): string
     {
-        // Buscar subetiquetas existentes para este padre
-        $existentes = self::where('codigo', $codigoPadre)
-            ->whereNotNull('etiqueta_sub_id')
-            ->pluck('etiqueta_sub_id')
-            ->map(function ($sub) {
-                $partes = explode('.', $sub);
-                return isset($partes[1]) ? (int)$partes[1] : 0;
-            })
-            ->toArray();
+        return DB::transaction(function () use ($codigoPadre) {
 
-        $contador = empty($existentes) ? 1 : max($existentes) + 1;
+            // Lock rows that start with "ET2506999."
+            $existentes = self::where('codigo', 'like', $codigoPadre . '.%')
+                ->lockForUpdate()
+                ->pluck('codigo')
+                ->map(function ($c) use ($codigoPadre) {
+                    // Extrae solo la parte numérica después del punto
+                    return (int) substr($c, strlen($codigoPadre) + 1);
+                })
+                ->toArray();
 
-        return $codigoPadre . '.' . str_pad($contador, 2, '0', STR_PAD_LEFT);
+            $contador = empty($existentes) ? 1 : max($existentes) + 1;
+
+            return $codigoPadre . '.' . $contador;   // ET2506999.2, .3, .4…
+        });
     }
+
 
 
     // Relaciones
