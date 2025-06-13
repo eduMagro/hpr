@@ -404,26 +404,156 @@
             </div>
 
             <x-tabla.paginacion :paginador="$etiquetas" />
-            <!-- Modal con Canvas para Dibujar las Dimensiones -->
-            <div id="modal-dibujo"
-                class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex justify-center items-center p-4">
-                <div
-                    class="bg-white p-4 sm:p-6 rounded-lg w-full sm:w-auto max-w-[95vw] max-h-[90vh] flex flex-col shadow-lg relative">
-                    <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
-                        ✖
-                    </button>
 
-                    <h2 class="text-xl font-semibold mb-4 text-center">Elementos de la Etiqueta</h2>
-                    <!-- Contenedor desplazable -->
-                    <div class="overflow-y-auto flex-1 min-h-0" style="max-height: 75vh;">
-                        <canvas id="canvas-dibujo" width="800" height="600"
-                            class="border max-w-full h-auto"></canvas>
-                    </div>
+            <!-- Modal estilo etiqueta-máquina -->
+            <div id="modalEtiqueta"
+                class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+                <div id="modalEtiquetaBox" style="background-color: #fe7f09; border: 1px solid black;"
+                    class="proceso boder shadow-xl w-full max-w-3xl rounded-lg overflow-y-auto max-h-[95vh] relative">
+
+                    <!-- Contenido dinámico -->
+                    <div id="modalContent" class="p-2 relative"></div>
                 </div>
             </div>
-            <script src="{{ asset('js/etiquetasJs/figurasEtiqueta.js') }}" defer></script>
+
+
             <script>
                 window.etiquetasConElementos = @json($etiquetasJson);
+            </script>
+            <script>
+                function mostrar(etiquetaId) {
+                    const datos = window.etiquetasConElementos[etiquetaId];
+                    if (!datos) return;
+
+                    const subId = datos.etiqueta_sub_id ?? 'N/A';
+                    const nombre = datos.nombre ?? 'Sin nombre';
+                    const peso = datos.peso_kg ?? 'N/A';
+                    const cliente = datos.planilla?.cliente?.empresa ?? 'Sin cliente';
+                    const obra = datos.planilla?.obra?.obra ?? 'Sin obra';
+                    const planillaCod = datos.planilla?.codigo_limpio ?? 'N/A';
+                    const seccion = datos.planilla?.seccion ?? '';
+                    const etiquetaIdVisual = datos.id ?? 'N/A';
+
+                    const html = `
+        <!-- Botón imprimir generado dinámicamente -->
+        <button onclick="imprimirEtiqueta('${subId}')"
+                class="absolute top-2 right-10 text-blue-800 hover:text-blue-900 no-print">
+            🖨️
+        </button>
+
+        <div class="text-lg font-semibold">${obra} – ${cliente}</div>
+        <div class="text-md mb-2">${planillaCod} – S:${seccion}</div>
+        <h3 class="text-lg font-semibold text-black">
+            ${subId} ${nombre} – Cal:B500SD – ${peso} kg
+        </h3>
+        <div class="mt-4 border-t border-black pt-2">
+            <canvas id="canvas-modal-${etiquetaId}" class="w-full"></canvas>
+        </div>
+    `;
+
+                    const content = document.getElementById('modalContent');
+                    content.innerHTML = html;
+
+                    const modal = document.getElementById('modalEtiqueta');
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+
+                    setTimeout(() => {
+                        dibujarCanvasEtiqueta(`canvas-modal-${etiquetaId}`, datos.elementos);
+                    }, 50);
+                }
+
+
+                /* ----------- Cierre del modal ----------- */
+                document.getElementById('modalClose').addEventListener('click', cerrarModal);
+                document.getElementById('modalEtiqueta').addEventListener('click', e => {
+                    if (e.target === e.currentTarget) cerrarModal(); // clic fuera del cuadro
+                });
+
+                function cerrarModal() {
+                    const modal = document.getElementById('modalEtiqueta');
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }
+            </script>
+            <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}" defer></script>
+            <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script>
+            <script>
+                function imprimirEtiqueta(etiquetaSubId) {
+                    const originalCanvas = document.querySelector('#modalContent canvas');
+                    if (!originalCanvas) return alert('Canvas no encontrado');
+
+                    /* --- convierte canvas visible en imagen HD --- */
+                    const scale = 2;
+                    const tmp = document.createElement('canvas');
+                    tmp.width = originalCanvas.width * scale;
+                    tmp.height = originalCanvas.height * scale;
+                    const cctx = tmp.getContext('2d');
+                    cctx.scale(scale, scale);
+                    cctx.drawImage(originalCanvas, 0, 0);
+                    const canvasImg = tmp.toDataURL('image/png');
+
+                    /* --- clona contenido del modal y sustituye canvas --- */
+                    const clone = document.getElementById('modalContent').cloneNode(true);
+                    clone.classList.add('etiqueta-print');
+
+                    // ⬇️  oculta controles/íconos de pantalla
+                    clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+                    const canvasClone = clone.querySelector('canvas');
+                    const img = new Image();
+                    img.src = canvasImg;
+                    img.style.width = '100%';
+                    img.style.height = 'auto';
+                    if (canvasClone) canvasClone.replaceWith(img);
+
+                    /* --- genera QR y lo añade --- */
+                    const tempQR = document.createElement('div');
+                    document.body.appendChild(tempQR);
+                    new QRCode(tempQR, {
+                        text: etiquetaSubId,
+                        width: 60,
+                        height: 60
+                    });
+
+                    setTimeout(() => {
+                        const qrImg = tempQR.querySelector('img');
+                        const qrBox = document.createElement('div');
+                        qrBox.className = 'qr-print';
+                        qrBox.appendChild(qrImg);
+                        clone.insertBefore(qrBox, clone.firstChild);
+
+                        /* --- abre ventana A6 --- */
+                        const w = window.open('', '_blank');
+                        const style = `
+<style>
+@page { size: A6 landscape; margin: 0; }   /* <-- A6 */
+body      { margin:0; font-family:Arial,sans-serif; }
+.etiqueta-print{
+    width: 200mm;
+height: 100mm;       /* A6 exacto */
+    background:#fe7f09; border:2px solid #000;
+    padding:4mm; box-sizing:border-box; position:relative;
+}
+.etiqueta-print img{ max-width:100%; height:auto; display:block; margin-top:6mm; }
+.qr-print{
+    position:absolute; top:8mm; right:8mm;
+    width:60px; height:60px; border:2px solid #000; padding:0; background:#fff;
+}
+</style>`;
+
+                        w.document.write(`
+<html><head><title>Etiqueta ${etiquetaSubId}</title>${style}</head>
+<body>${clone.outerHTML}
+<script>
+  window.onload = () => { window.print(); setTimeout(()=>window.close(),800); };
+<\/script>
+</body></html>
+        `);
+                        w.document.close();
+                        tempQR.remove();
+                    }, 250);
+                }
             </script>
             <script>
                 function guardarCambios(etiqueta) {

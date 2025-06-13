@@ -12,7 +12,7 @@ class Etiqueta extends Model
 
 
     protected $table = 'etiquetas';
-
+    protected $appends = ['peso_kg'];
     protected $fillable = [
         'codigo',
         'etiqueta_sub_id', // Para el caso en que todos los elementos tienen la misma máquina

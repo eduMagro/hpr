@@ -349,7 +349,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#fff";
+        ctx.fillStyle = "#fe7f09";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -401,7 +401,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             ctx.fillStyle = "#007bff";
             ctx.fillRect(buttonX, buttonY, 80, 30);
-            ctx.fillStyle = "#fff";
+            ctx.fillStyle = "#fe7f09";
             ctx.font = "14px Arial";
             ctx.fillText("✂️ Dividir", buttonX + 70, buttonY + 20);
 
@@ -437,7 +437,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             ctx.fillStyle = "#28a745";
             ctx.fillRect(cambioX, cambioY, cambioAncho, cambioAlto);
-            ctx.fillStyle = "#fff";
+            ctx.fillStyle = "#fe7f09";
             ctx.font = "13px Arial";
             ctx.textAlign = "center";
             ctx.fillText(
@@ -806,5 +806,166 @@ function abrirModalEtiquetarElemento(idElemento) {
                     text: "No se pudo dividir el elemento.",
                 });
             });
+    });
+}
+function dibujarCanvasEtiqueta(canvasId, elementos) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const parent = canvas.parentElement;
+    const canvasWidth = parent.clientWidth;
+    const textHeight = 60;
+    const buttonHeight = 0;
+    const numElementos = elementos.length;
+
+    const canvasHeight =
+        textHeight +
+        numElementos * minSlotHeight +
+        (numElementos - 1) * gapSpacing +
+        buttonHeight;
+
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#fe7f09";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const availableSlotHeight =
+        (canvasHeight -
+            textHeight -
+            buttonHeight -
+            (numElementos - 1) * gapSpacing) /
+        numElementos;
+    const availableWidth = canvasWidth - 2 * marginX;
+
+    elementos.forEach((elemento, index) => {
+        const dimensionesStr = elemento.dimensiones || "";
+        const dims = extraerDimensiones(dimensionesStr);
+        const barras = elemento.barras ?? 0;
+        const diametro = elemento.diametro ?? "N/A";
+        const peso = elemento.peso ?? "N/A";
+
+        const centerX = marginX + availableWidth / 2;
+        const centerY =
+            textHeight +
+            index * (availableSlotHeight + gapSpacing) +
+            availableSlotHeight / 2;
+
+        // Dibujar info de barras
+        ctx.font = "14px Arial";
+        ctx.fillStyle = BARS_TEXT_COLOR;
+        ctx.textAlign = "right";
+        ctx.fillText(
+            `Ø${diametro} | ${peso} | x${barras}`,
+            canvasWidth - 10,
+            centerY - 40
+        );
+
+        // ID del elemento
+        ctx.textAlign = "left";
+        ctx.fillStyle = ELEMENT_TEXT_COLOR;
+        ctx.fillText(`#${elemento.id}`, 10, centerY + 5);
+
+        // Figura
+        if (dims.length === 1 && dims[0].type === "arc") {
+            const arc = dims[0];
+            const scale = Math.min(
+                availableWidth / (2 * arc.radius),
+                availableSlotHeight / (2 * arc.radius)
+            );
+            const effectiveRadius = arc.radius * scale;
+            const angleRad = ((arc.arcAngle || 360) * Math.PI) / 180;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, effectiveRadius, 0, angleRad, false);
+            ctx.strokeStyle = FIGURE_LINE_COLOR;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            const midAngle = angleRad / 2;
+            ctx.fillText(
+                `${arc.radius}r`,
+                centerX + effectiveRadius * Math.cos(midAngle),
+                centerY + effectiveRadius * Math.sin(midAngle)
+            );
+        } else if (dims.length === 1 && dims[0].type === "line") {
+            const line = dims[0];
+            const scale = availableWidth / Math.abs(line.length);
+            const length = line.length * scale;
+            ctx.beginPath();
+            ctx.moveTo(centerX - length / 2, centerY);
+            ctx.lineTo(centerX + length / 2, centerY);
+            ctx.strokeStyle = FIGURE_LINE_COLOR;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            drawDimensionLine(
+                ctx,
+                { x: centerX - length / 2, y: centerY },
+                { x: centerX + length / 2, y: centerY },
+                `${line.length}`,
+                10
+            );
+        } else {
+            const points = computePathPoints(dims);
+            let minX = Infinity,
+                maxX = -Infinity,
+                minY = Infinity,
+                maxY = -Infinity;
+            points.forEach((pt) => {
+                minX = Math.min(minX, pt.x);
+                maxX = Math.max(maxX, pt.x);
+                minY = Math.min(minY, pt.y);
+                maxY = Math.max(maxY, pt.y);
+            });
+
+            const segments = computeLineSegments(dims);
+            const figWidth = maxX - minX;
+            const figHeight = maxY - minY;
+            const figCenterX = (minX + maxX) / 2;
+            const figCenterY = (minY + maxY) / 2;
+            let rotate = figWidth < figHeight && segments.length <= 7;
+
+            const effectiveWidth = rotate ? figHeight : figWidth;
+            const effectiveHeight = rotate ? figWidth : figHeight;
+            const scale = Math.min(
+                availableWidth / effectiveWidth,
+                availableSlotHeight / effectiveHeight
+            );
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            if (rotate) ctx.rotate(-Math.PI / 2);
+            ctx.scale(scale, scale);
+            ctx.translate(-figCenterX, -figCenterY);
+            ctx.lineWidth = 2 / scale;
+            dibujarFiguraPath(ctx, dims);
+            ctx.restore();
+
+            segments.forEach((seg) => {
+                const p1 = transformPoint(
+                    seg.start.x,
+                    seg.start.y,
+                    centerX,
+                    centerY,
+                    scale,
+                    rotate,
+                    figCenterX,
+                    figCenterY
+                );
+                const p2 = transformPoint(
+                    seg.end.x,
+                    seg.end.y,
+                    centerX,
+                    centerY,
+                    scale,
+                    rotate,
+                    figCenterX,
+                    figCenterY
+                );
+                drawDimensionLine(ctx, p1, p2, seg.length.toString(), 10);
+            });
+        }
     });
 }
