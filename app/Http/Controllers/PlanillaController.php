@@ -524,17 +524,29 @@ class PlanillaController extends Controller
                     }
                 }
 
+                // Reemplaza tu bloque actual dentro del importador por esto
+
+                // Reemplaza tu bloque actual dentro del importador por esto
+
                 foreach ($filasAgrupadasPorEtiqueta as $numeroEtiqueta => $filas) {
                     $codigoPadre = Etiqueta::generarCodigoEtiqueta();
 
                     $etiquetaPadre = Etiqueta::create([
-                        'codigo' => $codigoPadre,
-                        'planilla_id' => $planilla->id,
-                        'nombre' => $filas[0][22] ?? 'Sin nombre',
-                        'peso' => 0,
-                        'marca' => null,
+                        'codigo'          => $codigoPadre,
+                        'planilla_id'     => $planilla->id,
+                        'nombre'          => $filas[0][22] ?? 'Sin nombre',
+                        'peso'            => 0,
+                        'marca'           => null,
                         'etiqueta_sub_id' => null,
                     ]);
+
+                    // Obtener el sufijo máximo ya existente (por si ya existen etiquetas con este padre)
+                    $maxSufijo = Etiqueta::where('codigo', $codigoPadre)
+                        ->where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
+                        ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)), 0) AS max_sub")
+                        ->value('max_sub');
+
+                    $contadorSub = $maxSufijo + 1;
 
                     $gruposPorMaquina = [];
                     foreach ($filas as $row) {
@@ -546,7 +558,6 @@ class PlanillaController extends Controller
                         $ensamblado = $row[4] ?? null;
 
                         $maquina_id = $this->asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planilla->id);
-                        // Si no hay máquina válida, registramos advertencia
                         if (!$maquina_id) {
                             $advertencias[] = "Fila {$row[21]} sin máquina compatible (planilla {$codigo}).";
                             continue;
@@ -555,27 +566,26 @@ class PlanillaController extends Controller
                         $gruposPorMaquina[$maquina_id][] = ['row' => $row, 'maquina_id' => $maquina_id];
                     }
 
-                    $contadorSubetiquetas = 1;
                     foreach ($gruposPorMaquina as $maquina_id => $grupo) {
-                        $codigoSub = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
+                        $codigoSub = sprintf('%s.%02d', $codigoPadre, $contadorSub);
 
                         $subEtiqueta = Etiqueta::create([
-                            'codigo' => $codigoPadre,
-                            'planilla_id' => $planilla->id,
-                            'nombre' => $grupo[0]['row'][22] ?? 'Sin nombre',
-                            'peso' => 0,
-                            'marca' => null,
+                            'codigo'          => $codigoPadre,
+                            'planilla_id'     => $planilla->id,
+                            'nombre'          => $grupo[0]['row'][22] ?? 'Sin nombre',
+                            'peso'            => 0,
+                            'marca'           => null,
                             'etiqueta_sub_id' => $codigoSub,
                         ]);
-                        // 👉 AÑADIR ESTE BLOQUE AQUÍ:
-                        $ultimaPosicion = OrdenPlanilla::where('maquina_id', $maquina_id)->max('posicion') ?? 0;
 
+                        $ultimaPosicion = OrdenPlanilla::where('maquina_id', $maquina_id)
+                            ->max('posicion') ?? 0;
                         OrdenPlanilla::create([
                             'planilla_id' => $planilla->id,
-                            'maquina_id' => $maquina_id ?? null,
-                            'posicion' => $ultimaPosicion + 1,
+                            'maquina_id'  => $maquina_id,
+                            'posicion'    => $ultimaPosicion + 1,
                         ]);
-                        // Agrupar elementos duplicados
+
                         $agrupados = [];
                         foreach ($grupo as $item) {
                             $row = $item['row'];
@@ -591,12 +601,12 @@ class PlanillaController extends Controller
 
                             if (!isset($agrupados[$clave])) {
                                 $agrupados[$clave] = [
-                                    'row' => $row,
-                                    'peso' => (float)($row[34] ?? 0),
+                                    'row'   => $row,
+                                    'peso'  => (float)($row[34] ?? 0),
                                     'barras' => (int)($row[32] ?? 0),
                                 ];
                             } else {
-                                $agrupados[$clave]['peso'] += (float)($row[34] ?? 0);
+                                $agrupados[$clave]['peso']  += (float)($row[34] ?? 0);
                                 $agrupados[$clave]['barras'] += (int)($row[32] ?? 0);
                             }
                         }
@@ -606,22 +616,22 @@ class PlanillaController extends Controller
                             $tiempos = $this->calcularTiemposElemento($row);
                             $codigoElemento = Elemento::generarCodigo();
                             Elemento::create([
-                                'codigo' => $codigoElemento,
-                                'planilla_id' => $planilla->id,
-                                'etiqueta_id' => $subEtiqueta->id,
-                                'etiqueta_sub_id' => $codigoSub,
-                                'maquina_id' => $maquina_id,
-                                'figura' => $row[26],
-                                'fila' => $row[21],
-                                'marca' => $row[23],
-                                'etiqueta' => $row[30],
-                                'diametro' => $row[25],
-                                'longitud' => $row[27],
-                                'barras' => $item['barras'],
-                                'dobles_barra' => $row[33] ?? 0,
-                                'peso' => $item['peso'],
-                                'dimensiones' => $row[47] ?? null,
-                                'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
+                                'codigo'              => $codigoElemento,
+                                'planilla_id'         => $planilla->id,
+                                'etiqueta_id'         => $subEtiqueta->id,
+                                'etiqueta_sub_id'     => $codigoSub,
+                                'maquina_id'          => $maquina_id,
+                                'figura'              => $row[26],
+                                'fila'                => $row[21],
+                                'marca'               => $row[23],
+                                'etiqueta'            => $row[30],
+                                'diametro'            => $row[25],
+                                'longitud'            => $row[27],
+                                'barras'              => $item['barras'],
+                                'dobles_barra'        => $row[33] ?? 0,
+                                'peso'                => $item['peso'],
+                                'dimensiones'         => $row[47] ?? null,
+                                'tiempo_fabricacion'  => $tiempos['tiempo_fabricacion'],
                             ]);
                         }
 
@@ -633,9 +643,12 @@ class PlanillaController extends Controller
                             ->value('marca');
                         $subEtiqueta->save();
 
-                        $contadorSubetiquetas++;
+                        $contadorSub++;   // siguiente sufijo
                     }
                 }
+
+
+
 
                 $elementos = $planilla->elementos;
                 $tiempoBase = $elementos->sum('tiempo_fabricacion');

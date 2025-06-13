@@ -28,6 +28,7 @@ class EtiquetaController extends Controller
         $query->when($request->filled('id'), fn($q) => $q->where('id', $request->id));
 
         $query->when($request->filled('estado'), fn($q) => $q->where('estado', $request->estado));
+        $query->when($request->filled('etiqueta_sub_id'), fn($q) => $q->where('etiqueta_sub_id', $request->etiqueta_sub_id));
 
         if ($request->filled('codigo_planilla')) {
             $planillas = Planilla::where('codigo', 'LIKE', '%' . $request->codigo_planilla . '%')->pluck('id');
@@ -146,8 +147,23 @@ class EtiquetaController extends Controller
         $perPage   = $request->input('per_page', 10);
         $etiquetas = $query->paginate($perPage)->appends($request->except('page'));
 
-        $etiquetasJson = Etiqueta::with('elementos')
-            ->whereNotNull('etiqueta_sub_id')->get();
+        $etiquetasJson = Etiqueta::select('id', 'etiqueta_sub_id', 'nombre', 'peso', 'estado', 'fecha_inicio', 'fecha_finalizacion', 'planilla_id')
+            ->whereNotNull('etiqueta_sub_id')
+            ->with([
+                'planilla' => function ($q) {
+                    $q->select('id', 'obra_id', 'cliente_id', 'codigo', 'codigo', 'seccion')
+                        ->with([
+                            'obra:id,obra',
+                            'cliente:id,empresa',
+                        ]);
+                },
+                'elementos' => function ($q) {
+                    $q->select('id', 'etiqueta_id', 'dimensiones', 'barras', 'diametro', 'peso');
+                }
+            ])
+            ->get()
+            ->keyBy('id');
+
         $filtrosActivos = $this->filtrosActivos($request);
 
         // 5️⃣  Seguir usando tu helper para los encabezados

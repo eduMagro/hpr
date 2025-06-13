@@ -47,47 +47,41 @@ class Etiqueta extends Model
     public static function generarCodigoEtiqueta(): string
     {
         return DB::transaction(function () {
-            // Prefijo por año+mes, p. ej. ETQ2506
-            $prefijo = 'ET' . now()->format('ym');
+            $prefijo = 'ETQ' . now()->format('ym');   // p.ej. ETQ2506
 
+            // 1️⃣  Solo filas PADRE (etiqueta_sub_id IS NULL)
             $ultimo = self::where('codigo', 'like', "$prefijo%")
-                ->where('codigo', 'not like', "$prefijo%.%") // ⚠️ ignora subetiquetas como ET2506999.1
+                ->whereNull('etiqueta_sub_id')        // ← clave del arreglo
                 ->lockForUpdate()
                 ->orderByDesc(DB::raw(
                     "CAST(SUBSTRING(codigo, LENGTH('$prefijo') + 1) AS UNSIGNED)"
                 ))
                 ->value('codigo');
 
-
-            $siguiente = $ultimo
-                ? (int)substr($ultimo, strlen($prefijo)) + 1
+            $numero = $ultimo
+                ? (int) substr($ultimo, strlen($prefijo)) + 1
                 : 1;
 
-            // ➜ sin str_pad → sufijo indefinido: 1…999, 1000, 1001, ...
-            return $prefijo . $siguiente;
+            return sprintf('%s%03d', $prefijo, $numero); // ETQ2506005, ETQ2506006…
         });
     }
+
+
     public static function generarCodigoSubEtiqueta(string $codigoPadre): string
     {
-        return DB::transaction(function () use ($codigoPadre) {
+        // Buscar subetiquetas cuyo código comience con el padre y punto (ETQ2506003.)
+        $existentes = self::where('codigo', 'like', $codigoPadre . '.%')
+            ->pluck('codigo') // ahora buscamos en `codigo`, no en `etiqueta_sub_id`
+            ->map(function ($codigo) {
+                $partes = explode('.', $codigo);
+                return isset($partes[1]) ? (int)$partes[1] : 0;
+            })
+            ->toArray();
 
-            // Lock rows that start with "ET2506999."
-            $existentes = self::where('codigo', 'like', $codigoPadre . '.%')
-                ->lockForUpdate()
-                ->pluck('codigo')
-                ->map(function ($c) use ($codigoPadre) {
-                    // Extrae solo la parte numérica después del punto
-                    return (int) substr($c, strlen($codigoPadre) + 1);
-                })
-                ->toArray();
+        $contador = empty($existentes) ? 1 : max($existentes) + 1;
 
-            $contador = empty($existentes) ? 1 : max($existentes) + 1;
-
-            return $codigoPadre . '.' . $contador;   // ET2506999.2, .3, .4…
-        });
+        return $codigoPadre . '.' . str_pad($contador, 2, '0', STR_PAD_LEFT);
     }
-
-
 
     // Relaciones
     public function planilla()

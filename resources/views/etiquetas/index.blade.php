@@ -74,32 +74,6 @@
 
 
         <div class="w-full p-4 sm:p-2">
-            <!-- Formulario de Filtros -->
-            <form method="GET" action="{{ route('etiquetas.index') }}"
-                class="mb-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-2 md:gap-4 p-2">
-
-                <!-- Estado -->
-                <div class="flex flex-col">
-                    <label for="estado" class="text-sm font-medium text-gray-700">Estado</label>
-                    <select name="estado" id="estado"
-                        class="w-full md:w-40 px-2 py-1 text-gray-900 rounded-md border border-gray-300 focus:ring-2 focus:ring-blue-500">
-                        <option value="">Todos</option>
-                        <option value="pendiente" {{ request('estado') == 'pendiente' ? 'selected' : '' }}>Pendiente
-                        </option>
-                        <option value="fabricando" {{ request('estado') == 'fabricando' ? 'selected' : '' }}>Fabricando
-                        </option>
-                        <option value="completada" {{ request('estado') == 'completada' ? 'selected' : '' }}>Completada
-                        </option>
-                    </select>
-                </div>
-
-                <!-- Botón Filtrar -->
-                <div class="flex flex-col justify-end">
-                    <button type="submit" class="bg-blue-500 text-white p-2 rounded w-full md:w-auto">
-                        Filtrar
-                    </button>
-                </div>
-            </form>
 
             <!-- Tabla con formularios de búsqueda -->
             <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />

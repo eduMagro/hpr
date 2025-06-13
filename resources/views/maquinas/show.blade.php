@@ -194,11 +194,6 @@
                                     </p>
 
                                 </div>
-                                <!-- 🔹 Elementos de la misma etiqueta en otras máquinas -->
-                                @if (isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty())
-                                    <h4 class="font-semibold text-red-700 p-2">⚠️ Hay elementos en otras
-                                        máquinas</h4>
-                                @endif
                             </div>
                             <div>
                                 <!-- Contenedor para el canvas -->
@@ -209,10 +204,7 @@
                                 <div id="canvas-container-print"
                                     style="width: 100%; border-top: 1px solid black; visibility: hidden; height: 0;">
                                     <canvas id="canvas-imprimir-etiqueta-{{ $etiqueta->etiqueta_sub_id }}"></canvas>
-
                                 </div>
-
-
                             </div>
                         </div>
                     @empty
