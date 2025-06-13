@@ -328,10 +328,12 @@ class PaqueteController extends Controller
                 'tipo' => 'Bajada de paquete',
                 'paquete_id'         => $paquete->id,
                 'solicitado_por'         => auth()->id(),
-                'descripcion'        => "Se solicita bajar del carro el paquete #{$paquete->id} de la máquina {$maquina->nombre}",
+                'descripcion'        => "Se solicita bajar del carro el paquete {$paquete->codigo} de la máquina {$maquina->nombre}",
                 'ubicacion_origen'   => $ubicacion->id,
                 'maquina_origen'     => $maquina->id,
-                'estado'             => 'pendiente'
+                'estado'             => 'pendiente',
+                'prioridad'          => 3,
+                'fecha_solicitud'    => now(),
             ]);
 
             // Asignar los elementos al paquete
@@ -495,9 +497,16 @@ class PaqueteController extends Controller
             DB::beginTransaction();
 
             $paquete = Paquete::findOrFail($id);
-            // Desasociar los elementos del paquete
-            Elemento::where('paquete_id', $paquete->id)->update(['paquete_id' => null]);
-            // Eliminar el paquete
+
+            // 🔸 Eliminar movimientos pendientes asociados al paquete
+            \App\Models\Movimiento::where('paquete_id', $paquete->id)
+                ->where('estado', 'pendiente')
+                ->delete();
+
+            // 🔸 Desasociar los elementos del paquete
+            $paquete->elementos()->update(['paquete_id' => null]);
+
+            // 🔸 Eliminar el paquete
             $paquete->delete();
 
             DB::commit();

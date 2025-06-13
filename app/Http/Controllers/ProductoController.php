@@ -93,7 +93,12 @@ class ProductoController extends Controller
 
         // 🔹 Aplicar filtros personalizados (si ya los tienes en un método aparte)
         $query = $this->aplicarFiltros($query, $request);
+        // ❗ Ocultar productos con estado 'consumido' o 'fabricando' si no se han solicitado expresamente
+        $estadoFiltrado = $request->input('estado');
 
+        if (!in_array($estadoFiltrado, ['consumido', 'fabricando'])) {
+            $query->whereNotIn('estado', ['consumido', 'fabricando']);
+        }
         // 🔹 Ordenamiento (con fallback seguro)
         $sortBy = in_array($request->input('sort_by'), [
             'id',

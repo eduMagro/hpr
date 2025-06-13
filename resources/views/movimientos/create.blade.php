@@ -1,9 +1,8 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Crear Movimientos') }}
-        </h2>
-    </x-slot>
+    <x-slot name="title">Planillas - {{ config('app.name') }}</x-slot>
+    @if (auth()->user()->rol !== 'operario')
+        <x-menu.movimientos />
+    @endif
     <div class="max-w-3xl mx-auto mt-10">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden">
             <div class="bg-blue-600 text-white text-center py-4 px-6">
@@ -13,32 +12,16 @@
             <div class="p-6">
                 <form action="{{ route('movimientos.store') }}" method="POST" id="form-movimiento" class="space-y-6">
                     @csrf
-                    <input type="hidden" name="tipo" value="movimiento libre">
 
-                    {{-- Tipo de Movimiento --}}
-                    <x-tabla.select name="tipo_movimiento" :options="['producto' => 'Materia Prima', 'paquete' => 'Paquete']"
-                        selected="{{ old('tipo_movimiento', 'producto') }}" empty="Seleccionar tipo de movimiento" />
-
-                    {{-- Producto --}}
-                    <div id="producto-section">
-                        <x-tabla.input name="codigo_producto" id="codigo_producto" label="Código Materia Prima"
-                            placeholder="Escanear QR de Materia Prima" value="{{ old('codigo_producto') }}"
-                            value="{{ request('codigo_producto') }}" />
-                    </div>
-
-                    {{-- Paquete --}}
-                    <div id="paquete-section" style="display: none;">
-                        <x-tabla.input name="codigo_paquete" id="codigo_paquete" label="Código del Paquete"
-                            placeholder="Escanear QR de Paquete" value="{{ old('codigo_paquete') }}" />
-                    </div>
+                    {{-- Código Escaneado --}}
+                    <x-tabla.input-movil name="codigo_general" id="codigo_general"
+                        label="Código de Materia Prima o Paquete" placeholder="Escanear QR"
+                        value="{{ old('codigo_general') }}" inputmode="none" autocomplete="off" />
 
                     {{-- Ubicación destino --}}
-                    <x-tabla.select name="ubicacion_destino" :options="$ubicaciones->pluck('nombre', 'id')->toArray()" :selected="old('ubicacion_destino')"
-                        empty="Seleccione una nueva ubicación" />
+                    <x-tabla.input-movil name="ubicacion_destino" placeholder="Escanear ubicación"
+                        value="{{ old('ubicacion_destino') }}" inputmode="none" autocomplete="off" />
 
-                    {{-- Máquina destino --}}
-                    <x-tabla.select name="maquina_destino" :options="$maquinas->pluck('nombre', 'id')->toArray()" :selected="old('maquina_id')"
-                        empty="Seleccione una máquina" />
                     {{-- Botón de envío --}}
                     <div class="pt-4">
                         <button type="submit" id="submit-btn"

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
 
 class UbicacionController extends Controller
 {
@@ -121,7 +122,8 @@ class UbicacionController extends Controller
             DB::commit();  // Confirmar la transacción
             return redirect()->route('ubicaciones.index')->with('success', 'Ubicación creada con éxito.');
         } catch (Exception $e) {
-            DB::rollBack();  // Revertir la transacción si ocurre un error
+            DB::rollBack();
+            Log::error('Error al crear ubicación: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Hubo un problema al guardar la ubicación.'])->withInput();
         }
     }

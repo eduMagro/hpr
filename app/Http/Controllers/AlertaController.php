@@ -147,22 +147,20 @@ class AlertaController extends Controller
                 return response()->json(['error' => 'No autenticado'], 401);
             }
 
-            Log::info('👤 Usuario autenticado', ['id' => $user->id, 'rol' => $user->rol, 'categoria' => $user->categoria]);
-
             $alertasEntrantes = Alerta::where(function ($q) use ($user) {
                 $q->where('destinatario_id', $user->id)
                     ->orWhere('destino', $user->rol)
                     ->orWhere('destinatario', $user->categoria);
             })->pluck('id');
 
-            Log::info('🔎 Alertas entrantes encontradas', ['total' => $alertasEntrantes->count()]);
+            // Log::info('🔎 Alertas entrantes encontradas', ['total' => $alertasEntrantes->count()]);
 
             $alertasLeidas = AlertaLeida::where('user_id', $user->id)
                 ->whereNull('leida_en')
                 ->whereIn('alerta_id', $alertasEntrantes)
                 ->count();
 
-            Log::info('📬 Alertas sin leer', ['cantidad' => $alertasLeidas]);
+            // Log::info('📬 Alertas sin leer', ['cantidad' => $alertasLeidas]);
 
             return response()->json(['cantidad' => $alertasLeidas]);
         } catch (\Throwable $e) {

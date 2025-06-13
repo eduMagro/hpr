@@ -136,9 +136,6 @@ class PedidoController extends Controller
 
         return $query;
     }
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         $query = Pedido::with(['fabricante', 'productos', 'pedidoGlobal'])->latest();
@@ -472,7 +469,6 @@ class PedidoController extends Controller
         }
     }
 
-
     public function generarCodigoAlbaran()
     {
         $año = now()->format('y');
@@ -630,19 +626,18 @@ class PedidoController extends Controller
         }
 
 
-        $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
-            ->whereIn('estado', [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
-            ->orderByRaw("FIELD(estado, ?, ?)", [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
-            ->first();
-        if (!$pedidoGlobal) {
-            return back()->withErrors([
-                'fabricante_id' => 'No existe un pedido global activo para este fabricante.',
-            ])->withInput();
-        }
+        $pedidoGlobal = null;
 
-        if ($pedidoGlobal && $pedidoGlobal->estado === PedidoGlobal::ESTADO_PENDIENTE) {
-            $pedidoGlobal->estado = PedidoGlobal::ESTADO_EN_CURSO;
-            $pedidoGlobal->save();
+        if ($request->fabricante_id) {
+            $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
+                ->whereIn('estado', [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
+                ->orderByRaw("FIELD(estado, ?, ?)", [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
+                ->first();
+
+            if ($pedidoGlobal && $pedidoGlobal->estado === PedidoGlobal::ESTADO_PENDIENTE) {
+                $pedidoGlobal->estado = PedidoGlobal::ESTADO_EN_CURSO;
+                $pedidoGlobal->save();
+            }
         }
 
         $pedido = Pedido::create([
@@ -691,9 +686,6 @@ class PedidoController extends Controller
             ->with('success', 'Pedido creado correctamente. Revisa el correo antes de enviarlo.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show($id)
     {
         $pedido = Pedido::with(['productos', 'fabricante', 'obra'])->findOrFail($id);
@@ -772,7 +764,6 @@ class PedidoController extends Controller
         ];
     }
 
-
     private function crearPedidoDesdeRequest(Request $request): Pedido
     {
         $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
@@ -821,17 +812,10 @@ class PedidoController extends Controller
         return $pedido;
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
         //
     }
-
-    /**
-     * Update the specified resource in storage.
-     */
 
     public function update(Request $request, Pedido $pedido)
     {
@@ -883,13 +867,6 @@ class PedidoController extends Controller
         }
     }
 
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id)
     {
         $pedido = Pedido::findOrFail($id);

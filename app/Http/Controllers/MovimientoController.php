@@ -56,6 +56,10 @@ class MovimientoController extends Controller
         // Obtener el usuario autenticado
         $usuario = auth()->user();
 
+        // 👉 Redirigir a 'create' si el usuario es operario
+        if ($usuario->rol === 'operario') {
+            return redirect()->route('movimientos.create');
+        }
         // Base query con relaciones necesarias
         $query = Movimiento::with(['producto', 'productoBase', 'ejecutadoPor', 'solicitadoPor', 'ubicacionOrigen', 'ubicacionDestino', 'maquinaOrigen', 'maquinaDestino']);
         // Si es 'oficina', no aplicamos restricciones y puede ver todos los movimientos
@@ -199,212 +203,130 @@ class MovimientoController extends Controller
     {
         $tipoMovimiento = $request->tipo;
 
-        // Validación de códigos en lugar de IDs
         $validator = Validator::make($request->all(), [
-            'tipo' => 'required|in:producto,paquete,movimiento libre,Recarga materia prima',
-
-            'codigo_producto' => 'required_if:tipo,producto,movimiento libre,Recarga materia prima|nullable|string|exists:productos,codigo',
-            'codigo_paquete' => 'required_if:tipo,paquete|nullable|string|exists:paquetes,codigo',
-
+            'codigo_general'    => 'required|string|max:50',
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
-            'maquina_destino' => 'nullable|exists:maquinas,id',
+            'maquina_destino'   => 'nullable|exists:maquinas,id',
         ], [
-            'tipo.required' => 'El tipo de movimiento es obligatorio.',
-            'codigo_producto.required_if' => 'Debes escanear un código de producto.',
-            'codigo_producto.exists' => 'El código de producto no existe.',
-            'codigo_paquete.required_if' => 'Debes escanear un código de paquete.',
-            'codigo_paquete.exists' => 'El código de paquete no existe.',
-            'ubicacion_destino.exists' => 'Ubicación no válida.',
-            'maquina_destino.exists' => 'Máquina no válida.',
+            'codigo_general.required'    => 'Debes escanear un código.',
+            'ubicacion_destino.exists'   => 'Ubicación no válida.',
+            'maquina_destino.exists'     => 'Máquina no válida.',
         ]);
 
         if ($validator->fails()) {
+            Log::error('❌ Validación fallida:', $validator->errors()->toArray());
             return back()->withErrors($validator)->withInput();
         }
 
+        // ------------------------------------------------------------------------------------------------
+        // 📦 Preparar datos base
+        // ------------------------------------------------------------------------------------------------
+        $codigo = strtoupper($request->codigo_general);
 
-        if ($request->ubicacion_destino && $request->maquina_destino) {
-            return back()->with('error', 'No puedes elegir una ubicación y una máquina a la vez como destino')->withInput();
-        }
+        $maquinaId = $request->maquina_destino;
 
-        if (!$request->ubicacion_destino && !$request->maquina_destino) {
-            return back()->with('error', 'No has elegido destino')->withInput();
+        $ubicacionId = $request->ubicacion_destino;
+
+        $esRecarga = $maquinaId !== null;
+
+        $maquinaDetectada = $esRecarga
+            ? Maquina::findOrFail($maquinaId)
+            : null;
+
+        $ubicacion = !$esRecarga
+            ? Ubicacion::findOrFail($ubicacionId)
+            : null;
+
+        // Si no hay máquina explícita pero la ubicación coincide con alguna máquina por nombre
+        if (!$maquinaDetectada && $ubicacion) {
+            $maquinaDetectada = Maquina::where('nombre', $ubicacion->nombre)->first();
         }
 
 
         try {
-            DB::transaction(function () use ($request, $tipoMovimiento) {
-
-                // Buscar por código si aplica
+            DB::transaction(function () use ($codigo, $ubicacion, $maquinaDetectada) {
                 $producto = null;
                 $paquete = null;
 
+                if (str_starts_with($codigo, 'MP')) {
+                    $producto = Producto::with('productoBase', 'ubicacion')->where('codigo', $codigo)->firstOrFail();
 
-                if ($request->filled('codigo_producto')) {
-                    $producto = Producto::with('productoBase', 'ubicacion')->where('codigo', $request->codigo_producto)->firstOrFail();
+                    $tipoMovimiento = 'producto';
+                } elseif (str_starts_with($codigo, 'P')) {
+                    $paquete = Paquete::with('ubicacion')->where('codigo', $codigo)->firstOrFail();
+                    $tipoMovimiento = 'paquete';
+                } else {
+                    throw new \Exception('El código escaneado no es válido. Debe comenzar por MP- o P-.');
                 }
 
-                if ($request->codigo_paquete) {
-                    $paquete = Paquete::where('codigo', $request->codigo_paquete)->firstOrFail();
-                }
+                //------------------------------ TIPO MOVIMIENTO PRODUCTO --------------------------
+                if ($tipoMovimiento === 'producto') {
 
-                switch ($tipoMovimiento) {
-                    case 'movimiento libre':
-                        if (!$producto) {
-                            throw new \Exception('No se encontró el producto con ese código.');
+                    $tipoBase = strtolower($producto->productoBase->tipo);
+
+                    $descripcion = "Pasamos {$tipoBase} Ø{$producto->productoBase->diametro} mm"
+                        . " L:{$producto->productoBase->longitud} mm"
+                        . " de " . ($producto->ubicacion->nombre ?? 'origen desconocido')
+                        . " a " . ($maquinaDetectada
+                            ? 'máquina ' . $maquinaDetectada->nombre
+                            : 'ubicación ' . $ubicacion->nombre);
+
+                    // Validaciones si hay máquina detectada
+                    if ($maquinaDetectada) {
+
+                        $maquinasEncarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
+                        if (in_array($maquinaDetectada->codigo, $maquinasEncarretado) && $tipoBase === 'barras') {
+                            throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
                         }
 
-                        if ($request->maquina_destino) {
-                            $maquina = Maquina::findOrFail($request->maquina_destino);
-                            $maquinasEncarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
-
-                            if (in_array($maquina->codigo, $maquinasEncarretado) && strtolower($producto->productoBase->tipo) === 'barras') {
-                                throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
-                            }
-
-                            $diametro = $producto->productoBase->diametro;
-                            if ($diametro < $maquina->diametro_min || $diametro > $maquina->diametro_max) {
-                                throw new \Exception('El diámetro del producto no está dentro del rango aceptado por la máquina.');
-                            }
+                        $diametro = $producto->productoBase->diametro;
+                        if ($diametro < $maquinaDetectada->diametro_min || $diametro > $maquinaDetectada->diametro_max) {
+                            throw new \Exception('El diámetro del producto no está dentro del rango aceptado por la máquina.');
                         }
 
-                        $descripcion = "Pasamos " . strtolower($producto->productoBase->tipo)
-                            . " Ø" . $producto->productoBase->diametro . " mm"
-                            . " L:" . $producto->productoBase->longitud . " mm"
-                            . " de " . ($producto->ubicacion->nombre ?? 'origen desconocido')
-                            . " a " . ($request->maquina_destino
-                                ? 'máquina ' . Maquina::find($request->maquina_destino)?->nombre
-                                : 'ubicación ' . Ubicacion::find($request->ubicacion_destino)?->nombre);
-
-                        Movimiento::create([
-                            'tipo'               => $tipoMovimiento,
-                            'producto_id'        => $producto->id,
-                            'ubicacion_origen'   => $producto->ubicacion_id,
-                            'maquina_origen'     => $producto->maquina_id,
-                            'ubicacion_destino'  => $request->ubicacion_destino,
-                            'maquina_destino'    => $request->maquina_destino,
-                            'estado'             => 'completado',
-                            'descripcion'        => $descripcion,
-                            'fecha_ejecucion'    => now(),
-                            'ejecutado_por'      => auth()->id(),
-                        ]);
-
-                        $producto->update([
-                            'ubicacion_id' => $request->ubicacion_destino,
-                            'maquina_id'   => $request->maquina_destino,
-                            'estado'       => $request->ubicacion_destino ? 'almacenado' : 'consumido',
-                        ]);
-                        break;
-
-                    case 'producto':
-                        if (!$producto) {
-                            throw new \Exception('No se encontró el producto con ese código.');
-                        }
-
-                        if ($request->maquina_destino) {
-                            $maquina = Maquina::findOrFail($request->maquina_destino);
-                            $maquinasEncarretado = ['MSR20', 'MS16', 'PS12', 'F12'];
-
-                            if (in_array($maquina->codigo, $maquinasEncarretado) && strtolower($producto->productoBase->tipo) === 'barras') {
-                                throw new \Exception('La máquina seleccionada solo acepta productos de tipo encarretado.');
-                            }
-
-                            $diametro = $producto->productoBase->diametro;
-                            if ($diametro < $maquina->diametro_min || $diametro > $maquina->diametro_max) {
-                                throw new \Exception('El diámetro del producto no está dentro del rango aceptado por la máquina.');
-                            }
-                        }
-
-                        $descripcion = "Pasamos " . strtolower($producto->productoBase->tipo)
-                            . " Ø" . $producto->productoBase->diametro . " mm"
-                            . " L:" . $producto->productoBase->longitud . " mm"
-                            . " de " . ($producto->ubicacion->nombre ?? 'origen desconocido')
-                            . " a " . ($request->maquina_destino
-                                ? 'máquina ' . Maquina::find($request->maquina_destino)?->nombre
-                                : 'ubicación ' . Ubicacion::find($request->ubicacion_destino)?->nombre);
-
-                        Movimiento::create([
-                            'tipo'               => $tipoMovimiento,
-                            'producto_id'        => $producto->id,
-                            'ubicacion_origen'   => $producto->ubicacion_id,
-                            'maquina_origen'     => $producto->maquina_id,
-                            'ubicacion_destino'  => $request->ubicacion_destino,
-                            'maquina_destino'    => $request->maquina_destino,
-                            'estado'             => 'completado',
-                            'descripcion'        => $descripcion,
-                            'fecha_ejecucion'    => now(),
-                            'ejecutado_por'      => auth()->id(),
-                        ]);
-
-                        $producto->update([
-                            'ubicacion_id' => $request->ubicacion_destino,
-                            'maquina_id'   => $request->maquina_destino,
-                            'estado'       => $request->ubicacion_destino ? 'almacenado' : 'consumido',
-                        ]);
-                        break;
-
-                    case 'paquete':
-                        if (!$paquete) {
-                            throw new \Exception('No se encontró el paquete con ese código.');
-                        }
-
-                        $descripcion = "Movemos paquete de " . ($paquete->ubicacion->nombre ?? 'origen desconocido') .
-                            " a " . ($request->ubicacion_destino
-                                ? 'ubicación ' . Ubicacion::find($request->ubicacion_destino)?->nombre
-                                : 'destino no especificado');
-
-                        Movimiento::create([
-                            'tipo'               => 'paquete',
-                            'paquete_id'         => $paquete->id,
-                            'ubicacion_origen'   => $paquete->ubicacion_id,
-                            'maquina_origen'     => $paquete->maquina_id,
-                            'ubicacion_destino'  => $request->ubicacion_destino,
-                            'maquina_destino'    => $request->maquina_destino,
-                            'estado'             => 'completado',
-                            'descripcion'        => $descripcion,
-                            'fecha_ejecucion'    => now(),
-                            'ejecutado_por'      => auth()->id(),
-                        ]);
-
-                        $paquete->update([
-                            'ubicacion_id' => $request->ubicacion_destino,
-                            'maquina_id'   => $request->maquina_destino,
-                        ]);
-                        break;
-
-                    case 'Recarga materia prima':
-                        if (!$producto) {
-                            throw new \Exception('No se encontró el producto con ese código.');
-                        }
-
-                        $maquina = Maquina::findOrFail($request->maquina_destino);
-                        $movimiento = Movimiento::where('producto_base_id', $producto->producto_base_id)
-                            ->where('maquina_destino', $maquina->id)
+                        // 🔄 Recarga: buscar movimiento pendiente para esta máquina y base
+                        $movimientoPendiente = Movimiento::where('producto_base_id', $producto->producto_base_id)
+                            ->where('maquina_destino', $maquinaDetectada->id)
                             ->where('estado', 'pendiente')
                             ->latest()
                             ->first();
 
-                        if (!$movimiento) {
-                            throw new \Exception('No se encontró un movimiento pendiente para completar.');
+
+                        if ($movimientoPendiente) {
+                            $movimientoPendiente->update([
+                                'producto_id'        => $producto->id,
+                                'ubicacion_origen'   => $producto->ubicacion_id,
+                                'estado'             => 'completado',
+                                'fecha_ejecucion'    => now(),
+                                'ejecutado_por'      => auth()->id(),
+                            ]);
+                        } else {
+                            Movimiento::create([
+                                'tipo'               => 'movimiento libre',
+                                'producto_id'        => $producto->id,
+                                'producto_base_id'   => $producto->producto_base_id,
+                                'ubicacion_origen'   => $producto->ubicacion_id,
+                                'maquina_origen'     => $producto->maquina_id,
+                                'ubicacion_destino'  => $ubicacion->id,
+                                'maquina_destino'    => null,
+                                'estado'             => 'completado',
+                                'descripcion'        => $descripcion,
+                                'fecha_ejecucion'    => now(),
+                                'ejecutado_por'      => auth()->id(),
+                            ]);
                         }
 
-                        $movimiento->update([
-                            'producto_id'        => $producto->id,
-                            'ubicacion_origen'   => $producto->ubicacion_id,
-                            'estado'             => 'completado',
-                            'fecha_ejecucion'    => now(),
-                            'ejecutado_por'      => auth()->id(),
-                        ]);
-
+                        // Cambiar estado del producto actual
                         $producto->update([
-                            'ubicacion_id' => $request->ubicacion_destino,
-                            'maquina_id'   => $maquina->id,
+                            'ubicacion_id' => null,
+                            'maquina_id'   => $maquinaDetectada->id,
                             'estado'       => 'fabricando',
                         ]);
 
+                        // Consumir producto anterior si hay otro en esa máquina
                         $productoAnterior = Producto::where('producto_base_id', $producto->producto_base_id)
                             ->where('id', '!=', $producto->id)
-                            ->where('maquina_id', $maquina->id)
+                            ->where('maquina_id', $maquinaDetectada->id)
                             ->where('estado', 'fabricando')
                             ->latest('updated_at')
                             ->first();
@@ -415,11 +337,74 @@ class MovimientoController extends Controller
                                 'estado' => 'consumido',
                             ]);
                         }
+                    } else {
+                        // Movimiento normal a ubicación
+                        Movimiento::create([
+                            'tipo'               => 'movimiento libre',
+                            'producto_id'        => $producto->id,
+                            'producto_base_id'   => $producto->producto_base_id,
+                            'ubicacion_origen'   => $producto->ubicacion_id,
+                            'maquina_origen'     => $producto->maquina_id,
+                            'ubicacion_destino'  => $ubicacion->id,
+                            'maquina_destino'    => null,
+                            'estado'             => 'completado',
+                            'descripcion'        => $descripcion,
+                            'fecha_ejecucion'    => now(),
+                            'ejecutado_por'      => auth()->id(),
+                        ]);
 
-                        break;
+                        $producto->update([
+                            'ubicacion_id' => $ubicacion->id,
+                            'maquina_id'   => null,
+                            'estado'       => 'almacenado',
+                        ]);
+                    }
+                }
+                //------------------------------ TIPO MOVIMIENTO PAQUETE --------------------------
+                if ($tipoMovimiento === 'paquete') {
+                    $descripcion = "Movemos paquete de " . ($paquete->ubicacion->nombre ?? 'origen desconocido')
+                        . " a " . $ubicacion->nombre;
 
-                    default:
-                        throw new \Exception('Tipo de movimiento no reconocido.');
+                    // 🔍 Buscar si ya hay un movimiento pendiente para este paquete y destino
+                    $movimientoPendiente = Movimiento::where('paquete_id', $paquete->id)
+                        ->where(function ($query) use ($ubicacion, $maquinaDetectada) {
+                            if ($ubicacion) {
+                                $query->where('ubicacion_destino', $ubicacion->id);
+                            }
+                            if ($maquinaDetectada) {
+                                $query->orWhere('maquina_destino', $maquinaDetectada->id);
+                            }
+                        })
+                        ->where('estado', 'pendiente')
+                        ->latest()
+                        ->first();
+
+                    if ($movimientoPendiente) {
+                        $movimientoPendiente->update([
+                            'estado'           => 'completado',
+                            'fecha_ejecucion'  => now(),
+                            'ejecutado_por'    => auth()->id(),
+                        ]);
+                    } else {
+                        Movimiento::create([
+                            'tipo'               => 'movimiento libre',
+                            'paquete_id'         => $paquete->id,
+                            'ubicacion_origen'   => $paquete->ubicacion_id,
+                            'maquina_origen'     => $paquete->maquina_id,
+                            'ubicacion_destino'  => $ubicacion->id,
+                            'maquina_destino'    => $maquinaDetectada?->id,
+                            'estado'             => 'completado',
+                            'descripcion'        => $descripcion,
+                            'fecha_ejecucion'    => now(),
+                            'ejecutado_por'      => auth()->id(),
+                        ]);
+                    }
+
+                    // 📦 Actualizar ubicación y máquina del paquete
+                    $paquete->update([
+                        'ubicacion_id' => $ubicacion->id,
+                        'maquina_id'   => $maquinaDetectada?->id,
+                    ]);
                 }
             });
 

@@ -4,74 +4,36 @@
             {{ __('Crear Ubicaciones') }}
         </h2>
     </x-slot>
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <ul>
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
-    @endif
-    @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
 
-    <div class="container mt-5">
-        <h2 class="text-center mb-4">Crear Ubicación</h2>
-        <form action="{{ route('ubicaciones.store') }}" method="POST">
+    <div class="max-w-xl mx-auto mt-10 bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-center text-lg sm:text-xl font-semibold text-gray-800 mb-6">Crear Ubicación</h2>
+
+        <form action="{{ route('ubicaciones.store') }}" method="POST" class="space-y-4">
             @csrf
-            <!-- almacen -->
-            <div class="mb-3">
-                <label for="almacen" class="form-label">Almacén</label>
-                <select id="almacen" name="almacen" class="form-select">
-                    <option value="0A">0A</option>
-                    <option value="0B">0B</option>
-                    <option value="0C">0C</option>
-                </select>
-            </div>
 
-            <!-- Sector -->
-            <div class="mb-3">
-                <label for="sector" class="form-label">Sector</label>
-                <select id="sector" name="sector" class="form-select">
-                    <?php for ($i = 1; $i <= 20; $i++): ?>
-                    <option value="<?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>
-                    </option>
-                    <?php endfor; ?>
-                </select>
-            </div>
+            {{-- Almacén --}}
+            <x-tabla.select name="almacen" :options="['0A' => '0A', '0B' => '0B', '0C' => '0C']" label="Almacén" placeholder="Selecciona el almacén" />
 
-            <!-- Ubicación -->
-            <div class="mb-3">
-                <label for="ubicacion" class="form-label">Ubicación</label>
-                <select id="ubicacion" name="ubicacion" class="form-select">
-                    <?php for ($i = 1; $i <= 100; $i++): ?>
-                    <option value="<?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>"><?= str_pad($i, 2, '0', STR_PAD_LEFT) ?>
-                    </option>
-                    <?php endfor; ?>
-                </select>
-            </div>
-            <!-- Descripción -->
-            <div class="mb-3">
-                <label for="descripcion" class="form-label">Descripción</label>
-                <input type="text" id="descripcion" name="descripcion" class="form-control"
-                    placeholder="Ingrese la descripción">
-            </div>
+            {{-- Sector --}}
+            <x-tabla.select name="sector" :options="collect(range(1, 20))
+                ->mapWithKeys(fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)])
+                ->toArray()" label="Sector" placeholder="Selecciona el sector" />
 
-            <!-- Botón de Enviar -->
-            <div class="d-flex justify-content-center">
-                <button type="submit" class="btn btn-primary">Crear Ubicación</button>
+            {{-- Ubicación --}}
+            <x-tabla.select name="ubicacion" :options="collect(range(1, 100))
+                ->mapWithKeys(fn($i) => [str_pad($i, 2, '0', STR_PAD_LEFT) => str_pad($i, 2, '0', STR_PAD_LEFT)])
+                ->toArray()" label="Ubicación"
+                placeholder="Selecciona la ubicación" />
+
+            {{-- Descripción --}}
+            <x-tabla.input name="descripcion" label="Descripción" placeholder="Ej. Zona de materiales largos" />
+
+            {{-- Botón --}}
+            <div class="text-center pt-4">
+                <x-tabla.boton-azul>
+                    Crear Ubicación
+                </x-tabla.boton-azul>
             </div>
         </form>
     </div>
-
-
 </x-app-layout>
