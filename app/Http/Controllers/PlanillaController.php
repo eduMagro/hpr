@@ -653,6 +653,8 @@ class PlanillaController extends Controller
                 ->with('error', 'Hubo un problema al importar las planillas. Revisa los registros para más detalles.');
         }
     }
+
+
     //------------------------------------------------------------------------------------ CALCULARTIEMPOSELEMENTO()
     private function calcularTiemposElemento(array $row)
     {

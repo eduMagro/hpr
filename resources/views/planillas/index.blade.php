@@ -89,7 +89,8 @@
         </div>
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- TABLA DE PLANILLAS -->
-        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+        <div x-data="{ modalReimportar: false, planillaId: null }" class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
@@ -178,7 +179,6 @@
                     </tr>
 
                 </thead>
-
                 <tbody class="text-gray-700">
                     @forelse ($planillas as $planilla)
                         <tr tabindex="0" x-data="{
@@ -364,6 +364,19 @@
                                     <!-- Mostrar solo cuando NO está en modo edición -->
                                     <template x-if="!editando">
                                         <div class="flex items-center space-x-2">
+                                            <!-- Botón Reimportar -->
+                                            <button @click="modalReimportar = true; planillaId = {{ $planilla->id }}"
+                                                class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
+                                                title="Reimportar Planilla">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M4 4v6h6M20 20v-6h-6M4 20l4.586-4.586M20 4l-4.586 4.586" />
+                                                </svg>
+                                            </button>
+
+
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
                                             <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />
                                             <x-tabla.boton-eliminar :action="route('planillas.destroy', $planilla->id)" />
@@ -375,7 +388,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="15" class="text-center py-4 text-gray-500">No hay planillas disponibles.
+                            <td colspan="15" class="text-center py-4 text-gray-500">No hay planillas
+                                disponibles.
                             </td>
                         </tr>
                     @endforelse
@@ -383,64 +397,105 @@
 
 
             </table>
+            <!-- Modal Reimportar Planilla -->
+            <div @keydown.escape.window="modalReimportar = false">
+                <div x-show="modalReimportar" class="fixed inset-0 bg-black bg-opacity-50 z-40" x-cloak></div>
+
+                <div x-show="modalReimportar" x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-200"
+                    x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                    class="fixed z-50 top-1/2 left-1/2 w-11/12 max-w-lg transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-lg"
+                    x-cloak>
+
+                    <div class="px-6 py-4">
+                        <h2 class="text-lg font-bold text-gray-800 mb-4">📤 Añade modificaciones del cliente</h2>
+
+                        <form method="POST" :action="`/planillas/${planillaId}/reimportar`"
+                            enctype="multipart/form-data" @submit="modalReimportar = false" class="space-y-4">
+                            @csrf
+
+                            <div>
+                                <label for="archivo" class="block text-sm font-medium text-gray-700">Selecciona el
+                                    nuevo archivo:</label>
+                                <input type="file" name="archivo" id="archivo" accept=".csv,.xlsx,.xls"
+                                    required class="mt-1 block w-full border border-gray-300 rounded p-2 text-sm">
+                            </div>
+
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="modalReimportar = false"
+                                    class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold px-4 py-2 rounded">
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
+                                    🔄 Reimportar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
-        <x-tabla.paginacion :paginador="$planillas" />
-        <script>
-            function guardarCambios(planilla) {
-                fetch(`{{ route('planillas.update', '') }}/${planilla.id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify(planilla)
-                    })
-                    .then(async response => {
-                        const contentType = response.headers.get('content-type');
-                        let data = {};
+    </div>
 
-                        if (contentType && contentType.includes('application/json')) {
-                            data = await response.json();
-                        } else {
-                            const text = await response.text();
-                            throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0,
-                                100)); // corta para no saturar
+    <x-tabla.paginacion :paginador="$planillas" />
+    <script>
+        function guardarCambios(planilla) {
+            fetch(`{{ route('planillas.update', '') }}/${planilla.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(planilla)
+                })
+                .then(async response => {
+                    const contentType = response.headers.get('content-type');
+                    let data = {};
+
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0,
+                            100)); // corta para no saturar
+                    }
+
+                    if (response.ok && data.success) {
+                        window.location.reload();
+                    } else {
+                        let errorMsg = data.message || "Ha ocurrido un error inesperado.";
+                        if (data.errors) {
+                            errorMsg = Object.values(data.errors).flat().join("<br>");
                         }
 
-                        if (response.ok && data.success) {
-                            window.location.reload();
-                        } else {
-                            let errorMsg = data.message || "Ha ocurrido un error inesperado.";
-                            if (data.errors) {
-                                errorMsg = Object.values(data.errors).flat().join("<br>");
-                            }
-
-                            Swal.fire({
-                                icon: "error",
-                                title: "Error al actualizar",
-                                html: errorMsg,
-                                confirmButtonText: "OK",
-                                showCancelButton: true,
-                                cancelButtonText: "Reportar Error"
-                            }).then((result) => {
-                                if (result.dismiss === Swal.DismissReason.cancel) {
-                                    notificarProgramador(errorMsg);
-                                }
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        // Este catch ahora captura errores de red y errores de tipo (como HTML no válido)
                         Swal.fire({
                             icon: "error",
-                            title: "Error de conexión",
-                            text: error.message || "No se pudo actualizar la planilla. Inténtalo nuevamente.",
-                            confirmButtonText: "OK"
+                            title: "Error al actualizar",
+                            html: errorMsg,
+                            confirmButtonText: "OK",
+                            showCancelButton: true,
+                            cancelButtonText: "Reportar Error"
+                        }).then((result) => {
+                            if (result.dismiss === Swal.DismissReason.cancel) {
+                                notificarProgramador(errorMsg);
+                            }
                         });
+                    }
+                })
+                .catch(error => {
+                    // Este catch ahora captura errores de red y errores de tipo (como HTML no válido)
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error de conexión",
+                        text: error.message || "No se pudo actualizar la planilla. Inténtalo nuevamente.",
+                        confirmButtonText: "OK"
                     });
-            }
-        </script>
-
+                });
+        }
+    </script>
 
 </x-app-layout>

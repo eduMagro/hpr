@@ -148,6 +148,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/planillas/reordenar', [PlanillaController::class, 'reordenarPlanillas'])->name('planillas.reordenar');
     Route::resource('planificacion', PlanificacionController::class)->middleware('acceso.seccion:planificacion.index');
     Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
+    Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])
+        ->name('planillas.reimportar');
 
     // === EMPRESAS TRANSPORTE ===
     Route::resource('empresas-transporte', EmpresaTransporteController::class)
