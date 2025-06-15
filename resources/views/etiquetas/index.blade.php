@@ -408,15 +408,30 @@
             <!-- Modal estilo etiqueta-máquina -->
             <div id="modalEtiqueta"
                 class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
-                <div id="modalEtiquetaBox" style="background-color: #fe7f09; border: 1px solid black;"
-                    class="proceso boder shadow-xl w-full max-w-3xl rounded-lg overflow-y-auto max-h-[95vh] relative">
 
-                    <!-- Contenido dinámico -->
-                    <div id="modalContent" class="p-2 relative"></div>
+                <!-- 📐 Marco blanco exterior -->
+                <div class="relative bg-white p-1 rounded-lg">
+                    <button onclick="imprimirEtiqueta('${subId}')"
+                        class="absolute top-2 right-10 text-blue-800 hover:text-blue-900 no-print">
+                        🖨️
+                    </button>
+                    <!-- Botón de cierre en el marco -->
+                    <button onclick="cerrarModal()" aria-label="Cerrar"
+                        class="absolute -top-3 -right-3 bg-white border border-black
+                       rounded-full w-7 h-7 flex items-center justify-center
+                       text-xl leading-none hover:bg-red-100">
+                        &times;
+                    </button>
+
+                    <!-- Caja naranja real del modal -->
+                    <div id="modalEtiquetaBox" style="background-color:#fe7f09; border:1px solid black;"
+                        class="proceso shadow-xl w-full max-w-3xl rounded-lg overflow-y-auto max-h-[90vh]">
+
+                        <!-- Contenido dinámico -->
+                        <div id="modalContent" class="p-2"></div>
+                    </div>
                 </div>
             </div>
-
-
             <script>
                 window.etiquetasConElementos = @json($etiquetasJson);
             </script>
@@ -436,19 +451,18 @@
 
                     const html = `
         <!-- Botón imprimir generado dinámicamente -->
-        <button onclick="imprimirEtiqueta('${subId}')"
-                class="absolute top-2 right-10 text-blue-800 hover:text-blue-900 no-print">
-            🖨️
-        </button>
+      
 
         <div class="text-lg font-semibold">${obra} – ${cliente}</div>
         <div class="text-md mb-2">${planillaCod} – S:${seccion}</div>
         <h3 class="text-lg font-semibold text-black">
             ${subId} ${nombre} – Cal:B500SD – ${peso} kg
         </h3>
-        <div class="mt-4 border-t border-black pt-2">
-            <canvas id="canvas-modal-${etiquetaId}" class="w-full"></canvas>
-        </div>
+      <div class="border-t border-black">
+    <canvas id="canvas-modal-${etiquetaId}" class="w-full"></canvas>
+</div>
+
+
     `;
 
                     const content = document.getElementById('modalContent');

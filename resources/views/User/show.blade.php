@@ -138,9 +138,12 @@
     </div>
 
     <!-- Cargar FullCalendar con prioridad -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
         function actualizarResumenAsistencia() {
@@ -179,6 +182,7 @@
                 initialView: vistaGuardada,
                 initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
                 locale: 'es',
+                firstDay: 1,
                 height: 'auto',
                 selectable: true,
                 headerToolbar: {

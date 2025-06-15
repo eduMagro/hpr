@@ -128,94 +128,91 @@
                     </div>
                 </div>
                 <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-5">
-                    <div class="bg-white border p-2 shadow-md w-full rounded-lg sm:col-span-5">
-                        @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
-                            @php
-                                $firstElement = $elementos->first();
-                                $etiqueta =
-                                    $firstElement->etiquetaRelacion ??
-                                    Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
-                                $planilla = $firstElement->planilla ?? null;
-                                $tieneElementosEnOtrasMaquinas =
-                                    isset($otrosElementos[$etiqueta?->id]) &&
-                                    $otrosElementos[$etiqueta?->id]->isNotEmpty();
-                            @endphp
-                            <div id="etiqueta-{{ $etiqueta->etiqueta_sub_id }}"
-                                style="background-color: #fe7f09; border: 1px solid black;"
-                                class="proceso boder shadow-xl mt-4">
-                                <!-- Asegúrate de incluir Lucide o FontAwesome si usas uno de esos -->
-                                <div class="relative">
-                                    <button {{-- onclick="generateAndPrintQR('{{ $etiqueta->etiqueta_sub_id }}', '{{ $etiqueta->planilla->codigo_limpio }}', 'ETIQUETA')" --}}
-                                        onclick="imprimirEtiqueta('{{ $etiqueta->etiqueta_sub_id }}')"
-                                        class="absolute top-2 right-2 text-blue-800 hover:text-blue-900 no-print">
-                                        <!-- Icono QR de Lucide -->
-                                        🖨️ <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M3 3h4v4H3V3zm14 0h4v4h-4V3zM3 17h4v4H3v-4zm14 4v-4h-4v2a2 2 0 002 2h2zm-6-4h2v2h-2v-2zm4-4h4v4h-4v-4zm0-6h4v4h-4V7zM7 7h4v4H7V7z" />
-                                        </svg>
-                                    </button>
-                                </div>
 
-                                <div class="p-2">
-                                    <h2 class="text-lg font-semibold text-gray-900">
-                                        <span>{{ $planilla->obra->obra }}</span> -
-                                        <span>{{ $planilla->cliente->empresa }}</span><br>
-                                        <span> {{ optional($planilla)->codigo_limpio }}
-                                        </span> - S:{{ $planilla->seccion }}
-                                    </h2>
-                                    <h3 class="text-lg font-semibold text-gray-900">
-                                        <span class="text-blue-700">
-                                            {{ $etiqueta->etiqueta_sub_id ?? 'N/A' }} </span>
-                                        {{ $etiqueta->nombre ?? 'Sin nombre' }} -
+                    @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
+                        @php
+                            $firstElement = $elementos->first();
+                            $etiqueta =
+                                $firstElement->etiquetaRelacion ??
+                                Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+                            $planilla = $firstElement->planilla ?? null;
+                            $tieneElementosEnOtrasMaquinas =
+                                isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty();
+                        @endphp
+                        <div id="etiqueta-{{ $etiqueta->etiqueta_sub_id }}"
+                            style="background-color: #fe7f09; border: 1px solid black;"
+                            class="proceso boder shadow-xl mt-4">
+                            <!-- Asegúrate de incluir Lucide o FontAwesome si usas uno de esos -->
+                            <div class="relative">
+                                <button {{-- onclick="generateAndPrintQR('{{ $etiqueta->etiqueta_sub_id }}', '{{ $etiqueta->planilla->codigo_limpio }}', 'ETIQUETA')" --}}
+                                    onclick="imprimirEtiqueta('{{ $etiqueta->etiqueta_sub_id }}')"
+                                    class="absolute top-2 right-2 text-blue-800 hover:text-blue-900 no-print">
+                                    <!-- Icono QR de Lucide -->
+                                    🖨️ <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M3 3h4v4H3V3zm14 0h4v4h-4V3zM3 17h4v4H3v-4zm14 4v-4h-4v2a2 2 0 002 2h2zm-6-4h2v2h-2v-2zm4-4h4v4h-4v-4zm0-6h4v4h-4V7zM7 7h4v4H7V7z" />
+                                    </svg>
+                                </button>
+                            </div>
 
-                                        <span>Cal:B500SD</span>
+                            <div class="p-2">
+                                <h2 class="text-lg font-semibold text-gray-900">
+                                    <span>{{ $planilla->obra->obra }}</span> -
+                                    <span>{{ $planilla->cliente->empresa }}</span><br>
+                                    <span> {{ optional($planilla)->codigo_limpio }}
+                                    </span> - S:{{ $planilla->seccion }}
+                                </h2>
+                                <h3 class="text-lg font-semibold text-gray-900">
+                                    <span class="text-blue-700">
+                                        {{ $etiqueta->etiqueta_sub_id ?? 'N/A' }} </span>
+                                    {{ $etiqueta->nombre ?? 'Sin nombre' }} -
 
-                                        - {{ $etiqueta->peso_kg ?? 'N/A' }}
-                                    </h3>
-                                    <!-- Contenedor oculto para generar el QR -->
-                                    <div id="qrContainer-{{ $etiqueta->id ?? 'N/A' }}" style="display: none;"></div>
-                                    <div class="p-2 no-print">
-                                        <p>
-                                            <strong>Estado:</strong>
-                                            <span
-                                                id="estado-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
-                                                {{ $etiqueta->estado ?? 'N/A' }}
-                                            </span>
-                                            <strong>Fecha Inicio:</strong>
-                                            <span
-                                                id="inicio-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
-                                                {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_inicio_ensamblado ?? 'No asignada' : $etiqueta->fecha_inicio ?? 'No asignada' }}
-                                            </span>
-                                            <strong>Fecha Finalización:</strong>
-                                            <span
-                                                id="final-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
-                                                {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_finalizacion_ensamblado ?? 'No asignada' : $etiqueta->fecha_finalizacion ?? 'No asignada' }}
-                                            </span>
+                                    <span>Cal:B500SD</span>
 
-                                        </p>
+                                    - {{ $etiqueta->peso_kg ?? 'N/A' }}
+                                </h3>
+                                <!-- Contenedor oculto para generar el QR -->
+                                <div id="qrContainer-{{ $etiqueta->id ?? 'N/A' }}" style="display: none;"></div>
+                                <div class="p-2 no-print">
+                                    <p>
+                                        <strong>Estado:</strong>
+                                        <span
+                                            id="estado-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
+                                            {{ $etiqueta->estado ?? 'N/A' }}
+                                        </span>
+                                        <strong>Fecha Inicio:</strong>
+                                        <span
+                                            id="inicio-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
+                                            {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_inicio_ensamblado ?? 'No asignada' : $etiqueta->fecha_inicio ?? 'No asignada' }}
+                                        </span>
+                                        <strong>Fecha Finalización:</strong>
+                                        <span
+                                            id="final-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id ?? 'N/A') }}">
+                                            {{ $maquina->tipo === 'ensambladora' ? $etiqueta->fecha_finalizacion_ensamblado ?? 'No asignada' : $etiqueta->fecha_finalizacion ?? 'No asignada' }}
+                                        </span>
 
-                                    </div>
-                                </div>
-                                <div>
-                                    <!-- Contenedor para el canvas -->
-                                    <div id="canvas-container" style="width: 100%; border-top: 1px solid black;">
-                                        <canvas id="canvas-etiqueta-{{ $etiqueta->id ?? 'N/A' }}"></canvas>
-                                    </div>
-                                    <!-- Contenedor para el canvas de impresión -->
-                                    <div id="canvas-container-print"
-                                        style="width: 100%; border-top: 1px solid black; visibility: hidden; height: 0;">
-                                        <canvas
-                                            id="canvas-imprimir-etiqueta-{{ $etiqueta->etiqueta_sub_id }}"></canvas>
-                                    </div>
+                                    </p>
+
                                 </div>
                             </div>
-                        @empty
-                            <div class="col-span-4 text-center py-4 text-gray-600">
-                                No hay etiquetas disponibles para esta máquina.
+                            <div>
+                                <!-- Contenedor para el canvas -->
+                                <div id="canvas-container" style="width: 100%; border-top: 1px solid black;">
+                                    <canvas id="canvas-etiqueta-{{ $etiqueta->id ?? 'N/A' }}"></canvas>
+                                </div>
+                                <!-- Contenedor para el canvas de impresión -->
+                                <div id="canvas-container-print"
+                                    style="width: 100%; border-top: 1px solid black; visibility: hidden; height: 0;">
+                                    <canvas id="canvas-imprimir-etiqueta-{{ $etiqueta->etiqueta_sub_id }}"></canvas>
+                                </div>
                             </div>
-                        @endforelse
-                    </div>
+                        </div>
+                    @empty
+                        <div class="col-span-4 text-center py-4 text-gray-600">
+                            No hay etiquetas disponibles para esta máquina.
+                        </div>
+                    @endforelse
                 </div>
                 <!-- Modal para cambio de máquina -->
                 <div id="modalCambioMaquina"

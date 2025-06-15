@@ -9,6 +9,7 @@ use App\Models\Elemento;
 use App\Models\Producto;
 use App\Models\ProductoBase;
 use App\Models\Pedido;
+use App\Models\OrdenPlanilla;
 use App\Models\AsignacionTurno;
 use App\Models\User;
 use App\Models\Ubicacion;
@@ -264,8 +265,18 @@ class MaquinaController extends Controller
         // ---------------------------------------------------------------
         // 7) Seleccionar la primera planilla activa con elementos pendientes
         // ---------------------------------------------------------------
-        $elementosPorPlanilla = $elementosMaquina->groupBy('planilla_id')
-            ->sortBy(fn($grupo) => optional($grupo->first()->planilla)->fecha_estimada_entrega);
+        // 7️⃣ Agrupar elementos por planilla_id
+        $elementosPorPlanilla = $elementosMaquina->groupBy('planilla_id');
+
+        // 🧠 Obtener las posiciones desde la relación planillas_orden
+        $ordenManual = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->get()
+            ->pluck('posicion', 'planilla_id'); // [planilla_id => posicion]
+        // dd($ordenManual);
+        // 🔁 Ordenar los grupos de elementos usando ese orden manual
+        $elementosPorPlanilla = $elementosPorPlanilla->sortBy(function ($grupo, $planillaId) use ($ordenManual) {
+            return $ordenManual[$planillaId] ?? PHP_INT_MAX; // Si no hay orden, lo manda al final
+        });
 
         $planillaActiva = null;
         foreach ($elementosPorPlanilla as $grupo) {
