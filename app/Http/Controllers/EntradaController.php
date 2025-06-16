@@ -407,7 +407,8 @@ class EntradaController extends Controller
                 ->lockForUpdate()          // bloqueamos las filas que vamos a tocar
                 ->update(['estado' => 'completado']);
         });
-        return redirect()->route('dashboard')->with('success', 'Albarán cerrado correctamente.');
+        return redirect()->route('maquinas.index')
+            ->with('success', 'Albarán cerrado correctamente.');
     }
 
 
