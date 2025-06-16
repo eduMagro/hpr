@@ -105,10 +105,8 @@ class MaquinaController extends Controller
             // Ordenamos en SQL por el alias y por fecha de entrega
             ->orderBy('maquina_group_id', 'asc')
             ->orderBy('planillas.fecha_estimada_entrega', 'asc')
-
             // Cargamos la relación para evitar N+1
             ->with('planilla')
-
             ->get();
 
         // Finalmente agrupamos en memoria según el alias
