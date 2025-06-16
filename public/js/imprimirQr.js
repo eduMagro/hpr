@@ -1,4 +1,4 @@
-function generateAndPrintQR(id, nombre, tipo) {
+function generateAndPrintQR(id, ubicacionDescripcion) {
     const qrContainerId = `qrContainer-${id}`;
     let qrContainer = document.getElementById(qrContainerId);
 
@@ -10,27 +10,26 @@ function generateAndPrintQR(id, nombre, tipo) {
     }
 
     qrContainer.innerHTML = ""; // Limpia cualquier QR anterior
+    const qrSize = 200; // Tamaño del código
 
-    // Tamaño del QR (puedes ajustarlo si lo necesitas por tipo)
-    const qrSize = 200;
-
-    // Generamos el código QR
+    // 1. Generar el código QR con la librería QRCode.js
     new QRCode(qrContainer, {
         text: id.toString(),
         width: qrSize,
         height: qrSize,
     });
 
-    const partesNombre = nombre.split(",");
-    const sector = (partesNombre[1] || "").trim();
-    const ubicacion = (partesNombre[2] || "").trim();
+    // 2. Extraer “ubicación” y “descripción” (esperamos el formato "ubicación->descripción")
+    const [ubicacionRaw = "", descripcionRaw = ""] = ubicacionDescripcion
+        .split("->")
+        .map((s) => s.trim());
+    const lineaInfo = `${ubicacionRaw}`;
 
-    // Esperar a que la imagen del QR se genere
+    // 3. Cuando la imagen del QR ya exista, abrir la ventana de impresión
     setTimeout(() => {
         const qrImg = qrContainer.querySelector("img");
         if (!qrImg) return;
 
-        // Abrimos la ventana de impresión con dos copias
         const printWindow = window.open("", "_blank");
         printWindow.document.write(`
             <html>
@@ -43,7 +42,7 @@ function generateAndPrintQR(id, nombre, tipo) {
                         align-items:center;
                         height:100vh;
                         margin:0;
-                        gap:30px;                 /* separación entre copias */
+                        gap:30px;
                         font-family:'Arial',sans-serif;
                         background:#f4f4f9;
                     }
@@ -57,50 +56,46 @@ function generateAndPrintQR(id, nombre, tipo) {
                         box-shadow:0 4px 8px rgba(0,0,0,.1);
                         background:#fff;
                         text-align:center;
-                        width:${qrSize + 270}px;
+                        width:${qrSize + 260}px;
                     }
-                    .label{
+                    .id{
                         width:100%;
                         padding:5px;
                         border:1px solid #000;
-                        text-align:center;
-                    }
-                    .tipo{
                         font-weight:bold;
                         font-size:100px;
                         text-transform:uppercase;
                         border-radius:8px 8px 0 0;
                     }
-                    .arrow{
-             font-weight:bold;
-                        font-size:100px;
-                        line-height:1;
-                        margin:0;
+                    .info{
+                        width:100%;
+                        padding:5px;
+                        border:1px solid #000;
+                        font-size:64px;
+                        font-weight:500;
+                        border-radius:0 0 8px 8px;
                     }
-                    .nombre{
-                    font-size:64px;
-                    font-weight:500;
-                    border-radius:0 0 8px 8px;}
-                    img{width:${qrSize}px;height:${qrSize}px;margin-bottom:10px;padding:5px;}
+                    img{
+                        width:${qrSize}px;
+                        height:${qrSize}px;
+                        margin-bottom:10px;
+                        padding:5px;
+                    }
                 </style>
             </head>
             <body>
-                <!-- Copia con flecha a la izquierda -->
+                <!-- Copia 1 -->
                 <div class="qr-card">
                     <img src="${qrImg.src}" alt="Código QR">
-                    <div class="label tipo">${id}</div>
-                    <div class="label arrow">&#x2190;</div> <!-- ← -->
-                    <div class="label nombre">${sector}</div>
-                    <div class="label nombre">${ubicacion}</div>
+                    <div class="id">${id}</div>
+                    <div class="info">${lineaInfo}</div>
                 </div>
 
-                <!-- Copia con flecha a la derecha -->
+                <!-- Copia 2 -->
                 <div class="qr-card">
                     <img src="${qrImg.src}" alt="Código QR">
-                    <div class="label tipo">${id}</div>
-                    <div class="label arrow">&#x2192;</div> <!-- → -->
-                    <div class="label nombre">${sector}</div>
-                    <div class="label nombre">${ubicacion}</div>
+                    <div class="id">${id}</div>
+                    <div class="info">${lineaInfo}</div>
                 </div>
 
                 <script>
