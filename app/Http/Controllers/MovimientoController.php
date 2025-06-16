@@ -239,7 +239,7 @@ class MovimientoController extends Controller
 
         // Si no hay máquina explícita pero la ubicación coincide con alguna máquina por nombre
         if (!$maquinaDetectada && $ubicacion) {
-            $maquinaDetectada = Maquina::where('nombre', $ubicacion->nombre)->first();
+            $maquinaDetectada = Maquina::where('codigo', $ubicacion->descripcion)->first();
         }
 
 
@@ -308,7 +308,7 @@ class MovimientoController extends Controller
                                 'ubicacion_origen'   => $producto->ubicacion_id,
                                 'maquina_origen'     => $producto->maquina_id,
                                 'ubicacion_destino'  => $ubicacion->id,
-                                'maquina_destino'    => null,
+                                'maquina_destino'    => $maquinaDetectada->id,
                                 'estado'             => 'completado',
                                 'descripcion'        => $descripcion,
                                 'fecha_ejecucion'    => now(),
