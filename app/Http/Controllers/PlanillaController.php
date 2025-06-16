@@ -298,7 +298,8 @@ class PlanillaController extends Controller
     {
 
         $user = auth()->user();
-        $esAdmin  = $user->esAdminDepartamento();   // ⬅️ nuevo helper
+        $user->esAdminDepartamento()
+            || $user->esProduccionDepartamento(); // ⬅️ nuevo helper
 
         try {
             // 1️⃣ Iniciar la consulta base con relaciones
