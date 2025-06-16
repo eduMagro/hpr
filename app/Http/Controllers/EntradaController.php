@@ -12,6 +12,7 @@ use App\Models\Elemento;
 use App\Models\ProductoBase;
 use App\Models\Fabricante;
 use App\Models\Distribuidor;
+use App\Models\Movimiento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -380,15 +381,32 @@ class EntradaController extends Controller
 
     public function cerrar($id)
     {
-        $entrada = Entrada::findOrFail($id);
+        DB::transaction(function () use ($id) {
 
-        if ($entrada->estado === 'cerrado') {
-            return redirect()->back()->with('info', 'Este albarán ya está cerrado.');
-        }
+            /** 1) Traemos la entrada y bloqueamos la fila  */
+            $entrada = Entrada::lockForUpdate()->findOrFail($id);
 
-        $entrada->estado = 'cerrado';
-        $entrada->save();
+            if ($entrada->estado === 'cerrado') {
+                throw new \RuntimeException('Este albarán ya está cerrado.');
+            }
 
+            /** 2) Cerramos la entrada */
+            $entrada->estado = 'cerrado';
+            $entrada->save();
+
+            /** 3) Ponemos el pedido en “pendiente” (si estaba activo) */
+            Pedido::where('id', $entrada->pedido_id)
+                ->where('estado', 'activo')
+                ->lockForUpdate()              // bloqueamos también el pedido
+                ->update(['estado' => 'pendiente']);
+
+            /** 4) Marcamos como completados los movimientos de ese pedido
+             *     (puede haber uno o varios).  */
+            Movimiento::where('pedido_id', $entrada->pedido_id)
+                ->where('estado', '!=', 'completado')
+                ->lockForUpdate()          // bloqueamos las filas que vamos a tocar
+                ->update(['estado' => 'completado']);
+        });
         return redirect()->route('dashboard')->with('success', 'Albarán cerrado correctamente.');
     }
 

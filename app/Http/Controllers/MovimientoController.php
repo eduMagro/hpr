@@ -307,7 +307,6 @@ class MovimientoController extends Controller
                                 'producto_base_id'   => $producto->producto_base_id,
                                 'ubicacion_origen'   => $producto->ubicacion_id,
                                 'maquina_origen'     => $producto->maquina_id,
-                                'ubicacion_destino'  => $ubicacion->id,
                                 'maquina_destino'    => $maquinaDetectada->id,
                                 'estado'             => 'completado',
                                 'descripcion'        => $descripcion,

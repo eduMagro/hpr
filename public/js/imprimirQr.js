@@ -67,13 +67,13 @@ function generateAndPrintQR(id, nombre, tipo) {
                     }
                     .tipo{
                         font-weight:bold;
-                        font-size:100px;
+                        font-size:200px;
                         text-transform:uppercase;
                         border-radius:8px 8px 0 0;
                     }
                     .arrow{
              font-weight:bold;
-                        font-size:100px;
+                        font-size:150px;
                         line-height:1;
                         margin:0;
                     }

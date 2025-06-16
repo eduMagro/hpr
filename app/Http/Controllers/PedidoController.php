@@ -301,10 +301,13 @@ class PedidoController extends Controller
                 ];
             }
         }
+        $totalEncarretado = $stockData->sum(fn($d) => $d['encarretado']);
+        $totalBarras      = $stockData->sum(fn($d) => $d['barras_total']);
+        $totalGeneral     = $totalEncarretado + $totalBarras;
         // Obtener obras activas
         $obrasActivas = Obra::where('estado', 'activa')->orderBy('obra')->get();
 
-        return view('pedidos.index', compact('pedidos', 'obrasActivas', 'stockData', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'fabricantes', 'filtrosActivos', 'ordenables', 'distribuidores', 'pedidosGlobales',));
+        return view('pedidos.index', compact('pedidos', 'obrasActivas', 'stockData', 'totalGeneral', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'fabricantes', 'filtrosActivos', 'ordenables', 'distribuidores', 'pedidosGlobales',));
     }
 
     public function recepcion($id)

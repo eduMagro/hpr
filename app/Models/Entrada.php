@@ -18,6 +18,7 @@ class Entrada extends Model
         'pedido_id',
         'peso_total',
         'usuario_id',
+        'estado',
         'otros',
     ];
 

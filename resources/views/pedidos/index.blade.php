@@ -265,6 +265,17 @@
 
                         </tbody>
                     </table>
+                    @php
+                        // Lo formateamos una vez para reutilizarlo
+                        $totalGeneralTexto = number_format($totalGeneral, 2, ',', '.');
+                    @endphp
+
+                    {{-- Bloque situado inmediatamente después de la tabla --}}
+                    <div class="mt-4 flex justify-end">
+                        <span class="bg-gray-100 border border-gray-300 rounded px-4 py-2 font-bold">
+                            Total general disponible (encarretado + barras): {{ $totalGeneralTexto }} kg
+                        </span>
+                    </div>
                 </div>
                 <div class="mt-4 text-right">
                     <button type="button" onclick="mostrarConfirmacion()"
