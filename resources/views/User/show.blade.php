@@ -175,7 +175,13 @@
             const calendarEl = document.getElementById('calendario');
             actualizarResumenAsistencia();
 
-            const vistaGuardada = localStorage.getItem('ultimaVistaCalendario') || 'dayGridMonth';
+            const vistasDisponibles = ['dayGridMonth', 'timeGridWeek', 'timeGridDay', 'listWeek'];
+            let vistaGuardada = localStorage.getItem('ultimaVistaCalendario');
+
+            if (!vistasDisponibles.includes(vistaGuardada)) {
+                vistaGuardada = 'dayGridMonth';
+            }
+
             const fechaGuardada = localStorage.getItem('fechaCalendario');
 
             const calendar = new FullCalendar.Calendar(calendarEl, {
