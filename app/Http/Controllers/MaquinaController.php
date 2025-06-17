@@ -146,20 +146,21 @@ class MaquinaController extends Controller
         // Paginación
         $perPage = $request->input('per_page', 20);
         $registrosMaquina = $query->paginate($perPage)->appends($request->except('page'));
-        // DEPURACION INTERESANTE
-        // $datosDepuracion = $registrosMaquina->map(function ($maquina) {
-        //     return [
-        //         'id' => $maquina->id,
-        //         'nombre' => $maquina->nombre,
-        //         'tipo' => $maquina->tipo,
-        //         'elementos_count' => $maquina->elementos_count,
-        //         'elementos_ensambladora' => $maquina->elementos_ensambladora,
-        //     ];
-        // });
-        //dd($datosDepuracion->toArray());
+        /* ----------------------------------------------------------------
+     |  Usuarios asignados hoy a cada máquina
+     |  --------------------------------------------------------------*/
+        $hoy = Carbon::today();
+
+        // Traemos las asignaciones de hoy con la relación user
+        $usuariosPorMaquina = AsignacionTurno::with(['user', 'turno']) // ← ahora también turno
+            ->whereDate('fecha', $hoy)
+            ->whereNotNull('maquina_id')
+            ->get()
+            ->groupBy('maquina_id');
+
 
         // Pasar las máquinas y usuarios a la vista
-        return view('maquinas.index', compact('registrosMaquina', 'usuarios', 'colaPorMaquina'));
+        return view('maquinas.index', compact('registrosMaquina', 'usuarios', 'colaPorMaquina', 'usuariosPorMaquina'));
     }
     public function showJson($id)
     {
@@ -672,11 +673,15 @@ class MaquinaController extends Controller
         $nombreLimpio   = Str::slug(pathinfo($nombreOriginal, PATHINFO_FILENAME));
         $extension      = $request->file('imagen')->getClientOriginalExtension();
         $nombreFinal    = $nombreLimpio . '.' . $extension;
+        $directorio = public_path('maquinasImagenes');
+        if (!file_exists($directorio)) {
+            mkdir($directorio, 0755, true);
+        }
 
-        // 👉 Guardamos directamente en /public/maquinas
-        $request->file('imagen')->move(public_path('maquinas'), $nombreFinal);
+        // ✅ Guardamos directamente en public/maquinasImagenes (evita conflicto con /maquinas)
+        $request->file('imagen')->move(public_path('maquinasImagenes'), $nombreFinal);
 
-        $maquina->imagen = 'maquinas/' . $nombreFinal;
+        $maquina->imagen = 'maquinasImagenes/' . $nombreFinal;
         $maquina->save();
 
         return back()->with('success', 'Imagen actualizada correctamente.');
