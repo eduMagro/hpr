@@ -543,6 +543,19 @@
                             </form>
                         </div>
                     </div>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const inputCodigo = document.getElementById('codigo_general');
+                            const inputUbicacion = document.querySelector('input[name="ubicacion_destino"]');
+
+                            inputCodigo.addEventListener('keydown', function(e) {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault(); // ⛔ Evita el envío del formulario
+                                    inputUbicacion.focus(); // ✅ Salta al siguiente campo
+                                }
+                            });
+                        });
+                    </script>
 
                     {{-- 🔄 MODAL BAJADA PAQUETE --}}
                     <div id="modal-bajada-paquete"
