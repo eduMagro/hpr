@@ -394,18 +394,36 @@ class MovimientoController extends Controller
                     ]);
                 }
             });
+            /* ---------- ÉXITO ---------- */
+            $msg = 'Movimiento registrado correctamente.';
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Movimiento registrado correctamente.',
-            ]);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $msg,
+                ]);
+            }
+
+            // flujo clásico (redirect + flashes → los recoge tu <x-alerts>)
+            return back()->with('success', $msg);
         } catch (\Exception $e) {
-            Log::error('❌ Error al registrar movimiento: ' . $e->getMessage());
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Hubo un problema al registrar el movimiento: ' . $e->getMessage(),
-            ], 500);
+            Log::error('❌ Error al registrar movimiento: ' . $e->getMessage());
+            $msg = 'Hubo un problema al registrar el movimiento.';
+
+            /* ---------- ERROR ---------- */
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $msg,
+                    'error'   => app()->environment('local') ? $e->getMessage() : null, // detalle solo en local
+                ], 500);
+            }
+
+            // flujo clásico
+            return back()
+                ->withInput()
+                ->with('error', $msg . (app()->environment('local') ? " [{$e->getMessage()}]" : ''));
         }
     }
 
