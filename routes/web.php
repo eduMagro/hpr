@@ -122,6 +122,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/maquinas/sesion/guardar', [MaquinaController::class, 'guardarSesion'])->name('maquinas.sesion.guardar');
     Route::get('/maquinas/{id}/json', [MaquinaController::class, 'showJson'])->name('maquinas.json');
     Route::post('/turnos/cambiar-maquina', [Maquinacontroller::class, 'cambiarMaquina'])->name('turno.cambiarMaquina');
+    Route::put('/maquinas/{maquina}/imagen', [MaquinaController::class, 'actualizarImagen'])->name('maquinas.imagen');
 
     Route::get('/produccion/trabajadores', [ProduccionController::class, 'trabajadores'])->name('produccion.trabajadores');
     Route::get('/produccion/trabajadores-obra', [ProduccionController::class, 'trabajadoresObra'])->name('produccion.trabajadoresObra');

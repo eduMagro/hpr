@@ -18,6 +18,66 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
             @forelse($registrosMaquina as $maquina)
+                <div class="bg-white border p-4 shadow-md rounded-lg">
+                    <!-- Título y estado -->
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-800 mb-1">{{ $maquina->codigo }} —
+                                {{ $maquina->nombre }}</h3>
+                            <p class="text-sm text-gray-600">
+                                Estado:
+                                @php
+                                    $inProduction =
+                                        $maquina->tipo == 'ensambladora'
+                                            ? $maquina->elementos_ensambladora > 0
+                                            : $maquina->elementos_count > 0;
+                                @endphp
+                                <span class="{{ $inProduction ? 'text-green-600' : 'text-red-500' }}">
+                                    {{ $inProduction ? 'En producción' : 'Sin trabajo' }}
+                                </span>
+                            </p>
+                        </div>
+
+                        <!-- QR -->
+                        <button onclick="generateAndPrintQR('{{ $maquina->id }}','{{ $maquina->nombre }}','MÁQUINA')"
+                            class="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-1 rounded">
+                            QR
+                        </button>
+                    </div>
+
+                    <!-- Imagen -->
+                    <div class="mt-4 relative">
+                        @if ($maquina->imagen)
+                            <p>{{ $maquina->imagen }}</p>
+
+                            <img src="{{ asset('storage/' . $maquina->imagen) }}"
+                                alt="Imagen máquina {{ $maquina->nombre }}"
+                                class="w-full h-48 object-contain rounded border">
+                        @else
+                            <div
+                                class="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 border rounded">
+                                Sin imagen
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Formulario para importar nueva imagen -->
+                    <form action="{{ route('maquinas.imagen', $maquina->id) }}" method="POST"
+                        enctype="multipart/form-data" class="mt-3">
+                        @csrf
+                        @method('PUT')
+                        <div class="flex items-center gap-2">
+                            <input type="file" name="imagen" accept="image/*"
+                                class="block w-full text-sm text-gray-600 border border-gray-300 rounded p-1 file:mr-2 file:py-1 file:px-3 file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                required>
+                            <button type="submit"
+                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
+                                Subir
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
                 <!-- Componente Alpine para control de desplegable por máquina -->
                 <div x-data="{ openMachine: false }" class="bg-white border p-4 shadow-md rounded-lg">
                     <!-- Cabecera de la tarjeta de máquina -->

@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage; // ✅ Añadir esta línea
+use Illuminate\Support\Str;
 
 class MaquinaController extends Controller
 {
@@ -658,6 +660,35 @@ class MaquinaController extends Controller
             // Redirigir con un mensaje de error
             return redirect()->back()->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente. Error: ' . $e->getMessage());
         }
+    }
+
+    public function actualizarImagen(Request $request, Maquina $maquina)
+    {
+        $request->validate([
+            'imagen' => 'required|image|max:2048', // 2MB máx
+        ]);
+
+        // Generar nombre final
+        $nombreOriginal = $request->file('imagen')->getClientOriginalName();
+        $nombreLimpio = Str::slug(pathinfo($nombreOriginal, PATHINFO_FILENAME));
+        $extension = $request->file('imagen')->getClientOriginalExtension();
+        $nombreFinal = $nombreLimpio . '.' . $extension;
+        $rutaImagen = 'maquinas/' . $nombreFinal;
+
+        // 🔁 Eliminar anterior con el mismo nombre (si existía)
+        if (Storage::disk('public')->exists($rutaImagen)) {
+            Storage::disk('public')->delete($rutaImagen);
+        }
+
+        // Guardar nueva imagen
+        $request->file('imagen')->storeAs('maquinas', $nombreFinal, 'public');
+
+        // Actualizar modelo
+        $maquina->imagen = $rutaImagen;
+        $maquina->save();
+
+
+        return back()->with('success', 'Imagen actualizada correctamente.');
     }
 
 
