@@ -48,10 +48,7 @@
                     <!-- Imagen -->
                     <div class="mt-4 relative">
                         @if ($maquina->imagen)
-                            <p>{{ $maquina->imagen }}</p>
-
-                            <img src="{{ asset('storage/' . $maquina->imagen) }}"
-                                alt="Imagen máquina {{ $maquina->nombre }}"
+                            <img src="{{ asset($maquina->imagen) }}" alt="Imagen {{ $maquina->nombre }}"
                                 class="w-full h-48 object-contain rounded border">
                         @else
                             <div

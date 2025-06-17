@@ -665,28 +665,19 @@ class MaquinaController extends Controller
     public function actualizarImagen(Request $request, Maquina $maquina)
     {
         $request->validate([
-            'imagen' => 'required|image|max:2048', // 2MB máx
+            'imagen' => 'required|image|max:2048',
         ]);
 
-        // Generar nombre final
         $nombreOriginal = $request->file('imagen')->getClientOriginalName();
-        $nombreLimpio = Str::slug(pathinfo($nombreOriginal, PATHINFO_FILENAME));
-        $extension = $request->file('imagen')->getClientOriginalExtension();
-        $nombreFinal = $nombreLimpio . '.' . $extension;
-        $rutaImagen = 'maquinas/' . $nombreFinal;
+        $nombreLimpio   = Str::slug(pathinfo($nombreOriginal, PATHINFO_FILENAME));
+        $extension      = $request->file('imagen')->getClientOriginalExtension();
+        $nombreFinal    = $nombreLimpio . '.' . $extension;
 
-        // 🔁 Eliminar anterior con el mismo nombre (si existía)
-        if (Storage::disk('public')->exists($rutaImagen)) {
-            Storage::disk('public')->delete($rutaImagen);
-        }
+        // 👉 Guardamos directamente en /public/maquinas
+        $request->file('imagen')->move(public_path('maquinas'), $nombreFinal);
 
-        // Guardar nueva imagen
-        $request->file('imagen')->storeAs('maquinas', $nombreFinal, 'public');
-
-        // Actualizar modelo
-        $maquina->imagen = $rutaImagen;
+        $maquina->imagen = 'maquinas/' . $nombreFinal;
         $maquina->save();
-
 
         return back()->with('success', 'Imagen actualizada correctamente.');
     }
