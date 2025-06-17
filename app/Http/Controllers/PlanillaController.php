@@ -707,7 +707,222 @@ class PlanillaController extends Controller
         }
     }
 
+    public function reimportar(Request $request, Planilla $planilla)
+    {
+        // 1. Autorización
+        if (auth()->user()->rol !== 'oficina') {
+            return back()->with('abort', 'No tienes los permisos necesarios.');
+        }
 
+        // 2. Validación
+        $request->validate([
+            'archivo' => 'required|file|mimes:xlsx,xls',
+        ], [
+            'archivo.required' => 'Debes seleccionar un archivo.',
+            'archivo.mimes'    => 'El archivo debe ser .xlsx o .xls',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            /* ────────────────────────────
+         | 3. Leer y parsear el Excel |
+         ────────────────────────────*/
+            $file         = $request->file('archivo');
+            $importedData = Excel::toArray([], $file);
+            $firstSheet   = $importedData[0] ?? [];
+
+            if (empty($firstSheet)) {
+                throw new \Exception('El archivo está vacío o no contiene datos válidos.');
+            }
+
+            // Separar cabecera y filas
+            $headers      = $firstSheet[0] ?? [];
+            $rows         = array_filter(array_slice($firstSheet, 1), fn($r) => array_filter($r));
+
+            if (!$rows) {
+                throw new \Exception('El archivo no tiene filas de datos.');
+            }
+
+            /* ─────────────────────────────
+         | 4. Limpiar elementos viejos |
+         ─────────────────────────────*/
+            $pendientes = $planilla->elementos()->where('estado', 'pendiente')->get();
+
+            //   a) Elimina los elementos pendientes (o cámbialos a «reemplazado» si quieres histórico)
+            foreach ($pendientes as $el) {
+                $el->delete();                 // <─ usa soft-deletes si los tienes habilitados
+            }
+
+            //   b) Elimina etiquetas sin elementos
+            Etiqueta::where('planilla_id', $planilla->id)
+                ->whereDoesntHave('elementos')
+                ->delete();
+
+            /* ──────────────────────────────
+         | 5. Re-insertar nuevos datos  |
+         ──────────────────────────────*/
+            // Agrupar por número de etiqueta (columna 21)
+            $agrupadasPorEtiqueta = [];
+            foreach ($rows as $row) {
+                $nEtiqueta = $row[21] ?? null;
+                if ($nEtiqueta) {
+                    $agrupadasPorEtiqueta[$nEtiqueta][] = $row;
+                }
+            }
+
+            $advertencias = [];
+
+            foreach ($agrupadasPorEtiqueta as $numeroEtiqueta => $filasEtiqueta) {
+                // 5.1 Crear etiqueta padre
+                $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
+                $etiquetaPadre = Etiqueta::create([
+                    'codigo'          => $codigoPadre,
+                    'planilla_id'     => $planilla->id,
+                    'nombre'          => $filasEtiqueta[0][22] ?? 'Sin nombre',
+                    'peso'            => 0,
+                    'marca'           => null,
+                    'etiqueta_sub_id' => null,
+                ]);
+
+                $contadorSub = 1;
+
+                // Agrupar por máquina
+                $gruposPorMaquina = [];
+                foreach ($filasEtiqueta as $row) {
+                    $diam   = $row[25] ?? 0;
+                    $lon    = $row[27] ?? 0;
+                    $fig    = $row[26] ?? null;
+                    $dobles = $row[33] ?? 0;
+                    $barras = $row[32] ?? 0;
+                    $ensamb = $row[4]  ?? null;
+
+                    $maquinaId = $this->asignarMaquina(
+                        $diam,
+                        $lon,
+                        $fig,
+                        $dobles,
+                        $barras,
+                        $ensamb,
+                        $planilla->id
+                    );
+
+                    if (!$maquinaId) {
+                        $advertencias[] = "Fila {$row[21]} sin máquina compatible.";
+                        continue;
+                    }
+                    $gruposPorMaquina[$maquinaId][] = $row;
+                }
+
+                foreach ($gruposPorMaquina as $maquinaId => $filasMaquina) {
+                    // 5.2 Sub-etiqueta
+                    $codigoSub = sprintf('%s.%02d', $codigoPadre, $contadorSub++);
+                    $subEtiqueta = Etiqueta::create([
+                        'codigo'          => $codigoPadre,
+                        'planilla_id'     => $planilla->id,
+                        'nombre'          => $filasMaquina[0][22] ?? 'Sin nombre',
+                        'peso'            => 0,
+                        'marca'           => null,
+                        'etiqueta_sub_id' => $codigoSub,
+                    ]);
+
+                    // 5.3 Posicionamiento en la cola de la máquina
+                    $ultimaPos = OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0;
+                    OrdenPlanilla::create([
+                        'planilla_id' => $planilla->id,
+                        'maquina_id'  => $maquinaId,
+                        'posicion'    => $ultimaPos + 1,
+                    ]);
+
+                    // 5.4 Agrupar filas idénticas y crear elementos
+                    $agrupados = [];
+                    foreach ($filasMaquina as $row) {
+                        $clave = implode('|', [
+                            $row[26],
+                            $row[21],
+                            $row[23],
+                            $row[25],
+                            $row[27],
+                            $row[33] ?? 0,
+                            $row[47] ?? ''
+                        ]);
+
+                        if (!isset($agrupados[$clave])) {
+                            $agrupados[$clave] = [
+                                'row'    => $row,
+                                'peso'   => (float)($row[34] ?? 0),
+                                'barras' => (int)($row[32] ?? 0),
+                            ];
+                        } else {
+                            $agrupados[$clave]['peso']   += (float)($row[34] ?? 0);
+                            $agrupados[$clave]['barras'] += (int)($row[32] ?? 0);
+                        }
+                    }
+
+                    foreach ($agrupados as $item) {
+                        $row     = $item['row'];
+                        $tiempos = $this->calcularTiemposElemento($row);
+
+                        Elemento::create([
+                            'codigo'             => Elemento::generarCodigo(),
+                            'planilla_id'        => $planilla->id,
+                            'etiqueta_id'        => $subEtiqueta->id,
+                            'etiqueta_sub_id'    => $codigoSub,
+                            'maquina_id'         => $maquinaId,
+                            'figura'             => $row[26],
+                            'fila'               => $row[21],
+                            'marca'              => $row[23],
+                            'etiqueta'           => $row[30],
+                            'diametro'           => $row[25],
+                            'longitud'           => $row[27],
+                            'barras'             => $item['barras'],
+                            'dobles_barra'       => $row[33] ?? 0,
+                            'peso'               => $item['peso'],
+                            'dimensiones'        => $row[47] ?? null,
+                            'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
+                            'estado'             => 'pendiente', // nuevo
+                        ]);
+                    }
+
+                    // 5.5 Peso y marca de la sub-etiqueta
+                    $subEtiqueta->peso = $subEtiqueta->elementos()->sum('peso');
+                    $subEtiqueta->marca = $subEtiqueta->elementos()
+                        ->select('marca', DB::raw('COUNT(*) as tot'))
+                        ->groupBy('marca')->orderByDesc('tot')->value('marca');
+                    $subEtiqueta->save();
+                }
+            }
+
+            /* ───────────────────────────────
+         | 6. Recalcular planilla global |
+         ───────────────────────────────*/
+            $pesoTotal          = $planilla->elementos()->sum('peso');
+            $tiempoBase         = $planilla->elementos()->sum('tiempo_fabricacion');
+            $tiempoAdicional    = $planilla->elementos()->count() * 1200; // 20 min/el
+            $planilla->peso_total         = $pesoTotal;
+            $planilla->tiempo_fabricacion = $tiempoBase + $tiempoAdicional;
+            $planilla->save();
+
+            DB::commit();
+
+            $msg = "🔄 Reimportación completada. Peso total: {$pesoTotal} kg.";
+            if ($advertencias) {
+                $msg .= ' ⚠️ ' . implode(' | ', $advertencias);
+            }
+
+            return back()->with('success', $msg);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('❌ Error al reimportar planilla', [
+                'planilla' => $planilla->codigo,
+                'msg'      => $e->getMessage(),
+                'line'     => $e->getLine(),
+                'file'     => $e->getFile(),
+                'trace'    => $e->getTraceAsString(),
+            ]);
+            return back()->with('error', $e->getMessage());
+        }
+    }
     //------------------------------------------------------------------------------------ CALCULARTIEMPOSELEMENTO()
     private function calcularTiemposElemento(array $row)
     {
