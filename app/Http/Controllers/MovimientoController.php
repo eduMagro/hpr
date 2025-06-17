@@ -83,14 +83,16 @@ class MovimientoController extends Controller
 
     //------------------------------------------------ CREATE() --------------------------------------------------------
 
-    public function create()
+    public function create(Request $request)
     {
         $productos = Producto::with('ubicacion')->get();
         $paquetes = Paquete::with('ubicacion')->get();
         $ubicaciones = Ubicacion::all();
         $maquinas = Maquina::all();
         $localizaciones = Localizacion::all();
-        return view('movimientos.create', compact('productos', 'paquetes', 'ubicaciones', 'maquinas', 'localizaciones'));
+
+        $codigoMateriaPrima = $request->query('codigo');
+        return view('movimientos.create', compact('productos', 'paquetes', 'ubicaciones', 'maquinas', 'localizaciones', 'codigoMateriaPrima'));
     }
 
     public function crearMovimiento(Request $request)
@@ -203,41 +205,27 @@ class MovimientoController extends Controller
     {
         $tipoMovimiento = $request->tipo;
 
-        $validator = Validator::make($request->all(), [
+        // ------------------ 1) Validación rápida  ------------------
+        $validated = $request->validate([
             'codigo_general'    => 'required|string|max:50',
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
             'maquina_destino'   => 'nullable|exists:maquinas,id',
         ], [
-            'codigo_general.required'    => 'Debes escanear un código.',
-            'ubicacion_destino.exists'   => 'Ubicación no válida.',
-            'maquina_destino.exists'     => 'Máquina no válida.',
+            'codigo_general.required' => 'Debes escanear un código.',
+            'ubicacion_destino.exists' => 'Ubicación no válida.',
+            'maquina_destino.exists'   => 'Máquina no válida.',
         ]);
 
-        if ($validator->fails()) {
-            Log::error('❌ Validación fallida:', $validator->errors()->toArray());
-            return back()->withErrors($validator)->withInput();
-        }
+        // ------------------ 2) Variables base  ------------------
+        $codigo      = strtoupper($validated['codigo_general']);
+        $maquinaId   = $validated['maquina_destino'] ?? null;
+        $ubicacionId = $validated['ubicacion_destino'] ?? null;
+        $esRecarga   = $maquinaId !== null;
 
-        // ------------------------------------------------------------------------------------------------
-        // 📦 Preparar datos base
-        // ------------------------------------------------------------------------------------------------
-        $codigo = strtoupper($request->codigo_general);
+        // ↓↓↓  Detectar máquina / ubicación ↓↓↓
+        $maquinaDetectada = $esRecarga ? Maquina::find($maquinaId) : null;
+        $ubicacion        = $esRecarga ? null : Ubicacion::find($ubicacionId);
 
-        $maquinaId = $request->maquina_destino;
-
-        $ubicacionId = $request->ubicacion_destino;
-
-        $esRecarga = $maquinaId !== null;
-
-        $maquinaDetectada = $esRecarga
-            ? Maquina::findOrFail($maquinaId)
-            : null;
-
-        $ubicacion = !$esRecarga
-            ? Ubicacion::findOrFail($ubicacionId)
-            : null;
-
-        // Si no hay máquina explícita pero la ubicación coincide con alguna máquina por nombre
         if (!$maquinaDetectada && $ubicacion) {
             $maquinaDetectada = Maquina::where('codigo', $ubicacion->descripcion)->first();
         }
@@ -407,13 +395,19 @@ class MovimientoController extends Controller
                 }
             });
 
-            return back()->with('success', 'Movimiento registrado correctamente.');
+            return response()->json([
+                'success' => true,
+                'message' => 'Movimiento registrado correctamente.',
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error al registrar movimiento: ' . $e->getMessage());
-            return back()->with('error', 'Hubo un problema al registrar el movimiento: ' . $e->getMessage());
+            Log::error('❌ Error al registrar movimiento: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Hubo un problema al registrar el movimiento: ' . $e->getMessage(),
+            ], 500);
         }
     }
-
 
     public function destroy($id)
     {

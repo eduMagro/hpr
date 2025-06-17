@@ -15,8 +15,9 @@
 
                     {{-- Código Escaneado --}}
                     <x-tabla.input-movil name="codigo_general" id="codigo_general"
-                        label="Código de Materia Prima o Paquete" placeholder="Escanear QR"
-                        value="{{ old('codigo_general') }}" inputmode="none" autocomplete="off" />
+                        label="Código de Materia Prima o Paquete" placeholder="Escanear QR" :value="old('codigo_general', $codigoMateriaPrima ?? '')"
+                        inputmode="none" autocomplete="off" />
+
 
                     {{-- Ubicación destino --}}
                     <x-tabla.input-movil name="ubicacion_destino" placeholder="Escanear ubicación"

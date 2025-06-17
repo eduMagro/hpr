@@ -527,10 +527,11 @@
                                         class="flex-1 bg-blue-400 hover:bg-blue-500 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Editar
                                     </a>
-                                    <a href="{{ route('movimientos.create', ['producto_id' => $producto->id]) }}"
+                                    <a href="{{ route('movimientos.create', ['codigo' => $producto->codigo]) }}"
                                         class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Mover
                                     </a>
+
                                     <a href="{{ route('productos.consumir', $producto->id) }}"
                                         data-consumir="{{ route('productos.consumir', $producto->id) }}"
                                         class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
