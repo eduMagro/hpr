@@ -19,7 +19,7 @@
                 <tbody class="text-gray-700">
                     @forelse ($pesoPorPlanillero as $planillero)
                         <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-100">
-                            <td class="px-2 py-1 text-center border">{{ $planillero->name }}</td>
+                            <td class="px-2 py-1 text-center border">{{ $planillero->nombre_completo }}</td>
                             <td class="px-2 py-1 text-center border">
                                 {{ number_format($planillero->peso_importado, 2) }}
                             </td>
@@ -84,9 +84,8 @@
                 console.warn("Registro con fecha inválida:", planillero);
                 return;
             }
-
             const fecha = planillero.fecha;
-            const usuario = planillero.name;
+            const usuario = planillero.nombre_completo;
             usuariosUnicos.add(usuario); // Guardar usuarios únicos
 
             if (!datosUsuarios[usuario]) {

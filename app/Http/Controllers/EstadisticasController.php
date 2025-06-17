@@ -273,37 +273,42 @@ class EstadisticasController extends Controller
     // ---------------------------------------------------------------- Estadisticas de usuarios
     private function getPesoPorPlanillero()
     {
-        return Planilla::where('estado', 'pendiente') // Filtrar solo planillas pendientes
-            ->with('user:id,name') // Cargar el usuario con su nombre
-            ->select('users_id', DB::raw('SUM(peso_total) as peso_importado')) // Agrupar por usuario
+        return Planilla::where('estado', 'pendiente')
+            ->with('user:id,name,primer_apellido,segundo_apellido')          // ⬅️  cargamos todo lo que necesita el accessor
+            ->select('users_id', DB::raw('SUM(peso_total) AS peso_importado'))
             ->groupBy('users_id')
             ->get()
             ->map(function ($planilla) {
-                return (object)[
-                    'users_id' => $planilla->users_id,
-                    'name' => $planilla->user->name,
-                    'peso_importado' => $planilla->peso_importado
+                return (object) [
+                    'users_id'       => $planilla->users_id,
+                    'nombre_completo' => optional($planilla->user)->nombre_completo, // accessor
+                    'peso_importado' => $planilla->peso_importado,
                 ];
             });
     }
+
     private function getPesoPorPlanilleroPorDia()
     {
-        $primerDiaMes = now()->startOfMonth();
-        $ultimoDiaMes = now()->endOfMonth();
+        $primerDiaMes  = now()->startOfMonth();
+        $ultimoDiaMes  = now()->endOfMonth();
 
         return Planilla::where('estado', 'pendiente')
-            ->whereBetween('created_at', [$primerDiaMes, $ultimoDiaMes]) // Filtrar solo el mes actual
-            ->with('user:id,name') // Cargar la relación con los usuarios
-            ->select('users_id', DB::raw('DATE(created_at) as fecha'), DB::raw('SUM(peso_total) as peso_importado'))
+            ->whereBetween('created_at', [$primerDiaMes, $ultimoDiaMes])
+            ->with('user:id,name,primer_apellido,segundo_apellido')          // ⬅️  idem
+            ->select(
+                'users_id',
+                DB::raw('DATE(created_at) AS fecha'),
+                DB::raw('SUM(peso_total) AS peso_importado')
+            )
             ->groupBy('users_id', 'fecha')
             ->orderBy('fecha', 'asc')
             ->get()
             ->map(function ($planilla) {
-                return (object) [ // Convertimos en objeto para evitar que sea un array
-                    'users_id' => $planilla->users_id,
-                    'name' => optional($planilla->user)->name, // Evitar errores si no hay usuario
-                    'fecha' => $planilla->fecha,
-                    'peso_importado' => $planilla->peso_importado
+                return (object) [
+                    'users_id'       => $planilla->users_id,
+                    'nombre_completo' => optional($planilla->user)->nombre_completo,
+                    'fecha'          => $planilla->fecha,
+                    'peso_importado' => $planilla->peso_importado,
                 ];
             });
     }
