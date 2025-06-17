@@ -298,7 +298,7 @@ class PlanillaController extends Controller
     {
 
         $user = auth()->user();
-        $user->esAdminDepartamento()
+        $esAdmin = $user->esAdminDepartamento()
             || $user->esProduccionDepartamento(); // ⬅️ nuevo helper
 
         try {
