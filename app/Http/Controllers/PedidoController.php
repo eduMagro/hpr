@@ -313,7 +313,7 @@ class PedidoController extends Controller
     public function recepcion($id)
     {
         $pedido = Pedido::with(['productos'])->findOrFail($id);
-
+        $productosIds = $pedido->productos->pluck('id');
         // Calcular cuánto se ha recepcionado por producto_base_id
         $recepcionadoPorProducto = [];
 
@@ -334,8 +334,26 @@ class PedidoController extends Controller
             $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
             return $ubicacion;
         });
+        /* -----------------------------------------------------------
+     | 2) Últimos movimientos del usuario para CADA producto base |
+     ----------------------------------------------------------- */
+        // Buscamos en la tabla productos (los paquetes ya recepcionados)
+        //  y unimos con la tabla entradas para filtrar por user_id.
+        $ultimos = Producto::select(
+            'producto_base_id',
+            'n_colada',
+            'productos.ubicacion_id'      // 👈 aquí cogemos la ubicación del propio producto
+        )
+            ->join('entradas', 'entradas.id', '=', 'productos.entrada_id')
+            ->where('entradas.usuario_id', auth()->id())
+            ->whereIn('producto_base_id', $productosIds)
+            ->latest('productos.created_at')
+            ->get()
+            ->unique('producto_base_id')      // 1 registro por producto base
+            ->keyBy('producto_base_id');      // [producto_base_id] => registro
 
-        return view('pedidos.recepcion', compact('pedido', 'ubicaciones'));
+
+        return view('pedidos.recepcion', compact('pedido', 'ubicaciones', 'ultimos'));
     }
 
     public function procesarRecepcion(Request $request, $id)

@@ -203,18 +203,59 @@ class EntradaController extends Controller
         }
     }
 
-    // Mostrar el formulario de creación
     public function create()
     {
+        // ─────────────────────────────────────────────────────────────────────────────
+        // 1) Listados para los select
+        // ─────────────────────────────────────────────────────────────────────────────
         $ubicaciones = Ubicacion::all()->map(function ($ubicacion) {
             $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
             return $ubicacion;
         });
-        $usuarios = User::all();
-        $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
-        $fabricantes = Fabricante::orderBy('nombre')->get();
 
-        return view('entradas.create', compact('ubicaciones', 'usuarios', 'productosBase', 'fabricantes'));
+        $usuarios       = User::all();
+        $productosBase  = ProductoBase::orderBy('tipo')
+            ->orderBy('diametro')
+            ->orderBy('longitud')
+            ->get();
+        $fabricantes    = Fabricante::orderBy('nombre')->get();
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // 2) Último producto registrado por el usuario autenticado
+        //    (cargamos también entrada y productoBase para no hacer más queries)
+        // ─────────────────────────────────────────────────────────────────────────────
+        $ultimoProducto = Producto::with(['entrada', 'productoBase'])
+            ->whereHas('entrada', fn($q) => $q->where('usuario_id', auth()->id()))
+            ->latest()           // mismo efecto que orderByDesc('created_at')
+            ->first();
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // 3) Datos precargados para el formulario
+        // ─────────────────────────────────────────────────────────────────────────────
+        $ultimaColada         = $ultimoProducto?->n_colada;
+        $ultimoProductoBaseId = $ultimoProducto?->producto_base_id;
+
+        // - Fabricante: primero miramos si el producto tiene fabricante_id propio;
+        //   si no, lo tomamos del producto base.
+        $ultimoFabricanteId   = $ultimoProducto?->fabricante_id
+            ?? $ultimoProducto?->productoBase?->fabricante_id;
+
+        // - Ubicación: la obtenemos desde la entrada asociada
+        $ultimaUbicacionId    = $ultimoProducto?->ubicacion_id;
+
+        // ─────────────────────────────────────────────────────────────────────────────
+        // 4) Devolvemos la vista con todos los datos
+        // ─────────────────────────────────────────────────────────────────────────────
+        return view('entradas.create', compact(
+            'ubicaciones',
+            'usuarios',
+            'productosBase',
+            'fabricantes',
+            'ultimaColada',
+            'ultimoProductoBaseId',
+            'ultimoFabricanteId',
+            'ultimaUbicacionId'
+        ));
     }
 
     public function store(Request $request)

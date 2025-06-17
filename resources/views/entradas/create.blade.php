@@ -11,7 +11,8 @@
         </x-slot>
     @endif
 
-    <div class="container mx-auto px-0 py-4 sm:px-4 sm:py-6" x-data="{ paquetes: '1', peso: '', ubicacion: '' }">
+    <div class="container mx-auto px-0 py-4 sm:px-4 sm:py-6" x-data="{ paquetes: '1', peso: '', ubicacion: '{{ old('ubicacion', $ultimaUbicacionId) }}' }">
+
         <form id="inventarioForm" method="POST" action="{{ route('entradas.store') }}" class="max-w-lg mx-auto">
             @csrf
 
@@ -47,7 +48,7 @@
                         <option value="">Seleccione un fabricante</option>
                         @foreach ($fabricantes as $fabricante)
                             <option value="{{ $fabricante->id }}"
-                                {{ old('fabricante_id') == $fabricante->id ? 'selected' : '' }}>
+                                {{ old('fabricante_id', $ultimoFabricanteId) == $fabricante->id ? 'selected' : '' }}>
                                 {{ $fabricante->nombre }}
                             </option>
                         @endforeach
@@ -69,7 +70,7 @@
                         <option value="" disabled>Seleccione un producto base</option>
                         @foreach ($productosBase as $producto)
                             <option value="{{ $producto->id }}"
-                                {{ old('producto_base_id') == $producto->id ? 'selected' : '' }}>
+                                {{ old('producto_base_id', $ultimoProductoBaseId) == $producto->id ? 'selected' : '' }}>
                                 {{ strtoupper($producto->tipo) }} |
                                 Ø{{ $producto->diametro }}{{ $producto->longitud ? ' | ' . $producto->longitud . ' m' : '' }}
                             </option>
@@ -79,7 +80,8 @@
 
                 <div class="mb-2">
                     <label for="n_colada" class="block text-gray-700">Colada:</label>
-                    <input type="text" id="n_colada" name="n_colada" value="{{ old('n_colada') }}" required
+                    <input type="text" id="n_colada" name="n_colada" value="{{ old('n_colada', $ultimaColada) }}"
+                        required
                         class="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
@@ -130,12 +132,12 @@
                     x-model="ubicacion" required>
                     <option value="">Seleccione una ubicación</option>
                     @foreach ($ubicaciones as $ubicacion)
-                        <option value="{{ $ubicacion->id }}"
-                            {{ old('ubicacion') == $ubicacion->id ? 'selected' : '' }}>
+                        <option value="{{ $ubicacion->id }}">
                             {{ $ubicacion->nombre_sin_prefijo }}
                         </option>
                     @endforeach
                 </select>
+
             </div>
 
             <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 mt-4 rounded-lg hover:bg-blue-600">
