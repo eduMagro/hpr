@@ -32,7 +32,7 @@
         </aside>
 
         <!-- Contenido principal -->
-        <div class="flex-1 ml-64">
+        <div class="flex-1 ml-64 p-10">
 
             @forelse($registrosMaquina as $maquina)
                 <div id="maquina-{{ $maquina->id }}"
@@ -162,6 +162,16 @@
                             @endforeach
                         @endif
                     </div>
+                    <!-- Acciones finales: eliminar, editar, iniciar sesión -->
+                    <div class="mt-4 flex justify-between items-center">
+                        <x-tabla.boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
+                        <a href="javascript:void(0);" class="text-blue-500 hover:text-blue-700 text-sm open-edit-modal"
+                            data-id="{{ $maquina->id }}">
+                            Editar
+                        </a>
+                        <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
+                            class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
+                    </div>
                 </div>
             @empty
                 <p class="text-gray-600">No hay máquinas disponibles.</p>
@@ -176,4 +186,87 @@
 
     <!-- Alpine.js -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script>
+        const usuarios = @json($usuarios);
+        const csrfToken = '{{ csrf_token() }}';
+        window.rutas = {
+            guardarSesion: '{{ route('maquinas.sesion.guardar') }}',
+            base: '{{ url('/') }}'
+        };
+    </script>
+    <script src="{{ asset('js/maquinaJS/seleccionarCompa.js') }}" defer></script>
+    <script>
+        // Asignar evento a todos los botones de edición
+        document.querySelectorAll('.open-edit-modal').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                console.log('Clic en editar máquina ID:', id); // Para depurar
+
+                // Obtener los datos de la máquina por AJAX
+                fetch(`/maquinas/${id}/json`)
+
+                    .then(res => res.json())
+                    .then(data => {
+                        // Rellenar los campos del modal
+                        document.getElementById('edit-id').value = data.id;
+                        ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min', 'peso_max',
+                            'estado'
+                        ].forEach(field => {
+                            const el = document.getElementById(`edit-${field}`);
+                            if (el) el.value = data[field] ?? '';
+                        });
+
+                        // Mostrar el modal (asegura visibilidad con estilo)
+                        const modal = document.getElementById('editModal');
+                        modal.classList.remove('hidden');
+                        modal.style.display = 'flex';
+                    })
+                    .catch(err => {
+                        console.error('Error al cargar datos de la máquina:', err);
+                        alert('No se pudieron cargar los datos de la máquina.');
+                    });
+            });
+        });
+
+        // Cerrar modal al hacer clic en cancelar
+        document.getElementById('closeModal').addEventListener('click', () => {
+            const modal = document.getElementById('editModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        });
+
+        // Enviar formulario de edición con AJAX
+        document.getElementById('editMaquinaForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('edit-id').value;
+            const formData = new FormData(this);
+            formData.append('_method', 'PUT');
+
+            fetch(`/maquinas/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': formData.get('_token'),
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('editModal').classList.add('hidden');
+                        document.getElementById('editModal').style.display = 'none';
+                        location.reload(); // Recargar para mostrar cambios
+                    } else {
+                        return response.json().then(data => {
+                            alert(data.message || 'Error al actualizar la máquina.');
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error en la actualización:', error);
+                    alert('Error inesperado. Revisa la consola.');
+                });
+        });
+    </script>
+
 </x-app-layout>

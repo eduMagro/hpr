@@ -68,6 +68,7 @@ class ProductoController extends Controller
     //------------------------------------------------------------------------------------ INDEX
     public function index(Request $request)
     {
+
         // 🔹 Cargar relaciones necesarias y solo las columnas que usas
         $query = Producto::with([
             'productoBase:id,tipo,diametro,longitud',
@@ -93,10 +94,8 @@ class ProductoController extends Controller
 
         // 🔹 Aplicar filtros personalizados (si ya los tienes en un método aparte)
         $query = $this->aplicarFiltros($query, $request);
-        // ❗ Ocultar productos con estado 'consumido' o 'fabricando' si no se han solicitado expresamente
-        $estadoFiltrado = $request->input('estado');
 
-        if (!in_array($estadoFiltrado, ['consumido', 'fabricando'])) {
+        if (!$request->filled('estado') && !$request->filled('codigo')) {
             $query->whereNotIn('estado', ['consumido', 'fabricando']);
         }
         // 🔹 Ordenamiento (con fallback seguro)
