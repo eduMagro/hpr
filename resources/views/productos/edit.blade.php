@@ -25,11 +25,11 @@
             <!-- Proveedor -->
             <div class="mb-4">
                 <label for="fabricante_id" class="block text-gray-700 font-bold mb-2">Fabricante:</label>
-                <select id="fabricante_id" name="proveedor_id" required class="w-full px-3 py-2 border rounded-lg">
+                <select id="fabricante_id" name="fabricante_id" required class="w-full px-3 py-2 border rounded-lg">
                     <option value="">Seleccione un fabricante</option>
                     @foreach ($fabricantes as $fabricante)
                         <option value="{{ $fabricante->id }}"
-                            {{ old('proveedor_id', $producto->fabricante) == $fabricante->id ? 'selected' : '' }}>
+                            {{ old('fabricante_id', $producto->fabricante) == $fabricante->id ? 'selected' : '' }}>
                             {{ $fabricante->nombre }}
                         </option>
                     @endforeach
