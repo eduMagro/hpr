@@ -130,12 +130,16 @@ class UbicacionController extends Controller
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
     {
-        // Encuentra la ubicación por ID con relaciones 'productos' y 'paquetes'
-        $ubicacion = Ubicacion::with(['productos', 'paquetes'])->findOrFail($id);
+        $ubicacion = Ubicacion::with([
+            'productos.fabricante',     // 👈 añade el fabricante
+            'productos.productoBase',   // 👈 ya tenías esta
+            'paquetes'                  // 👈 también los paquetes
+        ])->findOrFail($id);
 
-        // Retorna la vista con la ubicación y sus relaciones
         return view('ubicaciones.show', compact('ubicacion'));
     }
+
+
 
 
     // Mostrar el formulario para editar una ubicación existente

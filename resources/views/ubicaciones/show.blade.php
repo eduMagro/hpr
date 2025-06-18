@@ -38,11 +38,11 @@
                     @foreach ($ubicacion->productos as $producto)
                         <div class="bg-gray-100 p-4 rounded-lg shadow">
                             <h3 class="font-bold text-lg text-gray-700">ID Producto: {{ $producto->id }}</h3>
-                            <p><strong>Fabricante:</strong> {{ $producto->fabricante }}</p>
+                            <p><strong>Fabricante:</strong> {{ $producto->fabricante->nombre ?? 'N/A' }}</p>
                             <p><strong>Nombre:</strong> {{ $producto->nombre }}</p>
-                            <p><strong>Tipo:</strong> {{ $producto->tipo }}</p>
-                            <p><strong>Diámetro:</strong> {{ $producto->diametro }}</p>
-                            <p><strong>Longitud:</strong> {{ $producto->longitud ?? 'N/A' }}</p>
+                            <p><strong>Tipo:</strong> {{ $producto->productoBase->tipo }}</p>
+                            <p><strong>Ø Diámetro:</strong> {{ $producto->productoBase->diametro }} mm</p>
+                            <p><strong>Longitud:</strong> {{ $producto->productoBase->longitud ?? '-' }} mm</p>
                             <p><strong>Nº Colada:</strong> {{ $producto->n_colada }}</p>
                             <p><strong>Nº Paquete:</strong> {{ $producto->n_paquete }}</p>
                             <p><strong>Peso Inicial:</strong> {{ $producto->peso_inicial }} kg</p>
