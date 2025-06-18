@@ -1,4 +1,4 @@
-function generateAndPrintQR(id, nombre, tipo) {
+function generateAndPrintQR(id, nombre, descripcion, tipo) {
     const qrContainerId = `qrContainer-${id}`;
     let qrContainer = document.getElementById(qrContainerId);
 
@@ -89,18 +89,18 @@ function generateAndPrintQR(id, nombre, tipo) {
                 <div class="qr-card">
                     <img src="${qrImg.src}" alt="Código QR">
                     <div class="label tipo">${id}</div>
-                    <div class="label arrow">&#x2190;</div> <!-- ← -->
+                  <!--<div class="label arrow">&#x2190;</div> ← -->
                     <div class="label nombre">${sector}</div>
-                    <div class="label nombre">${ubicacion}</div>
+                    <div class="label nombre">${descripcion}</div>
                 </div>
 
                 <!-- Copia con flecha a la derecha -->
                 <div class="qr-card">
                     <img src="${qrImg.src}" alt="Código QR">
                     <div class="label tipo">${id}</div>
-                    <div class="label arrow">&#x2192;</div> <!-- → -->
+                   <!-- <div class="label arrow">&#x2192;</div>  → -->
                     <div class="label nombre">${sector}</div>
-                    <div class="label nombre">${ubicacion}</div>
+                    <div class="label nombre">${descripcion}</div>
                 </div>
 
                 <script>

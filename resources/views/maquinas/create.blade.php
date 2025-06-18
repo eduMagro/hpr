@@ -89,9 +89,11 @@
 
                         {{-- Botón --}}
                         <div class="flex justify-center">
-                            <x-tabla.boton-azul type="submit">
+                            <button type="submit"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded text-sm">
                                 💾 Registrar Máquina
-                            </x-tabla.boton-azul>
+                            </button>
+
                         </div>
                     </form>
                 </div>
