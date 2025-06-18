@@ -501,6 +501,10 @@
                                             <p><strong>Fecha completado:</strong>
                                                 {{ $mov->updated_at->format('d/m/Y H:i') }}</p>
                                         </div>
+                                        {{-- Botón alineado a la derecha --}}
+                                        <div class="flex justify-end mt-2">
+                                            <x-tabla.boton-eliminar :action="route('movimientos.destroy', $mov->id)" />
+                                        </div>
                                     </li>
                                 @endforeach
                             </ul>
