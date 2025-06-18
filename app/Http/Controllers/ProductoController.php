@@ -177,9 +177,14 @@ class ProductoController extends Controller
     }
 
     //------------------------------------------------------------------------------------ SHOW
+    // ProductoController.php
     public function show($id)
     {
-        $detalles_producto = Producto::findOrFail($id);
+        $detalles_producto = Producto::with([
+            'fabricante',      // 👉 nombre del fabricante
+            'productoBase'     // 👉 tipo, diámetro, longitud…
+        ])->findOrFail($id);
+
         return view('productos.show', compact('detalles_producto'));
     }
 

@@ -14,11 +14,10 @@
                 <div class="bg-white shadow-md rounded-lg p-4">
 
                     <h3 class="font-bold text-lg text-gray-700">ID Producto: {{ $detalles_producto->id }}</h3>
-                    <p><strong>Fabricante:</strong> {{ $detalles_producto->fabricante }}</p>
-                    <p><strong>Nombre:</strong> {{ $detalles_producto->nombre }}</p>
-                    <p><strong>Tipo:</strong> {{ $detalles_producto->tipo }}</p>
-                    <p><strong>Diámetro:</strong> {{ $detalles_producto->diametro }}</p>
-                    <p><strong>Longitud:</strong> {{ $detalles_producto->longitud ?? 'N/A' }}</p>
+                    <p><strong>Fabricante:</strong> {{ $detalles_producto->fabricante->nombre ?? 'N/A' }}</p>
+                    <p><strong>Tipo:</strong> {{ $detalles_producto->productoBase->tipo ?? 'N/A' }}</p>
+                    <p><strong>Diámetro:</strong> {{ $detalles_producto->productoBase->diametro ?? 'N/A' }} mm</p>
+                    <p><strong>Longitud:</strong> {{ $detalles_producto->productoBase->longitud ?? 'N/A' }} mm</p>
                     <p><strong>Nº Colada:</strong> {{ $detalles_producto->n_colada }}</p>
                     <p><strong>Nº Paquete:</strong> {{ $detalles_producto->n_paquete }}</p>
                     <p><strong>Peso Inicial:</strong> {{ $detalles_producto->peso_inicial }} kg</p>
@@ -65,7 +64,7 @@
                         {{-- Botón ver (componente ya existente) --}}
                         <x-tabla.boton-ver :href="route('productos.show', $detalles_producto->id)" />
                         {{-- Botón mover (personalizado con icono) --}}
-                        <a href="{{ route('movimientos.create', ['producto_id' => $detalles_producto->id]) }}"
+                        <a href="{{ route('movimientos.create', ['codigo' => $detalles_producto->codigo]) }}"
                             class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                             title="Mover">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
