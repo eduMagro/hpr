@@ -57,11 +57,9 @@
         </div>
         <!-- Consumo Maquinas-->
         <div x-show="mostrarConsumoMaquinas">
-            <x-estadisticas.consumo-maquinas :totales="$tablaConsumoTotales" :series="[
-                'labels' => $labels,
-                'datasets' => $datasets,
-            ]" :desde="$desde" :hasta="$hasta"
-                :detalle="$kilosPorTipoDiametro" />
+            <x-estadisticas.consumo-maquinas :totales="$tablaConsumoTotales" :series="['labels' => $labels, 'datasets' => $datasets]" :desde="$desde" :hasta="$hasta"
+                :modo="$modo" :detalle="$kilosPorTipoDiametro" />
+
 
         </div>
     </div>

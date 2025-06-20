@@ -44,11 +44,14 @@ class EstadisticasController extends Controller
         $desde = $request->input('desde');   // yyyy-mm-dd o null
         $hasta = $request->input('hasta');
         // ► 3) Consumo por máquina con rango
-        $datosConsumo = $this->consumoKgPorMaquinaDia($desde, $hasta);
+        $modo = $request->input('modo', 'dia');
+
+        $datosConsumo = $this->consumoKgPorMaquina($desde, $hasta, $modo);
         $labels              = $datosConsumo['labels'];
         $datasets            = $datosConsumo['datasets'];
         $tablaConsumoTotales = $datosConsumo['totales'];
         $kilosPorTipoDiametro = $this->kilosPorMaquinaTipoDiametro($desde, $hasta);
+
 
         // Pasar los mensajes a la sesión
         $this->handleSessionMessages($mensajeDeAdvertencia);
@@ -68,7 +71,8 @@ class EstadisticasController extends Controller
             'tablaConsumoTotales',
             'kilosPorTipoDiametro',
             'desde',
-            'hasta'
+            'hasta',
+            'modo',
         ));
     }
     // ---------------------------------------------------------------- Funciones para calcular el stockaje
@@ -336,9 +340,15 @@ class EstadisticasController extends Controller
 
     // ---------------------------------------------------------------- consumo de materia prima / maquina
 
-    private function consumoKgPorMaquinaDia(?string $desde, ?string $hasta): array
+    private function consumoKgPorMaquina(?string $desde, ?string $hasta, string $modo): array
     {
-        /* --- A) Consulta --- */
+        $columnaFecha = match ($modo) {
+            'mes'    => "DATE_FORMAT(movimientos.fecha_ejecucion, '%Y-%m')",
+            'anio'   => "YEAR(movimientos.fecha_ejecucion)",
+            'origen' => "'Total'",
+            default  => "DATE(movimientos.fecha_ejecucion)",
+        };
+
         $registros = Movimiento::query()
             ->where('tipo', 'movimiento libre')
             ->whereNotNull('maquina_destino')
@@ -346,52 +356,54 @@ class EstadisticasController extends Controller
             ->when($desde, fn($q) => $q->whereDate('fecha_ejecucion', '>=', $desde))
             ->when($hasta, fn($q) => $q->whereDate('fecha_ejecucion', '<=', $hasta))
             ->join('productos', 'productos.id', '=', 'movimientos.producto_id')
-            ->selectRaw('
+            ->selectRaw("
             movimientos.maquina_destino,
-            DATE(movimientos.fecha_ejecucion) AS fecha,
-            SUM(productos.peso_inicial)      AS kg_totales
-        ')
-            ->groupBy('movimientos.maquina_destino', DB::raw('DATE(movimientos.fecha_ejecucion)'))
-            ->orderBy('fecha')
+            {$columnaFecha} AS periodo,
+            SUM(productos.peso_inicial) AS kg_totales
+        ")
+            ->groupBy('movimientos.maquina_destino', DB::raw($columnaFecha))
+            ->orderBy('periodo')
             ->get();
 
-        /* --- B) Fechas y máquinas --- */
-        $fechas   = $registros->pluck('fecha')->unique()->sort()->values();   // Collection
-        $maquinas = $registros->pluck('maquina_destino')->unique();           // Collection
+        $fechas   = $registros->pluck('periodo')->unique()->sort()->values();
+        $maquinas = $registros->pluck('maquina_destino')->unique();
 
-        /* --- C) Datasets (Collection) --- */
-        $datasetsCollection = $maquinas->map(function ($id) use ($registros, $fechas) {
-            $serie = $fechas->map(function ($dia) use ($registros, $id) {
+        $datasets = $maquinas->map(function ($id) use ($registros, $fechas) {
+            $serie = $fechas->map(function ($fecha) use ($registros, $id) {
                 return optional(
-                    $registros->first(fn($r) => $r->maquina_destino == $id && $r->fecha == $dia)
+                    $registros->first(fn($r) => $r->maquina_destino == $id && $r->periodo == $fecha)
                 )->kg_totales ?? 0;
             });
 
             return [
-                'label' => Maquina::find($id)->nombre ?? "Máquina $id",
+                'label' => \App\Models\Maquina::find($id)?->nombre ?? "Máquina $id",
                 'data'  => $serie,
                 'fill'  => false,
             ];
         });
 
-        /* --- D) Totales (aún Collection) --- */
-        $totalesCollection = $datasetsCollection->map(function ($dataset) {
-            return [
-                'maquina'    => $dataset['label'],
-                'kg_totales' => collect($dataset['data'])->sum(),
-            ];
-        })->sortByDesc('kg_totales');   // opcional: ordenar desc.
+        $totales = $registros
+            ->groupBy('maquina_destino')
+            ->map(function ($grupo, $id) {
+                return [
+                    'maquina'    => \App\Models\Maquina::find($id)?->nombre ?? "Máquina $id",
+                    'kg_totales' => $grupo->sum('kg_totales'),
+                ];
+            })->values()->all();
 
-        /* --- E) Convierte SOLO al final a arrays planos --- */
         return [
-            'labels'   => $fechas->values()->all(),          // array indexado
-            'datasets' => $datasetsCollection->values()->all(),
-            'totales'  => $totalesCollection->values()->all(),
+            'labels'   => $fechas->values()->all(),
+            'datasets' => $datasets->values()->all(),
+            'totales'  => $totales,
         ];
     }
 
+
+
+
     private function kilosPorMaquinaTipoDiametro(?string $desde, ?string $hasta)
     {
+
         return Movimiento::query()
             ->where('movimientos.tipo', 'movimiento libre')
             ->whereNotNull('maquina_destino')

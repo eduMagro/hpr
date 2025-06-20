@@ -20,7 +20,13 @@
     </div>
 
     <input type="hidden" name="panel" value="consumo-maquinas">
-
+    <label class="text-gray-700">Agrupar por:</label>
+    <select name="modo" class="border border-gray-300 rounded px-2 py-1 text-xs">
+        <option value="dia" {{ request('modo', 'dia') === 'dia' ? 'selected' : '' }}>Día</option>
+        <option value="mes" {{ request('modo') === 'mes' ? 'selected' : '' }}>Mes</option>
+        <option value="anio" {{ request('modo') === 'anio' ? 'selected' : '' }}>Año</option>
+        <option value="origen"{{ request('modo') === 'origen' ? 'selected' : '' }}>Todo (origen)</option>
+    </select>
     <div class="flex justify-center gap-2 items-center h-full">
         <!-- Botón buscar -->
         <button type="submit"
