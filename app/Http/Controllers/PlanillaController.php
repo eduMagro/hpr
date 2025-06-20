@@ -208,10 +208,19 @@ class PlanillaController extends Controller
         }
 
 
-        // Filtro por código (columna directa)
+        // Filtro por códigos parciales separados por comas
         if ($request->filled('codigo')) {
-            $query->where('codigo', 'like', '%' . $request->codigo . '%');
+            $codigos = array_filter(
+                array_map('trim', explode(',', $request->codigo))
+            );
+
+            $query->where(function ($q) use ($codigos) {
+                foreach ($codigos as $codigo) {
+                    $q->orWhere('codigo', 'like', '%' . $codigo . '%');
+                }
+            });
         }
+
 
         // Filtro por código del cliente
         if ($request->filled('codigo_cliente')) {
@@ -312,6 +321,7 @@ class PlanillaController extends Controller
             // 2️⃣ Aplicar filtros desde el formulario (usando método personalizado)
             $query = $this->aplicarFiltros($query, $request);
 
+            $totalPesoFiltrado = (clone $query)->sum('peso_total');
             // 3️⃣ Definir columnas ordenables para la vista (cabecera de la tabla)
             $ordenables = [
                 'codigo' => $this->getOrdenamiento('codigo', 'Código'),
@@ -356,7 +366,8 @@ class PlanillaController extends Controller
                 'clientes',
                 'obras',
                 'ordenables',
-                'filtrosActivos'
+                'filtrosActivos',
+                'totalPesoFiltrado',
             ));
         } catch (Exception $e) {
             // ⚠️ Si algo falla, redirigir con mensaje de error
