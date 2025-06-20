@@ -335,7 +335,7 @@ class EstadisticasController extends Controller
 
     private function consumoKgPorMaquinaDia(?string $desde, ?string $hasta): array
     {
-        // --- A) Consulta agrupada ---
+        /* --- A) Consulta --- */
         $registros = Movimiento::query()
             ->where('tipo', 'movimiento libre')
             ->whereNotNull('maquina_destino')
@@ -352,12 +352,12 @@ class EstadisticasController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // --- B) Eje X: fechas únicas y ordenadas ---
-        $fechas = $registros->pluck('fecha')->unique()->sort()->values();
-        $maquinas = $registros->pluck('maquina_destino')->unique();
+        /* --- B) Fechas y máquinas --- */
+        $fechas   = $registros->pluck('fecha')->unique()->sort()->values();   // Collection
+        $maquinas = $registros->pluck('maquina_destino')->unique();           // Collection
 
-        // --- C) Datasets para Chart.js ---
-        $datasets = $maquinas->map(function ($id) use ($registros, $fechas) {
+        /* --- C) Datasets (Collection) --- */
+        $datasetsCollection = $maquinas->map(function ($id) use ($registros, $fechas) {
             $serie = $fechas->map(function ($dia) use ($registros, $id) {
                 return optional(
                     $registros->first(fn($r) => $r->maquina_destino == $id && $r->fecha == $dia)
@@ -371,20 +371,19 @@ class EstadisticasController extends Controller
             ];
         });
 
-        // --- D) Tabla de totales por máquina (sumando los datos de cada dataset) ---
-        $totales = $datasets->map(function ($dataset) {
+        /* --- D) Totales (aún Collection) --- */
+        $totalesCollection = $datasetsCollection->map(function ($dataset) {
             return [
                 'maquina'    => $dataset['label'],
                 'kg_totales' => collect($dataset['data'])->sum(),
             ];
-        });
+        })->sortByDesc('kg_totales');   // opcional: ordenar desc.
 
-
-        // --- E) Retorno múltiple ---
+        /* --- E) Convierte SOLO al final a arrays planos --- */
         return [
-            'labels'   => $fechas,
-            'datasets' => $datasets,
-            'totales'  => $totales,
+            'labels'   => $fechas->values()->all(),          // array indexado
+            'datasets' => $datasetsCollection->values()->all(),
+            'totales'  => $totalesCollection->values()->all(),
         ];
     }
 }
