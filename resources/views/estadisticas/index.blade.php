@@ -6,7 +6,7 @@
         </h2>
     </x-slot>
 
-    <div class="w-full px-6 py-4" x-data="{ mostrarStock: false, mostrarPesoEntregadoObras: false, mostrarPesoPlanilleros: false }">
+    <div class="w-full px-6 py-4" x-data="{ mostrarStock: false, mostrarPesoEntregadoObras: false, mostrarPesoPlanilleros: false, mostrarConsumoMaquinas: false }">
         <!-- Botones para mostrar/ocultar las secciones -->
         <div class="mb-4">
             <button @click="mostrarStock = !mostrarStock" class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
@@ -21,6 +21,14 @@
             <button @click="mostrarPesoPlanilleros = !mostrarPesoPlanilleros"
                 class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
                 <span x-text="mostrarPesoPlanilleros ? '❌ Cerrar Peso Planilleros' : 'Ver Peso Planilleros'"></span>
+            </button>
+
+            <button @click="mostrarConsumoMaquinas = !mostrarConsumoMaquinas"
+                class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
+                <span
+                    x-text="mostrarConsumoMaquinas
+                          ? '❌ Cerrar Consumo Máquinas'
+                          : 'Ver Consumo Máquinas'"></span>
             </button>
         </div>
 
@@ -42,6 +50,9 @@
             <!-- Componente de Estadísticas Completo -->
             <x-estadisticas.pesoPlanilleros :pesoPorPlanillero="$pesoPorPlanillero" :pesoPorPlanilleroPorDia="$pesoPorPlanilleroPorDia" />
         </div>
-
+        <!-- Consumo Maquinas-->
+        <div x-show="mostrarConsumoMaquinas">
+            <x-estadisticas.consumo-maquinas :labels="$labels" :datasets="$datasets" />
+        </div>
     </div>
 </x-app-layout>
