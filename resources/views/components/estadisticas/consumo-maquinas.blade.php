@@ -103,7 +103,7 @@
     {{-- Gráfica --}}
     <div class="px-3 py-2">
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-1 rounded mt-2 mb-1">
-            Gráfica Diaria Kg/Máquina
+            Gráfica Consumos Kg/Máquina
         </h4>
 
         <div class="relative w-full overflow-x-auto">

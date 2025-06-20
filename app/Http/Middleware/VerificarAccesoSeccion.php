@@ -62,15 +62,22 @@ class VerificarAccesoSeccion
                 ->get();
 
             if ($permisos->isEmpty()) {
+                // Dentro de acceso.seccion, antes de abortar:
+                Log::debug('permiso a chequear', [
+                    'permiso' => $permisos,
+                    'route'   => $request->route()->getName(),
+                ]);
                 abort(403, 'No tienes permisos asignados para esta sección.');
             }
 
             $autorizado = false;
-
+            $accionesVer    = ['index', 'show'];
+            $accionesCrear  = ['create', 'store'];
+            $accionesEditar = ['edit', 'update', 'destroy', 'consumir', 'duplicar', 'liberar']; // ← añade aquí
             foreach ($permisos as $permiso) {
-                if (in_array($accion, ['index', 'show']) && $permiso->puede_ver) $autorizado = true;
-                if (in_array($accion, ['edit', 'update', 'destroy']) && $permiso->puede_editar) $autorizado = true;
-                if (in_array($accion, ['create', 'store']) && $permiso->puede_crear) $autorizado = true;
+                if (in_array($accion, $accionesVer)   && $permiso->puede_ver)    $autorizado = true;
+                if (in_array($accion, $accionesCrear) && $permiso->puede_crear)  $autorizado = true;
+                if (in_array($accion, $accionesEditar) && $permiso->puede_editar) $autorizado = true;
             }
 
             if (!$autorizado) {
