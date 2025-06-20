@@ -413,6 +413,21 @@
                                         {{-- Ver --}}
                                         <x-tabla.boton-ver :href="route('productos.show', $producto->id)" />
 
+
+                                        {{-- ② Icono compacto --}}
+                                        <a href="{{ route('productos.consumir', $producto->id) }}"
+                                            data-consumir="{{ route('productos.consumir', $producto->id) }}"
+                                            class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
+                                            title="Consumir">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                fill="currentColor" viewBox="0 0 24 24">
+                                                <!-- 🔥 Llama para “consumir” -->
+                                                <path
+                                                    d="M13.5 3.5c-2 2-1.5 4-3 5.5s-4 1-4 5a6 6 0 0012 0c0-2-1-3.5-2-4.5s-1-3-3-6z" />
+                                            </svg>
+                                        </a>
+
+
                                         {{-- Eliminar --}}
                                         <x-tabla.boton-eliminar :action="route('productos.destroy', $producto->id)" />
                                     </div>
@@ -565,28 +580,31 @@
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // Confirmar consumir
-                document.querySelectorAll('.btn-consumir').forEach(btn => {
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const url = this.dataset.consumir;
+                // Use a single delegated listener on <body>
+                document.body.addEventListener('click', (e) => {
+                    const btn = e.target.closest('.btn-consumir');
+                    if (!btn) return; // Click wasn’t on a consumir button
 
-                        Swal.fire({
-                            title: '¿Estás seguro?',
-                            text: "Esta materia prima se marcará como consumida.",
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonColor: '#d33',
-                            cancelButtonColor: '#3085d6',
-                            confirmButtonText: 'Sí, consumir',
-                            cancelButtonText: 'Cancelar'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                window.location.href = url;
-                            }
-                        });
+                    e.preventDefault();
+
+                    // Prefer data-consumir; fall back to href
+                    const url = btn.dataset.consumir || btn.getAttribute('href');
+
+                    Swal.fire({
+                        title: '¿Estás seguro?',
+                        text: 'Esta materia prima se marcará como consumida.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Sí, consumir',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = url;
+                        }
                     });
                 });
-
                 // Confirmar eliminación
                 document.querySelectorAll('.form-eliminar').forEach(form => {
                     form.addEventListener('submit', function(e) {
