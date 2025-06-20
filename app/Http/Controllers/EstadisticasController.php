@@ -41,11 +41,15 @@ class EstadisticasController extends Controller
 
         //Consumo por Maquina
 
-        // 1) Obtenemos etiquetas y datasets para Chart.js
-        [$labels, $datasets] = $this->consumoKgPorMaquinaDia(
+        $datosConsumo = $this->consumoKgPorMaquinaDia(
             $request->input('desde'),
             $request->input('hasta')
         );
+
+        $labels               = $datosConsumo['labels'];
+        $datasets             = $datosConsumo['datasets'];
+        $tablaConsumoTotales  = $datosConsumo['totales'];
+
         // Pasar los mensajes a la sesión
         $this->handleSessionMessages($mensajeDeAdvertencia);
 
@@ -60,7 +64,8 @@ class EstadisticasController extends Controller
             'pesoPorPlanilleroPorDia',
             'stockOptimo',
             'labels',
-            'datasets'
+            'datasets',
+            'tablaConsumoTotales'
         ));
     }
     // ---------------------------------------------------------------- Funciones para calcular el stockaje
@@ -330,7 +335,7 @@ class EstadisticasController extends Controller
 
     private function consumoKgPorMaquinaDia(?string $desde, ?string $hasta): array
     {
-        // --- A) Agregamos en SQL (rápido) ---
+        // --- A) Consulta agrupada ---
         $registros = Movimiento::query()
             ->where('tipo', 'movimiento libre')
             ->whereNotNull('maquina_destino')
@@ -339,20 +344,20 @@ class EstadisticasController extends Controller
             ->when($hasta, fn($q) => $q->whereDate('fecha_ejecucion', '<=', $hasta))
             ->join('productos', 'productos.id', '=', 'movimientos.producto_id')
             ->selectRaw('
-                movimientos.maquina_destino,
-                DATE(movimientos.fecha_ejecucion) AS fecha,
-                SUM(productos.peso_inicial)              AS kg_totales
-            ')
+            movimientos.maquina_destino,
+            DATE(movimientos.fecha_ejecucion) AS fecha,
+            SUM(productos.peso_inicial)      AS kg_totales
+        ')
             ->groupBy('movimientos.maquina_destino', DB::raw('DATE(movimientos.fecha_ejecucion)'))
             ->orderBy('fecha')
             ->get();
 
-        // --- B) Preparamos arrays para Chart.js ---
-        $fechas   = $registros->pluck('fecha')->unique()->sort()->values();
+        // --- B) Eje X: fechas únicas y ordenadas ---
+        $fechas = $registros->pluck('fecha')->unique()->sort()->values();
         $maquinas = $registros->pluck('maquina_destino')->unique();
 
+        // --- C) Datasets para Chart.js ---
         $datasets = $maquinas->map(function ($id) use ($registros, $fechas) {
-            // Serie de kg para cada día
             $serie = $fechas->map(function ($dia) use ($registros, $id) {
                 return optional(
                     $registros->first(fn($r) => $r->maquina_destino == $id && $r->fecha == $dia)
@@ -366,6 +371,20 @@ class EstadisticasController extends Controller
             ];
         });
 
-        return [$fechas, $datasets];
+        // --- D) Tabla de totales por máquina (sumando los datos de cada dataset) ---
+        $totales = $datasets->map(function ($dataset) {
+            return [
+                'maquina'    => $dataset['label'],
+                'kg_totales' => collect($dataset['data'])->sum(),
+            ];
+        });
+
+
+        // --- E) Retorno múltiple ---
+        return [
+            'labels'   => $fechas,
+            'datasets' => $datasets,
+            'totales'  => $totales,
+        ];
     }
 }

@@ -52,7 +52,11 @@
         </div>
         <!-- Consumo Maquinas-->
         <div x-show="mostrarConsumoMaquinas">
-            <x-estadisticas.consumo-maquinas :labels="$labels" :datasets="$datasets" />
+            <x-estadisticas.consumo-maquinas :totales="$tablaConsumoTotales" :series="[
+                'labels' => $labels,
+                'datasets' => $datasets,
+            ]" />
+
         </div>
     </div>
 </x-app-layout>
