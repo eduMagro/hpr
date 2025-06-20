@@ -6,7 +6,12 @@
         </h2>
     </x-slot>
 
-    <div class="w-full px-6 py-4" x-data="{ mostrarStock: false, mostrarPesoEntregadoObras: false, mostrarPesoPlanilleros: false, mostrarConsumoMaquinas: false }">
+    <div class="w-full px-6 py-4" x-data="{
+        mostrarStock: false,
+        mostrarPesoEntregadoObras: false,
+        mostrarPesoPlanilleros: false,
+        mostrarConsumoMaquinas: {{ request('panel') === 'consumo-maquinas' ? 'true' : 'false' }}
+    }">
         <!-- Botones para mostrar/ocultar las secciones -->
         <div class="mb-4">
             <button @click="mostrarStock = !mostrarStock" class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
@@ -55,7 +60,8 @@
             <x-estadisticas.consumo-maquinas :totales="$tablaConsumoTotales" :series="[
                 'labels' => $labels,
                 'datasets' => $datasets,
-            ]" />
+            ]" :desde="$desde" :hasta="$hasta"
+                :detalle="$kilosPorTipoDiametro" />
 
         </div>
     </div>

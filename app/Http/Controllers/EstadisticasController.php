@@ -40,15 +40,15 @@ class EstadisticasController extends Controller
 
 
         //Consumo por Maquina
-
-        $datosConsumo = $this->consumoKgPorMaquinaDia(
-            $request->input('desde'),
-            $request->input('hasta')
-        );
-
-        $labels               = $datosConsumo['labels'];
-        $datasets             = $datosConsumo['datasets'];
-        $tablaConsumoTotales  = $datosConsumo['totales'];
+        // ► 1) Fechas de filtro
+        $desde = $request->input('desde');   // yyyy-mm-dd o null
+        $hasta = $request->input('hasta');
+        // ► 3) Consumo por máquina con rango
+        $datosConsumo = $this->consumoKgPorMaquinaDia($desde, $hasta);
+        $labels              = $datosConsumo['labels'];
+        $datasets            = $datosConsumo['datasets'];
+        $tablaConsumoTotales = $datosConsumo['totales'];
+        $kilosPorTipoDiametro = $this->kilosPorMaquinaTipoDiametro($desde, $hasta);
 
         // Pasar los mensajes a la sesión
         $this->handleSessionMessages($mensajeDeAdvertencia);
@@ -65,7 +65,10 @@ class EstadisticasController extends Controller
             'stockOptimo',
             'labels',
             'datasets',
-            'tablaConsumoTotales'
+            'tablaConsumoTotales',
+            'kilosPorTipoDiametro',
+            'desde',
+            'hasta'
         ));
     }
     // ---------------------------------------------------------------- Funciones para calcular el stockaje
@@ -385,5 +388,38 @@ class EstadisticasController extends Controller
             'datasets' => $datasetsCollection->values()->all(),
             'totales'  => $totalesCollection->values()->all(),
         ];
+    }
+
+    private function kilosPorMaquinaTipoDiametro(?string $desde, ?string $hasta)
+    {
+        return Movimiento::query()
+            ->where('movimientos.tipo', 'movimiento libre')
+            ->whereNotNull('maquina_destino')
+            ->whereNotNull('fecha_ejecucion')
+            ->when($desde, fn($q) => $q->whereDate('fecha_ejecucion', '>=', $desde))
+            ->when($hasta, fn($q) => $q->whereDate('fecha_ejecucion', '<=', $hasta))
+
+            ->join('productos',       'productos.id',       '=', 'movimientos.producto_id')
+            ->join('productos_base',  'productos_base.id',  '=', 'productos.producto_base_id')
+            ->leftJoin('maquinas',    'maquinas.id',        '=', 'movimientos.maquina_destino')
+
+            ->selectRaw('
+            maquinas.nombre                 AS maquina,
+            productos_base.tipo             AS tipo,
+            productos_base.diametro         AS diametro,
+            productos_base.longitud         AS longitud,
+            SUM(productos.peso_inicial)     AS kg
+        ')
+            ->groupBy(
+                'maquinas.nombre',
+                'productos_base.tipo',
+                'productos_base.diametro',
+                'productos_base.longitud'
+            )
+            ->orderBy('maquinas.nombre')
+            ->orderBy('productos_base.tipo')
+            ->orderBy('productos_base.diametro')
+            ->orderBy('productos_base.longitud')
+            ->get();
     }
 }
