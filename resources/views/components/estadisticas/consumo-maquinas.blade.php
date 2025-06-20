@@ -9,7 +9,13 @@
     document.addEventListener('DOMContentLoaded', () => {
         const ctx = document.getElementById('consumoMaquinasChart');
         if (!ctx) return;
+        /* 👉 Datos que llegan desde el controlador */
+        const labels = @json($labels);
+        const datasets = @json($datasets);
 
+        /* ✅ Revisar en consola del navegador (F12) */
+        console.log('[ConsumoMáquinas] Labels →', labels);
+        console.log('[ConsumoMáquinas] Datasets →', datasets);
         new Chart(ctx, {
             type: 'bar', // cámbialo a 'line' si lo prefieres
             data: {
