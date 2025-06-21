@@ -42,7 +42,13 @@
     <!-- ✅ FullCalendar (solo si es necesario en esta vista) -->
     @stack('calendar') {{-- así solo lo cargas si lo necesitas --}}
 
-    <!-- ❌ Eliminado Bootstrap + Popper si no los usas (mejor solo Tailwind) -->
+    <style>
+        /* Oculta cualquier elemento marcado con x-cloak hasta que Alpine quite el atributo */
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+
 </head>
 
 <body class="font-sans antialiased">

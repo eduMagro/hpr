@@ -76,7 +76,7 @@
                         <div class="ubicacion">
                             <span>
                                 <a href="{{ route('ubicaciones.show', $ubicacion->id) }}">
-                                    {{ $ubicacion->ubicacion }}
+                                    {{ $ubicacion->id }}
                                 </a>
                             </span>
                             <small>{{ $ubicacion->descripcion }}</small>
