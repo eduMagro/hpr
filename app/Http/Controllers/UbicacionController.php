@@ -57,6 +57,25 @@ class UbicacionController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+    public function inventario(Request $request)
+    {
+        try {
+            // Obtener ubicaciones con productos y paquetes, ordenadas por sector y ubicación
+            $ubicaciones = Ubicacion::with(['productos.productoBase', 'paquetes'])
+                ->orderBy('sector', 'desc')
+                ->orderBy('ubicacion', 'asc')
+                ->get();
+
+            // Agrupar por sector
+            // Agrupar por sector (si tienes esa columna en la tabla)
+            $ubicacionesPorSector = $ubicaciones->groupBy('sector'); // ← asegúrate de tener esta columna
+
+            // Pasar todos los datos necesarios a la vista
+            return view('ubicaciones.inventario', compact('ubicacionesPorSector'));
+        } catch (Exception $e) {
+            return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
+        }
+    }
 
     //------------------------------------------------------------------------------------ CREATE()
     public function create()

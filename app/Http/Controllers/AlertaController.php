@@ -122,7 +122,6 @@ class AlertaController extends Controller
         return view('alertas.index', compact('alertas', 'user', 'roles', 'categorias', 'usuarios', 'alertasLeidas'));
     }
 
-
     public function marcarLeidas(Request $request)
     {
         $userId = Auth::id();

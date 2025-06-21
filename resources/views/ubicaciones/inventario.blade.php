@@ -1,84 +1,3 @@
-@if (session('abort'))
-    <script>
-        Swal.fire({
-            icon: 'error',
-            title: 'Acceso denegado',
-            text: "{{ session('abort') }}",
-        }).then(() => {
-            window.location.reload(); // Recarga la página tras el mensaje
-        });
-    </script>
-@endif
-
-@if ($errors->any())
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'Errores encontrados',
-                html: '<ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>',
-                confirmButtonColor: '#d33',
-                showCancelButton: true,
-                cancelButtonText: "Reportar Error"
-            }).then((result) => {
-                if (result.dismiss === Swal.DismissReason.cancel) {
-                    notificarProgramador("Se han detectado errores en la validación de datos.");
-                }
-            });
-        });
-    </script>
-@endif
-
-@if (session('error'))
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: {!! json_encode(session('error')) !!}, // Esto evita errores de comillas
-                confirmButtonColor: '#d33',
-                showCancelButton: true,
-                cancelButtonText: "Reportar Error"
-            }).then((result) => {
-                if (result.dismiss === Swal.DismissReason.cancel) {
-                    notificarProgramador({!! json_encode(session('error')) !!});
-                }
-            });
-        });
-    </script>
-@endif
-
-@if (session('success'))
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            Swal.fire({
-                icon: 'success',
-                text: '{{ session('success') }}',
-                confirmButtonColor: '#28a745'
-            }).then(() => {
-                window.location.reload(); // Recarga la página tras el mensaje
-            });
-        });
-    </script>
-@endif
-
-@if (session('warnings'))
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            @foreach (session('warnings') as $warning)
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Atención',
-                    text: "{{ $warning }}",
-                    timer: 5000,
-                    showConfirmButton: false
-                });
-            @endforeach
-        });
-    </script>
-@endif
-
-
 <script>
     // 🔧 Función global para enviar alerta al departamento Programador
     function notificarProgramador(mensaje) {
@@ -90,7 +9,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').content
                 },
                 body: JSON.stringify({
                     mensaje: mensajeCompleto,
@@ -114,10 +33,9 @@
     }
 
     // ⚡ Definimos la función global que Alpine usa para cada ubicación
-    window.inventarioUbicacion = function(productosEsperados, nombreUbicacion) {
+    window.inventarioUbicacion = function(productosEsperados) {
         return {
             productosEsperados,
-            nombreUbicacion,
             escaneados: [],
             sospechosos: [],
 
@@ -135,19 +53,28 @@
                 return this.escaneados.includes(codigo);
             },
 
+            /** Reportar errores → usa notificarProgramador() */
             reportarErrores() {
                 const faltantes = this.productosEsperados.filter(c => !this.escaneados.includes(c));
                 const inesperados = this.sospechosos;
 
+                if (faltantes.length === 0 && inesperados.length === 0) {
+                    Swal.fire('Sin errores', 'No hay errores que reportar en esta ubicación.', 'info');
+                    return;
+                }
+
                 const texto = [
                     '🚨 Reporte de inventario',
-                    `Ubicación: ${this.nombreUbicacion}`,
+                    'Ubicación: ' + this.nombreUbicacion,
                     `Faltantes (${faltantes.length}): ${faltantes.join(', ') || 'ninguno'}`,
                     `Inesperados (${inesperados.length}): ${inesperados.join(', ') || 'ninguno'}`
                 ].join('\n');
 
                 notificarProgramador(texto);
-            }
+            },
+
+            /** Se asignará desde Blade */
+            nombreUbicacion: ''
         }
     }
 </script>
@@ -162,24 +89,24 @@
     </x-slot>
 
     <div class="max-w-7xl mx-auto px-4 py-6">
-        @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
+        @foreach ($ubicacionesPorSector as $sector => $listaUbis)
+            @php \Log::debug("Sector $sector => ".$listaUbis->count().' ubicaciones'); @endphp
             <h2 class="text-lg font-bold mt-6">Sector {{ $sector }}</h2>
 
-            @foreach ($ubicaciones as $ubicacion)
-                <!-- Componente Alpine independiente por ubicación -->
-                <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), @json($ubicacion->ubicacion))'
-                    class="bg-white shadow rounded-2xl overflow-hidden mt-4">
-                    <!-- Cabecera -->
+
+            @foreach ($listaUbis as $ubicacion)
+                <div x-data="Object.assign(inventarioUbicacion(@json($ubicacion->productos->pluck('codigo'))), { nombreUbicacion: '{{ $ubicacion->ubicacion }}' })" class="bg-white shadow rounded-2xl overflow-hidden mt-4">
                     <div
                         class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 text-white px-4 py-3 gap-3">
                         <div class="text-sm sm:text-base">
+
                             <span>Ubicación: <strong>{{ $ubicacion->ubicacion }}</strong></span>
                             <span
                                 class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gray-200 text-gray-900 ml-2">
                                 {{ count($ubicacion->productos) }} prod. esperados
                             </span>
                         </div>
-                        <!-- Input de escaneo para ESTA ubicación -->
+
                         <input type="text"
                             class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
                             placeholder="Escanea aquí…"
@@ -187,7 +114,6 @@
                             x-ref="inputQR" @if ($loop->first && $loop->parent->first) autofocus @endif>
                     </div>
 
-                    <!-- Tabla de productos (visible >= sm) -->
                     <div class="hidden sm:block overflow-x-auto">
                         <table class="min-w-full text-xs md:text-sm divide-y divide-gray-200">
                             <thead class="bg-gray-100 text-gray-800">
@@ -202,19 +128,25 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
+
                                 @foreach ($ubicacion->productos as $idx => $producto)
                                     <tr :class="productoEscaneado('{{ $producto->codigo }}') ? 'bg-green-50' : ''">
+
                                         <td class="px-2 py-1 text-center">{{ $idx + 1 }}</td>
                                         <td class="px-2 py-1 text-xs text-center">{{ $producto->codigo }}</td>
                                         <td class="px-2 py-1 text-center">{{ $producto->nombre }}</td>
-                                        <td class="px-2 py-1 capitalize text-center">{{ $producto->tipo }}</td>
+                                        <td class="px-2 py-1 capitalize text-center">
+                                            {{ $producto->productoBase->tipo ?? '—' }}
+                                        </td>
+
                                         <td class="px-2 py-1 text-center">
-                                            @if ($producto->tipo === 'encarretado')
-                                                Ø {{ $producto->diametro }} mm
+                                            @if ($producto->productoBase?->tipo === 'encarretado')
+                                                Ø {{ $producto->productoBase->diametro ?? '—' }} mm
                                             @else
-                                                {{ $producto->longitud }} m
+                                                {{ $producto->productoBase->longitud ?? '—' }} m
                                             @endif
                                         </td>
+
                                         <td class="px-2 py-1 text-center">
                                             {{ number_format($producto->peso_inicial, 1, ',', '.') }}</td>
                                         <td class="px-2 py-1 text-center">
@@ -229,7 +161,6 @@
                         </table>
                     </div>
 
-                    <!-- Vista mobile (cards) -->
                     <div class="sm:hidden divide-y divide-gray-100 text-xs">
                         @foreach ($ubicacion->productos as $producto)
                             <div class="flex justify-between items-center py-2 px-3"
@@ -248,7 +179,6 @@
                         @endforeach
                     </div>
 
-                    <!-- Productos inesperados -->
                     <div class="px-4 py-3" x-show="sospechosos.length">
                         <h3 class="text-sm font-semibold text-red-600 mb-1">Productos inesperados:</h3>
                         <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
@@ -258,16 +188,17 @@
                         </ul>
                     </div>
 
-                    <!-- Botones -->
                     <div class="flex justify-end gap-3 px-4 pb-4">
                         <button type="button"
                             class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow"
                             x-on:click="reportarErrores()">
                             Reportar errores
                         </button>
+
                     </div>
                 </div>
             @endforeach
         @endforeach
+
     </div>
 </x-app-layout>
