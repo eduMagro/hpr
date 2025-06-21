@@ -39,35 +39,47 @@
             nombreUbicacion,
             escaneados: [],
             sospechosos: [],
+            audioOk: null,
+            audioError: null,
+
+            init() {
+                this.audioOk = document.getElementById('sonido-ok');
+                this.audioError = document.getElementById('sonido-error');
+            },
+
+            reproducirOk() {
+                if (!this.audioOk) return;
+                this.audioOk.currentTime = 0;
+                this.audioOk.play().catch(() => {});
+            },
+
+            reproducirError() {
+                if (!this.audioError) return;
+                this.audioError.currentTime = 0;
+                this.audioError.play().catch(() => {});
+            },
 
             procesarQR(codigo) {
                 codigo = (codigo || '').trim();
                 if (!codigo) return;
+
                 if (this.productosEsperados.includes(codigo)) {
-                    if (!this.escaneados.includes(codigo)) this.escaneados.push(codigo);
+                    if (!this.escaneados.includes(codigo)) {
+                        this.escaneados.push(codigo);
+                        this.reproducirOk();
+                    }
                 } else {
-                    if (!this.sospechosos.includes(codigo)) this.sospechosos.push(codigo);
+                    if (!this.sospechosos.includes(codigo)) {
+                        this.sospechosos.push(codigo);
+                        this.reproducirError(); // 👈 sonar si NO se esperaba
+                    }
                 }
             },
 
             productoEscaneado(codigo) {
                 return this.escaneados.includes(codigo);
             },
-
-            reportarErrores() {
-                const faltantes = this.productosEsperados.filter(c => !this.escaneados.includes(c));
-                const inesperados = this.sospechosos;
-
-                const texto = [
-                    '🚨 Reporte de inventario',
-                    `Ubicación: ${this.nombreUbicacion}`,
-                    `Faltantes (${faltantes.length}): ${faltantes.join(', ') || 'ninguno'}`,
-                    `Inesperados (${inesperados.length}): ${inesperados.join(', ') || 'ninguno'}`
-                ].join('\n');
-
-                notificarProgramador(texto);
-            }
-        }
+        };
     }
 </script>
 
@@ -189,7 +201,7 @@
             @endforeach
         @endforeach
     </div>
-    <!-- Sonido de éxito al escanear -->
-    <audio id="sonido-ok" src="{{ asset('sounds/ok.mp3') }}" preload="auto"></audio>
 
+    <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>
+    <audio id="sonido-error" src="{{ asset('sonidos/error.mp3') }}" preload="auto"></audio>
 </x-app-layout>
