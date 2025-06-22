@@ -96,9 +96,9 @@
                     <tr class="text-center text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['codigo'] !!}</th>
                         <th class="p-2 border">Codigo Cliente</th>
-                        <th class="p-2 border">{!! $ordenables['cliente'] !!}</th>
-                        <th class="p-2 border">{!! $ordenables['cod_obra'] !!}</th>
-                        <th class="p-2 border">{!! $ordenables['nom_obra'] !!}</th>
+                        <th class="p-2 border">Cliente</th>
+                        <th class="p-2 border">Código Obra</th>
+                        <th class="p-2 border">Obra</th>
                         <th class="p-2 border">{!! $ordenables['seccion'] !!}</th>
                         <th class="p-2 border">Descripción</th>
                         <th class="p-2 border">{!! $ordenables['ensamblado'] !!}</th>

@@ -194,117 +194,26 @@
                     </table>
                 </div>
             </div>
-            @php
-                $filtrosActivos = [];
-
-                if (request('buscar')) {
-                    $filtrosActivos[] = 'contiene <strong>“' . request('buscar') . '”</strong>';
-                }
-                if (request('codigo')) {
-                    $filtrosActivos[] = 'Código: <strong>' . request('codigo') . '</strong>';
-                }
-                if (request('fabricante')) {
-                    $filtrosActivos[] = 'Fabricante: <strong>' . request('fabricante') . '</strong>';
-                }
-                if (request('tipo')) {
-                    $filtrosActivos[] = 'Tipo: <strong>' . request('tipo') . '</strong>';
-                }
-                if (request('diametro')) {
-                    $filtrosActivos[] = 'Diámetro: <strong>' . request('diametro') . '</strong>';
-                }
-                if (request('longitud')) {
-                    $filtrosActivos[] = 'Longitud: <strong>' . request('longitud') . '</strong>';
-                }
-                if (request('n_colada')) {
-                    $filtrosActivos[] = 'Nº Colada: <strong>' . request('n_colada') . '</strong>';
-                }
-                if (request('n_paquete')) {
-                    $filtrosActivos[] = 'Nº Paquete: <strong>' . request('n_paquete') . '</strong>';
-                }
-                if (request('estado')) {
-                    $estados = [
-                        'disponible' => 'Disponible',
-                        'reservado' => 'Reservado',
-                        'consumido' => 'Consumido',
-                    ];
-                    $filtrosActivos[] =
-                        'Estado: <strong>' . ($estados[request('estado')] ?? request('estado')) . '</strong>';
-                }
-                if (request('ubicacion')) {
-                    $filtrosActivos[] = 'Ubicación: <strong>' . request('ubicacion') . '</strong>';
-                }
-
-                if (request('sort')) {
-                    $sorts = [
-                        'id' => 'ID',
-                        'fabricante' => 'Fabricante',
-                        'tipo' => 'Tipo',
-                        'diametro' => 'Diámetro',
-                        'longitud' => 'Longitud',
-                        'n_colada' => 'Nº Colada',
-                        'n_paquete' => 'Nº Paquete',
-                        'peso_inicial' => 'Peso Inicial',
-                        'peso_stock' => 'Peso Stock',
-                        'estado' => 'Estado',
-                        'ubicacion' => 'Ubicación',
-                    ];
-                    $orden = request('order') == 'desc' ? 'descendente' : 'ascendente';
-                    $filtrosActivos[] =
-                        'Ordenado por <strong>' .
-                        ($sorts[request('sort')] ?? request('sort')) .
-                        "</strong> en orden <strong>$orden</strong>";
-                }
-
-                if (request('per_page')) {
-                    $filtrosActivos[] = 'Mostrando <strong>' . request('per_page') . '</strong> registros por página';
-                }
-            @endphp
 
             <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
-
-            @php
-                function ordenarColumna($columna, $titulo)
-                {
-                    $currentSort = request('sort_by');
-                    $currentOrder = request('order');
-                    $isSorted = $currentSort === $columna;
-                    $nextOrder = $isSorted && $currentOrder === 'asc' ? 'desc' : 'asc';
-                    $icon = $isSorted
-                        ? ($currentOrder === 'asc'
-                            ? 'fas fa-sort-up'
-                            : 'fas fa-sort-down')
-                        : 'fas fa-sort';
-
-                    $url = request()->fullUrlWithQuery(['sort_by' => $columna, 'order' => $nextOrder]);
-
-                    return '<a href="' .
-                        $url .
-                        '" class="text-white text-decoration-none">' .
-                        $titulo .
-                        ' <i class="' .
-                        $icon .
-                        '"></i></a>';
-                }
-            @endphp
-
             <!-- Modo Tabla -->
             <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
                 <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                     <thead class="bg-blue-500 text-white">
                         <tr class="text-center text-xs uppercase">
-                            <th class="p-2 border">{!! ordenarColumna('id', 'ID Materia Prima') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('entrada_id', 'Albarán') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('codigo', 'Código') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('fabricante', 'Fabricante') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('tipo', 'Tipo') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('diametro', 'Diámetro') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('longitud', 'Longitud') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('n_colada', 'Nº Colada') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('n_paquete', 'Nº Paquete') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('peso_inicial', 'Peso Inicial') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('peso_stock', 'Peso Stock') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('estado', 'Estado') !!}</th>
-                            <th class="p-2 border">{!! ordenarColumna('ubicacion', 'Ubicación') !!}</th>
+                            <th class="p-2 border">{!! $ordenables['id'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['entrada_id'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['codigo'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['fabricante'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['tipo'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['diametro'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['longitud'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['n_colada'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['n_paquete'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['peso_inicial'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['peso_stock'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['estado'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['ubicacion'] !!}</th>
                             <th class="p-2 border">Acciones</th>
                         </tr>
                         <tr class="text-center text-xs uppercase">

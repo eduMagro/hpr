@@ -28,27 +28,6 @@ class ElementoController extends Controller
      */
     private function aplicarFiltros($query, Request $request)
     {
-        // 🔍 Búsqueda global en múltiples campos
-        if ($request->has('buscar') && $request->buscar) {
-            $buscar = $request->input('buscar');
-            $query->where(function ($q) use ($buscar) {
-                $q->where('id', 'like', "%$buscar%")
-                    ->orWhere('figura', 'like', "%$buscar%")
-                    ->orWhere('etiqueta_sub_id', 'like', "%$buscar%")
-                    ->orWhereHas('planilla', function ($q) use ($buscar) {
-                        $q->where('codigo', 'like', "%$buscar%");
-                    })
-                    ->orWhereHas('maquina', function ($q) use ($buscar) {
-                        $q->where('nombre', 'like', "%$buscar%");
-                    })
-                    ->orWhereHas('maquina_2', function ($q) use ($buscar) {
-                        $q->where('nombre', 'like', "%$buscar%");
-                    })
-                    ->orWhereHas('maquina_3', function ($q) use ($buscar) {
-                        $q->where('nombre', 'like', "%$buscar%");
-                    });
-            });
-        }
 
         // 🔢 Filtros específicos
         $filters = [
@@ -147,25 +126,6 @@ class ElementoController extends Controller
             $query->where('longitud', 'like', "%{$request->longitud}%");
         }
 
-        // 🏷️ Ordenación dinámica
-        $allowedSortColumns = ['created_at', 'id', 'figura', 'subetiqueta'];
-
-        $sortBy = $request->filled('sort_by') && in_array($request->input('sort_by'), $allowedSortColumns)
-            ? $request->input('sort_by')
-            : 'created_at';
-
-        $order = $request->filled('order') && in_array($request->input('order'), ['asc', 'desc'])
-            ? $request->input('order')
-            : 'desc';
-
-        if ($query instanceof \Illuminate\Database\Eloquent\Builder) {
-            $query->orderBy($sortBy, $order);
-        } elseif ($query instanceof \Illuminate\Support\Collection) {
-            $query = $order === 'desc'
-                ? $query->sortByDesc($sortBy)
-                : $query->sortBy($sortBy);
-        }
-
         return $query;
     }
     private function getOrdenamiento(string $columna, string $titulo): string
@@ -189,6 +149,43 @@ class ElementoController extends Controller
         return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
             '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
+    /**
+     * Ordenamiento seguro para la tabla elementos.
+     */
+    private function aplicarOrdenamientoElementos($query, Request $request)
+    {
+        // Todas las columnas que SÍ se pueden ordenar (coinciden con tu array $ordenables)
+        $columnasPermitidas = [
+            'id',
+            'codigo',
+            'codigo_planilla',
+            'etiqueta',
+            'subetiqueta',
+            'maquina',
+            'maquina_2',
+            'maquina3',
+            'producto1',
+            'producto2',
+            'producto3',
+            'figura',
+            'peso',
+            'diametro',
+            'longitud',
+            'estado',
+            'created_at',    // para el orden inicial por fecha
+        ];
+
+        // Lee los parámetros y sanea
+        $sort  = $request->input('sort', 'created_at');
+        $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if (!in_array($sort, $columnasPermitidas, true)) {
+            $sort = 'created_at';              // fallback seguro
+        }
+
+        return $query->orderBy($sort, $order);
+    }
+
     public function index(Request $request)
     {
         $query = Elemento::with([
@@ -202,8 +199,8 @@ class ElementoController extends Controller
             'producto3',
         ])->orderBy('created_at', 'desc');
 
-        // Aplicar filtros
         $query = $this->aplicarFiltros($query, $request);
+        $query = $this->aplicarOrdenamientoElementos($query, $request);
 
         // Paginación
         $elementos = $query->paginate(10)->appends($request->query());

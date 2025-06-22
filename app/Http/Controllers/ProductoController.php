@@ -21,22 +21,24 @@ use Illuminate\Support\Facades\Cache;
 class ProductoController extends Controller
 {
     //------------------------------------------------------------------------------------ FILTROS
-    public function aplicarFiltros($query, Request $request)
+    private function aplicarFiltros($query, Request $request)
     {
-        // Aplicar filtros si están presentes en la solicitud
-        if ($request->filled('id')) {
-            $query->where('id', $request->id);
+        if ($request->filled('id') && is_numeric($request->id)) {
+            $query->where('id', (int) $request->id);
         }
-        if ($request->filled('entrada_id')) {
-            $query->where('entrada_id', $request->entrada_id);
+
+        if ($request->filled('entrada_id') && is_numeric($request->entrada_id)) {
+            $query->where('entrada_id', (int) $request->entrada_id);
         }
 
         if ($request->filled('codigo')) {
-            $query->where('codigo', 'LIKE', '%' . $request->codigo . '%');
+            $query->where('codigo', 'like', '%' . $request->codigo . '%');
         }
-        if ($request->filled('fabricante')) {
-            $query->where('fabricante', $request->fabricante);
+
+        if ($request->filled('fabricante') && is_numeric($request->fabricante)) {
+            $query->where('fabricante_id', (int) $request->fabricante);
         }
+
         if ($request->filled('tipo')) {
             $query->whereHas('productoBase', function ($q) use ($request) {
                 $q->where('tipo', $request->tipo);
@@ -58,22 +60,138 @@ class ProductoController extends Controller
         if ($request->filled('n_colada')) {
             $query->where('n_colada', $request->n_colada);
         }
+
         if ($request->filled('n_paquete')) {
             $query->where('n_paquete', $request->n_paquete);
         }
+
         if ($request->filled('estado')) {
-            $query->where('estado', 'LIKE', '%' . $request->estado . '%');
+            $query->where('estado', 'like', '%' . $request->estado . '%');
         }
 
         return $query;
     }
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
 
+        $icon = '';
+        if ($isSorted) {
+            $icon = $currentOrder === 'asc'
+                ? '▲' // flecha hacia arriba
+                : '▼'; // flecha hacia abajo
+        } else {
+            $icon = '⇅'; // símbolo de orden genérico
+        }
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+    }
+    private function aplicarOrdenamiento($query, Request $request)
+    {
+        $columnasPermitidas = [
+            'id',
+            'codigo',
+            'fabricante_id',
+            'producto_base_id',
+            'n_colada',
+            'n_paquete',
+            'peso_inicial',
+            'peso_stock',
+            'estado',
+            'created_at',
+        ];
+
+        $sort = $request->input('sort', 'created_at');
+        $order = strtolower($request->input('order', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if (!in_array($sort, $columnasPermitidas, true)) {
+            $sort = 'created_at';
+        }
+
+        return $query->orderBy($sort, $order);
+    }
+    private function filtrosActivos(Request $request): array
+    {
+        $filtros = [];
+
+        if ($request->filled('id')) {
+            $filtros[] = 'ID: <strong>' . e($request->id) . '</strong>';
+        }
+
+        if ($request->filled('entrada_id')) {
+            $filtros[] = 'Entrada ID: <strong>' . e($request->entrada_id) . '</strong>';
+        }
+
+        if ($request->filled('codigo')) {
+            $filtros[] = 'Código: <strong>' . e($request->codigo) . '</strong>';
+        }
+
+        if ($request->filled('fabricante')) {
+            $filtros[] = 'Fabricante ID: <strong>' . e($request->fabricante) . '</strong>';
+        }
+
+        if ($request->filled('tipo')) {
+            $filtros[] = 'Tipo: <strong>' . e($request->tipo) . '</strong>';
+        }
+
+        if ($request->filled('diametro')) {
+            $filtros[] = 'Diámetro: <strong>' . e($request->diametro) . '</strong>';
+        }
+
+        if ($request->filled('longitud')) {
+            $filtros[] = 'Longitud: <strong>' . e($request->longitud) . '</strong>';
+        }
+
+        if ($request->filled('n_colada')) {
+            $filtros[] = 'N.º Colada: <strong>' . e($request->n_colada) . '</strong>';
+        }
+
+        if ($request->filled('n_paquete')) {
+            $filtros[] = 'N.º Paquete: <strong>' . e($request->n_paquete) . '</strong>';
+        }
+
+        if ($request->filled('estado')) {
+            $filtros[] = 'Estado: <strong>' . e($request->estado) . '</strong>';
+        }
+
+        if ($request->filled('sort')) {
+            $orden = $request->input('order') === 'asc' ? 'ascendente' : 'descendente';
+
+            $nombresBonitos = [
+                'id' => 'ID Materia Prima',
+                'entrada_id' => 'Albarán',
+                'codigo' => 'Código',
+                'fabricante' => 'Fabricante',
+                'tipo' => 'Tipo',
+                'diametro' => 'Diámetro',
+                'longitud' => 'Longitud',
+                'n_colada' => 'Nº Colada',
+                'n_paquete' => 'Nº Paquete',
+                'peso_inicial' => 'Peso Inicial',
+                'peso_stock' => 'Peso Stock',
+                'estado' => 'Estado',
+                'ubicacion' => 'Ubicación',
+            ];
+
+            $columna = $request->sort;
+            $nombre = $nombresBonitos[$columna] ?? ucfirst($columna);
+
+            $filtros[] = "Ordenado por <strong>$nombre</strong> en orden <strong>$orden</strong>";
+        }
+
+
+        return $filtros;
+    }
 
     //------------------------------------------------------------------------------------ INDEX
     public function index(Request $request)
     {
-
-        // 🔹 Cargar relaciones necesarias y solo las columnas que usas
         $query = Producto::with([
             'productoBase:id,tipo,diametro,longitud',
             'fabricante:id,nombre',
@@ -96,39 +214,36 @@ class ProductoController extends Controller
             'created_at'
         ]);
 
-        // 🔹 Aplicar filtros personalizados (si ya los tienes en un método aparte)
+        // Aplicar filtros y ordenamiento de forma segura
         $query = $this->aplicarFiltros($query, $request);
+        $query = $this->aplicarOrdenamiento($query, $request);
+        $filtrosActivos = $this->filtrosActivos($request);
+        $ordenables = [
+            'id'             => $this->getOrdenamiento('id', 'ID Materia Prima'),
+            'entrada_id'     => $this->getOrdenamiento('entrada_id', 'Albarán'),
+            'codigo'         => $this->getOrdenamiento('codigo', 'Código'),
+            'fabricante'     => $this->getOrdenamiento('fabricante', 'Fabricante'),
+            'tipo'           => $this->getOrdenamiento('tipo', 'Tipo'),
+            'diametro'       => $this->getOrdenamiento('diametro', 'Diámetro'),
+            'longitud'       => $this->getOrdenamiento('longitud', 'Longitud'),
+            'n_colada'       => $this->getOrdenamiento('n_colada', 'Nº Colada'),
+            'n_paquete'      => $this->getOrdenamiento('n_paquete', 'Nº Paquete'),
+            'peso_inicial'   => $this->getOrdenamiento('peso_inicial', 'Peso Inicial'),
+            'peso_stock'     => $this->getOrdenamiento('peso_stock', 'Peso Stock'),
+            'estado'         => $this->getOrdenamiento('estado', 'Estado'),
+            'ubicacion'      => $this->getOrdenamiento('ubicacion', 'Ubicación'),
+        ];
 
+        // Si no se está filtrando por estado ni código, excluir consumido/fabricando
         if (!$request->filled('estado') && !$request->filled('codigo')) {
             $query->whereNotIn('estado', ['consumido', 'fabricando']);
         }
-        // 🔹 Ordenamiento (con fallback seguro)
-        $sortBy = in_array($request->input('sort_by'), [
-            'id',
-            'codigo',
-            'fabricante',
-            'tipo',
-            'diametro',
-            'longitud',
-            'n_colada',
-            'n_paquete',
-            'peso_inicial',
-            'peso_stock',
-            'estado',
-            'ubicacion',
-            'created_at'
-        ]) ? $request->input('sort_by') : 'created_at';
 
-        $order = $request->input('order') === 'asc' ? 'asc' : 'desc';
-        $query->orderBy($sortBy, $order);
-
-        // 🔹 Paginación segura
-        $perPage = is_numeric($request->input('per_page')) ? (int) $request->input('per_page') : 10;
-        $perPage = min(max($perPage, 5), 100); // mínimo 5, máximo 100
-
+        // Paginación segura
+        $perPage = is_numeric($request->input('per_page')) ? max(5, min((int)$request->input('per_page'), 100)) : 10;
         $registrosProductos = $query->paginate($perPage)->appends($request->except('page'));
 
-        // 🔹 Lista de productos base ordenada (puede cachearse si no cambia)
+        // Lista cacheada de productos base
         $productosBase = Cache::rememberForever('productos_base_lista', function () {
             return ProductoBase::select('id', 'tipo', 'diametro', 'longitud')
                 ->orderBy('tipo')
@@ -137,7 +252,7 @@ class ProductoController extends Controller
                 ->get();
         });
 
-        return view('productos.index', compact('registrosProductos', 'productosBase'));
+        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables'));
     }
 
     public function generarYExportar(Request $request)

@@ -197,6 +197,40 @@ class PlanillaController extends Controller
         return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
             '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
+    private function aplicarOrdenamiento($query, Request $request)
+    {
+        $sortBy = $request->input('sort', 'fecha_estimada_entrega');
+        $order  = $request->input('order', 'desc');
+
+        $columnasPermitidas = [
+            'codigo',
+            'codigo_cliente',
+            'cliente',
+            'cod_obra',
+            'nom_obra',
+            'seccion',
+            'descripcion',
+            'ensamblado',
+            'comentario',
+            'peso_fabricado',
+            'peso_total',
+            'estado',
+            'fecha_inicio',
+            'fecha_finalizacion',
+            'fecha_importacion',
+            'fecha_entrega',
+            'nombre_completo',
+            'created_at', // por si quieres permitir también esta
+        ];
+
+        if (!in_array($sortBy, $columnasPermitidas, true)) {
+            $sortBy = 'fecha_estimada_entrega'; // Fallback seguro
+        }
+
+        $order = strtolower($order) === 'asc' ? 'asc' : 'desc';
+
+        return $query->orderBy($sortBy, $order);
+    }
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltros($query, Request $request)
     {
@@ -288,17 +322,6 @@ class PlanillaController extends Controller
             $query->whereDate('fecha_estimada_entrega', Carbon::parse($request->fecha_estimada_entrega)->format('Y-m-d'));
         }
 
-        // Ordenación segura
-        $sortBy = $request->input('sort', 'fecha_estimada_entrega');
-        $order = $request->input('order', 'desc');
-
-        // Validar sortBy para evitar SQL injection
-        $allowedSorts = ['fecha_estimada_entrega', 'created_at', 'fecha_finalizacion', 'codigo', 'codigo_cliente', 'peso_total']; // Incluido 'peso_total' en las columnas permitidas para ordenamiento
-        if (!in_array($sortBy, $allowedSorts)) {
-            $sortBy = 'fecha_estimada_entrega'; // Valor por defecto si no está en la lista
-        }
-
-        $query->orderBy($sortBy, $order);
 
         return $query;
     }
@@ -318,8 +341,9 @@ class PlanillaController extends Controller
                 $query->where('users_id', $user->id);    // Ajusta el nombre de columna
             }
 
-            // 2️⃣ Aplicar filtros desde el formulario (usando método personalizado)
             $query = $this->aplicarFiltros($query, $request);
+            $query = $this->aplicarOrdenamiento($query, $request);
+
 
             $totalPesoFiltrado = (clone $query)->sum('peso_total');
             // 3️⃣ Definir columnas ordenables para la vista (cabecera de la tabla)
