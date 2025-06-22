@@ -308,6 +308,7 @@ class ProductoController extends Controller
         $producto->estado        = 'consumido';
         $producto->ubicacion_id  = null;
         $producto->maquina_id    = null;
+        $producto->peso_stock    = 0;
 
         // 3. Guardar cambios
         $producto->save();

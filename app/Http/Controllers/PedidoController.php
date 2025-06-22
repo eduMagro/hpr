@@ -102,6 +102,10 @@ class PedidoController extends Controller
     }
     public function aplicarFiltrosPedidos($query, Request $request)
     {
+        // Filtra por id
+        if ($request->filled('pedido_id')) {
+            $query->where('id', $request->pedido_id);
+        }
         if ($request->filled('codigo')) {
             $query->where('codigo', 'like', '%' . $request->codigo . '%');
         }

@@ -678,6 +678,7 @@
                                         <th class="px-3 py-2 border">Código</th>
                                         <th class="px-3 py-2 border">Fabricante</th>
                                         <th class="px-3 py-2 border">Distribuidor</th>
+                                        <th class="px-3 py-2 border">Fecha Pedido</th>
                                         <th class="px-3 py-2 border">Fecha Entrega</th>
                                         <th class="px-3 py-2 border">Peso Total</th>
                                         <th class="px-3 py-2 border">Estado</th>

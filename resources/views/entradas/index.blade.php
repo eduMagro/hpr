@@ -84,13 +84,6 @@
 
     <div class="w-full p-4 sm:p-4">
 
-        {{-- <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
-        <div class="mb-4 flex space-x-2">
-            <a href="{{ route('entradas.create') }}" class="btn btn-primary">
-                Crear Nueva Entrada
-            </a>
-        </div> --}}
-
         <div class="bg-white shadow rounded-lg overflow-x-auto">
             <table class="w-full border text-sm text-center">
                 <thead class="bg-blue-600 text-white uppercase text-xs">
@@ -111,9 +104,23 @@
                         <tr class="border-b hover:bg-blue-50">
                             <td class="px-3 py-2">{{ $entrada->id }}</td>
                             <td class="px-3 py-2">{{ $entrada->albaran }}</td>
-                            <td class="px-3 py-2">{{ $entrada->pedido->codigo ?? 'N/A' }}</td>
+                            @php
+                                $pedido = $entrada->pedido; // Relación podría ser null
+                            @endphp
+
+                            <td class="px-3 py-2">
+                                @if ($pedido)
+                                    <a href="{{ route('pedidos.index', ['pedido_id' => $pedido->id]) }}"
+                                        class="text-blue-600 hover:underline">
+                                        {{ $pedido->codigo }}
+                                    </a>
+                                @else
+                                    N/A
+                                @endif
+                            </td>
+
                             <td class="px-3 py-2">{{ $entrada->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="px-3 py-2">{{ $entrada->productos->count() }}</td>
+                            <td class="px-3 py-2">{{ $entrada->productos_count }}</td>
                             <td class="px-3 py-2">{{ number_format($entrada->peso_total ?? 0, 2, ',', '.') }} kg
                             </td>
                             <td class="px-3 py-2">{{ $entrada->estado ?? 'N/A' }}</td>
