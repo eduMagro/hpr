@@ -124,7 +124,143 @@ class MovimientoController extends Controller
 
         return $query;
     }
+    private function filtrosActivos(Request $request): array
+    {
+        $filtros = [];
 
+        /* ─── 1. Campos directos ─────────────────────────── */
+        if ($request->filled('id') || $request->filled('movimiento_id')) {
+            $filtros[] = 'ID movimiento: <strong>' . ($request->id ?? $request->movimiento_id) . '</strong>';
+        }
+
+        if ($request->filled('tipo')) {
+            $filtros[] = 'Tipo: <strong>' . ucfirst($request->tipo) . '</strong>';
+        }
+
+        if ($request->filled('descripcion')) {
+            $filtros[] = 'Descripción contiene: <strong>' . $request->descripcion . '</strong>';
+        }
+
+        if ($request->filled('origen'))   $filtros[] = 'Origen: <strong>'   . $request->origen   . '</strong>';
+        if ($request->filled('destino'))  $filtros[] = 'Destino: <strong>'  . $request->destino  . '</strong>';
+
+        /* ─── 2. Prioridad ───────────────────────────────── */
+        if ($request->filled('prioridad')) {
+            $prioridades = [
+                1         => 'Normal',
+                2         => 'Alta',
+                3         => 'Urgente',
+                'normal'  => 'Normal',
+                'alta'    => 'Alta',
+                'urgente' => 'Urgente',
+            ];
+            $texto = $prioridades[$request->prioridad] ?? $request->prioridad;
+            $filtros[] = 'Prioridad: <strong>' . $texto . '</strong>';
+        }
+
+        /* ─── 3. Relaciones: usuario que solicita / ejecuta ───── */
+        if ($request->filled('solicitado_por')) {
+            $usuario = User::where(
+                DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"),
+                'like',
+                '%' . $request->solicitado_por . '%'
+            )->first();
+            $filtros[] = 'Solicitado por: <strong>' . ($usuario?->nombre_completo ?? $request->solicitado_por) . '</strong>';
+        }
+
+        if ($request->filled('ejecutado_por')) {
+            $usuario = User::where(
+                DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"),
+                'like',
+                '%' . $request->ejecutado_por . '%'
+            )->first();
+            $filtros[] = 'Ejecutado por: <strong>' . ($usuario?->nombre_completo ?? $request->ejecutado_por) . '</strong>';
+        }
+
+        /* ─── 4. Estado ─────────────────────────────────── */
+        if ($request->filled('estado')) {
+            $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
+        }
+
+        /* ─── 5. Producto/paquete ───────────────────────── */
+        if ($request->filled('producto_codigo')) {
+            $filtros[] = 'Producto(s): <strong>' . $request->producto_codigo . '</strong>';
+        }
+        if ($request->filled('producto_paquete')) {
+            $filtros[] = 'Producto/Paquete: <strong>' . $request->producto_paquete . '</strong>';
+        }
+
+        /* ─── 6. Fechas ─────────────────────────────────── */
+        if ($request->filled('fecha_solicitud'))    $filtros[] = 'Fecha solicitud: <strong>'    . $request->fecha_solicitud    . '</strong>';
+        if ($request->filled('fecha_ejecucion'))    $filtros[] = 'Fecha ejecución: <strong>'    . $request->fecha_ejecucion    . '</strong>';
+        if ($request->filled('fecha_inicio'))       $filtros[] = 'Desde: <strong>'              . $request->fecha_inicio       . '</strong>';
+        if ($request->filled('fecha_finalizacion')) $filtros[] = 'Hasta: <strong>'              . $request->fecha_finalizacion . '</strong>';
+
+        /* ─── 7. Orden y paginación ─────────────────────── */
+        if ($request->filled('sort')) {
+            $sorts = [
+                'prioridad'        => 'Prioridad',
+                'estado'           => 'Estado',
+                'fecha_solicitud'  => 'Fecha solicitud',
+                'fecha_ejecucion'  => 'Fecha ejecución',
+                'id'               => 'ID',
+            ];
+            $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort)
+                . "</strong> en orden <strong>$orden</strong>";
+        }
+
+        if ($request->filled('per_page')) {
+            $filtros[] = 'Mostrando <strong>' . $request->per_page . '</strong> registros por página';
+        }
+
+        return $filtros;
+    }
+
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort  = request('sort');
+        $currentOrder = request('order');
+        $isSorted     = $currentSort === $columna;
+        $nextOrder    = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = $isSorted
+            ? ($currentOrder === 'asc' ? '▲' : '▼')
+            : '⇅';
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+    }
+    private function aplicarOrdenamiento($query, Request $request)
+    {
+        // → Columnas que SÍ se pueden ordenar
+        $columnasPermitidas = [
+            'id',
+            'tipo',
+            'descripcion',
+            'prioridad',
+            'estado',
+            'fecha_solicitud',
+            'fecha_ejecucion',
+            'producto_id',
+            'created_at',   // por si la quieres exponer
+        ];
+
+        $sort  = $request->input('sort', 'created_at');
+        $order = $request->input('order', 'desc');
+
+        // Sanitiza: si la columna no es válida, cae al fallback
+        if (!in_array($sort, $columnasPermitidas, true)) {
+            $sort = 'created_at';
+        }
+
+        // Asegura que el orden sea solo asc|desc
+        $order = strtolower($order) === 'asc' ? 'asc' : 'desc';
+
+        return $query->orderBy($sort, $order);
+    }
     //------------------------------------------------ INDEX() --------------------------------------------------------
     public function index(Request $request)
     {
@@ -139,21 +275,32 @@ class MovimientoController extends Controller
         $query = Movimiento::with(['producto', 'productoBase', 'ejecutadoPor', 'solicitadoPor', 'ubicacionOrigen', 'ubicacionDestino', 'maquinaOrigen', 'maquinaDestino']);
         // Si es 'oficina', no aplicamos restricciones y puede ver todos los movimientos
 
-        // Aplicar filtros utilizando el método 'aplicarFiltros'
+        // Filtros
         $query = $this->aplicarFiltros($query, $request);
 
-        // Ordenar resultados
-        $sortBy = $request->input('sort_by', 'created_at');  // Criterio de ordenación (default: created_at)
-        $order = $request->input('order', 'desc');           // Orden (asc o desc, default: desc)
-
-        $query->orderBy($sortBy, $order);
+        // Ordenamiento (nuevo método modular)
+        $query = $this->aplicarOrdenamiento($query, $request);
 
         // Paginación
         $perPage = $request->input('per_page', 10);
         $registrosMovimientos = $query->paginate($perPage)->appends($request->except('page'));
 
+        $ordenables = [
+            'id'              => $this->getOrdenamiento('id', 'ID'),
+            'producto_id'              => $this->getOrdenamiento('producto_id', 'Producto Solicitado'),
+            'tipo'            => $this->getOrdenamiento('tipo', 'Tipo'),
+            'descripcion'       => $this->getOrdenamiento('descripcion', 'Descripción'),
+            'prioridad'       => $this->getOrdenamiento('prioridad', 'Prioridad'),
+            'solicitado_por'       => $this->getOrdenamiento('solicitado_por', 'Solicitado por'),
+            'ejecutado_por'       => $this->getOrdenamiento('ejecutado_por', 'Ejecutado por'),
+            'estado'       => $this->getOrdenamiento('estado', 'Estado'),
+            'fecha_solicitud' => $this->getOrdenamiento('fecha_solicitud', 'Fecha Solicitud'),
+            'fecha_ejecucion' => $this->getOrdenamiento('fecha_ejecucion', 'Fecha Ejecución'),
+        ];
+        // 🔟 Obtener texto de filtros aplicados para mostrar en la vista
+        $filtrosActivos = $this->filtrosActivos($request);
         // Retornar vista con los datos paginados
-        return view('movimientos.index', compact('registrosMovimientos'));
+        return view('movimientos.index', compact('registrosMovimientos', 'ordenables', 'filtrosActivos'));
     }
 
     //------------------------------------------------ CREATE() --------------------------------------------------------

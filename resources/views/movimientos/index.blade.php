@@ -12,28 +12,29 @@
             <x-tabla.boton-azul :href="route('movimientos.create')">
                 ➕ Crear Nuevo Movimiento
             </x-tabla.boton-azul>
-
-
         </div>
-
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <div class="overflow-x-auto bg-white shadow-md rounded-lg">
+
             <table class="min-w-full table-auto">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">ID</th>
-                        <th class="p-2 border">Tipo</th>
-                        <th class="p-2 border">Producto Solicitado</th>
-                        <th class="p-2 border">Descripción</th>
-                        <th class="p-2 border">Prioridad</th>
-                        <th class="p-2 border">Solicitado</th>
-                        <th class="p-2 border">Ejecutado</th>
-                        <th class="p-2 border">Estado</th>
-                        <th class="p-2 border">Fecha Solicitud</th>
-                        <th class="p-2 border">Fecha Ejecución</th>
+
+                        <th class="p-2 border">{!! $ordenables['id'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['tipo'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['producto_id'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['descripcion'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['prioridad'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['solicitado_por'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['ejecutado_por'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['estado'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['fecha_solicitud'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['fecha_ejecucion'] !!}</th>
                         <th class="p-2 border">Origen</th>
                         <th class="p-2 border">Destino</th>
                         <th class="p-2 border">Producto/Paquete</th>
                         <th class="p-2 border">Acciones</th>
+
                     </tr>
 
                     <tr class="text-center text-xs uppercase">
