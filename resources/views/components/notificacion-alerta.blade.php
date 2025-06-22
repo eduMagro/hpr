@@ -1,5 +1,5 @@
 <a id="notificacion-alerta" href="{{ route('alertas.index') }}">
-    <p id="notificacion-alertas-texto">🔔 Tienes alertas sin leer</p>
+    <p id="notificacion-alertas-texto">🔔 Tienes mensajes sin leer</p>
 </a>
 
 <style>

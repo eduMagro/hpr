@@ -10,7 +10,7 @@
         <div x-data="{ mostrarModal: false }">
             <button @click="mostrarModal = true"
                 class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 mb-2 rounded-lg">
-                ➕ Enviar mensaje a oficina
+                ➕ Enviar mensaje
             </button>
 
             <!-- Modal de creación de alerta -->
@@ -90,8 +90,7 @@
                                 por</th>
 
                             <th class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider">Mensaje</th>
-                            <th
-                                class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider hidden sm:table-cell">
+                            <th class="px-4 py-2 text-xs font-medium text-center uppercase tracking-wider">
                                 Fecha</th>
                         </tr>
                     </thead>
@@ -205,9 +204,6 @@
                     🗑 Eliminar
                 </button>
             </div>
-
-
-
         </div>
     </div>
 
@@ -412,7 +408,4 @@
             document.getElementById('modalConfirmacionCambio').classList.remove('hidden');
         }
     </script>
-
-
-
 </x-app-layout>
