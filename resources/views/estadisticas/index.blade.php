@@ -5,62 +5,6 @@
             {{ __('Estadísticas') }}
         </h2>
     </x-slot>
+    <x-menu.estadisticas />
 
-    <div class="w-full px-6 py-4" x-data="{
-        mostrarStock: false,
-        mostrarPesoEntregadoObras: false,
-        mostrarPesoPlanilleros: false,
-        mostrarConsumoMaquinas: {{ request('panel') === 'consumo-maquinas' ? 'true' : 'false' }}
-    }">
-        <!-- Botones para mostrar/ocultar las secciones -->
-        <div class="mb-4">
-            <button @click="mostrarStock = !mostrarStock" class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
-                <span x-text="mostrarStock ? '❌ Cerrar Stock' : 'Ver Stock'"></span>
-            </button>
-
-            <button @click="mostrarPesoEntregadoObras = !mostrarPesoEntregadoObras"
-                class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
-                <span x-text="mostrarPesoEntregadoObras ? '❌ Cerrar Peso Obras' : 'Ver Peso Obras'"></span>
-            </button>
-
-            <button @click="mostrarPesoPlanilleros = !mostrarPesoPlanilleros"
-                class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
-                <span x-text="mostrarPesoPlanilleros ? '❌ Cerrar Peso Planilleros' : 'Ver Peso Planilleros'"></span>
-            </button>
-
-            <button @click="mostrarConsumoMaquinas = !mostrarConsumoMaquinas"
-                class="px-4 py-2 bg-blue-500 text-white rounded-md ml-2">
-                <span
-                    x-text="mostrarConsumoMaquinas
-                          ? '❌ Cerrar Consumo Máquinas'
-                          : 'Ver Consumo Máquinas'"></span>
-            </button>
-        </div>
-
-        <!-- Sección Stock -->
-        <div x-show="mostrarStock">
-            <!-- Componente de Estadísticas Completo -->
-            <x-estadisticas.stock :datosPorPlanilla="$datosPorPlanilla" :pesoTotalPorDiametro="$pesoTotalPorDiametro" :stockEncarretado="$stockEncarretado" :stockBarras="$stockBarras"
-                :stockOptimo="$stockOptimo" />
-
-        </div>
-
-        <!-- Sección Peso Obras -->
-        <div x-show="mostrarPesoEntregadoObras">
-            <!-- Componente de Estadísticas Completo -->
-            <x-estadisticas.obras :pesoPorObra="$pesoPorObra" />
-        </div>
-        <!-- Sección Peso Planilleros -->
-        <div x-show="mostrarPesoPlanilleros">
-            <!-- Componente de Estadísticas Completo -->
-            <x-estadisticas.pesoPlanilleros :pesoPorPlanillero="$pesoPorPlanillero" :pesoPorPlanilleroPorDia="$pesoPorPlanilleroPorDia" />
-        </div>
-        <!-- Consumo Maquinas-->
-        <div x-show="mostrarConsumoMaquinas">
-            <x-estadisticas.consumo-maquinas :totales="$tablaConsumoTotales" :series="['labels' => $labels, 'datasets' => $datasets]" :desde="$desde" :hasta="$hasta"
-                :modo="$modo" :detalle="$kilosPorTipoDiametro" />
-
-
-        </div>
-    </div>
 </x-app-layout>

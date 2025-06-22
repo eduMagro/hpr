@@ -12,68 +12,123 @@ use App\Models\Obra;
 use App\Models\SalidaPaquete;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class EstadisticasController extends Controller
 {
-    public function index(Request $request)
+    /* ───────────────────────── Helpers ───────────────────────── */
+
+    private function abortIfNoOffice()
     {
-        if (auth()->user()->rol !== 'oficina') {
-            return redirect()->route('dashboard')->with('abort', 'No tienes los permisos necesarios.');
+        if (Auth::user()->rol !== 'oficina') {
+            // 303 para redirección con mensaje flash 
+            return redirect()
+                ->route('dashboard')
+                ->with('abort', 'No tienes los permisos necesarios.');
         }
-        // Calcular el stockaje
-        $datosPorPlanilla = $this->getDatosPorPlanilla();
+    }
 
-        $pesoTotalPorDiametro = $this->getPesoTotalPorDiametro();
-        $stockEncarretado = $this->getStockEncarretado();
-        $stockBarras = $this->getStockBarras();
-        $mensajeDeAdvertencia = $this->compararStockConPeso($pesoTotalPorDiametro, $stockEncarretado, $stockBarras);
+    /* ───────────────────────── Panel STOCK ───────────────────────── */
 
-        $stockOptimo = $this->getStockOptimo();
+    public function stock()
+    {
+        if ($redir = $this->abortIfNoOffice()) {
+            return $redir;
+        }
 
-        // Calcular peso suministrado a cada obra
-        $salidasPaquetes = $this->getSalidasPaquetesCompletadas();
-        $pesoPorObra = $this->agruparPaquetesPorObra($salidasPaquetes);
+        // ► Cálculo de stock
+        $datosPorPlanilla        = $this->getDatosPorPlanilla();
+        $pesoTotalPorDiametro    = $this->getPesoTotalPorDiametro();
+        $stockEncarretado        = $this->getStockEncarretado();
+        $stockBarras             = $this->getStockBarras();
+        $mensajeAdvertencia      = $this->compararStockConPeso(
+            $pesoTotalPorDiametro,
+            $stockEncarretado,
+            $stockBarras
+        );
+        $stockOptimo             = $this->getStockOptimo();
 
-        // Obtener el peso importado por cada usuario
-        $pesoPorPlanillero = $this->getPesoPorPlanillero();
-        $pesoPorPlanilleroPorDia = $this->getPesoPorPlanilleroPorDia();
+        // ⚠️ Mensaje flash si es necesario
+        $this->handleSessionMessages($mensajeAdvertencia);
 
-
-        //Consumo por Maquina
-        // ► 1) Fechas de filtro
-        $desde = $request->input('desde');   // yyyy-mm-dd o null
-        $hasta = $request->input('hasta');
-        // ► 3) Consumo por máquina con rango
-        $modo = $request->input('modo', 'dia');
-
-        $datosConsumo = $this->consumoKgPorMaquina($desde, $hasta, $modo);
-        $labels              = $datosConsumo['labels'];
-        $datasets            = $datosConsumo['datasets'];
-        $tablaConsumoTotales = $datosConsumo['totales'];
-        $kilosPorTipoDiametro = $this->kilosPorMaquinaTipoDiametro($desde, $hasta);
-
-
-        // Pasar los mensajes a la sesión
-        $this->handleSessionMessages($mensajeDeAdvertencia);
-
-        // Pasar los datos a la vista
-        return view('estadisticas.index', compact(
+        return view('estadisticas.stock', compact(
             'datosPorPlanilla',
             'pesoTotalPorDiametro',
             'stockEncarretado',
             'stockBarras',
-            'pesoPorObra',
-            'pesoPorPlanillero',
-            'pesoPorPlanilleroPorDia',
-            'stockOptimo',
+            'stockOptimo'
+        ));
+    }
+
+    /* ───────────────────────── Panel OBRAS ───────────────────────── */
+
+    public function obras()
+    {
+        if ($redir = $this->abortIfNoOffice()) {
+            return $redir;
+        }
+
+        $salidasPaquetes = $this->getSalidasPaquetesCompletadas();
+        $pesoPorObra     = $this->agruparPaquetesPorObra($salidasPaquetes);
+
+        return view('estadisticas.obras', compact('pesoPorObra'));
+    }
+
+    /* ──────────────────────── Panel PLANILLEROS ───────────────────── */
+
+    public function tecnicosDespiece()
+    {
+        if ($redir = $this->abortIfNoOffice()) {
+            return $redir;
+        }
+
+        // ⏬ Usa los mismos nombres coherentes en todo el proyecto
+        $pesoPorUsuario        = $this->getPesoPorPlanillero();
+        $pesoPorUsuarioPorDia  = $this->getPesoPorPlanilleroPorDia();
+
+        return view('estadisticas.tecnicos-despiece', compact(
+            'pesoPorUsuario',
+            'pesoPorUsuarioPorDia'
+        ));
+    }
+
+    /* ─────────────────────── Panel CONSUMO MÁQUINAS ───────────────── */
+
+    public function consumoMaquinas(Request $request)
+    {
+        if ($redir = $this->abortIfNoOffice()) {
+            return $redir;
+        }
+
+        // Filtros
+        $desde = $request->input('desde');   // Formato yyyy-mm-dd o null
+        $hasta = $request->input('hasta');
+        $modo  = $request->input('modo', 'dia');  // por defecto “día”
+
+        // Datos principales
+        $datosConsumo       = $this->consumoKgPorMaquina($desde, $hasta, $modo);
+        $labels             = $datosConsumo['labels'];
+        $datasets           = $datosConsumo['datasets'];
+        $tablaConsumoTotales = $datosConsumo['totales'];
+        $kilosPorTipoDiametro = $this->kilosPorMaquinaTipoDiametro($desde, $hasta);
+
+        return view('estadisticas.consumo-maquinas', compact(
             'labels',
             'datasets',
             'tablaConsumoTotales',
             'kilosPorTipoDiametro',
             'desde',
             'hasta',
-            'modo',
+            'modo'
         ));
+    }
+
+    /* ─────────────────── Ruta de comodín → redirige a Stock ───────── */
+
+    public function index()
+    {
+        // Por si alguien entra en /estadisticas sin sub-ruta
+        return redirect()->route('estadisticas.stock');
     }
     // ---------------------------------------------------------------- Funciones para calcular el stockaje
     private function getDatosPorPlanilla()

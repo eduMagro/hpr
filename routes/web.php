@@ -192,6 +192,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/simulacion-inversa', [NominaController::class, 'simularDesdeNeto'])->name('nomina.inversa.calcular');
 
     // === ALERTAS Y ESTADISTICAS ===
+    Route::prefix('estadisticas')->group(function () {
+        Route::get('stock', [EstadisticasController::class, 'stock'])->name('estadisticas.stock');
+        Route::get('obras', [EstadisticasController::class, 'obras'])->name('estadisticas.obras');
+        Route::get('tecnicos-despiece', [EstadisticasController::class, 'tecnicosDespiece'])->name('estadisticas.tecnicosDespiece');
+        Route::get('consumo-maquinas', [EstadisticasController::class, 'consumoMaquinas'])->name('estadisticas.consumo-maquinas');
+    });
+
     Route::resource('alertas', AlertaController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::post('/alertas/marcar-leidas', [AlertaController::class, 'marcarLeidas'])->name('alertas.marcarLeidas');
 

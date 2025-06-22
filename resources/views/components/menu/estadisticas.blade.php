@@ -16,6 +16,7 @@
     ];
 @endphp
 
+
 <div class="w-full" x-data="{ open: false }">
     <!-- Menú móvil -->
     <div class="sm:hidden relative mb-4">
@@ -27,19 +28,18 @@
         <div x-show="open" x-transition @click.away="open = false"
             class="absolute z-30 mt-0 w-1/2 bg-white border {{ $colores['borde'] }} rounded-b-lg shadow-xl overflow-hidden divide-y {{ $colores['borde'] }}"
             x-cloak>
-
             @foreach ([
-        'productos.index' => '🧱 Productos',
-        'movimientos.index' => '🔄 Movimientos',
-        'entradas.index' => '⬅️ Entradas',
-        'salidas.index' => '➡️ Salidas',
-    ] as $ruta => $texto)
+        'estadisticas.stock' => '📦 Stock',
+        'estadisticas.obras' => '🏗️ Peso Obras',
+        'estadisticas.tecnicosDespiece' => '👷 Peso Planilleros',
+        'estadisticas.consumo-maquinas' => '⚙️ Consumo Máquinas',
+    ] as $ruta => $titulo)
                 <a href="{{ route($ruta) }}"
-                    class="block px-2 py-3 text-sm font-medium transition
-                    {{ $rutaActual === $ruta
-                        ? $colores['bgLite'] . ' ' . $colores['activoTxt'] . ' font-semibold'
-                        : $colores['txtBase'] . ' ' . $colores['hoverLite'] . ' ' . $colores['txtHover'] }}">
-                    {{ $texto }}
+                    class="block px-2 py-3 text-sm font-medium transition 
+                        {{ $rutaActual === $ruta
+                            ? $colores['bgLite'] . ' ' . $colores['activoTxt'] . ' font-semibold'
+                            : $colores['txtBase'] . ' ' . $colores['txtHover'] . ' hover:' . $colores['bgLite'] }}">
+                    {{ $titulo }}
                 </a>
             @endforeach
         </div>
@@ -48,18 +48,17 @@
     <!-- Menú escritorio -->
     <div class="hidden sm:flex w-full mb-4">
         @foreach ([
-        'productos.index' => '🧱 Productos',
-        'movimientos.index' => '🔄 Movimientos',
-        'entradas.index' => '⬅️ Entradas',
-        'salidas.index' => '➡️ Salidas',
-    ] as $ruta => $texto)
+        'estadisticas.stock' => '📦 Stock',
+        'estadisticas.obras' => '🏗️ Peso Obras',
+        'estadisticas.tecnicosDespiece' => '👷 Peso Planilleros',
+        'estadisticas.consumo-maquinas' => '⚙️ Consumo Máquinas',
+    ] as $ruta => $titulo)
             <a href="{{ route($ruta) }}"
                 class="flex-1 text-center px-4 py-2 font-semibold transition
-                {{ $loop->first ? 'rounded-l-lg' : '' }} {{ $loop->last ? 'rounded-r-lg' : '' }}
-                {{ $rutaActual === $ruta
-                    ? $colores['bgActivo'] . ' ' . $colores['txt']
-                    : $colores['bg'] . ' ' . $colores['bgHover'] . ' ' . $colores['txt'] }}">
-                {{ $texto }}
+                    {{ $rutaActual === $ruta
+                        ? $colores['bgActivo'] . ' ' . $colores['txt']
+                        : $colores['bg'] . ' ' . $colores['bgHover'] . ' ' . $colores['txt'] }}">
+                {{ $titulo }}
             </a>
         @endforeach
     </div>
