@@ -18,39 +18,81 @@
 
         <div class="overflow-x-auto bg-white shadow-md rounded-lg">
             <table class="min-w-full table-auto">
-                <thead>
-                    <tr class="bg-gray-200">
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">ID</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Tipo
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Producto
-                            Solicitado
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
-                            Descripción</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
-                            Prioridad</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
-                            Solicitado</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
-                            Ejecutado</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Estado
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Fecha
-                            solicitud</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Fecha
-                            ejecución</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Origen
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Destino
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">
-                            Producto/Paquete
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 text-center uppercase">Acciones
-                        </th>
+                <thead class="bg-blue-500 text-white text-10">
+                    <tr class="text-center text-xs uppercase">
+                        <th class="p-2 border">ID</th>
+                        <th class="p-2 border">Tipo</th>
+                        <th class="p-2 border">Producto Solicitado</th>
+                        <th class="p-2 border">Descripción</th>
+                        <th class="p-2 border">Prioridad</th>
+                        <th class="p-2 border">Solicitado</th>
+                        <th class="p-2 border">Ejecutado</th>
+                        <th class="p-2 border">Estado</th>
+                        <th class="p-2 border">Fecha Solicitud</th>
+                        <th class="p-2 border">Fecha Ejecución</th>
+                        <th class="p-2 border">Origen</th>
+                        <th class="p-2 border">Destino</th>
+                        <th class="p-2 border">Producto/Paquete</th>
+                        <th class="p-2 border">Acciones</th>
+                    </tr>
+
+                    <tr class="text-center text-xs uppercase">
+                        <form method="GET" action="{{ route('movimientos.index') }}">
+                            <th class="p-1 border">
+                                <x-tabla.input name="id" value="{{ request('id') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="tipo" value="{{ request('tipo') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="producto_codigo" value="{{ request('producto_codigo') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="descripcion" value="{{ request('descripcion') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.select name="prioridad" :options="[
+                                    1 => 'Normal',
+                                    2 => 'Alta',
+                                    3 => 'Urgente',
+                                ]" :selected="request('prioridad')" empty="Todas" />
+
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="solicitado_por" value="{{ request('solicitado_por') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="ejecutado_por" value="{{ request('ejecutado_por') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.select name="estado" :options="[
+                                    'pendiente' => 'Pendiente',
+                                    'completado' => 'Completado',
+                                    'cancelado' => 'Cancelado',
+                                ]" :selected="request('estado')" empty="Todos" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input type="date" name="fecha_solicitud"
+                                    value="{{ request('fecha_solicitud') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input type="date" name="fecha_ejecucion"
+                                    value="{{ request('fecha_ejecucion') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="origen" value="{{ request('origen') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="destino" value="{{ request('destino') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="producto_paquete" value="{{ request('producto_paquete') }}" />
+                            </th>
+                            <x-tabla.botones-filtro ruta="movimientos.index" />
+                        </form>
                     </tr>
                 </thead>
+
                 <tbody>
                     @foreach ($registrosMovimientos as $movimiento)
                         <tr class="border-b">
@@ -70,9 +112,11 @@
                                 @endif
                             </td>
 
-                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center"
+                                title="{{ $movimiento->descripcion }}">
                                 {{ Str::limit($movimiento->descripcion, 50) ?? '—' }}
                             </td>
+
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
                                 @if ($movimiento->prioridad == 1)
                                     <span class="badge bg-secondary">Normal</span>

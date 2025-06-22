@@ -21,30 +21,105 @@ class MovimientoController extends Controller
     //------------------------------------------------ FILTROS() --------------------------------------------------------
     private function aplicarFiltros($query, Request $request)
     {
-        if ($request->filled('movimiento_id')) {
-            $query->where('id', $request->movimiento_id);
+        /* ─────────────── Filtros directos por columna ─────────────── */
+
+        // ID de movimiento
+        if ($request->filled('id') || $request->filled('movimiento_id')) {
+            $query->where('id', $request->id ?? $request->movimiento_id);
         }
 
-        if ($request->filled('usuario')) {
-            $query->whereHas('usuario', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->usuario . '%');
+        // Tipo de movimiento
+        if ($request->filled('tipo')) {
+            $query->where('tipo', 'like', '%' . $request->tipo . '%');
+        }
+
+        // Descripción
+        if ($request->filled('descripcion')) {
+            $query->where('descripcion', 'like', '%' . $request->descripcion . '%');
+        }
+
+        // Prioridad exacta (baja, media, alta)
+        if ($request->filled('prioridad')) {
+            $query->where('prioridad', $request->prioridad);
+        }
+
+        // Estado exacto (pendiente, completado, cancelado…)
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        // Origen / Destino (texto libre, ej. “Máquina A-1”)
+        if ($request->filled('origen')) {
+            $query->where('origen', 'like', '%' . $request->origen . '%');
+        }
+        if ($request->filled('destino')) {
+            $query->where('destino', 'like', '%' . $request->destino . '%');
+        }
+
+        /* ─────────────── Filtros por relaciones ─────────────── */
+
+        // Producto (códigos parciales separados por comas)
+        if ($request->filled('producto_codigo')) {
+            $codigos = array_filter(array_map('trim', explode(',', $request->producto_codigo)));
+
+            $query->whereHas('producto', function ($q) use ($codigos) {
+                $q->where(function ($sub) use ($codigos) {
+                    foreach ($codigos as $codigo) {
+                        $sub->orWhere('codigo', 'like', '%' . $codigo . '%');
+                    }
+                });
             });
         }
 
+        // Filtro por ID de producto o paquete concretos (si llegan)
         if ($request->filled('producto_id')) {
             $query->where('producto_id', $request->producto_id);
         }
-
         if ($request->filled('paquete_id')) {
             $query->where('paquete_id', $request->paquete_id);
         }
 
+        // Campo “producto_paquete” (permite buscar código en cualquiera de los dos)
+        if ($request->filled('producto_paquete')) {
+            $codigo = $request->producto_paquete;
+            $query->where(function ($q) use ($codigo) {
+                $q->whereHas('producto', fn($p) => $p->where('codigo', 'like', "%$codigo%"))
+                    ->orWhereHas('paquete',  fn($p) => $p->where('codigo', 'like', "%$codigo%"));
+            });
+        }
+
+        // Usuario que solicitó
+        if ($request->filled('solicitado_por')) {
+            $nombre = $request->solicitado_por;
+            $query->whereHas('solicitadoPor', function ($q) use ($nombre) {
+                $q->where(DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"), 'like', "%$nombre%");
+            });
+        }
+
+        // Usuario que ejecutó
+        if ($request->filled('ejecutado_por')) {
+            $nombre = $request->ejecutado_por;
+            $query->whereHas('ejecutadoPor', function ($q) use ($nombre) {
+                $q->where(DB::raw("CONCAT(name, ' ', primer_apellido, ' ', segundo_apellido)"), 'like', "%$nombre%");
+            });
+        }
+
+        /* ─────────────── Filtros por fechas ─────────────── */
+
+        // Rangos al estilo planillas
         if ($request->filled('fecha_inicio')) {
             $query->whereDate('created_at', '>=', $request->fecha_inicio);
         }
-
         if ($request->filled('fecha_finalizacion')) {
             $query->whereDate('created_at', '<=', $request->fecha_finalizacion);
+        }
+
+        // Fechas individuales específicas
+        if ($request->filled('fecha_solicitud')) {
+            $query->whereDate('created_at', $request->fecha_solicitud);
+        }
+        if ($request->filled('fecha_ejecucion')) {
+            $query->whereDate('fecha_ejecucion', $request->fecha_ejecucion);
         }
 
         return $query;

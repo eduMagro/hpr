@@ -27,6 +27,9 @@ class ProductoController extends Controller
         if ($request->filled('id')) {
             $query->where('id', $request->id);
         }
+        if ($request->filled('entrada_id')) {
+            $query->where('entrada_id', $request->entrada_id);
+        }
 
         if ($request->filled('codigo')) {
             $query->where('codigo', 'LIKE', '%' . $request->codigo . '%');
