@@ -16,7 +16,7 @@
             <tbody>
                 @foreach ($solicitudes as $solicitud)
                     <tr class="border-t">
-                        <td class="px-4 py-2">{{ $solicitud->user->name }}</td>
+                        <td class="px-4 py-2">{{ $solicitud->user->nombre_completo }}</td>
                         <td class="px-4 py-2">{{ $solicitud->fecha_inicio }}</td>
                         <td class="px-4 py-2">{{ $solicitud->fecha_fin }}</td>
                         <td class="px-4 py-2">
