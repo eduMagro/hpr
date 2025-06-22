@@ -122,38 +122,50 @@ class ProfileController extends Controller
             ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down')
             : 'fas fa-sort';
 
-        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+        // Sanitiza la URL de ordenamiento
+        $url = request()->fullUrlWithQuery([
+            'sort' => $columna,
+            'order' => $nextOrder
+        ]);
 
-        return '<a href="' . $url . '" class="text-white text-decoration-none">' .
-            $titulo . ' <i class="' . $icon . '"></i></a>';
+        return '<a href="' . e($url) . '" class="text-white text-decoration-none">'
+            . e($titulo) . ' <i class="' . $icon . '"></i></a>';
     }
 
     public function aplicarFiltros(Request $request)
     {
-        // Iniciar la consulta de usuarios
+        $ordenables = [
+            'id' => 'users.id',
+            'nombre_completo' => DB::raw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido)"),
+            'email' => 'users.email',
+            'dni' => 'users.dni',
+            'empresa' => 'empresa_id',
+            'rol' => 'users.rol',
+            'categoria' => 'categoria_id',
+            'maquina_id' => 'maquina_id',
+            'turno' => 'users.turno',
+            'estado' => 'estado',
+        ];
+
         $query = User::query()->select('users.*');
 
-        // Aplicar filtros si están presentes en la solicitud
         if ($request->filled('id')) {
             $query->where('id', $request->id);
         }
-        // Filtrar por nombre
+
         if ($request->filled('nombre_completo')) {
             $valor = $request->input('nombre_completo');
-            $query->where(function ($q) use ($valor) {
-                $q->whereRaw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido) LIKE ?", ["%{$valor}%"]);
-            });
+            $query->whereRaw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido) LIKE ?", ["%{$valor}%"]);
         }
 
-        // Filtrar por email
         if ($request->filled('email')) {
             $query->where('users.email', 'like', '%' . $request->input('email') . '%');
         }
-        // Filtrar por m. personal
+
         if ($request->filled('movil_personal')) {
             $query->where('users.movil_personal', 'like', '%' . $request->input('movil_personal') . '%');
         }
-        // Filtrar por m. empresa
+
         if ($request->filled('movil_empresa')) {
             $query->where('users.movil_empresa', 'like', '%' . $request->input('movil_empresa') . '%');
         }
@@ -162,35 +174,27 @@ class ProfileController extends Controller
             $query->where('empresa_id', $request->empresa_id);
         }
 
-
-        // Filtrar por rol
         if ($request->filled('rol')) {
             $query->where('users.rol', $request->input('rol'));
         }
 
-        // Filtrar por máquina (maquina_id)
         if ($request->filled('maquina_id')) {
             $query->where('maquina_id', $request->input('maquina_id'));
         }
 
-        // Obtener la fecha de hoy
-        $hoy = Carbon::today()->toDateString();
-        // Filtrar por turno de hoy si se selecciona un turno
-        // if ($request->filled('turno')) {
-        //     $query->whereHas('asignacionesTurnos', function ($q) use ($request, $hoy) {
-        //         $q->where('fecha', $hoy)->whereHas('turno', function ($t) use ($request) {
-        //             $t->where('nombre', $request->input('turno'));
-        //         });
-        //     });
-        // }
         if ($request->filled('turno')) {
             $query->where('users.turno', $request->input('turno'));
         }
 
-        // Ordenar resultados
-        $sortBy = $request->input('sort_by', 'users.created_at');
-        $order = $request->input('order', 'desc');
-        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
+        // Aplicar ordenamiento seguro
+        $sort = $request->input('sort');
+        $order = strtolower($request->input('order', 'asc'));
+
+        if (isset($ordenables[$sort]) && in_array($order, ['asc', 'desc'])) {
+            $query->orderBy($ordenables[$sort], $order);
+        } else {
+            $query->orderBy('users.created_at', 'desc');
+        }
 
         return $query;
     }
