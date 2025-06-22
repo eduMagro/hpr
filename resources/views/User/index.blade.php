@@ -7,9 +7,16 @@
     </style>
     <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
     @if (Auth::check() && Auth::user()->rol == 'oficina')
-        <x-tabla.boton-azul href="{{ route('usuarios.exportar') }}">
-            📥 Exportar Usuarios
-        </x-tabla.boton-azul>
+        <a href="{{ route('usuarios.exportar') }}" title="Descarga los usuarios en Excel"
+            class="inline-flex items-center gap-2 m-2 p-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md shadow transition">
+
+            {{-- Icono tipo Excel --}}
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                    d="M4 3a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h9l7-7V5a2 2 0 0 0-2-2H4zm11.5 11L13 17.5 10.5 14l-2.5 3.5L5.5 14H8l1.5 2 1.5-2h2.5zm.5 3.5V14h3.5L16 17.5z" />
+            </svg>
+        </a>
+
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
         <!-- TABLA DE USUARIOS -->
@@ -256,7 +263,7 @@
                                         <div class="flex items-center space-x-2">
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
                                             <x-tabla.boton-ver :href="route('users.show', $user->id)" />
-                                            <a href="{{ route('users.edit', $user->id) }}"
+                                            <a href="{{ route('users.edit', $user->id) }}" title="Configuración"
                                                 class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                     viewBox="0 0 24 24" fill="currentColor">
