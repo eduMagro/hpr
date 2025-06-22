@@ -27,8 +27,9 @@ class ProductoController extends Controller
         if ($request->filled('id')) {
             $query->where('id', $request->id);
         }
+
         if ($request->filled('codigo')) {
-            $query->where('codigo', $request->codigo);
+            $query->where('codigo', 'LIKE', '%' . $request->codigo . '%');
         }
         if ($request->filled('fabricante')) {
             $query->where('fabricante', $request->fabricante);
@@ -245,7 +246,7 @@ class ProductoController extends Controller
                 'ubicacion_id.exists'        => 'La ubicación seleccionada no es válida.',
                 'maquina_id.exists'          => 'La máquina seleccionada no es válida.',
             ]);
-
+            $validated['updated_by'] = auth()->id();
             // Opcional: si necesitas reflejar los datos del producto base también en el producto
             $productoBase = ProductoBase::find($validated['producto_base_id']);
 

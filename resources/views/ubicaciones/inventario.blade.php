@@ -116,7 +116,8 @@
                     <div
                         class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 text-white px-4 py-3 gap-3">
                         <div class="text-sm sm:text-base">
-                            <span>Ubicación: <strong>{{ $ubicacion->ubicacion }}</strong></span>
+                            <span><strong>{{ $ubicacion->id }} -- {{ $ubicacion->codigo }} --
+                                    {{ $ubicacion->descripcion }}</strong></span>
                             <span
                                 class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gray-200 text-gray-900 ml-2">
                                 {{ count($ubicacion->productos) }} prod. esperados

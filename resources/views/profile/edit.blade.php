@@ -1,8 +1,9 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Administración de Perfil') }}
+            <x-volver />{{ __('Administración de Perfil') }}
         </h2>
+
     </x-slot>
 
     <div class="py-12">
@@ -15,12 +16,12 @@
             {{-- Cerrar sesiones en otros dispositivos --}}
             <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                 <div class="max-w-xl space-y-4">
-                    <h2 class="text-lg font-medium text-gray-900">Cerrar sesiones</h2>
                     <form method="POST" action="{{ route('usuarios.cerrarSesiones', $user) }}">
                         @csrf
-                        <x-tabla.boton-azul onclick="return confirm('¿Cerrar todas las sesiones de este usuario?')">
+                        <button type="submit"
+                            class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded">
                             🛑 Cerrar sesiones activas
-                        </x-tabla.boton-azul>
+                        </button>
                     </form>
                     @if ($sesiones->isNotEmpty())
                         <div class="mt-4 space-y-2 text-sm text-gray-700">
@@ -41,6 +42,63 @@
 
                 </div>
             </div>
+            {{-- 🧑‍💼 Despedir al trabajador --}}
+            <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+                <div class="max-w-xl space-y-4">
+
+                    @if ($user->estado === 'despedido')
+                        <div class="text-red-700 bg-red-50 border border-red-200 p-3 rounded mt-4 text-sm">
+                            Este usuario ha sido <strong>despedido</strong> digitalmente el
+                            {{ $user->fecha_baja ?? 'fecha desconocida' }}.
+                        </div>
+                    @else
+                        <div class="text-yellow-800 bg-yellow-50 border border-yellow-200 p-3 rounded text-sm">
+                            <strong>⚠️ ¿Qué implica despedir digitalmente a un usuario?</strong><br>
+                            Esta acción realiza los siguientes cambios de forma automática:
+                            <ul class="list-disc pl-5 mt-2">
+                                <li>Revoca su acceso a la plataforma</li>
+                                <li>Cierra sus sesiones activas</li>
+                                <li>Cancela sus turnos futuros</li>
+                                <li>Anula movimientos pendientes asignados</li>
+                                <li>Guarda la fecha de baja y lo marca como despedido</li>
+                            </ul>
+                            <span class="text-xs text-gray-500">* Esta acción es irreversible desde la interfaz.</span>
+                        </div>
+
+                        <form id="form-despedir-usuario" method="POST"
+                            action="{{ route('usuarios.despedir', $user) }}">
+                            @csrf
+                            <button type="button" onclick="confirmarDespido()"
+                                class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded mt-3">
+                                ⚠️ Despedir trabajador
+                            </button>
+                        </form>
+                    @endif
+
+                </div>
+            </div>
+
+            {{-- Script para SweetAlert --}}
+            <script>
+                function confirmarDespido() {
+                    Swal.fire({
+                        title: '¿Despedir al trabajador?',
+                        text: "Esta acción desactivará su cuenta y cancelará sus tareas.",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Sí, despedir',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            document.getElementById('form-despedir-usuario').submit();
+                        }
+                    });
+                }
+            </script>
+
+
             <div class="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
                 <div class="max-w-xl">
                     @include('profile.partials.delete-user-form')

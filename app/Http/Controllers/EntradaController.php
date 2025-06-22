@@ -263,8 +263,20 @@ class EntradaController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
-                'codigo'            => 'required|string|unique:productos,codigo|max:20',
-                'codigo_2'          => 'nullable|string|unique:productos,codigo|max:20',
+                'codigo'            => [
+                    'required',
+                    'string',
+                    'unique:productos,codigo',
+                    'max:20',
+                    'regex:/^MP.*/i',
+                ],
+                'codigo_2'          => [
+                    'nullable',
+                    'string',
+                    'unique:productos,codigo',
+                    'max:20',
+                    'regex:/^MP.*/i',
+                ],
                 'fabricante_id'     => 'required|exists:fabricantes,id',
                 'albaran'           => 'required|string|min:1|max:30',
                 'pedido_id'         => 'nullable|exists:pedidos,id',
@@ -277,10 +289,11 @@ class EntradaController extends Controller
                 'ubicacion'         => 'nullable|integer|exists:ubicaciones,id',
                 'otros'             => 'nullable|string|max:255',
             ], [
-                'codigo.required'      => 'El código generado es obligatorio.',
-                'codigo.string'        => 'El código debe ser una cadena de texto.',
-                'codigo.unique'        => 'Ese código ya existe.',
-                'codigo.max'           => 'El código no puede tener más de 20 caracteres.',
+                'codigo.required'   => 'El código generado es obligatorio.',
+                'codigo.string'     => 'El código debe ser una cadena de texto.',
+                'codigo.unique'     => 'Ese código ya existe.',
+                'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
+                'codigo.regex'      => 'El código debe empezar por MP.',
 
                 'codigo_2.string'      => 'El segundo código debe ser una cadena de texto.',
                 'codigo_2.unique'      => 'El segundo código ya existe.',

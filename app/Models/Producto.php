@@ -24,6 +24,7 @@ class Producto extends Model
         'maquina_id',
         'estado',
         'otros',
+        'updated_by',
     ];
 
     public $timestamps = true;

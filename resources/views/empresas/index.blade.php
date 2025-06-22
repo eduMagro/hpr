@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Empresas - {{ config('app.name') }}</x-slot>
-
+    <x-clave.modal-clave seccion="nominas" />
     <div class="py-6 px-4">
         <div class="flex justify-end mb-4 px-4">
             <a href="{{ route('nominas.index') }}"
@@ -164,7 +164,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-4 text-gray-500">No hay convenios registrados.</td>
+                            <td colspan="9" class="text-center py-4 text-gray-500">No hay convenios registrados.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

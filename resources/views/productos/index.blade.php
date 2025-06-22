@@ -87,7 +87,6 @@
                 ➕ Crear Nueva Entrada
             </x-tabla.boton-azul>
         </div>
-
         <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
         <div class="hidden md:block">
             <button onclick="abrirModal()"

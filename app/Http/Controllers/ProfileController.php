@@ -15,6 +15,7 @@ use App\Models\Festivo;
 use App\Models\VacacionesSolicitud;
 use App\Models\Categoria;
 use App\Models\AsignacionTurno;
+use App\Models\Movimiento;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
@@ -743,6 +744,7 @@ class ProfileController extends Controller
                 'categoria_id' => $request->categoria_id,
                 'maquina_id' => $request->maquina_id,
                 'turno' => $request->turno,
+                'updated_by' => auth()->id(),
             ]);
 
 
@@ -1009,13 +1011,42 @@ class ProfileController extends Controller
     }
     public function cerrarSesionesDeUsuario(User $user)
     {
+
         $cerradas = Session::where('user_id', $user->id)->delete();
 
         $user->forceFill(['remember_token' => null])->save();
 
         return back()->with('success', "🛑 Se han cerrado $cerradas sesión(es) activas del usuario {$user->nombre_completo}.");
     }
+    public function despedirUsuario(Request $request, User $user)
+    {
+        DB::transaction(function () use ($user) {
 
+            /* —————————  SEGURIDAD ————————— */
+            // Desactivar la cuenta
+            $user->update([
+                'estado'      => 'despedido',      // o tu campo equivalente
+                'fecha_baja'  => now(),
+            ]);
+
+            // Cerrar todas las sesiones guardadas (si usas una tabla custom)
+            Session::where('user_id', $user->id)->delete();
+            $user->forceFill(['remember_token' => null])->save();
+
+            // Revocar tokens API (Sanctum/Passport)
+            if (method_exists($user, 'tokens')) {
+                $user->tokens()->delete();
+            }
+
+            /* —————————  PLANIFICACIÓN ————————— */
+            // Borrar o reasignar turnos futuros
+            AsignacionTurno::where('user_id', $user->id)
+                ->whereDate('fecha', '>=', today())
+                ->delete();
+        });
+
+        return redirect()->route('users.index')->with('success', '👋 Usuario despedido correctamente.');
+    }
     private function getResumenAsistencia(User $user): array
     {
         $inicioAño = Carbon::now()->startOfYear();

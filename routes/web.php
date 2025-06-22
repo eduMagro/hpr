@@ -40,6 +40,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\DepartamentoController;
 use App\Http\Controllers\SeccionController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ClaveSeccionController;
 
 Route::get('/', [PageController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -92,10 +93,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.actualizar');
     Route::get('/users/{user}/resumen-asistencia', [ProfileController::class, 'resumenAsistencia'])->name('users.resumen-asistencia');
     Route::get('/users/{user}/eventos-turnos', [ProfileController::class, 'eventosTurnos'])->name('users.eventos-turnos');
-    Route::post('/admin/usuarios/{user}/cerrar-sesiones', [ProfileController::class, 'cerrarSesionesDeUsuario'])
-        ->middleware(['auth', 'can:ver-usuarios'])
+    Route::post('/usuarios/{user}/cerrar-sesiones', [ProfileController::class, 'cerrarSesionesDeUsuario'])
         ->name('usuarios.cerrarSesiones');
-
+    Route::post(
+        '/usuarios/{user}/despedir',
+        [ProfileController::class, 'despedirUsuario']
+    )
+        ->name('usuarios.despedir');
 
     Route::resource('vacaciones', VacacionesController::class)->middleware('acceso.seccion:vacaciones.index');
     Route::post('/vacaciones/solicitar', [VacacionesController::class, 'store'])->name('vacaciones.solicitar');
@@ -214,6 +218,17 @@ Route::middleware('auth')->group(function () {
     // === PAPELERA ===
     Route::get('/papelera', [PapeleraController::class, 'index'])->name('papelera.index');
     Route::put('/papelera/restore/{model}/{id}', [PapeleraController::class, 'restore'])->name('papelera.restore');
+
+    // === CLAVE === 
+
+    Route::get('/verificar-seccion/{seccion}', function ($seccion) {
+        if (!session()->get("clave_validada_$seccion")) {
+            abort(403);
+        }
+        return response()->json(['ok' => true]);
+    });
+    Route::post('/proteger/{seccion}', [ClaveSeccionController::class, 'verificar'])
+        ->name('proteger.seccion');
 });
 
 

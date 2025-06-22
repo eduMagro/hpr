@@ -43,6 +43,9 @@ class User extends Authenticatable
         'turno',
         'turno_actual',
         'dias_vacaciones',
+        'estado',
+        'updated_by',
+
     ];
 
     /**
@@ -67,6 +70,13 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    protected static function booted()
+    {
+        static::addGlobalScope('soloActivos', function ($query) {
+            $query->where('estado', 'activo');
+        });
+    }
     public function alertasLeidas()
     {
         return $this->belongsToMany(Alerta::class, 'alertas_users')
