@@ -55,7 +55,7 @@ class Entrada extends Model
      */
     public function productos()
     {
-        return $this->belongsToMany(Producto::class, 'entrada_producto');  // Relación uno a muchos
+        return $this->hasMany(Producto::class);   // 👈  ya no hay 2.º parámetro
     }
     public function pedido()
     {
