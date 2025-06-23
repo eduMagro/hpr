@@ -273,7 +273,7 @@ class ProduccionController extends Controller
                 ->first();
 
             $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
-                ? $this->toCarbon($ultimaPlanillaFabricando->fecha_inicio)
+                ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
                 : Carbon::now();
         }
 
@@ -287,6 +287,12 @@ class ProduccionController extends Controller
 
         foreach ($elementosAgrupados as $maquinaId => $elementosGrupo) {
             $planillasPorMaquina = $elementosGrupo->groupBy('planilla_id');
+            if (empty($maquinaId)) {
+                Log::warning("⚠️ maquinaId vacío al procesar planillas", [
+                    'elementosGrupo' => $elementosGrupo->pluck('id'),
+                ]);
+                continue;
+            }
 
             $ordenPlanillas = $ordenes[$maquinaId] ?? $planillasPorMaquina->keys();
 
