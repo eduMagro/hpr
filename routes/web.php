@@ -152,7 +152,7 @@ Route::middleware('auth')->group(function () {
     // === PLANILLAS Y PLANIFICACIÓN ===
     Route::resource('planillas', PlanillaController::class)->middleware('acceso.seccion:planillas.index');
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');
-    Route::post('/planillas/reordenar', [PlanillaController::class, 'reordenarPlanillas'])->name('planillas.reordenar');
+    Route::post('/planillas/reordenar', [ProduccionController::class, 'reordenarPlanillas'])->name('planillas.reordenar');
     Route::resource('planificacion', PlanificacionController::class)->middleware('acceso.seccion:planificacion.index');
     Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])

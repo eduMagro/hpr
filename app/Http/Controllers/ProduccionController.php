@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Maquina;
 use App\Models\Planilla;
+use App\Models\OrdenPlanilla;
 use App\Models\Elemento;
 use App\Models\Empresa;
 use App\Models\Obra;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class ProduccionController extends Controller
 {
@@ -265,43 +267,37 @@ class ProduccionController extends Controller
         }
 
         $erroresPlanillas = [];
+        $ordenes = OrdenPlanilla::orderBy('posicion')
+            ->get()
+            ->groupBy('maquina_id')
+            ->map(function ($ordenesMaquina) {
+                return $ordenesMaquina->pluck('planilla_id')->all();
+            });
+
         foreach ($elementosAgrupados as $maquinaId => $elementosGrupo) {
             $planillasPorMaquina = $elementosGrupo->groupBy('planilla_id');
 
-            foreach ($planillasPorMaquina as $planillaId => $grupo) {
+            $ordenPlanillas = $ordenes[$maquinaId] ?? $planillasPorMaquina->keys();
+
+            foreach ($ordenPlanillas as $planillaId) {
+                if (!isset($planillasPorMaquina[$planillaId])) continue;
+
+                $grupo = $planillasPorMaquina[$planillaId];
                 $planilla = $grupo->first()->planilla;
                 if (!$planilla || !$planilla->fecha_estimada_entrega) continue;
 
-                $duracionSegundos = count($grupo) * 20 * 60; // 20 minutos por elemento
-
-                if (!isset($colasMaquinas[$maquinaId])) {
-                    $codigoPlanilla = $planilla->codigo_limpio ?? $planilla->id;
-                    $erroresPlanillas[] = "⚠️ Planilla {$codigoPlanilla} asignada a máquina ID {$maquinaId} no tiene cola inicializada.";
-                    continue;
-                }
-
+                $duracionSegundos = max(count($grupo) * 20 * 60, 60); // mínimo 1 minuto
                 $fechaInicio = $colasMaquinas[$maquinaId]->copy();
                 $fechaFin = $fechaInicio->copy()->addSeconds($duracionSegundos);
 
-                if ($planilla->estado === 'pendiente' && $colasMaquinas[$maquinaId]->equalTo(now())) {
-                    $fechaInicio = now()->copy();
-                    $fechaFin = $fechaInicio->copy()->addSeconds($duracionSegundos);
-                }
-
-                if ($planilla->estado === 'fabricando' && is_null($planilla->fecha_finalizacion)) {
-                    $fechaFin = now()->copy()->addMinutes(1);
-                }
-
-                if ($planilla->estado === 'pendiente' && $fechaInicio->lt(now())) {
-                    $fechaInicio = now()->copy();
-                    $fechaFin = $fechaInicio->copy()->addSeconds($duracionSegundos);
-                }
-
+                // Empuja la cola para la siguiente planilla
                 $colasMaquinas[$maquinaId] = $fechaFin;
+
 
                 $planillasEventos->push([
                     'id' => 'planilla-' . $planilla->id,
                     'title' => $planilla->codigo_limpio ?? 'Planilla #' . $planilla->id,
+                    'codigo' => $planilla->codigo_limpio ?? 'Planilla #' . $planilla->id,
                     'start' => $fechaInicio->toIso8601String(),
                     'end' => $fechaFin->toIso8601String(),
                     'resourceId' => $maquinaId,
@@ -370,10 +366,43 @@ class ProduccionController extends Controller
                 }
             }
         }
+        /* ───────────────────────────────────────────────
+ |  RESUMEN POR PLANILLA:  fin VS fecha_entrega
+ |───────────────────────────────────────────────*/
+        $tablaPlanillas = collect();
 
+        $group = $planillasEventos->groupBy('codigo');   // “PLA-001”, etc.
+
+        foreach ($group as $codigo => $events) {
+            $ultimoFin = Carbon::parse(
+                $events->max('end')                     // ISO-8601 de FullCalendar
+            );
+
+            // Id de planilla sale de “planilla-123”
+            $planillaId = (int) Str::after($events->first()['id'], 'planilla-');
+            $planilla   = Planilla::find($planillaId);
+
+            // Puede que aún no exista fecha_estimada_entrega
+            $entrega = $planilla?->fecha_estimada_entrega
+                ? Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_estimada_entrega)
+
+                : null;
+
+            $onTime = $entrega ? $ultimoFin->lte($entrega) : null;
+
+            $tablaPlanillas->push([
+                'codigo'            => $codigo,
+                'planilla_id'       => $planillaId,
+                'fin_programado'    => $ultimoFin->format('d/m/Y H:i'),
+                'entrega_estimada'  => $entrega?->format('d/m/Y H:i') ?? '—',
+                'estado'            => $onTime === null ? 'Sin fecha'
+                    : ($onTime ? '🟢 En tiempo' : '🔴 Retraso'),
+            ]);
+        }
         return view('produccion.maquinas', [
             'maquinas' => $maquinas,
             'planillasEventos' => $planillasEventos,
+            'tablaPlanillas'             => $tablaPlanillas,
             'cargaPorMaquinaTurno' => $cargaPorMaquinaTurno,
             'erroresPlanillas' => $erroresPlanillas,
             'cargaPorMaquinaTurnoConFechas' => $cargaPorMaquinaTurnoConFechas,
@@ -384,20 +413,65 @@ class ProduccionController extends Controller
     public function reordenarPlanillas(Request $request)
     {
         $request->validate([
-            'id' => 'required|integer|exists:planillas,id',
-            'nueva_maquina_id' => 'required|integer|exists:maquinas,id',
-            'nueva_fecha_inicio' => 'required|date',
+            'id'          => 'required|integer|exists:planillas,id',
+            'maquina_id'  => 'required|integer|exists:maquinas,id',
+            'nueva_posicion' => 'required|integer|min:1',
         ]);
 
-        $planilla = Planilla::findOrFail($request->id);
-        $planilla->elementos()->update(['maquina_id' => $request->nueva_maquina_id]);
+        try {
+            DB::transaction(function () use ($request) {
 
-        $planilla->fecha_inicio = Carbon::parse($request->nueva_fecha_inicio);
-        $planilla->estado = 'pendiente'; // opcional: reiniciar estado
-        $planilla->save();
+                /* 1️⃣  Fila exacta planilla+máquina */
+                $orden = OrdenPlanilla::lockForUpdate()
+                    ->where('planilla_id', $request->id)
+                    ->where('maquina_id', $request->maquina_id)   // 👈 ahora filtra también por máquina
+                    ->firstOrFail();
 
-        return response()->json(['success' => true]);
+                $maquinaId = $orden->maquina_id;
+                $posActual = $orden->posicion;
+                $posNueva  = $request->nueva_posicion;
+
+                /* 2️⃣  Regla posición-1 */
+                if ($posNueva == 1) {
+                    $planillaPos1 = OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->where('posicion', 1)
+                        ->first()?->planilla;
+
+                    if ($planillaPos1 && $planillaPos1->estado === 'fabricando') {
+                        throw new \Exception('No se puede ocupar la posición 1: hay una planilla fabricando.');
+                    }
+                }
+
+                /* 3️⃣  Límites y nada-que-hacer */
+                $maxPos = OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion');
+                $posNueva = min($posNueva, $maxPos);
+                if ($posNueva == $posActual) return;
+
+                /* 4️⃣  Reacomodo */
+                if ($posNueva < $posActual) {
+                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->whereBetween('posicion', [$posNueva, $posActual - 1])
+                        ->increment('posicion');
+                } else {
+                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->whereBetween('posicion', [$posActual + 1, $posNueva])
+                        ->decrement('posicion');
+                }
+
+                /* 5️⃣  Actualiza la fila correcta */
+                $orden->update(['posicion' => $posNueva]);
+            });
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
+
+
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
     public function trabajadoresObra()
     {

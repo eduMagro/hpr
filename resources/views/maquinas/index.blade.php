@@ -119,9 +119,13 @@
 
                     <!-- Cola de planillas -->
                     @php
+                        /** 1. Elementos YA vienen perfectamente ordenados desde el controlador */
                         $elementos = $colaPorMaquina->get($maquina->id, collect());
-                        $groupedByPlanilla = $elementos->groupBy(fn($e) => $e->planilla->id);
+
+                        /** 2. Simplemente agrúpalos por planilla SIN volver a ordenar */
+                        $groupedByPlanilla = $elementos->groupBy('planilla_id')->values(); // <- sin sortBy()
                     @endphp
+
                     <div class="px-4 pb-4">
                         <h4 class="font-semibold text-base text-gray-800 mb-2">
                             Cola de Planillas ({{ $groupedByPlanilla->count() }})

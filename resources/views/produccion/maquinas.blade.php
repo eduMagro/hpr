@@ -59,6 +59,42 @@
             </div>
         </div>
     @endif
+    @if ($tablaPlanillas->isNotEmpty())
+        <div class="mt-8 bg-white shadow rounded-lg overflow-hidden">
+            <h3 class="px-6 py-3 font-semibold text-gray-800 bg-gray-50">
+                Control de plazos de planillas
+            </h3>
+
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-100 text-left">
+                    <tr>
+                        <th class="px-4 py-2">Código</th>
+                        <th class="px-4 py-2">Fin&nbsp;programado</th>
+                        <th class="px-4 py-2">Entrega&nbsp;estimada</th>
+                        <th class="px-4 py-2">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach ($tablaPlanillas as $fila)
+                        <tr
+                            class="{{ $fila['estado'] === '🟢 En tiempo' ? 'bg-green-50' : ($fila['estado'] === '🔴 Retraso' ? 'bg-red-50' : '') }}">
+                            <td class="px-4 py-2 font-medium">
+                                <a href="{{ route('planillas.show', $fila['planilla_id']) }}"
+                                    class="text-blue-600 hover:underline">
+                                    {{ $fila['codigo'] }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-2">{{ $fila['fin_programado'] }}</td>
+                            <td class="px-4 py-2">{{ $fila['entrega_estimada'] }}</td>
+                            <td class="px-4 py-2">
+                                {{ $fila['estado'] }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 
     <div class="py-6">
         @if (!empty($erroresPlanillas))
@@ -119,7 +155,58 @@
 
             const calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
-                initialView: 'resourceTimelineDay',
+                initialView: 'resourceTimelineFiveDay',
+                /* 👇 Aquí definimos la vista de 5 días */
+                views: {
+                    // Vista de 1 día (la de siempre)
+                    resourceTimelineDay: {
+                        type: 'resourceTimeline',
+                        duration: {
+                            days: 1
+                        },
+                        slotMinTime: '00:00:00',
+                        slotMaxTime: '24:00:00',
+                        slotDuration: {
+                            hours: 1
+                        },
+                        slotLabelFormat: {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        },
+                        buttonText: '1 día'
+                    },
+
+                    // 👉 NUEVA vista de 5 días con horas
+                    resourceTimelineFiveDay: {
+                        type: 'resourceTimeline',
+                        duration: {
+                            days: 5
+                        }, // muestra 5 días
+                        slotDuration: {
+                            hours: 1
+                        }, // cada columna = 1 hora
+                        slotMinTime: '00:00:00',
+                        slotMaxTime: '24:00:00',
+
+                        /* Etiquetamos la cabecera en dos filas:
+                           - fila 1: “lun 24 jun”
+                           - fila 2: “08:00”, “09:00”…                */
+                        slotLabelFormat: [{
+                                weekday: 'short',
+                                day: 'numeric',
+                                month: 'short'
+                            },
+                            {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false
+                            }
+                        ],
+
+                        buttonText: '5 días'
+                    }
+                },
                 locale: 'es',
                 timeZone: 'Europe/Madrid',
                 initialDate: new Date(),
@@ -134,18 +221,7 @@
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'resourceTimelineDay,resourceTimelineWeek'
-                },
-                views: {
-                    resourceTimelineDay: {
-                        slotMinTime: '00:00:00',
-                        slotMaxTime: '23:59:00',
-                    },
-                    resourceTimelineWeek: {
-                        slotDuration: {
-                            days: 1
-                        }
-                    }
+                    right: 'resourceTimelineDay,resourceTimelineFiveDay'
                 },
                 eventContent: function(arg) {
                     return {
@@ -156,43 +232,68 @@
                         </div>`
                     };
                 },
-                eventDrop: function(info) {
+                eventDrop: async function(info) {
                     const planillaId = info.event.id.replace('planilla-', '');
-                    const nuevaMaquinaId = info.newResource?.id ?? info.event.getResources()[0]?.id;
-                    const nuevaFechaInicio = info.event.start.toISOString();
+                    const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
 
-                    if (!confirm(
-                            `¿Quieres mover la planilla ${planillaId} a la máquina ${nuevaMaquinaId}?`
-                        )) {
+                    const maquinaOrigenId = info.oldResource?.id ?? info.event.getResources()[0]?.id;
+                    const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
+                    const maquinaId = info.newResource?.id ?? info.event.getResources()[0]
+                        ?.id; // ⚠️ Aquí definimos máquina
+                    /* 1️⃣  Solo permitimos mover dentro de la misma máquina */
+                    if (maquinaOrigenId !== maquinaDestinoId) {
+                        alert('Solo puedes reordenar dentro de la misma máquina.');
                         info.revert();
                         return;
                     }
 
-                    fetch('/planillas/reordenar', {
+                    /* 2️⃣  Preguntar confirmación */
+
+                    if (!confirm(`¿Quieres reordenar la planilla ${codigoPlanilla}?`)) {
+
+                        info.revert();
+                        return;
+                    }
+
+                    /* 3️⃣  Calcular la nueva posición (1, 2, 3, …) dentro de la máquina */
+                    const eventosOrdenados = calendar.getEvents()
+                        .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
+                        .sort((a, b) => a.start - b.start);
+
+                    const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) +
+                        1; // +1 porque el índice arranca en 0
+
+                    /* 4️⃣  Llamar al backend */
+                    try {
+                        const res = await fetch('/planillas/reordenar', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
-                                    .getAttribute('content')
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]').content
                             },
                             body: JSON.stringify({
                                 id: planillaId,
-                                nueva_maquina_id: nuevaMaquinaId,
-                                nueva_fecha_inicio: nuevaFechaInicio
+                                maquina_id: maquinaId, // 👈 nuevo
+                                nueva_posicion: nuevaPosicion
                             })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (!data.success) {
-                                alert('Error al guardar los cambios');
-                                info.revert();
-                            }
-                        })
-                        .catch(error => {
-                            console.error(error);
-                            alert('Error al comunicarse con el servidor');
-                            info.revert();
                         });
+
+                        if (!res.ok) {
+                            // leer texto devuelto por la excepción (422, 500, …)
+                            const errorMsg = await res.text();
+                            throw new Error(errorMsg || 'Error desconocido');
+                        }
+
+                        const data = await res.json();
+                        if (!data.success) throw new Error('El servidor informó de fallo.');
+
+                    } catch (e) {
+                        // Si algo falla, revertimos el drag & drop y mostramos mensaje
+                        console.error(e);
+                        alert(e.message || 'No se pudo reordenar la planilla.');
+                        info.revert();
+                    }
                 },
                 eventDidMount: function(info) {
                     const props = info.event.extendedProps;

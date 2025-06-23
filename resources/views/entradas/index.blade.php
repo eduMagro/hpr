@@ -135,7 +135,7 @@
                         const fabricante = p?.fabricante?.nombre || 'Sin fabricante';
 
                         html +=
-                            `<li>${nombre} – Ø${diametro} – ${longitud} mm – <span class="text-gray-600">${fabricante}</span></li>`;
+                            `<li>${nombre} – Ø${diametro} – ${longitud} m – <span class="text-gray-600">${fabricante}</span></li>`;
                     });
                 } else {
                     html += '<li class="text-gray-500">No hay productos asociados.</li>';

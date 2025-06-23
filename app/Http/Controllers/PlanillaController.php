@@ -447,184 +447,162 @@ class PlanillaController extends Controller
 
     public function import(Request $request)
     {
+        // 1) Seguridad -----------------------------------------------------------------
         if (auth()->user()->rol !== 'oficina') {
-            return redirect()->route('planillas.index')->with('abort', 'No tienes los permisos necesarios.');
+            return redirect()->route('planillas.index')
+                ->with('abort', 'No tienes los permisos necesarios.');
         }
 
+        // 2) Validación del archivo -----------------------------------------------------
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ], [
             'file.required' => 'Debes seleccionar un archivo.',
-            'file.file' => 'El archivo debe ser un archivo válido.',
-            'file.mimes' => 'El archivo debe tener uno de los siguientes formatos: xlsx o xls',
+            'file.file'     => 'El archivo debe ser válido.',
+            'file.mimes'    => 'Solo se permiten archivos .xlsx o .xls',
         ]);
 
         DB::beginTransaction();
-
         try {
-            $planillasOmitidas   = [];
+            /* -------------------------------------------------- */
+            /* Preparativos                                       */
+            /* -------------------------------------------------- */
             $planillasImportadas = 0;
+            $planillasOmitidas   = [];
             $advertencias        = [];
 
-            $file = $request->file('file');
-            $importedData = \Maatwebsite\Excel\Facades\Excel::toArray([], $file);
-            $firstSheet = $importedData[0] ?? [];
+            $file         = $request->file('file');
+            $firstSheet   = \Maatwebsite\Excel\Facades\Excel::toArray([], $file)[0] ?? [];
+            $filteredData = array_filter(array_slice($firstSheet, 1), fn($row) => array_filter($row));
 
-            if (empty($firstSheet)) {
-                throw new \Exception('El archivo está vacío o no contiene datos válidos.');
+            if (!$filteredData) {
+                throw new \Exception('El archivo está vacío o no contiene filas válidas.');
             }
 
-            $headers = $firstSheet[0] ?? [];
-            $data = array_slice($firstSheet, 1);
-            $filteredData = array_filter($data, fn($row) => array_filter($row));
-
-            if (empty($filteredData)) {
-                throw new \Exception('El archivo no contiene filas válidas después de las cabeceras.');
-            }
-
-            $groupedByCodigo = [];
-            foreach ($filteredData as $row) {
-                $codigo = $row[10] ?? 'Sin código';
-                $groupedByCodigo[$codigo][] = $row;
-            }
-            $primerRow = $filteredData[0] ?? null;
-
-            if (!$primerRow) {
-                DB::rollBack();
-                return redirect()->route('planillas.index')->with('error', 'No se encontraron datos válidos para determinar cliente y obra.');
-            }
-
-            $codigoCliente = trim($primerRow[0] ?? null);
+            /* -------------------------------------------------- */
+            /* Datos fijos (cliente y obra)                       */
+            /* -------------------------------------------------- */
+            $primerRow     = $filteredData[0];
+            $codigoCliente = trim($primerRow[0] ?? '');
             $nombreCliente = trim($primerRow[1] ?? 'Cliente sin nombre');
-
-            $codigoObra = trim($primerRow[2] ?? null);
-            $nombreObra = trim($primerRow[3] ?? 'Obra sin nombre');
+            $codigoObra    = trim($primerRow[2] ?? '');
+            $nombreObra    = trim($primerRow[3] ?? 'Obra sin nombre');
 
             if (!$codigoCliente || !$codigoObra) {
-                DB::rollBack();
-                return redirect()->route('planillas.index')->with('error', 'Faltan códigos de cliente u obra en el archivo.');
+                throw new \Exception('Faltan códigos de cliente u obra en el archivo.');
             }
 
-            $cliente = Cliente::where('codigo', $codigoCliente)->first();
-            if (!$cliente) {
-                $cliente = Cliente::create([
-                    'codigo' => $codigoCliente,
-                    'empresa' => $nombreCliente,
-                ]);
+            $cliente = Cliente::firstOrCreate(
+                ['codigo' => $codigoCliente],
+                ['empresa' => $nombreCliente]
+            );
+
+            $obra = Obra::firstOrCreate(
+                ['cod_obra' => $codigoObra],
+                ['cliente_id' => $cliente->id, 'obra' => $nombreObra]
+            );
+
+            /* -------------------------------------------------- */
+            /* Agrupar filas por código de planilla               */
+            /* -------------------------------------------------- */
+            $planillas = [];
+            foreach ($filteredData as $row) {
+                $codigoPlanilla = $row[10] ?? 'Sin código';
+                $planillas[$codigoPlanilla][] = $row;
             }
 
-            $obra = Obra::where('cod_obra', $codigoObra)->first();
-            if (!$obra) {
-                $obra = Obra::create([
-                    'cod_obra' => $codigoObra,
-                    'cliente_id' => $cliente->id,
-                    'obra' => $nombreObra,
-                ]);
-            }
+            /* ================================================== */
+            /* Bucle principal : una iteración por planilla       */
+            /* ================================================== */
+            foreach ($planillas as $codigoPlanilla => $rows) {
 
-
-            foreach ($groupedByCodigo as $codigo => $rows) {
-
-                // 👉 Verifica si ya existe una planilla con este código
-                if (Planilla::where('codigo', $codigo)->exists()) {
-                    $planillasOmitidas[] = $codigo;
+                // Omitir duplicados
+                if (Planilla::where('codigo', $codigoPlanilla)->exists()) {
+                    $planillasOmitidas[] = $codigoPlanilla;
                     continue;
                 }
-                $pesoTotal = array_reduce($rows, fn($carry, $row) => $carry + (float)($row[34] ?? 0), 0);
 
-                $codigoObra = trim($rows[0][2] ?? ''); // Ajusta el índice si el código está en otra columna
-
-                $obra = Obra::where('cod_obra', $codigoObra)->first();
-
-                $planilla = Planilla::create([
-                    'users_id' => auth()->id(),
-                    'cliente_id' => $cliente->id,
-                    'obra_id' => $obra->id,
-                    'seccion' => $rows[0][7] ?? null,
-                    'descripcion' => $rows[0][12] ?? null,
-                    'ensamblado' => $rows[0][4] ?? null,
-                    'codigo' => $codigo,
-                    'peso_total' => $pesoTotal,
-                    'fecha_inicio' => null,
-                    'fecha_finalizacion' => null,
-                    'tiempo_fabricacion' => 0,
+                /* ------------ Crear planilla ----------------- */
+                $pesoTotal = array_sum(array_column($rows, 34));
+                $planilla  = Planilla::create([
+                    'users_id'              => auth()->id(),
+                    'cliente_id'            => $cliente->id,
+                    'obra_id'               => $obra->id,
+                    'seccion'               => $rows[0][7]  ?? null,
+                    'descripcion'           => $rows[0][12] ?? null,
+                    'ensamblado'            => $rows[0][4]  ?? null,
+                    'codigo'                => $codigoPlanilla,
+                    'peso_total'            => $pesoTotal,
                     'fecha_estimada_entrega' => now()->addDays(7),
                 ]);
-                $planillasImportadas++;
 
-                $filasAgrupadasPorEtiqueta = [];
+                $planillasImportadas++;
+                $maquinasUsadas = [];   // ← aquí guardaremos las máquinas detectadas
+
+                /* ----------- Agrupar filas por nº de etiqueta ----------- */
+                $etiquetas = [];
                 foreach ($rows as $row) {
-                    $numeroEtiqueta = $row[21] ?? null;
-                    if ($numeroEtiqueta) {
-                        $filasAgrupadasPorEtiqueta[$numeroEtiqueta][] = $row;
-                    }
+                    $numEtiqueta = $row[21] ?? null;
+                    if ($numEtiqueta) $etiquetas[$numEtiqueta][] = $row;
                 }
 
-                // Reemplaza tu bloque actual dentro del importador por esto
-
-                // Reemplaza tu bloque actual dentro del importador por esto
-
-                foreach ($filasAgrupadasPorEtiqueta as $numeroEtiqueta => $filas) {
-                    $codigoPadre = Etiqueta::generarCodigoEtiqueta();
-
+                /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+                /* Procesar cada etiqueta → sub-etiquetas → elementos       */
+                /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+                foreach ($etiquetas as $filasEtiqueta) {
+                    $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
                     $etiquetaPadre = Etiqueta::create([
-                        'codigo'          => $codigoPadre,
-                        'planilla_id'     => $planilla->id,
-                        'nombre'          => $filas[0][22] ?? 'Sin nombre',
-                        'peso'            => 0,
-                        'marca'           => null,
-                        'etiqueta_sub_id' => null,
+                        'codigo'      => $codigoPadre,
+                        'planilla_id' => $planilla->id,
+                        'nombre'      => $filasEtiqueta[0][22] ?? 'Sin nombre',
                     ]);
 
-                    // Obtener el sufijo máximo ya existente (por si ya existen etiquetas con este padre)
-                    $maxSufijo = Etiqueta::where('codigo', $codigoPadre)
-                        ->where('etiqueta_sub_id', 'like', $codigoPadre . '.%')
-                        ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)), 0) AS max_sub")
-                        ->value('max_sub');
+                    /* Sufijo para sub-etiquetas .01, .02, … */
+                    $contadorSub = 1;
 
-                    $contadorSub = $maxSufijo + 1;
-
+                    /* === Agrupar por máquina dentro de la etiqueta === */
                     $gruposPorMaquina = [];
-                    foreach ($filas as $row) {
-                        $diametro = $row[25] ?? 0;
-                        $longitud = $row[27] ?? 0;
-                        $figura = $row[26] ?? null;
-                        $doblesPorBarra = $row[33] ?? 0;
-                        $barras = $row[32] ?? 0;
-                        $ensamblado = $row[4] ?? null;
+                    foreach ($filasEtiqueta as $row) {
+                        $diametro        = $row[25] ?? 0;
+                        $longitud        = $row[27] ?? 0;
+                        $figura          = $row[26] ?? null;
+                        $doblesPorBarra  = $row[33] ?? 0;
+                        $barras          = $row[32] ?? 0;
+                        $ensamblado      = $row[4]  ?? null;
 
-                        $maquina_id = $this->asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planilla->id);
+                        $maquina_id = $this->asignarMaquina(
+                            $diametro,
+                            $longitud,
+                            $figura,
+                            $doblesPorBarra,
+                            $barras,
+                            $ensamblado,
+                            $planilla->id
+                        );
+
                         if (!$maquina_id) {
-                            $advertencias[] = "Fila {$row[21]} sin máquina compatible (planilla {$codigo}).";
+                            $advertencias[] = "Fila {$row[21]} sin máquina compatible (planilla {$codigoPlanilla}).";
                             continue;
                         }
 
-                        $gruposPorMaquina[$maquina_id][] = ['row' => $row, 'maquina_id' => $maquina_id];
+                        $gruposPorMaquina[$maquina_id][] = $row;
+                        $maquinasUsadas[$maquina_id] = true;   // <- registrar la máquina
                     }
 
-                    foreach ($gruposPorMaquina as $maquina_id => $grupo) {
-                        $codigoSub = sprintf('%s.%02d', $codigoPadre, $contadorSub);
+                    /* === Crear sub-etiquetas y elementos === */
+                    foreach ($gruposPorMaquina as $maquina_id => $filasMaquina) {
+                        $codigoSub = sprintf('%s.%02d', $codigoPadre, $contadorSub++);
 
                         $subEtiqueta = Etiqueta::create([
                             'codigo'          => $codigoPadre,
                             'planilla_id'     => $planilla->id,
-                            'nombre'          => $grupo[0]['row'][22] ?? 'Sin nombre',
-                            'peso'            => 0,
-                            'marca'           => null,
+                            'nombre'          => $filasMaquina[0][22] ?? 'Sin nombre',
                             'etiqueta_sub_id' => $codigoSub,
                         ]);
 
-                        $ultimaPosicion = OrdenPlanilla::where('maquina_id', $maquina_id)
-                            ->max('posicion') ?? 0;
-                        OrdenPlanilla::create([
-                            'planilla_id' => $planilla->id,
-                            'maquina_id'  => $maquina_id,
-                            'posicion'    => $ultimaPosicion + 1,
-                        ]);
-
+                        // Agrupar filas iguales para sumar peso/barras
                         $agrupados = [];
-                        foreach ($grupo as $item) {
-                            $row = $item['row'];
+                        foreach ($filasMaquina as $row) {
                             $clave = implode('|', [
                                 $row[26],
                                 $row[21],
@@ -632,113 +610,90 @@ class PlanillaController extends Controller
                                 $row[25],
                                 $row[27],
                                 $row[33] ?? 0,
-                                $row[47] ?? '',
+                                $row[47] ?? ''
                             ]);
-
-                            if (!isset($agrupados[$clave])) {
-                                $agrupados[$clave] = [
-                                    'row'   => $row,
-                                    'peso'  => (float)($row[34] ?? 0),
-                                    'barras' => (int)($row[32] ?? 0),
-                                ];
-                            } else {
-                                $agrupados[$clave]['peso']  += (float)($row[34] ?? 0);
-                                $agrupados[$clave]['barras'] += (int)($row[32] ?? 0);
-                            }
+                            $agrupados[$clave]['row']    = $row;
+                            $agrupados[$clave]['peso']   = ($agrupados[$clave]['peso']   ?? 0) + (float)($row[34] ?? 0);
+                            $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int)($row[32] ?? 0);
                         }
 
+                        // Crear los elementos
                         foreach ($agrupados as $item) {
-                            $row = $item['row'];
+                            $row     = $item['row'];
                             $tiempos = $this->calcularTiemposElemento($row);
-                            $codigoElemento = Elemento::generarCodigo();
+
                             Elemento::create([
-                                'codigo'              => $codigoElemento,
-                                'planilla_id'         => $planilla->id,
-                                'etiqueta_id'         => $subEtiqueta->id,
-                                'etiqueta_sub_id'     => $codigoSub,
-                                'maquina_id'          => $maquina_id,
-                                'figura'              => $row[26],
-                                'fila'                => $row[21],
-                                'marca'               => $row[23],
-                                'etiqueta'            => $row[30],
-                                'diametro'            => $row[25],
-                                'longitud'            => $row[27],
-                                'barras'              => $item['barras'],
-                                'dobles_barra'        => $row[33] ?? 0,
-                                'peso'                => $item['peso'],
-                                'dimensiones'         => $row[47] ?? null,
-                                'tiempo_fabricacion'  => $tiempos['tiempo_fabricacion'],
+                                'codigo'             => Elemento::generarCodigo(),
+                                'planilla_id'        => $planilla->id,
+                                'etiqueta_id'        => $subEtiqueta->id,
+                                'etiqueta_sub_id'    => $codigoSub,
+                                'maquina_id'         => $maquina_id,
+                                'figura'             => $row[26],
+                                'fila'               => $row[21],
+                                'marca'              => $row[23],
+                                'etiqueta'           => $row[30],
+                                'diametro'           => $row[25],
+                                'longitud'           => $row[27],
+                                'barras'             => $item['barras'],
+                                'dobles_barra'       => $row[33] ?? 0,
+                                'peso'               => $item['peso'],
+                                'dimensiones'        => $row[47] ?? null,
+                                'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
                             ]);
                         }
 
-                        $subEtiqueta->peso = $subEtiqueta->elementos()->sum('peso');
-                        $subEtiqueta->marca = $subEtiqueta->elementos()
-                            ->select('marca', DB::raw('COUNT(*) as total'))
-                            ->groupBy('marca')
-                            ->orderByDesc('total')
-                            ->value('marca');
-                        $subEtiqueta->save();
-
-                        $contadorSub++;   // siguiente sufijo
+                        // Actualizar peso-marca de la sub-etiqueta
+                        $subEtiqueta->update([
+                            'peso'  => $subEtiqueta->elementos()->sum('peso'),
+                            'marca' => $subEtiqueta->elementos()
+                                ->select('marca', DB::raw('COUNT(*) as total'))
+                                ->groupBy('marca')
+                                ->orderByDesc('total')
+                                ->value('marca'),
+                        ]);
                     }
                 }
 
+                /* -------------------------------------------------- */
+                /*  Crear orden_planillas una sola vez por máquina    */
+                /* -------------------------------------------------- */
+                foreach (array_keys($maquinasUsadas) as $maquina_id) {
+                    OrdenPlanilla::firstOrCreate(
+                        ['planilla_id' => $planilla->id, 'maquina_id' => $maquina_id],
+                        ['posicion'    => (OrdenPlanilla::where('maquina_id', $maquina_id)->max('posicion') ?? 0) + 1]
+                    );
+                }
 
-
-
-                $elementos = $planilla->elementos;
-                $tiempoBase = $elementos->sum('tiempo_fabricacion');
-                $tiempoAdicional = $elementos->count() * 1200; // 20 minutos por elemento
-
-                $planilla->update([
-                    'tiempo_fabricacion' => $tiempoBase + $tiempoAdicional,
-                ]);
+                /* -------------------------------------------------- */
+                /*  Tiempo total planilla                             */
+                /* -------------------------------------------------- */
+                $elementos      = $planilla->elementos;
+                $tiempoTotal    = $elementos->sum('tiempo_fabricacion')
+                    + $elementos->count() * 1200; // 20 min/elemento
+                $planilla->update(['tiempo_fabricacion' => $tiempoTotal]);
             }
 
+            /* ------------------------------------------------------ */
+            /*  Fin: commit + mensaje                                 */
+            /* ------------------------------------------------------ */
             DB::commit();
+
             $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s).";
-
-            if ($planillasOmitidas) {
-                $mensaje .= ' ⚠️ Omitidas por duplicado: ' . implode(', ', $planillasOmitidas) . '.';
-            }
-
-            if ($advertencias) {   // <-- now it’s always defined, maybe still empty
-                $mensaje .= ' ⚠️ Advertencias: ' . implode(' | ', $advertencias);
-            }
-
+            if ($planillasOmitidas) $mensaje .= ' ⚠️ Omitidas: ' . implode(', ', $planillasOmitidas) . '.';
+            if ($advertencias)     $mensaje .= ' ⚠️ ' . implode(' | ', $advertencias);
 
             return redirect()->route('planillas.index')->with('success', $mensaje);
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
-            Log::warning('⚠️ Validación fallida al importar planillas.', [
-                'errores' => $e->errors(),
-            ]);
-
-            return redirect()->route('planillas.index')
-                ->withErrors($e->errors())
-                ->withInput();
-        } catch (\Throwable $e) {          // \Throwable = Exception + Error
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Throwable $e) {
             DB::rollBack();
-
-            // 1) Regístralo con todo el detalle
             Log::error('❌ Error al importar planillas', [
-                'mensaje'  => $e->getMessage(),
-                'linea'    => $e->getLine(),
-                'archivo'  => $e->getFile(),
-                'trace'    => $e->getTraceAsString(),
+                'mensaje' => $e->getMessage(),
+                'linea'   => $e->getLine(),
+                'archivo' => $e->getFile(),
             ]);
-
-            // 2) Construye un texto claro para el usuario
-            //    (muestra el tipo de excepción y sólo el mensaje)
-            $msg = class_basename($e) . ': ' . $e->getMessage();
-
-            //    ⚠️  Si el mensaje es muy largo, limítalo:
-            // use Illuminate\Support\Str;
-            // $msg = Str::limit($msg, 180);
-
-            return redirect()
-                ->route('planillas.index')
-                ->with('error', $msg);     // En la vista => session('error')
+            return back()->with('error', class_basename($e) . ': ' . $e->getMessage());
         }
     }
 

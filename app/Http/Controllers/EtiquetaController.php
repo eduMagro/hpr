@@ -6,8 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Elemento;
 use App\Models\Planilla;
 use App\Models\Etiqueta;
+use App\Models\ProductoBase;
 use App\Models\Ubicacion;
-use App\Models\Alerta;
+use App\Models\Movimiento;
 use App\Models\AsignacionTurno;
 use App\Models\Turno;
 use App\Models\User;
@@ -20,6 +21,7 @@ use Illuminate\Validation\ValidationException;
 use Exception;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 
 class EtiquetaController extends Controller
 {
@@ -289,13 +291,43 @@ class EtiquetaController extends Controller
                         }
                     }
 
-                    // Si hay diámetros sin productos, devolver error
+                    // 🚩  DIÁMETROS SIN STOCK EN LA MÁQUINA
                     if (!empty($faltantes)) {
+
+                        // 1️⃣  Cancelamos la transacción principal (evita dejar estados a medias)
+                        DB::rollBack();
+
+                        // 2️⃣  Generamos un movimiento por cada diámetro faltante
+                        foreach ($faltantes as $diametroFaltante) {
+
+                            // Localizamos el ProductoBase adecuado
+                            $productoBaseFaltante = ProductoBase::where('diametro', $diametroFaltante)
+                                ->where('tipo', $maquina->tipo_material)          // usa siempre la columna real
+                                ->first();
+
+                            if ($productoBaseFaltante) {
+                                // Mini-transacción que persiste aunque el resto falle
+                                DB::transaction(function () use ($productoBaseFaltante, $maquina) {
+                                    $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina);
+                                    Log::info('✅ Movimiento de recarga creado', [
+                                        'producto_base_id' => $productoBaseFaltante->id,
+                                        'maquina_id'       => $maquina->id,
+                                    ]);
+                                });
+                            } else {
+                                Log::warning("No se encontró ProductoBase para Ø{$diametroFaltante} y tipo {$maquina->tipo_material}");
+                            }
+                        }
+
+                        // 3️⃣  Respondemos y detenemos la ejecución
                         return response()->json([
                             'success' => false,
-                            'error' => 'No hay materias primas disponibles para los siguientes diámetros: ' . implode(', ', $faltantes),
+                            'error'   => 'No hay materias primas disponibles para los siguientes diámetros: '
+                                . implode(', ', $faltantes)
+                                . '. Se han generado automáticamente las solicitudes de recarga.',
                         ], 400);
                     }
+
                     // Arreglo donde se guardarán los detalles del consumo por diámetro
                     $consumos = []; // Estructura: [ <diametro> => [ ['producto_id' => X, 'consumido' => Y], ... ], ... ]
 
@@ -306,10 +338,43 @@ class EtiquetaController extends Controller
                         $stockTotal = $productosPorDiametro->sum('peso_stock');
 
                         if ($stockTotal < $pesoNecesario) {
-                            if ($stockTotal < $pesoNecesario) {
-                                $warnings[] = "El stock para el {$diametro} es insuficiente. Avisaremos a los gruistas en turno.";
-                                $this->lanzarAlertaStockInsuficiente($diametro, $maquina->nombre);
+
+                            // 1️⃣ Log del fallo
+                            $warnings[] = "El stock para Ø{$diametro} mm es insuficiente. Se ha generado una solicitud de recarga automática.";
+                            Log::info("🔴 Stock insuficiente de materia prima para Ø{$diametro} mm en {$maquina->nombre}");
+
+                            // 2️⃣ Buscar ProductoBase
+                            $productoBase = ProductoBase::where('diametro', $diametro)
+                                ->where('tipo', $maquina->tipo)
+                                ->first();
+
+                            if (!$productoBase) {
+                                Log::warning("No se encontró ProductoBase para Ø{$diametro} y tipo {$maquina->tipo}");
+                                DB::rollBack();
+                                return response()->json([
+                                    'success' => false,
+                                    'error' => "No hay suficiente materia prima para Ø{$diametro} mm, y no se encontró el ProductoBase asociado.",
+                                ], 400);
                             }
+
+                            // 3️⃣ Revertimos toda la transacción
+                            DB::rollBack();
+
+                            // 4️⃣ Creamos movimiento en transacción independiente
+                            DB::transaction(function () use ($productoBase, $maquina) {
+                                $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
+                                Log::info('✅ Movimiento de recarga creado', [
+                                    'producto_base_id' => $productoBase->id,
+                                    'maquina_id'       => $maquina->id,
+                                ]);
+                            });
+
+                            // 5️⃣ Respondemos y detenemos el flujo
+                            return response()->json([
+                                'success' => false,
+                                'error'   => "No hay suficiente materia prima para Ø{$diametro} mm en la máquina {$maquina->nombre}. "
+                                    . "Se ha generado la solicitud de recarga automáticamente.",
+                            ], 400);
                         }
                     }
 
@@ -532,6 +597,20 @@ class EtiquetaController extends Controller
 
                         // Si aún queda peso pendiente, no hay suficiente materia prima
                         if ($pesoNecesarioTotal > 0) {
+                            // Buscamos el producto base que coincida con este diámetro y la máquina
+                            $productoBase = ProductoBase::where('diametro', $diametro)
+                                ->where('tipo', $maquina->tipo_material)
+                                ->first();
+
+                            if ($productoBase) {
+                                $this->generarMovimientoRecargaMateriaPrima(
+                                    $productoBase,
+                                    $maquina,
+                                    null // puedes pasar un producto específico si lo tienes
+                                );
+                            } else {
+                                Log::warning("No se encontró ProductoBase para diámetro {$diametro} y tipo {$maquina->tipo_material}");
+                            }
                             return response()->json([
                                 'success' => false,
                                 'error' => "No hay suficiente materia prima para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
@@ -678,13 +757,39 @@ class EtiquetaController extends Controller
                 ];
             }
             if ($pesoNecesarioTotal > 0) {
-                $warnings[] = "El stock para el {$diametro} es insuficiente. Avisaremos a los gruistas en turno.";
-                Log::info("Entrando al condicional de stock insuficiente para el diámetro {$diametro} en la máquina {$maquina->nombre}.");
-                $this->lanzarAlertaStockInsuficiente($diametro, $maquina->nombre);
 
-                return response()->json([
+                // 1️⃣  Encontrar ProductoBase SÍ o SÍ
+                $productoBase = ProductoBase::where('diametro', $diametro)
+                    ->where('tipo', $maquina->tipo_material)          // usa SIEMPRE la columna real
+                    ->first();
+
+                if (!$productoBase) {
+                    Log::warning("No se encontró ProductoBase Ø{$diametro} / tipo {$maquina->tipo_material}");
+                    // De todos modos abortamos; mejor lanzar un error claro
+                    DB::rollBack();
+                    return new JsonResponse([
+                        'success' => false,
+                        'error'   => "No existe materia prima configurada para Ø{$diametro} mm (tipo {$maquina->tipo_material}).",
+                    ], 400);
+                }
+
+                // 2️⃣  Deshacemos TODA la transacción principal
+                DB::rollBack();
+
+                // 3️⃣  Insertamos el movimiento en SU propia transacción
+                DB::transaction(function () use ($productoBase, $maquina) {
+                    $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
+                    Log::info('✅ Movimiento de recarga creado', [
+                        'producto_base_id' => $productoBase->id,
+                        'maquina_id'       => $maquina->id,
+                    ]);
+                });
+
+                // 4️⃣  Respondemos y detenemos la ejecución
+                return new JsonResponse([
                     'success' => false,
-                    'error' => "No hay suficiente materia prima para el diámetro {$diametro} en la máquina {$maquina->nombre}.",
+                    'error'   => "No hay suficiente materia prima para Ø{$diametro} mm en la máquina {$maquina->nombre}. "
+                        . "Se ha generado automáticamente la solicitud de recarga.",
                 ], 400);
             }
         }
@@ -812,30 +917,37 @@ class EtiquetaController extends Controller
 
         return true;
     }
-    private function lanzarAlertaStockInsuficiente($diametro, $maquinaNombre)
-    {
-        $mensaje = "Stock insuficiente para el diámetro {$diametro} en la máquina {$maquinaNombre}.";
+    protected function generarMovimientoRecargaMateriaPrima(
+        ProductoBase $productoBase,
+        Maquina $maquina,
+        ?int $productoId = null
+    ): void {
+        try {
+            Movimiento::create([
+                'tipo'              => 'Recarga materia prima',
+                'maquina_origen'    => null,
+                'maquina_destino'   => $maquina->id,
+                'producto_id'       => $productoId,
+                'producto_base_id'  => $productoBase->id,
+                'estado'            => 'pendiente',
+                'descripcion'       => "Se solicita materia prima del tipo "
+                    . strtolower($productoBase->tipo)
+                    . " (Ø{$productoBase->diametro}, {$productoBase->longitud} mm) "
+                    . "en la máquina {$maquina->nombre}",
+                'prioridad'         => 1,
+                'fecha_solicitud'   => now(),
+                'solicitado_por'    => auth()->id(),
+            ]);
+        } catch (\Throwable $e) {
+            // Lo registras y vuelves a lanzar una excepción más “amigable”
+            Log::error('Error al crear movimiento de recarga', [
+                'maquina_id' => $maquina->id,
+                'producto_base_id' => $productoBase->id,
+                'error' => $e->getMessage(),
+            ]);
 
-        $gruistasEnTurno = User::whereHas('maquina', function ($q) {
-            $q->where('nombre', 'like', '%grua%');
-        })
-            ->whereHas('asignacionesTurnos', function ($query) {
-                $query->where('fecha', Carbon::now()->toDateString());
-            })
-            ->get();
-
-        Log::info("{$gruistasEnTurno}");
-        // if ($gruistasEnTurno->isNotEmpty()) {
-        //     foreach ($gruistasEnTurno as $gruista) {
-        //         Alerta::create([
-        //             'mensaje'         => $mensaje,
-        //             'destinatario_id' => $gruista->id,
-        //             'user_id_1'       => Auth::id(),
-        //             'user_id_2'       => session()->get('compañero_id', null),
-        //             'leida'           => false,
-        //         ]);
-        //     }
-        // }
+            throw new \Exception('No se pudo registrar la solicitud de recarga de materia prima.');
+        }
     }
 
     public function update(Request $request, $id)

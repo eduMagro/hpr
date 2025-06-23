@@ -1095,7 +1095,7 @@
                 // Crear QR en div temporal
                 const tempQR = document.createElement("div");
                 document.body.appendChild(tempQR);
-                const qrSize = 50;
+                const qrSize = 100;
 
                 new QRCode(tempQR, {
                     text: etiquetaSubId.toString(),
@@ -1169,8 +1169,8 @@
     }
 
     .qr-box img {
-        width: 50px;
-        height: 50px;
+        width: 100px;
+        height: 100px;
     }
 
     .proceso {
@@ -1273,8 +1273,8 @@
                     await new Promise(resolve => {
                         new QRCode(tempQR, {
                             text: id.toString(),
-                            width: 50,
-                            height: 50
+                            width: 100,
+                            height: 100
                         });
 
                         setTimeout(() => {
