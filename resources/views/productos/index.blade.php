@@ -276,7 +276,8 @@
                     </thead>
                     <tbody class="text-gray-700 text-sm">
                         @forelse($registrosProductos as $producto)
-                            <tr class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer">
+                            <tr
+                                class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none cursor-pointer">
                                 <td class="px-2 py-3 text-center border">{{ $producto->id }}</td>
                                 @php
                                     // Id de la entrada relacionada (puede ser null)

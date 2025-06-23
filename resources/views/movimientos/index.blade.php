@@ -97,7 +97,7 @@
                 <tbody>
                     @foreach ($registrosMovimientos as $movimiento)
                         <tr class="border-b">
-                            <td class="px-6 py-4 text-sm font-medium text-gray-900 text-center">
+                            <td class="px-2 py-4 text-xs leading-none text-gray-900 text-center">
                                 {{ $movimiento->id }}
                             </td>
 
