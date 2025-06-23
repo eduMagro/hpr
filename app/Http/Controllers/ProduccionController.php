@@ -18,6 +18,17 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
+function toCarbon($valor, $format = 'd/m/Y H:i')
+{
+    if ($valor instanceof Carbon) return $valor;
+    if (empty($valor)) return null;
+
+    if (preg_match('/^\d{4}-\d{2}-\d{2}/', $valor)) {
+        return Carbon::parse($valor);
+    }
+
+    return Carbon::createFromFormat(strlen($valor) === 19 ? 'd/m/Y H:i:s' : $format, $valor);
+}
 class ProduccionController extends Controller
 {
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES ALMACEN
@@ -261,8 +272,8 @@ class ProduccionController extends Controller
                 ->orderByDesc('fecha_inicio')
                 ->first();
 
-            $colasMaquinas[$m->id] = isset($ultimaPlanillaFabricando->fecha_inicio)
-                ? Carbon::createFromFormat('d/m/Y H:i', $ultimaPlanillaFabricando->fecha_inicio)
+            $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+                ? $this->toCarbon($ultimaPlanillaFabricando->fecha_inicio)
                 : Carbon::now();
         }
 
@@ -383,10 +394,16 @@ class ProduccionController extends Controller
             $planilla   = Planilla::find($planillaId);
 
             // Puede que aún no exista fecha_estimada_entrega
-            $entrega = $planilla?->fecha_estimada_entrega
-                ? Carbon::createFromFormat('d/m/Y H:i', $planilla->fecha_estimada_entrega)
+            $entrega = null;
+            if ($planilla && $planilla->fecha_estimada_entrega) {
+                try {
+                    $entrega = toCarbon($planilla->fecha_estimada_entrega);
+                } catch (\Exception $e) {
+                    // Puedes registrar el error o marcarla como inválida si quieres
+                    $entrega = null;
+                }
+            }
 
-                : null;
 
             $onTime = $entrega ? $ultimoFin->lte($entrega) : null;
 
