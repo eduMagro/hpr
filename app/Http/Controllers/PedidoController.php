@@ -479,11 +479,11 @@ class PedidoController extends Controller
             $entrada->save();
 
             // Verificar si el pedido debe cambiar de estado
-            $pesoSuministrado = $pedido->entradas()->sum('peso_total');
-            $pesoPedido = $pedido->productos->sum(fn($p) => $p->pivot->cantidad);
-            $margen = 0.15;
+            // $pesoSuministrado = $pedido->entradas()->sum('peso_total');
+            // $pesoPedido = $pedido->productos->sum(fn($p) => $p->pivot->cantidad);
+            // $margen = 0.15;
 
-            $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
+            // $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
             $pedido->save();
 
             return redirect()->back()->with('success', 'Producto(s) recepcionado(s) correctamente.');
