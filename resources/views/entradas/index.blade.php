@@ -1,86 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Entradas - {{ config('app.name') }}</x-slot>
-    @php
-        $rutaActual = request()->route()->getName();
-    @endphp
-
-    @if (auth()->user()->rol !== 'operario')
-        <div class="w-full" x-data="{ open: false }">
-            <!-- Menú móvil -->
-            <div class="sm:hidden relative" x-data="{ open: false }">
-                <button @click="open = !open"
-                    class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow transition">
-                    Opciones
-                </button>
-
-                <div x-show="open" x-transition @click.away="open = false"
-                    class="absolute z-30 mt-0 w-1/2 bg-white border border-gray-200 rounded-b-lg shadow-xl overflow-hidden divide-y divide-gray-200"
-                    x-cloak>
-
-                    <a href="{{ route('productos.index') }}"
-                        class="block px-2 py-3 transition text-sm font-medium 
-                    {{ $rutaActual === 'productos.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
-                        📦 Materiales
-                    </a>
-                    <a href="{{ route('entradas.index') }}"
-                        class="block px-2 py-3 transition text-sm font-medium 
-                    {{ $rutaActual === 'entradas.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
-                        📦 Entradas de Material
-                    </a>
-
-                    <a href="{{ route('pedidos.index') }}"
-                        class="block px-2 py-3 transition text-sm font-medium 
-                    {{ $rutaActual === 'pedidos.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
-                        🛒 Pedidos de Compra
-                    </a>
-
-                    <a href="{{ route('pedidos_globales.index') }}"
-                        class="block px-2 py-3 transition text-sm font-medium 
-                    {{ $rutaActual === 'pedidos_globales.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
-                        🌐 Pedidos Globales
-                    </a>
-
-                    <a href="{{ route('fabricantes.index') }}"
-                        class="block px-2 py-3 transition text-sm font-medium 
-                    {{ $rutaActual === 'fabricantes.index' ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
-                        🏭 Proveedores
-                    </a>
-                </div>
-            </div>
-
-            <!-- Menú escritorio -->
-            <div class="hidden sm:flex sm:mt-0 w-full">
-                <a href="{{ route('productos.index') }}"
-                    class="flex-1 text-center px-4 py-2 rounded-none first:rounded-l-lg transition font-semibold
-                {{ $rutaActual === 'productos.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    📦 Materiales
-                </a>
-                <a href="{{ route('entradas.index') }}"
-                    class="flex-1 text-center px-4 py-2 rounded-none first:rounded-l-lg transition font-semibold
-                {{ $rutaActual === 'entradas.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    📦 Entradas de Material
-                </a>
-
-                <a href="{{ route('pedidos.index') }}"
-                    class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
-                {{ $rutaActual === 'pedidos.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    🛒 Pedidos de Compra
-                </a>
-
-                <a href="{{ route('pedidos_globales.index') }}"
-                    class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
-                {{ $rutaActual === 'pedidos_globales.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    🌐 Pedidos Globales
-                </a>
-
-                <a href="{{ route('fabricantes.index') }}"
-                    class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
-                {{ $rutaActual === 'fabricantes.index' ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    🏭 Proveedores
-                </a>
-            </div>
-        </div>
-    @endif
+    <x-menu.materiales />
 
     <div class="w-full p-4 sm:p-4">
 
@@ -156,7 +76,8 @@
                                     {{-- Ver --}}
                                     <a href="#"
                                         class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo"
-                                        data-productos='@json($entrada->productos)'>
+                                        data-productos='@json($entrada->productos)'
+                                        data-albaran="{{ $entrada->albaran }}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
@@ -187,7 +108,7 @@
     <div id="modalDibujo" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
         <div class="bg-white p-6 rounded shadow-lg max-w-2xl w-full">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold">Productos de la entrada</h2>
+                <h2 id="modalTitulo" class="text-lg font-semibold">Productos de la entrada</h2>
                 <button onclick="cerrarModal()" class="text-red-600 hover:text-red-800">✖</button>
             </div>
             <div id="contenidoProductos">
@@ -195,8 +116,6 @@
             </div>
         </div>
     </div>
-
-
     <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
     <script>
         document.querySelectorAll('.abrir-modal-dibujo').forEach(boton => {
@@ -204,20 +123,30 @@
                 e.preventDefault();
 
                 const productos = JSON.parse(this.dataset.productos);
-                let html = '<ul class="list-disc pl-5 space-y-1">';
+                const albaran = this.dataset.albaran;
+                let html = '<ol class="list-decimal pl-5 space-y-1">';
 
                 if (productos.length > 0) {
                     productos.forEach(p => {
-                        html += `<li>${p.nombre} – ${p.cantidad ?? ''}</li>`;
+                        const base = p?.producto_base ?? {};
+                        const nombre = base.tipo || '—';
+                        const diametro = base.diametro ?? '–';
+                        const longitud = base.longitud ?? '–';
+                        const fabricante = p?.fabricante?.nombre || 'Sin fabricante';
+
+                        html +=
+                            `<li>${nombre} – Ø${diametro} – ${longitud} mm – <span class="text-gray-600">${fabricante}</span></li>`;
                     });
                 } else {
                     html += '<li class="text-gray-500">No hay productos asociados.</li>';
                 }
 
-                html += '</ul>';
+                html += '</ol>';
 
                 document.getElementById('contenidoProductos').innerHTML = html;
                 document.getElementById('modalDibujo').classList.remove('hidden');
+                document.getElementById('modalTitulo').innerText = `Productos del albarán ${albaran}`;
+
             });
         });
 
@@ -226,6 +155,4 @@
             document.getElementById('contenidoProductos').innerHTML = '';
         }
     </script>
-
-
 </x-app-layout>
