@@ -181,7 +181,7 @@
                     resourceTimelineFiveDay: {
                         type: 'resourceTimeline',
                         duration: {
-                            days: 5
+                            days: 15
                         }, // muestra 5 días
                         slotDuration: {
                             hours: 1
