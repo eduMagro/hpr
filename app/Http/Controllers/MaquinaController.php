@@ -31,7 +31,33 @@ class MaquinaController extends Controller
      * 1️⃣  RUTA OPERARIO (igual que la tuya)
      * ─────────────────────────────────────────── */
         if ($usuario->rol === 'operario') {
-            // …Misma lógica que tenías (redirección a la máquina)…
+            $hoy = Carbon::today();
+
+            $asignacion = AsignacionTurno::where('user_id', $usuario->id)
+                ->whereDate('fecha', $hoy) // 👉 Solo turnos de hoy
+                ->whereNotNull('maquina_id')
+                ->whereNotNull('turno_id')
+                ->first();
+
+            if (!$asignacion) {
+                abort(403, 'No tienes ningún turno hoy.');
+            }
+
+            $maquinaId = $asignacion->maquina_id;
+            $turnoId   = $asignacion->turno_id;
+
+            // Buscar compañero con misma máquina y mismo turno
+            $compañero = AsignacionTurno::where('maquina_id', $maquinaId)
+                ->where('turno_id', $turnoId)
+                ->where('user_id', '!=', $usuario->id)
+                ->latest()
+                ->first();
+
+            // Guardar en sesión como lo hacía tu método guardarSesion
+            session(['compañero_id' => optional($compañero)->user_id]);
+
+            // Redirigir directamente a la máquina
+            return redirect()->route('maquinas.show', ['maquina' => $maquinaId]);
         }
 
         /* ───────────────────────────────────────────
