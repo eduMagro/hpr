@@ -235,7 +235,7 @@ class ProductoController extends Controller
         ];
 
         // Si no se está filtrando por estado ni código, excluir consumido/fabricando
-        if (!$request->filled('estado') && !$request->filled('codigo')) {
+        if (!$request->filled('estado') && !$request->filled('codigo') && !$request->filled('id')) {
             $query->whereNotIn('estado', ['consumido', 'fabricando']);
         }
 

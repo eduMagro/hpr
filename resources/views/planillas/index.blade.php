@@ -92,7 +92,7 @@
         <div x-data="{ modalReimportar: false, planillaId: null }" class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
 
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
-                <thead class="bg-blue-500 text-white text-10">
+                <thead class="bg-blue-500 text-white text-4">
                     <tr class="text-center text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['codigo'] !!}</th>
                         <th class="p-2 border">Codigo Cliente</th>
@@ -196,7 +196,7 @@
                             }"
                             @keydown.enter.stop="guardarCambios(planilla); editando = false"
                             :class="{ 'bg-yellow-100': editando }"
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
+                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase">
 
                             <!-- Código -->
                             <td class="p-2 text-center border">
