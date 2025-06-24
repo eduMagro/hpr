@@ -53,8 +53,11 @@ class MovimientoController extends Controller
             $query->where('origen', 'like', '%' . $request->origen . '%');
         }
         if ($request->filled('destino')) {
-            $query->where('destino', 'like', '%' . $request->destino . '%');
+            $query->whereHas('maquinaDestino', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->destino . '%');
+            });
         }
+
 
         /* ─────────────── Filtros por relaciones ─────────────── */
 

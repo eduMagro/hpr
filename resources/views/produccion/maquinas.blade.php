@@ -134,11 +134,25 @@
     <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         @foreach ($maquinas as $maquina)
             <div class="bg-white shadow rounded-lg p-3">
-                <h3 class="text-sm font-semibold mb-1 text-center">{{ $maquina->nombre }}</h3>
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold">{{ $maquina->nombre }}</h3>
+                    <select data-id="{{ $maquina->id }}" data-nombre="{{ $maquina->nombre }}"
+                        class="estado-maquina border rounded text-sm px-2 py-1">
+
+                        <option value="activa" {{ $maquina->estado === 'activa' ? 'selected' : '' }}>🟢 Activa</option>
+                        <option value="averiada" {{ $maquina->estado === 'averiada' ? 'selected' : '' }}>🔴 Averiada
+                        </option>
+                        <option value="mantenimiento" {{ $maquina->estado === 'mantenimiento' ? 'selected' : '' }}>🛠️
+                            Mantenimiento</option>
+                        <option value="pausa" {{ $maquina->estado === 'pausa' ? 'selected' : '' }}>⏸️ Pausa</option>
+                    </select>
+                </div>
+
                 <canvas id="grafico-maquina-{{ $maquina->id }}" width="280" height="200"
                     class="mx-auto"></canvas>
             </div>
         @endforeach
+
     </div>
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
@@ -224,14 +238,31 @@
                     right: 'resourceTimelineDay,resourceTimelineFiveDay'
                 },
                 eventContent: function(arg) {
-                    return {
-                        html: `<div class="truncate w-full text-xs font-semibold text-white px-2 py-1 rounded"
-                             style="background-color: ${arg.event.backgroundColor};"
-                             title="${arg.event.title}">
-                             ${arg.event.title}
-                        </div>`
-                    };
+                    const progreso = arg.event.extendedProps.progreso;
+                    const color = '#3b82f6'; // siempre azul
+
+                    if (typeof progreso === 'number') {
+                        return {
+                            html: `
+                <div class="w-full px-1 py-0.5 text-xs font-semibold text-white">
+                    <div class="mb-0.5 truncate" title="${arg.event.title}">${arg.event.title}</div>
+                    <div class="w-full h-2 bg-gray-300 rounded overflow-hidden">
+                        <div class="h-2 bg-blue-500 rounded" style="width: ${progreso}%; min-width: 1px;"></div>
+                    </div>
+                </div>`
+                        };
+                    } else {
+                        return {
+                            html: `<div class="truncate w-full text-xs font-semibold text-white px-2 py-1 rounded"
+                     style="background-color: ${arg.event.backgroundColor};"
+                     title="${arg.event.title}">
+                     ${arg.event.title}
+                </div>`
+                        };
+                    }
                 },
+
+
                 eventDrop: async function(info) {
                     const planillaId = info.event.id.replace('planilla-', '');
                     const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
@@ -304,7 +335,7 @@
                             <strong>${info.event.title}</strong><br>
                             Obra: ${props.obra}<br>
                             Estado: ${props.estado}<br>
-                            Duración: ${props.duracion_min} min
+                            Duración: ${props.duracion_horas} horas
                         </div>`;
                     tooltip.style.position = 'absolute';
                     tooltip.style.zIndex = 9999;
@@ -330,6 +361,7 @@
             });
 
             calendar.render();
+            window.calendar = calendar;
 
             const cargaMaquinaTurno = @json($cargaPorMaquinaTurno);
             const datosOriginales = @json($cargaPorMaquinaTurnoConFechas);
@@ -420,6 +452,58 @@
                         charts[maquinaId].update();
                     }
                 });
+            });
+        });
+    </script>
+    <script>
+        document.querySelectorAll('.estado-maquina').forEach(select => {
+            select.addEventListener('change', async function() {
+                const maquinaId = this.dataset.id;
+                const nuevoEstado = this.value;
+
+                try {
+                    const res = await fetch(`/maquinas/${maquinaId}/cambiar-estado`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .content
+                        },
+                        body: JSON.stringify({
+                            estado: nuevoEstado
+                        })
+                    });
+
+                    const text = await res.text();
+                    if (!res.ok) throw new Error(text);
+
+                    const data = JSON.parse(text);
+
+                    if (data.success) {
+                        console.log(`✅ Máquina ${maquinaId} actualizada a estado "${nuevoEstado}"`);
+
+                        // 🔁 Actualizar el título del resource en FullCalendar
+                        const calendar = window.calendar; // asegúrate que tu instancia esté global
+
+                        const estado = data.estado;
+                        const colores = {
+                            activa: '🟢',
+                            averiada: '🔴',
+                            mantenimiento: '🛠️',
+                            pausa: '⏸️'
+                        };
+                        const icono = colores[estado] ?? ' ';
+                        const nombreMaquina = select.dataset.nombre ?? `Máquina ${maquinaId}`;
+                        const nuevoTitulo = `${icono} ${nombreMaquina}`;
+
+                        calendar.getResourceById(maquinaId)?.setProp('title', nuevoTitulo);
+                    }
+
+                } catch (e) {
+                    console.error('Respuesta no válida:', e);
+                    alert(`❌ Error: ${e.message}`);
+                }
             });
         });
     </script>

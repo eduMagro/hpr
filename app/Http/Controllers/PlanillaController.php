@@ -26,14 +26,41 @@ class PlanillaController extends Controller
 {
     public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
     {
-
-        $estribo = $doblesPorBarra >= 5 && $diametro < 20;
-
-        $maquinas = collect(); // Inicializar con una colección vacía de Laravel
-
+        $estribo = $doblesPorBarra >= 4 && $diametro < 20;
+        $maquinas = collect();
         $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
-
         $maquinaForzada = null;
+
+        // ✅ 0. CASO BLOQUEANTE: Diámetro 32
+        if ($diametro == 32) {
+            return Maquina::where('codigo', 'CM')->value('id');
+        }
+
+        // ⚙️ 1. Si ya hay máquina en esta planilla (sin contar estribos y diámetro 32)
+        $maquinaUsada = Elemento::where('planilla_id', $planillaId)
+            ->whereNotNull('maquina_id')
+            ->where('diametro', '!=', 32)
+            ->where(function ($q) {
+                $q->where('dobles_barra', '<', 5)->orWhere('diametro', '>=', 20);
+            })
+            ->value('maquina_id');
+
+        if ($maquinaUsada) {
+            $pesoMaquinaUsada = Elemento::where('maquina_id', $maquinaUsada)->sum('peso');
+            $elementosMaquinaUsada = Elemento::where('maquina_id', $maquinaUsada)->count();
+
+            $indiceCargaUsada = ($pesoMaquinaUsada * 0.6) + ($elementosMaquinaUsada * 0.4);
+
+            // Si la carga está dentro de límites, se mantiene
+            if ($indiceCargaUsada < 9000) { // Umbral a ajustar según tu realidad
+                return $maquinaUsada;
+            }
+
+            // Si está saturada, NO se fuerza su uso, se continúa al reparto
+        }
+
+
+        // 🎯 2. Si hay varios diámetros, se fuerza máquina según el mayor (solo si no es 32)
         if (count($diametrosPlanilla) > 1) {
             $maxDiametro = max($diametrosPlanilla);
             if ($maxDiametro <= 12) {
@@ -44,63 +71,72 @@ class PlanillaController extends Controller
                 $maquinaForzada = ['MSR20'];
             } elseif ($maxDiametro <= 25) {
                 $maquinaForzada = ['SL28'];
-            } else {
-                $maquinaForzada = ['MANUAL'];
+            } elseif ($maxDiametro >= 32) {
+                $maquinaForzada = ['CM'];
             }
         }
 
+        // 🛠️ 3. Asignación lógica según tipo
         if ($diametro == 5) {
             $maquinas = Maquina::where('codigo', 'ID5')->get();
         } elseif ($estribo) {
             if ($diametro == 8) {
                 $maquinas = Maquina::where('codigo', 'PS12')->get();
             } elseif (in_array($diametro, [10, 12])) {
-                $maquinas = Maquina::where('codigo', 'F12')->get();
-            } elseif (in_array($diametro, [10, 12])) {
-                $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12'])->get();
-            } elseif (in_array($diametro, [10, 16])) {
+                $maquinas = Maquina::whereIn('codigo', ['F12', 'PS12'])->get();
+            } elseif ($diametro == 16) {
                 $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12', 'MS16'])->get();
             }
         } elseif (!$estribo && $diametro >= 10 && $diametro <= 16) {
             $maquinas = Maquina::where('codigo', 'MS16')->get();
-        } elseif (!$estribo && $diametro >= 8 && $diametro <= 20) {
-            $maquinas = Maquina::where('codigo', 'MSR20')->get();
-        } elseif (!$estribo && $diametro >= 12 && $diametro <= 25) {
-            $maquinas = Maquina::where('codigo', 'SL28')->get();
-        } elseif ($maquinaForzada) {
-            $maquinas = Maquina::whereIn('codigo', $maquinaForzada)->get();
+        } elseif (!$estribo && $diametro >= 8 && $diametro <= 25) {
+            $codigos = [];
+
+            if ($diametro <= 20) {
+                $codigos[] = 'MSR20';
+            }
+
+            if ($diametro >= 12) {
+                $codigos[] = 'SL28';
+            }
+
+            $maquinas = Maquina::whereIn('codigo', $codigos)->get();
         } else {
             $maquinas = Maquina::where('codigo', 'MANUAL')->get();
         }
 
+        // ❌ Verificación adicional: evitar máquinas que no soportan el diámetro
+        $maquinas = $maquinas->filter(function ($m) use ($diametro) {
+            return is_null($m->diametro_max) || $diametro <= $m->diametro_max;
+        });
+
         if ($maquinas->isEmpty()) {
+            Log::warning("❌ No se encontraron máquinas compatibles para diámetro $diametro.");
             return null;
         }
 
-        // Selección de la máquina con menor carga
+        // ⚖️ 4. Elegir la menos cargada (peso total)
         $maquinaSeleccionada = null;
-        $pesoMinimo = PHP_INT_MAX;
+        $indiceMinimo = PHP_INT_MAX;
 
         foreach ($maquinas as $maquina) {
             $pesoActual = Elemento::where('maquina_id', $maquina->id)->sum('peso');
+            $elementosActuales = Elemento::where('maquina_id', $maquina->id)->count();
 
-            if ($pesoActual < 5000) {
-                // Prioriza la primera máquina con menos de 5,000 kg
-                return $maquina->id;
-            }
+            // Cálculo del índice ponderado
+            $indiceCarga = ($pesoActual * 0.6) + ($elementosActuales * 0.4);
 
-            // Si todas están por encima del umbral, selecciona la de menor peso acumulado
-            if ($pesoActual < $pesoMinimo) {
-                $pesoMinimo = $pesoActual;
+            if ($indiceCarga < $indiceMinimo) {
+                $indiceMinimo = $indiceCarga;
                 $maquinaSeleccionada = $maquina;
             }
         }
-        if (! $maquinaSeleccionada) {
-            Log::warning("⚠️ No se encontró máquina para el diámetro $diametro y longitud $longitud.");
-            return null; // o throw new \Exception("Sin máquina compatible");
-        }
+
+
         return $maquinaSeleccionada?->id ?? null;
     }
+
+
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];

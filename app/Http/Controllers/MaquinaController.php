@@ -604,14 +604,26 @@ class MaquinaController extends Controller
 
     public function cambiarEstado(Request $request, $id)
     {
+        // Validar el estado recibido (puede ser nulo o string corto)
         $request->validate([
-            'estado' => 'nullable|string|max:50', // si no se envía, usaremos el valor por defecto
+            'estado' => 'nullable|string|max:50',
         ]);
 
+        // Buscar la máquina y actualizar estado
         $maquina = Maquina::findOrFail($id);
-        $maquina->estado = $request->input('estado', 'activa'); // por defecto "activa"
+        $maquina->estado = $request->input('estado', 'activa');
         $maquina->save();
 
+        // 🧠 Detectar si se espera una respuesta JSON (Ajax, fetch, etc.)
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'estado' => $maquina->estado,
+                'mensaje' => 'Estado actualizado correctamente.'
+            ]);
+        }
+
+        // 🌐 Si no se espera JSON, redirigir normalmente
         return redirect()->back()->with('success', 'Estado de la máquina actualizado correctamente.');
     }
     public function edit($id)

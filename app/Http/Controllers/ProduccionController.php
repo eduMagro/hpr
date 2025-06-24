@@ -254,14 +254,34 @@ class ProduccionController extends Controller
         // ✅ SECCIÓN 1: CALENDARIO DE COLA DE TRABAJO
         // ================================
 
-        $elementosAgrupados = $elementos->groupBy(function ($elem) {
-            $tipo = optional($elem->maquina)->tipo;
-            return match ($tipo) {
-                'ensambladora' => $elem->maquina_id_2,
-                'soldadora'    => $elem->maquina_id_3 ?? $elem->maquina_id,
-                default        => $elem->maquina_id,
+        // Agrupar primero por planilla
+        $planillasAgrupadas = $elementos->groupBy(function ($e) {
+            $tipo = optional($e->maquina)->tipo;
+
+            $maquinaId = match ($tipo) {
+                'ensambladora' => $e->maquina_id_2,
+                'soldadora'    => $e->maquina_id_3 ?? $e->maquina_id,
+                default        => $e->maquina_id,
             };
-        })->filter(fn($_, $key) => !is_null($key));
+
+            return $e->planilla_id . '-' . $maquinaId;
+        })->map(function ($grupo) {
+            $primerElemento = $grupo->first();
+            $tipo = optional($primerElemento->maquina)->tipo;
+
+            $maquinaId = match ($tipo) {
+                'ensambladora' => $primerElemento->maquina_id_2,
+                'soldadora'    => $primerElemento->maquina_id_3 ?? $primerElemento->maquina_id,
+                default        => $primerElemento->maquina_id,
+            };
+
+            return [
+                'planilla' => $primerElemento->planilla,
+                'elementos' => $grupo,
+                'maquina_id' => $maquinaId,
+            ];
+        })->filter(fn($data) => !is_null($data['maquina_id']));
+
 
         $planillasEventos = collect();
         $colasMaquinas = [];
@@ -285,47 +305,54 @@ class ProduccionController extends Controller
                 return $ordenesMaquina->pluck('planilla_id')->all();
             });
 
-        foreach ($elementosAgrupados as $maquinaId => $elementosGrupo) {
-            $planillasPorMaquina = $elementosGrupo->groupBy('planilla_id');
-            if (empty($maquinaId)) {
-                Log::warning("⚠️ maquinaId vacío al procesar planillas", [
-                    'elementosGrupo' => $elementosGrupo->pluck('id'),
-                ]);
+        foreach ($planillasAgrupadas as $planillaId => $data) {
+            $planilla = $data['planilla'];
+            $grupo = $data['elementos'];
+            $maquinaId = $data['maquina_id'];
+
+            if (!$planilla || !$planilla->fecha_estimada_entrega) continue;
+
+            $ordenPlanillas = $ordenes[$maquinaId] ?? [];
+
+            // Solo seguimos si está en la cola de esta máquina o no hay orden definida
+            if (!empty($ordenPlanillas) && !in_array($planilla->id, $ordenPlanillas)) {
                 continue;
             }
 
-            $ordenPlanillas = $ordenes[$maquinaId] ?? $planillasPorMaquina->keys();
+            $duracionSegundos = max(count($grupo) * 20 * 60, 60); // mínimo 1 minuto
+            $fechaInicio = $colasMaquinas[$maquinaId]->copy();
+            $fechaFin = $fechaInicio->copy()->addSeconds($duracionSegundos);
+            $colasMaquinas[$maquinaId] = $fechaFin;
 
-            foreach ($ordenPlanillas as $planillaId) {
-                if (!isset($planillasPorMaquina[$planillaId])) continue;
+            $esPrimera = !empty($ordenPlanillas) && $ordenPlanillas[0] === $planilla->id;
 
-                $grupo = $planillasPorMaquina[$planillaId];
-                $planilla = $grupo->first()->planilla;
-                if (!$planilla || !$planilla->fecha_estimada_entrega) continue;
+            // Solo si está fabricando en esta máquina y es la primera
+            $mostrarProgreso = $esPrimera;
 
-                $duracionSegundos = max(count($grupo) * 20 * 60, 60); // mínimo 1 minuto
-                $fechaInicio = $colasMaquinas[$maquinaId]->copy();
-                $fechaFin = $fechaInicio->copy()->addSeconds($duracionSegundos);
-
-                // Empuja la cola para la siguiente planilla
-                $colasMaquinas[$maquinaId] = $fechaFin;
-
-
-                $planillasEventos->push([
-                    'id' => 'planilla-' . $planilla->id,
-                    'title' => $planilla->codigo_limpio ?? 'Planilla #' . $planilla->id,
-                    'codigo' => $planilla->codigo_limpio ?? 'Planilla #' . $planilla->id,
-                    'start' => $fechaInicio->toIso8601String(),
-                    'end' => $fechaFin->toIso8601String(),
-                    'resourceId' => $maquinaId,
-                    'backgroundColor' => $planilla->estado === 'pendiente' ? '#facc15' : '#60a5fa',
-                    'extendedProps' => [
-                        'obra' => optional($planilla->obra)->obra ?? '—',
-                        'estado' => $planilla->estado,
-                        'duracion_min' => round($duracionSegundos / 60, 2),
-                    ],
-                ]);
+            // Calcular progreso solo si se va a mostrar
+            $progreso = null;
+            if ($mostrarProgreso) {
+                $completados = $grupo->where('estado', 'fabricado')->count();
+                $total = $grupo->count();
+                $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
             }
+
+
+            $planillasEventos->push([
+                'id' => 'planilla-' . $planilla->id,
+                'title' => $planilla->codigo_limpio ?? 'Planilla #' . $planilla->id,
+                'codigo' => $planilla->codigo_limpio ?? 'Planilla #' . $planilla->id,
+                'start' => $fechaInicio->toIso8601String(),
+                'end' => $fechaFin->toIso8601String(),
+                'resourceId' => $maquinaId,
+                'backgroundColor' => '#facc15',
+                'extendedProps' => [
+                    'obra' => optional($planilla->obra)->obra ?? '—',
+                    'estado' => $planilla->estado,
+                    'duracion_horas' => round($duracionSegundos / 3600, 2),
+                    'progreso' => $progreso,
+                ],
+            ]);
         }
 
         // ================================
@@ -383,9 +410,7 @@ class ProduccionController extends Controller
                 }
             }
         }
-        /* ───────────────────────────────────────────────
- |  RESUMEN POR PLANILLA:  fin VS fecha_entrega
- |───────────────────────────────────────────────*/
+
         $tablaPlanillas = collect();
 
         $group = $planillasEventos->groupBy('codigo');   // “PLA-001”, etc.

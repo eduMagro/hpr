@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Elemento;
 use App\Models\Planilla;
+use App\Models\OrdenPlanilla;
 use App\Models\Etiqueta;
 use App\Models\ProductoBase;
 use App\Models\Ubicacion;
@@ -913,7 +914,26 @@ class EtiquetaController extends Controller
             $planilla->fecha_finalizacion = now();
             $planilla->estado = 'completada';
             $planilla->save();
+
+            DB::transaction(function () use ($planilla, $maquina) {
+                // 1. Eliminar el registro de esa planilla en esta máquina
+                OrdenPlanilla::where('planilla_id', $planilla->id)
+                    ->where('maquina_id', $maquina->id)
+                    ->delete();
+
+                // 2. Reordenar las posiciones de las planillas restantes en esta máquina
+                $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
+                    ->orderBy('posicion')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($ordenes as $index => $orden) {
+                    $orden->posicion = $index;
+                    $orden->save();
+                }
+            });
         }
+
 
         return true;
     }
