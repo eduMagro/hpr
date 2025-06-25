@@ -4,7 +4,7 @@
 
     <div class="w-full px-6 py-4">
 
-        @if (request('empleado') && $diasAsignados > 0)
+        {{-- @if (request('empleado') && $diasAsignados > 0)
             <div class="mb-4 text-sm text-gray-800 bg-gray-50 p-4 rounded shadow border leading-relaxed space-y-1">
                 <p class="font-bold text-base text-blue-800">
                     <span>
@@ -65,7 +65,7 @@
                 </div>
             @endforeach
         </div>
-
+ --}}
 
         <!-- Tabla de asignaciones -->
         <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">

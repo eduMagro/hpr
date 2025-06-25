@@ -262,10 +262,13 @@ class AsignacionTurnoController extends Controller
                         }
                     } else {
                         // SALIDA: si antes de 06:00 → pertenece al turno del día anterior
-                        if ($ahora->hour < 6) {
-                            return $asignacion->fecha === $ahora->copy()->subDay()->toDateString();
+                        if ($request->tipo === 'salida') {
+                            if ($ahora->hour < 6) {
+                                // ✅ La salida pertenece al turno del día actual
+                                return $asignacion->fecha === $ahora->toDateString();
+                            }
+                            return $asignacion->fecha === $ahora->toDateString();
                         }
-                        return $asignacion->fecha === $ahora->toDateString();
                     }
 
                     return false;
