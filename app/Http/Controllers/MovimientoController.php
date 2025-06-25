@@ -632,23 +632,24 @@ class MovimientoController extends Controller
             // flujo clásico (redirect + flashes → los recoge tu <x-alerts>)
             return back()->with('success', $msg);
         } catch (\Exception $e) {
-
             Log::error('❌ Error al registrar movimiento: ' . $e->getMessage());
-            $msg = 'Hubo un problema al registrar el movimiento.';
 
-            /* ---------- ERROR ---------- */
+            // Mensaje de error personalizado si existe
+            $mensajeError = $e->getMessage() ?: 'Hubo un problema al registrar el movimiento.';
+
+            // JSON (por ejemplo, para peticiones AJAX)
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => $msg,
-                    'error'   => app()->environment('local') ? $e->getMessage() : null, // detalle solo en local
+                    'message' => $mensajeError, // ✅ prioriza el mensaje real del error
+                    'error'   => app()->environment('local') ? $e->getMessage() : null,
                 ], 500);
             }
 
-            // flujo clásico
+            // Petición normal (para redirección con SweetAlert en blade)
             return back()
                 ->withInput()
-                ->with('error', $msg . (app()->environment('local') ? " [{$e->getMessage()}]" : ''));
+                ->with('error', $mensajeError);
         }
     }
 
