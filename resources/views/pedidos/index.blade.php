@@ -272,7 +272,7 @@
                                             <th class="border px-2 py-1">Tipo</th>
                                             <th class="border px-2 py-1">Diámetro</th>
                                             <th class="border px-2 py-1">Peso a pedir (kg)</th>
-                                            <th class="border px-2 py-1">Fecha estimada</th>
+
                                         </tr>
                                     </thead>
                                     <tbody id="tablaConfirmacionBody">
@@ -638,44 +638,75 @@
         function mostrarConfirmacion() {
             const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
             const tbody = document.getElementById('tablaConfirmacionBody');
-            const form = document.getElementById('formularioPedido');
-
             tbody.innerHTML = ''; // limpiar
 
             checkboxes.forEach(cb => {
                 const clave = cb.value;
                 const tipo = document.querySelector(`input[name="detalles[${clave}][tipo]"]`).value;
                 const diametro = document.querySelector(`input[name="detalles[${clave}][diametro]"]`).value;
-                const cantidad = document.querySelector(`input[name="detalles[${clave}][cantidad]"]`).value;
+                const cantidad = parseFloat(document.querySelector(`input[name="detalles[${clave}][cantidad]"]`)
+                    .value);
                 const longitudInput = document.querySelector(`input[name="detalles[${clave}][longitud]"]`);
                 const longitud = longitudInput ? longitudInput.value : null;
 
                 const fila = document.createElement('tr');
                 fila.className = "bg-gray-100";
 
+                const fechasId = `fechas-camion-${clave}`;
+
                 fila.innerHTML = `
             <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
             <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
             <td class="border px-2 py-1">
-                <input type="number" step="25000" min="0" name="detalles[${clave}][cantidad]"
-                    value="${cantidad}" class="w-full text-center border border-gray-300 rounded px-2 py-1">
+                <div class="flex flex-col gap-2">
+                    <input type="number" class="peso-total w-full px-2 py-1 border rounded"
+                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="25000" min="25000"
+                           onchange="generarFechasPorPeso(this, '${clave}')">
+                    <div class="fechas-camion flex flex-col gap-1" id="${fechasId}" data-producto-id="${clave}">
+                        <!-- Fechas se insertarán aquí -->
+                    </div>
+                </div>
             </td>
-            <td class="border px-2 py-1">
-                <input type="date" name="detalles[${clave}][fecha_estimada_entrega]"
-                    class="w-full text-center border border-gray-300 rounded px-2 py-1" required>
-            </td>
-
-            <input type="hidden" name="seleccionados[]" value="${clave}">
+             <input type="hidden" name="seleccionados[]" value="${clave}">
             <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
             <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
             ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
         `;
 
                 tbody.appendChild(fila);
+
+                // Generar fechas al cargar
+                const inputPeso = fila.querySelector('.peso-total');
+                generarFechasPorPeso(inputPeso, clave);
             });
 
             document.getElementById('modalConfirmacion').classList.remove('hidden');
             document.getElementById('modalConfirmacion').classList.add('flex');
+        }
+
+
+        function generarFechasPorPeso(input, clave) {
+            const peso = parseFloat(input.value || 0);
+            const contenedorFechas = document.getElementById(`fechas-camion-${clave}`);
+            if (!contenedorFechas) return;
+
+            contenedorFechas.innerHTML = '';
+
+            const bloques = Math.ceil(peso / 25000);
+            for (let i = 0; i < bloques; i++) {
+                const fecha = document.createElement('input');
+                fecha.type = 'date';
+                fecha.name = `productos[${clave}][${i + 1}][fecha]`;
+                fecha.required = true;
+                fecha.className = 'border px-2 py-1 rounded';
+                contenedorFechas.appendChild(fecha);
+
+                const pesoInput = document.createElement('input');
+                pesoInput.type = 'hidden';
+                pesoInput.name = `productos[${clave}][${i + 1}][peso]`;
+                pesoInput.value = Math.min(25000, peso - i * 25000);
+                contenedorFechas.appendChild(pesoInput);
+            }
         }
 
         function cerrarModalConfirmacion() {
@@ -797,15 +828,15 @@
    ${
     estaActivo
         ? `<button
-                        onclick="confirmarDesactivacion(${pedidoId}, ${producto.producto_base_id})"
-                        class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                        Desactivar
-                   </button>`
+                                                                                                    onclick="confirmarDesactivacion(${pedidoId}, ${producto.producto_base_id})"
+                                                                                                    class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                    Desactivar
+                                                                                               </button>`
         : `<button
-                        onclick="confirmarActivacion(${pedidoId}, ${producto.producto_base_id})"
-                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                        Activar
-                   </button>`
+                                                                                                    onclick="confirmarActivacion(${pedidoId}, ${producto.producto_base_id})"
+                                                                                                    class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                    Activar
+                                                                                               </button>`
 }
 
 </td>
@@ -831,8 +862,7 @@
         function capitalize(str) {
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
-    </script>
-    <script>
+
         function confirmarActivacion(pedidoId, productoBaseId) {
             Swal.fire({
                 title: '¿Activar producto?',

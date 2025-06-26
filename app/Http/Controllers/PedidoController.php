@@ -715,11 +715,8 @@ class PedidoController extends Controller
                 'distribuidor_id'  => 'nullable|exists:distribuidores,id',
             ], [
                 'seleccionados.required' => 'Selecciona al menos un producto para generar el pedido.',
-                'seleccionados.array'    => 'El formato de los productos seleccionados no es válido.',
-
                 'obra_id.required'       => 'Debes indicar la obra a la que se destina el pedido.',
-                'obra_id.exists'         => 'La obra seleccionada no existe en el sistema.',
-
+                'obra_id.exists'         => 'La obra seleccionada no existe.',
                 'fabricante_id.exists'   => 'El fabricante seleccionado no es válido.',
                 'distribuidor_id.exists' => 'El distribuidor seleccionado no es válido.',
             ]);
@@ -729,56 +726,24 @@ class PedidoController extends Controller
             }
 
             if ($request->fabricante_id && $request->distribuidor_id) {
-                return back()->withErrors(['fabricante_id' => 'Solo puedes seleccionar un fabricante o un distribuidor, no ambos.'])->withInput();
+                return back()->withErrors(['fabricante_id' => 'Solo puedes seleccionar uno: fabricante o distribuidor.'])->withInput();
             }
 
-
+            // 🧾 Buscar pedido global (si hay fabricante)
             $pedidoGlobal = null;
-
             if ($request->fabricante_id) {
                 $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
-                    ->whereIn('estado', [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
-                    ->orderByRaw("FIELD(estado, ?, ?)", [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
+                    ->whereIn('estado', ['pendiente', 'en curso'])
+                    ->orderByRaw("FIELD(estado, 'en curso', 'pendiente')")
                     ->first();
 
-                if ($pedidoGlobal && $pedidoGlobal->estado === PedidoGlobal::ESTADO_PENDIENTE) {
-                    $pedidoGlobal->estado = PedidoGlobal::ESTADO_EN_CURSO;
+                if ($pedidoGlobal && $pedidoGlobal->estado === 'pendiente') {
+                    $pedidoGlobal->estado = 'en curso';
                     $pedidoGlobal->save();
                 }
             }
 
-            // ✅ Recoger fecha más temprana
-            $fechas = [];
-            foreach ($request->seleccionados as $clave) {
-                $fecha = $request->input("detalles.$clave.fecha_estimada_entrega");
-                if ($fecha) {
-                    $fechas[] = $fecha;
-                }
-            }
-
-            if (empty($fechas)) {
-                return back()->withErrors([
-                    'fecha_entrega' => 'Debes indicar una fecha estimada de entrega para cada producto.',
-                ])->withInput();
-            }
-
-            $fechaEntregaMinima = min($fechas); // 🗓️ menor fecha
-
-            // 🔁 Pedido Global (si aplica)
-            $pedidoGlobal = null;
-            if ($request->fabricante_id) {
-                $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
-                    ->whereIn('estado', [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
-                    ->orderByRaw("FIELD(estado, ?, ?)", [PedidoGlobal::ESTADO_EN_CURSO, PedidoGlobal::ESTADO_PENDIENTE])
-                    ->first();
-
-                if ($pedidoGlobal && $pedidoGlobal->estado === PedidoGlobal::ESTADO_PENDIENTE) {
-                    $pedidoGlobal->estado = PedidoGlobal::ESTADO_EN_CURSO;
-                    $pedidoGlobal->save();
-                }
-            }
-
-            // 📝 Crear el pedido
+            // 📝 Crear pedido principal
             $pedido = Pedido::create([
                 'codigo'           => Pedido::generarCodigo(),
                 'pedido_global_id' => $pedidoGlobal->id ?? null,
@@ -787,26 +752,36 @@ class PedidoController extends Controller
                 'distribuidor_id'  => $request->distribuidor_id,
                 'obra_id'          => $request->obra_id,
                 'fecha_pedido'     => now(),
-                'fecha_entrega'    => $fechaEntregaMinima, // ✅ usamos la fecha mínima
             ]);
 
-            // 📦 Asociar productos
             $pesoTotal = 0;
+
+            // 🔄 Procesar cada producto seleccionado
             foreach ($request->seleccionados as $clave) {
-                $tipo = $request->input("detalles.$clave.tipo");
+                $tipo     = $request->input("detalles.$clave.tipo");
                 $diametro = $request->input("detalles.$clave.diametro");
-                $peso = floatval($request->input("detalles.$clave.cantidad"));
-                $fechaProducto = $request->input("detalles.$clave.fecha_estimada_entrega");
+                $longitud = $request->input("detalles.$clave.longitud"); // si se usa
 
                 $productoBase = ProductoBase::where('tipo', $tipo)
                     ->where('diametro', $diametro)
+                    ->when($longitud, fn($q) => $q->where('longitud', $longitud))
                     ->first();
 
-                if ($peso > 0 && $productoBase) {
+                if (!$productoBase) continue;
+
+                // 👇 CAMBIO AQUÍ: buscamos con la clave "redondo-16", no con ID
+                $subproductos = data_get($request->input('productos'), $clave, []);
+
+                foreach ($subproductos as $index => $camion) {
+                    $peso  = floatval($camion['peso'] ?? 0);
+                    $fecha = $camion['fecha'] ?? null;
+
+                    if ($peso <= 0 || !$fecha) continue;
+
                     $pedido->productos()->attach($productoBase->id, [
                         'cantidad' => $peso,
-                        'fecha_estimada_entrega' => $fechaProducto,
-                        'observaciones' => "Pedido generado desde comparativa automática",
+                        'fecha_estimada_entrega' => $fecha,
+                        'observaciones' => "Camión #$index desde comparativa automática",
                     ]);
 
                     $pesoTotal += $peso;
@@ -820,33 +795,22 @@ class PedidoController extends Controller
                 $pedidoGlobal->actualizarEstadoSegunProgreso();
             }
 
-
-            // Mail::to('eduardo.magro@pacoreyes.com')->send(new PedidoCreado($pedido));
-
             return redirect()->route('pedidos.show', $pedido->id)
                 ->with('success', 'Pedido creado correctamente. Revisa el correo antes de enviarlo.');
         } catch (ValidationException $e) {
-            throw $e; // deja que Laravel lo maneje como siempre
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('❌ Error al crear pedido: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
 
-            $msg = $e->getMessage() ?: 'Hubo un error al crear el pedido.';
+            $msg = app()->environment('local') ? $e->getMessage() : 'Hubo un error inesperado al crear el pedido.';
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $msg,
-                    'error'   => app()->environment('local') ? $e->getMessage() : null,
-                ], 500);
-            }
-
-            return back()
-                ->withInput()
-                ->with('error', app()->environment('local') ? $msg : 'Hubo un error inesperado al crear el pedido.');
+            return back()->withInput()->with('error', $msg);
         }
     }
+
+
 
     public function show($id)
     {

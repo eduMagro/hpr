@@ -12,6 +12,7 @@ class PedidoProducto extends Model
         'pedido_id',
         'producto_base_id',
         'cantidad',
+        'fecha_estimada_entrega',
         'observaciones',
     ];
 
