@@ -168,6 +168,7 @@ class PedidoController extends Controller
                     'tipo' => $p->tipo,
                     'diametro' => $p->diametro,
                     'longitud' => $p->longitud,
+                    'cantidad_recepcionada' => $p->pivot->cantidad_recepcionada,
                     'cantidad' => $p->pivot->cantidad,
                     'estado_recepcion' => $p->pivot->estado ?? null,
                     'fecha_estimada_entrega' => $p->pivot->fecha_estimada_entrega ?? null,
@@ -325,6 +326,20 @@ class PedidoController extends Controller
         // 🔹 Cargar pedido con relaciones
         $pedido = Pedido::with(['productos', 'entradas.productos'])->findOrFail($id);
 
+        // 🔹 Comprobar si se debe mostrar el campo de fabricante manual
+        $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
+        $ultimoFabricante = null;
+
+        if ($requiereFabricanteManual) {
+            $ultimoFabricante = Producto::select('fabricante_id')
+                ->join('entradas', 'productos.entrada_id', '=', 'entradas.id')
+                ->where('entradas.usuario_id', auth()->id())
+                ->where('producto_base_id', $producto_base_id)
+                ->whereNotNull('fabricante_id')
+                ->latest('productos.created_at')
+                ->value('fabricante_id');
+        }
+        $fabricantes = $requiereFabricanteManual ? Fabricante::orderBy('nombre')->get() : collect();
         // 🔹 Filtrar productos del pedido
         $productosIds = $pedido->productos->pluck('id')->filter()->all();
 
@@ -367,7 +382,7 @@ class PedidoController extends Controller
             ->keyBy('producto_base_id');
 
         // ✅ Devolver vista con producto base específico
-        return view('pedidos.recepcion', compact('pedido', 'productoBase', 'ubicaciones', 'ultimos'));
+        return view('pedidos.recepcion', compact('pedido', 'productoBase', 'ubicaciones', 'ultimos', 'requiereFabricanteManual', 'fabricantes', 'ultimoFabricante'));
     }
 
 
@@ -391,6 +406,7 @@ class PedidoController extends Controller
                 'n_colada_2'       => 'nullable|string|max:50',
                 'n_paquete_2'      => 'nullable|string|max:50',
                 'ubicacion_id'     => 'required|exists:ubicaciones,id',
+                'fabricante_manual' => 'nullable|string|max:100',
             ], [
                 'codigo.required'      => 'El código del primer paquete es obligatorio.',
                 'codigo.string'        => 'El código del primer paquete debe ser una cadena de texto.',
@@ -452,11 +468,18 @@ class PedidoController extends Controller
             $codigo1 = strtoupper($request->codigo);
             $codigo2 = strtoupper($request->codigo_2);
 
+            // Determinar fabricante
+            $fabricanteFinal = $pedido->fabricante_id;
+            if (!$fabricanteFinal && $pedido->distribuidor_id && $request->filled('fabricante_manual')) {
+                // Puedes registrar el nombre como texto plano en campo 'otros' o en una columna específica si tienes
+                $fabricanteTexto = $request->fabricante_manual;
+            }
+
             // Crear primer producto con entrada_id asignado
             Producto::create([
                 'codigo'           => $codigo1,
                 'producto_base_id' => $request->producto_base_id,
-                'fabricante_id'    => $pedido->fabricante_id,
+                'fabricante_id'    => $fabricanteFinal,
                 'entrada_id'       => $entrada->id, // ✅ Aquí se asigna
                 'n_colada'         => $request->n_colada,
                 'n_paquete'        => $request->n_paquete,
@@ -473,7 +496,7 @@ class PedidoController extends Controller
                 Producto::create([
                     'codigo'           => $codigo2,
                     'producto_base_id' => $request->producto_base_id,
-                    'fabricante_id'    => $pedido->fabricante_id,
+                    'fabricante_id'    => $fabricanteFinal,
                     'entrada_id'       => $entrada->id, // ✅ También aquí
                     'n_colada'         => $request->n_colada_2,
                     'n_paquete'        => $request->n_paquete_2,

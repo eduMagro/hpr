@@ -328,28 +328,46 @@ class EntradaController extends Controller
             $entrada->estado = 'cerrado';
             $entrada->save();
 
-            $pedido = $entrada->pedido()->with('productos')->lockForUpdate()->first();
+            // Obtenemos el producto asociado a esta entrada
+            $producto = $entrada->productos()->first(); // Asume que solo hay uno
 
-            foreach ($pedido->productos as $producto) {
-                $productoBaseId = $producto->id;
-                $cantidadPedida = $producto->pivot->cantidad;
-
-                $pesoRecepcionado = Producto::where('producto_base_id', $productoBaseId)
-                    ->whereHas('entrada', fn($q) => $q->where('pedido_id', $pedido->id))
-                    ->sum('peso_inicial');
-
-                $estado = 'pendiente';
-
-                if ($pesoRecepcionado >= ($cantidadPedida * 0.9)) {
-                    $estado = 'completado';
-                } elseif ($pesoRecepcionado > 0) {
-                    $estado = 'parcial';
-                }
-
-                $producto->pivot->estado = $estado;
-                $producto->pivot->save();
+            if (!$producto) {
+                throw new \RuntimeException('No hay producto vinculado a esta entrada.');
             }
 
+            $productoBaseId = $producto->producto_base_id;
+            $pedido         = $entrada->pedido()->with('productos')->lockForUpdate()->first();
+
+            // Buscar la cantidad pedida desde la tabla pivote
+            $pivot = $pedido->productos->firstWhere('id', $productoBaseId)?->pivot;
+
+            if (!$pivot) {
+                throw new \RuntimeException('Producto no encontrado en el pedido.');
+            }
+
+            $cantidadPedida = $pivot->cantidad;
+
+            // Calcular peso total recepcionado de este producto base
+            $pesoRecepcionado = Producto::where('producto_base_id', $productoBaseId)
+                ->whereHas('entrada', fn($q) => $q->where('pedido_id', $pedido->id))
+                ->sum('peso_inicial');
+
+            // Determinar estado
+            if ($pesoRecepcionado >= $cantidadPedida * 0.9) {
+                $estado = 'completado';
+            } elseif ($pesoRecepcionado > 0) {
+                $estado = 'parcial';
+            } else {
+                $estado = 'pendiente';
+            }
+
+            // Actualizar campos en la tabla pivote
+            $pedido->productos()->updateExistingPivot($productoBaseId, [
+                'cantidad_recepcionada' => $pesoRecepcionado,
+                'estado' => $estado,
+            ]);
+
+            // Marcar los movimientos como completados si están relacionados
             $pedido->movimientos()
                 ->where('estado', '!=', 'completado')
                 ->lockForUpdate()
@@ -359,8 +377,6 @@ class EntradaController extends Controller
         return redirect()->route('maquinas.index')
             ->with('success', 'Albarán cerrado correctamente.');
     }
-
-
 
     // Eliminar una entrada y sus productos asociados
     public function destroy($id)

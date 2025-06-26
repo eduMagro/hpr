@@ -99,6 +99,19 @@
 
                         <input type="text" name="codigo" placeholder="Código primer paquete" required
                             value="{{ old('codigo') }}" class="w-full px-3 py-2 border rounded-lg">
+                        @if ($requiereFabricanteManual)
+
+                            <select name="fabricante_manual" id="fabricante_manual" required
+                                class="w-full px-3 py-2 border rounded-lg">
+                                <option value="">Selecciona un fabricante...</option>
+                                @foreach ($fabricantes as $fabricante)
+                                    <option value="{{ $fabricante->id }}" @selected(old('fabricante_manual', $ultimoFabricante) == $fabricante->id)>
+                                        {{ $fabricante->nombre }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
+
 
                         <input type="text" name="n_colada" value="{{ old('n_colada', $coladaPorDefecto) }}"
                             placeholder="Nº colada" required class="border px-2 py-2 rounded w-full bg-white">

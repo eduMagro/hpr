@@ -501,7 +501,8 @@
                                     <th class="border px-3 py-2">Tipo</th>
                                     <th class="border px-3 py-2">Diámetro</th>
                                     <th class="border px-3 py-2">Longitud</th>
-                                    <th class="border px-3 py-2">Cantidad (kg)</th>
+                                    <th class="border px-3 py-2">Cantidad recepcionada</th>
+                                    <th class="border px-3 py-2">Cantidad total</th>
                                     <th class="border px-3 py-2">Fecha estimada</th>
                                     <th class="border px-3 py-2">Estado recepción</th>
                                     <th class="border px-3 py-2">Acciones</th>
@@ -788,6 +789,7 @@
             <td class="border px-2 py-1">${capitalize(producto.tipo)}</td>
             <td class="border px-2 py-1">${producto.diametro} mm</td>
             <td class="border px-2 py-1">${producto.longitud ?? '—'}</td>
+                <td class="border px-2 py-1">${parseFloat(producto.cantidad_recepcionada ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
             <td class="border px-2 py-1">${parseFloat(producto.cantidad).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
             <td class="border px-2 py-1">${producto.fecha_estimada_entrega ?? '—'}</td>
             <td class="border px-2 py-1">${estadoRecepcion}</td>
@@ -796,13 +798,13 @@
                     estaActivo
                         ? `<span class="inline-block px-2 py-1 text-green-700 bg-green-100 rounded text-xs font-semibold">Activado</span>`
                         : `<form method="POST" action="/pedidos/${pedidoId}/activar-producto/${producto.producto_base_id}" class="inline">
-                                <input type="hidden" name="_token" value="${csrfToken}">
-                                <input type="hidden" name="_method" value="PUT">
-                                <button type="submit"
-                                    class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                    Activar
-                                </button>
-                               </form>`
+                                            <input type="hidden" name="_token" value="${csrfToken}">
+                                            <input type="hidden" name="_method" value="PUT">
+                                            <button type="submit"
+                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                Activar
+                                            </button>
+                                           </form>`
                 }
             </td>
         `;
