@@ -319,27 +319,37 @@ class EntradaController extends Controller
     public function cerrar($id)
     {
         DB::transaction(function () use ($id) {
-
-            // 1. Bloqueamos y traemos la entrada
-            $entrada = Entrada::lockForUpdate()->with('pedido')->findOrFail($id);
+            $entrada = Entrada::with('pedido')->lockForUpdate()->findOrFail($id);
 
             if ($entrada->estado === 'cerrado') {
                 throw new \RuntimeException('Este albarán ya está cerrado.');
             }
 
-            // 2. Cerramos la entrada
             $entrada->estado = 'cerrado';
             $entrada->save();
 
-            // 3. Ponemos en estado "pendiente" todos los productos del pedido (pivot)
-            $pedido = $entrada->pedido()->lockForUpdate()->first();
+            $pedido = $entrada->pedido()->with('productos')->lockForUpdate()->first();
 
             foreach ($pedido->productos as $producto) {
-                $producto->pivot->estado = 'pendiente';
+                $productoBaseId = $producto->id;
+                $cantidadPedida = $producto->pivot->cantidad;
+
+                $pesoRecepcionado = Producto::where('producto_base_id', $productoBaseId)
+                    ->whereHas('entrada', fn($q) => $q->where('pedido_id', $pedido->id))
+                    ->sum('peso_inicial');
+
+                $estado = 'pendiente';
+
+                if ($pesoRecepcionado >= ($cantidadPedida * 0.9)) {
+                    $estado = 'completado';
+                } elseif ($pesoRecepcionado > 0) {
+                    $estado = 'parcial';
+                }
+
+                $producto->pivot->estado = $estado;
                 $producto->pivot->save();
             }
 
-            // 4. Movimientos del pedido -> completado
             $pedido->movimientos()
                 ->where('estado', '!=', 'completado')
                 ->lockForUpdate()
@@ -347,7 +357,7 @@ class EntradaController extends Controller
         });
 
         return redirect()->route('maquinas.index')
-            ->with('success', 'Albarán de entrada cerrado correctamente.');
+            ->with('success', 'Albarán cerrado correctamente.');
     }
 
 

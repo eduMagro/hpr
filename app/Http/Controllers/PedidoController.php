@@ -169,7 +169,7 @@ class PedidoController extends Controller
                     'diametro' => $p->diametro,
                     'longitud' => $p->longitud,
                     'cantidad' => $p->pivot->cantidad,
-                    'estado' => $p->pivot->estado ?? null,
+                    'estado_recepcion' => $p->pivot->estado ?? null,
                     'fecha_estimada_entrega' => $p->pivot->fecha_estimada_entrega ?? null,
                 ];
             });
