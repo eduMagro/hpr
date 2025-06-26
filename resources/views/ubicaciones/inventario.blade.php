@@ -94,6 +94,73 @@
     };
 </script>
 
+<script>
+    window.notificarProgramadorInventario = function({
+        ubicacion,
+        faltantes,
+        inesperados
+    }) {
+        const erroresHtml = `
+            <p><strong>Ubicación:</strong> ${ubicacion}</p>
+            <p><strong>Faltantes:</strong> ${faltantes.length ? faltantes.join(', ') : '—'}</p>
+            <p><strong>Inesperados:</strong> ${inesperados.length ? inesperados.join(', ') : '—'}</p>
+        `;
+
+        Swal.fire({
+            icon: 'warning',
+            title: '¿Quieres reportar los errores al programador?',
+            html: erroresHtml,
+            showCancelButton: true,
+            confirmButtonText: 'Sí, enviar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#dc2626'
+        }).then(result => {
+            if (result.isConfirmed) {
+                fetch(RUTA_ALERTA, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json', // 🔐 importante para que Laravel devuelva JSON
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            tipo: 'inventario',
+                            mensaje: `
+Ubicación: ${ubicacion}
+Faltantes: ${faltantes.join(', ') || '—'}
+Inesperados: ${inesperados.join(', ') || '—'}
+                        `.trim(),
+                            enviar_a_departamentos: ['Programador']
+                        })
+                    })
+                    .then(async res => {
+                        const data = await res.json();
+
+                        if (!res.ok || data.success === false) {
+                            throw new Error(data.message ||
+                                'Error desconocido al enviar la alerta.');
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Reporte enviado',
+                            text: 'Gracias por notificar. El equipo ha sido avisado.',
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error al enviar',
+                            text: error.message
+                        });
+                        console.error('❌ Error en notificación:', error);
+                    });
+            }
+        });
+    };
+</script>
 
 <x-app-layout>
     <x-slot name="header">
