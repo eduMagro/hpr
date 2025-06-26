@@ -67,11 +67,19 @@ Route::middleware('auth')->group(function () {
     Route::resource('pedidos_globales', PedidoGlobalController::class)->middleware('acceso.seccion:pedidos-globales.index');
     Route::resource('pedidos', PedidoController::class)->middleware('acceso.seccion:pedidos.index');
     Route::post('/pedidos/confirmar', [PedidoController::class, 'confirmar'])->name('pedidos.confirmar');
-    Route::get('pedidos/{pedido}/recepcion', [PedidoController::class, 'recepcion'])->name('pedidos.recepcion');
-    Route::post('pedidos/{pedido}/recepcion', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');
+    // Mostrar el formulario de recepción para un producto base concreto
+    Route::get('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'recepcion'])
+        ->name('pedidos.recepcion');
+
+    // Procesar la recepción del producto base
+    Route::post('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'procesarRecepcion'])
+        ->name('pedidos.recepcion.guardar');
+
     Route::post('/pedidos/{pedido}/enviar-correo', [PedidoController::class, 'enviarCorreo'])->name('pedidos.enviarCorreo');
     Route::get('/pedidos/preview', [PedidoController::class, 'preview'])->name('pedidos.preview');
-    Route::put('/pedidos/{pedido}/activar', [PedidoController::class, 'activar'])->name('pedidos.activar');
+    // Route::put('/pedidos/{pedido}/activar', [PedidoController::class, 'activar'])->name('pedidos.activar');
+    Route::put('/pedidos/{pedido}/activar-producto/{producto}', [PedidoController::class, 'activar'])
+        ->name('pedidos.activar');
 
     // === PRODUCTOS Y UBICACIONES ===
     Route::resource('fabricantes', FabricanteController::class)->middleware('acceso.seccion:fabricantes.index');

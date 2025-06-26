@@ -320,33 +320,36 @@ class EntradaController extends Controller
     {
         DB::transaction(function () use ($id) {
 
-            /** 1) Traemos la entrada y bloqueamos la fila  */
-            $entrada = Entrada::lockForUpdate()->findOrFail($id);
+            // 1. Bloqueamos y traemos la entrada
+            $entrada = Entrada::lockForUpdate()->with('pedido')->findOrFail($id);
 
             if ($entrada->estado === 'cerrado') {
                 throw new \RuntimeException('Este albarán ya está cerrado.');
             }
 
-            /** 2) Cerramos la entrada */
+            // 2. Cerramos la entrada
             $entrada->estado = 'cerrado';
             $entrada->save();
 
-            /** 3) Ponemos el pedido en “pendiente” (si estaba activo) */
-            Pedido::where('id', $entrada->pedido_id)
-                ->where('estado', 'activo')
-                ->lockForUpdate()              // bloqueamos también el pedido
-                ->update(['estado' => 'pendiente']);
+            // 3. Ponemos en estado "pendiente" todos los productos del pedido (pivot)
+            $pedido = $entrada->pedido()->lockForUpdate()->first();
 
-            /** 4) Marcamos como completados los movimientos de ese pedido
-             *     (puede haber uno o varios).  */
-            Movimiento::where('pedido_id', $entrada->pedido_id)
+            foreach ($pedido->productos as $producto) {
+                $producto->pivot->estado = 'pendiente';
+                $producto->pivot->save();
+            }
+
+            // 4. Movimientos del pedido -> completado
+            $pedido->movimientos()
                 ->where('estado', '!=', 'completado')
-                ->lockForUpdate()          // bloqueamos las filas que vamos a tocar
+                ->lockForUpdate()
                 ->update(['estado' => 'completado']);
         });
+
         return redirect()->route('maquinas.index')
-            ->with('success', 'Albarán cerrado correctamente.');
+            ->with('success', 'Albarán de entrada cerrado correctamente.');
     }
+
 
 
     // Eliminar una entrada y sus productos asociados

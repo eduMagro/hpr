@@ -464,12 +464,13 @@
                                             @endif
                                             @if (strtolower($mov->tipo) === 'descarga materia prima' && $mov->pedido)
                                                 <button
-                                                    onclick='abrirModalPedidoDesdeMovimiento(@json($mov->pedido))'
+                                                    onclick='abrirModalPedidoDesdeMovimiento(@json($mov))'
                                                     style="background-color: orange; color: white;"
                                                     class="text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto border border-black">
                                                     🏗️ Ver pedido
                                                 </button>
                                             @endif
+
                                         </div>
                                     </li>
                                 @endforeach
@@ -817,14 +818,16 @@
                             document.getElementById('modal-bajada-paquete').classList.add('hidden');
                         }
 
-                        function abrirModalPedidoDesdeMovimiento(pedido) {
-                            if (!pedido) return;
+                        function abrirModalPedidoDesdeMovimiento(movimiento) {
+                            if (!movimiento || !movimiento.pedido) return;
+
+                            const pedido = movimiento.pedido;
+                            const productoBaseId = movimiento.producto_base_id;
 
                             const contenedor = document.getElementById('contenidoPedido');
                             const modal = document.getElementById('modal-ver-pedido');
 
-                            const proveedor =
-                                pedido.fabricante_id && pedido.fabricante?.nombre ?
+                            const proveedor = pedido.fabricante_id && pedido.fabricante?.nombre ?
                                 pedido.fabricante.nombre :
                                 (pedido.distribuidor?.nombre ?? '—');
 
@@ -835,15 +838,14 @@
                                 '—';
 
                             contenedor.innerHTML = `
-                               <p><strong>Proveedor:</strong> ${proveedor}</p>
+        <p><strong>Proveedor:</strong> ${proveedor}</p>
         <p><strong>Código:</strong> ${pedido.codigo}</p>
         <p><strong>Estado:</strong> ${pedido.estado}</p>
         <p><strong>Peso Total:</strong> ${pesoRedondeado}</p>
         <p><strong>Fecha Entrega:</strong> ${fechaEntrega}</p>
-     
 
-        <a href="/pedidos/${pedido.id}/recepcion"
-           class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow inline-block mt-4">
+        <a href="/pedidos/${pedido.id}/recepcion/${productoBaseId}"
+            class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow inline-block mt-4">
             Ir a recepcionarlo
         </a>
     `;

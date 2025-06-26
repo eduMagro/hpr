@@ -251,14 +251,6 @@
                                     </select>
                                 </div>
 
-                                {{-- Campo de fecha estimada de entrega --}}
-                                <div class="text-left">
-                                    <label for="fecha_entrega" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Fecha Entrega:
-                                    </label>
-                                    <input type="date" name="fecha_entrega" id="fecha_entrega"
-                                        class="w-full border border-gray-300 rounded px-3 py-2">
-                                </div>
                                 {{-- Campo de lugar de entrega --}}
                                 <div class="text-left">
                                     <label for="obra_id" class="block text-sm font-medium text-gray-700 mb-1">
@@ -274,18 +266,20 @@
                                 </div>
 
                                 <table
-                                    class="w-full border-collapse text-sm text-center shadow-xl  overflow-hidden rounded-lg shadow border border-gray-300">
+                                    class="w-full border-collapse text-sm text-center shadow-xl overflow-hidden rounded-lg border border-gray-300">
                                     <thead class="bg-blue-800 text-white">
-                                        <tr class="bg-gray-700 text-white rounded-lg">
+                                        <tr class="bg-gray-700 text-white">
                                             <th class="border px-2 py-1">Tipo</th>
                                             <th class="border px-2 py-1">Diámetro</th>
                                             <th class="border px-2 py-1">Peso a pedir (kg)</th>
+                                            <th class="border px-2 py-1">Fecha estimada</th>
                                         </tr>
                                     </thead>
                                     <tbody id="tablaConfirmacionBody">
-                                        {{-- Se llenará con JS --}}
+                                        {{-- JavaScript agregará filas con inputs aquí --}}
                                     </tbody>
                                 </table>
+
 
 
                                 <div class="text-right pt-4">
@@ -456,26 +450,10 @@
                                         <!-- Mostrar solo cuando NO está en modo edición -->
                                         <template x-if="!editando">
                                             <div class="flex items-center space-x-2">
-                                                @if (in_array($pedido->estado, ['pendiente', 'parcial']))
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.activar', $pedido->id) }}"
-                                                        class="inline">
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <button type="submit"
-                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow">
-                                                            Activar
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <button disabled
-                                                        class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-60 cursor-not-allowed">
-                                                        Activar
-                                                    </button>
-                                                @endif
+
                                                 <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
                                                 <a href="javascript:void(0)"
-                                                    @click="mostrarProductosModal(@js($pedido->productos_formateados))"
+                                                    @click="mostrarProductosModal(@js($pedido->productos_formateados), {{ $pedido->id }})"
                                                     class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
                                                         fill="none" viewBox="0 0 24 24" stroke="currentColor"
@@ -524,11 +502,15 @@
                                     <th class="border px-3 py-2">Diámetro</th>
                                     <th class="border px-3 py-2">Longitud</th>
                                     <th class="border px-3 py-2">Cantidad (kg)</th>
+                                    <th class="border px-3 py-2">Fecha estimada</th>
+                                    <th class="border px-3 py-2">Acciones</th>
                                 </tr>
                             </thead>
+
                             <tbody id="tablaProductosBody" class="bg-white">
-                                {{-- Se rellena por JS --}}
+                                {{-- Se rellena con JS --}}
                             </tbody>
+
                         </table>
 
                     </div>
@@ -670,17 +652,22 @@
                 fila.className = "bg-gray-100";
 
                 fila.innerHTML = `
-                    <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
-                    <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
-                    <td class="border px-2 py-1">
-                        <input type="number" step="25000" min="0" name="detalles[${clave}][cantidad]"
-                            value="${cantidad}" class="w-full text-center border border-gray-300 rounded px-2 py-1">
-                    </td>
-                    <input type="hidden" name="seleccionados[]" value="${clave}">
-                    <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
-                    <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
-                    ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
-                `;
+            <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
+            <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
+            <td class="border px-2 py-1">
+                <input type="number" step="25000" min="0" name="detalles[${clave}][cantidad]"
+                    value="${cantidad}" class="w-full text-center border border-gray-300 rounded px-2 py-1">
+            </td>
+            <td class="border px-2 py-1">
+                <input type="date" name="detalles[${clave}][fecha_estimada_entrega]"
+                    class="w-full text-center border border-gray-300 rounded px-2 py-1" required>
+            </td>
+
+            <input type="hidden" name="seleccionados[]" value="${clave}">
+            <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
+            <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
+            ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
+        `;
 
                 tbody.appendChild(fila);
             });
@@ -769,18 +756,39 @@
                 });
         }
         //----------------------------------------------------------------------------------------
-        function mostrarProductosModal(productos) {
+        function mostrarProductosModal(productos, pedidoId) {
             const tbody = document.getElementById('tablaProductosBody');
             tbody.innerHTML = '';
 
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
             productos.forEach(producto => {
                 const fila = document.createElement('tr');
+                const estaActivo = producto.estado === 'activo';
+                console.log('🔍 Producto recibido:', producto);
+
                 fila.innerHTML = `
-                    <td class="border px-2 py-1">${capitalize(producto.tipo)}</td>
-                    <td class="border px-2 py-1">${producto.diametro} mm</td>
-                    <td class="border px-2 py-1">${producto.longitud ?? '-'}</td>
-                    <td class="border px-2 py-1">${parseFloat(producto.cantidad).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
-                `;
+        <td class="border px-2 py-1">${capitalize(producto.tipo)}</td>
+        <td class="border px-2 py-1">${producto.diametro} mm</td>
+        <td class="border px-2 py-1">${producto.longitud ?? '—'}</td>
+        <td class="border px-2 py-1">${parseFloat(producto.cantidad).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
+        <td class="border px-2 py-1">${producto.fecha_estimada_entrega ?? '—'}</td>
+        <td class="border px-2 py-1">
+            ${
+                estaActivo
+                    ? `<span class="inline-block px-2 py-1 text-green-700 bg-green-100 rounded text-xs font-semibold">Activado</span>`
+                    : `<form method="POST" action="/pedidos/${pedidoId}/activar-producto/${producto.producto_base_id}" class="inline">
+
+                                            <input type="hidden" name="_token" value="${csrfToken}">
+                                            <input type="hidden" name="_method" value="PUT">
+                                            <button type="submit"
+                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                Activar
+                                            </button>
+                                       </form>`
+            }
+        </td>
+    `;
                 tbody.appendChild(fila);
             });
 
@@ -789,7 +797,7 @@
             window.scrollTo({
                 top: window.scrollY
             });
-            document.body.style.scrollBehavior = 'auto'; // Desactiva scroll suave al abrir modal
+            document.body.style.scrollBehavior = 'auto';
         }
 
         function cerrarModalProductos() {
