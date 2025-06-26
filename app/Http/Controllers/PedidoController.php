@@ -684,6 +684,25 @@ class PedidoController extends Controller
             return redirect()->back()->with('error', 'Error al activar el producto.');
         }
     }
+    public function desactivar($pedidoId, $productoBaseId)
+    {
+        DB::transaction(function () use ($pedidoId, $productoBaseId) {
+            $pedido = Pedido::with('productos')->lockForUpdate()->findOrFail($pedidoId);
+
+            // Borrar movimiento pendiente si existe
+            Movimiento::where('pedido_id', $pedidoId)
+                ->where('producto_base_id', $productoBaseId)
+                ->where('estado', 'pendiente')
+                ->delete();
+
+            // Marcar el producto como pendiente en el pivote
+            $pedido->productos()->updateExistingPivot($productoBaseId, [
+                'estado' => 'pendiente',
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Producto desactivado correctamente.');
+    }
 
 
     public function store(Request $request)

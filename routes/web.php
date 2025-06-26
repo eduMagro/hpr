@@ -80,6 +80,7 @@ Route::middleware('auth')->group(function () {
     // Route::put('/pedidos/{pedido}/activar', [PedidoController::class, 'activar'])->name('pedidos.activar');
     Route::put('/pedidos/{pedido}/activar-producto/{producto}', [PedidoController::class, 'activar'])
         ->name('pedidos.activar');
+    Route::delete('/pedidos/{pedido}/desactivar-producto/{producto_base}', [PedidoController::class, 'desactivar'])->name('pedidos.desactivar');
 
     // === PRODUCTOS Y UBICACIONES ===
     Route::resource('fabricantes', FabricanteController::class)->middleware('acceso.seccion:fabricantes.index');

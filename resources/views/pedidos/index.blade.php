@@ -766,7 +766,7 @@
 
             productos.forEach(producto => {
                 const fila = document.createElement('tr');
-                const estaActivo = producto.estado === 'activo';
+                const estaActivo = producto.estado_recepcion === 'activo';
 
                 // Estado de recepción visual
                 let estadoRecepcion = '—';
@@ -786,28 +786,30 @@
                 }
 
                 fila.innerHTML = `
-            <td class="border px-2 py-1">${capitalize(producto.tipo)}</td>
-            <td class="border px-2 py-1">${producto.diametro} mm</td>
-            <td class="border px-2 py-1">${producto.longitud ?? '—'}</td>
-                <td class="border px-2 py-1">${parseFloat(producto.cantidad_recepcionada ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
-            <td class="border px-2 py-1">${parseFloat(producto.cantidad).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
-            <td class="border px-2 py-1">${producto.fecha_estimada_entrega ?? '—'}</td>
-            <td class="border px-2 py-1">${estadoRecepcion}</td>
-            <td class="border px-2 py-1">
-                ${
-                    estaActivo
-                        ? `<span class="inline-block px-2 py-1 text-green-700 bg-green-100 rounded text-xs font-semibold">Activado</span>`
-                        : `<form method="POST" action="/pedidos/${pedidoId}/activar-producto/${producto.producto_base_id}" class="inline">
-                                            <input type="hidden" name="_token" value="${csrfToken}">
-                                            <input type="hidden" name="_method" value="PUT">
-                                            <button type="submit"
-                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                Activar
-                                            </button>
-                                           </form>`
-                }
-            </td>
-        `;
+<td class="border px-2 py-1">${capitalize(producto.tipo)}</td>
+<td class="border px-2 py-1">${producto.diametro} mm</td>
+<td class="border px-2 py-1">${producto.longitud ?? '—'}</td>
+<td class="border px-2 py-1">${parseFloat(producto.cantidad_recepcionada ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
+<td class="border px-2 py-1">${parseFloat(producto.cantidad).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
+<td class="border px-2 py-1">${producto.fecha_estimada_entrega ?? '—'}</td>
+<td class="border px-2 py-1">${estadoRecepcion}</td>
+<td class="border px-2 py-1">
+   ${
+    estaActivo
+        ? `<button
+                        onclick="confirmarDesactivacion(${pedidoId}, ${producto.producto_base_id})"
+                        class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                        Desactivar
+                   </button>`
+        : `<button
+                        onclick="confirmarActivacion(${pedidoId}, ${producto.producto_base_id})"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                        Activar
+                   </button>`
+}
+
+</td>
+`;
                 tbody.appendChild(fila);
             });
 
@@ -828,6 +830,57 @@
 
         function capitalize(str) {
             return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+    </script>
+    <script>
+        function confirmarActivacion(pedidoId, productoBaseId) {
+            Swal.fire({
+                title: '¿Activar producto?',
+                html: 'Este producto del pedido se activará y estará disponible para su recepción.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, activar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#d97706',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/pedidos/${pedidoId}/activar-producto/${productoBaseId}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            _method: 'PUT'
+                        })
+                    }).then(() => location.reload());
+                }
+            });
+        }
+
+        function confirmarDesactivacion(pedidoId, productoBaseId) {
+            Swal.fire({
+                title: '¿Desactivar producto?',
+                html: 'Se eliminará el movimiento pendiente si lo hay y se marcará como <b>pendiente</b> en el pedido.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, desactivar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#b91c1c',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/pedidos/${pedidoId}/desactivar-producto/${productoBaseId}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            _method: 'DELETE'
+                        })
+                    }).then(() => location.reload());
+                }
+            });
         }
     </script>
 
