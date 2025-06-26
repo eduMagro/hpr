@@ -13,21 +13,29 @@
 @if ($errors->any())
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            let erroresHtml = '';
+            let erroresTexto = '';
+            @foreach ($errors->all() as $error)
+                erroresHtml += '<li>{{ $error }}<\/li>';
+                erroresTexto += '- {{ $error }}\n';
+            @endforeach
+
             Swal.fire({
                 icon: 'error',
                 title: 'Errores encontrados',
-                html: '<ul>@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>',
+                html: '<ul>' + erroresHtml + '</ul>',
                 confirmButtonColor: '#d33',
                 showCancelButton: true,
                 cancelButtonText: "Reportar Error"
             }).then((result) => {
                 if (result.dismiss === Swal.DismissReason.cancel) {
-                    notificarProgramador("Se han detectado errores en la validación de datos.");
+                    notificarProgramador(erroresTexto);
                 }
             });
         });
     </script>
 @endif
+
 
 @if (session('error'))
     <script>

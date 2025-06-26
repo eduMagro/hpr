@@ -242,12 +242,12 @@ class MaquinaController extends Controller
         if (stripos($maquina->tipo, 'grua') !== false) {
             $ubicacionesDisponiblesPorProductoBase = [];
 
-            $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion', 'pedido.fabricante'])
+            $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion', 'pedido.fabricante', 'productoBase'])
                 ->where('estado', 'pendiente')
                 ->orderBy('prioridad', 'asc')
                 ->get();
 
-            $movimientosCompletados = Movimiento::with(['solicitadoPor', 'ejecutadoPor', 'producto.ubicacion'])
+            $movimientosCompletados = Movimiento::with(['solicitadoPor', 'ejecutadoPor', 'producto.ubicacion', 'productoBase'])
                 ->where('estado', 'completado')
                 ->where('ejecutado_por', auth()->id())
                 ->orderBy('updated_at', 'desc')

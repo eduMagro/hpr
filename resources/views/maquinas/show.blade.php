@@ -822,7 +822,12 @@
                             if (!movimiento || !movimiento.pedido) return;
 
                             const pedido = movimiento.pedido;
+
                             const productoBaseId = movimiento.producto_base_id;
+                            const producto = movimiento.producto_base;
+                            const tipo = producto?.tipo ?? '—';
+                            const diametro = producto?.diametro ?? '—';
+                            const longitud = producto?.longitud ?? '—';
 
                             const contenedor = document.getElementById('contenidoPedido');
                             const modal = document.getElementById('modal-ver-pedido');
@@ -838,11 +843,17 @@
                                 '—';
 
                             contenedor.innerHTML = `
-        <p><strong>Proveedor:</strong> ${proveedor}</p>
-        <p><strong>Código:</strong> ${pedido.codigo}</p>
-        <p><strong>Estado:</strong> ${pedido.estado}</p>
+      <p><strong>Proveedor:</strong> ${proveedor}</p>
+        <p><strong>Código Pedido:</strong> ${pedido.codigo}</p>
+        <p><strong>Estado Pedido:</strong> ${pedido.estado}</p>
         <p><strong>Peso Total:</strong> ${pesoRedondeado}</p>
         <p><strong>Fecha Entrega:</strong> ${fechaEntrega}</p>
+
+        <hr class="my-3" />
+
+        <p><strong>Tipo Producto:</strong> ${tipo}</p>
+        <p><strong>Diámetro:</strong> ${diametro} mm</p>
+        <p><strong>Longitud:</strong> ${longitud} mm</p>
 
         <a href="/pedidos/${pedido.id}/recepcion/${productoBaseId}"
             class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow inline-block mt-4">
