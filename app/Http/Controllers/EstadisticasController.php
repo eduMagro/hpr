@@ -216,7 +216,7 @@ class EstadisticasController extends Controller
                 return "$tipo-$diametro-$longitud";
             })
             ->map(fn($grupo) => round($grupo->sum('peso_inicial') / $mesesTranscurridos, 2));
-        dd($consumoHistorico->toArray());
+        // dd($consumoHistorico->toArray());
 
 
         return [
