@@ -4,7 +4,18 @@
     'desde' => null,
     'hasta' => null,
     'detalle' => [],
+    'modo' => 'dia',
 ])
+@php
+    $modoTexto =
+        [
+            'dia' => 'día',
+            'mes' => 'mes',
+            'anio' => 'año',
+            'origen' => 'periodo total',
+        ][$modo] ?? $modo;
+@endphp
+
 {{-- Filtro por fechas dentro del componente --}}
 <form method="GET" action="{{ route('estadisticas.consumo-maquinas') }}#consumo-maquinas"
     class="mb-4 flex flex-wrap items-end gap-4 text-sm">
@@ -115,8 +126,9 @@
     </div>
     @if (collect($detalle)->isNotEmpty())
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-1 rounded mt-4 mb-1">
-            Kg consumidos por máquina, tipo, Ø y longitud
+            Media de Kg consumidos por máquina, tipo, Ø y longitud (por {{ $modoTexto }})
         </h4>
+
 
         <div class="overflow-x-auto mb-4">
             <table class="w-full border border-gray-300 text-xs">

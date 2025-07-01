@@ -11,6 +11,7 @@ use App\Models\Planilla;
 use App\Models\Obra;
 use App\Models\SalidaPaquete;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -110,7 +111,8 @@ class EstadisticasController extends Controller
         $labels             = $datosConsumo['labels'];
         $datasets           = $datosConsumo['datasets'];
         $tablaConsumoTotales = $datosConsumo['totales'];
-        $kilosPorTipoDiametro = $this->kilosPorMaquinaTipoDiametro($desde, $hasta);
+        $kilosPorTipoDiametro = $this->kilosPorMaquinaTipoDiametro($desde, $hasta, $modo);
+
 
         return view('estadisticas.consumo-maquinas', compact(
             'labels',
@@ -456,8 +458,26 @@ class EstadisticasController extends Controller
 
 
 
-    private function kilosPorMaquinaTipoDiametro(?string $desde, ?string $hasta)
+    private function kilosPorMaquinaTipoDiametro(?string $desde, ?string $hasta, string $modo)
     {
+        $desdeFecha = $desde ? Carbon::parse($desde) : Carbon::parse(Movimiento::min('fecha_ejecucion'));
+        $hastaFecha = $hasta ? Carbon::parse($hasta) : now();
+
+        // Calcular número de periodos según el modo
+        $periodos = match ($modo) {
+            'anio' => $this->aniosProporcionales($desdeFecha, $hastaFecha),
+
+            'mes' => $this->mesesProporcionales($desdeFecha, $hastaFecha),
+
+            'origen' => 1,
+            default => collect(CarbonPeriod::create($desdeFecha, $hastaFecha))
+                ->filter(fn($fecha) => $fecha->isWeekday())
+                ->count(),
+        };
+
+
+        // Prevenir división por 0 si no hay días laborables
+        $periodos = max($periodos, 1);
 
         return Movimiento::query()
             ->where('movimientos.tipo', 'movimiento libre')
@@ -465,18 +485,16 @@ class EstadisticasController extends Controller
             ->whereNotNull('fecha_ejecucion')
             ->when($desde, fn($q) => $q->whereDate('fecha_ejecucion', '>=', $desde))
             ->when($hasta, fn($q) => $q->whereDate('fecha_ejecucion', '<=', $hasta))
-
             ->join('productos',       'productos.id',       '=', 'movimientos.producto_id')
             ->join('productos_base',  'productos_base.id',  '=', 'productos.producto_base_id')
             ->leftJoin('maquinas',    'maquinas.id',        '=', 'movimientos.maquina_destino')
-
             ->selectRaw('
             maquinas.nombre                 AS maquina,
             productos_base.tipo             AS tipo,
             productos_base.diametro         AS diametro,
             productos_base.longitud         AS longitud,
-            SUM(productos.peso_inicial)     AS kg
-        ')
+            ROUND(SUM(productos.peso_inicial) / ?, 2) AS kg
+        ', [$periodos])
             ->groupBy(
                 'maquinas.nombre',
                 'productos_base.tipo',
@@ -488,5 +506,44 @@ class EstadisticasController extends Controller
             ->orderBy('productos_base.diametro')
             ->orderBy('productos_base.longitud')
             ->get();
+    }
+
+    private function mesesProporcionales(Carbon $desde, Carbon $hasta): float
+    {
+        if ($desde->greaterThan($hasta)) return 1;
+
+        // Primer mes (incompleto si no empieza el día 1)
+        $primerMesDias = $desde->daysUntil($desde->copy()->endOfMonth())->count() + 1;
+        $diasEnPrimerMes = $desde->daysInMonth;
+        $proporcionPrimerMes = $primerMesDias / $diasEnPrimerMes;
+
+        // Último mes (incompleto si no termina el último día)
+        $ultimoMesDias = $hasta->day;
+        $diasEnUltimoMes = $hasta->daysInMonth;
+        $proporcionUltimoMes = $ultimoMesDias / $diasEnUltimoMes;
+
+        // Si está en el mismo mes:
+        if ($desde->format('Y-m') === $hasta->format('Y-m')) {
+            return $hasta->diffInDays($desde) > 0
+                ? ($hasta->diffInDays($desde) + 1) / $diasEnUltimoMes
+                : 1 / $diasEnUltimoMes;
+        }
+
+        // Meses completos intermedios
+        $mesesCompletos = $desde->copy()->addMonth()->startOfMonth()->diffInMonths($hasta->copy()->startOfMonth());
+
+        return $proporcionPrimerMes + $mesesCompletos + $proporcionUltimoMes;
+    }
+    private function aniosProporcionales(Carbon $desde, Carbon $hasta): float
+    {
+        if ($desde->greaterThan($hasta)) return 1;
+
+        $diasTotales = $desde->diffInDays($hasta) + 1;
+        $anioReferencia = $desde->year;
+
+        // Comprobar si el año es bisiesto
+        $diasEnElAnio = Carbon::create($anioReferencia)->isLeapYear() ? 366 : 365;
+
+        return round($diasTotales / $diasEnElAnio, 4); // mayor precisión
     }
 }
