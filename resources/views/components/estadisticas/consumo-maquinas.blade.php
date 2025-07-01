@@ -6,7 +6,8 @@
     'detalle' => [],
 ])
 {{-- Filtro por fechas dentro del componente --}}
-<form method="GET" action="{{ route('estadisticas.index') }}" class="mb-4 flex flex-wrap items-end gap-4 text-sm">
+<form method="GET" action="{{ route('estadisticas.consumo-maquinas') }}#consumo-maquinas"
+    class="mb-4 flex flex-wrap items-end gap-4 text-sm">
 
     <div>
         <label for="desde" class="block text-xs font-medium text-gray-700">Desde</label>
@@ -40,9 +41,10 @@
         </button>
 
         <!-- Botón reset -->
-        <a href="{{ route('estadisticas.index', ['panel' => 'consumo-maquinas']) }}"
+        <a href="{{ route('estadisticas.consumo-maquinas') }}#consumo-maquinas"
             class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
             title="Restablecer filtros">
+
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -53,7 +55,8 @@
 </form>
 
 
-<div class="bg-white shadow rounded mb-4 text-sm">
+<div id="consumo-maquinas" class="bg-white shadow rounded mb-4 text-sm">
+
     {{-- Cabecera azul --}}
     <div class="bg-blue-600 text-white text-center py-2 rounded-t">
         <h3 class="font-semibold text-base">

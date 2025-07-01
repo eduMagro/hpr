@@ -227,8 +227,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])->name('departamentos.asignar.usuarios');
     Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])->name('departamentos.asignarSecciones');
     Route::post('/departamentos/{departamento}/permisos', [DepartamentoController::class, 'actualizarPermiso']);
-
-
     Route::resource('secciones', SeccionController::class)->middleware('acceso.seccion:secciones.index');
 
     // === PAPELERA ===

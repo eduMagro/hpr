@@ -6,5 +6,4 @@
         </h2>
     </x-slot>
     <x-menu.estadisticas />
-
 </x-app-layout>
