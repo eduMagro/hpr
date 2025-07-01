@@ -29,7 +29,7 @@
                     <option value="">Seleccione un fabricante</option>
                     @foreach ($fabricantes as $fabricante)
                         <option value="{{ $fabricante->id }}"
-                            {{ old('fabricante_id', $producto->fabricante) == $fabricante->id ? 'selected' : '' }}>
+                            {{ old('fabricante_id', $producto->fabricante_id) == $fabricante->id ? 'selected' : '' }}>
                             {{ $fabricante->nombre }}
                         </option>
                     @endforeach
@@ -81,7 +81,20 @@
                     value="{{ old('ubicacion_id', $producto->ubicacion_id) }}"
                     class="w-full px-3 py-2 border rounded-lg">
             </div>
-
+            <!-- Estado -->
+            <div class="mb-2">
+                <label for="estado" class="block text-gray-700 font-bold mb-2">Estado:</label>
+                <select id="estado" name="estado" class="w-full px-3 py-2 border rounded-lg">
+                    <option value="" {{ old('estado', $producto->estado) === null ? 'selected' : '' }}>— Ninguno
+                        —</option>
+                    <option value="almacenado"
+                        {{ old('estado', $producto->estado) === 'almacenado' ? 'selected' : '' }}>Almacenado</option>
+                    <option value="fabricando"
+                        {{ old('estado', $producto->estado) === 'fabricando' ? 'selected' : '' }}>Fabricando</option>
+                    <option value="consumido" {{ old('estado', $producto->estado) === 'consumido' ? 'selected' : '' }}>
+                        Consumido</option>
+                </select>
+            </div>
             <!-- Otros -->
             <div class="mb-2">
                 <label for="otros" class="block text-gray-700 font-bold mb-2">Otros:</label>

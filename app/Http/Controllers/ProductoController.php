@@ -379,8 +379,9 @@ class ProductoController extends Controller
             $validated['diametro'] = $productoBase->diametro;
             $validated['longitud'] = $productoBase->longitud;
 
-            if (isset($validated['estado'])) {
-                $validated['estado'] = strtoupper($validated['estado']);
+
+            if (isset($validated['estado']) && strtoupper($validated['estado']) === 'CONSUMIDO' && $producto->estado !== 'CONSUMIDO') {
+                $this->marcarComoConsumido($producto);
             }
 
             $producto->update($validated);
@@ -420,14 +421,20 @@ class ProductoController extends Controller
     public function consumir($id)
     {
         $producto = Producto::findOrFail($id);
-
-        $producto->estado = 'consumido';
-        $producto->fecha_consumido = now(); // Guardamos la fecha actual
-        $producto->consumido_by = auth()->id(); // Guardamos el ID del usuario que lo consume
-
+        $this->marcarComoConsumido($producto);
         $producto->save();
 
         return back()->with('success', 'Producto marcado como consumido.');
+    }
+
+    private function marcarComoConsumido(Producto $producto)
+    {
+        $producto->peso_stock = 0;
+        $producto->estado = 'consumido';
+        $producto->fecha_consumido = now();
+        $producto->consumido_by = auth()->id();
+        $producto->ubicacion_id = null;
+        $producto->maquina_id = null;
     }
 
 
