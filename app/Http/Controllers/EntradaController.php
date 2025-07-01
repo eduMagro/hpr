@@ -371,7 +371,11 @@ class EntradaController extends Controller
             $pedido->movimientos()
                 ->where('estado', '!=', 'completado')
                 ->lockForUpdate()
-                ->update(['estado' => 'completado']);
+                ->update([
+                    'estado' => 'completado',
+                    'ejecutado_por' => auth()->id(),
+                    'fecha_ejecucion' => now(),
+                ]);
         });
 
         return redirect()->route('maquinas.index')

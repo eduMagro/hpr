@@ -53,9 +53,9 @@
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.select name="prioridad" :options="[
-                                    1 => 'Normal',
-                                    2 => 'Alta',
-                                    3 => 'Urgente',
+                                    1 => 'Baja',
+                                    2 => 'Media',
+                                    3 => 'Alta',
                                 ]" :selected="request('prioridad')" empty="Todas" />
 
                             </th>
@@ -120,11 +120,11 @@
 
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
                                 @if ($movimiento->prioridad == 1)
-                                    <span class="badge bg-secondary">Normal</span>
+                                    <span class="badge bg-secondary">Baja</span>
                                 @elseif ($movimiento->prioridad == 2)
-                                    <span class="badge bg-warning">Alta</span>
-                                @else
-                                    <span class="badge bg-danger">Urgente</span>
+                                    <span class="badge bg-warning">Media</span>
+                                @elseif ($movimiento->prioridad == 3)
+                                    <span class="badge bg-danger">Alta</span>
                                 @endif
                             </td>
 
@@ -177,12 +177,12 @@
                                 @if ($movimiento->producto)
                                     <a href="{{ route('productos.index', ['id' => $movimiento->producto->id]) }}"
                                         class="text-blue-500 hover:underline">
-                                        Materia Prima #{{ $movimiento->producto->id }}
+                                        {{ $movimiento->producto->codigo }}
                                     </a>
                                 @elseif ($movimiento->paquete)
                                     <a href="{{ route('paquetes.index', ['id' => $movimiento->paquete->id]) }}"
                                         class="text-blue-500 hover:underline">
-                                        Paquete #{{ $movimiento->paquete->id }}
+                                        {{ $movimiento->paquete->codigo }}
                                     </a>
                                 @else
                                     —
