@@ -7,6 +7,7 @@ use App\Models\Elemento;
 use App\Models\Movimiento;
 use App\Models\Maquina;
 use App\Models\Producto;
+use App\Models\Pedido;
 use App\Models\Planilla;
 use App\Models\Obra;
 use App\Models\SalidaPaquete;
@@ -37,29 +38,11 @@ class EstadisticasController extends Controller
             return $redir;
         }
 
-        // ► Cálculo de stock
-        $datosPorPlanilla        = $this->getDatosPorPlanilla();
-        $pesoTotalPorDiametro    = $this->getPesoTotalPorDiametro();
-        $stockEncarretado        = $this->getStockEncarretado();
-        $stockBarras             = $this->getStockBarras();
-        $mensajeAdvertencia      = $this->compararStockConPeso(
-            $pesoTotalPorDiametro,
-            $stockEncarretado,
-            $stockBarras
-        );
-        $stockOptimo             = $this->getStockOptimo();
+        $datosStock = $this->obtenerDatosStock();
 
-        // ⚠️ Mensaje flash si es necesario
-        $this->handleSessionMessages($mensajeAdvertencia);
-
-        return view('estadisticas.stock', compact(
-            'datosPorPlanilla',
-            'pesoTotalPorDiametro',
-            'stockEncarretado',
-            'stockBarras',
-            'stockOptimo'
-        ));
+        return view('estadisticas.stock', $datosStock);
     }
+
 
     /* ───────────────────────── Panel OBRAS ───────────────────────── */
 
@@ -133,203 +116,120 @@ class EstadisticasController extends Controller
         return redirect()->route('estadisticas.stock');
     }
     // ---------------------------------------------------------------- Funciones para calcular el stockaje
-    private function getDatosPorPlanilla()
+    private function obtenerDatosStock()
     {
-        return Elemento::whereHas('planilla', function ($query) {
-            $query->where('estado', 'pendiente');
-        })
-            ->selectRaw('diametro, planilla_id, SUM(peso) AS peso_por_planilla')
-            ->groupBy('diametro', 'planilla_id')
-            ->orderBy('diametro')
-            ->orderBy('planilla_id')
-            ->get();
-    }
+        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
-    private function getPesoTotalPorDiametro()
-    {
-        // Definir manualmente los diámetros que queremos incluir
-        $diametrosDefinidos = collect([5, 8, 10, 12, 16, 20, 25, 32]); // Agrega más si es necesario
+        $elementosPendientes = Elemento::with('maquina')
+            ->where('estado', 'pendiente')
+            ->get()
+            ->filter(fn($e) => $e->maquina && $e->maquina->tipo && $e->diametro)
+            ->groupBy(fn($e) => $e->maquina->tipo_material . '-' . intval($e->diametro))
+            ->map(fn($group) => $group->sum('peso'));
 
-        // Obtener los pesos totales por diámetro desde la base de datos
-        $pesoTotal = Elemento::whereHas('planilla', function ($query) {
-            $query->where('estado', 'pendiente');
-        })
-            ->selectRaw('diametro, SUM(peso) AS peso_total')
-            ->groupBy('diametro')
-            ->pluck('peso_total', 'diametro'); // Devuelve [diametro => peso]
-
-        // Crear una colección asegurando que todos los diámetros existen, con 0 si no hay datos
-        return $diametrosDefinidos->mapWithKeys(function ($diametro) use ($pesoTotal) {
-            return [(int) $diametro => (float) ($pesoTotal[$diametro] ?? 0)];
+        $necesarioPorDiametro = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($elementosPendientes) {
+            $encarretado = $elementosPendientes["encarretado-$diametro"] ?? 0;
+            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
+            $barrasPorLongitud[12] = $elementosPendientes["barra-$diametro"] ?? 0;
+            $barrasTotal = $barrasPorLongitud->sum();
+            return [$diametro => [
+                'encarretado' => $encarretado,
+                'barras' => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total' => $barrasTotal + $encarretado,
+            ]];
         });
-    }
 
+        $pedidosPendientes = Pedido::with('productos')
+            ->where('estado', 'pendiente')
+            ->get()
+            ->flatMap(fn($pedido) => $pedido->productos->map(fn($p) => [
+                'tipo' => $p->tipo,
+                'diametro' => $p->diametro,
+                'cantidad' => $p->pivot->cantidad,
+            ]))
+            ->groupBy(fn($i) => "{$i['tipo']}-{$i['diametro']}")
+            ->map(fn($g) => collect($g)->sum('cantidad'));
 
-    private function getStockEncarretado()
-    {
-        $diametrosDefinidos = collect([5, 8, 10, 12, 16, 20, 25, 32]);
-
-        $productos = Producto::with('productoBase')
-            ->where('estado', 'almacenado')
-            ->whereHas('productoBase', fn($q) => $q->where('tipo', 'encarretado'))
-            ->get();
-
-        $agrupado = $productos->groupBy(fn($p) => $p->productoBase->diametro)
-            ->map(fn($grupo) => $grupo->sum('peso_stock'));
-
-        return $diametrosDefinidos->map(function ($diametro) use ($agrupado) {
-            return (object) [
-                'diametro' => (int) $diametro,
-                'stock' => (float) ($agrupado[$diametro] ?? 0),
-            ];
+        $pedidosPorDiametro = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($pedidosPendientes) {
+            $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0;
+            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
+            $barrasPorLongitud[12] = $pedidosPendientes["barra-$diametro"] ?? 0;
+            $barrasTotal = $barrasPorLongitud->sum();
+            return [$diametro => [
+                'encarretado' => $encarretado,
+                'barras' => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total' => $encarretado + $barrasTotal,
+            ]];
         });
-    }
 
-    private function getStockBarras()
-    {
-        $diametrosDefinidos = collect([5, 8, 10, 12, 16, 20, 25, 32]);
+        $productos = Producto::with('productoBase')->where('estado', 'almacenado')->get();
 
-        // ⚠️ En lugar de usar selectRaw y pluck, usamos ->get() con ->with()
-        $productos = Producto::with('productoBase')
-            ->where('estado', 'almacenado')
-            ->whereHas('productoBase', fn($q) => $q->where('tipo', 'barra'))
-            ->get();
-
-        // Mapeamos los productos a objetos con datos requeridos
-        return $productos->map(function ($producto) {
-            return (object) [
-                'productoBase' => $producto->productoBase,
-                'stock' => (float) $producto->peso_stock,
-            ];
+        $stockData = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
+            $grupo = $productos->filter(fn($p) => intval($p->productoBase->diametro) === $diametro);
+            $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_stock');
+            $barras = $grupo->where('productoBase.tipo', 'barra');
+            $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)->map(fn($g) => $g->sum('peso_stock'));
+            $barrasTotal = $barrasPorLongitud->sum();
+            return [$diametro => [
+                'encarretado' => $encarretado,
+                'barras' => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total' => $barrasTotal + $encarretado,
+            ]];
         });
-    }
 
-    private function getStockReal()
-    {
-        // Obtener stock encarratado y barras
-        $stockEncarretado = $this->getStockEncarretado()->keyBy('diametro');
-        $stockBarras = $this->getStockBarras()->groupBy('diametro');
+        $comparativa = [];
 
-        // Unir los datos sumando los valores de cada diámetro
-        $stockReal = collect();
-
-        foreach ($stockEncarretado as $diametro => $encarretado) {
-            $stockReal[$diametro] = $encarretado->stock + ($stockBarras->get($diametro)?->sum('stock') ?? 0);
-        }
-
-        return $stockReal;
-    }
-    private function compararStockConPeso($pesoTotalPorDiametro, $stockEncarretado, $stockBarras)
-    {
-        $mensajeDeAdvertencia = [];
-
-        foreach ($pesoTotalPorDiametro as $diametro => $pesoTotal) { // ✅ Ahora iteramos con clave => valor
-            // Buscar stock por diámetro en las categorías de "encarretado" y "barra"
-            $stockEncarretadoPorDiametro = $stockEncarretado->firstWhere('diametro', $diametro);
-            $stockBarrasPorDiametro = $stockBarras->where('diametro', $diametro)->sum('stock');
-
-            // Calcular el stock total disponible
-            $stockTotalDisponible = ($stockEncarretadoPorDiametro ? $stockEncarretadoPorDiametro->stock : 0) + $stockBarrasPorDiametro;
-
-            // Comparar si el stock disponible es menor que el peso total requerido
-            if ($stockTotalDisponible < $pesoTotal) {
-                $mensajeDeAdvertencia[] = "🔴 **Advertencia:** El stock disponible para el diámetro {$diametro} es insuficiente. Faltan " . ($pesoTotal - $stockTotalDisponible) . " kg.";
+        foreach ($stockData as $diametro => $data) {
+            foreach (['barra', 'encarretado'] as $tipo) {
+                $clave = "{$tipo}-{$diametro}";
+                $pendiente = $elementosPendientes[$clave] ?? 0;
+                $pedido = $pedidosPendientes[$clave] ?? 0;
+                $disponible = $tipo === 'barra' ? $data['barras_total'] : $data['encarretado'];
+                $diferencia = $disponible + $pedido - $pendiente;
+                $comparativa[$clave] = compact('tipo', 'diametro', 'pendiente', 'pedido', 'disponible', 'diferencia');
             }
         }
 
-        return $mensajeDeAdvertencia;
-    }
+        //------ STOCK DESEADO
+        $fechaInicioConsumo = Producto::whereNotNull('fecha_consumido')->min('fecha_consumido');
+        $fechaFin = now();
+        $mesesTranscurridos = max(Carbon::parse($fechaInicioConsumo)->diffInMonths($fechaFin), 1);
 
-    private function handleSessionMessages($mensajeDeAdvertencia)
-    {
-        if (!empty($mensajeDeAdvertencia)) {
-            session()->flash('advertencia', $mensajeDeAdvertencia);
-        } else {
-            session()->flash('exito', 'Todo el stock requerido está disponible.');
-        }
+        $consumoHistorico = Producto::with('productoBase')
+            ->whereNotNull('fecha_consumido')
+            ->whereNotNull('peso_inicial') // ✅ Asegura que el peso no es null
+            ->where('peso_inicial', '>', 0) // ✅ Asegura que el peso es positivo
+            ->get()
+            ->filter(
+                fn($p) =>
+                $p->productoBase
+                    && $p->productoBase->tipo
+                    && $p->productoBase->diametro
+            )
+            ->groupBy(function ($p) {
+                $tipo = $p->productoBase->tipo;
+                $diametro = intval($p->productoBase->diametro);
+                $longitud = $p->productoBase->longitud ?? 12;
+                return "$tipo-$diametro-$longitud";
+            })
+            ->map(fn($grupo) => round($grupo->sum('peso_inicial') / $mesesTranscurridos, 2));
+        dd($consumoHistorico->toArray());
+
+
+        return [
+            'stockData' => $stockData,
+            'pedidosPorDiametro' => $pedidosPorDiametro,
+            'necesarioPorDiametro' => $necesarioPorDiametro,
+            'comparativa' => $comparativa,
+            'totalGeneral' => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
+            'consumoMensualPromedio' => $consumoHistorico,
+        ];
     }
     // ---------------------------------------------------------------- Función para calcular el stock deseado
 
-    private function getStockOptimo()
-    {
-        $fechaInicio = Elemento::where('estado', 'completado')->min('created_at');
-        $fechaFin = Carbon::now();
-
-        if (!$fechaInicio) {
-            return collect();
-        }
-
-        $diasTotales = Carbon::parse($fechaInicio)->diffInDays($fechaFin) ?: 1;
-        $stockDeSeguridad = 1000;
-        $tiempoReposicion = 5;
-        $mensajes = [];
-
-        // ✅ Asegurar que el stock real tenga claves correctas
-        $stockReal = $this->getStockReal()->mapWithKeys(fn($value, $key) => [(int) $key => $value]);
-
-        // Obtener los kilos necesarios para la próxima semana (planillas con entrega en 7 días)
-        $stockSemana = $this->getDatosPorPlanilla()->mapWithKeys(fn($value, $key) => [(int) $key => $value])
-            ->where('planilla.estado', 'pendiente')
-            ->groupBy('diametro')
-            ->map(function ($planillas) {
-                return $planillas->sum('peso_por_planilla');
-            });
-
-        $stockOptimo = Elemento::where('estado', 'completado')
-            ->select('diametro')
-            ->selectRaw('SUM(peso) / ? as consumo_promedio', [$diasTotales])
-            ->groupBy('diametro')
-            ->get()
-            ->map(function ($item) use ($stockDeSeguridad, $tiempoReposicion, $stockReal, $stockSemana, &$mensajes) {
-                $stockDeseado = (float) $item->consumo_promedio * 14;
-                $stockOptimo = (float) max(
-                    $stockDeseado,
-                    $stockDeSeguridad + ($item->consumo_promedio * $tiempoReposicion)
-                );
-
-                // Obtener stock real y stock necesario a una semana
-                $stockRealPorDiametro = (float) ($stockReal->get((int) $item->diametro) ?? 0);
-                $stockSemanaPorDiametro = (float) ($stockSemana->get($item->diametro) ?? 0);
-
-                // Formatear valores a enteros sin decimales
-                $stockDeseadoFmt = number_format($stockDeseado, 0);
-                $stockOptimoFmt = number_format($stockOptimo, 0);
-                $stockRealFmt = number_format($stockRealPorDiametro, 0);
-                $stockSemanaFmt = number_format($stockSemanaPorDiametro, 0);
-
-                // Generar mensajes con valores sin decimales
-                if ($stockDeseado > $stockOptimo) {
-                    $mensajes[] = "⚠️ **Atención:** La demanda en diámetro {$item->diametro} ha aumentado. Se requieren {$stockDeseadoFmt} kg, superando el Stock Óptimo ({$stockOptimoFmt} kg). Es recomendable revisar la reposición.";
-                } elseif ($stockOptimo > $stockDeseado) {
-                    $mensajes[] = "✅ **Stock adecuado** para el diámetro {$item->diametro}. Se mantiene por encima del nivel de seguridad, no se requiere reabastecimiento inmediato.";
-                }
-
-                if ($stockRealPorDiametro < $stockDeseado) {
-                    $mensajes[] = "🔴 **Alerta crítica:** Stock insuficiente para el diámetro {$item->diametro}. Solo hay {$stockRealFmt} kg disponibles, pero se requieren {$stockDeseadoFmt} kg. Se recomienda hacer un pedido de material **de inmediato**.";
-                } elseif ($stockRealPorDiametro < $stockOptimo) {
-                    $mensajes[] = "🟠 **Advertencia:** El Stock Real ({$stockRealFmt} kg) del diámetro {$item->diametro} está por debajo del Stock Óptimo ({$stockOptimoFmt} kg). Es recomendable programar una reposición pronto.";
-                } else {
-                    $mensajes[] = "✅ **Stock seguro:** El Stock Real ({$stockRealFmt} kg) del diámetro {$item->diametro} está en un nivel óptimo. No es necesario realizar pedidos por ahora.";
-                }
-
-                if ($stockSemanaPorDiametro > 0) {
-                    $mensajes[] = "📅 **Próxima demanda:** En los próximos 7 días se necesitarán {$stockSemanaFmt} kg del diámetro {$item->diametro} según las planillas pendientes. Verifica si el stock actual será suficiente.";
-                }
-
-                return (object)[
-                    'diametro' => (int) $item->diametro,
-                    'consumo_promedio' => (int) round($item->consumo_promedio, 0),
-                    'stock_optimo' => (int) $stockOptimo,  // 🔹 Convertimos a int
-                    'stock_deseado' => (int) $stockDeseado,  // 🔹 Convertimos a int
-                    'stock_real' => (int) $stockRealPorDiametro,  // 🔹 Convertimos a int
-                    'stock_semana' => (int) $stockSemanaPorDiametro // 🔹 Convertimos a int
-                ];
-            });
-
-        session()->flash('alertas_stock', $mensajes);
-
-        return $stockOptimo;
-    }
 
     // ---------------------------------------------------------------- Funciones para calcular peso suministrado a obras
     private function getSalidasPaquetesCompletadas()
@@ -454,9 +354,6 @@ class EstadisticasController extends Controller
             'totales'  => $totales,
         ];
     }
-
-
-
 
     private function kilosPorMaquinaTipoDiametro(?string $desde, ?string $hasta, string $modo)
     {

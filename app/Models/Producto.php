@@ -20,9 +20,11 @@ class Producto extends Model
         'n_paquete',
         'peso_inicial',
         'peso_stock',
-        'ubicacion_id',  // Relación con la ubicación
+        'ubicacion_id',
         'maquina_id',
         'estado',
+        'fecha_consumido',
+        'consumido_by',
         'otros',
         'updated_by',
     ];

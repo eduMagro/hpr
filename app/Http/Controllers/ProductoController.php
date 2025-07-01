@@ -419,21 +419,17 @@ class ProductoController extends Controller
 
     public function consumir($id)
     {
-        // 1. Buscar el producto
         $producto = Producto::findOrFail($id);
 
-        // 2. Actualizar estado y limpiar ubicaciones
-        $producto->estado        = 'consumido';
-        $producto->ubicacion_id  = null;
-        $producto->maquina_id    = null;
-        $producto->peso_stock    = 0;
+        $producto->estado = 'consumido';
+        $producto->fecha_consumido = now(); // Guardamos la fecha actual
+        $producto->consumido_by = auth()->id(); // Guardamos el ID del usuario que lo consume
 
-        // 3. Guardar cambios
         $producto->save();
 
-        // 4. Regresar o redirigir con un mensaje (opcional)
-        return redirect()->back()->with('success', 'Producto marcado como consumido');
+        return back()->with('success', 'Producto marcado como consumido.');
     }
+
 
     //------------------------------------------------------------------------------------ DESTROY
     public function destroy(Producto $producto)

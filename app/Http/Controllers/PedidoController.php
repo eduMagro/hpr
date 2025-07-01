@@ -174,7 +174,6 @@ class PedidoController extends Controller
                     'fecha_estimada_entrega' => $p->pivot->fecha_estimada_entrega ?? null,
                 ];
             });
-
             return $pedido;
         });
 
@@ -192,7 +191,25 @@ class PedidoController extends Controller
             'estado' => $this->getOrdenamientoPedidos('estado', 'Estado'),
         ];
 
-        // Tabla stock
+        // Obtener datos de stock, pedidos y necesidad
+        $datosStock = $this->obtenerDatosStock();
+
+        // Obtener obras activas
+        $obrasActivas = Obra::where('estado', 'activa')->orderBy('obra')->get();
+
+        return view('pedidos.index', array_merge([
+            'pedidos' => $pedidos,
+            'obrasActivas' => $obrasActivas,
+            'fabricantes' => $fabricantes,
+            'filtrosActivos' => $filtrosActivos,
+            'ordenables' => $ordenables,
+            'distribuidores' => $distribuidores,
+            'pedidosGlobales' => $pedidosGlobales,
+        ], $datosStock));
+    }
+
+    private function obtenerDatosStock()
+    {
         $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
         $elementosPendientes = Elemento::with('maquina')
@@ -204,91 +221,55 @@ class PedidoController extends Controller
 
         $necesarioPorDiametro = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($elementosPendientes) {
             $encarretado = $elementosPendientes["encarretado-$diametro"] ?? 0;
-
-            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(function ($longitud) use ($diametro) {
-                return [$longitud => 0];
-            });
-
-            // Igual que en pedidos: si hay elementos pendientes de barra, los metemos en longitud 12 por defecto
+            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
             $barrasPorLongitud[12] = $elementosPendientes["barra-$diametro"] ?? 0;
-
             $barrasTotal = $barrasPorLongitud->sum();
-            $total = $barrasTotal + $encarretado;
-
-            return [
-                $diametro => [
-                    'encarretado' => $encarretado,
-                    'barras' => $barrasPorLongitud,
-                    'barras_total' => $barrasTotal,
-                    'total' => $total,
-                ]
-            ];
+            return [$diametro => [
+                'encarretado' => $encarretado,
+                'barras' => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total' => $barrasTotal + $encarretado,
+            ]];
         });
 
         $pedidosPendientes = Pedido::with('productos')
             ->where('estado', 'pendiente')
             ->get()
-            ->flatMap(function ($pedido) {
-                return $pedido->productos->map(function ($producto) use ($pedido) {
-                    return [
-                        'tipo' => $producto->tipo,
-                        'diametro' => $producto->diametro,
-                        'cantidad' => $producto->pivot->cantidad,
-                    ];
-                });
-            })
-            ->groupBy(fn($item) => "{$item['tipo']}-{$item['diametro']}")
-            ->map(fn($items) => collect($items)->sum('cantidad'));
+            ->flatMap(fn($pedido) => $pedido->productos->map(fn($p) => [
+                'tipo' => $p->tipo,
+                'diametro' => $p->diametro,
+                'cantidad' => $p->pivot->cantidad,
+            ]))
+            ->groupBy(fn($i) => "{$i['tipo']}-{$i['diametro']}")
+            ->map(fn($g) => collect($g)->sum('cantidad'));
 
         $pedidosPorDiametro = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($pedidosPendientes) {
             $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0;
-
-            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(function ($longitud) use ($diametro, $pedidosPendientes) {
-                $clave = "barra-$diametro";
-                // Aquí no tienes longitud en la clave, así que asumimos que todo pedido de tipo barra se reparte
-                // Si en un futuro quieres registrar por longitud en pedidos, actualizamos esto
-                return [$longitud => 0];
-            });
-
-            // Para ahora, metemos todo lo de tipo 'barra' en longitud 12 como simplificación
+            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
             $barrasPorLongitud[12] = $pedidosPendientes["barra-$diametro"] ?? 0;
-
             $barrasTotal = $barrasPorLongitud->sum();
-            $total = $encarretado + $barrasTotal;
-
-            return [
-                $diametro => [
-                    'encarretado' => $encarretado,
-                    'barras' => $barrasPorLongitud,
-                    'barras_total' => $barrasTotal,
-                    'total' => $total,
-                ]
-            ];
+            return [$diametro => [
+                'encarretado' => $encarretado,
+                'barras' => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total' => $encarretado + $barrasTotal,
+            ]];
         });
 
-        $productos = Producto::with('productoBase')
-            ->where('estado', 'almacenado')
-            ->get();
-        // Inicializa los datos para todos los diámetros fijos
+        $productos = Producto::with('productoBase')->where('estado', 'almacenado')->get();
+
         $stockData = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
             $grupo = $productos->filter(fn($p) => intval($p->productoBase->diametro) === $diametro);
-
-            $encarretado = $grupo->filter(fn($p) => $p->productoBase->tipo === 'encarretado')->sum('peso_stock');
-            $barras = $grupo->filter(fn($p) => $p->productoBase->tipo === 'barra');
-            $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)
-                ->map(fn($items) => $items->sum('peso_stock'));
-
+            $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_stock');
+            $barras = $grupo->where('productoBase.tipo', 'barra');
+            $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)->map(fn($g) => $g->sum('peso_stock'));
             $barrasTotal = $barrasPorLongitud->sum();
-            $total = $barrasTotal + $encarretado;
-
-            return [
-                $diametro => [
-                    'encarretado' => $encarretado,
-                    'barras' => $barrasPorLongitud,
-                    'barras_total' => $barrasTotal,
-                    'total' => $total,
-                ]
-            ];
+            return [$diametro => [
+                'encarretado' => $encarretado,
+                'barras' => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total' => $barrasTotal + $encarretado,
+            ]];
         });
 
         $comparativa = [];
@@ -299,26 +280,18 @@ class PedidoController extends Controller
                 $pendiente = $elementosPendientes[$clave] ?? 0;
                 $pedido = $pedidosPendientes[$clave] ?? 0;
                 $disponible = $tipo === 'barra' ? $data['barras_total'] : $data['encarretado'];
-
                 $diferencia = $disponible + $pedido - $pendiente;
-
-                $comparativa[$clave] = [
-                    'tipo' => $tipo,
-                    'diametro' => $diametro,
-                    'pendiente' => $pendiente,
-                    'disponible' => $disponible,
-                    'pedido' => $pedido,
-                    'diferencia' => $diferencia,
-                ];
+                $comparativa[$clave] = compact('tipo', 'diametro', 'pendiente', 'pedido', 'disponible', 'diferencia');
             }
         }
-        $totalEncarretado = $stockData->sum(fn($d) => $d['encarretado']);
-        $totalBarras      = $stockData->sum(fn($d) => $d['barras_total']);
-        $totalGeneral     = $totalEncarretado + $totalBarras;
-        // Obtener obras activas
-        $obrasActivas = Obra::where('estado', 'activa')->orderBy('obra')->get();
 
-        return view('pedidos.index', compact('pedidos', 'obrasActivas', 'stockData', 'totalGeneral', 'comparativa', 'pedidosPorDiametro', 'necesarioPorDiametro', 'fabricantes', 'filtrosActivos', 'ordenables', 'distribuidores', 'pedidosGlobales',));
+        return [
+            'stockData' => $stockData,
+            'pedidosPorDiametro' => $pedidosPorDiametro,
+            'necesarioPorDiametro' => $necesarioPorDiametro,
+            'comparativa' => $comparativa,
+            'totalGeneral' => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
+        ];
     }
 
     public function recepcion($id, $producto_base_id)
@@ -384,8 +357,6 @@ class PedidoController extends Controller
         // ✅ Devolver vista con producto base específico
         return view('pedidos.recepcion', compact('pedido', 'productoBase', 'ubicaciones', 'ultimos', 'requiereFabricanteManual', 'fabricantes', 'ultimoFabricante'));
     }
-
-
 
     public function procesarRecepcion(Request $request, $id)
     {
@@ -704,7 +675,6 @@ class PedidoController extends Controller
         return redirect()->back()->with('success', 'Producto desactivado correctamente.');
     }
 
-
     public function store(Request $request)
     {
         try {
@@ -809,8 +779,6 @@ class PedidoController extends Controller
             return back()->withInput()->with('error', $msg);
         }
     }
-
-
 
     public function show($id)
     {

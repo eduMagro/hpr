@@ -7,206 +7,8 @@
         @if (auth()->user()->rol === 'oficina')
 
             <div class="mb-6"> <!-- Tabla stock -->
-                <div class="overflow-x-auto rounded-lg">
-                    @php
-                        function rojo($diametro, $tipo, $longitud = null)
-                        {
-                            // ✅ Desbloqueamos la celda específica: barra, diámetro 10, longitud 12
-                            if ($tipo === 'barra' && $diametro == 10 && $longitud == 12) {
-                                return '';
-                            }
-                            if ($tipo === 'encarretado' && in_array($diametro, [25, 32])) {
-                                return 'bg-red-200';
-                            }
-                            if ($tipo === 'barra') {
-                                if (in_array($diametro, [8, 10])) {
-                                    return 'bg-red-200';
-                                }
-                                if ($diametro == 12 && in_array($longitud, [15, 16])) {
-                                    return 'bg-red-200';
-                                }
-                            }
-                            return '';
-                        }
-                    @endphp
+                <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral" />
 
-                    <table
-                        class="w-full text-sm border-collapse text-center mt-6 rounded-lg shadow border border-gray-300 overflow-hidden">
-                        <thead>
-                            <thead>
-                                <tr class="bg-gray-800 text-white">
-                                    <th rowspan="2" class="border px-2 py-1">Ø mm</th>
-                                    <th colspan="3" class="border px-2 py-1">Encarretado</th>
-                                    <th colspan="3" class="border px-2 py-1">Barras 12 m</th>
-                                    <th colspan="3" class="border px-2 py-1">Barras 14 m</th>
-                                    <th colspan="3" class="border px-2 py-1">Barras 15 m</th>
-                                    <th colspan="3" class="border px-2 py-1">Barras 16 m</th>
-                                    <th colspan="3" class="border px-2 py-1">Barras Total</th>
-                                    <th colspan="3" class="border px-2 py-1">Total</th>
-                                </tr>
-                                <tr class="bg-gray-700 text-white">
-                                    @for ($i = 0; $i < 7; $i++)
-                                        <th class="border px-2 py-1">Stock</th>
-                                        <th class="border px-2 py-1">Pedido</th>
-                                        <th class="border px-2 py-1">Necesario</th>
-                                    @endfor
-                                </tr>
-                            </thead>
-                        </thead>
-                        <tbody>
-                            @foreach ($stockData as $diametro => $stock)
-                                @php
-                                    $pedido = $pedidosPorDiametro[$diametro] ?? [
-                                        'encarretado' => 0,
-                                        'barras' => collect([12 => 0, 14 => 0, 15 => 0, 16 => 0]),
-                                        'barras_total' => 0,
-                                        'total' => 0,
-                                    ];
-                                    $necesario = $necesarioPorDiametro[$diametro] ?? [
-                                        'encarretado' => 0,
-                                        'barras' => collect([12 => 0, 14 => 0, 15 => 0, 16 => 0]),
-                                        'barras_total' => 0,
-                                        'total' => 0,
-                                    ];
-                                @endphp
-                                <tr class="bg-white">
-                                    <td class="border px-2 py-1 font-bold">{{ $diametro }}</td>
-                                    {{-- Encarretado --}}
-                                    @foreach (['encarretado'] as $tipo)
-                                        @php
-                                            $claseRojo = rojo($diametro, 'encarretado');
-                                            $stockVal = $stock['encarretado'];
-                                            $pedidoVal = $pedido['encarretado'];
-                                            $necesarioVal = $necesario['encarretado'];
-                                            $colorTexto = $necesarioVal > $stockVal ? 'text-red-600' : 'text-green-600';
-                                        @endphp
-
-                                        {{-- Stock --}}
-                                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                                            @if (!$claseRojo)
-                                                {{ number_format($stockVal, 2, ',', '.') }}
-                                            @endif
-                                        </td>
-
-                                        {{-- Pedido --}}
-                                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                                            @if (!$claseRojo)
-                                                {{ number_format($pedidoVal, 2, ',', '.') }}
-                                            @endif
-                                        </td>
-
-                                        {{-- Necesario --}}
-                                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                                            @if (!$claseRojo)
-                                                <div class="flex items-center justify-start gap-1">
-                                                    <input type="checkbox" name="seleccionados[]"
-                                                        value="encarretado-{{ $diametro }}">
-                                                    <input type="hidden"
-                                                        name="detalles[encarretado-{{ $diametro }}][tipo]"
-                                                        value="encarretado">
-                                                    <input type="hidden"
-                                                        name="detalles[encarretado-{{ $diametro }}][diametro]"
-                                                        value="{{ $diametro }}">
-                                                    @php
-                                                        $cantidadAPedir = round(max(0, $necesarioVal - $stockVal), 2);
-                                                    @endphp
-                                                    <input type="hidden"
-                                                        name="detalles[encarretado-{{ $diametro }}][cantidad]"
-                                                        value="{{ $cantidadAPedir }}">
-                                                    <span
-                                                        class="ml-1 {{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
-                                                </div>
-                                            @endif
-                                        </td>
-                                    @endforeach
-
-                                    {{-- Barras por longitud --}}
-                                    @foreach ([12, 14, 15, 16] as $longitud)
-                                        @php
-                                            $claseRojo = rojo($diametro, 'barra', $longitud);
-                                            $stockVal = $stock['barras'][$longitud] ?? 0;
-                                            $pedidoVal = $pedido['barras'][$longitud] ?? 0;
-                                            $necesarioVal = $necesario['barras'][$longitud] ?? 0;
-                                            $colorTexto = $necesarioVal > $stockVal ? 'text-red-600' : 'text-green-600';
-                                        @endphp
-
-                                        {{-- Stock --}}
-                                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                                            @if (!$claseRojo)
-                                                {{ number_format($stockVal, 2, ',', '.') }}
-                                            @endif
-                                        </td>
-
-                                        {{-- Pedido --}}
-                                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                                            @if (!$claseRojo)
-                                                {{ number_format($pedidoVal, 2, ',', '.') }}
-                                            @endif
-                                        </td>
-
-                                        {{-- Necesario --}}
-                                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                                            @if (!$claseRojo)
-                                                <div class="flex items-center justify-start gap-1">
-                                                    <input type="checkbox" name="seleccionados[]"
-                                                        value="barra-{{ $diametro }}-{{ $longitud }}">
-                                                    <input type="hidden"
-                                                        name="detalles[barra-{{ $diametro }}-{{ $longitud }}][tipo]"
-                                                        value="barra">
-                                                    <input type="hidden"
-                                                        name="detalles[barra-{{ $diametro }}-{{ $longitud }}][diametro]"
-                                                        value="{{ $diametro }}">
-                                                    <input type="hidden"
-                                                        name="detalles[barra-{{ $diametro }}-{{ $longitud }}][longitud]"
-                                                        value="{{ $longitud }}">
-                                                    <input type="hidden"
-                                                        name="detalles[barra-{{ $diametro }}-{{ $longitud }}][cantidad]"
-                                                        value="{{ $necesarioVal }}">
-                                                    <span
-                                                        class="ml-1 {{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
-                                                </div>
-                                            @endif
-                                        </td>
-                                    @endforeach
-
-                                    {{-- Total Barras --}}
-                                    <td class="border px-2 py-1 font-semibold">
-                                        {{ number_format($stock['barras_total'], 2, ',', '.') }}
-                                    </td>
-                                    <td class="border px-2 py-1 font-semibold">
-                                        {{ number_format($pedido['barras_total'], 2, ',', '.') }}
-                                    </td>
-                                    <td class="border px-2 py-1 font-semibold">
-                                        {{ number_format($necesario['barras_total'], 2, ',', '.') }}
-                                    </td>
-
-                                    {{-- Total general --}}
-                                    <td class="border px-2 py-1 font-bold">
-                                        {{ number_format($stock['total'], 2, ',', '.') }}
-                                    </td>
-                                    <td class="border px-2 py-1 font-bold">
-                                        {{ number_format($pedido['total'], 2, ',', '.') }}
-                                    </td>
-                                    <td class="border px-2 py-1 font-bold">
-                                        {{ number_format($necesario['total'], 2, ',', '.') }}
-                                    </td>
-                                </tr>
-                            @endforeach
-
-                        </tbody>
-                    </table>
-                    @php
-                        // Lo formateamos una vez para reutilizarlo
-                        $totalGeneralTexto = number_format($totalGeneral, 2, ',', '.');
-                    @endphp
-
-                    {{-- Bloque situado inmediatamente después de la tabla --}}
-                    <div class="mt-4 flex justify-end">
-                        <span class="bg-gray-100 border border-gray-300 rounded px-4 py-2 font-bold">
-                            Total general disponible (encarretado + barras): {{ $totalGeneralTexto }} kg
-                        </span>
-                    </div>
-                </div>
                 <div class="mt-4 text-right">
                     <button type="button" onclick="mostrarConfirmacion()"
                         class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
@@ -357,8 +159,8 @@
                                         'parcial' => 'Parcial',
                                         'completo' => 'Completo',
                                         'cancelado' => 'Cancelado',
-                                    ]" :selected="request('estado')"
-                                        empty="Todos" class="w-full text-xs" />
+                                    ]" :selected="request('estado')" empty="Todos"
+                                        class="w-full text-xs" />
                                 </th>
 
                                 <th class="p-1 border text-center"></th>
@@ -828,15 +630,15 @@
    ${
     estaActivo
         ? `<button
-                                                                                                    onclick="confirmarDesactivacion(${pedidoId}, ${producto.producto_base_id})"
-                                                                                                    class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                    Desactivar
-                                                                                               </button>`
+                                                                                                            onclick="confirmarDesactivacion(${pedidoId}, ${producto.producto_base_id})"
+                                                                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                            Desactivar
+                                                                                                       </button>`
         : `<button
-                                                                                                    onclick="confirmarActivacion(${pedidoId}, ${producto.producto_base_id})"
-                                                                                                    class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                    Activar
-                                                                                               </button>`
+                                                                                                            onclick="confirmarActivacion(${pedidoId}, ${producto.producto_base_id})"
+                                                                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                            Activar
+                                                                                                       </button>`
 }
 
 </td>

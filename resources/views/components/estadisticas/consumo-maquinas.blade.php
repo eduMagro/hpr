@@ -165,7 +165,7 @@
             </table>
             <p class="text-gray-500 text-xs italic mt-1">
                 Media diaria, mensual o anual de consumo de cada tipo de producto por máquina. El cálculo se ajusta
-                proporcionalmente al periodo seleccionado, excluyendo fines de semana cuando corresponde.
+                proporcionalmente al periodo seleccionado, excluyendo fines de semana en el calculo diario.
             </p>
 
         </div>
