@@ -106,6 +106,11 @@
                     @endforelse
                 </tbody>
             </table>
+            <p class="text-gray-500 text-xs italic mt-1">
+                Total de kilogramos consumidos por cada máquina en el periodo seleccionado. Solo se tienen en cuenta
+                movimientos ejecutados de tipo "movimiento libre" con máquina de destino asignada.
+            </p>
+
         </div>
     </div>
 
@@ -122,6 +127,11 @@
 
         <div class="relative w-full overflow-x-auto">
             <canvas id="consumoMaquinasChart" class="w-full h-full" style="max-height: 300px;"></canvas>
+            <p class="text-gray-500 text-xs italic mt-1">
+                Evolución de consumo por máquina agrupado por {{ $modoTexto }}. Se representa la cantidad total de
+                kg consumidos por cada máquina en cada {{ $modoTexto }} dentro del rango indicado.
+            </p>
+
         </div>
     </div>
     @if (collect($detalle)->isNotEmpty())
@@ -153,6 +163,11 @@
                     @endforeach
                 </tbody>
             </table>
+            <p class="text-gray-500 text-xs italic mt-1">
+                Media diaria, mensual o anual de consumo de cada tipo de producto por máquina. El cálculo se ajusta
+                proporcionalmente al periodo seleccionado, excluyendo fines de semana cuando corresponde.
+            </p>
+
         </div>
     @endif
 
