@@ -284,13 +284,36 @@ class PedidoController extends Controller
                 $comparativa[$clave] = compact('tipo', 'diametro', 'pendiente', 'pedido', 'disponible', 'diferencia');
             }
         }
+        //------ STOCK DESEADO
+        $fechaInicioConsumo = Producto::whereNotNull('fecha_consumido')->min('fecha_consumido');
+        $fechaFin = now();
+        $mesesTranscurridos = max(Carbon::parse($fechaInicioConsumo)->diffInMonths($fechaFin), 1);
 
+        $consumoHistorico = Producto::with('productoBase')
+            ->whereNotNull('fecha_consumido')
+            ->whereNotNull('peso_inicial') // ✅ Asegura que el peso no es null
+            ->where('peso_inicial', '>', 0) // ✅ Asegura que el peso es positivo
+            ->get()
+            ->filter(
+                fn($p) =>
+                $p->productoBase
+                    && $p->productoBase->tipo
+                    && $p->productoBase->diametro
+            )
+            ->groupBy(function ($p) {
+                $tipo = $p->productoBase->tipo;
+                $diametro = intval($p->productoBase->diametro);
+                $longitud = $p->productoBase->longitud ?? 12;
+                return "$tipo-$diametro-$longitud";
+            })
+            ->map(fn($grupo) => round($grupo->sum('peso_inicial') / $mesesTranscurridos, 2));
         return [
             'stockData' => $stockData,
             'pedidosPorDiametro' => $pedidosPorDiametro,
             'necesarioPorDiametro' => $necesarioPorDiametro,
             'comparativa' => $comparativa,
             'totalGeneral' => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
+            'consumoMensualPromedio' => $consumoHistorico,
         ];
     }
 
