@@ -101,11 +101,20 @@
                     </td>
                     <td class="border px-2 py-1 {{ $claseRojo }}">
                         @if (!$claseRojo)
-                            <span class="{{ $colorTexto }}">
-                                {{ number_format($necesarioVal, 2, ',', '.') }}
-                            </span>
+                            <div class="flex items-center justify-start gap-1">
+                                <input type="checkbox" name="seleccionados[]" value="encarretado-{{ $diametro }}">
+                                <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
+                                    value="encarretado">
+                                <input type="hidden" name="detalles[encarretado-{{ $diametro }}][diametro]"
+                                    value="{{ $diametro }}">
+                                <input type="hidden" name="detalles[encarretado-{{ $diametro }}][cantidad]"
+                                    value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
+                                <span
+                                    class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
+                            </div>
                         @endif
                     </td>
+
 
                     {{-- Barras por longitud --}}
                     @foreach ([12, 14, 15, 16] as $longitud)
@@ -141,9 +150,18 @@
                         </td>
                         <td class="border px-2 py-1 {{ $claseRojo }}">
                             @if (!$claseRojo)
-                                <span class="{{ $colorTexto }}">
-                                    {{ number_format($necesarioVal, 2, ',', '.') }}
-                                </span>
+                                <div class="flex items-center justify-start gap-1">
+                                    <input type="checkbox" name="seleccionados[]"
+                                        value="encarretado-{{ $diametro }}">
+                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
+                                        value="encarretado">
+                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][diametro]"
+                                        value="{{ $diametro }}">
+                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][cantidad]"
+                                        value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
+                                    <span
+                                        class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
+                                </div>
                             @endif
                         </td>
                     @endforeach

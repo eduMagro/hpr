@@ -303,14 +303,6 @@ class EstadisticasController extends Controller
             ->with('user:id,name,primer_apellido,segundo_apellido');
 
         switch ($modo) {
-            case 'dia':
-                $campoFecha = DB::raw('DATE(created_at) AS periodo');
-                $filtroInicio = now()->startOfMonth();
-                $filtroFin = now()->endOfMonth();
-                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
-                $groupBy = ['users_id', 'periodo'];
-                break;
-
             case 'mes':
                 $campoFecha = DB::raw('DATE_FORMAT(created_at, "%Y-%m") AS periodo');
                 $filtroInicio = now()->startOfYear();

@@ -8,7 +8,6 @@
         <form method="GET" class="flex items-center gap-2 mb-4 text-sm">
             <label for="modo" class="font-medium text-gray-700">Agrupar por:</label>
             <select name="modo" id="modo" onchange="this.form.submit()" class="border px-2 py-1 rounded">
-                <option value="dia" {{ $modo == 'dia' ? 'selected' : '' }}>Día</option>
                 <option value="mes" {{ $modo == 'mes' ? 'selected' : '' }}>Mes</option>
                 <option value="anio" {{ $modo == 'anio' ? 'selected' : '' }}>Año</option>
                 <option value="origen" {{ $modo == 'origen' ? 'selected' : '' }}>Total</option>
@@ -126,9 +125,9 @@
         const datasets = Array.from(usuariosUnicos).map(usuario => {
             let acumulado = 0;
             let dataValues = periodos.map(periodo => {
-                acumulado += (datosUsuarios[usuario][periodo] || 0);
-                return acumulado;
+                return datosUsuarios[usuario][periodo] || 0;
             });
+
 
             return {
                 label: usuario,
