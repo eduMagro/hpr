@@ -302,7 +302,6 @@ class EstadisticasController extends Controller
         $query = Planilla::where('estado', 'pendiente')
             ->with('user:id,name,primer_apellido,segundo_apellido');
 
-        // Definimos el campo de agrupación y el filtro de fechas si aplica
         switch ($modo) {
             case 'dia':
                 $campoFecha = DB::raw('DATE(created_at) AS periodo');
@@ -322,7 +321,7 @@ class EstadisticasController extends Controller
 
             case 'anio':
                 $campoFecha = DB::raw('YEAR(created_at) AS periodo');
-                $query->whereYear('created_at', '>=', now()->year - 2); // opcional: últimos 3 años
+                $query->whereYear('created_at', '>=', now()->year - 2);
                 $groupBy = ['users_id', 'periodo'];
                 break;
 
@@ -333,8 +332,7 @@ class EstadisticasController extends Controller
                 break;
         }
 
-        // Seleccionamos los datos agrupados
-        $resultados = $query
+        return $query
             ->select(
                 'users_id',
                 $campoFecha,
@@ -351,8 +349,6 @@ class EstadisticasController extends Controller
                     'peso_importado'  => $planilla->peso_importado,
                 ];
             });
-
-        return $resultados;
     }
 
     // ---------------------------------------------------------------- consumo de materia prima / maquina
