@@ -60,21 +60,24 @@ class EstadisticasController extends Controller
 
     /* ──────────────────────── Panel PLANILLEROS ───────────────────── */
 
-    public function tecnicosDespiece()
+    public function tecnicosDespiece(Request $request)
     {
         if ($redir = $this->abortIfNoOffice()) {
             return $redir;
         }
 
-        // ⏬ Usa los mismos nombres coherentes en todo el proyecto
-        $pesoPorUsuario        = $this->getPesoPorPlanillero();
-        $pesoPorUsuarioPorDia  = $this->getPesoPorPlanilleroPorDia();
+        $modo = $request->input('modo', 'dia'); // puede ser: dia, mes, anio, origen
+
+        $pesoPorUsuario       = $this->getPesoPorPlanillero(); // total acumulado
+        $pesoAgrupado         = $this->getPesoPorPlanilleroAgrupado($modo);
 
         return view('estadisticas.tecnicos-despiece', compact(
             'pesoPorUsuario',
-            'pesoPorUsuarioPorDia'
+            'pesoAgrupado',
+            'modo'
         ));
     }
+
 
     /* ─────────────────────── Panel CONSUMO MÁQUINAS ───────────────── */
 
@@ -252,7 +255,7 @@ class EstadisticasController extends Controller
         });
     }
 
-    // ---------------------------------------------------------------- Estadisticas de usuarios
+    // ---------------------------------------------------------------- Estadisticas de planilleros
     private function getPesoPorPlanillero()
     {
         return Planilla::where('estado', 'pendiente')
@@ -269,30 +272,87 @@ class EstadisticasController extends Controller
             });
     }
 
-    private function getPesoPorPlanilleroPorDia()
-    {
-        $primerDiaMes  = now()->startOfMonth();
-        $ultimoDiaMes  = now()->endOfMonth();
+    // private function getPesoPorPlanilleroPorDia()
+    // {
+    //     $primerDiaMes  = now()->startOfMonth();
+    //     $ultimoDiaMes  = now()->endOfMonth();
 
-        return Planilla::where('estado', 'pendiente')
-            ->whereBetween('created_at', [$primerDiaMes, $ultimoDiaMes])
-            ->with('user:id,name,primer_apellido,segundo_apellido')          // ⬅️  idem
+    //     return Planilla::where('estado', 'pendiente')
+    //         ->whereBetween('created_at', [$primerDiaMes, $ultimoDiaMes])
+    //         ->with('user:id,name,primer_apellido,segundo_apellido')          // ⬅️  idem
+    //         ->select(
+    //             'users_id',
+    //             DB::raw('DATE(created_at) AS fecha'),
+    //             DB::raw('SUM(peso_total) AS peso_importado')
+    //         )
+    //         ->groupBy('users_id', 'fecha')
+    //         ->orderBy('fecha', 'asc')
+    //         ->get()
+    //         ->map(function ($planilla) {
+    //             return (object) [
+    //                 'users_id'       => $planilla->users_id,
+    //                 'nombre_completo' => optional($planilla->user)->nombre_completo,
+    //                 'fecha'          => $planilla->fecha,
+    //                 'peso_importado' => $planilla->peso_importado,
+    //             ];
+    //         });
+    // }
+    private function getPesoPorPlanilleroAgrupado($modo = 'dia')
+    {
+        $query = Planilla::where('estado', 'pendiente')
+            ->with('user:id,name,primer_apellido,segundo_apellido');
+
+        // Definimos el campo de agrupación y el filtro de fechas si aplica
+        switch ($modo) {
+            case 'dia':
+                $campoFecha = DB::raw('DATE(created_at) AS periodo');
+                $filtroInicio = now()->startOfMonth();
+                $filtroFin = now()->endOfMonth();
+                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
+                $groupBy = ['users_id', 'periodo'];
+                break;
+
+            case 'mes':
+                $campoFecha = DB::raw('DATE_FORMAT(created_at, "%Y-%m") AS periodo');
+                $filtroInicio = now()->startOfYear();
+                $filtroFin = now()->endOfYear();
+                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
+                $groupBy = ['users_id', 'periodo'];
+                break;
+
+            case 'anio':
+                $campoFecha = DB::raw('YEAR(created_at) AS periodo');
+                $query->whereYear('created_at', '>=', now()->year - 2); // opcional: últimos 3 años
+                $groupBy = ['users_id', 'periodo'];
+                break;
+
+            case 'origen':
+            default:
+                $campoFecha = DB::raw('"origen" AS periodo');
+                $groupBy = ['users_id'];
+                break;
+        }
+
+        // Seleccionamos los datos agrupados
+        $resultados = $query
             ->select(
                 'users_id',
-                DB::raw('DATE(created_at) AS fecha'),
+                $campoFecha,
                 DB::raw('SUM(peso_total) AS peso_importado')
             )
-            ->groupBy('users_id', 'fecha')
-            ->orderBy('fecha', 'asc')
+            ->groupBy(...$groupBy)
+            ->orderBy('periodo', 'asc')
             ->get()
             ->map(function ($planilla) {
                 return (object) [
-                    'users_id'       => $planilla->users_id,
+                    'users_id'        => $planilla->users_id,
                     'nombre_completo' => optional($planilla->user)->nombre_completo,
-                    'fecha'          => $planilla->fecha,
-                    'peso_importado' => $planilla->peso_importado,
+                    'periodo'         => $planilla->periodo,
+                    'peso_importado'  => $planilla->peso_importado,
                 ];
             });
+
+        return $resultados;
     }
 
     // ---------------------------------------------------------------- consumo de materia prima / maquina

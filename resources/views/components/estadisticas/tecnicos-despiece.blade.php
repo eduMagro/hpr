@@ -5,6 +5,16 @@
     </div>
 
     <div class="px-3 py-2">
+        <form method="GET" class="flex items-center gap-2 mb-4 text-sm">
+            <label for="modo" class="font-medium text-gray-700">Agrupar por:</label>
+            <select name="modo" id="modo" onchange="this.form.submit()" class="border px-2 py-1 rounded">
+                <option value="dia" {{ $modo == 'dia' ? 'selected' : '' }}>Día</option>
+                <option value="mes" {{ $modo == 'mes' ? 'selected' : '' }}>Mes</option>
+                <option value="anio" {{ $modo == 'anio' ? 'selected' : '' }}>Año</option>
+                <option value="origen" {{ $modo == 'origen' ? 'selected' : '' }}>Total</option>
+            </select>
+        </form>
+
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-1 rounded mb-2">
             Peso Total Importado por Planillero
         </h4>
@@ -42,8 +52,9 @@
 
     <div class="px-3 py-2">
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-1 rounded mt-2 mb-1">
-            Gráfica Mensual Peso/Planillero
+            Gráfica {{ ucfirst($modo) }} Peso/Planillero
         </h4>
+
         <div class="relative w-full overflow-x-auto">
             <canvas id="pesoPorUsuarioChart" class="w-full h-full" style="max-height: 300px;"></canvas>
         </div>
@@ -55,7 +66,7 @@
         const ctx = document.getElementById('pesoPorUsuarioChart').getContext('2d');
 
         // Datos importados desde Laravel
-        const pesoPorUsuarioData = @json($pesoPorPlanilleroPorDia);
+        const pesoPorUsuarioData = @json($pesoAgrupado);
 
         console.log("Datos recibidos:", pesoPorUsuarioData);
 
@@ -64,38 +75,31 @@
             return;
         }
 
-        // Obtener la fecha del primer y último día del mes actual
-        const hoy = new Date();
-        const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-        const ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
-
-        // Crear una lista con todas las fechas del mes
-        let fechas = [];
-        for (let d = new Date(primerDiaMes); d <= ultimoDiaMes; d.setDate(d.getDate() + 1)) {
-            fechas.push(d.toISOString().split('T')[0]); // YYYY-MM-DD
-        }
+        let periodos = [...new Set(
+            pesoPorUsuarioData
+            .map(p => p.periodo)
+            .filter(p => p && typeof p === 'string')
+        )].sort((a, b) => new Date(a) - new Date(b));
+        console.log(periodos);
 
         // Agrupar los datos por usuario y fecha
         let datosUsuarios = {};
         let usuariosUnicos = new Set();
 
         pesoPorUsuarioData.forEach(planillero => {
-            if (!planillero.fecha) {
-                console.warn("Registro con fecha inválida:", planillero);
-                return;
-            }
-            const fecha = planillero.fecha;
+            const periodo = planillero.periodo;
             const usuario = planillero.nombre_completo;
-            usuariosUnicos.add(usuario); // Guardar usuarios únicos
+            usuariosUnicos.add(usuario);
 
             if (!datosUsuarios[usuario]) {
                 datosUsuarios[usuario] = {};
             }
-            if (!datosUsuarios[usuario][fecha]) {
-                datosUsuarios[usuario][fecha] = 0;
+            if (!datosUsuarios[usuario][periodo]) {
+                datosUsuarios[usuario][periodo] = 0;
             }
-            datosUsuarios[usuario][fecha] += parseFloat(planillero.peso_importado);
+            datosUsuarios[usuario][periodo] += parseFloat(planillero.peso_importado);
         });
+
 
         console.log("Datos agrupados por usuario:", datosUsuarios);
 
@@ -121,12 +125,10 @@
         // Preparar los datasets para Chart.js con acumulación de peso
         const datasets = Array.from(usuariosUnicos).map(usuario => {
             let acumulado = 0;
-            let dataValues = fechas.map(fecha => {
-                acumulado += (datosUsuarios[usuario][fecha] || 0);
-                return acumulado; // Se acumula el peso día a día
+            let dataValues = periodos.map(periodo => {
+                acumulado += (datosUsuarios[usuario][periodo] || 0);
+                return acumulado;
             });
-
-            console.log(`Usuario: ${usuario}, Datos acumulados:`, dataValues);
 
             return {
                 label: usuario,
@@ -135,7 +137,7 @@
                 backgroundColor: 'transparent',
                 borderWidth: 2,
                 fill: false,
-                tension: 0.3 // Hace la línea más suave
+                tension: 0.3
             };
         });
 
@@ -145,7 +147,7 @@
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: fechas,
+                labels: periodos,
                 datasets: datasets
             },
             options: {
