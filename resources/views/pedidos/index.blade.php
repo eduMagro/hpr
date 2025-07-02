@@ -7,7 +7,9 @@
         @if (auth()->user()->rol === 'oficina')
 
             <div class="mb-6"> <!-- Tabla stock -->
-                <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral" />
+                <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral"
+                    :consumo-mensual-promedio="$consumoMensualPromedio" />
+
 
                 <div class="mt-4 text-right">
                     <button type="button" onclick="mostrarConfirmacion()"
@@ -630,15 +632,15 @@
    ${
     estaActivo
         ? `<button
-                                                                                                            onclick="confirmarDesactivacion(${pedidoId}, ${producto.producto_base_id})"
-                                                                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                            Desactivar
-                                                                                                       </button>`
+                                                                                                                onclick="confirmarDesactivacion(${pedidoId}, ${producto.producto_base_id})"
+                                                                                                                class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                                Desactivar
+                                                                                                           </button>`
         : `<button
-                                                                                                            onclick="confirmarActivacion(${pedidoId}, ${producto.producto_base_id})"
-                                                                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                            Activar
-                                                                                                       </button>`
+                                                                                                                onclick="confirmarActivacion(${pedidoId}, ${producto.producto_base_id})"
+                                                                                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                                Activar
+                                                                                                           </button>`
 }
 
 </td>

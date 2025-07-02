@@ -173,126 +173,142 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
     <div class="max-w-7xl mx-auto px-4 py-6">
         @foreach ($ubicacionesPorSector as $sector => $ubicaciones)
-            <h2 class="text-lg font-bold mt-6">Sector {{ $sector }}</h2>
+            <div x-data="{ abierto: false }" class="mt-6 border rounded-xl shadow">
 
-            @foreach ($ubicaciones as $ubicacion)
-                <!-- Componente Alpine independiente por ubicación -->
-                <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), @json($ubicacion->ubicacion))'
-                    class="bg-white shadow rounded-2xl overflow-hidden mt-4">
-                    <!-- Cabecera -->
-                    <div
-                        class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 text-white px-4 py-3 gap-3">
-                        <div class="text-sm sm:text-base">
-                            <span><strong>{{ $ubicacion->id }} -- {{ $ubicacion->codigo }} --
-                                    {{ $ubicacion->descripcion }}</strong></span>
-                            <span
-                                class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gray-200 text-gray-900 ml-2">
-                                {{ count($ubicacion->productos) }} prod. esperados
-                            </span>
-                        </div>
-                        <!-- Input de escaneo para ESTA ubicación -->
-                        <input type="text"
-                            class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
-                            placeholder="Escanea aquí…"
-                            x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
-                            x-ref="inputQR" @if ($loop->first && $loop->parent->first) autofocus @endif inputmode="none"
-                            autocomplete="off">
-                    </div>
-                    <div class="h-2 bg-gray-200">
-                        <div class="h-full bg-blue-500 transition-all duration-300" :style="`width: ${progreso()}%`">
-                        </div>
-                    </div>
-                    <!-- Tabla de productos (visible >= sm) -->
-                    <div class="hidden sm:block overflow-x-auto">
-                        <table class="min-w-full text-xs md:text-sm divide-y divide-gray-200">
-                            <thead class="bg-gray-100 text-gray-800">
-                                <tr>
-                                    <th class="px-2 py-1 text-center w-12">#</th>
-                                    <th class="px-2 py-1 text-center">Código</th>
-                                    <th class="px-2 py-1 text-center">Producto</th>
-                                    <th class="px-2 py-1 text-center">Tipo</th>
-                                    <th class="px-2 py-1 text-center">Ø / Long.</th>
-                                    <th class="px-2 py-1 text-center">Peso</th>
-                                    <th class="px-2 py-1 text-center">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                @foreach ($ubicacion->productos as $idx => $producto)
-                                    <tr
-                                        :class="{
-                                            'bg-green-50': productoEscaneado('{{ $producto->codigo }}'),
-                                            'ring-2 ring-green-500 shadow-md scale-[1.01] transition-all duration-300 ease-out': ultimoCodigo === '{{ $producto->codigo }}'
-                                        }">
+                <!-- Encabezado del sector con botón para expandir -->
+                <button @click="abierto = !abierto"
+                    class="w-full flex items-center justify-between px-4 py-3 bg-gray-800 text-white font-semibold text-left text-lg hover:bg-gray-700">
+                    <span>Sector {{ $sector }}</span>
+                    <svg :class="abierto ? 'rotate-90' : ''" class="w-4 h-4 transition-transform" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
 
-                                        <td class="px-2 py-1 text-center">{{ $idx + 1 }}</td>
-                                        <td class="px-2 py-1 text-xs text-center">{{ $producto->codigo }}</td>
-                                        <td class="px-2 py-1 text-center">{{ $producto->nombre }}</td>
-                                        <td class="px-2 py-1 capitalize text-center">{{ $producto->tipo }}</td>
-                                        <td class="px-2 py-1 text-center">
-                                            @if ($producto->tipo === 'encarretado')
-                                                Ø {{ $producto->diametro }} mm
-                                            @else
-                                                {{ $producto->longitud }} m
-                                            @endif
-                                        </td>
-                                        <td class="px-2 py-1 text-center">
-                                            {{ number_format($producto->peso_inicial, 1, ',', '.') }}</td>
-                                        <td class="px-2 py-1 text-center">
-                                            <span x-show="productoEscaneado('{{ $producto->codigo }}')"
-                                                class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">OK</span>
-                                            <span x-show="!productoEscaneado('{{ $producto->codigo }}')"
-                                                class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- Contenido del sector -->
+                <div x-show="abierto" x-transition>
 
-                    <!-- Vista mobile (cards) -->
-                    <div class="sm:hidden divide-y divide-gray-100 text-xs">
-                        @foreach ($ubicacion->productos as $producto)
-                            <div class="flex justify-between items-center py-2 px-3"
-                                :class="productoEscaneado('{{ $producto->codigo }}') ? 'bg-green-50' : ''">
-                                <div class="flex-1">
-                                    <p class="font-semibold">{{ $producto->codigo }}</p>
-                                    <p class="text-gray-600">{{ $producto->nombre }}</p>
+                    @foreach ($ubicaciones as $ubicacion)
+                        <!-- Componente Alpine independiente por ubicación -->
+                        <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), @json($ubicacion->ubicacion))'
+                            class="bg-white shadow rounded-2xl overflow-hidden mt-4">
+                            <!-- Cabecera -->
+                            <div
+                                class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 text-white px-4 py-3 gap-3">
+                                <div class="text-sm sm:text-base">
+                                    <span><strong>{{ $ubicacion->id }} -- {{ $ubicacion->codigo }} --
+                                            {{ $ubicacion->descripcion }}</strong></span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-gray-200 text-gray-900 ml-2">
+                                        {{ count($ubicacion->productos) }} prod. esperados
+                                    </span>
                                 </div>
-                                <div class="text-right ml-2">
-                                    <span x-cloak x-show="productoEscaneado('{{ $producto->codigo }}')"
-                                        class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
-                                    <span x-show="!productoEscaneado('{{ $producto->codigo }}')"
-                                        class="inline-block px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-[10px] font-semibold">Pend.</span>
+                                <!-- Input de escaneo para ESTA ubicación -->
+                                <input type="text"
+                                    class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
+                                    placeholder="Escanea aquí…"
+                                    x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
+                                    x-ref="inputQR" @if ($loop->first && $loop->parent->first) autofocus @endif inputmode="none"
+                                    autocomplete="off">
+                            </div>
+                            <div class="h-2 bg-gray-200">
+                                <div class="h-full bg-blue-500 transition-all duration-300"
+                                    :style="`width: ${progreso()}%`">
                                 </div>
                             </div>
-                        @endforeach
-                    </div>
+                            <!-- Tabla de productos (visible >= sm) -->
+                            <div class="hidden sm:block overflow-x-auto">
+                                <table class="min-w-full text-xs md:text-sm divide-y divide-gray-200">
+                                    <thead class="bg-gray-100 text-gray-800">
+                                        <tr>
+                                            <th class="px-2 py-1 text-center w-12">#</th>
+                                            <th class="px-2 py-1 text-center">Código</th>
+                                            <th class="px-2 py-1 text-center">Producto</th>
+                                            <th class="px-2 py-1 text-center">Tipo</th>
+                                            <th class="px-2 py-1 text-center">Ø / Long.</th>
+                                            <th class="px-2 py-1 text-center">Peso</th>
+                                            <th class="px-2 py-1 text-center">Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        @foreach ($ubicacion->productos as $idx => $producto)
+                                            <tr
+                                                :class="{
+                                                    'bg-green-50': productoEscaneado('{{ $producto->codigo }}'),
+                                                    'ring-2 ring-green-500 shadow-md scale-[1.01] transition-all duration-300 ease-out': ultimoCodigo === '{{ $producto->codigo }}'
+                                                }">
 
-                    <!-- Productos inesperados -->
-                    <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
-                        <h3 class="text-sm font-semibold text-red-600 mb-1">Productos inesperados:</h3>
-                        <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
-                            <template x-for="codigo in sospechosos" :key="codigo">
-                                <li x-text="codigo"></li>
-                            </template>
-                        </ul>
-                    </div>
+                                                <td class="px-2 py-1 text-center">{{ $idx + 1 }}</td>
+                                                <td class="px-2 py-1 text-xs text-center">{{ $producto->codigo }}</td>
+                                                <td class="px-2 py-1 text-center">{{ $producto->nombre }}</td>
+                                                <td class="px-2 py-1 capitalize text-center">{{ $producto->tipo }}</td>
+                                                <td class="px-2 py-1 text-center">
+                                                    @if ($producto->tipo === 'encarretado')
+                                                        Ø {{ $producto->diametro }} mm
+                                                    @else
+                                                        {{ $producto->longitud }} m
+                                                    @endif
+                                                </td>
+                                                <td class="px-2 py-1 text-center">
+                                                    {{ number_format($producto->peso_inicial, 1, ',', '.') }}</td>
+                                                <td class="px-2 py-1 text-center">
+                                                    <span x-show="productoEscaneado('{{ $producto->codigo }}')"
+                                                        class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">OK</span>
+                                                    <span x-show="!productoEscaneado('{{ $producto->codigo }}')"
+                                                        class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800">Pend.</span>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
 
-                    <!-- Botones -->
-                    <div class="flex justify-end gap-3 px-4 py-4">
-                        <button @click="resetear()"
-                            class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
-                            Limpiar escaneos
-                        </button>
+                            <!-- Vista mobile (cards) -->
+                            <div class="sm:hidden divide-y divide-gray-100 text-xs">
+                                @foreach ($ubicacion->productos as $producto)
+                                    <div class="flex justify-between items-center py-2 px-3"
+                                        :class="productoEscaneado('{{ $producto->codigo }}') ? 'bg-green-50' : ''">
+                                        <div class="flex-1">
+                                            <p class="font-semibold">{{ $producto->codigo }}</p>
+                                            <p class="text-gray-600">{{ $producto->nombre }}</p>
+                                        </div>
+                                        <div class="text-right ml-2">
+                                            <span x-cloak x-show="productoEscaneado('{{ $producto->codigo }}')"
+                                                class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
+                                            <span x-show="!productoEscaneado('{{ $producto->codigo }}')"
+                                                class="inline-block px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-[10px] font-semibold">Pend.</span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
 
-                        <button @click="reportarErrores()"
-                            class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
-                            Reportar errores
-                        </button>
-                    </div>
+                            <!-- Productos inesperados -->
+                            <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
+                                <h3 class="text-sm font-semibold text-red-600 mb-1">Productos inesperados:</h3>
+                                <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
+                                    <template x-for="codigo in sospechosos" :key="codigo">
+                                        <li x-text="codigo"></li>
+                                    </template>
+                                </ul>
+                            </div>
 
+                            <!-- Botones -->
+                            <div class="flex justify-end gap-3 px-4 py-4">
+                                <button @click="resetear()"
+                                    class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
+                                    Limpiar escaneos
+                                </button>
+
+                                <button @click="reportarErrores()"
+                                    class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
+                                    Reportar errores
+                                </button>
+                            </div>
+
+                        </div>
+                    @endforeach
                 </div>
-            @endforeach
+            </div>
         @endforeach
     </div>
 
