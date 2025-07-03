@@ -205,7 +205,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
                     @foreach ($ubicaciones as $ubicacion)
                         <!-- Componente Alpine independiente por ubicación -->
-                        <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), @json($ubicacion->ubicacion))'
+                        <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), @json($ubicacion->id))'
                             :key="{{ json_encode($ubicacion->id) }}"
                             class="bg-white shadow rounded-2xl overflow-hidden mt-4">
                             <!-- Cabecera -->

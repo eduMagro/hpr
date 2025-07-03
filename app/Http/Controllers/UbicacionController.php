@@ -85,13 +85,19 @@ class UbicacionController extends Controller
         $esperadosPorSector = $ubicaciones->groupBy('sector')->map(function ($grupo) {
             return $grupo->mapWithKeys(function ($ubicacion) {
                 return [
-                    $ubicacion->ubicacion => $ubicacion->productos->pluck('codigo')->toArray(),
+                    $ubicacion->id => $ubicacion->productos->pluck('codigo')->toArray(),
                 ];
             });
         });
 
-        return view('ubicaciones.compararInventario', compact('esperadosPorSector'));
+        $nombresUbicaciones = $ubicaciones->pluck('nombre', 'id')->toArray();
+
+        return view('ubicaciones.compararInventario', [
+            'esperadosPorSector' => $esperadosPorSector,
+            'nombresUbicaciones' => $nombresUbicaciones,
+        ]);
     }
+
 
     //------------------------------------------------------------------------------------ CREATE()
     public function create()

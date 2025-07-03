@@ -14,7 +14,7 @@
                     <template x-for="(analisis, ubicacion) in ubicaciones" :key="ubicacion">
                         <div class="mt-4 border rounded-lg shadow overflow-hidden">
                             <h3 class="bg-gray-100 px-4 py-2 font-semibold text-lg text-gray-700"
-                                x-text="`Ubicación: ${ubicacion}`">
+                                x-text="`Ubicación: ${NOMBRES_UBICACIONES[ubicacion] || 'ID ' + ubicacion}`">
                             </h3>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 text-sm">
@@ -70,6 +70,9 @@
             </ul>
         </div>
     </div>
+    <script>
+        const NOMBRES_UBICACIONES = @json($nombresUbicaciones);
+    </script>
 
     <script>
         function compararInventarioPorSector(esperadosPorSector) {
@@ -84,15 +87,16 @@
 
                     // Recorremos todos los sectores y sus ubicaciones
                     for (const [sector, ubicaciones] of Object.entries(esperadosPorSector)) {
-                        for (const [ubicacion, esperados] of Object.entries(ubicaciones)) {
-                            const claveEscaneados = `inv-${ubicacion}`;
-                            const claveSospechosos = `sospechosos-${ubicacion}`;
+                        for (const [ubicacionId, esperados] of Object.entries(ubicaciones)) {
+                            const claveEscaneados = `inv-${ubicacionId}`;
+                            const claveSospechosos = `sospechosos-${ubicacionId}`;
 
                             const escaneados = JSON.parse(localStorage.getItem(claveEscaneados) || '[]');
                             const sospechosos = JSON.parse(localStorage.getItem(claveSospechosos) || '[]');
 
-                            detectados[ubicacion] = escaneados;
-                            inesperados[ubicacion] = sospechosos;
+                            detectados[ubicacionId] = escaneados;
+                            inesperados[ubicacionId] = sospechosos;
+
 
                             globalDetectados.push(...escaneados);
                         }
