@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
+use App\Exports\InventarioComparadoExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class UbicacionController extends Controller
 {
@@ -76,17 +78,17 @@ class UbicacionController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-    public function comparar(Request $request)
+    public function comparar()
     {
         $ubicaciones = Ubicacion::with('productos')->get();
 
-        // Productos esperados por ubicación (clave: nombre/código ubicación)
+        // Mapeamos ubicaciones => [codigos]
         $esperados = [];
         foreach ($ubicaciones as $ubicacion) {
             $esperados[$ubicacion->ubicacion] = $ubicacion->productos->pluck('codigo')->toArray();
         }
 
-        return view('inventario.comparar', compact('esperados'));
+        return view('ubicaciones.compararInventario', compact('esperados'));
     }
 
     //------------------------------------------------------------------------------------ CREATE()

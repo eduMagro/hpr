@@ -224,7 +224,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
                                     placeholder="Escanea aquí…"
                                     x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
-                                    x-ref="inputQR" inputmode="none" autocomplete="off" readonly>
+                                    x-ref="inputQR" inputmode="none" autocomplete="off">
                             </div>
                             <div class="h-2 bg-gray-200">
                                 <div class="h-full bg-blue-500 transition-all duration-300"
@@ -330,12 +330,10 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 </div>
             </div>
         @endforeach
-        <form method="GET" action="{{ route('inventario.comparar') }}">
-            <button type="submit"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow">
-                Comparar inventario
-            </button>
-        </form>
+        <a href="{{ route('inventario.comparar') }}"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow">
+            Comparar inventario
+        </a>
 
     </div>
 

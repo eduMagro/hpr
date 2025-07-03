@@ -94,6 +94,7 @@ Route::middleware('auth')->group(function () {
     });
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.inventario');
     Route::get('/inventario/comparar', [UbicacionController::class, 'comparar'])->name('inventario.comparar');
+    // Route::post('/inventario/exportar', [UbicacionController::class, 'exportar'])->name('ubicaciones.exportar');
     Route::resource('ubicaciones', UbicacionController::class)->middleware('acceso.seccion:ubicaciones.index');
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
 
