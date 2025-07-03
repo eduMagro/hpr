@@ -18,8 +18,10 @@
             <!-- Código (no editable si es clave primaria o identificador) -->
             <div class="mb-4">
                 <label for="codigo" class="block text-gray-700 font-bold mb-2">Código:</label>
-                <input type="text" id="codigo" name="codigo" value="{{ old('codigo', $producto->codigo) }}"
-                    class="w-full px-3 py-2 border rounded-lg" readonly>
+                <input type="text" id="codigo" name="codigo" inputmode="none"
+                    value="{{ old('codigo', $producto->codigo) }}"
+                    class="w-full px-3 py-2 border rounded-lg bg-gray-100 text-gray-700 font-mono">
+
             </div>
 
             <!-- Proveedor -->
@@ -107,4 +109,5 @@
             </button>
         </form>
     </div>
+
 </x-app-layout>

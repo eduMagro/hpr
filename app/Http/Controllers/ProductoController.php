@@ -345,6 +345,7 @@ class ProductoController extends Controller
 
         try {
             $validated = $request->validate([
+                'codigo' => ['required', 'string', 'regex:/^MP.*/i', 'max:255'],
                 'fabricante_id'      => 'required|exists:fabricantes,id',
                 'producto_base_id'  => 'required|exists:productos_base,id',
                 'nombre'            => 'nullable|string|max:255',
@@ -356,6 +357,9 @@ class ProductoController extends Controller
                 'estado'            => 'nullable|string|max:50',
                 'otros'             => 'nullable|string|max:255',
             ], [
+                'codigo.required' => 'El código es obligatorio.',
+                'codigo.regex' => 'El código debe empezar por "MP".',
+
                 'fabricante_id.required'      => 'El fabricante es obligatorio.',
                 'fabricante_id.exists'        => 'El fabricante seleccionado no es válido.',
                 'producto_base_id.required'  => 'El producto base es obligatorio.',

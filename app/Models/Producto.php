@@ -35,6 +35,11 @@ class Producto extends Model
         'updated_at' => 'datetime',
     ];
 
+    // En app/Models/Producto.php
+    public function setCodigoAttribute($value)
+    {
+        $this->attributes['codigo'] = strtoupper($value);
+    }
 
     /**
      * Relación con la tabla 'entradas'
