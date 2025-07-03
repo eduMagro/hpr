@@ -82,13 +82,15 @@ class UbicacionController extends Controller
     {
         $ubicaciones = Ubicacion::with('productos')->get();
 
-        // Mapeamos ubicaciones => [codigos]
-        $esperados = [];
-        foreach ($ubicaciones as $ubicacion) {
-            $esperados[$ubicacion->ubicacion] = $ubicacion->productos->pluck('codigo')->toArray();
-        }
+        $esperadosPorSector = $ubicaciones->groupBy('sector')->map(function ($grupo) {
+            return $grupo->mapWithKeys(function ($ubicacion) {
+                return [
+                    $ubicacion->ubicacion => $ubicacion->productos->pluck('codigo')->toArray(),
+                ];
+            });
+        });
 
-        return view('ubicaciones.compararInventario', compact('esperados'));
+        return view('ubicaciones.compararInventario', compact('esperadosPorSector'));
     }
 
     //------------------------------------------------------------------------------------ CREATE()
