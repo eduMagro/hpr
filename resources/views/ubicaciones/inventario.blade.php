@@ -334,9 +334,48 @@ Inesperados: ${inesperados.join(', ') || '—'}
             class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow">
             Comparar inventario
         </a>
+        <button onclick="limpiarTodos()"
+            class="m-4 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow">
+            Limpiar TODOS los escaneos
+        </button>
 
     </div>
 
     <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>
     <audio id="sonido-error" src="{{ asset('sonidos/error.mp3') }}" preload="auto"></audio>
+    <script>
+        window.limpiarTodos = function() {
+            Swal.fire({
+                icon: 'warning',
+                title: '¿Eliminar todos los escaneos?',
+                text: 'Se borrarán todos los registros escaneados.',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, borrar todo',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#dc2626'
+            }).then(result => {
+                if (result.isConfirmed) {
+                    const clavesABorrar = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key?.startsWith('inv-') || key?.startsWith('sospechosos-')) {
+                            clavesABorrar.push(key);
+                        }
+                    }
+
+                    clavesABorrar.forEach(key => localStorage.removeItem(key));
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Escaneos eliminados',
+                        text: `${clavesABorrar.length} registros fueron eliminados.`,
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+
+                    setTimeout(() => location.reload(), 800);
+                }
+            });
+        };
+    </script>
 </x-app-layout>
