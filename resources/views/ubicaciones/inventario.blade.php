@@ -330,14 +330,20 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 </div>
             </div>
         @endforeach
-        <a href="{{ route('inventario.comparar') }}"
-            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow">
-            Comparar inventario
-        </a>
-        <button onclick="limpiarTodos()"
-            class="m-4 bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow">
-            Limpiar TODOS los escaneos
-        </button>
+        <div
+            class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4">
+
+            <a href="{{ route('inventario.comparar') }}"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
+                Comparar inventario
+            </a>
+
+            <button onclick="limpiarTodos()"
+                class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
+                Limpiar TODOS los escaneos
+            </button>
+
+        </div>
 
     </div>
 
