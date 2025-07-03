@@ -72,11 +72,23 @@
             },
 
             resetear() {
-                /* 4️⃣ clear everything for this location */
-                this.escaneados = [];
-                this.sospechosos = [];
-                this.ultimoCodigo = null;
-                localStorage.removeItem(claveLS);
+                Swal.fire({
+                    icon: 'warning',
+                    title: '¿Limpiar esta ubicación?',
+                    text: 'Se perderán los escaneos guardados.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, borrar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc2626'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        this.escaneados = [];
+                        this.sospechosos = [];
+                        this.ultimoCodigo = null;
+                        localStorage.removeItem(claveLS);
+                        localStorage.removeItem(`sospechosos-${this.nombreUbicacion}`);
+                    }
+                });
             },
 
             productoEscaneado(codigo) {
@@ -212,12 +224,17 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
                                     placeholder="Escanea aquí…"
                                     x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
-                                    x-ref="inputQR" inputmode="none" autocomplete="off">
+                                    x-ref="inputQR" inputmode="none" autocomplete="off" readonly>
                             </div>
                             <div class="h-2 bg-gray-200">
                                 <div class="h-full bg-blue-500 transition-all duration-300"
                                     :style="`width: ${progreso()}%`">
                                 </div>
+                                <div class="text-xs text-right px-4 py-1 text-gray-500">
+                                    <span
+                                        x-text="`${escaneados.length} / ${productosEsperados.length} escaneados`"></span>
+                                </div>
+
                             </div>
                             <!-- Tabla de productos (visible >= sm) -->
                             <div class="hidden sm:block overflow-x-auto">
@@ -313,6 +330,13 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 </div>
             </div>
         @endforeach
+        <form method="GET" action="{{ route('inventario.comparar') }}">
+            <button type="submit"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow">
+                Comparar inventario
+            </button>
+        </form>
+
     </div>
 
     <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>

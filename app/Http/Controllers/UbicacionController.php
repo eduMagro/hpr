@@ -76,6 +76,18 @@ class UbicacionController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+    public function comparar(Request $request)
+    {
+        $ubicaciones = Ubicacion::with('productos')->get();
+
+        // Productos esperados por ubicación (clave: nombre/código ubicación)
+        $esperados = [];
+        foreach ($ubicaciones as $ubicacion) {
+            $esperados[$ubicacion->ubicacion] = $ubicacion->productos->pluck('codigo')->toArray();
+        }
+
+        return view('inventario.comparar', compact('esperados'));
+    }
 
     //------------------------------------------------------------------------------------ CREATE()
     public function create()
