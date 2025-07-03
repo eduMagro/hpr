@@ -1,4 +1,8 @@
 <script>
+    window.productosAsignados = @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo'));
+</script>
+
+<script>
     const RUTA_ALERTA = @json(route('alertas.store'));
 
     /* ────── Alpine factory per location ────── */
@@ -30,6 +34,9 @@
                 this.audioOk = document.getElementById('sonido-ok');
                 this.audioError = document.getElementById('sonido-error');
                 this.audioPedo = document.getElementById('sonido-pedo');
+                this.audioEstaEnOtraUbi = document.getElementById('sonido-estaEnOtraUbi');
+                this.audioNoTieneUbicacion = document.getElementById('sonido-noTieneUbicacion');
+
             },
 
             /* helpers ------------------------------------------------------------- */
@@ -48,6 +55,17 @@
                 this.audioPedo.currentTime = 0;
                 this.audioPedo.play().catch(() => {});
             },
+            reproducirEstaEnOtraUbi() {
+                if (!this.audioEstaEnOtraUbi) return;
+                this.audioEstaEnOtraUbi.currentTime = 0;
+                this.audioEstaEnOtraUbi.play().catch(() => {});
+            },
+            reproducirNoTieneUbicacion() {
+                if (!this.audioNoTieneUbicacion) return;
+                this.audioNoTieneUbicacion.currentTime = 0;
+                this.audioNoTieneUbicacion.play().catch(() => {});
+            },
+
 
             progreso() {
                 /* 0–1 decimal for width % bar */
@@ -66,6 +84,8 @@
                 }
                 if (!codigo) return;
 
+                const ubicacionAsignada = (window.productosAsignados || {})[codigo];
+
                 if (this.productosEsperados.includes(codigo)) {
                     if (!this.escaneados.includes(codigo)) {
                         this.escaneados.push(codigo);
@@ -74,11 +94,32 @@
                         this.reproducirOk();
                     }
                 } else {
+                    // Siempre añadimos a sospechosos si aún no estaba
                     if (!this.sospechosos.includes(codigo)) {
                         this.sospechosos.push(codigo);
                         localStorage.setItem(`sospechosos-${nombreUbicacion}`, JSON.stringify(this.sospechosos));
+                    }
+
+                    // Reproducimos sonido según caso
+                    const ubicacionAsignada = (window.productosAsignados || {})[codigo];
+                    console.log('➡️ Código escaneado:', codigo);
+                    console.log('➡️ Ubicación asignada:', ubicacionAsignada, typeof ubicacionAsignada);
+                    console.log('➡️ Esta ubicación actual:', this.nombreUbicacion, typeof this.nombreUbicacion);
+
+                    if (ubicacionAsignada !== undefined && ubicacionAsignada.toString() !== this.nombreUbicacion
+                        .toString()) {
+                        console.log('🔁 Está en otra ubicación');
+                        this.reproducirEstaEnOtraUbi();
+                    } else if (ubicacionAsignada === undefined) {
+                        console.log('🚫 No tiene ubicación asignada');
+                        this.reproducirNoTieneUbicacion();
+                    } else {
+                        console.log('❌ Producto inesperado');
                         this.reproducirError();
                     }
+
+
+
                 }
 
                 /* 3️⃣ flash highlight */
@@ -220,7 +261,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
                     @foreach ($ubicaciones as $ubicacion)
                         <!-- Componente Alpine independiente por ubicación -->
-                        <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), @json($ubicacion->id))'
+                        <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), "{{ $ubicacion->id }}")'
                             :key="{{ json_encode($ubicacion->id) }}"
                             class="bg-white shadow rounded-2xl overflow-hidden mt-4">
                             <!-- Cabecera -->
@@ -322,8 +363,18 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 <h3 class="text-sm font-semibold text-red-600 mb-1">Productos inesperados:</h3>
                                 <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
                                     <template x-for="codigo in sospechosos" :key="codigo">
-                                        <li x-text="codigo"></li>
+                                        <li>
+                                            <span x-text="codigo"></span>
+                                            <template x-if="window.productosAsignados[codigo]">
+                                                <span class="text-xs text-gray-500">
+                                                    → asignado a ubicacion con ID =
+                                                    <strong x-text="window.productosAsignados[codigo]"></strong>
+                                                </span>
+                                            </template>
+                                        </li>
                                     </template>
+
+
                                 </ul>
                             </div>
 
@@ -348,11 +399,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
         <div
             class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4">
 
-            <a href="{{ route('inventario.comparar') }}"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
-                Comparar inventario
-            </a>
-
             <button onclick="limpiarTodos()"
                 class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
                 Limpiar TODOS los escaneos
@@ -365,6 +411,9 @@ Inesperados: ${inesperados.join(', ') || '—'}
     <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>
     <audio id="sonido-error" src="{{ asset('sonidos/error.mp3') }}" preload="auto"></audio>
     <audio id="sonido-pedo" src="{{ asset('sonidos/pedo.mp3') }}" preload="auto"></audio>
+    <audio id="sonido-estaEnOtraUbi" src="{{ asset('sonidos/estaEnOtraUbi.mp3') }}" preload="auto"></audio>
+    <audio id="sonido-noTieneUbicacion" src="{{ asset('sonidos/noTieneUbicacion.mp3') }}" preload="auto"></audio>
+
     <script>
         window.limpiarTodos = function() {
             Swal.fire({
