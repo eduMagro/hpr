@@ -169,11 +169,11 @@
                                         class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <x-tabla.input name="num_colada" type="text" :value="request('num_colada')"
+                                    <x-tabla.input name="n_colada" type="text" :value="request('n_colada')"
                                         class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <x-tabla.input name="num_paquete" type="text" :value="request('num_paquete')"
+                                    <x-tabla.input name="n_paquete" type="text" :value="request('n_paquete')"
                                         class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border"></th> <!-- Peso Inicial -->
