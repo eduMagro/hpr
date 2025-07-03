@@ -24,7 +24,8 @@
             init() {
                 /* 1️⃣ recuperar progreso previo */
                 this.escaneados = JSON.parse(localStorage.getItem(claveLS) || '[]');
-
+                this.sospechosos = JSON.parse(localStorage.getItem(`sospechosos-${nombreUbicacion}`) || '[]');
+                this.$nextTick(() => this.$refs.inputQR?.focus());
                 this.audioOk = document.getElementById('sonido-ok');
                 this.audioError = document.getElementById('sonido-error');
             },
@@ -54,11 +55,13 @@
                     if (!this.escaneados.includes(codigo)) {
                         this.escaneados.push(codigo);
                         localStorage.setItem(claveLS, JSON.stringify(this.escaneados)); // 2️⃣ persist
+
                         this.reproducirOk();
                     }
                 } else {
                     if (!this.sospechosos.includes(codigo)) {
                         this.sospechosos.push(codigo);
+                        localStorage.setItem(`sospechosos-${nombreUbicacion}`, JSON.stringify(this.sospechosos));
                         this.reproducirError();
                     }
                 }
@@ -191,6 +194,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                     @foreach ($ubicaciones as $ubicacion)
                         <!-- Componente Alpine independiente por ubicación -->
                         <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), @json($ubicacion->ubicacion))'
+                            :key="{{ json_encode($ubicacion->id) }}"
                             class="bg-white shadow rounded-2xl overflow-hidden mt-4">
                             <!-- Cabecera -->
                             <div
@@ -208,8 +212,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     class="w-full sm:w-64 border border-gray-300 rounded-md px-3 py-2 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 shadow"
                                     placeholder="Escanea aquí…"
                                     x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
-                                    x-ref="inputQR" @if ($loop->first && $loop->parent->first) autofocus @endif inputmode="none"
-                                    autocomplete="off">
+                                    x-ref="inputQR" inputmode="none" autocomplete="off">
                             </div>
                             <div class="h-2 bg-gray-200">
                                 <div class="h-full bg-blue-500 transition-all duration-300"
