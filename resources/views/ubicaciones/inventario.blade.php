@@ -19,6 +19,7 @@
             /* audio */
             audioOk: null,
             audioError: null,
+            audioPedo: null,
 
             /* lifecycle ----------------------------------------------------------- */
             init() {
@@ -28,6 +29,7 @@
                 this.$nextTick(() => this.$refs.inputQR?.focus());
                 this.audioOk = document.getElementById('sonido-ok');
                 this.audioError = document.getElementById('sonido-error');
+                this.audioPedo = document.getElementById('sonido-pedo');
             },
 
             /* helpers ------------------------------------------------------------- */
@@ -41,6 +43,11 @@
                 this.audioError.currentTime = 0;
                 this.audioError.play().catch(() => {});
             },
+            reproducirPedo() {
+                if (!this.audioPedo) return;
+                this.audioPedo.currentTime = 0;
+                this.audioPedo.play().catch(() => {});
+            },
 
             progreso() {
                 /* 0–1 decimal for width % bar */
@@ -49,6 +56,14 @@
 
             procesarQR(codigo) {
                 codigo = (codigo || '').trim();
+
+                // ❌ Si no empieza por MP, descartamos
+                if (!codigo.toUpperCase().startsWith('MP')) {
+                    this.reproducirPedo();
+                    this.ultimoCodigo = codigo;
+                    setTimeout(() => (this.ultimoCodigo = null), 1200);
+                    return;
+                }
                 if (!codigo) return;
 
                 if (this.productosEsperados.includes(codigo)) {
@@ -349,6 +364,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
     <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>
     <audio id="sonido-error" src="{{ asset('sonidos/error.mp3') }}" preload="auto"></audio>
+    <audio id="sonido-pedo" src="{{ asset('sonidos/pedo.mp3') }}" preload="auto"></audio>
     <script>
         window.limpiarTodos = function() {
             Swal.fire({
