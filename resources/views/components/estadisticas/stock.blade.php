@@ -152,13 +152,19 @@
                             @if (!$claseRojo)
                                 <div class="flex items-center justify-start gap-1">
                                     <input type="checkbox" name="seleccionados[]"
-                                        value="encarretado-{{ $diametro }}">
-                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
-                                        value="encarretado">
-                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][diametro]"
+                                        value="barra-{{ $diametro }}-{{ $longitud }}">
+                                    <input type="hidden"
+                                        name="detalles[barra-{{ $diametro }}-{{ $longitud }}][tipo]"
+                                        value="barra">
+                                    <input type="hidden"
+                                        name="detalles[barra-{{ $diametro }}-{{ $longitud }}][diametro]"
                                         value="{{ $diametro }}">
-                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][cantidad]"
-                                        value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
+                                    <input type="hidden"
+                                        name="detalles[barra-{{ $diametro }}-{{ $longitud }}][longitud]"
+                                        value="{{ $longitud }}">
+                                    <input type="hidden"
+                                        name="detalles[barra-{{ $diametro }}-{{ $longitud }}][cantidad]"
+                                        value="{{ round($necesarioVal, 2) }}">
                                     <span
                                         class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
                                 </div>
