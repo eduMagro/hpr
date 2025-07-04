@@ -299,7 +299,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                         <tr>
                                             <th class="px-2 py-1 text-center w-12">#</th>
                                             <th class="px-2 py-1 text-center">Código</th>
-                                            <th class="px-2 py-1 text-center">Producto</th>
                                             <th class="px-2 py-1 text-center">Tipo</th>
                                             <th class="px-2 py-1 text-center">Ø / Long.</th>
                                             <th class="px-2 py-1 text-center">Peso</th>
@@ -316,13 +315,15 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
                                                 <td class="px-2 py-1 text-center">{{ $idx + 1 }}</td>
                                                 <td class="px-2 py-1 text-xs text-center">{{ $producto->codigo }}</td>
-                                                <td class="px-2 py-1 text-center">{{ $producto->nombre }}</td>
-                                                <td class="px-2 py-1 capitalize text-center">{{ $producto->tipo }}</td>
+
+                                                <td class="px-2 py-1 capitalize text-center">
+                                                    {{ $producto->productoBase->tipo }}</td>
                                                 <td class="px-2 py-1 text-center">
-                                                    @if ($producto->tipo === 'encarretado')
-                                                        Ø {{ $producto->diametro }} mm
+                                                    @if ($producto->productoBase->tipo === 'encarretado')
+                                                        Ø {{ $producto->productoBase->diametro }} mm
                                                     @else
-                                                        {{ $producto->longitud }} m
+                                                        Ø {{ $producto->productoBase->diametro }} mm /
+                                                        {{ $producto->productoBase->longitud }} m
                                                     @endif
                                                 </td>
                                                 <td class="px-2 py-1 text-center">
@@ -340,6 +341,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             </div>
 
                             <!-- Vista mobile (cards) -->
+
                             <div class="sm:hidden divide-y divide-gray-100 text-xs">
                                 @foreach ($ubicacion->productos as $producto)
                                     <div class="flex justify-between items-center py-2 px-3"
@@ -347,6 +349,16 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                         <div class="flex-1">
                                             <p class="font-semibold">{{ $producto->codigo }}</p>
                                             <p class="text-gray-600">{{ $producto->nombre }}</p>
+                                            <p class="text-gray-500">
+                                                {{ ucfirst($producto->productoBase->tipo) }} —
+                                                Ø {{ $producto->productoBase->diametro }} mm
+                                                @if ($producto->productoBase->tipo !== 'encarretado')
+                                                    / {{ $producto->productoBase->longitud }} m
+                                                @endif
+                                            </p>
+                                            <p class="text-gray-500">
+                                                {{ number_format($producto->peso_inicial, 1, ',', '.') }} kg
+                                            </p>
                                         </div>
                                         <div class="text-right ml-2">
                                             <span x-cloak x-show="productoEscaneado('{{ $producto->codigo }}')"
@@ -357,6 +369,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     </div>
                                 @endforeach
                             </div>
+
 
                             <!-- Productos inesperados -->
                             <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
