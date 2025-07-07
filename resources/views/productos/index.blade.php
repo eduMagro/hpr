@@ -257,6 +257,15 @@
                                         {{-- Ver --}}
                                         <x-tabla.boton-ver :href="route('productos.show', $producto->id)" />
 
+                                        <a href="{{ route('movimientos.create', ['codigo' => $producto->codigo]) }}"
+                                            class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                            title="Mover producto">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                viewBox="0 0 24 24" fill="currentColor">
+                                                <path
+                                                    d="M8.5 2A1.5 1.5 0 0 1 10 3.5V10h.5V4A1.5 1.5 0 0 1 13 4v6h.5V5.5a1.5 1.5 0 0 1 3 0V10h.5V7a1.5 1.5 0 0 1 3 0v9.5a3.5 3.5 0 0 1-7 0V18h-2a3 3 0 0 1-3-3v-4H8V3.5A1.5 1.5 0 0 1 8.5 2z" />
+                                            </svg>
+                                        </a>
 
                                         {{-- ② Icono compacto --}}
                                         <a href="{{ route('productos.consumir', $producto->id) }}"
