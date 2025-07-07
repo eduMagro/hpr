@@ -350,7 +350,7 @@ class AlertaController extends Controller
                 : redirect()->back()->with('success', 'Alerta enviada correctamente.');
         } catch (\Throwable $e) {
             // Log del error para el programador
-            \Log::error('❌ Error en envío de alerta: ' . $e->getMessage());
+            Log::error('❌ Error en envío de alerta: ' . $e->getMessage());
 
             if ($request->wantsJson()) {
                 return response()->json([

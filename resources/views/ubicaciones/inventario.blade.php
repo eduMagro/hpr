@@ -36,7 +36,6 @@
                 this.audioPedo = document.getElementById('sonido-pedo');
                 this.audioEstaEnOtraUbi = document.getElementById('sonido-estaEnOtraUbi');
                 this.audioNoTieneUbicacion = document.getElementById('sonido-noTieneUbicacion');
-
             },
 
             /* helpers ------------------------------------------------------------- */
@@ -65,7 +64,6 @@
                 this.audioNoTieneUbicacion.currentTime = 0;
                 this.audioNoTieneUbicacion.play().catch(() => {});
             },
-
 
             progreso() {
                 /* 0–1 decimal for width % bar */
@@ -102,9 +100,9 @@
 
                     // Reproducimos sonido según caso
                     const ubicacionAsignada = (window.productosAsignados || {})[codigo];
-                    console.log('➡️ Código escaneado:', codigo);
-                    console.log('➡️ Ubicación asignada:', ubicacionAsignada, typeof ubicacionAsignada);
-                    console.log('➡️ Esta ubicación actual:', this.nombreUbicacion, typeof this.nombreUbicacion);
+                    // console.log('➡️ Código escaneado:', codigo);
+                    // console.log('➡️ Ubicación asignada:', ubicacionAsignada, typeof ubicacionAsignada);
+                    // console.log('➡️ Esta ubicación actual:', this.nombreUbicacion, typeof this.nombreUbicacion);
 
                     if (ubicacionAsignada !== undefined && ubicacionAsignada.toString() !== this.nombreUbicacion
                         .toString()) {
@@ -117,9 +115,6 @@
                         console.log('❌ Producto inesperado');
                         this.reproducirError();
                     }
-
-
-
                 }
 
                 /* 3️⃣ flash highlight */
@@ -341,7 +336,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             </div>
 
                             <!-- Vista mobile (cards) -->
-
                             <div class="sm:hidden divide-y divide-gray-100 text-xs">
                                 @foreach ($ubicacion->productos as $producto)
                                     <div class="flex justify-between items-center py-2 px-3"
@@ -369,7 +363,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     </div>
                                 @endforeach
                             </div>
-
 
                             <!-- Productos inesperados -->
                             <div x-cloak class="px-4 py-3" x-show="sospechosos.length">
@@ -411,14 +404,11 @@ Inesperados: ${inesperados.join(', ') || '—'}
         @endforeach
         <div
             class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4">
-
             <button onclick="limpiarTodos()"
                 class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded shadow text-center">
                 Limpiar TODOS los escaneos
             </button>
-
         </div>
-
     </div>
 
     <audio id="sonido-ok" src="{{ asset('sonidos/ok.mp3') }}" preload="auto"></audio>

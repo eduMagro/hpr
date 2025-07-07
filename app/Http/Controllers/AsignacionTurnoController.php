@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Turno;
 use App\Models\Obra;
+use App\Models\Alerta;
+use App\Models\AlertaLeida;
 use App\Models\AsignacionTurno;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -463,6 +465,21 @@ class AsignacionTurnoController extends Controller
                         $msg = "El usuario {$user->name} ya tiene {$yaDisfrutados} días y quiere añadir {$diasSolicitados}. Máximo: {$totalPermitido}.";
                         return response()->json(['error' => $msg], 400);
                     }
+
+                    // ✅ Crear alerta personalizada si se asignan vacaciones
+                    $alerta = Alerta::create([
+                        'user_id_1'       => auth()->id(),
+                        'destinatario_id' => $user->id,
+                        'mensaje'         => "Se te han asignado vacaciones del {$fechaInicio->format('Y-m-d')} al {$fechaFin->format('Y-m-d')}.",
+                        'created_at'      => now(),
+                        'updated_at'      => now(),
+                    ]);
+                    // ✅ Registrar como alerta pendiente de leer
+                    AlertaLeida::create([
+                        'alerta_id' => $alerta->id,
+                        'user_id'   => $user->id,
+                        'leida_en'  => null,
+                    ]);
                 }
 
                 while ($currentDate->lte($fechaFin)) {
@@ -487,8 +504,10 @@ class AsignacionTurnoController extends Controller
 
                     if ($esTurno || $tipo !== 'activo') {
                         $datos['estado'] = $estadoNuevo;
-                        $datos['turno_id'] = $esTurno ? $turno->id : null;
-                        $datos['maquina_id'] = $esTurno ? $maquinaAsignada : $request->maquina_id;
+                        if ($esTurno) {
+                            $datos['turno_id'] = $turno->id;
+                        }
+                        $datos['maquina_id'] = $request->maquina_id ?? $asignacion->maquina_id ?? $user->maquina_id;
                     }
 
                     if ($request->has('entrada')) {
@@ -644,8 +663,10 @@ class AsignacionTurnoController extends Controller
                 if ($tipo === 'eliminarTurnoEstado') {
                     $asignacion->delete();
                 } elseif ($tipo === 'eliminarEstado') {
+                    $nuevoEstado = $asignacion->turno_id ? 'activo' : null;
+
                     $asignacion->update([
-                        'estado' => null,
+                        'estado' => $nuevoEstado,
                     ]);
                 }
             }
