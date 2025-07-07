@@ -91,6 +91,13 @@
 
                         this.reproducirOk();
                     }
+
+                    // 🧹 Si estaba en inesperados, lo quitamos
+                    const indexSospechoso = this.sospechosos.indexOf(codigo);
+                    if (indexSospechoso !== -1) {
+                        this.sospechosos.splice(indexSospechoso, 1);
+                        localStorage.setItem(`sospechosos-${nombreUbicacion}`, JSON.stringify(this.sospechosos));
+                    }
                 } else {
                     // Siempre añadimos a sospechosos si aún no estaba
                     if (!this.sospechosos.includes(codigo)) {
