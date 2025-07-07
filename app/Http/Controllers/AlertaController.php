@@ -83,15 +83,13 @@ class AlertaController extends Controller
 
         $categoriaNombre = optional($user->categoriaRelacion)->nombre ?? $user->categoria;
 
-        $alertas = Alerta::where(function ($query) use ($user, $categoriaNombre) {
-            $query->where('user_id_1', $user->id)
-                ->orWhere('user_id_2', $user->id)
-                ->orWhere('destino', $user->rol)
-                ->orWhere('destinatario', $categoriaNombre)
-                ->orWhere('destinatario_id', $user->id);
+        $alertas = Alerta::whereHas('leidas', function ($q) use ($user) {
+            $q->where('user_id', $user->id);
         })
+            ->orWhere('user_id_1', $user->id) // permite ver las enviadas por él mismo
             ->orderBy('created_at', 'desc')
             ->paginate(10);
+
 
         // Clasificar cada alerta y añadir mensajes
         $alertas->getCollection()->transform(function ($alerta) use ($user, $categoriaNombre) {
