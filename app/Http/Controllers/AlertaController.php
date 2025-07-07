@@ -25,7 +25,7 @@ class AlertaController extends Controller
         $query->orderBy('id', 'desc');
 
         // Filtrar por destino (rol) o destinatario (categoría), excepto administradores
-        if ($usuario->nombre_completo !== 'Eduardo Magro Lemus') {
+        if ($usuario->nombre_completo !== 'antes eduardo magro lemus, ahora ninguno') {
             $query->where(function ($q) use ($usuario) {
                 $q->where('destino', $usuario->rol)
                     ->orWhere('destinatario', $usuario->categoria)
