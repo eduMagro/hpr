@@ -21,7 +21,7 @@
 
                     {{-- Ubicación destino --}}
                     <x-tabla.input-movil name="ubicacion_destino" placeholder="Escanear ubicación"
-                        value="{{ old('ubicacion_destino') }}" inputmode="none" autocomplete="off" />
+                        value="{{ old('ubicacion_destino') }}" />
 
                     {{-- Botón de envío --}}
                     <div class="pt-4">
