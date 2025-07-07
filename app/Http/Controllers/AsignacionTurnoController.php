@@ -425,9 +425,12 @@ class AsignacionTurnoController extends Controller
 
             $festivos = collect($this->getFestivos())->pluck('start')->toArray();
 
-            $usuarios = ($tipo === 'festivo')
-                ? User::all()
-                : collect([User::findOrFail($request->user_id)]);
+            if ($tipo === 'festivo') {
+                $usuarios = User::all(); // ✅ Se aplica a todos
+            } else {
+                $usuarios = collect([User::findOrFail($request->user_id)]); // ✅ Solo al usuario seleccionado
+            }
+
 
             foreach ($usuarios as $user) {
                 $maquinaAsignada = $request->maquina_id ?? $user->maquina?->id;
@@ -470,7 +473,7 @@ class AsignacionTurnoController extends Controller
                     $alerta = Alerta::create([
                         'user_id_1'       => auth()->id(),
                         'destinatario_id' => $user->id,
-                        'mensaje'         => "Se te han asignado vacaciones del {$fechaInicio->format('Y-m-d')} al {$fechaFin->format('Y-m-d')}.",
+                        'mensaje'         => "{$user->nombre_completo}, Se te han asignado vacaciones del {$fechaInicio->format('Y-m-d')} al {$fechaFin->format('Y-m-d')}.",
                         'created_at'      => now(),
                         'updated_at'      => now(),
                     ]);
