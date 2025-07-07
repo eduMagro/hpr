@@ -68,6 +68,11 @@ class ProductoController extends Controller
         if ($request->filled('estado')) {
             $query->where('estado', 'like', '%' . $request->estado . '%');
         }
+        if ($request->filled('ubicacion')) {
+            $query->whereHas('ubicacion', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->ubicacion . '%');
+            });
+        }
 
         return $query;
     }
@@ -104,6 +109,7 @@ class ProductoController extends Controller
             'peso_inicial',
             'peso_stock',
             'estado',
+            'ubicacion',
             'created_at',
         ];
 
@@ -158,6 +164,9 @@ class ProductoController extends Controller
 
         if ($request->filled('estado')) {
             $filtros[] = 'Estado: <strong>' . e($request->estado) . '</strong>';
+        }
+        if ($request->filled('ubicacion')) {
+            $filtros[] = 'Ubicación: <strong>' . e($request->ubicacion) . '</strong>';
         }
 
         if ($request->filled('sort')) {
