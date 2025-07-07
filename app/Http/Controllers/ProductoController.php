@@ -102,7 +102,7 @@ class ProductoController extends Controller
         $columnasPermitidas = [
             'id',
             'codigo',
-            'fabricante_id',
+            'fabricante',
             'producto_base_id',
             'n_colada',
             'n_paquete',
@@ -119,8 +119,15 @@ class ProductoController extends Controller
         if (!in_array($sort, $columnasPermitidas, true)) {
             $sort = 'created_at';
         }
-
-        return $query->orderBy($sort, $order);
+        // Ordenar por nombre del fabricante
+        if ($sort === 'fabricante') {
+            $query->leftJoin('fabricantes', 'productos.fabricante_id', '=', 'fabricantes.id')
+                ->orderBy('fabricantes.nombre', $order)
+                ->select('productos.*'); // importante para evitar conflictos en las columnas
+        } else {
+            $query->orderBy($sort, $order);
+        }
+        return $query;
     }
     private function filtrosActivos(Request $request): array
     {
