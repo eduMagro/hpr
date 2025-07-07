@@ -99,7 +99,8 @@ class AlertaController extends Controller
             $esParaRol       = $alerta->destino === $user->rol;
             $esParaCategoria = $alerta->destinatario === $categoriaNombre;
 
-            $esEntrante = !$esEmisor && ($esParaUsuario || $esParaRol || $esParaCategoria);
+            $esEntrante = $esParaUsuario || (!$esEmisor && ($esParaRol || $esParaCategoria));
+
 
             $alerta->tipo = $esEntrante ? 'entrante' : 'saliente';
 
@@ -134,6 +135,7 @@ class AlertaController extends Controller
 
         return response()->json(['success' => true]);
     }
+
     public function sinLeer()
     {
         try {

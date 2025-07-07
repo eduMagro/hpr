@@ -97,8 +97,8 @@
                     <tbody class="bg-white divide-y divide-gray-200 text-sm">
                         @forelse ($alertas as $alerta)
                             @php
-                                $esEntrante = $alerta->tipo === 'entrante';
-                                $esSaliente = !$esEntrante;
+                                $esEntrante = $alerta->destinatario_id === $user->id;
+                                $esSaliente = $alerta->user_id_1 === $user->id && !$esEntrante;
                                 $noLeida = $esEntrante && empty($alertasLeidas[$alerta->id]);
                             @endphp
 
