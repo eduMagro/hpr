@@ -64,7 +64,7 @@
                             </div>
                         @else
                             <!-- Para usuarios que no son de oficina: ocultamos los campos -->
-                            <input type="hidden" name="enviar_a_departamentos" value="RRHH">
+                            <input type="hidden" name="enviar_a_departamentos" value="programación">
                         @endif
 
                         <div class="flex justify-end space-x-2">
