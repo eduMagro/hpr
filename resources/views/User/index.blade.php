@@ -18,7 +18,9 @@
         </a>
 
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
-
+        <script>
+            const obrasHierrosPacoReyes = @json($obrasHierrosPacoReyes);
+        </script>
         <!-- TABLA DE USUARIOS -->
         <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
             <table class="w-full border border-gray-300 rounded-lg">
@@ -93,7 +95,6 @@
                             <x-tabla.botones-filtro ruta="users.index" />
                         </form>
                     </tr>
-
                 </thead>
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($registrosUsuarios as $user)
@@ -236,6 +237,7 @@
                                     <span class="text-gray-500">Desconectado</span>
                                 @endif
                             </td>
+
                             <td class="px-2 py-3 text-center border">
                                 <form action="{{ route('profile.generar.turnos', $user->id) }}" method="POST"
                                     id="form-generar-turnos-{{ $user->id }}">
@@ -243,9 +245,11 @@
                                     <input type="hidden" name="turno_inicio" id="turno_inicio_{{ $user->id }}">
                                     <input type="hidden" id="usuario_turno_{{ $user->id }}"
                                         value="{{ $user->turno }}">
+                                    <input type="hidden" id="obra_id_input_{{ $user->id }}" name="obra_id">
+
                                     <button type="button"
                                         class="w-full bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded"
-                                        onclick="confirmarGenerarTurnos({{ $user->id }})">
+                                        onclick="confirmarGenerarTurnos({{ $user->id }}, obrasHierrosPacoReyes)">
                                         Turnos
                                     </button>
                                 </form>
@@ -470,8 +474,6 @@
 
             calendar.render();
         });
-
-
         // ---------------------------------------------------- REGISTRAR FICHAJE
         function registrarFichaje(tipo) {
 
@@ -634,23 +636,46 @@
                     });
                 });
         }
-
         // ---------------------------------------------------- GENERAR TURNOS SWEETALERT
-
-        function confirmarGenerarTurnos(userId) {
+        function confirmarGenerarTurnos(userId, obras) {
             let usuarioTurno = document.getElementById("usuario_turno_" + userId).value;
+
+            // Generar HTML del select con las obras
+            let opcionesObra = obras.map(
+                (obra) => `<option value="${obra.id}">${obra.obra}</option>`
+            ).join("");
+
+            let selectHtml = `
+        <label for="select-obra">Selecciona la obra asignada:</label>
+        <select id="select-obra" class="swal2-select" style="margin-top: 1em;">
+            ${opcionesObra}
+        </select>
+    `;
 
             Swal.fire({
                 title: "¿Estás seguro?",
-                text: "⚠️ Esta acción generará turnos hasta final de año y reemplazará los actuales. Exceptuando Vacaciones y Festivos",
+                html: `
+            <p class="mb-2">⚠️ Esta acción generará turnos hasta final de año y reemplazará los actuales (excepto vacaciones y festivos).</p>
+            ${selectHtml}
+        `,
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonText: "Sí, continuar",
                 cancelButtonText: "Cancelar",
                 confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33"
+                cancelButtonColor: "#d33",
+                preConfirm: () => {
+                    const obraId = document.getElementById("select-obra").value;
+                    if (!obraId) {
+                        Swal.showValidationMessage("Debes seleccionar una obra");
+                    }
+                    return obraId;
+                }
             }).then((respuestaConfirmacion) => {
                 if (!respuestaConfirmacion.isConfirmed) return;
+
+                const obraId = respuestaConfirmacion.value;
+                document.getElementById("obra_id_input_" + userId).value = obraId;
 
                 if (usuarioTurno === "diurno") {
                     Swal.fire({
@@ -663,18 +688,12 @@
                         confirmButtonColor: "#3085d6",
                         cancelButtonColor: "#d33"
                     }).then((result) => {
-                        if (result.isConfirmed) {
-                            document.getElementById("turno_inicio_" + userId).value = "mañana";
-                        } else if (result.dismiss === Swal.DismissReason.cancel) {
-                            document.getElementById("turno_inicio_" + userId).value = "tarde";
-                        } else {
-                            return;
-                        }
+                        document.getElementById("turno_inicio_" + userId).value =
+                            result.isConfirmed ? "mañana" : "tarde";
 
                         document.getElementById("form-generar-turnos-" + userId).submit();
                     });
                 } else {
-                    // No es turno diurno, así que se envía directamente tras confirmación
                     document.getElementById("form-generar-turnos-" + userId).submit();
                 }
             });

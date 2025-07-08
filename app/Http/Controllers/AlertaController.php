@@ -322,7 +322,7 @@ class AlertaController extends Controller
                 $alerta = Alerta::create($data);
             }
 
-            // 🔹 CASO 3: USUARIO NORMAL ENVÍA A DEPARTAMENTOS POR DEFECTO
+            // 🔹 CASO 3: USUARIO OPERARIO ENVÍA MENSAJE Y LLEGA A DEPARTAMENTOS POR DEFECTO
             if (!$esOficina && !$request->has('enviar_a_departamentos')) {
                 $usuariosDestino = User::whereHas('departamentos', function ($q) {
                     $q->whereIn('nombre', 'Programador');

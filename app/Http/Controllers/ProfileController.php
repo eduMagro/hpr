@@ -203,6 +203,13 @@ class ProfileController extends Controller
     {
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
         $obras = Obra::where('estado', 'activa')->get();
+        $obrasHierrosPacoReyes = Obra::where('estado', 'activa')
+            ->whereHas('cliente', function ($q) {
+                $q->where('empresa', 'Hierros Paco Reyes');
+            })
+            ->select('id', 'obra')
+            ->get();
+
         $categorias = Categoria::orderBy('nombre')->get();
         $empresas = Empresa::orderBy('nombre')->get();
         $maquinas = Maquina::orderBy('nombre')->get();
@@ -396,7 +403,8 @@ class ProfileController extends Controller
             'faltasJustificadas',
             'diasBaja',
             'totalSolicitudesPendientes',
-            'diasVacaciones'
+            'diasVacaciones',
+            'obrasHierrosPacoReyes'
         ));
     }
 
