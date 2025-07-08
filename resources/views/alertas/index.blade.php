@@ -97,12 +97,12 @@
                     <tbody class="bg-white divide-y divide-gray-200 text-sm">
                         @forelse ($alertas as $alerta)
                             @php
-                                // ✅ Nuevo: si el usuario está en alertas_users aunque no sea destinatario directo
                                 $esParaListado = $alerta->leidas->contains('user_id', $user->id);
-                                $esEntrante = $alerta->destinatario_id === $user->id;
+                                $esEntrante = $alerta->tipo === 'entrante' || $esParaListado;
                                 $esSaliente = $alerta->user_id_1 === $user->id && !$esEntrante;
                                 $noLeida = $esEntrante && empty($alertasLeidas[$alerta->id]);
                             @endphp
+
 
                             <tr class="cursor-pointer hover:bg-gray-100 {{ $noLeida ? 'bg-yellow-100' : 'bg-white' }}"
                                 data-alerta-id="{{ $alerta->id }}"
