@@ -108,6 +108,16 @@ Route::middleware('auth')->group(function () {
         [ProfileController::class, 'despedirUsuario']
     )
         ->name('usuarios.despedir');
+    Route::post('/usuario/subir-imagen', [ProfileController::class, 'subirImagen'])->name('usuario.subirImagen');
+    Route::get('/perfil/imagen/{nombre}', function ($nombre) {
+        $path = storage_path("app/public/perfiles/{$nombre}");
+
+        if (!file_exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($path); // envía con Content-Type correcto
+    })->name('perfil.imagen');
 
     Route::resource('vacaciones', VacacionesController::class)->middleware('acceso.seccion:vacaciones.index');
     Route::post('/vacaciones/solicitar', [VacacionesController::class, 'store'])->name('vacaciones.solicitar');

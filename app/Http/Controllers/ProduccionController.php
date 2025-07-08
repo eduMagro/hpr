@@ -67,6 +67,23 @@ class ProduccionController extends Controller
             ->where('rol', 'operario')
             ->whereNotNull('maquina_id') // aquí antes usabas `especialidad`
             ->get();
+        $obraIds = $trabajadores
+            ->flatMap(fn($t) => $t->asignacionesTurnos)
+            ->filter(fn($a) => $a->estado === 'activo' && $a->obra_id)
+            ->pluck('obra_id')
+            ->unique()
+            ->values();
+
+        $coloresPorObra = [];
+        $paleta = ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#fb7185', '#10b981', '#f97316', '#06b6d4', '#c084fc'];
+
+        foreach ($obraIds as $index => $obraId) {
+            $coloresPorObra[$obraId] = [
+                'bg' => $paleta[$index % count($paleta)],
+                'border' => $paleta[$index % count($paleta)],
+            ];
+        }
+
 
         $fechaHoy = Carbon::today()->subWeek();
         $fechaLimite = $fechaHoy->copy()->addDays(40);
@@ -129,13 +146,17 @@ class ProduccionController extends Controller
                             ? null
                             : ($asignacionTurno->salida ? Carbon::parse($asignacionTurno->salida)->format('H:i') : null);
 
-                        $color = match ($estado) {
-                            'vacaciones'      => ['bg' => '#f87171', 'border' => '#dc2626'],
-                            'baja'            => ['bg' => '#FF8C00', 'border' => '#FF6600'],
-                            'justificada'     => ['bg' => '#32CD32', 'border' => '#228B22'],
-                            'injustificada'   => ['bg' => '#DC143C', 'border' => '#B22222'],
-                            default           => ['bg' => '#3788d8', 'border' => '#3276b1'],
-                        };
+                        if (in_array($estado, ['vacaciones', 'baja', 'justificada', 'injustificada'])) {
+                            $color = match ($estado) {
+                                'vacaciones'      => ['bg' => '#f87171', 'border' => '#dc2626'],
+                                'baja'            => ['bg' => '#FF8C00', 'border' => '#FF6600'],
+                                'justificada'     => ['bg' => '#32CD32', 'border' => '#228B22'],
+                                'injustificada'   => ['bg' => '#DC143C', 'border' => '#B22222'],
+                            };
+                        } else {
+                            $obraId = $asignacionTurno->obra_id;
+                            $color = $coloresPorObra[$obraId] ?? ['bg' => '#9ca3af', 'border' => '#6b7280']; // gris por defecto
+                        }
 
                         $eventos[] = [
                             'id' => 'turno-' . $asignacionTurno->id,
@@ -154,6 +175,7 @@ class ProduccionController extends Controller
                                 'especialidad_nombre' => $trabajador->maquina?->nombre,
                                 'entrada' => $entrada,
                                 'salida' => $salida,
+                                'foto' => $trabajador->ruta_imagen,
                             ],
                             'maquina_id' => $trabajador->maquina_id
                         ];

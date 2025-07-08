@@ -1,71 +1,14 @@
 <x-app-layout>
     <x-slot name="title">Planificación Producción</x-slot>
-    @php
-        $rutaActual = request()->route()->getName();
-    @endphp
-    @if (Auth::check() && Auth::user()->rol == 'oficina')
-        <div class="w-full" x-data="{ open: false }">
-            <!-- Menú móvil -->
-            <div class="sm:hidden relative" x-data="{ open: false }">
-                <button @click="open = !open"
-                    class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow transition">
-                    Opciones
-                </button>
+    <x-menu.planificacion />
 
-                <div x-show="open" x-transition @click.away="open = false"
-                    class="absolute z-30 mt-0 w-1/2 bg-white border border-gray-200 rounded-b-lg shadow-xl overflow-hidden divide-y divide-gray-200"
-                    x-cloak>
-
-                    <a href="{{ route('produccion.maquinas') }}"
-                        class="block px-2 py-3 transition text-sm font-medium
-                    {{ request()->routeIs('users.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
-                        📋 Planificación Planillas
-                    </a>
-
-
-                    <a href="{{ route('produccion.trabajadores') }}"
-                        class="block px-2 py-3 transition text-sm font-medium
-                    {{ request()->routeIs('register') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
-                        📋 Planificación Trabajadores Máquina
-                    </a>
-
-                    <a href="{{ route('produccion.trabajadoresObra') }}"
-                        class="block px-2 py-3 transition text-sm font-medium
-                    {{ request()->routeIs('asignaciones-turnos.*') ? 'bg-blue-100 text-blue-800 font-semibold' : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900' }}">
-                        ⏱️ Planificación Trabajadores Obra
-                    </a>
-                </div>
-            </div>
-
-            <!-- Menú escritorio -->
-            <div class="hidden sm:flex sm:mt-0 w-full">
-                <a href="{{ route('produccion.maquinas') }}"
-                    class="flex-1 text-center px-4 py-2 rounded-none first:rounded-l-lg transition font-semibold
-                {{ request()->routeIs('users.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    📋 Planificación Planillas
-                </a>
-
-                <a href="{{ route('produccion.maquinas') }}"
-                    class="flex-1 text-center px-4 py-2 rounded-none transition font-semibold
-                {{ request()->routeIs('register') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    📋 Planificación Trabajadores Almacén
-                </a>
-
-                <a href="{{ route('produccion.trabajadoresObra') }}"
-                    class="flex-1 text-center px-4 py-2 rounded-none last:rounded-r-lg transition font-semibold
-                {{ request()->routeIs('asignaciones-turnos.*') ? 'bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white' }}">
-                    ⏱️ Planificación Trabajadores Obra
-                </a>
-            </div>
-        </div>
-    @endif
     <div class="py-6">
         <!-- Contenedor del Calendario -->
         <div class="w-full bg-white">
             <div id="calendario" class="h-[80vh] w-full"></div>
         </div>
 
-        <!-- Tabla de Operarios -->
+        {{-- <!-- Tabla de Operarios -->
         <div class="mt-8">
             <h3 class="text-2xl font-semibold text-gray-900 mb-4">Operarios que trabajan hoy</h3>
             <div class="overflow-x-auto rounded-lg shadow">
@@ -131,7 +74,7 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        </div> --}}
 
     </div>
 
@@ -144,6 +87,8 @@
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
+
 
     <script>
         let calendar;
@@ -303,6 +248,25 @@
                             });
                             info.revert();
                         });
+                },
+                eventDidMount: function(info) {
+                    const foto = info.event.extendedProps.foto;
+                    const entrada = info.event.extendedProps.entrada || '—';
+                    const salida = info.event.extendedProps.salida || '—';
+
+                    const content = `
+        <div class="flex items-center gap-2">
+            <img src="${foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow">
+           
+        </div>
+    `;
+
+                    tippy(info.el, {
+                        content: content,
+                        allowHTML: true,
+                        placement: 'top',
+                        theme: 'light',
+                    });
                 },
                 eventClick: function(info) {
                     const userId = info.event.extendedProps.user_id;

@@ -31,6 +31,9 @@ use App\Models\Session;
 use App\Exports\UsersExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Session as FacadeSession;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 
 class ProfileController extends Controller
 {
@@ -678,6 +681,41 @@ class ProfileController extends Controller
         return Redirect::route('profile.edit', ['id' => $id])->with('status', 'profile-updated');
     }
 
+
+    public function subirImagen(Request $request)
+    {
+        $request->validate([
+            'imagen' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
+        ]);
+
+        $user = auth()->user();
+
+        if ($request->hasFile('imagen')) {
+            $archivo = $request->file('imagen');
+
+            $manager = new ImageManager(new GdDriver());
+            $imagen = $manager->read($archivo)->cover(300, 300)->toJpeg(85);
+            $nombreArchivo = 'perfil_' . $user->id . '_' . uniqid() . '.jpg';
+
+            // ✅ Usa explícitamente el disco "public"
+            Storage::disk('public')->put("perfiles/{$nombreArchivo}", $imagen->toString());
+
+            // ✅ También en exists y delete:
+            if ($user->imagen && Storage::disk('public')->exists("perfiles/{$user->imagen}")) {
+                Storage::disk('public')->delete("perfiles/{$user->imagen}");
+            }
+
+            // Borrar anterior si existe
+            if ($user->imagen && Storage::exists("public/perfiles/{$user->imagen}")) {
+                Storage::delete("public/perfiles/{$user->imagen}");
+            }
+
+            $user->imagen = $nombreArchivo;
+            $user->save();
+        }
+
+        return back()->with('success', '✅ Foto de perfil actualizada correctamente.');
+    }
     public function actualizarUsuario(Request $request, $id)
     {
 
@@ -796,6 +834,8 @@ class ProfileController extends Controller
         $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
         $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
 
+        $obraId = request()->input('obra_id');
+
         // Definir el inicio y fin del año actual
         $inicio = Carbon::now()->addDay()->startOfDay();
         $fin = Carbon::now()->endOfYear();
@@ -855,6 +895,7 @@ class ProfileController extends Controller
                 $asignacion->update([
                     'turno_id'   => $turnoAsignado,
                     'maquina_id' => $user->maquina_id,
+                    'obra_id'    => $obraId,
                 ]);
             } else {
                 AsignacionTurno::create([
@@ -862,6 +903,7 @@ class ProfileController extends Controller
                     'fecha'      => $fechaStr,
                     'turno_id'   => $turnoAsignado,
                     'maquina_id' => $user->maquina_id,
+                    'obra_id'    => $obraId,
                     'estado'     => 'activo',
                 ]);
             }

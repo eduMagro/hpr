@@ -319,17 +319,47 @@
             {{-- ------------------------------- FICHA MODO OPERARIO -------------------------------- --}}
 
             <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto mb-6 border border-gray-200">
-                <!-- Encabezado con avatar -->
-                <div class="flex items-center space-x-4 border-b pb-4 mb-4">
-                    <div
-                        class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700">
-                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                    </div>
-                    <div>
-                        <h3 class="text-xl font-semibold">{{ auth()->user()->name }}</h3>
-                        <p class="text-gray-500 text-sm">{{ auth()->user()->rol }}</p>
+                <div class="flex items-center gap-4 border-b pb-4 mb-4">
+                    <!-- Avatar -->
+                    @if (auth()->user()->ruta_imagen)
+                        <img src="{{ auth()->user()->ruta_imagen }}" alt="Foto de perfil"
+                            class="w-16 h-16 rounded-full object-cover ring-2 ring-blue-400 shadow">
+                    @else
+                        <div
+                            class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700 shadow">
+                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        </div>
+                    @endif
+
+                    <!-- Datos + formulario -->
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-gray-900 leading-tight">{{ auth()->user()->name }}</h3>
+                        <p class="text-sm text-gray-500 mb-2">{{ auth()->user()->rol }}</p>
+
+                        <!-- Subida de imagen con estilo -->
+                        <form method="POST" action="{{ route('usuario.subirImagen') }}"
+                            enctype="multipart/form-data" class="flex items-center gap-2 text-sm group relative">
+                            @csrf
+
+                            <label class="flex items-center gap-1 text-blue-600 hover:underline cursor-pointer">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                        d="M4 3a2 2 0 00-2 2v3.586A1.5 1.5 0 003.5 10H4v6a2 2 0 002 2h8a2 2 0 002-2v-6h.5A1.5 1.5 0 0018 8.586V5a2 2 0 00-2-2H4zm3 3a1 1 0 112 0 1 1 0 01-2 0zm2 4a2 2 0 114 0 2 2 0 01-4 0z" />
+                                </svg>
+                                <span>Cambiar foto</span>
+                                <input type="file" name="imagen" accept="image/*" class="hidden"
+                                    onchange="this.form.submit()">
+                            </label>
+
+                            <span class="text-gray-400 text-xs group-hover:text-gray-500 transition">
+                                Formatos: JPG, PNG, WEBP · Máx 5MB
+                            </span>
+                        </form>
                     </div>
                 </div>
+
+
+
 
                 <!-- Contenido en dos columnas -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

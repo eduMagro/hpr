@@ -32,6 +32,7 @@ class User extends Authenticatable
         'primer_apellido',
         'segundo_apellido',
         'email',
+        'imagen',
         'movil_personal',
         'movil_empresa',
         'empresa_id',
@@ -70,6 +71,13 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+    public function getRutaImagenAttribute()
+    {
+        return $this->imagen
+            ? route('perfil.imagen', $this->imagen)
+            : null;
+    }
+
 
     protected static function booted()
     {
