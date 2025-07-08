@@ -97,6 +97,8 @@
                     <tbody class="bg-white divide-y divide-gray-200 text-sm">
                         @forelse ($alertas as $alerta)
                             @php
+                                // ✅ Nuevo: si el usuario está en alertas_users aunque no sea destinatario directo
+                                $esParaListado = $alerta->leidas->contains('user_id', $user->id);
                                 $esEntrante = $alerta->destinatario_id === $user->id;
                                 $esSaliente = $alerta->user_id_1 === $user->id && !$esEntrante;
                                 $noLeida = $esEntrante && empty($alertasLeidas[$alerta->id]);
@@ -267,9 +269,22 @@
                 data.append('alerta_ids[]', id);
 
                 fetch("{{ route('alertas.marcarLeidas') }}", {
-                    method: 'POST',
-                    body: data
-                });
+                        method: 'POST',
+                        body: data
+                    })
+                    .then(res => {
+                        if (!res.ok) {
+                            console.error('Error marcando alerta como leída');
+                        }
+                        return res.json();
+                    })
+                    .then(data => {
+                        console.log('Respuesta del servidor:', data);
+                    })
+                    .catch(err => {
+                        console.error('Error en fetch marcarLeida:', err);
+                    });
+
             }
 
             document.getElementById('contenidoMensaje').textContent = mensaje;

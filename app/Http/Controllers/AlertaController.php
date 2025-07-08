@@ -101,7 +101,6 @@ class AlertaController extends Controller
 
             $esEntrante = $esParaUsuario || (!$esEmisor && ($esParaRol || $esParaCategoria));
 
-
             $alerta->tipo = $esEntrante ? 'entrante' : 'saliente';
 
             // Añadir versión corta y completa del mensaje
