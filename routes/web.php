@@ -78,9 +78,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/pedidos/{pedido}/enviar-correo', [PedidoController::class, 'enviarCorreo'])->name('pedidos.enviarCorreo');
     Route::get('/pedidos/preview', [PedidoController::class, 'preview'])->name('pedidos.preview');
     // Route::put('/pedidos/{pedido}/activar', [PedidoController::class, 'activar'])->name('pedidos.activar');
-    Route::put('/pedidos/{pedido}/activar-producto/{producto}', [PedidoController::class, 'activar'])
-        ->name('pedidos.activar');
-    Route::delete('/pedidos/{pedido}/desactivar-producto/{producto_base}', [PedidoController::class, 'desactivar'])->name('pedidos.desactivar');
+    // Activar una línea concreta del pedido
+    Route::put('/pedidos/{pedido}/lineas/{linea}/activar', [PedidoController::class, 'activar'])
+        ->name('pedidos.lineas.activar');
+
+    // Desactivar una línea concreta del pedido
+    Route::delete('/pedidos/{pedido}/lineas/{linea}/desactivar', [PedidoController::class, 'desactivar'])
+        ->name('pedidos.lineas.desactivar');
+
 
     // === PRODUCTOS Y UBICACIONES ===
     Route::resource('fabricantes', FabricanteController::class)->middleware('acceso.seccion:fabricantes.index');

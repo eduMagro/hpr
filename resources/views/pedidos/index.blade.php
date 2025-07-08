@@ -632,15 +632,15 @@
    ${
     estaActivo
         ? `<button
-                                                                                                                onclick="confirmarDesactivacion(${pedidoId}, ${producto.producto_base_id})"
-                                                                                                                class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                                Desactivar
-                                                                                                           </button>`
+                                                                                                                                        onclick="confirmarDesactivacion(${pedidoId}, ${producto.id})"
+                                                                                                                                        class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                                                        Desactivar
+                                                                                                                                   </button>`
         : `<button
-                                                                                                                onclick="confirmarActivacion(${pedidoId}, ${producto.producto_base_id})"
-                                                                                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                                Activar
-                                                                                                           </button>`
+                                                                                                                                        onclick="confirmarActivacion(${pedidoId}, ${producto.id})"
+                                                                                                                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                                                        Activar
+                                                                                                                                   </button>`
 }
 
 </td>
@@ -667,7 +667,7 @@
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
 
-        function confirmarActivacion(pedidoId, productoBaseId) {
+        function confirmarActivacion(pedidoId, lineaId) {
             Swal.fire({
                 title: '¿Activar producto?',
                 html: 'Este producto del pedido se activará y estará disponible para su recepción.',
@@ -678,7 +678,7 @@
                 confirmButtonColor: '#d97706',
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch(`/pedidos/${pedidoId}/activar-producto/${productoBaseId}`, {
+                    fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/activar`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -692,7 +692,8 @@
             });
         }
 
-        function confirmarDesactivacion(pedidoId, productoBaseId) {
+
+        function confirmarDesactivacion(pedidoId, lineaId) {
             Swal.fire({
                 title: '¿Desactivar producto?',
                 html: 'Se eliminará el movimiento pendiente si lo hay y se marcará como <b>pendiente</b> en el pedido.',
@@ -703,7 +704,7 @@
                 confirmButtonColor: '#b91c1c',
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch(`/pedidos/${pedidoId}/desactivar-producto/${productoBaseId}`, {
+                    fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/desactivar`, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

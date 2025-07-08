@@ -251,22 +251,22 @@
                 },
                 eventDidMount: function(info) {
                     const foto = info.event.extendedProps.foto;
-                    const entrada = info.event.extendedProps.entrada || '—';
-                    const salida = info.event.extendedProps.salida || '—';
 
                     const content = `
-        <div class="flex items-center gap-2">
-            <img src="${foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow">
-           
-        </div>
-    `;
+    <img src="${foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow-lg">
+`;
 
                     tippy(info.el, {
                         content: content,
                         allowHTML: true,
                         placement: 'top',
-                        theme: 'light',
+                        theme: 'transparent-avatar',
+                        interactive: false,
+                        arrow: false,
+                        delay: [100, 0],
+                        offset: [0, 10],
                     });
+
                 },
                 eventClick: function(info) {
                     const userId = info.event.extendedProps.user_id;
@@ -310,4 +310,11 @@
             crearCalendario(maquinas, trabajadores);
         });
     </script>
+    <style>
+        .tippy-box[data-theme~='transparent-avatar'] {
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+        }
+    </style>
 </x-app-layout>

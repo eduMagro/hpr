@@ -77,6 +77,7 @@ class Pedido extends Model
     {
         return $this->belongsToMany(ProductoBase::class, 'pedido_productos')
             ->withPivot([
+                'id',
                 'cantidad_recepcionada',
                 'cantidad',
                 'estado',

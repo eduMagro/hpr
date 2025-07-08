@@ -164,7 +164,7 @@ class PedidoController extends Controller
         $pedidos->getCollection()->transform(function ($pedido) {
             $pedido->productos_formateados = $pedido->productos->map(function ($p) {
                 return [
-                    'producto_base_id' => $p->id,
+                    'id' => $p->pivot->id,
                     'tipo' => $p->tipo,
                     'diametro' => $p->diametro,
                     'longitud' => $p->longitud,
@@ -612,60 +612,45 @@ class PedidoController extends Controller
         }
     }
 
-    public function activar($pedidoId, $productoBaseId)
+    public function activar($pedidoId, $lineaId)
     {
-        $pedido = Pedido::findOrFail($pedidoId);
-        // dd([
-        //     'pedido_id' => $pedidoId,
-        //     'producto_base_id' => $productoBaseId,
-        //     'pedido' => $pedido->only(['id', 'codigo', 'estado']),
-        // ]);
+        $linea = DB::table('pedido_productos')->where('id', $lineaId)->first();
+
+        if (!$linea) {
+            return redirect()->back()->with('error', 'Línea de pedido no encontrada.');
+        }
+
+        $pedido = Pedido::findOrFail($linea->pedido_id);
 
         if (!in_array($pedido->estado, ['pendiente', 'parcial', 'activo'])) {
             return redirect()->back()->with('error', 'Solo se pueden activar productos de pedidos pendientes, parciales o activos.');
         }
 
-        // Verificar que el producto esté en el pedido
-        $productoEnPedido = DB::table('pedido_productos')
-            ->where('pedido_id', $pedidoId)
-            ->where('producto_base_id', $productoBaseId)
-            ->first();
-
-        if (!$productoEnPedido) {
-            return redirect()->back()->with('error', 'Ese producto no forma parte del pedido.');
-        }
-        $productoBase = ProductoBase::findOrFail($productoBaseId);
+        $productoBase = ProductoBase::findOrFail($linea->producto_base_id);
 
         $descripcion = "Se solicita descarga para producto {$productoBase->tipo} Ø{$productoBase->diametro}";
-
         if ($productoBase->tipo === 'barra') {
             $descripcion .= " de {$productoBase->longitud} m";
         }
-
-        $descripcion .= " del pedido {$pedido->codigo}";
+        $descripcion .= " del pedido {$pedido->codigo} (fecha: {$linea->fecha_estimada_entrega})";
 
         DB::beginTransaction();
 
         try {
-            // ✅ Opcional: marcar el producto como "activo" en la tabla intermedia
-            DB::table('pedido_productos')
-                ->where('pedido_id', $pedidoId)
-                ->where('producto_base_id', $productoBaseId)
-                ->update([
-                    'estado' => 'activo', // Asegúrate de tener este campo
-                    'updated_at' => now()
-                ]);
+            DB::table('pedido_productos')->where('id', $lineaId)->update([
+                'estado' => 'activo',
+                'updated_at' => now()
+            ]);
 
-            // ✅ Crear el movimiento de descarga SOLO para ese producto
             Movimiento::create([
-                'tipo'            => 'descarga materia prima',
-                'estado'          => 'pendiente',
-                'descripcion'     => $descripcion,
-                'fecha_solicitud' => now(),
-                'solicitado_por'  => auth()->id(),
-                'pedido_id'       => $pedido->id,
-                'producto_base_id' => $productoBaseId, // asegúrate de tener este campo en movimientos
-                'prioridad'       => 2,
+                'tipo'              => 'descarga materia prima',
+                'estado'            => 'pendiente',
+                'descripcion'       => $descripcion,
+                'fecha_solicitud'   => now(),
+                'solicitado_por'    => auth()->id(),
+                'pedido_id'         => $pedido->id,
+                'producto_base_id'  => $productoBase->id,
+                'prioridad'         => 2,
             ]);
 
             DB::commit();
@@ -673,30 +658,43 @@ class PedidoController extends Controller
             return redirect()->back()->with('success', 'Producto activado correctamente y movimiento generado.');
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('Error al activar producto del pedido: ' . $e->getMessage());
+            Log::error('Error al activar línea del pedido: ' . $e->getMessage());
 
             return redirect()->back()->with('error', 'Error al activar el producto.');
         }
     }
-    public function desactivar($pedidoId, $productoBaseId)
-    {
-        DB::transaction(function () use ($pedidoId, $productoBaseId) {
-            $pedido = Pedido::with('productos')->lockForUpdate()->findOrFail($pedidoId);
 
-            // Borrar movimiento pendiente si existe
+    public function desactivar($pedidoId, $lineaId)
+    {
+        DB::transaction(function () use ($pedidoId, $lineaId) {
+            // Obtener la línea específica del pedido
+            $linea = DB::table('pedido_productos')
+                ->where('id', $lineaId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$linea) {
+                throw new \RuntimeException('Línea de pedido no encontrada.');
+            }
+
+            // Eliminar movimiento pendiente relacionado
             Movimiento::where('pedido_id', $pedidoId)
-                ->where('producto_base_id', $productoBaseId)
+                ->where('producto_base_id', $linea->producto_base_id)
                 ->where('estado', 'pendiente')
                 ->delete();
 
-            // Marcar el producto como pendiente en el pivote
-            $pedido->productos()->updateExistingPivot($productoBaseId, [
-                'estado' => 'pendiente',
-            ]);
+            // Marcar la línea como pendiente
+            DB::table('pedido_productos')
+                ->where('id', $lineaId)
+                ->update([
+                    'estado' => 'pendiente',
+                    'updated_at' => now(),
+                ]);
         });
 
         return redirect()->back()->with('success', 'Producto desactivado correctamente.');
     }
+
 
     public function store(Request $request)
     {
