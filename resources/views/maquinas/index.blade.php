@@ -117,55 +117,7 @@
                         </form>
                     </div>
 
-                    <!-- Cola de planillas -->
-                    @php
-                        /** 1. Elementos YA vienen perfectamente ordenados desde el controlador */
-                        $elementos = $colaPorMaquina->get($maquina->id, collect());
 
-                        /** 2. Simplemente agrúpalos por planilla SIN volver a ordenar */
-                        $groupedByPlanilla = $elementos->groupBy('planilla_id')->values(); // <- sin sortBy()
-                    @endphp
-
-                    <div class="px-4 pb-4">
-                        <h4 class="font-semibold text-base text-gray-800 mb-2">
-                            Cola de Planillas ({{ $groupedByPlanilla->count() }})
-                        </h4>
-
-                        @if ($groupedByPlanilla->isEmpty())
-                            <p class="text-sm text-gray-500">No hay planillas en cola.</p>
-                        @else
-                            @foreach ($groupedByPlanilla as $planillaId => $items)
-                                <div x-data="{ openPlanilla: false }" class="mb-3 border rounded-lg overflow-hidden">
-                                    <button @click="openPlanilla = !openPlanilla"
-                                        class="w-full px-4 py-2 bg-gray-100 text-left flex justify-between items-center">
-                                        <div>
-                                            <strong>{{ $items->first()->planilla->codigo_limpio }}</strong>
-                                            <span class="ml-2 text-sm text-gray-600">Entrega:
-                                                {{ $items->first()->planilla->fecha_estimada_entrega }}</span>
-                                        </div>
-                                        <svg :class="openPlanilla ? 'transform rotate-180' : ''"
-                                            class="h-5 w-5 transition-transform" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
-                                    <ul x-show="openPlanilla" x-collapse class="bg-white px-4 py-2 space-y-1">
-                                        @foreach ($items as $elemento)
-                                            <li class="flex justify-between text-sm text-gray-700">
-                                                <span>
-                                                    #{{ $elemento->id }} — {{ $elemento->figura }}
-                                                    ({{ ucfirst($elemento->estado) }})
-                                                </span>
-                                                <a href="{{ route('elementos.show', $elemento->id) }}"
-                                                    class="text-blue-600 hover:underline">Ver</a>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                </div>
-                            @endforeach
-                        @endif
-                    </div>
                     <!-- Acciones finales: eliminar, editar, iniciar sesión -->
                     <div class="mt-4 flex justify-between items-center">
                         <x-tabla.boton-eliminar :action="route('maquinas.destroy', $maquina->id)" />
@@ -190,15 +142,8 @@
 
     <!-- Alpine.js -->
     <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <script>
-        const usuarios = @json($usuarios);
-        const csrfToken = '{{ csrf_token() }}';
-        window.rutas = {
-            guardarSesion: '{{ route('maquinas.sesion.guardar') }}',
-            base: '{{ url('/') }}'
-        };
-    </script>
-    <script src="{{ asset('js/maquinaJS/seleccionarCompa.js') }}" defer></script>
+
+
     <script>
         // Asignar evento a todos los botones de edición
         document.querySelectorAll('.open-edit-modal').forEach(btn => {

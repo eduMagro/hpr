@@ -7,6 +7,8 @@ use App\Models\Maquina;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Models\Producto;
+use App\Models\Obra;
+use App\Models\Cliente;
 use App\Models\ProductoBase;
 use App\Models\Pedido;
 use App\Models\OrdenPlanilla;
@@ -34,7 +36,7 @@ class MaquinaController extends Controller
             $hoy = Carbon::today();
 
             $asignacion = AsignacionTurno::where('user_id', $usuario->id)
-                ->whereDate('fecha', $hoy) // 👉 Solo turnos de hoy
+                ->whereDate('fecha', $hoy)
                 ->whereNotNull('maquina_id')
                 ->whereNotNull('turno_id')
                 ->first();
@@ -46,17 +48,15 @@ class MaquinaController extends Controller
             $maquinaId = $asignacion->maquina_id;
             $turnoId   = $asignacion->turno_id;
 
-            // Buscar compañero con misma máquina y mismo turno
+            // Buscar compañero
             $compañero = AsignacionTurno::where('maquina_id', $maquinaId)
                 ->where('turno_id', $turnoId)
                 ->where('user_id', '!=', $usuario->id)
                 ->latest()
                 ->first();
 
-            // Guardar en sesión como lo hacía tu método guardarSesion
             session(['compañero_id' => optional($compañero)->user_id]);
 
-            // Redirigir directamente a la máquina
             return redirect()->route('maquinas.show', ['maquina' => $maquinaId]);
         }
 
@@ -64,81 +64,7 @@ class MaquinaController extends Controller
      * 2️⃣  RESTO DE USUARIOS
      * ─────────────────────────────────────────── */
 
-        /* ▸ 2.1  Lista de operarios (para el modal) */
-        $usuarios = User::where('id', '!=', auth()->id())
-            ->where('rol', 'operario')
-            ->get();
-
-        /* ▸ 2.2  Elementos pendientes ordenados por la cola oficial */
-        $elementos = Elemento::select(
-            'elementos.*',
-
-            // 🔹 id “real” de la máquina con fallback
-            DB::raw("
-                CASE
-                    WHEN maquinas.tipo = 'ensambladora'
-                        THEN COALESCE(elementos.maquina_id_2, elementos.maquina_id)
-                    WHEN maquinas.tipo = 'soldadora'
-                        THEN COALESCE(elementos.maquina_id_3, elementos.maquina_id)
-                    ELSE elementos.maquina_id
-                END AS maquina_group_id
-            "),
-
-            // 🔹 posición en la cola (puede ser null)
-            'op.posicion AS orden_pos'
-        )
-            ->join('maquinas',  'maquinas.id',  '=', 'elementos.maquina_id')
-            ->join('planillas', 'planillas.id', '=', 'elementos.planilla_id')
-
-            // 🔹 LEFT JOIN a orden_planillas con el mismo fallback
-            ->leftJoin('orden_planillas AS op', function ($join) {
-                $join->on('op.planilla_id', '=', 'elementos.planilla_id')
-                    ->whereRaw("
-                    op.maquina_id = CASE
-                        WHEN maquinas.tipo = 'ensambladora'
-                            THEN COALESCE(elementos.maquina_id_2, elementos.maquina_id)
-                        WHEN maquinas.tipo = 'soldadora'
-                            THEN COALESCE(elementos.maquina_id_3, elementos.maquina_id)
-                        ELSE elementos.maquina_id
-                    END
-                 ");
-            })
-
-            // 🔹 excluir sub-etiquetas completadas
-            ->whereDoesntHave('subetiquetas', fn($q) => $q->where('estado', 'completada'))
-
-            // 🔹 mismo filtrado de nulls que el calendario
-            ->where(function ($q) {
-                $q->where(
-                    fn($q1) =>
-                    $q1->whereNotIn('maquinas.tipo', ['ensambladora', 'soldadora'])
-                        ->whereNotNull('elementos.maquina_id')
-                )
-                    ->orWhere(
-                        fn($q2) =>
-                        $q2->where('maquinas.tipo', 'ensambladora')
-                            ->whereNotNull(DB::raw('COALESCE(elementos.maquina_id_2, elementos.maquina_id)'))
-                    )
-                    ->orWhere(
-                        fn($q3) =>
-                        $q3->where('maquinas.tipo', 'soldadora')
-                            ->whereNotNull(DB::raw('COALESCE(elementos.maquina_id_3, elementos.maquina_id)'))
-                    );
-            })
-
-            // 🔹 ORDEN: máquina → posición (null al final) → fecha
-            ->orderBy('maquina_group_id')
-            ->orderByRaw('COALESCE(op.posicion, 999999)')   // null ⇒ último
-            ->orderBy('planillas.fecha_estimada_entrega')
-            ->with('planilla')
-            ->get();
-
-        /* ▸ 2.3  Cola agrupada (mantiene el orden recibido) */
-        $colaPorMaquina = $elementos
-            ->groupBy('maquina_group_id')
-            ->map->values();             // solo resetea índices, NO cambia orden
-
-        /* ▸ 2.4  Consulta de máquinas + conteos (igual que antes) */
+        // ▸ 2.1 Consulta de máquinas + conteos
         $query = Maquina::with('productos')
             ->selectRaw('maquinas.*, (
             SELECT COUNT(*) FROM elementos
@@ -159,11 +85,11 @@ class MaquinaController extends Controller
             $query->orderBy($sortBy, $order);
         }
 
-        $perPage          = $request->input('per_page', 20);
+        $perPage = $request->input('per_page', 20);
         $registrosMaquina = $query->paginate($perPage)
             ->appends($request->except('page'));
 
-        /* ▸ 2.5  Operarios asignados hoy  */
+        // ▸ 2.2 Operarios asignados hoy
         $hoy = Carbon::today();
         $usuariosPorMaquina = AsignacionTurno::with(['user', 'turno'])
             ->whereDate('fecha', $hoy)
@@ -171,11 +97,9 @@ class MaquinaController extends Controller
             ->get()
             ->groupBy('maquina_id');
 
-        /* ▸ 2.6  Render de la vista */
+        // ▸ 2.3 Render vista
         return view('maquinas.index', compact(
             'registrosMaquina',
-            'usuarios',
-            'colaPorMaquina',   // ← ya con el orden del calendario
             'usuariosPorMaquina'
         ));
     }
@@ -501,8 +425,16 @@ class MaquinaController extends Controller
         if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('maquinas.index')->with('abort', 'No tienes los permisos necesarios.');
         }
-        return view('maquinas.create');
+
+        $clienteId = Cliente::where('empresa', 'Hierros Paco Reyes')->value('id');
+
+        $obras = Obra::where('cliente_id', $clienteId)
+            ->orderBy('obra')
+            ->get();
+
+        return view('maquinas.create', compact('obras'));
     }
+
     // Método para guardar la ubicación en la base de datos
     public function store(Request $request)
     {
@@ -513,6 +445,7 @@ class MaquinaController extends Controller
                 'codigo' => 'required|string|max:6|unique:maquinas,codigo',
                 'nombre' => 'required|string|max:40|unique:maquinas,nombre',
                 'tipo' => 'string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual ',
+                'obra_id' => 'nullable|exists:obras,id',
                 'diametro_min' => 'integer',
                 'diametro_max' => 'integer',
                 'peso_min' => 'integer',
@@ -544,6 +477,8 @@ class MaquinaController extends Controller
 
                 //'peso_max.required'     => 'El campo "peso máximo" es obligatorio.',
                 'peso_max.integer' => 'El campo "peso máximo" debe ser un número entero.',
+                'obra_id.exists' => 'La obra seleccionada no es válida.',
+
             ]);
 
 
@@ -552,6 +487,7 @@ class MaquinaController extends Controller
                 'codigo' => $request->codigo,
                 'nombre' => $request->nombre,
                 'tipo' => $request->tipo,
+                'obra_id'       => $request->obra_id,
                 'diametro_min' => $request->diametro_min,
                 'diametro_max' => $request->diametro_max,
                 'peso_min' => $request->peso_min,

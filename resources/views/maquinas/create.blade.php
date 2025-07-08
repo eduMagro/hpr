@@ -44,6 +44,14 @@
                                 'dobladora manual' => 'Dobladora Manual',
                             ]" empty="Selecciona su función" />
                         </div>
+                        {{-- Nave (Obra asignada) --}}
+                        <div class="mb-4">
+                            <label for="obra_id" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Obra asignada
+                            </label>
+                            <x-tabla.select name="obra_id" :options="$obras->pluck('obra', 'id')->toArray()" empty="Selecciona la Nave" />
+                        </div>
+
 
                         {{-- Diámetro mínimo --}}
                         <div>

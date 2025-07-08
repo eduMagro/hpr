@@ -41,4 +41,8 @@ class Obra extends Model
     {
         return $this->belongsToMany(Salida::class, 'salida_cliente', 'obra_id', 'salida_id');
     }
+    public function maquinas()
+    {
+        return $this->hasMany(Maquina::class);
+    }
 }

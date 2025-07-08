@@ -53,4 +53,8 @@ class Maquina extends Model
     {
         return $this->hasMany(Elemento::class, 'maquina_id_3');
     }
+    public function obra()
+    {
+        return $this->belongsTo(Obra::class);
+    }
 }
