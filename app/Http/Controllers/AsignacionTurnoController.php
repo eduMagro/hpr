@@ -774,12 +774,11 @@ class AsignacionTurnoController extends Controller
             ]);
         }
 
-        $asignacion->obra_id = null;
-        $asignacion->save();
+        $asignacion->delete();
 
         return response()->json([
             'success' => true,
-            'message' => '🗑️ Obra eliminada correctamente.'
+            'message' => '🗑️ Asignación eliminada correctamente.'
         ]);
     }
 }
