@@ -729,6 +729,40 @@ class AsignacionTurnoController extends Controller
             'obra_id' => $validated['obra_id']
         ]);
     }
+
+    public function asignarObraMultiple(Request $request)
+    {
+        $request->validate([
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
+            'obra_id' => 'required|exists:obras,id',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
+        ]);
+
+        $fechaInicio = Carbon::parse($request->fecha_inicio);
+        $fechaFin = Carbon::parse($request->fecha_fin);
+
+        foreach ($request->user_ids as $userId) {
+            $fecha = $fechaInicio->copy();
+            while ($fecha->lte($fechaFin)) {
+                AsignacionTurno::updateOrCreate(
+                    [
+                        'user_id' => $userId,
+                        'fecha' => $fecha->toDateString(),
+                    ],
+                    [
+                        'obra_id' => $request->obra_id,
+                        'turno_id' => 1 // Puedes adaptarlo si quieres que elija otro turno
+                    ]
+                );
+                $fecha->addDay();
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
+
     public function quitarObra($id)
     {
         $asignacion = AsignacionTurno::find($id);

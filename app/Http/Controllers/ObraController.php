@@ -176,7 +176,19 @@ class ObraController extends Controller
             'obra' => $obra
         ]);
     }
+    public function updateTipo(Request $request)
+    {
+        $request->validate([
+            'obra_id' => 'required|exists:obras,id',
+            'tipo' => 'required|string|in:obra,montaje,mantenimiento',
+        ]);
 
+        $obra = Obra::findOrFail($request->obra_id);
+        $obra->tipo = $request->tipo;
+        $obra->save();
+
+        return back()->with('success', '✅ Tipo de obra actualizado correctamente.');
+    }
 
     public function destroy(Obra $obra)
     {

@@ -560,8 +560,11 @@ class ProduccionController extends Controller
             ->where('rol', 'operario')
             ->get();
 
-        // 3. Obras activas como resources para el calendario
+        // 3. Obras activas de tipo montaje
         $obrasActivas = Obra::where('tipo', 'montaje')->get();
+
+        // 4. TODAS las obras (para usarlas donde necesites)
+        $todasLasObras = Obra::orderBy('obra')->get();
 
         $resources = $obrasActivas->map(fn($obra) => [
             'id' => $obra->id,
@@ -569,7 +572,7 @@ class ProduccionController extends Controller
             'codigo' => $obra->cod_obra,
         ]);
 
-        // 4. Generar eventos para ambos grupos
+        // 5. Generar eventos
         $eventos = [];
 
         foreach ($trabajadoresServicios as $trabajador) {
@@ -620,13 +623,48 @@ class ProduccionController extends Controller
             }
         }
 
+        // 6. Retornar vista con todas las variables
         return view('produccion.trabajadoresObra', [
             'trabajadoresServicios' => $trabajadoresServicios,
             'trabajadoresHpr' => $trabajadoresHpr,
             'resources' => $resources,
             'eventos' => $eventos,
+            'obras' => $todasLasObras, // ← esta es la nueva variable con todas las obras
         ]);
     }
+    public function eventosObra(Request $request)
+    {
+        $inicio = $request->query('start');
+        $fin = $request->query('end');
+
+        if (!$inicio || !$fin) {
+            return response()->json(['error' => 'Faltan fechas'], 400);
+        }
+
+        $asignaciones = AsignacionTurno::with(['user.categoria', 'user.maquina', 'obra'])
+            ->whereBetween('fecha', [$inicio, $fin])
+            ->whereNotNull('obra_id')
+            ->get();
+
+        $eventos = $asignaciones->map(function ($asignacion) {
+            return [
+                'id' => 'turno-' . $asignacion->id,
+                'title' => $asignacion->user?->nombre_completo ?? 'Desconocido',
+                'start' => $asignacion->fecha . 'T06:00:00',
+                'end' => $asignacion->fecha . 'T14:00:00',
+                'resourceId' => $asignacion->obra_id,
+                'extendedProps' => [
+                    'user_id' => $asignacion->user_id,
+                    'categoria_nombre' => $asignacion->user?->categoria?->nombre,
+                    'especialidad_nombre' => $asignacion->user?->maquina?->nombre
+                ]
+            ];
+        });
+
+        return response()->json($eventos);
+    }
+
+
 
     /**
      * Show the form for creating a new resource.

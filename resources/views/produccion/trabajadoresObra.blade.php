@@ -3,6 +3,7 @@
     <x-menu.planificacion />
 
     <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full mt-4">
+        {{-- hpr servicios --}}
         <details class="mb-4" open>
             <summary class="cursor-pointer font-bold text-gray-800 mb-2">Trabajadores de HPR Servicios</summary>
             <div id="external-events-servicios" class="grid grid-cols-2 md:grid-cols-6 gap-2 mt-2">
@@ -20,7 +21,7 @@
                 @endforeach
             </div>
         </details>
-
+        {{-- hpr --}}
         <details>
             <summary class="cursor-pointer font-bold text-gray-800 mb-2">Trabajadores de Hierros Paco Reyes
             </summary>
@@ -47,6 +48,51 @@
             <div id="calendario-obras" class="h-[80vh] w-full"></div>
         </div>
     </div>
+    <div class="max-w-xl mx-auto mt-10 bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">🔧 Cambiar tipo de una obra</h2>
+
+        <form action="{{ route('obras.updateTipo') }}" method="POST">
+            @csrf
+
+            {{-- Selección de obra --}}
+            <div class="mb-4">
+                <label for="obra_id" class="block text-sm font-medium text-gray-700">Selecciona una obra</label>
+                <select name="obra_id" id="obra_id"
+                    class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring focus:ring-blue-300">
+                    <option value="">-- Elige una obra --</option>
+                    @foreach ($obras as $obra)
+                        <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                    @endforeach
+                </select>
+                @error('obra_id')
+                    <span class="text-sm text-red-500 mt-1 block">{{ $message }}</span>
+                @enderror
+            </div>
+
+            {{-- Nuevo tipo --}}
+            <div class="mb-4">
+                <label for="tipo" class="block text-sm font-medium text-gray-700">Nuevo tipo</label>
+                <select name="tipo" id="tipo"
+                    class="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm shadow-sm focus:ring focus:ring-blue-300">
+                    <option value="">-- Selecciona un tipo --</option>
+                    <option value="obra">Obra</option>
+                    <option value="montaje">Montaje</option>
+                    <option value="mantenimiento">Mantenimiento</option>
+                </select>
+                @error('tipo')
+                    <span class="text-sm text-red-500 mt-1 block">{{ $message }}</span>
+                @enderror
+            </div>
+
+            {{-- Botón --}}
+            <div class="flex justify-end">
+                <button type="submit"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow">
+                    💾 Actualizar tipo
+                </button>
+            </div>
+        </form>
+    </div>
 
     <!-- FullCalendar + Tippy -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
@@ -58,38 +104,45 @@
     <script src="https://unpkg.com/tippy.js@6"></script>
 
     <script>
-        new FullCalendar.Draggable(document.getElementById('external-events-servicios'), {
-            itemSelector: '.fc-event',
-            eventData: function(eventEl) {
-                return {
-                    title: eventEl.dataset.title,
-                    extendedProps: {
-                        user_id: eventEl.dataset.id,
-                        categoria_nombre: eventEl.dataset.categoria,
-                        especialidad_nombre: eventEl.dataset.especialidad
-                    }
-                };
-            }
+        document.querySelectorAll('.fc-event').forEach(eventEl => {
+            eventEl.addEventListener('click', () => {
+                eventEl.classList.toggle('bg-yellow-300'); // cambia visualmente
+                eventEl.classList.toggle('seleccionado'); // añade clase de control
+            });
         });
 
-        new FullCalendar.Draggable(document.getElementById('external-events-hpr'), {
-            itemSelector: '.fc-event',
-            eventData: function(eventEl) {
-                return {
-                    title: eventEl.dataset.title,
-                    extendedProps: {
-                        user_id: eventEl.dataset.id,
-                        categoria_nombre: eventEl.dataset.categoria,
-                        especialidad_nombre: eventEl.dataset.especialidad
-                    }
-                };
-            }
-        });
+        // new FullCalendar.Draggable(document.getElementById('external-events-servicios'), {
+        //     itemSelector: '.fc-event',
+        //     eventData: function(eventEl) {
+        //         return {
+        //             title: eventEl.dataset.title,
+        //             extendedProps: {
+        //                 user_id: eventEl.dataset.id,
+        //                 categoria_nombre: eventEl.dataset.categoria,
+        //                 especialidad_nombre: eventEl.dataset.especialidad
+        //             }
+        //         };
+        //     }
+        // });
+
+        // new FullCalendar.Draggable(document.getElementById('external-events-hpr'), {
+        //     itemSelector: '.fc-event',
+        //     eventData: function(eventEl) {
+        //         return {
+        //             title: eventEl.dataset.title,
+        //             extendedProps: {
+        //                 user_id: eventEl.dataset.id,
+        //                 categoria_nombre: eventEl.dataset.categoria,
+        //                 especialidad_nombre: eventEl.dataset.especialidad
+        //             }
+        //         };
+        //     }
+        // });
 
         let calendarioObras;
 
         const resources = @json($resources);
-        const eventos = @json($eventos);
+
 
         function inicializarCalendarioObras() {
             if (calendarioObras) {
@@ -99,7 +152,8 @@
             calendarioObras = new FullCalendar.Calendar(document.getElementById('calendario-obras'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                 locale: 'es',
-                initialView: 'resourceTimelineWeek',
+                initialView: localStorage.getItem('vistaObras') || 'resourceTimelineWeek',
+                initialDate: localStorage.getItem('fechaObras') || undefined,
                 firstDay: 1,
                 height: 'auto',
                 headerToolbar: {
@@ -126,8 +180,77 @@
                         width: 100
                     }
                 ],
+                datesSet: function(info) {
+                    localStorage.setItem('vistaObras', info.view.type);
+                    localStorage.setItem('fechaObras', info.startStr);
+                },
+                selectable: true,
+                selectMirror: true,
+                select: function(info) {
+                    const seleccionados = [...document.querySelectorAll('.fc-event.seleccionado')];
+                    if (seleccionados.length === 0) {
+                        Swal.fire('❌ Debes seleccionar primero uno o más trabajadores.');
+                        return;
+                    }
 
-                events: eventos,
+                    // Obtener rango de fechas (incluyendo el último día real)
+                    const fechaInicio = info.startStr;
+                    const fechaFinObj = new Date(info.end);
+                    fechaFinObj.setDate(fechaFinObj.getDate()); // incluye el último día
+                    const fechaFin = fechaFinObj.toISOString().split('T')[0];
+
+                    // Obtener ID de la obra seleccionada (resource)
+                    const obraId = info.resource?.id;
+                    const obraNombre = info.resource?.title;
+
+                    const mensajeFecha = fechaInicio === fechaFin ?
+                        `<p>${fechaInicio}</p>` :
+                        `<p>Desde: ${fechaInicio}</p><p>Hasta: ${fechaFin}</p>`;
+
+                    Swal.fire({
+                        title: "¿Asignar a obra seleccionada?",
+                        html: `
+            ${mensajeFecha}
+            <p><strong>${seleccionados.length}</strong> trabajadores</p>
+            <p>Obra: <strong>${obraNombre}</strong></p>
+        `,
+                        showCancelButton: true,
+                        confirmButtonText: "Asignar",
+                        cancelButtonText: "Cancelar",
+                        preConfirm: () => {
+                            const userIds = seleccionados.map(e => e.dataset.id);
+                            return fetch('{{ route('asignaciones-turno.asignarObraMultiple') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                },
+                                body: JSON.stringify({
+                                    user_ids: userIds,
+                                    obra_id: obraId,
+                                    fecha_inicio: fechaInicio,
+                                    fecha_fin: fechaFin
+                                })
+                            }).then(res => res.json());
+                        }
+                    }).then(res => {
+                        if (res.isConfirmed && res.value?.success) {
+                            // 🔹 Deseleccionar todos los trabajadores
+                            document.querySelectorAll('.fc-event.seleccionado').forEach(el => {
+                                el.classList.remove('seleccionado', 'bg-yellow-300');
+                            });
+
+                            calendarioObras.refetchEvents();
+                        }
+                    });
+                },
+                events: {
+                    url: '{{ route('asignaciones-turno.eventosObra') }}',
+                    method: 'GET',
+                    failure: function() {
+                        Swal.fire('❌ Error al cargar eventos');
+                    }
+                },
                 eventClick(info) {
                     const userId = info.event.extendedProps.user_id;
                     if (userId) {
@@ -317,4 +440,11 @@
 
         document.addEventListener('DOMContentLoaded', inicializarCalendarioObras);
     </script>
+    <style>
+        .fc-event.seleccionado {
+            outline: 3px solid #facc15;
+            background-color: #fde68a !important;
+            transform: scale(1.05);
+        }
+    </style>
 </x-app-layout>

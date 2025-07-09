@@ -143,6 +143,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/generar-turnos/{user}', [ProfileController::class, 'generarTurnos'])->name('profile.generar.turnos');
     Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
     Route::post('/asignaciones-turno/asignar-obra', [AsignacionTurnoController::class, 'asignarObra'])->name('asignaciones-turno.asignarObra');
+    Route::post('/asignaciones-turno/asignar-multiple', [AsignacionTurnoController::class, 'asignarObraMultiple'])->name('asignaciones-turno.asignarObraMultiple');
     Route::put('/asignaciones-turno/{id}/quitar-obra', [AsignacionTurnoController::class, 'quitarObra'])->name('asignaciones-turno.quitarObra');
 
     // === MAQUINAS Y PRODUCCIÓN ===
@@ -201,6 +202,9 @@ Route::middleware('auth')->group(function () {
 
     // === OBRAS ===
     Route::resource('obras', ObraController::class)->middleware('acceso.seccion:obras.index');
+    Route::post('/obras/actualizar-tipo', [ObraController::class, 'updateTipo'])->name('obras.updateTipo');
+    Route::get('/asignaciones-turno/eventos-obra', [ProduccionController::class, 'eventosObra'])
+        ->name('asignaciones-turno.eventosObra');
 
     // === NOMINAS Y FISCALIDAD ===
     Route::resource('empresas', EmpresaController::class)->middleware('acceso.seccion:empresas.index');
