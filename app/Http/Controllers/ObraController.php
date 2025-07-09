@@ -187,7 +187,7 @@ class ObraController extends Controller
         $obra->tipo = $request->tipo;
         $obra->save();
 
-        return back()->with('success', '✅ Tipo de obra actualizado correctamente.');
+        return back();
     }
 
     public function destroy(Obra $obra)
