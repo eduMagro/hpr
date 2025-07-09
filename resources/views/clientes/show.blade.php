@@ -48,6 +48,7 @@
                                 <th class="px-2 py-3 text-center border">Fecha Inicio</th>
                                 <th class="px-2 py-3 text-center border">Peso Entregado</th>
                                 <th class="px-2 py-3 text-center border">Estado</th>
+                                <th class="px-2 py-3 text-center border">Tipo</th>
                                 <th class="px-2 py-3 text-center border">Acciones</th>
                             </tr>
                         </thead>
@@ -165,6 +166,23 @@
                                         <input x-show="editando" type="text" x-model="obra.estado"
                                             class="form-input w-full">
                                     </td>
+                                    <!-- Tipo -->
+                                    <td class="p-2 text-center border">
+                                        <template x-if="!editando">
+                                            <span x-text="obra.tipo"
+                                                :class="{
+                                                    'text-indigo-600': obra.tipo === 'montaje',
+                                                    'text-teal-600': obra.tipo === 'suministro'
+                                                }"></span>
+                                        </template>
+
+                                        <select x-show="editando" x-model="obra.tipo"
+                                            class="form-select w-full text-xs">
+                                            <option value="">Selecciona tipo</option>
+                                            <option value="montaje">Montaje</option>
+                                            <option value="suministro">Suministro</option>
+                                        </select>
+                                    </td>
 
                                     <td class="px-2 py-2 border text-xs font-bold">
                                         <div class="flex items-center space-x-2 justify-center">
@@ -259,6 +277,15 @@
                             <label class="block text-gray-700 font-semibold">Radio</label>
                             <input type="text" name="radio" class="form-input w-full p-2 border rounded-lg">
                         </div>
+                        <div class="col-span-2">
+                            <label class="block text-gray-700 font-semibold">Tipo de Obra</label>
+                            <select name="tipo" class="form-select w-full p-2 border rounded-lg" required>
+                                <option value="">Selecciona tipo</option>
+                                <option value="montaje">Montaje</option>
+                                <option value="suministro">Suministro</option>
+                            </select>
+                        </div>
+
                     </div>
 
                     <div class="flex justify-end gap-3 mt-6">

@@ -545,30 +545,37 @@ class ProduccionController extends Controller
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
     public function trabajadoresObra()
     {
-        // 1. Obtener la empresa por nombre
+        // 1. Obtener las dos empresas por nombre
         $hprServicios = Empresa::where('nombre', 'HPR Servicios en Obra S.L.')->firstOrFail();
+        $hpr = Empresa::where('nombre', 'Hierros Paco Reyes S.L.')->firstOrFail();
 
-        // 2. Obtener todos los trabajadores de esa empresa con rol 'operario'
-        $trabajadores = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
+        // 2. Obtener los trabajadores de cada empresa
+        $trabajadoresServicios = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
             ->where('empresa_id', $hprServicios->id)
             ->where('rol', 'operario')
             ->get();
 
-        // 3. Obtener las obras activas como resources
-        $obrasActivas = Obra::where('estado', 'activa')->get();
+        $trabajadoresHpr = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
+            ->where('empresa_id', $hpr->id)
+            ->where('rol', 'operario')
+            ->get();
+
+        // 3. Obras activas como resources para el calendario
+        $obrasActivas = Obra::where('tipo', 'montaje')->get();
 
         $resources = $obrasActivas->map(fn($obra) => [
             'id' => $obra->id,
             'title' => $obra->obra,
-            'codigo' => $obra->cod_obra, // <-- asegúrate de que esta columna exista en la tabla `obras`
+            'codigo' => $obra->cod_obra,
         ]);
 
+        // 4. Generar eventos para ambos grupos
         $eventos = [];
 
-        foreach ($trabajadores as $trabajador) {
+        foreach ($trabajadoresServicios as $trabajador) {
             foreach ($trabajador->asignacionesTurnos as $asignacion) {
                 $turno = $asignacion->turno;
-                if (!$turno || !$asignacion->obra_id) continue; // solo si tiene obra válida
+                if (!$turno || !$asignacion->obra_id) continue;
 
                 $horaEntrada = $turno->hora_entrada ?? '08:00:00';
                 $horaSalida  = $turno->hora_salida ?? '16:00:00';
@@ -581,6 +588,31 @@ class ProduccionController extends Controller
                     'resourceId' => $asignacion->obra_id,
                     'extendedProps' => [
                         'user_id' => $trabajador->id,
+                        'empresa' => 'HPR Servicios',
+                        'categoria_nombre' => $trabajador->categoria?->nombre,
+                        'especialidad_nombre' => $trabajador->maquina?->nombre,
+                    ],
+                ];
+            }
+        }
+
+        foreach ($trabajadoresHpr as $trabajador) {
+            foreach ($trabajador->asignacionesTurnos as $asignacion) {
+                $turno = $asignacion->turno;
+                if (!$turno || !$asignacion->obra_id) continue;
+
+                $horaEntrada = $turno->hora_entrada ?? '08:00:00';
+                $horaSalida  = $turno->hora_salida ?? '16:00:00';
+
+                $eventos[] = [
+                    'id' => 'turno-' . $asignacion->id,
+                    'title' => $trabajador->nombre_completo,
+                    'start' => $asignacion->fecha . 'T' . $horaEntrada,
+                    'end' => $asignacion->fecha . 'T' . $horaSalida,
+                    'resourceId' => $asignacion->obra_id,
+                    'extendedProps' => [
+                        'user_id' => $trabajador->id,
+                        'empresa' => 'Hierros Paco Reyes',
                         'categoria_nombre' => $trabajador->categoria?->nombre,
                         'especialidad_nombre' => $trabajador->maquina?->nombre,
                     ],
@@ -589,9 +621,10 @@ class ProduccionController extends Controller
         }
 
         return view('produccion.trabajadoresObra', [
-            'trabajadores' => $trabajadores,
+            'trabajadoresServicios' => $trabajadoresServicios,
+            'trabajadoresHpr' => $trabajadoresHpr,
             'resources' => $resources,
-            'eventos' => $eventos
+            'eventos' => $eventos,
         ]);
     }
 

@@ -2,22 +2,43 @@
     <x-slot name="title">Planificación por Obra</x-slot>
     <x-menu.planificacion />
 
-    <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full md:w-full mt-4">
-        <h3 class="font-bold text-gray-800 mb-2">Trabajadores de HPR Servicios</h3>
-        <div id="external-events" class="grid grid-cols-2 md:grid-cols-6 gap-2">
-            @foreach ($trabajadores as $t)
-                <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
-                    data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
-                    data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
-                    {{ $t->nombre_completo }}
-                    <div class="text-[10px] text-gray-600">
-                        {{ $t->categoria?->nombre }} @if ($t->maquina)
-                            · {{ $t->maquina?->nombre }}
-                        @endif
+    <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full mt-4">
+        <details class="mb-4" open>
+            <summary class="cursor-pointer font-bold text-gray-800 mb-2">Trabajadores de HPR Servicios</summary>
+            <div id="external-events-servicios" class="grid grid-cols-2 md:grid-cols-6 gap-2 mt-2">
+                @foreach ($trabajadoresServicios as $t)
+                    <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
+                        data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
+                        data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
+                        {{ $t->nombre_completo }}
+                        <div class="text-[10px] text-gray-600">
+                            {{ $t->categoria?->nombre }} @if ($t->maquina)
+                                · {{ $t->maquina?->nombre }}
+                            @endif
+                        </div>
                     </div>
-                </div>
-            @endforeach
-        </div>
+                @endforeach
+            </div>
+        </details>
+
+        <details>
+            <summary class="cursor-pointer font-bold text-gray-800 mb-2">Trabajadores de Hierros Paco Reyes
+            </summary>
+            <div id="external-events-hpr" class="grid grid-cols-2 md:grid-cols-6 gap-2 mt-2">
+                @foreach ($trabajadoresHpr as $t)
+                    <div class="fc-event px-3 py-2 text-xs bg-green-100 rounded cursor-pointer text-center shadow"
+                        data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
+                        data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
+                        {{ $t->nombre_completo }}
+                        <div class="text-[10px] text-gray-600">
+                            {{ $t->categoria?->nombre }} @if ($t->maquina)
+                                · {{ $t->maquina?->nombre }}
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </details>
     </div>
 
     <div class="p-4">
@@ -37,7 +58,21 @@
     <script src="https://unpkg.com/tippy.js@6"></script>
 
     <script>
-        new FullCalendar.Draggable(document.getElementById('external-events'), {
+        new FullCalendar.Draggable(document.getElementById('external-events-servicios'), {
+            itemSelector: '.fc-event',
+            eventData: function(eventEl) {
+                return {
+                    title: eventEl.dataset.title,
+                    extendedProps: {
+                        user_id: eventEl.dataset.id,
+                        categoria_nombre: eventEl.dataset.categoria,
+                        especialidad_nombre: eventEl.dataset.especialidad
+                    }
+                };
+            }
+        });
+
+        new FullCalendar.Draggable(document.getElementById('external-events-hpr'), {
             itemSelector: '.fc-event',
             eventData: function(eventEl) {
                 return {

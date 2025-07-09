@@ -54,11 +54,11 @@ class ObraController extends Controller
 
         return view('obras.show', compact('obra', 'planillas'));
     }
+
     public function create()
     {
         return view('obras.create');
     }
-
 
     public function store(Request $request)
     {
@@ -71,6 +71,7 @@ class ObraController extends Controller
             'latitud' => 'nullable|numeric',
             'longitud' => 'nullable|numeric',
             'distancia' => 'nullable|integer',
+            'tipo' => 'required|in:montaje,suministro',
         ], [
             'obra.required' => 'El nombre de la obra es obligatorio.',
             'obra.string' => 'El nombre de la obra debe ser un texto.',
@@ -94,6 +95,9 @@ class ObraController extends Controller
             'longitud.numeric' => 'La longitud debe ser un valor numérico.',
 
             'distancia.integer' => 'La distancia debe ser un número entero.',
+            'tipo.required' => 'El tipo de obra es obligatorio.',
+            'tipo.in' => 'El tipo de obra debe ser montaje o suministro.',
+
         ]);
 
         // Crear la obra con cliente_id desde el input oculto y completada por defecto en 0
@@ -107,22 +111,19 @@ class ObraController extends Controller
             'longitud' => $request->longitud,
             'distancia' => $request->distancia,
             'estado' => 'activa', // Siempre será 0 por defecto
+            'tipo' => $request->tipo,
         ]);
 
         return redirect()->route('clientes.show', $request->cliente_id)->with('success', 'Obra creada correctamente.');
     }
-
 
     public function edit(Obra $obra)
     {
         return view('obras.edit', compact('obra'));
     }
 
-
-
     public function update(Request $request, Obra $obra)
     {
-        // Definir reglas y mensajes
         $rules = [
             'obra' => 'required|string|max:255',
             'cod_obra' => 'required|string|max:50',
@@ -130,6 +131,7 @@ class ObraController extends Controller
             'latitud' => 'nullable|numeric',
             'longitud' => 'nullable|numeric',
             'estado' => 'nullable|string',
+            'tipo' => 'required|in:montaje,suministro',
         ];
 
         $messages = [
@@ -144,9 +146,11 @@ class ObraController extends Controller
             'distancia.integer' => 'La distancia debe ser un número entero.',
             'latitud.numeric' => 'La latitud debe ser un número.',
             'longitud.numeric' => 'La longitud debe ser un número.',
+
+            'tipo.required' => 'El tipo de obra es obligatorio.',
+            'tipo.in' => 'El tipo de obra debe ser montaje o suministro.',
         ];
 
-        // Normalizar latitud y longitud (comas por puntos)
         $input = $request->all();
         if (isset($input['latitud'])) {
             $input['latitud'] = str_replace(',', '.', $input['latitud']);
@@ -155,7 +159,6 @@ class ObraController extends Controller
             $input['longitud'] = str_replace(',', '.', $input['longitud']);
         }
 
-        // Validar
         $validator = Validator::make($input, $rules, $messages);
 
         if ($validator->fails()) {
@@ -165,7 +168,6 @@ class ObraController extends Controller
             ], 422);
         }
 
-        // Actualizar la obra
         $obra->update($validator->validated());
 
         return response()->json([
@@ -174,8 +176,6 @@ class ObraController extends Controller
             'obra' => $obra
         ]);
     }
-
-
 
 
     public function destroy(Obra $obra)

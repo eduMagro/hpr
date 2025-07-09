@@ -16,8 +16,6 @@ use Illuminate\Support\Facades\DB;
 
 class ClienteController extends Controller
 {
-
-
     /**
      * Aplica filtros a la consulta de clientes según los parámetros de la solicitud.
      */
@@ -26,12 +24,10 @@ class ClienteController extends Controller
         // Iniciar la consulta con las relaciones necesarias
         $query = Cliente::query();
 
-
         // Aplicar filtros si están presentes en la solicitud
         if ($request->filled('empresa')) {
             $query->where('empresa', 'like', '%' . $request->empresa . '%');
         }
-
 
         if ($request->filled('codigo')) {
             $query->where('codigo', 'like', '%' . $request->codigo . '%');
@@ -78,12 +74,25 @@ class ClienteController extends Controller
             }
         }
 
+        if ($request->filled('activo')) {
+            if ($request->activo == '1') {
+                $query->whereHas('obras', function ($q) {
+                    $q->where('estado', 'activa');
+                });
+            } elseif ($request->activo == '0') {
+                $query->whereDoesntHave('obras', function ($q) {
+                    $q->where('estado', 'activa');
+                });
+            }
+        }
+
         // Obtener número de registros por página, por defecto 10
         $perPage = $request->get('per_page', 10);
 
         // Devolver clientes paginados con los filtros aplicados
         return $query->with('obras')->paginate($perPage);
     }
+
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
@@ -126,8 +135,10 @@ class ClienteController extends Controller
             $filtros[] = 'Ensamblado: <strong>' . $request->ensamblado . '</strong>';
         }
 
-        if ($request->filled('estado')) {
-            $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
+
+        if ($request->filled('activo')) {
+            $estadoTexto = $request->activo == '1' ? 'Sí' : 'No';
+            $filtros[] = 'Activo: <strong>' . $estadoTexto . '</strong>';
         }
 
         if ($request->filled('fecha_finalizacion')) {
@@ -164,6 +175,7 @@ class ClienteController extends Controller
 
         return $filtros;
     }
+
     private function getOrdenamiento(string $columna, string $titulo): string
     {
         $currentSort = request('sort');
@@ -185,6 +197,7 @@ class ClienteController extends Controller
         return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
             '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
+
     public function index(Request $request)
     {
         $clientes = $this->aplicarFiltros($request);
@@ -211,7 +224,6 @@ class ClienteController extends Controller
         return view('clientes.index', compact('clientes', 'ordenables', 'filtrosActivos'));
     }
 
-
     public function create()
     {
         return view('clientes.create');
@@ -229,7 +241,6 @@ class ClienteController extends Controller
         return redirect()->route('clientes.index')->with('success', 'Cliente creado correctamente.');
     }
 
-
     private function getPesoEntregadoPorObra($clienteId): Collection
     {
         return SalidaPaquete::whereHas('paquete.planilla.obra', function ($query) use ($clienteId) {
@@ -240,6 +251,7 @@ class ClienteController extends Controller
             ->groupBy('paquete.planilla.obra_id') // Agrupar por obra
             ->map(fn($salidas) => $salidas->sum('peso_total')); // Sumar el peso entregado por obra
     }
+
     public function show(Cliente $cliente)
     {
         // Obtener el peso total entregado por cada obra del cliente
@@ -253,8 +265,6 @@ class ClienteController extends Controller
 
         return view('clientes.show', compact('cliente', 'obras'));
     }
-
-
 
     public function edit(Cliente $cliente)
     {
@@ -291,6 +301,7 @@ class ClienteController extends Controller
             return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }
     }
+
     public function destroy(Cliente $cliente)
     {
         $cliente->delete();

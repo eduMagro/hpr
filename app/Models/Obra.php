@@ -21,7 +21,8 @@ class Obra extends Model
         'latitud',
         'longitud',
         'distancia',
-        'estado'
+        'estado',
+        'tipo'
     ];
 
     public function planillas()

@@ -8,6 +8,7 @@
 
 
     <div x-data="{ modalObra: false }">
+        {{--  Nuevo cliente --}}
         <div class="flex flex-wrap items-center gap-3 mb-4">
             <x-tabla.boton-azul @click="modalObra = true">
                 ➕ Nuevo Cliente
@@ -23,9 +24,7 @@
             </form>
         </div>
 
-
-
-        <!-- Modal -->
+        <!-- Modal nuevo cliente-->
         <div class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" x-show="modalObra"
             x-transition x-cloak>
             <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl">
