@@ -338,9 +338,9 @@ class AsignacionTurnoController extends Controller
 
             Log::info('📍 Distancia hasta la obra', ['distancia' => $distancia]);
 
-            if ($distancia > $obra->distancia) {
-                return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
-            }
+            // if ($distancia > $obra->distancia) {
+            //     return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
+            // }
 
             $warning = null;
 
