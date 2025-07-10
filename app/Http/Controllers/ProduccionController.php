@@ -63,10 +63,23 @@ class ProduccionController extends Controller
             ];
         });
 
-        $trabajadores = User::with(['asignacionesTurnos.turno:id,hora_entrada,hora_salida', 'categoria', 'maquina'])
+        $trabajadores = User::with([
+            'asignacionesTurnos' => function ($q) {
+                $q->whereHas('obra.cliente', function ($q) {
+                    $q->where('empresa', 'Hierros Paco Reyes S.L.');
+                });
+            },
+            'asignacionesTurnos.turno:id,hora_entrada,hora_salida',
+            'categoria',
+            'maquina'
+        ])
             ->where('rol', 'operario')
-            ->whereNotNull('maquina_id') // aquí antes usabas `especialidad`
+            ->whereNotNull('maquina_id')
+            ->whereHas('asignacionesTurnos.obra.cliente', function ($q) {
+                $q->where('empresa', 'Hierros Paco Reyes S.L.');
+            })
             ->get();
+
         $obraIds = $trabajadores
             ->flatMap(fn($t) => $t->asignacionesTurnos)
             ->filter(fn($a) => $a->estado === 'activo' && $a->obra_id)
