@@ -297,51 +297,75 @@ class EstadisticasController extends Controller
     //             ];
     //         });
     // }
-    private function getPesoPorPlanilleroAgrupado($modo = 'dia')
+    private function getPesoPorPlanilleroAgrupado($modo = 'mes')
     {
         $query = Planilla::where('estado', 'pendiente')
             ->with('user:id,name,primer_apellido,segundo_apellido');
 
         switch ($modo) {
             case 'mes':
+                $campoFecha = DB::raw('DATE(created_at) AS periodo'); // ahora por día
+                $filtroInicio = now()->startOfMonth();
+                $filtroFin = now()->endOfMonth();
+                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
+
+                $rangos = collect(CarbonPeriod::create($filtroInicio, '1 day', $filtroFin))
+                    ->map(fn($fecha) => $fecha->format('Y-m-d'));
+
+                $groupBy = ['users_id', 'periodo'];
+                break;
+
+
+            case 'anio':
                 $campoFecha = DB::raw('DATE_FORMAT(created_at, "%Y-%m") AS periodo');
                 $filtroInicio = now()->startOfYear();
                 $filtroFin = now()->endOfYear();
                 $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
-                $groupBy = ['users_id', 'periodo'];
-                break;
 
-            case 'anio':
-                $campoFecha = DB::raw('YEAR(created_at) AS periodo');
-                $query->whereYear('created_at', '>=', now()->year - 2);
+                $rangos = collect(CarbonPeriod::create($filtroInicio, '1 month', $filtroFin))
+                    ->map(fn($fecha) => $fecha->format('Y-m'));
+
                 $groupBy = ['users_id', 'periodo'];
                 break;
 
             case 'origen':
             default:
                 $campoFecha = DB::raw('"origen" AS periodo');
+                $rangos = collect(['origen']);
                 $groupBy = ['users_id'];
                 break;
         }
 
-        return $query
-            ->select(
-                'users_id',
-                $campoFecha,
-                DB::raw('SUM(peso_total) AS peso_importado')
-            )
+        $datos = $query->select('users_id', $campoFecha, DB::raw('SUM(peso_total) as peso_importado'))
             ->groupBy(...$groupBy)
             ->orderBy('periodo', 'asc')
-            ->get()
-            ->map(function ($planilla) {
-                return (object) [
-                    'users_id'        => $planilla->users_id,
-                    'nombre_completo' => optional($planilla->user)->nombre_completo,
-                    'periodo'         => $planilla->periodo,
-                    'peso_importado'  => $planilla->peso_importado,
-                ];
+            ->get();
+
+        $planilleros = $datos->pluck('user')->unique('id')->filter()->values();
+
+        $series = $planilleros->map(function ($usuario) use ($datos, $rangos) {
+            $datosUsuario = $datos->where('users_id', $usuario->id)->keyBy('periodo');
+
+            $acumulado = 0;
+            $data = $rangos->map(function ($periodo) use (&$acumulado, $datosUsuario) {
+                $peso = $datosUsuario[$periodo]->peso_importado ?? 0;
+                $acumulado += $peso;
+                return $acumulado;
             });
+
+            return [
+                'name' => $usuario->nombre_completo,
+                'data' => $data->toArray(),
+            ];
+        });
+
+
+        return [
+            'labels' => $rangos->toArray(),
+            'series' => $series->toArray(),
+        ];
     }
+
 
     // ---------------------------------------------------------------- consumo de materia prima / maquina
 
