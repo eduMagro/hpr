@@ -125,8 +125,11 @@
                             data-id="{{ $maquina->id }}">
                             Editar
                         </a>
-                        <a href="javascript:void(0);" onclick="seleccionarCompañero({{ $maquina->id }})"
-                            class="text-blue-500 hover:text-blue-700 text-sm">Iniciar Sesión</a>
+                        <a href="{{ route('maquinas.show', $maquina->id) }}"
+                            class="text-blue-500 hover:text-blue-700 text-sm">
+                            Iniciar Sesión
+                        </a>
+
                     </div>
                 </div>
             @empty
