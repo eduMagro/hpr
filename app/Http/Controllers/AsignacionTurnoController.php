@@ -762,6 +762,70 @@ class AsignacionTurnoController extends Controller
 
         return response()->json(['success' => true]);
     }
+    public function updateObra(Request $request, $id)
+    {
+        $request->validate([
+            'obra_id' => 'required|exists:obras,id',
+            'fecha' => 'required|date',
+        ]);
+
+        $asignacion = AsignacionTurno::findOrFail($id);
+
+        // Verificamos si ya existe otra asignación con mismo user y nueva fecha (evitamos duplicados)
+        $existeOtra = AsignacionTurno::where('user_id', $asignacion->user_id)
+            ->where('fecha', $request->fecha)
+            ->where('id', '!=', $asignacion->id)
+            ->first();
+
+        if ($existeOtra) {
+            return response()->json([
+                'success' => false,
+                'message' => '❌ Ya existe otra asignación para este usuario en esa fecha.'
+            ]);
+        }
+
+        // Si no hay conflicto, actualizamos la asignación original
+        $asignacion->obra_id = $request->obra_id;
+        $asignacion->fecha = $request->fecha;
+        $asignacion->save();
+
+        return response()->json(['success' => true]);
+    }
+    public function repetirSemana(Request $request)
+    {
+        $request->validate([
+            'fecha_actual' => 'required|date',
+        ]);
+
+        $inicioSemana = Carbon::parse($request->fecha_actual)->startOfWeek();
+        $inicioAnterior = $inicioSemana->copy()->subWeek();
+        $finAnterior = $inicioAnterior->copy()->endOfWeek();
+
+        $asignaciones = AsignacionTurno::whereBetween('fecha', [$inicioAnterior, $finAnterior])->get();
+
+        foreach ($asignaciones as $asignacion) {
+            $nuevaFecha = Carbon::parse($asignacion->fecha)->addWeek();
+            // Verifica si ya existe para evitar duplicados
+            $existe = AsignacionTurno::where('user_id', $asignacion->user_id)
+                ->whereDate('fecha', $nuevaFecha)
+                ->exists();
+
+            if (!$existe) {
+                AsignacionTurno::create([
+                    'user_id' => $asignacion->user_id,
+                    'obra_id' => $asignacion->obra_id,
+                    'fecha' => $nuevaFecha,
+                    'estado' => $asignacion->estado,
+                    'turno_id' => $asignacion->turno_id,
+                    'maquina_id' => $asignacion->maquina_id,
+                ]);
+            }
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+
 
     public function quitarObra($id)
     {

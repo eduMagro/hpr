@@ -541,7 +541,6 @@ class ProduccionController extends Controller
         }
     }
 
-
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
     public function trabajadoresObra()
     {
@@ -594,6 +593,7 @@ class ProduccionController extends Controller
                         'empresa' => 'HPR Servicios',
                         'categoria_nombre' => $trabajador->categoria?->nombre,
                         'especialidad_nombre' => $trabajador->maquina?->nombre,
+                        'foto' => $trabajador->ruta_imagen,
                     ],
                 ];
             }
@@ -618,6 +618,7 @@ class ProduccionController extends Controller
                         'empresa' => 'Hierros Paco Reyes',
                         'categoria_nombre' => $trabajador->categoria?->nombre,
                         'especialidad_nombre' => $trabajador->maquina?->nombre,
+                        'foto' => $trabajador->ruta_imagen,
                     ],
                 ];
             }

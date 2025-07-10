@@ -11,6 +11,8 @@
                     <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
                         data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
                         data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
+                        <img src="{{ $t->foto }}"
+                            class="w-10 h-10 rounded-full object-cover mx-auto mb-1 ring-2 ring-blue-300">
                         {{ $t->nombre_completo }}
                         <div class="text-[10px] text-gray-600">
                             {{ $t->categoria?->nombre }} @if ($t->maquina)
@@ -42,9 +44,17 @@
         </details>
     </div>
 
+
     <div class="p-4">
+
         <!-- Calendario -->
         <div class="w-full bg-white">
+            <div class="flex justify-end my-4">
+                <button id="btnRepetirSemana"
+                    class=" bg-yellow-500 hover:bg-yellow-600 text-white font-bold m-4 py-2 px-4 rounded">
+                    🔁 Repetir semana anterior
+                </button>
+            </div>
             <div id="calendario-obras" class="h-[80vh] w-full"></div>
         </div>
     </div>
@@ -110,39 +120,50 @@
                 eventEl.classList.toggle('seleccionado'); // añade clase de control
             });
         });
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('btn-eliminar')) {
+                e.stopPropagation(); // 🔴 Detiene el eventClick de FullCalendar
+                e.preventDefault();
 
-        // new FullCalendar.Draggable(document.getElementById('external-events-servicios'), {
-        //     itemSelector: '.fc-event',
-        //     eventData: function(eventEl) {
-        //         return {
-        //             title: eventEl.dataset.title,
-        //             extendedProps: {
-        //                 user_id: eventEl.dataset.id,
-        //                 categoria_nombre: eventEl.dataset.categoria,
-        //                 especialidad_nombre: eventEl.dataset.especialidad
-        //             }
-        //         };
-        //     }
-        // });
+                const idEvento = e.target.dataset.id.replace('turno-', '');
 
-        // new FullCalendar.Draggable(document.getElementById('external-events-hpr'), {
-        //     itemSelector: '.fc-event',
-        //     eventData: function(eventEl) {
-        //         return {
-        //             title: eventEl.dataset.title,
-        //             extendedProps: {
-        //                 user_id: eventEl.dataset.id,
-        //                 categoria_nombre: eventEl.dataset.categoria,
-        //                 especialidad_nombre: eventEl.dataset.especialidad
-        //             }
-        //         };
-        //     }
-        // });
+                Swal.fire({
+                    title: '¿Eliminar asignación de obra?',
+                    text: "Esto quitará la obra del trabajador en ese turno.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/asignaciones-turno/${idEvento}/quitar-obra`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    const evento = calendarioObras.getEventById('turno-' + idEvento);
+                                    if (evento) evento.remove();
+                                } else {
+                                    Swal.fire('❌ Error', data.message, 'error');
+                                }
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                Swal.fire('❌ Error', 'No se pudo quitar la obra.', 'error');
+                            });
+                    }
+                });
+            }
+        });
 
         let calendarioObras;
 
         const resources = @json($resources);
-
 
         function inicializarCalendarioObras() {
             if (calendarioObras) {
@@ -183,6 +204,15 @@
                 datesSet: function(info) {
                     localStorage.setItem('vistaObras', info.view.type);
                     localStorage.setItem('fechaObras', info.startStr);
+
+                    // Mostrar botón solo en vista semanal
+                    const btn = document.getElementById('btnRepetirSemana');
+                    if (info.view.type === 'resourceTimelineWeek') {
+                        btn.classList.remove('hidden');
+                        btn.dataset.fecha = info.startStr;
+                    } else {
+                        btn.classList.add('hidden');
+                    }
                 },
                 selectable: true,
                 selectMirror: true,
@@ -252,6 +282,11 @@
                     }
                 },
                 eventClick(info) {
+                    // 🔴 Si se hizo clic en la X, no navegamos
+                    if (info.jsEvent.target.closest('.btn-eliminar')) {
+                        return;
+                    }
+
                     const userId = info.event.extendedProps.user_id;
                     if (userId) {
                         window.location.href = "{{ route('users.show', ':id') }}".replace(':id', userId);
@@ -339,6 +374,22 @@
                         });
                 },
                 eventDidMount(info) {
+                    const foto = info.event.extendedProps.foto;
+
+                    const content = `
+    <img src="${foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow-lg">
+`;
+
+                    tippy(info.el, {
+                        content: content,
+                        allowHTML: true,
+                        placement: 'top',
+                        theme: 'transparent-avatar',
+                        interactive: false,
+                        arrow: false,
+                        delay: [100, 0],
+                        offset: [0, 10],
+                    });
                     info.el.addEventListener('contextmenu', function(e) {
                         e.preventDefault(); // Evita el menú del navegador
 
@@ -381,13 +432,16 @@
                 },
                 eventContent(arg) {
                     const props = arg.event.extendedProps;
+                    const id = arg.event.id;
+
                     return {
                         html: `
-                            <div class="px-2 py-1 text-xs font-semibold">
-                                <span>${arg.event.title}</span>
-                                <span class="block text-[10px] opacity-80">${props.categoria_nombre ?? ''} ${props.especialidad_nombre ? '· ' + props.especialidad_nombre : ''}</span>
-                            </div>
-                        `
+            <div class="relative px-2 py-1 text-xs font-semibold group">
+                <span title="Eliminar" class="absolute top-0 right-0 text-red-600 hover:text-red-800 text-sm cursor-pointer btn-eliminar" data-id="${id}">X</span>
+                <div>${arg.event.title}</div>
+                <div class="text-[10px] opacity-80">${props.categoria_nombre ?? ''}${props.especialidad_nombre ? ' · ' + props.especialidad_nombre : ''}</div>
+            </div>
+        `
                     };
                 },
                 views: {
@@ -436,15 +490,69 @@
             });
 
             calendarioObras.render();
+
         }
 
         document.addEventListener('DOMContentLoaded', inicializarCalendarioObras);
+        document.getElementById('btnRepetirSemana').addEventListener('click', function() {
+            const fechaInicio = this.dataset.fecha;
+
+            Swal.fire({
+                title: '¿Repetir semana anterior?',
+                text: 'Se copiarán todas las asignaciones de la semana pasada a la actual.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, repetir',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('{{ route('asignaciones-turno.repetirSemana') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                fecha_actual: fechaInicio
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('✅ Semana copiada correctamente');
+                                calendarioObras.refetchEvents();
+                            } else {
+                                Swal.fire('❌ Error', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error(error);
+                            Swal.fire('❌ Error', 'No se pudo completar la solicitud.', 'error');
+                        });
+                }
+            });
+        });
     </script>
     <style>
         .fc-event.seleccionado {
             outline: 3px solid #facc15;
             background-color: #fde68a !important;
             transform: scale(1.05);
+        }
+
+        .btn-eliminar {
+            color: red;
+            border-radius: 9999px;
+            background-color: white;
+            font-size: 14px;
+            padding: 0 6px;
+            line-height: 1;
+        }
+
+        .tippy-box[data-theme~='transparent-avatar'] {
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 0 !important;
         }
     </style>
 </x-app-layout>
