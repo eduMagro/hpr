@@ -221,8 +221,15 @@
                             <!-- Entrada -->
                             <td class="px-2 py-2 border">
                                 <template x-if="editando">
-                                    <input type="time" x-model="asignacion.entrada"
-                                        class="w-50 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                    <div class="flex items-center gap-1 justify-center">
+                                        <input type="time" x-model="asignacion.entrada"
+                                            class="w-20 px-1 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                        <button type="button" @click="asignacion.entrada = null"
+                                            class="text-red-600 text-xs font-bold hover:text-red-800" title="Borrar">
+                                            ❌
+                                        </button>
+                                    </div>
+
 
                                 </template>
                                 <template x-if="!editando">
@@ -233,8 +240,14 @@
                             <!-- Salida -->
                             <td class="px-2 py-2 border">
                                 <template x-if="editando">
-                                    <input type="time" x-model="asignacion.salida"
-                                        class="w-50 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                    <div class="flex items-center gap-1 justify-center">
+                                        <input type="time" x-model="asignacion.salida"
+                                            class="w-20 px-1 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                        <button type="button" @click="asignacion.salida = null"
+                                            class="text-red-600 text-xs font-bold hover:text-red-800" title="Borrar">
+                                            ❌
+                                        </button>
+                                    </div>
 
                                 </template>
                                 <template x-if="!editando">
