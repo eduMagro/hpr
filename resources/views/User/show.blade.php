@@ -206,32 +206,28 @@
                     Swal.fire({
                         title: `Editar ${props.tipo === 'salida' ? 'Salida' : 'Entrada'}`,
                         html: `
-                        <p><strong>Fecha:</strong> ${props.fecha}</p>
-                        <input type="time" id="nuevaHora" class="swal2-input" value="${props.tipo === 'salida' ? props.salida : props.entrada}">
-                    `,
+        <p><strong>Fecha:</strong> ${props.fecha}</p>
+        <input type="time" id="nuevaHora" class="swal2-input" value="${props.tipo === 'salida' ? props.salida : props.entrada}">
+    `,
                         showDenyButton: true,
                         denyButtonText: 'Borrar',
                         showCancelButton: true,
                         confirmButtonText: 'Guardar',
                         cancelButtonText: 'Cancelar',
-                        preConfirm: () => ({
-                            hora: document.getElementById('nuevaHora').value,
-                            campo: props.tipo,
-                            fecha: props.fecha,
-                            estado: props.estado_original ?? 'activo'
-                        })
                     }).then(({
                         isConfirmed,
-                        isDenied,
-                        value
+                        isDenied
                     }) => {
                         if (!isConfirmed && !isDenied) return;
 
+                        const hora = isDenied ? null : document.getElementById('nuevaHora')
+                            .value;
+
                         actualizarHora({
-                            estado: value.estado,
-                            fecha: value.fecha,
-                            campo: value.campo,
-                            hora: isDenied ? null : value.hora
+                            estado: props.estado_original ?? 'activo',
+                            fecha: props.fecha,
+                            campo: props.tipo,
+                            hora: hora
                         });
                     });
                 },
