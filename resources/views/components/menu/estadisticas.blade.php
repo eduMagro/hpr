@@ -31,7 +31,7 @@
             @foreach ([
         'estadisticas.stock' => '📦 Stock',
         'estadisticas.obras' => '🏗️ Peso Obras',
-        'estadisticas.tecnicosDespiece' => '👷 Peso Planilleros',
+        'estadisticas.tecnicosDespiece' => '👷 Técnicos de Despiece',
         'estadisticas.consumo-maquinas' => '⚙️ Consumo Máquinas',
     ] as $ruta => $titulo)
                 <a href="{{ route($ruta) }}"
@@ -50,7 +50,7 @@
         @foreach ([
         'estadisticas.stock' => '📦 Stock',
         'estadisticas.obras' => '🏗️ Peso Obras',
-        'estadisticas.tecnicosDespiece' => '👷 Peso Planilleros',
+        'estadisticas.tecnicosDespiece' => '👷 Técnicos de Despiece',
         'estadisticas.consumo-maquinas' => '⚙️ Consumo Máquinas',
     ] as $ruta => $titulo)
             <a href="{{ route($ruta) }}"

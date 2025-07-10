@@ -1,7 +1,7 @@
 <!-- Reporte de Pesos por Usuario (Planillero) -->
 <div class="bg-white shadow rounded mb-4 text-sm">
     <div class="bg-blue-600 text-white text-center py-2 rounded-t">
-        <h3 class="font-semibold text-base">Reporte de Pesos por Planillero</h3>
+        <h3 class="font-semibold text-base">Reportes Técnicos de despiece</h3>
     </div>
 
     <div class="px-3 py-2">
@@ -15,7 +15,7 @@
         </form>
 
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-1 rounded mb-2">
-            Peso Total Importado por Planillero
+            Peso Total Importado por Técnico
         </h4>
         <div class="overflow-x-auto">
             <table class="w-full border border-gray-300 text-xs">
@@ -51,7 +51,7 @@
 
     <div class="px-3 py-2">
         <h4 class="text-center bg-blue-100 text-blue-900 font-semibold py-1 rounded mt-2 mb-1">
-            Gráfica {{ ucfirst($modo) }} Peso/Planillero
+            Gráfica {{ ucfirst($modo) }} Peso/Técnico
         </h4>
 
         <div class="relative w-full overflow-x-auto">
