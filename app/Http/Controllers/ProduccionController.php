@@ -64,11 +64,6 @@ class ProduccionController extends Controller
         });
 
         $trabajadores = User::with([
-            'asignacionesTurnos' => function ($q) {
-                $q->whereHas('obra.cliente', function ($q) {
-                    $q->where('empresa', 'Hierros Paco Reyes S.L.');
-                });
-            },
             'asignacionesTurnos.turno:id,hora_entrada,hora_salida',
             'asignacionesTurnos.obra.cliente',
             'categoria',
@@ -78,10 +73,11 @@ class ProduccionController extends Controller
             ->whereNotNull('maquina_id')
             ->whereHas('asignacionesTurnos', function ($q) {
                 $q->whereHas('obra.cliente', function ($q) {
-                    $q->where('empresa', 'Hierros Paco Reyes S.L.');
+                    $q->whereRaw('LOWER(empresa) LIKE ?', ['%hierros paco reyes%']);
                 });
             })
             ->get();
+
 
         $obraIds = $trabajadores
             ->flatMap(fn($t) => $t->asignacionesTurnos)
