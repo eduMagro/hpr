@@ -21,7 +21,7 @@ class AsignacionTurno extends Model
     }
     public function obra()
     {
-        return $this->belongsTo(Turno::class, 'obra_id');
+        return $this->belongsTo(Obra::class, 'obra_id');
     }
     public function maquina()
     {

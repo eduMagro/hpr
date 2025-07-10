@@ -70,13 +70,16 @@ class ProduccionController extends Controller
                 });
             },
             'asignacionesTurnos.turno:id,hora_entrada,hora_salida',
+            'asignacionesTurnos.obra.cliente',
             'categoria',
             'maquina'
         ])
             ->where('rol', 'operario')
             ->whereNotNull('maquina_id')
-            ->whereHas('asignacionesTurnos.obra.cliente', function ($q) {
-                $q->where('empresa', 'Hierros Paco Reyes S.L.');
+            ->whereHas('asignacionesTurnos', function ($q) {
+                $q->whereHas('obra.cliente', function ($q) {
+                    $q->where('empresa', 'Hierros Paco Reyes S.L.');
+                });
             })
             ->get();
 
