@@ -273,22 +273,18 @@ class AsignacionTurnoController extends Controller
                 return response()->json(['error' => 'No tienes un turno asignado para este día laboral.'], 403);
             }
 
-            // Detectar turno según hora
-            $rangosTurnos = [
-                'mañana' => ['entrada' => ['05:45', '06:30'], 'salida' => ['13:45', '14:30']],
-                'tarde' => ['entrada' => ['13:45', '14:30'], 'salida' => ['21:45', '22:30']],
-                'noche' => ['entrada' => ['21:45', '23:59'], 'salida' => ['05:45', '06:30']],
-            ];
+            // Detectar tramo de turno real según la hora de fichaje
+            $hora = Carbon::createFromFormat('H:i:s', $horaActual);
 
-            $turnoDetectado = collect($rangosTurnos)->first(function ($rangos, $turno) use ($request, $horaComparar) {
-                [$inicio, $fin] = $rangos[$request->tipo];
-                if ($inicio <= $fin) {
-                    return $horaComparar >= $inicio && $horaComparar <= $fin;
-                } else {
-                    // rango que cruza medianoche (ej. 21:45 → 06:30)
-                    return $horaComparar >= $inicio || $horaComparar <= $fin;
-                }
-            }, '');
+            // Tramos: Noche (22:00 - 06:00), Mañana (06:00 - 14:00), Tarde (14:00 - 22:00)
+            if ($hora->between(Carbon::createFromTime(6, 0), Carbon::createFromTime(13, 59, 59))) {
+                $turnoDetectado = 'mañana';
+            } elseif ($hora->between(Carbon::createFromTime(14, 0), Carbon::createFromTime(21, 59, 59))) {
+                $turnoDetectado = 'tarde';
+            } else {
+                // Noche: de 22:00 a 23:59 o de 00:00 a 05:59
+                $turnoDetectado = 'noche';
+            }
 
             // Si turno detectado no coincide con el actual, actualizarlo
             $turnoActual = strtolower($asignacionTurno->turno->nombre ?? '');
