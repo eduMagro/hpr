@@ -665,7 +665,6 @@ class ProduccionController extends Controller
         return response()->json($eventos);
     }
 
-
     /**
      * Show the form for creating a new resource.
      */
