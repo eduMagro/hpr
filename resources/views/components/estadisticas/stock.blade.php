@@ -80,17 +80,6 @@
                     <td class="border px-2 py-1 {{ $claseRojo }}">
                         @if (!$claseRojo)
                             {{ number_format($stockVal, 2, ',', '.') }}
-
-                            @php
-                                $claveConsumo = "encarretado-$diametro-0";
-                                $consumoMensual = $consumoMensualPromedio[$claveConsumo] ?? 0;
-                                $stockDeseado = round($consumoMensual * 1.5, 1);
-                            @endphp
-
-                            <div class="text-xs text-gray-500 mt-1 leading-3">
-                                <div>⏳ {{ number_format($consumoMensual, 1, ',', '.') }} kg/mes</div>
-                                <div>🎯 {{ number_format($stockDeseado, 1, ',', '.') }} deseado</div>
-                            </div>
                         @endif
                     </td>
 
@@ -129,17 +118,6 @@
                         <td class="border px-2 py-1 {{ $claseRojo }}">
                             @if (!$claseRojo)
                                 {{ number_format($stockVal, 2, ',', '.') }}
-
-                                @php
-                                    $claveConsumo = "barra-$diametro-$longitud";
-                                    $consumoMensual = $consumoMensualPromedio[$claveConsumo] ?? 0;
-                                    $stockDeseado = round($consumoMensual * 1.5, 1);
-                                @endphp
-
-                                <div class="text-xs text-gray-500 mt-1 leading-3">
-                                    <div>⏳ {{ number_format($consumoMensual, 1, ',', '.') }} kg/mes</div>
-                                    <div>🎯 {{ number_format($stockDeseado, 1, ',', '.') }} deseado</div>
-                                </div>
                             @endif
                         </td>
 
@@ -201,4 +179,77 @@
             Total general disponible (encarretado + barras): {{ number_format($totalGeneral, 2, ',', '.') }} kg
         </span>
     </div>
+
+    @if (!empty($consumoPorProductoBase))
+        <div class="bg-white shadow-lg rounded-lg p-6 mt-6 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">📊 Consumo por Producto Base</h2>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-center border border-gray-300 rounded table-auto">
+                    <thead class="bg-gray-100 font-semibold text-gray-700">
+                        <tr>
+                            <th class="px-4 py-3 border">Tipo</th>
+                            <th class="px-4 py-3 border">Diámetro</th>
+                            <th class="px-4 py-3 border">Longitud</th>
+                            <th class="px-4 py-3 border">Últimas 2 semanas</th>
+                            <th class="px-4 py-3 border">Último mes</th>
+                            <th class="px-4 py-3 border">Últimos 2 meses</th>
+                            <th class="px-4 py-3 border">Stock actual</th>
+                            <th class="px-4 py-3 border">Diferencia</th>
+                        </tr>
+                    </thead>
+
+                    <tbody class="divide-y divide-gray-200">
+                        @php
+                            $ids = collect($consumoPorProductoBase['ultimas_2_semanas'])
+                                ->keys()
+                                ->merge($consumoPorProductoBase['ultimo_mes']->keys())
+                                ->merge($consumoPorProductoBase['ultimos_2_meses']->keys())
+                                ->unique()
+                                ->sort();
+                        @endphp
+
+                        @foreach ($ids as $productoBaseId)
+                            @php
+                                $info = $productoBaseInfo[$productoBaseId] ?? null;
+                                $stock = $stockPorProductoBase[$productoBaseId] ?? 0;
+                                $consumoMes = $consumoPorProductoBase['ultimo_mes'][$productoBaseId] ?? 0;
+                                $diferencia = $stock - $consumoMes;
+                            @endphp
+                            @if ($info)
+                                <tr class="hover:bg-blue-50 transition-colors">
+                                    <td class="px-4 py-2 border">{{ ucfirst($info['tipo']) }}</td>
+                                    <td class="px-4 py-2 border">{{ $info['diametro'] }}</td>
+                                    <td class="px-4 py-2 border">
+                                        {{ $info['tipo'] === 'barra' ? $info['longitud'] . ' m' : '—' }}
+                                    </td>
+                                    <td class="px-4 py-2 border text-right">
+                                        {{ number_format($consumoPorProductoBase['ultimas_2_semanas'][$productoBaseId] ?? 0, 2) }}
+                                        kg
+                                    </td>
+                                    <td class="px-4 py-2 border text-right">
+                                        {{ number_format($consumoMes, 2) }} kg
+                                    </td>
+                                    <td class="px-4 py-2 border text-right">
+                                        {{ number_format($consumoPorProductoBase['ultimos_2_meses'][$productoBaseId] ?? 0, 2) }}
+                                        kg
+                                    </td>
+                                    <td class="px-4 py-2 border text-right font-semibold text-blue-700">
+                                        {{ number_format($stock, 2) }} kg
+                                    </td>
+                                    <td
+                                        class="px-4 py-2 border text-right font-semibold {{ $diferencia < 0 ? 'text-red-600' : 'text-green-700' }}">
+                                        {{ number_format($diferencia, 2) }} kg
+                                    </td>
+                                </tr>
+                            @endif
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+
+
+
 </div>

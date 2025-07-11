@@ -3,8 +3,8 @@
 
     <x-menu.estadisticas />
     <div class="w-full px-6 py-4">
-        <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral"
-            :consumo-mensual-promedio="$consumoMensualPromedio" />
+        <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral" :consumo-por-producto-base="$consumoPorProductoBase"
+            :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" />
 
     </div>
 </x-app-layout>
