@@ -79,8 +79,8 @@
                     let notificacionTexto = document.getElementById("notificacion-alertas-texto");
 
                     let mensaje = data.cantidad === 1 ?
-                        `🔔 Tienes 1 alerta sin leer` :
-                        `🔔 Tienes ${data.cantidad} alertas sin leer`;
+                        `🔔 Tienes 1 mensaje sin leer` :
+                        `🔔 Tienes ${data.cantidad} mensajes sin leer`;
 
                     notificacion.style.display = "block";
                     notificacion.classList.add("visible");
