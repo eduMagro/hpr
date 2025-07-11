@@ -319,7 +319,7 @@ class AsignacionTurnoController extends Controller
 
                         $alerta = Alerta::create([
                             'mensaje'   => "🔁 Se ha corregido automáticamente el turno de {$user->nombre_completo} a '{$turnoDetectado}' en la fecha {$asignacionTurno->fecha}.",
-                            'user_id_1' => $user->id,
+                            'user_id_1' => null,
                             'user_id_2' => null,
                             'leida'     => false,
                         ]);
