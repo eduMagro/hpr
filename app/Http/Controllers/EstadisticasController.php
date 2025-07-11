@@ -7,6 +7,7 @@ use App\Models\Elemento;
 use App\Models\Movimiento;
 use App\Models\Maquina;
 use App\Models\Producto;
+use App\Models\ProductoBase;
 use App\Models\Pedido;
 use App\Models\Planilla;
 use App\Models\Obra;
@@ -169,6 +170,11 @@ class EstadisticasController extends Controller
 
         $productos = Producto::with('productoBase')->where('estado', 'almacenado')->get();
 
+        $stockPorProductoBase = $productos
+            ->whereNotNull('producto_base_id')
+            ->groupBy('producto_base_id')
+            ->map(fn($grupo) => round($grupo->sum('peso_stock'), 2));
+
         $stockData = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
             $grupo = $productos->filter(fn($p) => intval($p->productoBase->diametro) === $diametro);
             $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_stock');
@@ -196,30 +202,82 @@ class EstadisticasController extends Controller
             }
         }
 
-        //------ STOCK DESEADO
-        $fechaInicioConsumo = Producto::whereNotNull('fecha_consumido')->min('fecha_consumido');
-        $fechaFin = now();
-        $mesesTranscurridos = max(Carbon::parse($fechaInicioConsumo)->diffInMonths($fechaFin), 1);
+        //------ CONSUMO A PARTIR DE MOVIMIENTOS A MÁQUINAS
+        $hoy = now();
+        $hace2Semanas = $hoy->copy()->subWeeks(2);
+        $hace1Mes = $hoy->copy()->subMonth();
+        $hace2Meses = $hoy->copy()->subMonths(2);
 
-        $consumoHistorico = Producto::with('productoBase')
+        // Función para calcular el consumo entre dos fechas
+        $calcularConsumo = function ($desde, $hasta) {
+            return Movimiento::whereNotNull('maquina_destino')
+                ->whereBetween('fecha_ejecucion', [$desde, $hasta])
+                ->join('productos', 'productos.id', '=', 'movimientos.producto_id')
+                ->select('productos.producto_base_id', DB::raw('SUM(productos.peso_inicial) as total_consumido'))
+                ->groupBy('productos.producto_base_id')
+                ->pluck('total_consumido', 'productos.producto_base_id')
+                ->map(fn($peso) => round($peso, 2));
+        };
+
+        $consumo2Semanas = $calcularConsumo($hace2Semanas, $hoy);
+        $consumo1Mes     = $calcularConsumo($hace1Mes, $hoy);
+        $consumo2Meses   = $calcularConsumo($hace2Meses, $hoy);
+
+        $consumoManual = Producto::where('estado', 'consumido')
             ->whereNotNull('fecha_consumido')
-            ->whereNotNull('peso_inicial') // ✅ Asegura que el peso no es null
-            ->where('peso_inicial', '>', 0) // ✅ Asegura que el peso es positivo
-            ->get()
-            ->filter(
-                fn($p) =>
-                $p->productoBase
-                    && $p->productoBase->tipo
-                    && $p->productoBase->diametro
-            )
-            ->groupBy(function ($p) {
-                $tipo = $p->productoBase->tipo;
-                $diametro = intval($p->productoBase->diametro);
-                $longitud = $p->productoBase->longitud ?? 12;
-                return "$tipo-$diametro-$longitud";
-            })
-            ->map(fn($grupo) => round($grupo->sum('peso_inicial') / $mesesTranscurridos, 2));
-        // dd($consumoHistorico->toArray());
+            ->whereNotNull('producto_base_id')
+            ->whereNotNull('peso_inicial')
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
+            ->groupBy('producto_base_id')
+            ->pluck('total_manual', 'producto_base_id')
+            ->map(fn($peso) => round($peso, 2));
+
+        $kgPedidosPorProductoBase = DB::table('pedido_productos')
+            ->join('productos_base', 'productos_base.id', '=', 'pedido_productos.producto_base_id')
+            ->join('pedidos', 'pedidos.id', '=', 'pedido_productos.pedido_id')
+            ->where('pedidos.estado', 'pendiente')
+            ->whereNotNull('pedido_productos.cantidad')
+            ->groupBy('pedido_productos.producto_base_id')
+            ->select('pedido_productos.producto_base_id', DB::raw('SUM(pedido_productos.cantidad) as total_pedido'))
+            ->pluck('total_pedido', 'pedido_productos.producto_base_id')
+            ->map(fn($valor) => round($valor, 2));
+        $productosBase = ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
+            ->keyBy('id')
+            ->map(fn($p) => [
+                'tipo' => $p->tipo,
+                'diametro' => intval($p->diametro),
+                'longitud' => $p->tipo === 'barra' ? $p->longitud : null,
+            ]);
+
+        $resumenReposicion = collect($productosBase)->mapWithKeys(function ($info, $id) use (
+            $consumo1Mes,
+            $consumo2Semanas,
+            $consumo2Meses,
+            $stockPorProductoBase,
+            $kgPedidosPorProductoBase
+        ) {
+            $consumo14d = $consumo2Semanas[$id] ?? 0;
+            $consumo30d = $consumo1Mes[$id] ?? 0;
+            $consumo60d = $consumo2Meses[$id] ?? 0;
+
+            $stock = $stockPorProductoBase[$id] ?? 0;
+            $pedido = $kgPedidosPorProductoBase[$id] ?? 0;
+
+            $consumoReferencia = $consumo30d; // podrías usar un promedio ponderado si prefieres
+            $reposicionNecesaria = max($consumoReferencia - $stock - $pedido, 0); // nunca negativa
+
+            return [$id => [
+                'tipo' => $info['tipo'],
+                'diametro' => $info['diametro'],
+                'longitud' => $info['longitud'],
+                'consumo_14d' => $consumo14d,
+                'consumo_30d' => $consumo30d,
+                'consumo_60d' => $consumo60d,
+                'stock' => $stock,
+                'pedido' => $pedido,
+                'reposicion' => round($reposicionNecesaria, 2),
+            ]];
+        });
 
 
         return [
@@ -228,7 +286,15 @@ class EstadisticasController extends Controller
             'necesarioPorDiametro' => $necesarioPorDiametro,
             'comparativa' => $comparativa,
             'totalGeneral' => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
-            'consumoMensualPromedio' => $consumoHistorico,
+            'consumoPorProductoBase' => [
+                'ultimas_2_semanas' => $consumo2Semanas->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
+                'ultimo_mes' => $consumo1Mes->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
+                'ultimos_2_meses' => $consumo2Meses->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
+            ],
+            'productoBaseInfo' => $productosBase,
+            'stockPorProductoBase' => $stockPorProductoBase,
+            'kgPedidosPorProductoBase' => $kgPedidosPorProductoBase,
+            'resumenReposicion' => $resumenReposicion,
         ];
     }
     // ---------------------------------------------------------------- Función para calcular el stock deseado

@@ -289,7 +289,7 @@ class PedidoController extends Controller
                 $comparativa[$clave] = compact('tipo', 'diametro', 'pendiente', 'pedido', 'disponible', 'diferencia');
             }
         }
-        //------ STOCK DESEADO
+
         //------ CONSUMO A PARTIR DE MOVIMIENTOS A MÁQUINAS
         $hoy = now();
         $hace2Semanas = $hoy->copy()->subWeeks(2);
@@ -383,7 +383,6 @@ class PedidoController extends Controller
             'stockPorProductoBase' => $stockPorProductoBase,
             'kgPedidosPorProductoBase' => $kgPedidosPorProductoBase,
             'resumenReposicion' => $resumenReposicion,
-
         ];
     }
 
