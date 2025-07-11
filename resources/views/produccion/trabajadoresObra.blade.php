@@ -11,7 +11,7 @@
                     <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
                         data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
                         data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
-                        <img src="{{ $t->foto }}"
+                        <img src="{{ $t->ruta_imagen }}"
                             class="w-10 h-10 rounded-full object-cover mx-auto mb-1 ring-2 ring-blue-300">
                         {{ $t->nombre_completo }}
                         <div class="text-[10px] text-gray-600">
@@ -29,9 +29,11 @@
             </summary>
             <div id="external-events-hpr" class="grid grid-cols-2 md:grid-cols-6 gap-2 mt-2">
                 @foreach ($trabajadoresHpr as $t)
-                    <div class="fc-event px-3 py-2 text-xs bg-green-100 rounded cursor-pointer text-center shadow"
+                    <div class="fc-event px-3 py-2 text-xs bg-blue-100 rounded cursor-pointer text-center shadow"
                         data-id="{{ $t->id }}" data-title="{{ $t->nombre_completo }}"
                         data-categoria="{{ $t->categoria?->nombre }}" data-especialidad="{{ $t->maquina?->nombre }}">
+                        <img src="{{ $t->ruta_imagen }}"
+                            class="w-10 h-10 rounded-full object-cover mx-auto mb-1 ring-2 ring-blue-300">
                         {{ $t->nombre_completo }}
                         <div class="text-[10px] text-gray-600">
                             {{ $t->categoria?->nombre }} @if ($t->maquina)
