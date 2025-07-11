@@ -37,9 +37,13 @@ use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 
 class ProfileController extends Controller
 {
-    public function exportarUsuarios()
+    public function exportarUsuarios(Request $request)
     {
-        return Excel::download(new UsersExport, 'usuarios.xlsx');
+        $usuariosFiltrados = $this->aplicarFiltros($request)
+            ->with(['empresa', 'categoria'])
+            ->get();
+
+        return Excel::download(new UsersExport($usuariosFiltrados), 'usuarios-app.xlsx');
     }
     private function filtrosActivos(Request $request): array
     {

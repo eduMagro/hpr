@@ -7,7 +7,7 @@
     </style>
     <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
     @if (Auth::check() && Auth::user()->rol == 'oficina')
-        <a href="{{ route('usuarios.exportar') }}" title="Descarga los usuarios en Excel"
+        <a href="{{ route('usuarios.exportar', request()->query()) }}" title="Descarga los usuarios en Excel"
             class="inline-flex items-center gap-2 m-2 p-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-md shadow transition">
 
             {{-- Icono tipo Excel --}}

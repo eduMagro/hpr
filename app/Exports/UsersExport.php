@@ -6,12 +6,20 @@ use App\Models\User;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Illuminate\Database\Eloquent\Collection;
 
 class UsersExport implements FromCollection, WithHeadings, WithMapping
 {
+    protected $usuarios;
+
+    public function __construct(Collection $usuarios)
+    {
+        $this->usuarios = $usuarios;
+    }
+
     public function collection()
     {
-        return User::with(['empresa', 'categoria'])->get();
+        return $this->usuarios;
     }
 
     public function map($user): array
