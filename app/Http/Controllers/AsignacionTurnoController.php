@@ -93,7 +93,8 @@ class AsignacionTurnoController extends Controller
             ->select('asignaciones_turnos.*');
 
         $query = $this->aplicarFiltros($query, $request);
-        $asignaciones = $query->paginate(15)->withQueryString();
+        $perPage = $request->input('per_page', 15);
+        $asignaciones = $query->paginate($perPage)->withQueryString();
         $turnos = Turno::where('nombre', '!=', 'festivo')
             ->orderBy('nombre')
             ->get();
