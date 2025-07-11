@@ -97,14 +97,16 @@
         <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto mb-6 border border-gray-200">
             <!-- Encabezado con avatar -->
             <div class="flex items-center space-x-4 border-b pb-4 mb-4">
-                <div
-                    class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700">
-                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                </div>
-                <div>
-                    <h3 class="text-xl font-semibold">{{ $user->nombre_completo }}</h3>
-                    <p class="text-gray-500 text-sm">{{ $user->rol }}</p>
-                </div>
+                <!-- Avatar -->
+                @if (auth()->user()->ruta_imagen)
+                    <img src="{{ auth()->user()->ruta_imagen }}" alt="Foto de perfil"
+                        class="w-16 h-16 rounded-full object-cover ring-2 ring-blue-400 shadow">
+                @else
+                    <div
+                        class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700 shadow">
+                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                    </div>
+                @endif
             </div>
 
             <!-- Contenido en dos columnas -->
