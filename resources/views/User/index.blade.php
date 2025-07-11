@@ -347,14 +347,45 @@
                                         d="M4 3a2 2 0 00-2 2v3.586A1.5 1.5 0 003.5 10H4v6a2 2 0 002 2h8a2 2 0 002-2v-6h.5A1.5 1.5 0 0018 8.586V5a2 2 0 00-2-2H4zm3 3a1 1 0 112 0 1 1 0 01-2 0zm2 4a2 2 0 114 0 2 2 0 01-4 0z" />
                                 </svg>
                                 <span>Cambiar foto</span>
-                                <input type="file" name="imagen" accept="image/*" class="hidden"
-                                    onchange="this.form.submit()">
+                                <input type="file" name="imagen" accept="image/*" capture="environment"
+                                    class="hidden" onchange="this.form.submit()">
                             </label>
 
                             <span class="text-gray-400 text-xs group-hover:text-gray-500 transition">
                                 Formatos: JPG, PNG, WEBP · Máx 5MB
                             </span>
                         </form>
+
+
+                        <script>
+                            document.querySelector('input[type="file"]').addEventListener('change', function() {
+                                if (!this.files.length) {
+                                    alert('No se seleccionó ninguna imagen.');
+                                }
+                            });
+
+                            document.getElementById('input-imagen').addEventListener('change', function(e) {
+                                const archivo = e.target.files[0];
+
+                                if (!archivo) return;
+
+                                if (!archivo.type.startsWith('image/')) {
+                                    alert('El archivo seleccionado no es una imagen válida.');
+                                    return;
+                                }
+
+                                const lector = new FileReader();
+                                lector.onload = function(event) {
+                                    const preview = document.getElementById('preview');
+                                    preview.src = event.target.result;
+                                    preview.classList.remove('hidden');
+
+                                    document.getElementById('boton-confirmar').classList.remove('hidden');
+                                };
+
+                                lector.readAsDataURL(archivo);
+                            });
+                        </script>
                     </div>
                 </div>
 

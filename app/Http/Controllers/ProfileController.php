@@ -714,7 +714,7 @@ class ProfileController extends Controller
             $user->save();
         }
 
-        return back()->with('success', '✅ Foto de perfil actualizada correctamente.');
+        return back()->with('success', 'Foto de perfil actualizada correctamente.');
     }
     public function actualizarUsuario(Request $request, $id)
     {
