@@ -329,7 +329,6 @@ class PedidoController extends Controller
             ->select('pedido_productos.producto_base_id', DB::raw('SUM(pedido_productos.cantidad) as total_pedido'))
             ->pluck('total_pedido', 'pedido_productos.producto_base_id')
             ->map(fn($valor) => round($valor, 2));
-
         $productosBase = ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
             ->keyBy('id')
             ->map(fn($p) => [
@@ -337,6 +336,37 @@ class PedidoController extends Controller
                 'diametro' => intval($p->diametro),
                 'longitud' => $p->tipo === 'barra' ? $p->longitud : null,
             ]);
+
+        $resumenReposicion = collect($productosBase)->mapWithKeys(function ($info, $id) use (
+            $consumo1Mes,
+            $consumo2Semanas,
+            $consumo2Meses,
+            $stockPorProductoBase,
+            $kgPedidosPorProductoBase
+        ) {
+            $consumo14d = $consumo2Semanas[$id] ?? 0;
+            $consumo30d = $consumo1Mes[$id] ?? 0;
+            $consumo60d = $consumo2Meses[$id] ?? 0;
+
+            $stock = $stockPorProductoBase[$id] ?? 0;
+            $pedido = $kgPedidosPorProductoBase[$id] ?? 0;
+
+            $consumoReferencia = $consumo30d; // podrías usar un promedio ponderado si prefieres
+            $reposicionNecesaria = max($consumoReferencia - $stock - $pedido, 0); // nunca negativa
+
+            return [$id => [
+                'tipo' => $info['tipo'],
+                'diametro' => $info['diametro'],
+                'longitud' => $info['longitud'],
+                'consumo_14d' => $consumo14d,
+                'consumo_30d' => $consumo30d,
+                'consumo_60d' => $consumo60d,
+                'stock' => $stock,
+                'pedido' => $pedido,
+                'reposicion' => round($reposicionNecesaria, 2),
+            ]];
+        });
+
 
         return [
             'stockData' => $stockData,
@@ -352,6 +382,7 @@ class PedidoController extends Controller
             'productoBaseInfo' => $productosBase,
             'stockPorProductoBase' => $stockPorProductoBase,
             'kgPedidosPorProductoBase' => $kgPedidosPorProductoBase,
+            'resumenReposicion' => $resumenReposicion,
 
         ];
     }

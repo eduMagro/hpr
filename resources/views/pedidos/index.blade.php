@@ -8,7 +8,7 @@
 
             <div class="mb-6"> <!-- Tabla stock -->
                 <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral"
-                    :consumo-por-producto-base="$consumoPorProductoBase" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" />
+                    :consumo-por-producto-base="$consumoPorProductoBase" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" />
 
 
                 <div class="mt-4 text-right">
@@ -632,15 +632,15 @@
    ${
     estaActivo
         ? `<button
-                                                                                                                                                        onclick="confirmarDesactivacion(${pedidoId}, ${producto.id})"
-                                                                                                                                                        class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                                                                        Desactivar
-                                                                                                                                                   </button>`
+                                                                                                                                                            onclick="confirmarDesactivacion(${pedidoId}, ${producto.id})"
+                                                                                                                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                                                                            Desactivar
+                                                                                                                                                       </button>`
         : `<button
-                                                                                                                                                        onclick="confirmarActivacion(${pedidoId}, ${producto.id})"
-                                                                                                                                                        class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                                                                        Activar
-                                                                                                                                                   </button>`
+                                                                                                                                                            onclick="confirmarActivacion(${pedidoId}, ${producto.id})"
+                                                                                                                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                                                                                                            Activar
+                                                                                                                                                       </button>`
 }
 
 </td>

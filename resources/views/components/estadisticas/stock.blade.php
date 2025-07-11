@@ -258,6 +258,55 @@
             </div>
         </div>
     @endif
+    @if (!empty($resumenReposicion))
+        <div class="bg-white shadow-lg rounded-lg p-6 mt-10 border border-gray-200">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">📦 Resumen de Reposición Sugerida</h2>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-center border border-gray-300 table-auto">
+                    <thead class="bg-gray-100 text-gray-700 font-semibold">
+                        <tr>
+                            <th class="px-4 py-3 border">Tipo</th>
+                            <th class="px-4 py-3 border">Diámetro</th>
+                            <th class="px-4 py-3 border">Longitud</th>
+                            <th class="px-4 py-3 border">Consumo 14d</th>
+                            <th class="px-4 py-3 border">Consumo 30d</th>
+                            <th class="px-4 py-3 border">Consumo 60d</th>
+                            <th class="px-4 py-3 border">Stock actual</th>
+                            <th class="px-4 py-3 border">Kg pedidos</th>
+                            <th class="px-4 py-3 border">Reposición sugerida</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @foreach ($resumenReposicion as $item)
+                            @if ($item['reposicion'] > 0)
+                                <tr class="hover:bg-yellow-50">
+                                    <td class="px-4 py-2 border">{{ ucfirst($item['tipo']) }}</td>
+                                    <td class="px-4 py-2 border">{{ $item['diametro'] }}</td>
+                                    <td class="px-4 py-2 border">
+                                        {{ $item['tipo'] === 'barra' ? $item['longitud'] . ' m' : '—' }}
+                                    </td>
+                                    <td class="px-4 py-2 border text-right">
+                                        {{ number_format($item['consumo_14d'], 2) }} kg</td>
+                                    <td class="px-4 py-2 border text-right">
+                                        {{ number_format($item['consumo_30d'], 2) }} kg</td>
+                                    <td class="px-4 py-2 border text-right">
+                                        {{ number_format($item['consumo_60d'], 2) }} kg</td>
+                                    <td class="px-4 py-2 border text-right text-blue-700 font-semibold">
+                                        {{ number_format($item['stock'], 2) }} kg</td>
+                                    <td class="px-4 py-2 border text-right text-indigo-600 font-semibold">
+                                        {{ number_format($item['pedido'], 2) }} kg</td>
+                                    <td class="px-4 py-2 border text-right text-red-600 font-bold">
+                                        ⚠ {{ number_format($item['reposicion'], 2) }} kg
+                                    </td>
+                                </tr>
+                            @endif
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
 
 
 
