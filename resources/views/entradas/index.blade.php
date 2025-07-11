@@ -3,21 +3,49 @@
     <x-menu.materiales />
 
     <div class="w-full p-4 sm:p-4">
-
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <div class="bg-white shadow rounded-lg overflow-x-auto">
             <table class="w-full border text-sm text-center">
                 <thead class="bg-blue-600 text-white uppercase text-xs">
                     <tr>
                         <th class="px-3 py-2 border">ID</th>
-                        <th class="px-3 py-2 border">Albarán</th>
-                        <th class="px-3 py-2 border">Pedido Compra</th>
-                        <th class="px-3 py-2 border">Fecha</th>
+                        <th class="px-3 py-2 border">{!! $ordenables['albaran'] ?? 'Albarán' !!}</th>
+                        <th class="px-3 py-2 border">{!! $ordenables['pedido_codigo'] ?? 'Pedido Compra' !!}</th>
+                        <th class="px-3 py-2 border">{!! $ordenables['created_at'] ?? 'Fecha' !!}</th>
                         <th class="px-3 py-2 border">Nº Productos</th>
                         <th class="px-3 py-2 border">Peso Total</th>
                         <th class="px-3 py-2 border">Estado</th>
-                        <th class="px-3 py-2 border">Usuario</th>
+                        <th class="px-3 py-2 border">{!! $ordenables['usuario'] ?? 'Usuario' !!}</th>
                         <th class="px-3 py-2 border">Acciones</th>
                     </tr>
+                    <tr>
+                        <form method="GET" action="{{ route('entradas.index') }}">
+                            <th class="border p-1"></th>
+
+                            <th class="border p-1">
+                                <x-tabla.input name="albaran" :value="request('albaran')" class="text-xs w-full" />
+                            </th>
+
+                            <th class="border p-1">
+                                <x-tabla.input name="pedido_codigo" :value="request('pedido_codigo')" class="text-xs w-full" />
+                            </th>
+
+                            <th class="border p-1"></th>
+
+                            <th class="border p-1"></th>
+                            <th class="border p-1"></th>
+                            <th class="border p-1"></th>
+
+                            <th class="border p-1">
+                                <x-tabla.input name="usuario" :value="request('usuario')" class="text-xs w-full" />
+                            </th>
+
+
+                            <x-tabla.botones-filtro ruta="entradas.index" />
+
+                        </form>
+                    </tr>
+
                 </thead>
                 <tbody>
                     @forelse ($entradas as $entrada)

@@ -25,30 +25,80 @@ use Illuminate\Support\Facades\Validator;
 class EntradaController extends Controller
 {
     //------------------------------------------------------------------------------------ FILTROS
-    private function aplicarFiltros($query, Request $request)
+    public function aplicarFiltrosEntradas($query, Request $request)
     {
-        //$buscar = $request->input('albaran');
-        //if (!empty($buscar)) {
-        //   $query->where('albaran', $buscar);
-        //}
-        //return $query;
-        // Filtro por 'id' si está presente
-        if ($request->has('albaran') && $request->albaran) {
-            $albaran = $request->input('albaran');
-            $query->where('albaran', '=', $albaran);  // Filtro exacto por ID
+        if ($request->filled('albaran')) {
+            $query->where('albaran', 'like', '%' . $request->albaran . '%');
         }
-        if ($request->filled('entrada_id')) {
-            $query->where('id', $request->entrada_id);
-        }
-        // Filtro por 'fecha' si está presente y busca en la columna 'created_at' usando LIKE
-        if ($request->has('fecha') && $request->fecha) {
-            $fecha = $request->input('fecha');  // Obtener el valor de la fecha proporcionada
 
-            // Buscar en la columna 'created_at' utilizando LIKE para buscar por año, mes o día
-            $query->whereRaw('DATE(created_at) LIKE ?', ['%' . $fecha . '%']);
+        if ($request->filled('pedido_codigo')) {
+            $query->whereHas('pedido', function ($q) use ($request) {
+                $q->where('codigo', 'like', '%' . $request->pedido_codigo . '%');
+            });
+        }
+
+        if ($request->filled('usuario')) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->usuario . '%');
+            });
+        }
+
+        // Ordenamiento
+        $sortBy = $request->input('sort', 'created_at');
+        $order = $request->input('order', 'desc');
+
+        if ($sortBy === 'pedido_codigo') {
+            $query->join('pedidos', 'entradas.pedido_id', '=', 'pedidos.id')
+                ->orderBy('pedidos.codigo', $order)
+                ->select('entradas.*');
+        } elseif ($sortBy === 'usuario') {
+            $query->join('users', 'entradas.usuario_id', '=', 'users.id')
+                ->orderBy('users.name', $order)
+                ->select('entradas.*');
+        } else {
+            $query->orderBy($sortBy, $order);
         }
 
         return $query;
+    }
+    private function filtrosActivosEntradas(Request $request): array
+    {
+        $filtros = [];
+
+        if ($request->filled('albaran')) {
+            $filtros[] = 'Albarán: <strong>' . $request->albaran . '</strong>';
+        }
+
+        if ($request->filled('pedido_codigo')) {
+            $filtros[] = 'Pedido: <strong>' . $request->pedido_codigo . '</strong>';
+        }
+
+        if ($request->filled('usuario')) {
+            $filtros[] = 'Usuario: <strong>' . $request->usuario . '</strong>';
+        }
+
+        if ($request->filled('sort')) {
+            $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . ucfirst($request->sort) . "</strong> en orden <strong>$orden</strong>";
+        }
+
+        return $filtros;
+    }
+
+    private function getOrdenamientoEntradas(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = $isSorted
+            ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down')
+            : 'fas fa-sort';
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="text-white">' . $titulo . ' <i class="' . $icon . '"></i></a>';
     }
 
     // Mostrar todas las entradas
@@ -64,8 +114,14 @@ class EntradaController extends Controller
                 ->withCount('productos');
 
             // Aplica los filtros mediante un método separado
-            $query = $this->aplicarFiltros($query, $request);
-
+            $query = $this->aplicarFiltrosEntradas($query, $request);
+            $ordenables = [
+                'albaran' => $this->getOrdenamientoEntradas('albaran', 'Albarán'),
+                'pedido_codigo' => $this->getOrdenamientoEntradas('pedido_codigo', 'Pedido Compra'),
+                'usuario' => $this->getOrdenamientoEntradas('usuario', 'Usuario'),
+                'created_at' => $this->getOrdenamientoEntradas('created_at', 'Fecha'),
+            ];
+            $filtrosActivos = $this->filtrosActivosEntradas($request);
             $fabricantes = Fabricante::select('id', 'nombre')->get();
             $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
@@ -73,7 +129,7 @@ class EntradaController extends Controller
             $entradas = $query->orderBy('created_at', 'desc')->paginate(10);
 
             // Devolver la vista con las entradas
-            return view('entradas.index', compact('entradas', 'fabricantes'));
+            return view('entradas.index', compact('entradas', 'fabricantes', 'filtrosActivos'));
         } catch (ValidationException $e) {
             // Manejo de excepciones de validación
             return redirect()->back()
