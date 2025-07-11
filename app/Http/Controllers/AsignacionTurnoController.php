@@ -276,6 +276,8 @@ class AsignacionTurnoController extends Controller
             // Detectar tramo de turno real según la hora de fichaje
             $hora = Carbon::createFromFormat('H:i:s', $horaActual);
 
+            $turnoDetectado = null;
+
             if ($request->tipo === 'entrada') {
                 $hora = Carbon::createFromFormat('H:i:s', $horaActual);
 
@@ -296,48 +298,41 @@ class AsignacionTurnoController extends Controller
                 } elseif ($hora->between($inicioTarde, $finTarde)) {
                     $turnoDetectado = 'tarde';
                 } else {
-                    // Muy temprano o muy tarde: lo tratamos como noche por defecto
-                    $turnoDetectado = 'noche';
+                    $turnoDetectado = 'noche'; // Por defecto si nada coincide
                 }
-            }
 
+                // Comparar con turno actual y actualizar si es diferente
+                $turnoActual = strtolower($asignacionTurno->turno->nombre ?? '');
+                if ($turnoDetectado !== $turnoActual) {
+                    $nuevoTurno = Turno::where('nombre', $turnoDetectado)->first();
+                    if ($nuevoTurno) {
+                        $asignacionTurno->turno_id = $nuevoTurno->id;
+                        $asignacionTurno->save();
+                        Log::info("🔁 Turno actualizado automáticamente a '{$turnoDetectado}' para user_id {$user->id}");
 
-            // Si turno detectado no coincide con el actual, actualizarlo
-            $turnoActual = strtolower($asignacionTurno->turno->nombre ?? '');
-            if ($turnoDetectado && $turnoActual !== $turnoDetectado) {
-                $nuevoTurno = Turno::where('nombre', $turnoDetectado)->first();
-                if ($nuevoTurno) {
-                    $asignacionTurno->turno_id = $nuevoTurno->id;
-                    $asignacionTurno->save();
-                    Log::info("🔁 Turno actualizado automáticamente a '{$turnoDetectado}' para user_id {$user->id}");
+                        // Enviar alerta al programador
+                        try {
+                            $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
 
-                    // Enviar alerta al programador
-                    try {
-                        $programadores = User::whereHas('departamentos', function ($q) {
-                            $q->where('nombre', 'Programador');
-                        })->get();
-
-                        $alerta = Alerta::create([
-                            'mensaje'   => "🔁 Se ha corregido automáticamente el turno de {$user->nombre_completo} a '{$turnoDetectado}' en la fecha {$asignacionTurno->fecha}.",
-                            'user_id_1' => null,
-                            'user_id_2' => null,
-                            'leida'     => false,
-                        ]);
-
-                        foreach ($programadores as $programador) {
-                            AlertaLeida::firstOrCreate([
-                                'alerta_id' => $alerta->id,
-                                'user_id'   => $programador->id,
-                            ], [
-                                'leida_en' => null,
+                            $alerta = Alerta::create([
+                                'mensaje'   => "🔁 Se ha corregido automáticamente el turno de {$user->name} a '{$turnoDetectado}' en la fecha {$asignacionTurno->fecha}.",
+                                'user_id_1' => $user->id,
+                                'user_id_2' => null,
+                                'leida'     => false,
                             ]);
+
+                            foreach ($programadores as $p) {
+                                AlertaLeida::firstOrCreate([
+                                    'alerta_id' => $alerta->id,
+                                    'user_id'   => $p->id,
+                                ]);
+                            }
+                        } catch (\Throwable $e) {
+                            Log::error('❌ No se pudo enviar alerta al programador: ' . $e->getMessage());
                         }
-                    } catch (\Throwable $e) {
-                        Log::error('❌ No se pudo enviar alerta al programador: ' . $e->getMessage());
                     }
                 }
             }
-
 
             // Comprobación de ubicación
             $obra = Obra::findOrFail($request->obra_id);
