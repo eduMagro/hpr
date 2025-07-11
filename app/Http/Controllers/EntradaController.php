@@ -376,6 +376,15 @@ class EntradaController extends Controller
                     'ejecutado_por' => auth()->id(),
                     'fecha_ejecucion' => now(),
                 ]);
+            // 💡 Si todos los productos están completados, cerrar el pedido
+            $todosCompletados = $pedido->productos->every(function ($producto) {
+                return $producto->pivot->estado === 'completado';
+            });
+
+            if ($todosCompletados) {
+                $pedido->estado = 'completado';
+                $pedido->save();
+            }
         });
 
         return redirect()->route('maquinas.index')
