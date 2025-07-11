@@ -195,6 +195,7 @@
                             <th class="px-4 py-3 border">Último mes</th>
                             <th class="px-4 py-3 border">Últimos 2 meses</th>
                             <th class="px-4 py-3 border">Stock actual</th>
+                            <th class="px-4 py-3 border">Kg pedidos (pendiente)</th>
                             <th class="px-4 py-3 border">Diferencia</th>
                         </tr>
                     </thead>
@@ -237,6 +238,14 @@
                                     <td class="px-4 py-2 border text-right font-semibold text-blue-700">
                                         {{ number_format($stock, 2) }} kg
                                     </td>
+                                    @php
+                                        $kgPedidos = $kgPedidosPorProductoBase[$productoBaseId] ?? 0;
+                                    @endphp
+
+                                    <td class="px-4 py-2 border text-right">
+                                        {{ number_format($kgPedidos, 2) }} kg
+                                    </td>
+
                                     <td
                                         class="px-4 py-2 border text-right font-semibold {{ $diferencia < 0 ? 'text-red-600' : 'text-green-700' }}">
                                         {{ number_format($diferencia, 2) }} kg

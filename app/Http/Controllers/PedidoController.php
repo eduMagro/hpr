@@ -320,6 +320,16 @@ class PedidoController extends Controller
             ->pluck('total_manual', 'producto_base_id')
             ->map(fn($peso) => round($peso, 2));
 
+        $kgPedidosPorProductoBase = DB::table('pedido_productos')
+            ->join('productos_base', 'productos_base.id', '=', 'pedido_productos.producto_base_id')
+            ->join('pedidos', 'pedidos.id', '=', 'pedido_productos.pedido_id')
+            ->where('pedidos.estado', 'pendiente')
+            ->whereNotNull('pedido_productos.cantidad')
+            ->groupBy('pedido_productos.producto_base_id')
+            ->select('pedido_productos.producto_base_id', DB::raw('SUM(pedido_productos.cantidad) as total_pedido'))
+            ->pluck('total_pedido', 'pedido_productos.producto_base_id')
+            ->map(fn($valor) => round($valor, 2));
+
         $productosBase = ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
             ->keyBy('id')
             ->map(fn($p) => [
@@ -341,6 +351,8 @@ class PedidoController extends Controller
             ],
             'productoBaseInfo' => $productosBase,
             'stockPorProductoBase' => $stockPorProductoBase,
+            'kgPedidosPorProductoBase' => $kgPedidosPorProductoBase,
+
         ];
     }
 
