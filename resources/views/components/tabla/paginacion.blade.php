@@ -1,7 +1,27 @@
 @props(['paginador'])
+{{-- SIEMPRE visible: selector de cantidad por página --}}
+<div class="m-4 text-center">
+    <form method="GET" id="perPageForm" class="inline-flex items-center justify-center gap-2 text-sm">
+        <label for="perPage" class="text-gray-600">Mostrar</label>
+        <select name="per_page" id="perPage" class="border border-gray-300 rounded px-2 py-1 text-sm"
+            onchange="document.getElementById('perPageForm').submit()">
+            @foreach ([10, 25, 50, 100] as $option)
+                <option value="{{ $option }}" @selected(request('per_page', $paginador->perPage()) == $option)>
+                    {{ $option }}
+                </option>
+            @endforeach
+        </select>
+        <span class="text-gray-600">por página</span>
 
+        {{-- Mantener otros filtros --}}
+        @foreach (request()->except('per_page', 'page') as $key => $value)
+            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+        @endforeach
+    </form>
+</div>
 @if ($paginador->hasPages())
     <div class="mt-6 space-y-3 text-center">
+
         {{-- Texto resumen --}}
         <div class="text-sm text-gray-600">
             Mostrando
