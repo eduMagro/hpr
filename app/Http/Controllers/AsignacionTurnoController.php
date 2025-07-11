@@ -276,15 +276,31 @@ class AsignacionTurnoController extends Controller
             // Detectar tramo de turno real según la hora de fichaje
             $hora = Carbon::createFromFormat('H:i:s', $horaActual);
 
-            // Tramos: Noche (22:00 - 06:00), Mañana (06:00 - 14:00), Tarde (14:00 - 22:00)
-            if ($hora->between(Carbon::createFromTime(6, 0), Carbon::createFromTime(13, 59, 59))) {
-                $turnoDetectado = 'mañana';
-            } elseif ($hora->between(Carbon::createFromTime(14, 0), Carbon::createFromTime(21, 59, 59))) {
-                $turnoDetectado = 'tarde';
-            } else {
-                // Noche: de 22:00 a 23:59 o de 00:00 a 05:59
-                $turnoDetectado = 'noche';
+            if ($request->tipo === 'entrada') {
+                $hora = Carbon::createFromFormat('H:i:s', $horaActual);
+
+                // Flexibilidad: 2 horas antes del inicio real del turno
+                $inicioNoche = Carbon::createFromTime(20, 0)->subDay(); // 20:00 del día anterior
+                $finNoche = Carbon::createFromTime(5, 59);
+
+                $inicioManana = Carbon::createFromTime(4, 0);  // permite entrar desde las 04:00
+                $finManana = Carbon::createFromTime(13, 59);
+
+                $inicioTarde = Carbon::createFromTime(12, 0);  // permite entrar desde las 12:00
+                $finTarde = Carbon::createFromTime(21, 59);
+
+                if ($hora->between($inicioNoche, $finNoche)) {
+                    $turnoDetectado = 'noche';
+                } elseif ($hora->between($inicioManana, $finManana)) {
+                    $turnoDetectado = 'mañana';
+                } elseif ($hora->between($inicioTarde, $finTarde)) {
+                    $turnoDetectado = 'tarde';
+                } else {
+                    // Muy temprano o muy tarde: lo tratamos como noche por defecto
+                    $turnoDetectado = 'noche';
+                }
             }
+
 
             // Si turno detectado no coincide con el actual, actualizarlo
             $turnoActual = strtolower($asignacionTurno->turno->nombre ?? '');
