@@ -280,7 +280,7 @@ class ProfileController extends Controller
 
         // Paginar manualmente la colección
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $perPage = 10;
+        $perPage = $request->input('per_page', 10);
         $offset = ($currentPage - 1) * $perPage;
         $registrosUsuarios = new LengthAwarePaginator(
             $usuarios->slice($offset, $perPage)->values(),
