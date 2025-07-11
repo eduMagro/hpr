@@ -310,6 +310,16 @@ class PedidoController extends Controller
         $consumo2Semanas = $calcularConsumo($hace2Semanas, $hoy);
         $consumo1Mes     = $calcularConsumo($hace1Mes, $hoy);
         $consumo2Meses   = $calcularConsumo($hace2Meses, $hoy);
+
+        $consumoManual = Producto::where('estado', 'consumido')
+            ->whereNotNull('fecha_consumido')
+            ->whereNotNull('producto_base_id')
+            ->whereNotNull('peso_inicial')
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
+            ->groupBy('producto_base_id')
+            ->pluck('total_manual', 'producto_base_id')
+            ->map(fn($peso) => round($peso, 2));
+
         $productosBase = ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
             ->keyBy('id')
             ->map(fn($p) => [
@@ -325,9 +335,9 @@ class PedidoController extends Controller
             'comparativa' => $comparativa,
             'totalGeneral' => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
             'consumoPorProductoBase' => [
-                'ultimas_2_semanas' => $consumo2Semanas,
-                'ultimo_mes' => $consumo1Mes,
-                'ultimos_2_meses' => $consumo2Meses,
+                'ultimas_2_semanas' => $consumo2Semanas->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
+                'ultimo_mes' => $consumo1Mes->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
+                'ultimos_2_meses' => $consumo2Meses->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
             ],
             'productoBaseInfo' => $productosBase,
             'stockPorProductoBase' => $stockPorProductoBase,
