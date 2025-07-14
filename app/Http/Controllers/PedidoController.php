@@ -171,7 +171,7 @@ class PedidoController extends Controller
                     'diametro' => $linea->productoBase?->diametro ?? '—',
                     'longitud' => $linea->productoBase?->longitud ?? '—',
                     'cantidad' => $linea->cantidad,
-                    'cantidad_recepcionada' => $linea->entradas->sum('cantidad') ?? 0,
+                    'cantidad_recepcionada' => $linea->cantidad_recepcionada,
                     'estado' => $linea->estado ?? 'pendiente',
                     'fecha_estimada_entrega' => $linea->fecha_estimada_entrega ?? '—',
                     'created_at' => $linea->created_at,
@@ -193,7 +193,7 @@ class PedidoController extends Controller
             'distribuidor' => $this->getOrdenamientoPedidos('distribuidor', 'Distribuidor'),
             'peso_total' => $this->getOrdenamientoPedidos('peso_total', 'Peso total'),
             'fecha_pedido' => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
-            'fecha_entrega' => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Estimada Entrega'),
+            'fecha_entrega' => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Entrega'),
             'estado' => $this->getOrdenamientoPedidos('estado', 'Estado'),
         ];
 

@@ -112,8 +112,7 @@
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
-                            <th class="p-2 border">Cantidad Restante</th>
-                            <th class="p-2 border">{!! $ordenables['peso_total'] ?? 'peso_total' !!}</th>
+                            <th class="p-2 border">Cantidad Recepcionada</th>
                             <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fecha_entrega'] ?? 'F. Entrega' !!}</th>
                             <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
@@ -147,7 +146,7 @@
                                 </th>
 
                                 <th class="p-1 border"></th>
-                                <th class="p-1 border"></th>
+
 
                                 <th class="p-1 border">
                                     <x-tabla.input name="fecha_pedido" type="date" :value="request('fecha_pedido')"
@@ -165,8 +164,8 @@
                                         'parcial' => 'Parcial',
                                         'completado' => 'Completado',
                                         'cancelado' => 'Cancelado',
-                                    ]" :selected="request('estado')"
-                                        empty="Todos" class="w-full text-xs" />
+                                    ]" :selected="request('estado')" empty="Todos"
+                                        class="w-full text-xs" />
                                 </th>
 
 
@@ -183,7 +182,7 @@
                             {{-- Fila principal del pedido --}}
                             <tr class="bg-gray-100 text-xs font-bold uppercase" x-data="codigoSageEditable({{ $pedido->id }}, @js($pedido->codigo_sage))"
                                 @keydown.enter.stop.prevent="guardar">
-                                <td colspan="11" class="text-left px-3 py-2">
+                                <td colspan="10" class="text-left px-3 py-2">
                                     <span class="text-blue-600">Pedido:</span> {{ $pedido->codigo }} |
                                     <span class="text-blue-600">SAGE:</span>
                                     <input x-model="codigo" x-ref="input"
@@ -217,11 +216,8 @@
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">
-                                        {{ number_format(($linea['cantidad'] ?? 0) - ($linea['cantidad_recepcionada'] ?? 0), 2, ',', '.') }}
-                                        kg
+                                        {{ number_format($linea['cantidad_recepcionada'] ?? 0, 2, ',', '.') }} kg
                                     </td>
-                                    <td class="border px-2 py-1">{{ number_format($linea['cantidad'], 2, ',', '.') }}
-                                        kg</td>
                                     <td class="border px-2 py-1">{{ $pedido->fecha_pedido_formateada ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $linea['fecha_estimada_entrega'] }}</td>
                                     <td class="border px-2 py-1 capitalize">{{ $linea['estado'] }}</td>

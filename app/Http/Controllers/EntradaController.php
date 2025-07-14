@@ -436,6 +436,7 @@ class EntradaController extends Controller
             PedidoProducto::where('id', $pivot->id)->update([
                 'cantidad_recepcionada' => $pesoRecepcionado,
                 'estado' => $estado,
+                'fecha_estimada_entrega' => now(),
             ]);
 
             // Cerrar entrada
