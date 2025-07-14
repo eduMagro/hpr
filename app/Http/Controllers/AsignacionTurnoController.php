@@ -282,25 +282,24 @@ class AsignacionTurnoController extends Controller
             if ($request->tipo === 'entrada') {
                 $hora = Carbon::createFromFormat('H:i:s', $horaActual);
 
-                // Flexibilidad: 2 horas antes del inicio real del turno
-                $inicioNoche = Carbon::createFromTime(20, 0)->subDay(); // 20:00 del día anterior
-                $finNoche = Carbon::createFromTime(5, 59);
+                // Hora actual convertida a minutos desde medianoche
+                $minutosActuales = $hora->hour * 60 + $hora->minute;
 
-                $inicioManana = Carbon::createFromTime(4, 0);  // permite entrar desde las 04:00
-                $finManana = Carbon::createFromTime(13, 59);
+                // Centros de cada turno (en minutos desde medianoche)
+                $centros = [
+                    'mañana' => 8 * 60,      // 08:00
+                    'tarde'  => 17 * 60,     // 17:00
+                    'noche'  => 1 * 60,      // 01:00 (porque cubre 22:00 a 06:00)
+                ];
 
-                $inicioTarde = Carbon::createFromTime(12, 0);  // permite entrar desde las 12:00
-                $finTarde = Carbon::createFromTime(21, 59);
+                // Función para calcular diferencia mínima entre horas con rollover de medianoche
+                $diferencias = collect($centros)->map(function ($centro) use ($minutosActuales) {
+                    $diff = abs($centro - $minutosActuales);
+                    return min($diff, 1440 - $diff); // 1440 minutos en un día
+                });
 
-                if ($hora->between($inicioNoche, $finNoche)) {
-                    $turnoDetectado = 'noche';
-                } elseif ($hora->between($inicioManana, $finManana)) {
-                    $turnoDetectado = 'mañana';
-                } elseif ($hora->between($inicioTarde, $finTarde)) {
-                    $turnoDetectado = 'tarde';
-                } else {
-                    $turnoDetectado = 'noche'; // Por defecto si nada coincide
-                }
+                // Obtener el turno con menor diferencia
+                $turnoDetectado = $diferencias->sort()->keys()->first();
 
                 // Comparar con turno actual y actualizar si es diferente
                 $turnoActual = strtolower($asignacionTurno->turno->nombre ?? '');
