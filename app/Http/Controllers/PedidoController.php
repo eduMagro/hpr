@@ -166,7 +166,11 @@ class PedidoController extends Controller
             $pedido->lineas = $pedido->pedidoProductos->map(function ($linea) {
                 return [
                     'id' => $linea->id,
-                    'codigo_producto' => $linea->productoBase?->codigo ?? '—',
+                    'tipo' => $linea->productoBase?->tipo ?? '—',
+                    'diametro' => $linea->productoBase?->diametro ?? '—',
+                    'longitud' => $linea->productoBase?->tipo === 'encarretado'
+                        ? ($linea->productoBase?->longitud ?? '—')
+                        : '—',
                     'tipo' => $linea->productoBase?->tipo ?? '—',
                     'diametro' => $linea->productoBase?->diametro ?? '—',
                     'longitud' => $linea->productoBase?->longitud ?? '—',
