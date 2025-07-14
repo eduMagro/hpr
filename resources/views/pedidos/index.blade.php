@@ -5,103 +5,6 @@
     <div class="px-4 py-6">
 
         @if (auth()->user()->rol === 'oficina')
-
-            <div class="mb-6"> <!-- Tabla stock -->
-                <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral"
-                    :consumo-por-producto-base="$consumoPorProductoBase" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" />
-
-
-                <div class="mt-4 text-right">
-                    <button type="button" onclick="mostrarConfirmacion()"
-                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        Crear pedido con seleccionados
-                    </button>
-                    <div id="modalConfirmacion"
-                        class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                        <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
-
-                            {{-- Título alineado a la izquierda --}}
-                            <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
-
-                            <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
-                                class="space-y-4">
-                                @csrf
-
-                                {{-- Selector de fabricante alineado a la izquierda --}}
-                                <div class="text-left">
-                                    <label for="fabricante"
-                                        class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
-                                        fabricante:</label>
-                                    <select name="fabricante_id" id="fabricante"
-                                        class="w-full border border-gray-300 rounded px-3 py-2">
-                                        <option value="">-- Elige un fabricante --</option>
-                                        @foreach ($fabricantes as $fabricante)
-                                            <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                {{-- Selector de distribuidor --}}
-                                <div class="text-left mt-4">
-                                    <label for="distribuidor"
-                                        class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
-                                        distribuidor:</label>
-                                    <select name="distribuidor_id" id="distribuidor"
-                                        class="w-full border border-gray-300 rounded px-3 py-2">
-                                        <option value="">-- Elige un distribuidor --</option>
-                                        @foreach ($distribuidores as $distribuidor)
-                                            <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                {{-- Campo de lugar de entrega --}}
-                                <div class="text-left">
-                                    <label for="obra_id" class="block text-sm font-medium text-gray-700 mb-1">
-                                        Lugar de Entrega:
-                                    </label>
-                                    <select name="obra_id" id="obra_id"
-                                        class="w-full border border-gray-300 rounded px-3 py-2" required>
-                                        <option value="">Seleccionar obra</option>
-                                        @foreach ($obrasActivas as $obra)
-                                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-
-                                <table
-                                    class="w-full border-collapse text-sm text-center shadow-xl overflow-hidden rounded-lg border border-gray-300">
-                                    <thead class="bg-blue-800 text-white">
-                                        <tr class="bg-gray-700 text-white">
-                                            <th class="border px-2 py-1">Tipo</th>
-                                            <th class="border px-2 py-1">Diámetro</th>
-                                            <th class="border px-2 py-1">Peso a pedir (kg)</th>
-
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tablaConfirmacionBody">
-                                        {{-- JavaScript agregará filas con inputs aquí --}}
-                                    </tbody>
-                                </table>
-
-
-
-                                <div class="text-right pt-4">
-                                    <button type="button" onclick="cerrarModalConfirmacion()"
-                                        class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
-                                        Cancelar
-                                    </button>
-                                    <button type="submit"
-                                        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                                        Crear Pedido de Compra
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
             <!-- Tabla pedidos  -->
             <div class="overflow-x-auto bg-white shadow rounded-lg">
                 <table class="w-full border-collapse text-sm text-center">
@@ -166,8 +69,8 @@
                                         'parcial' => 'Parcial',
                                         'completado' => 'Completado',
                                         'cancelado' => 'Cancelado',
-                                    ]" :selected="request('estado')"
-                                        empty="Todos" class="w-full text-xs" />
+                                    ]" :selected="request('estado')" empty="Todos"
+                                        class="w-full text-xs" />
                                 </th>
 
 
@@ -272,7 +175,102 @@
                 </table>
             </div>
             <x-tabla.paginacion :paginador="$pedidos" />
+            <div class="mb-6"> <!-- Tabla stock -->
+                <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral"
+                    :consumo-por-producto-base="$consumoPorProductoBase" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" />
 
+
+                <div class="mt-4 text-right">
+                    <button type="button" onclick="mostrarConfirmacion()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        Crear pedido con seleccionados
+                    </button>
+                    <div id="modalConfirmacion"
+                        class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                        <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
+
+                            {{-- Título alineado a la izquierda --}}
+                            <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
+
+                            <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
+                                class="space-y-4">
+                                @csrf
+
+                                {{-- Selector de fabricante alineado a la izquierda --}}
+                                <div class="text-left">
+                                    <label for="fabricante"
+                                        class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
+                                        fabricante:</label>
+                                    <select name="fabricante_id" id="fabricante"
+                                        class="w-full border border-gray-300 rounded px-3 py-2">
+                                        <option value="">-- Elige un fabricante --</option>
+                                        @foreach ($fabricantes as $fabricante)
+                                            <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                {{-- Selector de distribuidor --}}
+                                <div class="text-left mt-4">
+                                    <label for="distribuidor"
+                                        class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
+                                        distribuidor:</label>
+                                    <select name="distribuidor_id" id="distribuidor"
+                                        class="w-full border border-gray-300 rounded px-3 py-2">
+                                        <option value="">-- Elige un distribuidor --</option>
+                                        @foreach ($distribuidores as $distribuidor)
+                                            <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                {{-- Campo de lugar de entrega --}}
+                                <div class="text-left">
+                                    <label for="obra_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                        Lugar de Entrega:
+                                    </label>
+                                    <select name="obra_id" id="obra_id"
+                                        class="w-full border border-gray-300 rounded px-3 py-2" required>
+                                        <option value="">Seleccionar obra</option>
+                                        @foreach ($obrasActivas as $obra)
+                                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <table
+                                    class="w-full border-collapse text-sm text-center shadow-xl overflow-hidden rounded-lg border border-gray-300">
+                                    <thead class="bg-blue-800 text-white">
+                                        <tr class="bg-gray-700 text-white">
+                                            <th class="border px-2 py-1">Tipo</th>
+                                            <th class="border px-2 py-1">Diámetro</th>
+                                            <th class="border px-2 py-1">Peso a pedir (kg)</th>
+
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tablaConfirmacionBody">
+                                        {{-- JavaScript agregará filas con inputs aquí --}}
+                                    </tbody>
+                                </table>
+
+
+
+                                <div class="text-right pt-4">
+                                    <button type="button" onclick="cerrarModalConfirmacion()"
+                                        class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
+                                        Cancelar
+                                    </button>
+                                    <button type="submit"
+                                        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                        Crear Pedido de Compra
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         @endif
         {{-- ---------------------------------------------------- ROL OPERARIO ---------------------------------------------------- --}}
         @if (Auth::user()->rol === 'operario')
