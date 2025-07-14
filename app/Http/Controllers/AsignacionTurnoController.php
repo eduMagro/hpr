@@ -10,6 +10,7 @@ use App\Models\Obra;
 use App\Models\Alerta;
 use App\Models\AlertaLeida;
 use App\Models\AsignacionTurno;
+use App\Models\VacacionesSolicitud;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
@@ -202,7 +203,7 @@ class AsignacionTurnoController extends Controller
             ->sortByDesc('minutos_adelanto')
             ->take(3)
             ->values();
-
+        $totalSolicitudesPendientes = VacacionesSolicitud::where('estado', 'pendiente')->count();
         return view('asignaciones-turnos.index', compact(
             'asignaciones',
             'diasAsignados',
@@ -212,7 +213,8 @@ class AsignacionTurnoController extends Controller
             'diasSeVaAntes',
             'diasSinFichaje',
             'estadisticasPuntualidad',
-            'turnos'
+            'turnos',
+            'totalSolicitudesPendientes'
         ));
     }
 
