@@ -83,7 +83,7 @@ class AsignacionTurnoController extends Controller
     {
         // 1. QUERY BASE (filtros normales con empleado)
         $query = AsignacionTurno::with(['user', 'turno', 'maquina'])
-            ->whereDate('fecha', '<=', Carbon::today())
+            ->whereDate('fecha', '<=', Carbon::tomorrow())
             ->where('estado', 'activo') // ✅ Solo registros activos
             ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
             ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
@@ -313,7 +313,9 @@ class AsignacionTurnoController extends Controller
             $obra = Obra::findOrFail($request->obra_id);
             $distancia = $this->calcularDistancia($request->latitud, $request->longitud, $obra->latitud, $obra->longitud);
             Log::info('📍 Distancia hasta la obra', ['distancia' => $distancia]);
-            // if ($distancia > $obra->distancia) return response...
+            // if ($distancia > $obra->distancia) {
+            //     return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
+            // }
 
             // 🕒 Guardar fichaje
             $warning = null;
