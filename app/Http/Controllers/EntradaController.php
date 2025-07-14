@@ -7,6 +7,7 @@ use App\Models\Ubicacion;
 use App\Models\User;
 use App\Models\EntradaProducto;
 use App\Models\Producto;
+use App\Models\PedidoProducto;
 use App\Models\Pedido;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
@@ -197,145 +198,166 @@ class EntradaController extends Controller
         ));
     }
 
-    public function store(Request $request)
-    {
-        DB::beginTransaction();
-        try {
-            $request->validate([
-                'codigo'            => [
-                    'required',
-                    'string',
-                    'unique:productos,codigo',
-                    'max:20',
-                    'regex:/^MP.*/i',
-                ],
-                'codigo_2'          => [
-                    'nullable',
-                    'string',
-                    'unique:productos,codigo',
-                    'max:20',
-                    'regex:/^MP.*/i',
-                ],
-                'fabricante_id'     => 'required|exists:fabricantes,id',
-                'albaran'           => 'required|string|min:1|max:30',
-                'pedido_id'         => 'nullable|exists:pedidos,id',
-                'producto_base_id'  => 'required|exists:productos_base,id',
-                'n_colada'          => 'required|string|max:50',
-                'n_paquete'         => 'required|string|max:50',
-                'n_colada_2'        => 'nullable|string|max:50',
-                'n_paquete_2'       => 'nullable|string|max:50',
-                'peso'              => 'required|numeric|min:1',
-                'ubicacion'         => 'nullable|integer|exists:ubicaciones,id',
-                'otros'             => 'nullable|string|max:255',
-            ], [
-                'codigo.required'   => 'El código generado es obligatorio.',
-                'codigo.string'     => 'El código debe ser una cadena de texto.',
-                'codigo.unique'     => 'Ese código ya existe.',
-                'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
-                'codigo.regex'      => 'El código debe empezar por MP.',
+    // public function store(Request $request)
+    // {
+    //     DB::beginTransaction();
+    //     try {
+    //         $request->validate([
+    //             'codigo'            => [
+    //                 'required',
+    //                 'string',
+    //                 'unique:productos,codigo',
+    //                 'max:20',
+    //                 'regex:/^MP.*/i',
+    //             ],
+    //             'codigo_2'          => [
+    //                 'nullable',
+    //                 'string',
+    //                 'unique:productos,codigo',
+    //                 'max:20',
+    //                 'regex:/^MP.*/i',
+    //             ],
+    //             'fabricante_id'     => 'required|exists:fabricantes,id',
+    //             'albaran'           => 'required|string|min:1|max:30',
+    //             'pedido_id'         => 'nullable|exists:pedidos,id',
+    //             'producto_base_id'  => 'required|exists:productos_base,id',
+    //             'n_colada'          => 'required|string|max:50',
+    //             'n_paquete'         => 'required|string|max:50',
+    //             'n_colada_2'        => 'nullable|string|max:50',
+    //             'n_paquete_2'       => 'nullable|string|max:50',
+    //             'peso'              => 'required|numeric|min:1',
+    //             'ubicacion_id'      => 'nullable|integer|exists:ubicaciones,id',
+    //             'otros'             => 'nullable|string|max:255',
+    //         ], [
+    //             'codigo.required'   => 'El código generado es obligatorio.',
+    //             'codigo.string'     => 'El código debe ser una cadena de texto.',
+    //             'codigo.unique'     => 'Ese código ya existe.',
+    //             'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
+    //             'codigo.regex'      => 'El código debe empezar por MP.',
 
-                'codigo_2.string'      => 'El segundo código debe ser una cadena de texto.',
-                'codigo_2.unique'      => 'El segundo código ya existe.',
-                'codigo_2.max'         => 'El segundo código no puede tener más de 20 caracteres.',
+    //             'codigo_2.string'      => 'El segundo código debe ser una cadena de texto.',
+    //             'codigo_2.unique'      => 'El segundo código ya existe.',
+    //             'codigo_2.max'         => 'El segundo código no puede tener más de 20 caracteres.',
 
-                'fabricante_id.required' => 'El fabricante es obligatorio.',
-                'fabricante_id.exists'   => 'El fabricante seleccionado no es válido.',
+    //             'fabricante_id.required' => 'El fabricante es obligatorio.',
+    //             'fabricante_id.exists'   => 'El fabricante seleccionado no es válido.',
 
-                'albaran.required'     => 'El albarán es obligatorio.',
-                'albaran.string'       => 'El albarán debe ser una cadena de texto.',
-                'albaran.min'          => 'El albarán debe tener al menos 1 carácter.',
-                'albaran.max'          => 'El albarán no puede tener más de 30 caracteres.',
+    //             'albaran.required'     => 'El albarán es obligatorio.',
+    //             'albaran.string'       => 'El albarán debe ser una cadena de texto.',
+    //             'albaran.min'          => 'El albarán debe tener al menos 1 carácter.',
+    //             'albaran.max'          => 'El albarán no puede tener más de 30 caracteres.',
 
-                'pedido_id.exists'     => 'El pedido seleccionado no es válido.',
+    //             'pedido_id.exists'     => 'El pedido seleccionado no es válido.',
 
-                'producto_base_id.required' => 'El producto base es obligatorio.',
-                'producto_base_id.exists'   => 'El producto base seleccionado no es válido.',
+    //             'producto_base_id.required' => 'El producto base es obligatorio.',
+    //             'producto_base_id.exists'   => 'El producto base seleccionado no es válido.',
 
-                'n_colada.required'    => 'El número de colada es obligatorio.',
-                'n_colada.string'      => 'El número de colada debe ser una cadena de texto.',
-                'n_colada.max'         => 'El número de colada no puede tener más de 50 caracteres.',
+    //             'n_colada.required'    => 'El número de colada es obligatorio.',
+    //             'n_colada.string'      => 'El número de colada debe ser una cadena de texto.',
+    //             'n_colada.max'         => 'El número de colada no puede tener más de 50 caracteres.',
 
-                'n_paquete.required'   => 'El número de paquete es obligatorio.',
-                'n_paquete.string'     => 'El número de paquete debe ser una cadena de texto.',
-                'n_paquete.max'        => 'El número de paquete no puede tener más de 50 caracteres.',
+    //             'n_paquete.required'   => 'El número de paquete es obligatorio.',
+    //             'n_paquete.string'     => 'El número de paquete debe ser una cadena de texto.',
+    //             'n_paquete.max'        => 'El número de paquete no puede tener más de 50 caracteres.',
 
-                'n_colada_2.string'    => 'El segundo número de colada debe ser una cadena de texto.',
-                'n_colada_2.max'       => 'El segundo número de colada no puede tener más de 50 caracteres.',
+    //             'n_colada_2.string'    => 'El segundo número de colada debe ser una cadena de texto.',
+    //             'n_colada_2.max'       => 'El segundo número de colada no puede tener más de 50 caracteres.',
 
-                'n_paquete_2.string'   => 'El segundo número de paquete debe ser una cadena de texto.',
-                'n_paquete_2.max'      => 'El segundo número de paquete no puede tener más de 50 caracteres.',
+    //             'n_paquete_2.string'   => 'El segundo número de paquete debe ser una cadena de texto.',
+    //             'n_paquete_2.max'      => 'El segundo número de paquete no puede tener más de 50 caracteres.',
 
-                'peso.required'        => 'El peso es obligatorio.',
-                'peso.numeric'         => 'El peso debe ser un número.',
-                'peso.min'             => 'El peso debe ser mayor que cero.',
+    //             'peso.required'        => 'El peso es obligatorio.',
+    //             'peso.numeric'         => 'El peso debe ser un número.',
+    //             'peso.min'             => 'El peso debe ser mayor que cero.',
 
-                'ubicacion.integer'    => 'La ubicación debe ser un número entero.',
-                'ubicacion.exists'     => 'La ubicación seleccionada no es válida.',
+    //             'ubicacion.integer'    => 'La ubicación debe ser un número entero.',
+    //             'ubicacion.exists'     => 'La ubicación seleccionada no es válida.',
 
-                'otros.string'         => 'El campo "otros" debe ser una cadena de texto.',
-                'otros.max'            => 'El campo "otros" no puede tener más de 255 caracteres.',
-            ]);
+    //             'otros.string'         => 'El campo "otros" debe ser una cadena de texto.',
+    //             'otros.max'            => 'El campo "otros" no puede tener más de 255 caracteres.',
+    //         ]);
+    //         Log::info('📝 Datos recibidos', $request->all());
 
-            $productoBase = ProductoBase::findOrFail($request->producto_base_id);
-            $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
-            $pesoPorPaquete = $esDoble ? round($request->peso / 2, 3) : $request->peso;
-            $codigo1 = strtoupper($request->codigo);
-            $codigo2 = strtoupper($request->codigo_2);
+    //         $productoBase = ProductoBase::findOrFail($request->producto_base_id);
+    //         $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
+    //         $pesoPorPaquete = $esDoble ? round($request->peso / 2, 3) : $request->peso;
+    //         $codigo1 = strtoupper($request->codigo);
+    //         $codigo2 = strtoupper($request->codigo_2);
+    //         $pedidoProductoId = null;
 
-            // Crear entrada principal
-            $entrada = Entrada::create([
-                'albaran'     => $request->albaran,
-                'usuario_id'  => auth()->id(),
-                'peso_total'  => $request->peso,
-                'estado'      => 'cerrado',
-                'otros'       => $request->otros ?? null,
-            ]);
+    //         if ($request->filled('pedido_id')) {
+    //             Log::info('📦 Intentando vincular pedido_id al crear entrada', [
+    //                 'pedido_id' => $request->pedido_id,
+    //                 'producto_base_id' => $request->producto_base_id,
+    //             ]);
+    //             $pedidoProducto = DB::table('pedido_productos')
+    //                 ->where('pedido_id', $request->pedido_id)
+    //                 ->where('producto_base_id', $request->producto_base_id)
+    //                 ->where('estado', '!=', 'completado')
+    //                 ->orderBy('fecha_estimada_entrega')
+    //                 ->first();
 
-            // Primer producto
-            $producto1 = Producto::create([
-                'codigo'           => $codigo1,
-                'producto_base_id' => $request->producto_base_id,
-                'fabricante_id'     => $request->fabricante_id,
-                'entrada_id'       => $entrada->id,
-                'n_colada'         => $request->n_colada,
-                'n_paquete'        => $request->n_paquete,
-                'peso_inicial'     => $pesoPorPaquete,
-                'peso_stock'       => $pesoPorPaquete,
-                'estado'           => 'almacenado',
-                'ubicacion_id'     => $request->ubicacion,
-                'maquina_id'       => null,
-                'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
-            ]);
+    //             if ($pedidoProducto) {
+    //                 $pedidoProductoId = $pedidoProducto->id;
+    //             }
+    //         }
+
+    //         // Crear entrada principal
+    //         $entrada = Entrada::create([
+    //             'albaran'              => $request->albaran,
+    //             'usuario_id'           => auth()->id(),
+    //             'peso_total'           => $request->peso,
+    //             'estado'               => 'cerrado',
+    //             'otros'                => $request->otros ?? null,
+    //             'pedido_id'            => $request->pedido_id,
+    //             'pedido_producto_id'   => $pedidoProductoId,
+    //         ]);
+
+    //         // Primer producto
+    //         $producto1 = Producto::create([
+    //             'codigo'           => $codigo1,
+    //             'producto_base_id' => $request->producto_base_id,
+    //             'fabricante_id'     => $request->fabricante_id,
+    //             'entrada_id'       => $entrada->id,
+    //             'n_colada'         => $request->n_colada,
+    //             'n_paquete'        => $request->n_paquete,
+    //             'peso_inicial'     => $pesoPorPaquete,
+    //             'peso_stock'       => $pesoPorPaquete,
+    //             'estado'           => 'almacenado',
+    //             'ubicacion_id' => $request->ubicacion_id,
+    //             'maquina_id'       => null,
+    //             'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
+    //         ]);
 
 
-            // Segundo producto si aplica
-            if ($esDoble) {
-                $producto2 = Producto::create([
-                    'codigo'           => $codigo2,
-                    'producto_base_id' => $request->producto_base_id,
-                    'fabricante_id'     => $request->fabricante_id,
-                    'entrada_id'   => $entrada->id,
-                    'n_colada'         => $request->n_colada_2,
-                    'n_paquete'        => $request->n_paquete_2,
-                    'peso_inicial'     => $pesoPorPaquete,
-                    'peso_stock'       => $pesoPorPaquete,
-                    'estado'           => 'almacenado',
-                    'ubicacion_id'     => $request->ubicacion,
-                    'maquina_id'       => null,
-                    'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
-                ]);
-            }
+    //         // Segundo producto si aplica
+    //         if ($esDoble) {
+    //             $producto2 = Producto::create([
+    //                 'codigo'           => $codigo2,
+    //                 'producto_base_id' => $request->producto_base_id,
+    //                 'fabricante_id'     => $request->fabricante_id,
+    //                 'entrada_id'   => $entrada->id,
+    //                 'n_colada'         => $request->n_colada_2,
+    //                 'n_paquete'        => $request->n_paquete_2,
+    //                 'peso_inicial'     => $pesoPorPaquete,
+    //                 'peso_stock'       => $pesoPorPaquete,
+    //                 'estado'           => 'almacenado',
+    //                 'ubicacion_id' => $request->ubicacion_id,
+    //                 'maquina_id'       => null,
+    //                 'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
+    //             ]);
+    //         }
 
-            DB::commit();
-            return redirect()->route('productos.index')->with('success', 'Entrada registrada correctamente.');
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
-        }
-    }
+    //         DB::commit();
+    //         return redirect()->route('productos.index')->with('success', 'Entrada registrada correctamente.');
+    //     } catch (ValidationException $e) {
+    //         DB::rollBack();
+    //         return redirect()->back()->withErrors($e->errors())->withInput();
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
+    //     }
+    // }
 
     public function edit($id)
     {
@@ -375,56 +397,54 @@ class EntradaController extends Controller
     public function cerrar($id)
     {
         DB::transaction(function () use ($id) {
-            $entrada = Entrada::with('pedido')->lockForUpdate()->findOrFail($id);
+            // Cargar entrada con relaciones necesarias
+            $entrada = Entrada::with(['pedido'])->lockForUpdate()->findOrFail($id);
 
             if ($entrada->estado === 'cerrado') {
-                throw new \RuntimeException('Este albarán ya está cerrado.');
+                abort(400, 'Este albarán ya está cerrado.');
             }
 
-            $entrada->estado = 'cerrado';
-            $entrada->save();
-
-            // Obtenemos el producto asociado a esta entrada
-            $producto = $entrada->productos()->first(); // Asume que solo hay uno
-
-            if (!$producto) {
-                throw new \RuntimeException('No hay producto vinculado a esta entrada.');
-            }
-
-            $productoBaseId = $producto->producto_base_id;
-            $pedido         = $entrada->pedido()->with('productos')->lockForUpdate()->first();
-
-            // Buscar la cantidad pedida desde la tabla pivote
-            $pivot = $pedido->productos->firstWhere('id', $productoBaseId)?->pivot;
+            // Verificar existencia de la línea de pedido asociada
+            $pivot = PedidoProducto::lockForUpdate()->find($entrada->pedido_producto_id);
 
             if (!$pivot) {
-                throw new \RuntimeException('Producto no encontrado en el pedido.');
+                abort(422, 'No se ha vinculado correctamente la entrada con la línea del pedido.');
             }
 
-            $cantidadPedida = $pivot->cantidad;
-
-            // Calcular peso total recepcionado de este producto base
-            $pesoRecepcionado = Producto::where('producto_base_id', $productoBaseId)
-                ->whereHas('entrada', fn($q) => $q->where('pedido_id', $pedido->id))
+            // Calcular peso recepcionado específicamente para esta línea del pedido
+            $pesoRecepcionado = Producto::where('producto_base_id', $pivot->producto_base_id)
+                ->whereHas('entrada', fn($q) => $q->where('pedido_producto_id', $pivot->id))
                 ->sum('peso_inicial');
 
-            // Determinar estado
-            if ($pesoRecepcionado >= $cantidadPedida * 0.9) {
-                $estado = 'completado';
-            } elseif ($pesoRecepcionado > 0) {
-                $estado = 'parcial';
-            } else {
-                $estado = 'pendiente';
-            }
+            // Log inicial de control
+            Log::info('📦 Cierre de albarán', [
+                'entrada_id' => $entrada->id,
+                'pedido_producto_id' => $pivot->id,
+                'producto_base_id' => $pivot->producto_base_id,
+                'cantidad_pedida' => $pivot->cantidad,
+                'peso_recepcionado' => $pesoRecepcionado,
+            ]);
 
-            // Actualizar campos en la tabla pivote
-            $pedido->productos()->updateExistingPivot($productoBaseId, [
+            // Determinar estado de la línea
+            $estado = match (true) {
+                $pesoRecepcionado >= $pivot->cantidad * 0.9 => 'completado',
+                $pesoRecepcionado > 0 => 'parcial',
+                default => 'pendiente',
+            };
+
+            // Actualizar línea
+            PedidoProducto::where('id', $pivot->id)->update([
                 'cantidad_recepcionada' => $pesoRecepcionado,
                 'estado' => $estado,
             ]);
 
-            // Marcar los movimientos como completados si están relacionados
-            $pedido->movimientos()
+            // Cerrar entrada
+            $entrada->estado = 'cerrado';
+            $entrada->save();
+
+            // Actualizar movimientos relacionados
+            Movimiento::where('pedido_id', $entrada->pedido_id)
+                ->where('pedido_producto_id', $pivot->id)
                 ->where('estado', '!=', 'completado')
                 ->lockForUpdate()
                 ->update([
@@ -432,20 +452,41 @@ class EntradaController extends Controller
                     'ejecutado_por' => auth()->id(),
                     'fecha_ejecucion' => now(),
                 ]);
-            // 💡 Si todos los productos están completados, cerrar el pedido
-            $todosCompletados = $pedido->productos->every(function ($producto) {
-                return $producto->pivot->estado === 'completado';
-            });
+
+            // Recargar líneas desde la base de datos
+            $lineas = PedidoProducto::where('pedido_id', $entrada->pedido_id)->get();
+
+            // Comprobación de estado global
+            $todosCompletados = $lineas->every(fn($linea) => $linea->estado === 'completado');
 
             if ($todosCompletados) {
-                $pedido->estado = 'completado';
-                $pedido->save();
+                $entrada->pedido->estado = 'completado';
+                $entrada->pedido->save();
+                Log::info('✅ Pedido completado automáticamente', [
+                    'pedido_id' => $entrada->pedido->id,
+                ]);
+            } else {
+                Log::info('ℹ️ Pedido aún tiene líneas pendientes/parciales', [
+                    'pedido_id' => $entrada->pedido->id,
+                ]);
             }
+
+            // Logs finales
+            Log::info('✅ Línea de pedido actualizada', [
+                'pedido_producto_id' => $pivot->id,
+                'nuevo_estado' => $estado,
+                'peso_recepcionado' => $pesoRecepcionado,
+            ]);
+
+            Log::info('🔍 Estados de TODAS las líneas del pedido', $lineas->mapWithKeys(
+                fn($linea) => [$linea->id => $linea->estado]
+            )->toArray());
         });
 
         return redirect()->route('maquinas.index')
             ->with('success', 'Albarán cerrado correctamente.');
     }
+
 
     // Eliminar una entrada y sus productos asociados
     public function destroy($id)

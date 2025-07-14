@@ -8,6 +8,7 @@ use App\Models\Distribuidor;
 use App\Models\PedidoGlobal;
 use App\Models\Pedido;
 use App\Models\Producto;
+use App\Models\PedidoProducto;
 use App\Models\Elemento;
 use App\Models\ProductoBase;
 use App\Models\Entrada;
@@ -145,7 +146,7 @@ class PedidoController extends Controller
 
     public function index(Request $request)
     {
-        $query = Pedido::with(['fabricante', 'distribuidor', 'productos', 'pedidoGlobal'])->latest();
+        $query = Pedido::with(['fabricante', 'distribuidor', 'productos', 'pedidoGlobal', 'pedidoProductos.productoBase'])->latest();
 
         // Si el usuario autenticado es operario, solo puede ver pedidos pendientes o parciales
         if (auth()->user()->rol === 'operario') {
@@ -162,18 +163,23 @@ class PedidoController extends Controller
 
         // Añadir productos formateados a cada pedido paginado
         $pedidos->getCollection()->transform(function ($pedido) {
-            $pedido->productos_formateados = $pedido->productos->map(function ($p) {
+            $pedido->lineas = $pedido->pedidoProductos->map(function ($linea) {
                 return [
-                    'id' => $p->pivot->id,
-                    'tipo' => $p->tipo,
-                    'diametro' => $p->diametro,
-                    'longitud' => $p->longitud,
-                    'cantidad_recepcionada' => $p->pivot->cantidad_recepcionada,
-                    'cantidad' => $p->pivot->cantidad,
-                    'estado_recepcion' => $p->pivot->estado ?? null,
-                    'fecha_estimada_entrega' => $p->pivot->fecha_estimada_entrega ?? null,
+                    'id' => $linea->id,
+                    'codigo_producto' => $linea->productoBase?->codigo ?? '—',
+                    'tipo' => $linea->productoBase?->tipo ?? '—',
+                    'diametro' => $linea->productoBase?->diametro ?? '—',
+                    'longitud' => $linea->productoBase?->longitud ?? '—',
+                    'cantidad' => $linea->cantidad,
+                    'cantidad_recepcionada' => $linea->entradas->sum('cantidad') ?? 0,
+                    'estado' => $linea->estado ?? 'pendiente',
+                    'fecha_estimada_entrega' => $linea->fecha_estimada_entrega ?? '—',
+                    'created_at' => $linea->created_at,
+                    'codigo_sage' => $linea->codigo_sage ?? '',
                 ];
             });
+
+
             return $pedido;
         });
 
@@ -460,128 +466,97 @@ class PedidoController extends Controller
             }
 
             $request->validate([
-                'codigo'           => 'required|string|unique:productos,codigo|max:20',
-                'codigo_2'         => 'nullable|string|unique:productos,codigo|max:20',
-                'producto_base_id' => 'required|exists:productos_base,id',
-                'peso'             => 'required|numeric|min:1',
-                'n_colada'         => 'required|string|max:50',
-                'n_paquete'        => 'required|string|max:50',
-                'n_colada_2'       => 'nullable|string|max:50',
-                'n_paquete_2'      => 'nullable|string|max:50',
-                'ubicacion_id'     => 'required|exists:ubicaciones,id',
-                'fabricante_manual' => 'nullable|string|max:100',
-            ], [
-                'codigo.required'      => 'El código del primer paquete es obligatorio.',
-                'codigo.string'        => 'El código del primer paquete debe ser una cadena de texto.',
-                'codigo.unique'        => 'El código del primer paquete ya existe en el sistema.',
-                'codigo.max'           => 'El código del primer paquete no puede superar los 20 caracteres.',
-
-                'codigo_2.string'      => 'El código del segundo paquete debe ser una cadena de texto.',
-                'codigo_2.unique'      => 'El código del segundo paquete ya existe en el sistema.',
-                'codigo_2.max'         => 'El código del segundo paquete no puede superar los 20 caracteres.',
-
-                'producto_base_id.required' => 'Debes seleccionar un producto base.',
-                'producto_base_id.exists'   => 'El producto base seleccionado no existe.',
-
-                'peso.required'        => 'El peso total del paquete es obligatorio.',
-                'peso.numeric'         => 'El peso debe ser un número válido.',
-                'peso.min'             => 'El peso mínimo permitido es 1 kg.',
-
-                'n_colada.required'    => 'El número de colada del primer paquete es obligatorio.',
-                'n_colada.string'      => 'El número de colada debe ser texto.',
-                'n_colada.max'         => 'El número de colada no puede superar los 50 caracteres.',
-
-                'n_paquete.required'   => 'El número de paquete del primer paquete es obligatorio.',
-                'n_paquete.string'     => 'El número de paquete debe ser texto.',
-                'n_paquete.max'        => 'El número de paquete no puede superar los 50 caracteres.',
-
-                'n_colada_2.string'    => 'El número de colada del segundo paquete debe ser texto.',
-                'n_colada_2.max'       => 'El número de colada del segundo paquete no puede superar los 50 caracteres.',
-
-                'n_paquete_2.string'   => 'El número de paquete del segundo paquete debe ser texto.',
-                'n_paquete_2.max'      => 'El número de paquete del segundo paquete no puede superar los 50 caracteres.',
-
-                'ubicacion_id.required' => 'Debes seleccionar una ubicación para almacenar el paquete.',
-                'ubicacion_id.exists'   => 'La ubicación seleccionada no existe.',
+                'codigo'             => 'required|string|unique:productos,codigo|max:20',
+                'codigo_2'           => 'nullable|string|unique:productos,codigo|max:20',
+                'producto_base_id'   => 'required|exists:productos_base,id',
+                'peso'               => 'required|numeric|min:1',
+                'n_colada'           => 'required|string|max:50',
+                'n_paquete'          => 'required|string|max:50',
+                'n_colada_2'         => 'nullable|string|max:50',
+                'n_paquete_2'        => 'nullable|string|max:50',
+                'ubicacion_id'       => 'required|exists:ubicaciones,id',
+                'fabricante_manual'  => 'nullable|string|max:100',
             ]);
 
-            $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
-            $peso = floatval($request->input('peso'));
-            $pesoPorPaquete = $esDoble ? round($peso / 2, 3) : $peso;
+            $esDoble         = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
+            $peso            = floatval($request->input('peso'));
+            $pesoPorPaquete  = $esDoble ? round($peso / 2, 3) : $peso;
 
             if ($peso <= 0) {
                 return redirect()->back()->with('error', 'El peso del paquete debe ser mayor que cero.');
             }
 
-            $ubicacion = Ubicacion::find($request->ubicacion_id);
-            if (!$ubicacion) {
-                return redirect()->back()->with('error', "Ubicación no encontrada: '{$request->ubicacion_id}'");
-            }
+            $ubicacion = Ubicacion::findOrFail($request->ubicacion_id);
+
+            // Buscar línea de pedido pendiente
+            $pedidoProducto = PedidoProducto::where('pedido_id', $pedido->id)
+                ->where('producto_base_id', $request->producto_base_id)
+                ->where('estado', '!=', 'completado')
+                ->orderBy('fecha_estimada_entrega')
+                ->first();
 
             // Buscar o crear entrada abierta
-            $entrada = Entrada::firstOrCreate(
-                ['pedido_id' => $pedido->id, 'estado' => 'abierto'],
-                [
-                    'albaran'     => $this->generarCodigoAlbaran(),
-                    'usuario_id'  => auth()->id(),
-                    'peso_total'  => 0,
-                    'otros'       => 'Entrada generada desde recepción de pedido',
-                ]
-            );
-            $codigo1 = strtoupper($request->codigo);
-            $codigo2 = strtoupper($request->codigo_2);
+            $entrada = Entrada::where('pedido_id', $pedido->id)
+                ->where('estado', 'abierto')
+                ->first();
 
-            // Determinar fabricante
-            $fabricanteFinal = $pedido->fabricante_id;
-            if (!$fabricanteFinal && $pedido->distribuidor_id && $request->filled('fabricante_manual')) {
-                // Puedes registrar el nombre como texto plano en campo 'otros' o en una columna específica si tienes
-                $fabricanteTexto = $request->fabricante_manual;
+            if (!$entrada) {
+                $entrada = new Entrada();
+                $entrada->pedido_id          = $pedido->id;
+                $entrada->pedido_producto_id = $pedidoProducto?->id; // ✅ Asignación directa
+                $entrada->albaran            = $this->generarCodigoAlbaran();
+                $entrada->usuario_id         = auth()->id();
+                $entrada->peso_total         = 0;
+                $entrada->estado             = 'abierto';
+                $entrada->otros              = 'Entrada generada desde recepción de pedido';
+                $entrada->save();
             }
 
-            // Crear primer producto con entrada_id asignado
+            // Fabricante
+            $fabricanteFinal = $pedido->fabricante_id;
+            if (!$fabricanteFinal && $pedido->distribuidor_id && $request->filled('fabricante_manual')) {
+                $fabricanteTexto = $request->fabricante_manual; // Si tienes campo "otros", puedes guardarlo allí
+            }
+
+            // Primer producto
             Producto::create([
-                'codigo'           => $codigo1,
-                'producto_base_id' => $request->producto_base_id,
-                'fabricante_id'    => $fabricanteFinal,
-                'entrada_id'       => $entrada->id, // ✅ Aquí se asigna
-                'n_colada'         => $request->n_colada,
-                'n_paquete'        => $request->n_paquete,
-                'peso_inicial'     => $pesoPorPaquete,
-                'peso_stock'       => $pesoPorPaquete,
-                'estado'           => 'almacenado',
-                'ubicacion_id'     => $ubicacion->id,
-                'maquina_id'       => null,
-                'otros'            => $request->otros ?? null,
+                'codigo'            => strtoupper($request->codigo),
+                'producto_base_id'  => $request->producto_base_id,
+                'fabricante_id'     => $fabricanteFinal,
+                'entrada_id'        => $entrada->id,
+                'n_colada'          => $request->n_colada,
+                'n_paquete'         => $request->n_paquete,
+                'peso_inicial'      => $pesoPorPaquete,
+                'peso_stock'        => $pesoPorPaquete,
+                'estado'            => 'almacenado',
+                'ubicacion_id'      => $ubicacion->id,
+                'maquina_id'        => null,
+                'otros'             => $request->otros ?? null,
             ]);
 
             // Segundo producto si aplica
             if ($esDoble) {
                 Producto::create([
-                    'codigo'           => $codigo2,
-                    'producto_base_id' => $request->producto_base_id,
-                    'fabricante_id'    => $fabricanteFinal,
-                    'entrada_id'       => $entrada->id, // ✅ También aquí
-                    'n_colada'         => $request->n_colada_2,
-                    'n_paquete'        => $request->n_paquete_2,
-                    'peso_inicial'     => $pesoPorPaquete,
-                    'peso_stock'       => $pesoPorPaquete,
-                    'estado'           => 'almacenado',
-                    'ubicacion_id'     => $ubicacion->id,
-                    'maquina_id'       => null,
-                    'otros'            => $request->otros ?? null,
+                    'codigo'            => strtoupper($request->codigo_2),
+                    'producto_base_id'  => $request->producto_base_id,
+                    'fabricante_id'     => $fabricanteFinal,
+                    'entrada_id'        => $entrada->id,
+                    'n_colada'          => $request->n_colada_2,
+                    'n_paquete'         => $request->n_paquete_2,
+                    'peso_inicial'      => $pesoPorPaquete,
+                    'peso_stock'        => $pesoPorPaquete,
+                    'estado'            => 'almacenado',
+                    'ubicacion_id'      => $ubicacion->id,
+                    'maquina_id'        => null,
+                    'otros'             => $request->otros ?? null,
                 ]);
             }
 
-            // Sumar peso total
+            // Actualizar peso total
             $entrada->peso_total += $peso;
             $entrada->save();
 
-            // Verificar si el pedido debe cambiar de estado
-            // $pesoSuministrado = $pedido->entradas()->sum('peso_total');
-            // $pesoPedido = $pedido->productos->sum(fn($p) => $p->pivot->cantidad);
-            // $margen = 0.15;
-
-            // $pedido->estado = ($pesoSuministrado >= $pesoPedido * (1 - $margen)) ? 'completado' : 'parcial';
+            // Guardar estado del pedido (si quieres dejarlo como parcial por ahora)
             $pedido->save();
 
             return redirect()->back()->with('success', 'Producto(s) recepcionado(s) correctamente.');
@@ -712,14 +687,15 @@ class PedidoController extends Controller
             ]);
 
             Movimiento::create([
-                'tipo'              => 'descarga materia prima',
-                'estado'            => 'pendiente',
-                'descripcion'       => $descripcion,
-                'fecha_solicitud'   => now(),
-                'solicitado_por'    => auth()->id(),
-                'pedido_id'         => $pedido->id,
-                'producto_base_id'  => $productoBase->id,
-                'prioridad'         => 2,
+                'tipo'                => 'descarga materia prima',
+                'estado'              => 'pendiente',
+                'descripcion'         => $descripcion,
+                'fecha_solicitud'     => now(),
+                'solicitado_por'      => auth()->id(),
+                'pedido_id'           => $pedidoId,
+                'producto_base_id'    => $productoBase->id,
+                'pedido_producto_id'  => $lineaId,
+                'prioridad'           => 2,
             ]);
 
             DB::commit();
@@ -1005,52 +981,46 @@ class PedidoController extends Controller
     public function update(Request $request, Pedido $pedido)
     {
         try {
-            // Validación de datos con mensajes personalizados
+
             $validated = $request->validate([
-                'codigo' => 'required|string|max:50|unique:pedidos,codigo,' . $pedido->id,
-                'fabricante_id' => 'required|exists:fabricantes,id',
-                'fecha_pedido' => 'nullable|date_format:Y-m-d',
-                'fecha_entrega' => 'nullable|date_format:Y-m-d|after_or_equal:fecha_pedido',
-                'estado' => 'required|in:pendiente,parcial,completo,cancelado',
+                'codigo_sage' => 'nullable|string|max:50',
             ], [
-                'codigo.required' => 'El campo código es obligatorio.',
-                'codigo.string' => 'El código debe ser una cadena de texto.',
-                'codigo.max' => 'El código no puede tener más de 50 caracteres.',
-                'codigo.unique' => 'Ya existe un pedido con ese código.',
-                'fabricante_id.required' => 'Debe seleccionar un fabricante.',
-                'fabricante_id.exists' => 'El fabricante seleccionado no es válido.',
-                'fecha_pedido.date_format' => 'La fecha del pedido debe tener el formato día-mes-año.',
-                'fecha_entrega.date_format' => 'La fecha estimada debe tener el formato día-mes-año.',
-                'fecha_entrega.after_or_equal' => 'La fecha estimada no puede ser anterior a la fecha del pedido.',
-                'estado.required' => 'Debe seleccionar un estado.',
-                'estado.in' => 'El estado seleccionado no es válido.',
+
+                'codigo_sage.string' => 'El código SAGE debe ser una cadena de texto.',
+                'codigo_sage.max' => 'El código SAGE no puede tener más de 50 caracteres.',
             ]);
 
             if ($pedido->fecha_pedido === null && !empty($validated['fabricante_id'])) {
                 $validated['fecha_pedido'] = now()->toDateString();
             } else {
-                unset($validated['fecha_pedido']); // evitar que se sobreescriba
+                unset($validated['fecha_pedido']);
             }
 
-            // Actualizar el pedido
             $pedido->update($validated);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pedido actualizado correctamente.'
+                'message' => 'Pedido actualizado correctamente.',
             ]);
         } catch (ValidationException $e) {
+            // 🔁 Devolver todos los errores juntos como string, además del array detallado
+            $mensajes = collect($e->errors())->flatten()->implode("\n");
+
             return response()->json([
-                'errors' => $e->errors(),
-                'message' => 'Error de validación'
+                'success' => false,
+                'message' => 'Error de validación',
+                'errores' => $e->errors(),
+                'resumen' => $mensajes,
             ], 422);
         } catch (\Throwable $e) {
             return response()->json([
+                'success' => false,
                 'message' => 'Ocurrió un error en el servidor',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
+
 
     public function destroy($id)
     {

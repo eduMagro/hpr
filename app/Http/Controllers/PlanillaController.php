@@ -136,7 +136,6 @@ class PlanillaController extends Controller
         return $maquinaSeleccionada?->id ?? null;
     }
 
-
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
@@ -212,6 +211,7 @@ class PlanillaController extends Controller
 
         return $filtros;
     }
+
     private function getOrdenamiento(string $columna, string $titulo): string
     {
         $currentSort = request('sort');
@@ -233,6 +233,7 @@ class PlanillaController extends Controller
         return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
             '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
+
     private function aplicarOrdenamiento($query, Request $request)
     {
         $sortBy = $request->input('sort', 'fecha_estimada_entrega');
@@ -267,6 +268,7 @@ class PlanillaController extends Controller
 
         return $query->orderBy($sortBy, $order);
     }
+
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltros($query, Request $request)
     {
@@ -361,6 +363,7 @@ class PlanillaController extends Controller
 
         return $query;
     }
+
     //------------------------------------------------------------------------------------ INDEX()
     public function index(Request $request)
     {
@@ -434,6 +437,7 @@ class PlanillaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
     {
@@ -474,11 +478,13 @@ class PlanillaController extends Controller
             ]
         ]);
     }
+
     //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
         return view('planillas.create');
     }
+
     //------------------------------------------------------------------------------------ IMPORT()
 
     public function import(Request $request)
@@ -949,6 +955,7 @@ class PlanillaController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
+
     //------------------------------------------------------------------------------------ CALCULARTIEMPOSELEMENTO()
     private function calcularTiemposElemento(array $row)
     {
@@ -966,6 +973,7 @@ class PlanillaController extends Controller
             'tiempo_fabricacion' => $tiempoFabricacion,
         ];
     }
+
     //------------------------------------------------------------------------------------ STORE()
     public function store(Request $request)
     {
@@ -996,6 +1004,7 @@ class PlanillaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
     //------------------------------------------------------------------------------------ EDIT()
     public function edit($id)
     {
@@ -1006,6 +1015,7 @@ class PlanillaController extends Controller
 
         return view('planillas.edit', compact('planilla'));
     }
+
     public function updateX(Request $request, $id)
     {
 
@@ -1037,6 +1047,7 @@ class PlanillaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
     public function update(Request $request, $id)
     {
         try {
@@ -1158,6 +1169,7 @@ class PlanillaController extends Controller
             ], 500);
         }
     }
+
     //------------------------------------------------------------------------------------ DESTROY()
     // Eliminar una planilla y sus elementos asociados
     public function destroy($id)

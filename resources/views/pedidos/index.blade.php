@@ -108,6 +108,7 @@
                     <thead class="bg-blue-500 text-white text-10">
                         <tr class="text-center text-xs uppercase">
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['codigo_sage'] ?? 'Código Sage' !!}</th>
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
@@ -116,8 +117,7 @@
                             <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fecha_entrega'] ?? 'F. Entrega' !!}</th>
                             <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
-                            <th class="p-2 border">Lineas</th>
-                            <th class="p-2 border">Creación Registro</th>
+
                             <th class="p-2 border">Acciones</th>
                         </tr>
 
@@ -125,6 +125,10 @@
                             <form method="GET" action="{{ route('pedidos.index') }}">
                                 <th class="p-1 border">
                                     <x-tabla.input name="codigo" type="text" :value="request('codigo')"
+                                        class="w-full text-xs" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input name="codigo_sage" type="text" :value="request('codigo_sage')"
                                         class="w-full text-xs" />
                                 </th>
 
@@ -159,14 +163,14 @@
                                     <x-tabla.select name="estado" :options="[
                                         'pendiente' => 'Pendiente',
                                         'parcial' => 'Parcial',
-                                        'completo' => 'Completo',
+                                        'completado' => 'Completado',
                                         'cancelado' => 'Cancelado',
-                                    ]" :selected="request('estado')" empty="Todos"
-                                        class="w-full text-xs" />
+                                    ]" :selected="request('estado')"
+                                        empty="Todos" class="w-full text-xs" />
                                 </th>
 
-                                <th class="p-1 border text-center"></th>
-                                <th class="p-1 border text-center"></th>
+
+
 
                                 <x-tabla.botones-filtro ruta="pedidos.index" />
                             </form>
@@ -176,152 +180,91 @@
 
                     <tbody>
                         @forelse ($pedidos as $pedido)
-                            <tr tabindex="0" x-data="{
-                                editando: false,
-                                pedido: @js($pedido),
-                                original: JSON.parse(JSON.stringify(@js($pedido)))
-                            }"
-                                @dblclick="if(!$event.target.closest('input')) {
-                          if(!editando) {
-                            editando = true;
-                          } else {
-                            pedido = JSON.parse(JSON.stringify(original));
-                            editando = false;
-                          }
-                        }"
-                                @keydown.enter.stop="guardarCambios(pedido); editando = false"
-                                :class="{ 'bg-yellow-100': editando }"
-                                class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
+                            {{-- Fila principal del pedido --}}
+                            <tr class="bg-gray-100 text-xs font-bold uppercase" x-data="codigoSageEditable({{ $pedido->id }}, @js($pedido->codigo_sage))"
+                                @keydown.enter.stop.prevent="guardar">
+                                <td colspan="11" class="text-left px-3 py-2">
+                                    <span class="text-blue-600">Pedido:</span> {{ $pedido->codigo }} |
+                                    <span class="text-blue-600">SAGE:</span>
+                                    <input x-model="codigo" x-ref="input"
+                                        :class="{ 'border-green-500 ring-1 ring-green-300': guardadoExitoso }"
+                                        @animationend="guardadoExitoso = false"
+                                        class="text-xs border rounded px-2 py-1 ml-1 w-32 inline-block transition-all duration-300"
+                                        placeholder="Código Sage" />
 
-                                <!-- Código -->
-                                <td class="border px-3 py-2">
-                                    <span x-text="pedido.codigo"></span>
+                                    |
+                                    Estado: {{ $pedido->estado }} |
+                                    Fecha Pedido: {{ $pedido->fecha_pedido_formateada }}
                                 </td>
-
-                                <!-- Pedido Global -->
-                                <td class="border px-3 py-2">
-                                    <span x-text="pedido.pedido_global?.codigo ?? 'N/A'"></span>
-                                </td>
-
-                                <!-- Fabricante -->
-                                <td class="border px-3 py-2">
-                                    <span x-text="pedido.fabricante?.nombre ?? 'N/A'"></span>
-                                </td>
-
-                                <!-- Distribuidor -->
-                                <td class="border px-3 py-2">
-                                    <span x-text="pedido.distribuidor?.nombre ?? 'N/A'"></span>
-                                </td>
-
-
-                                <!-- Cantidad recepcionada -->
-                                <td class="border px-3 py-2">
-                                    {{ number_format($pedido->cantidad_restante, 2, ',', '.') }} kg
-
-                                </td>
-                                <!-- Peso total -->
-                                <td class="border px-3 py-2">
-                                    <span x-text="pedido.peso_total_formateado"></span>
-                                </td>
-
-                                <!-- Fecha Pedido -->
-                                <td class="border px-3 py-2">
-                                    <template x-if="!editando">
-                                        <span x-text="pedido.fecha_pedido_formateada ?? 'N/A'"></span>
-                                    </template>
-                                    <input x-show="editando" type="date" x-model="pedido.fecha_pedido"
-                                        class="form-input w-full">
-                                </td>
-                                <!-- Fecha Entrega -->
-                                <td class="border px-3 py-2">
-                                    <template x-if="!editando">
-                                        <span x-text="pedido.fecha_entrega_formateada ?? 'N/A'"></span>
-                                    </template>
-                                    <input x-show="editando" type="date" x-model="pedido.fecha_entrega"
-                                        class="form-input w-full">
-                                </td>
-                                <td class="border px-3 py-2 capitalize">{{ $pedido->estado }}</td>
-                                <td class="border px-3 py-2">{{ $pedido->productos->count() }}</td>
-                                <td class="border px-3 py-2">{{ $pedido->fecha_creacion_formateada }}</td>
-
-                                <td class="px-1 py-2 border text-xs font-bold">
-                                    <div class="flex items-center space-x-2 justify-center">
-                                        <!-- Mostrar solo en modo edición -->
-                                        <x-tabla.boton-guardar x-show="editando"
-                                            @click="guardarCambios(elemento); editando = false" />
-                                        <x-tabla.boton-cancelar-edicion @click="editando = false" x-show="editando" />
-
-                                        <!-- Mostrar solo cuando NO está en modo edición -->
-                                        <template x-if="!editando">
-                                            <div class="flex items-center space-x-2">
-
-                                                <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
-                                                <a href="javascript:void(0)"
-                                                    @click="mostrarProductosModal(@js($pedido->productos_formateados), {{ $pedido->id }})"
-                                                    class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
-                                                        fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                                        stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
-                                                    </svg>
-                                                </a>
-
-                                                <x-tabla.boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />
-
-                                            </div>
-                                        </template>
-                                    </div>
                             </tr>
+
+
+                            {{-- Filas de las líneas del pedido --}}
+                            @foreach ($pedido->lineas as $linea)
+                                @php
+                                    $estadoLinea = $linea['estado'];
+                                    $claseFondo = match ($estadoLinea) {
+                                        'completado' => 'bg-green-100',
+                                        'activo' => 'bg-yellow-100',
+                                        default => 'even:bg-gray-50 odd:bg-white',
+                                    };
+                                @endphp
+
+                                <tr class="text-xs {{ $claseFondo }}">
+                                    <td class="border px-2 py-1">{{ $pedido->codigo }}</td>
+                                    <td class="border px-2 py-1">{{ $pedido->codigo_sage ?? '—' }}</td>
+                                    <td class="border px-2 py-1">{{ $pedido->pedidoGlobal?->codigo ?? '—' }}</td>
+                                    <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
+                                    <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
+                                    <td class="border px-2 py-1">
+                                        {{ number_format(($linea['cantidad'] ?? 0) - ($linea['cantidad_recepcionada'] ?? 0), 2, ',', '.') }}
+                                        kg
+                                    </td>
+                                    <td class="border px-2 py-1">{{ number_format($linea['cantidad'], 2, ',', '.') }}
+                                        kg</td>
+                                    <td class="border px-2 py-1">{{ $pedido->fecha_pedido_formateada ?? '—' }}</td>
+                                    <td class="border px-2 py-1">{{ $linea['fecha_estimada_entrega'] }}</td>
+                                    <td class="border px-2 py-1 capitalize">{{ $linea['estado'] }}</td>
+                                    <td class="border px-2 py-1 text-center">
+                                        <div class="flex flex-col items-center gap-1">
+                                            {{-- Botones en línea --}}
+                                            <div class="flex items-center justify-center gap-1">
+                                                @php $estado = $linea['estado']; @endphp
+
+                                                @if ($estado === 'activo')
+                                                    <form method="POST"
+                                                        action="{{ route('pedidos.lineas.desactivar', [$pedido->id, $linea['id']]) }}">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit"
+                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                            Desactivar
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <form method="POST"
+                                                        action="{{ route('pedidos.lineas.activar', [$pedido->id, $linea['id']]) }}">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <button type="submit"
+                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                            Activar
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+
                         @empty
                             <tr>
-                                <td colspan="7" class="py-4 text-gray-500">No hay pedidos registrados.</td>
+                                <td colspan="12" class="py-4 text-gray-500">No hay pedidos registrados.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
-                <!-- Modal -->
-                <div id="modalProductos"
-                    class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                    <div class="bg-white p-6 rounded-lg w-full max-w-4xl shadow-xl relative">
-                        <button type="button" onclick="cerrarModalProductos()"
-                            class="absolute top-3 right-3 text-gray-500 hover:text-red-600 transition duration-200 p-2 rounded-full hover:bg-gray-100 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-
-
-                        <h3 class="text-lg font-semibold mb-4 text-gray-800">Productos del pedido</h3>
-
-                        <table
-                            class="w-full border-collapse text-sm text-center overflow-hidden rounded-lg shadow border border-gray-300">
-                            <thead class="bg-blue-800 text-white">
-                                <tr>
-                                    <th class="border px-3 py-2">Tipo</th>
-                                    <th class="border px-3 py-2">Diámetro</th>
-                                    <th class="border px-3 py-2">Longitud</th>
-                                    <th class="border px-3 py-2">Cantidad recepcionada</th>
-                                    <th class="border px-3 py-2">Cantidad total</th>
-                                    <th class="border px-3 py-2">Fecha estimada</th>
-                                    <th class="border px-3 py-2">Estado recepción</th>
-                                    <th class="border px-3 py-2">Acciones</th>
-                                </tr>
-                            </thead>
-
-                            <tbody id="tablaProductosBody" class="bg-white">
-                                {{-- Se rellena con JS --}}
-                            </tbody>
-
-                        </table>
-
-                    </div>
-                </div>
-
             </div>
             <x-tabla.paginacion :paginador="$pedidos" />
 
@@ -437,20 +380,90 @@
         @endif
 
     </div>
-
     <script>
+        function guardarCodigoSage(pedidoId, codigoSage, callback = null) {
+            fetch(`/pedidos/${pedidoId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        codigo_sage: codigoSage
+                    })
+                })
+                .then(async res => {
+                    const data = await res.json();
+
+                    if (res.ok && data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Guardado',
+                            text: 'Código SAGE actualizado correctamente.',
+                            timer: 1200,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });;
+                        if (typeof callback === 'function') callback(true);
+                    } else {
+                        let errorMsg = data?.resumen || data?.message || 'Ocurrió un error inesperado.';
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error al guardar",
+                            text: errorMsg,
+                            showCancelButton: true,
+                            confirmButtonText: "Aceptar",
+                            cancelButtonText: "Reportar Error"
+                        }).then((result) => {
+                            if (result.dismiss === Swal.DismissReason.cancel) {
+                                notificarProgramador(errorMsg);
+                            }
+                        });
+                        if (typeof callback === 'function') callback(false);
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error de conexión",
+                        text: error.message || "No se pudo actualizar el código SAGE. Inténtalo nuevamente.",
+                        confirmButtonText: "OK"
+                    });
+                    if (typeof callback === 'function') callback(false);
+                });
+        }
+
+        function codigoSageEditable(pedidoId, valorInicial) {
+            return {
+                codigo: valorInicial,
+                guardadoExitoso: false,
+                guardar() {
+                    guardarCodigoSage(pedidoId, this.codigo, (ok) => {
+                        if (ok) this.guardadoExitoso = true;
+                    });
+                }
+            }
+        }
+
+
         function mostrarConfirmacion() {
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            const checkboxes = document.querySelectorAll(
+                'input[type="checkbox"]:checked');
             const tbody = document.getElementById('tablaConfirmacionBody');
             tbody.innerHTML = ''; // limpiar
 
             checkboxes.forEach(cb => {
                 const clave = cb.value;
-                const tipo = document.querySelector(`input[name="detalles[${clave}][tipo]"]`).value;
-                const diametro = document.querySelector(`input[name="detalles[${clave}][diametro]"]`).value;
-                const cantidad = parseFloat(document.querySelector(`input[name="detalles[${clave}][cantidad]"]`)
+                const tipo = document.querySelector(
+                    `input[name="detalles[${clave}][tipo]"]`).value;
+                const diametro = document.querySelector(
+                    `input[name="detalles[${clave}][diametro]"]`).value;
+                const cantidad = parseFloat(document.querySelector(
+                        `input[name="detalles[${clave}][cantidad]"]`)
                     .value);
-                const longitudInput = document.querySelector(`input[name="detalles[${clave}][longitud]"]`);
+                const longitudInput = document.querySelector(
+                    `input[name="detalles[${clave}][longitud]"]`);
                 const longitud = longitudInput ? longitudInput.value : null;
 
                 const fila = document.createElement('tr');
@@ -519,148 +532,43 @@
         }
 
         //-----------------------------------------------------------------------------------------------------------
-        function guardarCambios(pedido) {
-            const datos = JSON.parse(JSON.stringify(pedido));
+        function confirmarActivacion(pedidoId, productoId) {
+            if (!confirm('¿Estás seguro de activar esta línea?')) return;
 
-            // Normalizar fechas para campos tipo date
-            if (datos.fecha_pedido) {
-                datos.fecha_pedido = datos.fecha_pedido.split('T')[0];
-            }
-            if (datos.fecha_entrega) {
-                datos.fecha_entrega = datos.fecha_entrega.split('T')[0];
-            }
-
-            console.log("✅ Enviando datos del pedido:", datos);
-
-            fetch(`{{ route('pedidos.update', '') }}/${datos.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify(datos)
-                })
-                .then(async response => {
-                    const contentType = response.headers.get('content-type');
-                    let data = {};
-
-                    if (contentType && contentType.includes('application/json')) {
-                        data = await response.json();
-                    } else {
-                        const text = await response.text();
-                        throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0, 100));
-                    }
-
-                    if (response.ok && data.success) {
-                        Swal.fire({
-                            icon: "success",
-                            title: "Pedido actualizado",
-                            text: data.message,
-                            confirmButtonText: "OK"
-                        }).then(() => {
-                            window.location.reload(); // 🔁 recarga tras éxito
-                        });
-                    } else {
-                        let errorMsg = data.message || "Ha ocurrido un error inesperado.";
-                        if (data.errors) {
-                            errorMsg = Object.values(data.errors).flat().join("<br>");
-                        }
-
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error al actualizar",
-                            html: errorMsg,
-                            confirmButtonText: "OK",
-                            showCancelButton: true,
-                            cancelButtonText: "Reportar Error"
-                        }).then((result) => {
-                            if (result.dismiss === Swal.DismissReason.cancel) {
-                                notificarProgramador(errorMsg);
-                            }
-                            window.location.reload(); // 🔁 recarga también tras error
-                        });
-                    }
-                })
-                .catch(error => {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error de conexión",
-                        text: error.message || "No se pudo actualizar el pedido.",
-                        confirmButtonText: "OK"
-                    }).then(() => {
-                        window.location.reload(); // 🔁 recarga tras error de red
-                    });
-                });
-        }
-        //----------------------------------------------------------------------------------------
-        function mostrarProductosModal(productos, pedidoId) {
-            const tbody = document.getElementById('tablaProductosBody');
-            tbody.innerHTML = '';
-
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-            productos.forEach(producto => {
-                const fila = document.createElement('tr');
-                const estaActivo = producto.estado_recepcion === 'activo';
-
-                // Estado de recepción visual
-                let estadoRecepcion = '—';
-                switch (producto.estado_recepcion) {
-                    case 'completado':
-                        estadoRecepcion =
-                            `<span class="text-green-700 bg-green-100 px-2 py-1 rounded text-xs font-semibold">Completado</span>`;
-                        break;
-                    case 'parcial':
-                        estadoRecepcion =
-                            `<span class="text-yellow-800 bg-yellow-100 px-2 py-1 rounded text-xs font-semibold">Parcial</span>`;
-                        break;
-                    case 'pendiente':
-                        estadoRecepcion =
-                            `<span class="text-red-700 bg-red-100 px-2 py-1 rounded text-xs font-semibold">Pendiente</span>`;
-                        break;
-                }
-
-                fila.innerHTML = `
-<td class="border px-2 py-1">${capitalize(producto.tipo)}</td>
-<td class="border px-2 py-1">${producto.diametro} mm</td>
-<td class="border px-2 py-1">${producto.longitud ?? '—'}</td>
-<td class="border px-2 py-1">${parseFloat(producto.cantidad_recepcionada ?? 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
-<td class="border px-2 py-1">${parseFloat(producto.cantidad).toLocaleString('es-ES', { minimumFractionDigits: 2 })} kg</td>
-<td class="border px-2 py-1">${producto.fecha_estimada_entrega ?? '—'}</td>
-<td class="border px-2 py-1">${estadoRecepcion}</td>
-<td class="border px-2 py-1">
-   ${
-    estaActivo
-        ? `<button
-                                                                                                                                                            onclick="confirmarDesactivacion(${pedidoId}, ${producto.id})"
-                                                                                                                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                                                                            Desactivar
-                                                                                                                                                       </button>`
-        : `<button
-                                                                                                                                                            onclick="confirmarActivacion(${pedidoId}, ${producto.id})"
-                                                                                                                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                                                                                                                            Activar
-                                                                                                                                                       </button>`
-}
-
-</td>
-`;
-                tbody.appendChild(fila);
-            });
-
-            document.getElementById('modalProductos').classList.remove('hidden');
-            document.getElementById('modalProductos').classList.add('flex');
-            window.scrollTo({
-                top: window.scrollY
-            });
-            document.body.style.scrollBehavior = 'auto';
+            enviarFormularioDinamico('pedidos.lineas.activar', 'PUT', pedidoId,
+                productoId);
         }
 
-        function cerrarModalProductos() {
-            document.getElementById('modalProductos').classList.remove('flex');
-            document.getElementById('modalProductos').classList.add('hidden');
+        function confirmarDesactivacion(pedidoId, productoId) {
+            if (!confirm('¿Estás seguro de desactivar esta línea?')) return;
+
+            enviarFormularioDinamico('pedidos.lineas.desactivar', 'DELETE', pedidoId,
+                productoId);
         }
 
+        function enviarFormularioDinamico(nombreRuta, metodo, pedidoId, lineaId) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = route(nombreRuta, [pedidoId, lineaId]);
+
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrf;
+            form.appendChild(csrfInput);
+
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = metodo;
+            form.appendChild(methodInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        //-----------------------------------------------------------------------------------------------------------
 
 
         function capitalize(str) {
@@ -681,7 +589,8 @@
                     fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/activar`, {
                         method: 'POST',
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'X-CSRF-TOKEN': document.querySelector(
+                                'meta[name="csrf-token"]').content,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
@@ -707,7 +616,8 @@
                     fetch(`/pedidos/${pedidoId}/lineas/${lineaId}/desactivar`, {
                         method: 'POST',
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'X-CSRF-TOKEN': document.querySelector(
+                                'meta[name="csrf-token"]').content,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({

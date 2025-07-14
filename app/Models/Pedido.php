@@ -11,6 +11,7 @@ class Pedido extends Model
 
     protected $fillable = [
         'codigo',
+        'codigo_sage',
         'pedido_global_id',
         'fabricante_id',
         'distribuidor_id',
@@ -90,6 +91,10 @@ class Pedido extends Model
     public function entradas()
     {
         return $this->hasMany(Entrada::class);
+    }
+    public function pedidoProductos()
+    {
+        return $this->hasMany(PedidoProducto::class);
     }
 
     public function getFechaPedidoFormateadaAttribute()

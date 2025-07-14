@@ -23,7 +23,7 @@ class EntradaProducto extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
-    
+
 
     // Definir las relaciones
     public function entry()
@@ -34,5 +34,10 @@ class EntradaProducto extends Model
     public function product()
     {
         return $this->belongsTo(Producto::class, 'producto_id');
+    }
+
+    public function pedidoProducto()
+    {
+        return $this->belongsTo(PedidoProducto::class, 'pedido_producto_id');
     }
 }

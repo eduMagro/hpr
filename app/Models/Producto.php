@@ -41,15 +41,6 @@ class Producto extends Model
         $this->attributes['codigo'] = strtoupper($value);
     }
 
-    /**
-     * Relación con la tabla 'entradas'
-     * Un producto pertenece a una única entrada (relación uno a uno)
-     */
-    public function entradaProducto()
-    {
-        return $this->hasOne(EntradaProducto::class, 'producto_id');
-    }
-
     public function entrada()
     {
         return $this->belongsTo(Entrada::class);

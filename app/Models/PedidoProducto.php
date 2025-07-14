@@ -21,6 +21,16 @@ class PedidoProducto extends Model
         return $this->belongsTo(Pedido::class);
     }
 
+    public function movimientos()
+    {
+        return $this->hasMany(Movimiento::class, 'pedido_producto_id');
+    }
+
+    public function entradas()
+    {
+        return $this->hasMany(Entrada::class, 'pedido_producto_id');
+    }
+
     public function productoBase()
     {
         return $this->belongsTo(ProductoBase::class, 'producto_base_id');

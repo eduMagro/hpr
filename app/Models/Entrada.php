@@ -16,6 +16,7 @@ class Entrada extends Model
     protected $fillable = [
         'albaran',
         'pedido_id',
+        'pedido_producto_id',
         'peso_total',
         'usuario_id',
         'estado',
@@ -60,5 +61,9 @@ class Entrada extends Model
     public function pedido()
     {
         return $this->belongsTo(Pedido::class, 'pedido_id');
+    }
+    public function pedidoProducto()
+    {
+        return $this->belongsTo(PedidoProducto::class, 'pedido_producto_id');
     }
 }
