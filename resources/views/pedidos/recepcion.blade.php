@@ -113,6 +113,7 @@
                         '1': '1 paquete',
                         '2': '2 paquetes'
                     },
+                    inputValue: '1', // 👈 Valor por defecto seleccionado
                     inputPlaceholder: 'Selecciona cantidad',
                     showCancelButton: true,
                     inputValidator: (value) => !value && 'Debes seleccionar una opción'
@@ -120,6 +121,7 @@
                 console.log('👉 paquetes', paquetes);
                 if (!paquetes) return;
                 document.getElementById('cantidad_paquetes_input').value = paquetes;
+
 
                 // Código primer paquete
                 const {
