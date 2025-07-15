@@ -326,7 +326,7 @@ class EstadisticasController extends Controller
         return Producto::where('estado', 'almacenado')
             ->whereNotNull('producto_base_id')
             ->groupBy('producto_base_id')
-            ->select('producto_base_id', DB::raw('SUM(peso_stock) as total'))
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total'))
             ->pluck('total', 'producto_base_id')
             ->map(fn($p) => round($p, 2));
     }
