@@ -177,7 +177,7 @@
                 },
                 editable: true,
                 resources: resources, // Usamos los recursos ordenados
-                resourceAreaWidth: '200px',
+                resourceAreaWidth: '100px',
                 events: trabajadores,
                 resourceAreaColumns: [{
                     field: 'title',

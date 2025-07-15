@@ -58,7 +58,7 @@ class ProduccionController extends Controller
         $maquinas = Maquina::orderBy('id')->get(['id', 'nombre', 'codigo'])->map(function ($maquina) {
             return [
                 'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
-                'title' => $maquina->nombre,
+                'title' => $maquina->codigo,
                 'codigo' => strtolower($maquina->codigo)
             ];
         });
