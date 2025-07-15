@@ -296,11 +296,18 @@ class EstadisticasController extends Controller
         $kgPedidosPorProductoBase = $this->getKgPedidosPorProductoBase();
         $productosBase = $this->getProductoBaseInfo();
 
-        return collect($productosBase)->mapWithKeys(function ($info, $id) use (
+        $idsParaResumen = collect($consumos['ultimo_mes'])->keys()
+            ->merge($consumos['ultimas_2_semanas']->keys())
+            ->merge($consumos['ultimos_2_meses']->keys())
+            ->unique();
+
+        $resumenReposicion = $idsParaResumen->mapWithKeys(function ($id) use (
+            $productosBase,
             $consumos,
             $stockPorProductoBase,
             $kgPedidosPorProductoBase
         ) {
+            $info = $productosBase[$id] ?? ['tipo' => 'desconocido', 'diametro' => 0, 'longitud' => null];
             $consumo14d = $consumos['ultimas_2_semanas'][$id] ?? 0;
             $consumo30d = $consumos['ultimo_mes'][$id] ?? 0;
             $consumo60d = $consumos['ultimos_2_meses'][$id] ?? 0;
