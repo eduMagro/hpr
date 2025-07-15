@@ -279,9 +279,10 @@ class AsignacionTurnoController extends Controller
             }
 
             // 🧾 Buscar la asignación correcta
-            $asignacionTurno = $asignaciones->first(function ($a) use ($turnoDetectado, $fechaTurnoDetectado) {
-                return strtolower($a->turno->nombre ?? '') === $turnoDetectado && $a->fecha === $fechaTurnoDetectado;
+            $asignacionTurno = $asignaciones->first(function ($a) use ($fechaTurnoDetectado) {
+                return $a->fecha === $fechaTurnoDetectado;
             });
+
 
             if (!$asignacionTurno) {
                 return response()->json(['error' => 'No tienes un turno asignado para esta hora.'], 403);
