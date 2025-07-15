@@ -226,62 +226,33 @@
                 </thead>
 
                 <tbody class="bg-white">
-                    @php
-                        $ids = collect($consumoPorProductoBase['ultimas_2_semanas'])
-                            ->keys()
-                            ->merge($consumoPorProductoBase['ultimo_mes']->keys())
-                            ->merge($consumoPorProductoBase['ultimos_2_meses']->keys())
-                            ->unique()
-                            ->sort();
-                    @endphp
-
-                    @foreach ($ids as $productoBaseId)
-                        @php
-                            $info = $productoBaseInfo[$productoBaseId] ?? null;
-                            if (!$info) {
-                                continue;
-                            }
-
-                            $stock = $stockPorProductoBase[$productoBaseId] ?? 0;
-                            $consumoMes = $consumoPorProductoBase['ultimo_mes'][$productoBaseId] ?? 0;
-                            $kgPedidos = $kgPedidosPorProductoBase[$productoBaseId] ?? 0;
-
-                            // Consumo diario promedio y stock seguridad
-                            $consumoDiario = $consumoMes / 30;
-                            $diasCobertura = $consumoDiario > 0 ? round($stock / $consumoDiario, 1) : '∞';
-                            $stockSeguridad = round($consumoDiario * 5, 2);
-
-                            // ✅ Nueva fórmula: stock actual + pedidos - consumo del mes
-                            $diferencia = $stock + $kgPedidos - $consumoMes;
-
-                            $alertaCobertura =
-                                is_numeric($diasCobertura) && $diasCobertura < 5 ? 'text-red-600 font-bold' : '';
-                            $alertaStockSeguridad = $stock < $stockSeguridad ? 'bg-red-100' : '';
-                        @endphp
-
+                    @foreach ($resumenReposicion as $item)
                         <tr class="hover:bg-blue-50 transition">
-                            <td class="px-4 py-2 border">{{ ucfirst($info['tipo']) }}</td>
-                            <td class="px-4 py-2 border">{{ $info['diametro'] }}</td>
+                            <td class="px-4 py-2 border">{{ ucfirst($item['tipo']) }}</td>
+                            <td class="px-4 py-2 border">{{ $item['diametro'] }}</td>
                             <td class="px-4 py-2 border">
-                                {{ $info['tipo'] === 'barra' ? $info['longitud'] . ' m' : '—' }}
+                                {{ $item['tipo'] === 'barra' ? $item['longitud'] . ' m' : '—' }}
+                            </td>
+                            <td class="px-4 py-2 border">{{ number_format($item['consumo_14d'], 2, ',', '.') }} kg
+                            </td>
+                            <td class="px-4 py-2 border">{{ number_format($item['consumo_30d'], 2, ',', '.') }} kg
+                            </td>
+                            <td class="px-4 py-2 border">{{ number_format($item['consumo_60d'], 2, ',', '.') }} kg
+                            </td>
+                            <td class="px-4 py-2 border">{{ number_format($item['stock'], 2, ',', '.') }} kg</td>
+                            <td class="px-4 py-2 border">
+                                {{ $item['consumo_30d'] > 0 ? round($item['stock'] / ($item['consumo_30d'] / 30), 1) : '∞' }}
+                                días
                             </td>
                             <td class="px-4 py-2 border">
-                                {{ number_format($consumoPorProductoBase['ultimas_2_semanas'][$productoBaseId] ?? 0, 2, ',', '.') }}
-                                kg</td>
-                            <td class="px-4 py-2 border">{{ number_format($consumoMes, 2, ',', '.') }} kg</td>
-                            <td class="px-4 py-2 border">
-                                {{ number_format($consumoPorProductoBase['ultimos_2_meses'][$productoBaseId] ?? 0, 2, ',', '.') }}
+                                {{ number_format(($item['consumo_30d'] / 30) * 5, 2, ',', '.') }} kg
+                            </td>
+                            <td class="px-4 py-2 border">{{ number_format($item['pedido'], 2, ',', '.') }} kg</td>
+                            <td
+                                class="px-4 py-2 border {{ $item['stock'] + $item['pedido'] - $item['consumo_30d'] < 0 ? 'text-red-600' : 'text-green-700' }}">
+                                {{ number_format($item['stock'] + $item['pedido'] - $item['consumo_30d'], 2, ',', '.') }}
                                 kg
                             </td>
-
-                            <td class="px-4 py-2 border font-semibold">{{ number_format($stock, 2, ',', '.') }} kg
-                            </td>
-                            <td class="px-4 py-2 border {{ $alertaCobertura }}">{{ $diasCobertura }} días</td>
-                            <td class="px-4 py-2 border {{ $alertaStockSeguridad }}">
-                                {{ number_format($stockSeguridad, 2, ',', '.') }} kg</td>
-                            <td class="px-4 py-2 border">{{ number_format($kgPedidos, 2, ',', '.') }} kg</td>
-                            <td class="px-4 py-2 border {{ $diferencia < 0 ? 'text-red-600' : 'text-green-700' }}">
-                                {{ number_format($diferencia, 2, ',', '.') }} kg</td>
                         </tr>
                     @endforeach
                 </tbody>
