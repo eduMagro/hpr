@@ -128,24 +128,26 @@ class EstadisticasController extends Controller
         $necesarioPorDiametro = $this->getNecesarioPorDiametro();
         $comparativa          = $this->getComparativa($stockData, $pedidosPorDiametro, $necesarioPorDiametro);
 
-        $consumos             = $this->getConsumos(); // 👉 devuelve ultimas_2_semanas, ultimo_mes, ultimos_2_meses
+        // 👉 Usa consumos unificados
+        $consumos             = $this->getConsumosUnificadosPorRango();
         $resumenReposicion    = $this->getResumenReposicion($consumos);
         $ids                  = $this->getIds($consumos);
 
         return [
-            'stockData'            => $stockData,
-            'pedidosPorDiametro'   => $pedidosPorDiametro,
-            'necesarioPorDiametro' => $necesarioPorDiametro,
-            'comparativa'          => $comparativa,
-            'totalGeneral'         => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
+            'stockData'              => $stockData,
+            'pedidosPorDiametro'     => $pedidosPorDiametro,
+            'necesarioPorDiametro'   => $necesarioPorDiametro,
+            'comparativa'            => $comparativa,
+            'totalGeneral'           => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
             'consumoPorProductoBase' => $consumos,
-            'productoBaseInfo'     => $this->getProductoBaseInfo(),
-            'stockPorProductoBase' => $this->getStockPorProductoBase(),
+            'productoBaseInfo'       => $this->getProductoBaseInfo(),
+            'stockPorProductoBase'   => $this->getStockPorProductoBase(),
             'kgPedidosPorProductoBase' => $this->getKgPedidosPorProductoBase(),
-            'resumenReposicion'    => $resumenReposicion,
-            'ids'                  => $ids,
+            'resumenReposicion'      => $resumenReposicion,
+            'ids'                    => $ids,
         ];
     }
+
     private function getStockData()
     {
         $productos = Producto::with('productoBase')
@@ -236,77 +238,56 @@ class EstadisticasController extends Controller
         }
         return $comparativa;
     }
-    private function getConsumos()
+    private function getConsumosUnificados(Carbon $desde, Carbon $hasta)
     {
-        $hoy = now();
-        $hace2Semanas = $hoy->copy()->subWeeks(2);
-        $hace1Mes = $hoy->copy()->subMonth();
-        $hace2Meses = $hoy->copy()->subMonths(2);
-
-        // 👉 manuales
-        $manual2Semanas = Producto::where('estado', 'consumido')
-            ->whereBetween('fecha_consumido', [$hace2Semanas, $hoy])
-            ->whereNotNull('producto_base_id')
-            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
-            ->groupBy('producto_base_id')
-            ->pluck('total_manual', 'producto_base_id');
-
-        $manual1Mes = Producto::where('estado', 'consumido')
-            ->whereBetween('fecha_consumido', [$hace1Mes, $hoy])
-            ->whereNotNull('producto_base_id')
-            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
-            ->groupBy('producto_base_id')
-            ->pluck('total_manual', 'producto_base_id');
-
-        $manual2Meses = Producto::where('estado', 'consumido')
-            ->whereBetween('fecha_consumido', [$hace2Meses, $hoy])
-            ->whereNotNull('producto_base_id')
-            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
-            ->groupBy('producto_base_id')
-            ->pluck('total_manual', 'producto_base_id');
-
-        // 👉 movimientos
-        $calcular = fn($desde, $hasta) =>
-        Movimiento::whereNotNull('maquina_destino')
+        // Movimientos
+        $movimientos = Movimiento::whereNotNull('maquina_destino')
             ->whereBetween('fecha_ejecucion', [$desde, $hasta])
             ->join('productos', 'productos.id', '=', 'movimientos.producto_id')
-            ->select('productos.producto_base_id', DB::raw('SUM(productos.peso_inicial) as total_consumido'))
+            ->select('productos.producto_base_id', DB::raw('SUM(productos.peso_inicial) as total'))
             ->groupBy('productos.producto_base_id')
-            ->pluck('total_consumido', 'productos.producto_base_id');
+            ->pluck('total', 'productos.producto_base_id');
 
-        $consumo2Semanas = $calcular($hace2Semanas, $hoy);
-        $consumo1Mes     = $calcular($hace1Mes, $hoy);
-        $consumo2Meses   = $calcular($hace2Meses, $hoy);
+        // Manuales
+        $manuales = Producto::where('estado', 'consumido')
+            ->whereBetween('fecha_consumido', [$desde, $hasta])
+            ->whereNotNull('producto_base_id')
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total'))
+            ->groupBy('producto_base_id')
+            ->pluck('total', 'producto_base_id');
 
-        // 👉 combinar todos los ids
-        $ids2Semanas = $consumo2Semanas->keys()->merge($manual2Semanas->keys())->unique();
-        $ids1Mes     = $consumo1Mes->keys()->merge($manual1Mes->keys())->unique();
-        $ids2Meses   = $consumo2Meses->keys()->merge($manual2Meses->keys())->unique();
-
-        $consumo2SemanasTotal = $ids2Semanas->mapWithKeys(fn($id) => [$id => ($consumo2Semanas[$id] ?? 0) + ($manual2Semanas[$id] ?? 0)]);
-        $consumo1MesTotal     = $ids1Mes->mapWithKeys(fn($id) => [$id => ($consumo1Mes[$id] ?? 0) + ($manual1Mes[$id] ?? 0)]);
-        $consumo2MesesTotal   = $ids2Meses->mapWithKeys(fn($id) => [$id => ($consumo2Meses[$id] ?? 0) + ($manual2Meses[$id] ?? 0)]);
-
+        // Combinar
+        $ids = $movimientos->keys()->merge($manuales->keys())->unique();
+        return $ids->mapWithKeys(function ($id) use ($movimientos, $manuales) {
+            $mov = $movimientos[$id] ?? 0;
+            $man = $manuales[$id] ?? 0;
+            return [$id => round($mov + $man, 2)];
+        });
+    }
+    private function getConsumosUnificadosPorRango()
+    {
+        $hoy = now();
         return [
-            'ultimas_2_semanas' => $consumo2SemanasTotal,
-            'ultimo_mes'        => $consumo1MesTotal,
-            'ultimos_2_meses'   => $consumo2MesesTotal,
+            'ultimas_2_semanas' => $this->getConsumosUnificados($hoy->copy()->subWeeks(2), $hoy),
+            'ultimo_mes'        => $this->getConsumosUnificados($hoy->copy()->subMonth(), $hoy),
+            'ultimos_2_meses'   => $this->getConsumosUnificados($hoy->copy()->subMonths(2), $hoy),
         ];
     }
 
 
+
     private function getResumenReposicion($consumos)
     {
-        $stockPorProductoBase = $this->getStockPorProductoBase();
+        $stockPorProductoBase   = $this->getStockPorProductoBase();
         $kgPedidosPorProductoBase = $this->getKgPedidosPorProductoBase();
-        $productosBase = $this->getProductoBaseInfo();
+        $productosBase          = $this->getProductoBaseInfo();
 
         $idsParaResumen = collect($consumos['ultimo_mes'])->keys()
             ->merge($consumos['ultimas_2_semanas']->keys())
             ->merge($consumos['ultimos_2_meses']->keys())
             ->unique();
 
-        $resumenReposicion = $idsParaResumen->mapWithKeys(function ($id) use (
+        return $idsParaResumen->mapWithKeys(function ($id) use (
             $productosBase,
             $consumos,
             $stockPorProductoBase,
@@ -332,8 +313,8 @@ class EstadisticasController extends Controller
                 'reposicion' => round($reposicionNecesaria, 2),
             ]];
         });
-        return $resumenReposicion;
     }
+
     private function getProductoBaseInfo()
     {
         return ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
