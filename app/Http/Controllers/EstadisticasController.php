@@ -272,24 +272,26 @@ class EstadisticasController extends Controller
                 'longitud' => $p->tipo === 'barra' ? $p->longitud : null,
             ]);
 
-        // 📌 Resumen de reposición sugerida
+        // ✅ Combinar consumos con manuales desde el principio
+        $consumo2SemanasTotal = $consumo2Semanas->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]);
+        $consumo1MesTotal     = $consumo1Mes->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]);
+        $consumo2MesesTotal   = $consumo2Meses->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]);
+
+        // 📌 Ahora cuando prepares el resumenReposicion, usa ya estas variables:
         $resumenReposicion = collect($productosBase)->mapWithKeys(function ($info, $id) use (
-            $consumo1Mes,
-            $consumo2Semanas,
-            $consumo2Meses,
-            $consumoManual,
+            $consumo2SemanasTotal,
+            $consumo1MesTotal,
+            $consumo2MesesTotal,
             $stockPorProductoBase,
             $kgPedidosPorProductoBase
         ) {
-            // Sumamos consumo real y manual
-            $consumo14d = ($consumo2Semanas[$id] ?? 0) + ($consumoManual[$id] ?? 0);
-            $consumo30d = ($consumo1Mes[$id] ?? 0) + ($consumoManual[$id] ?? 0);
-            $consumo60d = ($consumo2Meses[$id] ?? 0) + ($consumoManual[$id] ?? 0);
+            $consumo14d = $consumo2SemanasTotal[$id] ?? 0;
+            $consumo30d = $consumo1MesTotal[$id] ?? 0;
+            $consumo60d = $consumo2MesesTotal[$id] ?? 0;
 
             $stock = $stockPorProductoBase[$id] ?? 0;
             $pedido = $kgPedidosPorProductoBase[$id] ?? 0;
 
-            // Puedes aplicar aquí stock de seguridad o promedio ponderado
             $reposicionNecesaria = max($consumo30d - $stock - $pedido, 0);
 
             return [$id => [
@@ -318,9 +320,9 @@ class EstadisticasController extends Controller
             'comparativa' => $comparativa,
             'totalGeneral' => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
             'consumoPorProductoBase' => [
-                'ultimas_2_semanas' => $consumo2Semanas->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
-                'ultimo_mes' => $consumo1Mes->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
-                'ultimos_2_meses' => $consumo2Meses->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]),
+                'ultimas_2_semanas' => $consumo2SemanasTotal,
+                'ultimo_mes' => $consumo1MesTotal,
+                'ultimos_2_meses' => $consumo2MesesTotal,
             ],
             'productoBaseInfo' => $productosBase,
             'stockPorProductoBase' => $stockPorProductoBase,

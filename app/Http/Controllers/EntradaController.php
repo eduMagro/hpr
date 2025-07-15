@@ -488,7 +488,6 @@ class EntradaController extends Controller
             ->with('success', 'Albarán cerrado correctamente.');
     }
 
-
     // Eliminar una entrada y sus productos asociados
     public function destroy($id)
     {
