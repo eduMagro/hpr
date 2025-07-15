@@ -332,6 +332,7 @@ class EstadisticasController extends Controller
                 'reposicion' => round($reposicionNecesaria, 2),
             ]];
         });
+        return $resumenReposicion;
     }
     private function getProductoBaseInfo()
     {
