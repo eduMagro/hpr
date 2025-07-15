@@ -434,7 +434,6 @@ class ProductoController extends Controller
         }
     }
 
-
     public function solicitarStock(Request $request)
     {
         // Aquí puedes obtener el diámetro o cualquier otro dato necesario de la solicitud
@@ -466,7 +465,6 @@ class ProductoController extends Controller
         $producto->ubicacion_id = null;
         $producto->maquina_id = null;
     }
-
 
     //------------------------------------------------------------------------------------ DESTROY
     public function destroy(Producto $producto)
