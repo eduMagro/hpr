@@ -200,11 +200,11 @@
                         </th>
                         <th class="px-4 py-2 border">
                             Cobertura (días)<br>
-                            <span class="text-blue-200 text-[10px]">Stock actual ÷ consumo diario</span>
+                            <span class="text-blue-200 text-[10px]">Stock actual ÷ consumo diario(Mes anterior)</span>
                         </th>
                         <th class="px-4 py-2 border">
                             Stock seguridad<br>
-                            <span class="text-blue-200 text-[10px]">Consumo diario × 5 días</span>
+                            <span class="text-blue-200 text-[10px]">Consumo diario(Mes anterior) × 15 días</span>
                         </th>
                         <th class="px-4 py-2 border">
                             Kg pedidos<br>
@@ -212,7 +212,7 @@
                         </th>
                         <th class="px-4 py-2 border">
                             Diferencia<br>
-                            <span class="text-blue-200 text-[9px]">(Stock + pedidos) - consumo 30d</span>
+                            <span class="text-blue-200 text-[9px]">(Stock + pedidos) - consumo mes anterior</span>
                         </th>
                     </tr>
                 </thead>
@@ -228,29 +228,29 @@
 
                             {{-- Aquí usamos el ID para acceder a los consumos por mes --}}
                             <td class="border px-2 py-1">
-                                {{ number_format($consumosPorMes['mes_hace_dos'][$id] ?? 0, 2, ',', '.') }}
+                                {{ number_format($consumosPorMes['mes_hace_dos'][$id] ?? 0, 0, ',', '.') }} Kg
                             </td>
                             <td class="border px-2 py-1">
-                                {{ number_format($consumosPorMes['mes_anterior'][$id] ?? 0, 2, ',', '.') }}
+                                {{ number_format($consumosPorMes['mes_anterior'][$id] ?? 0, 0, ',', '.') }} Kg
                             </td>
                             <td class="border px-2 py-1">
-                                {{ number_format($consumosPorMes['mes_actual'][$id] ?? 0, 2, ',', '.') }}
+                                {{ number_format($consumosPorMes['mes_actual'][$id] ?? 0, 0, ',', '.') }} Kg
                             </td>
 
-                            <td class="px-4 py-2 border">{{ number_format($item['stock'], 2, ',', '.') }} kg</td>
+                            <td class="px-4 py-2 border">{{ number_format($item['stock'], 0, ',', '.') }} kg</td>
                             <td class="px-4 py-2 border">
-                                {{ ($item['consumo_ant'] ?? 0) > 0 ? round($item['stock'] / ($item['consumo_ant'] / 30), 1) : '∞' }}
+                                {{ ($item['consumo_ant'] ?? 0) > 0 ? round($item['stock'] / ($item['consumo_ant'] / 30), 0) : '∞' }}
                                 días
                             </td>
                             <td class="px-4 py-2 border">
-                                {{ number_format((($item['consumo_ant'] ?? 0) / 30) * 5, 2, ',', '.') }} kg
+                                {{ number_format((($item['consumo_ant'] ?? 0) / 30) * 15, 0, ',', '.') }} kg
                             </td>
                             <td class="px-4 py-2 border">
-                                {{ number_format($item['pedido'], 2, ',', '.') }} kg
+                                {{ number_format($item['pedido'], 0, ',', '.') }} kg
                             </td>
                             <td
                                 class="px-4 py-2 border {{ $item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0) < 0 ? 'text-red-600' : 'text-green-700' }}">
-                                {{ number_format($item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0), 2, ',', '.') }}
+                                {{ number_format($item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0), 0, ',', '.') }}
                                 kg
                             </td>
                         </tr>
