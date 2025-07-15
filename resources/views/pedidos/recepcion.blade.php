@@ -26,7 +26,7 @@
                 ->get();
         @endphp
 
-        @if ($entradaAbierta)
+        @if ($entradaAbierta && $productosDeEstaEntrada->isNotEmpty())
             <div class="bg-white border rounded shadow p-4 mb-6 max-w-4xl mx-auto">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-base font-semibold text-gray-800">
@@ -65,7 +65,7 @@
             </div>
         @endif
 
-        @if ($producto->pendiente > 0 || $productoActivo)
+        @if ($entradaAbierta)
             <div class="mb-6 bg-white border border-gray-300 rounded shadow p-6 space-y-6 max-w-4xl mx-auto"
                 x-data="{ paquetes: '1' }">
 
