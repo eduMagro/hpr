@@ -219,9 +219,9 @@ class StockService
 
     private function getResumenReposicion($consumosPorMes)
     {
-        $stockPorProductoBase   = $this->getStockPorProductoBase();
+        $stockPorProductoBase     = $this->getStockPorProductoBase();
         $kgPedidosPorProductoBase = $this->getKgPedidosPorProductoBase();
-        $productosBase          = $this->getProductoBaseInfo();
+        $productosBase            = $this->getProductoBaseInfo();
 
         // Unimos todas las claves de los tres meses
         $idsParaResumen = collect($consumosPorMes['mes_hace_dos'])->keys()
@@ -229,7 +229,8 @@ class StockService
             ->merge($consumosPorMes['mes_actual']->keys())
             ->unique();
 
-        return $idsParaResumen->mapWithKeys(function ($id) use (
+        // Construimos la colección
+        $coleccion = $idsParaResumen->map(function ($id) use (
             $productosBase,
             $consumosPorMes,
             $stockPorProductoBase,
@@ -244,11 +245,11 @@ class StockService
             $stock  = $stockPorProductoBase[$id] ?? 0;
             $pedido = $kgPedidosPorProductoBase[$id] ?? 0;
 
-            // puedes usar uno de los consumos como referencia para reposición
-            $consumoReferencia = $consumoMesAnt; // por ejemplo, el mes anterior
-            $reposicionNecesaria = max($consumoReferencia - $stock - $pedido, 0);
+            // referencia: consumo mes anterior
+            $reposicionNecesaria = max($consumoMesAnt - $stock - $pedido, 0);
 
-            return [$id => [
+            return [
+                'id'             => $id,
                 'tipo'           => $info['tipo'],
                 'diametro'       => $info['diametro'],
                 'longitud'       => $info['longitud'],
@@ -258,9 +259,22 @@ class StockService
                 'stock'          => $stock,
                 'pedido'         => $pedido,
                 'reposicion'     => round($reposicionNecesaria, 2),
-            ]];
+            ];
+        });
+
+        // Ordenamos por tipo, luego diámetro, luego longitud
+        $ordenada = $coleccion->sortBy([
+            fn($item) => $item['tipo'],
+            fn($item) => $item['diametro'],
+            fn($item) => $item['longitud'] ?? 0,
+        ]);
+
+        // Devolvemos como array asociativo (conservar id como clave si quieres)
+        return $ordenada->mapWithKeys(function ($item) {
+            return [$item['id'] => $item];
         });
     }
+
     private function getConsumosUnificados(Carbon $desde, Carbon $hasta)
     {
         // Movimientos
