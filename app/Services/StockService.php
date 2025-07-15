@@ -263,16 +263,13 @@ class StockService
         });
 
         // Ordenamos por tipo, luego diámetro, luego longitud
-        $ordenada = $coleccion->sortBy([
-            fn($item) => $item['tipo'],
-            fn($item) => $item['diametro'],
-            fn($item) => $item['longitud'] ?? 0,
-        ]);
+        $ordenada = $coleccion
+            ->sortBy(fn($item) => $item['longitud'] ?? 0)
+            ->sortBy(fn($item) => $item['diametro'])
+            ->sortBy(fn($item) => $item['tipo']);
 
         // Devolvemos como array asociativo (conservar id como clave si quieres)
-        return $ordenada->mapWithKeys(function ($item) {
-            return [$item['id'] => $item];
-        });
+        return $ordenada->mapWithKeys(fn($item) => [$item['id'] => $item]);
     }
 
     private function getConsumosUnificados(Carbon $desde, Carbon $hasta)
