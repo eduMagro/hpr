@@ -203,11 +203,9 @@
 
                 // Si selecciona de lista
                 if (metodoUbicacion === 'select') {
-                    const ubicaciones = {
-                        @foreach ($ubicaciones as $ubicacion)
-                            {{ $ubicacion->id }}: '{{ $ubicacion->nombre_sin_prefijo }}',
-                        @endforeach
-                    };
+
+                    const ubicaciones = @json($ubicaciones->pluck('nombre_sin_prefijo', 'id'));
+
                     const {
                         value: ubicacion
                     } = await Swal.fire({
