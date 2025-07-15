@@ -166,6 +166,10 @@
                             <span class="text-blue-200 text-[9px]">Consumo en 30 días</span>
                         </th>
                         <th class="px-4 py-2 border">
+                            Últimos 2 meses<br>
+                            <span class="text-blue-200 text-[9px]">Consumo en 60 días</span>
+                        </th>
+                        <th class="px-4 py-2 border">
                             Stock actual<br>
                             <span class="text-blue-200 text-[9px]">Disponible en almacén</span>
                         </th>
@@ -175,9 +179,7 @@
                         </th>
                         <th class="px-4 py-2 border">
                             Stock seguridad<br>
-                            <span class="text-blue-200 text-[10px]">
-                                Consumo diario promedio × días colchón (ej. 5)
-                            </span>
+                            <span class="text-blue-200 text-[10px]">Consumo diario × 5 días</span>
                         </th>
                         <th class="px-4 py-2 border">
                             Kg pedidos<br>
@@ -185,10 +187,11 @@
                         </th>
                         <th class="px-4 py-2 border">
                             Diferencia<br>
-                            <span class="text-blue-200 text-[9px]">Stock - consumo</span>
+                            <span class="text-blue-200 text-[9px]">(Stock + pedidos) - consumo 30d</span>
                         </th>
                     </tr>
                 </thead>
+
                 <tbody class="bg-white">
                     @php
                         $ids = collect($consumoPorProductoBase['ultimas_2_semanas'])
@@ -208,19 +211,21 @@
 
                             $stock = $stockPorProductoBase[$productoBaseId] ?? 0;
                             $consumoMes = $consumoPorProductoBase['ultimo_mes'][$productoBaseId] ?? 0;
+                            $kgPedidos = $kgPedidosPorProductoBase[$productoBaseId] ?? 0;
+
+                            // Consumo diario promedio y stock seguridad
                             $consumoDiario = $consumoMes / 30;
                             $diasCobertura = $consumoDiario > 0 ? round($stock / $consumoDiario, 1) : '∞';
-
-                            // define tu stock de seguridad (ejemplo: 5 días de consumo)
                             $stockSeguridad = round($consumoDiario * 5, 2);
 
-                            $kgPedidos = $kgPedidosPorProductoBase[$productoBaseId] ?? 0;
-                            $diferencia = $stock - $consumoMes;
+                            // ✅ Nueva fórmula: stock actual + pedidos - consumo del mes
+                            $diferencia = $stock + $kgPedidos - $consumoMes;
 
                             $alertaCobertura =
                                 is_numeric($diasCobertura) && $diasCobertura < 5 ? 'text-red-600 font-bold' : '';
                             $alertaStockSeguridad = $stock < $stockSeguridad ? 'bg-red-100' : '';
                         @endphp
+
                         <tr class="hover:bg-blue-50 transition">
                             <td class="px-4 py-2 border">{{ ucfirst($info['tipo']) }}</td>
                             <td class="px-4 py-2 border">{{ $info['diametro'] }}</td>
@@ -231,6 +236,11 @@
                                 {{ number_format($consumoPorProductoBase['ultimas_2_semanas'][$productoBaseId] ?? 0, 2, ',', '.') }}
                                 kg</td>
                             <td class="px-4 py-2 border">{{ number_format($consumoMes, 2, ',', '.') }} kg</td>
+                            <td class="px-4 py-2 border">
+                                {{ number_format($consumoPorProductoBase['ultimos_2_meses'][$productoBaseId] ?? 0, 2, ',', '.') }}
+                                kg
+                            </td>
+
                             <td class="px-4 py-2 border font-semibold">{{ number_format($stock, 2, ',', '.') }} kg</td>
                             <td class="px-4 py-2 border {{ $alertaCobertura }}">{{ $diasCobertura }} días</td>
                             <td class="px-4 py-2 border {{ $alertaStockSeguridad }}">

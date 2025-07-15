@@ -6,6 +6,7 @@
 
         @if (auth()->user()->rol === 'oficina')
             <!-- Tabla pedidos  -->
+            <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
             <div class="overflow-x-auto bg-white shadow rounded-lg">
                 <table class="w-full border-collapse text-sm text-center">
                     <thead class="bg-blue-500 text-white text-10">
@@ -263,7 +264,7 @@
                     </div>
                 </div>
             </div>
-            <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
+
         @endif
         {{-- ---------------------------------------------------- ROL OPERARIO ---------------------------------------------------- --}}
         @if (Auth::user()->rol === 'operario')
