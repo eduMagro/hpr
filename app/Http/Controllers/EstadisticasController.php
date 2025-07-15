@@ -242,15 +242,41 @@ class EstadisticasController extends Controller
         $consumo1Mes     = $calcularConsumo($hace1Mes, $hoy);
         $consumo2Meses   = $calcularConsumo($hace2Meses, $hoy);
 
-        // Consumo manual (productos marcados como consumidos manualmente)
-        $consumoManual = Producto::where('estado', 'consumido')
-            ->whereNotNull('fecha_consumido')
+        $consumoManual2Semanas = Producto::where('estado', 'consumido')
+            ->whereBetween('fecha_consumido', [$hace2Semanas, $hoy])
             ->whereNotNull('producto_base_id')
-            ->whereNotNull('peso_inicial')
             ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
             ->groupBy('producto_base_id')
             ->pluck('total_manual', 'producto_base_id')
             ->map(fn($peso) => round($peso, 2));
+
+        $consumoManual1Mes = Producto::where('estado', 'consumido')
+            ->whereBetween('fecha_consumido', [$hace1Mes, $hoy])
+            ->whereNotNull('producto_base_id')
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
+            ->groupBy('producto_base_id')
+            ->pluck('total_manual', 'producto_base_id')
+            ->map(fn($peso) => round($peso, 2));
+
+        $consumoManual2Meses = Producto::where('estado', 'consumido')
+            ->whereBetween('fecha_consumido', [$hace2Meses, $hoy])
+            ->whereNotNull('producto_base_id')
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
+            ->groupBy('producto_base_id')
+            ->pluck('total_manual', 'producto_base_id')
+            ->map(fn($peso) => round($peso, 2));
+        $consumo2SemanasTotal = $consumo2Semanas->mapWithKeys(
+            fn($valor, $id) => [$id => $valor + ($consumoManual2Semanas[$id] ?? 0)]
+        );
+
+        $consumo1MesTotal = $consumo1Mes->mapWithKeys(
+            fn($valor, $id) => [$id => $valor + ($consumoManual1Mes[$id] ?? 0)]
+        );
+
+        $consumo2MesesTotal = $consumo2Meses->mapWithKeys(
+            fn($valor, $id) => [$id => $valor + ($consumoManual2Meses[$id] ?? 0)]
+        );
+
 
         // 📌 Pedidos pendientes por producto base
         $kgPedidosPorProductoBase = DB::table('pedido_productos')
@@ -271,11 +297,6 @@ class EstadisticasController extends Controller
                 'diametro' => intval($p->diametro),
                 'longitud' => $p->tipo === 'barra' ? $p->longitud : null,
             ]);
-
-        // ✅ Combinar consumos con manuales desde el principio
-        $consumo2SemanasTotal = $consumo2Semanas->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]);
-        $consumo1MesTotal     = $consumo1Mes->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]);
-        $consumo2MesesTotal   = $consumo2Meses->mapWithKeys(fn($valor, $id) => [$id => $valor + ($consumoManual[$id] ?? 0)]);
 
         // 📌 Ahora cuando prepares el resumenReposicion, usa ya estas variables:
         $resumenReposicion = collect($productosBase)->mapWithKeys(function ($info, $id) use (
