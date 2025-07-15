@@ -26,7 +26,7 @@
                 ->get();
         @endphp
 
-        @if ($entradaAbierta && $productosDeEstaEntrada->isNotEmpty())
+        @if ($entradaAbierta)
             <div class="bg-white border rounded shadow p-4 mb-6 max-w-4xl mx-auto">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-base font-semibold text-gray-800">
