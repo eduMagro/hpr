@@ -243,7 +243,7 @@ class EstadisticasController extends Controller
         $hace1Mes = $hoy->copy()->subMonth();
         $hace2Meses = $hoy->copy()->subMonths(2);
 
-        // 👉 Consultas separadas una sola vez
+        // 👉 manuales
         $manual2Semanas = Producto::where('estado', 'consumido')
             ->whereBetween('fecha_consumido', [$hace2Semanas, $hoy])
             ->whereNotNull('producto_base_id')
@@ -265,7 +265,7 @@ class EstadisticasController extends Controller
             ->groupBy('producto_base_id')
             ->pluck('total_manual', 'producto_base_id');
 
-        // 👉 Consumos reales
+        // 👉 movimientos
         $calcular = fn($desde, $hasta) =>
         Movimiento::whereNotNull('maquina_destino')
             ->whereBetween('fecha_ejecucion', [$desde, $hasta])
@@ -275,13 +275,17 @@ class EstadisticasController extends Controller
             ->pluck('total_consumido', 'productos.producto_base_id');
 
         $consumo2Semanas = $calcular($hace2Semanas, $hoy);
-        $consumo1Mes = $calcular($hace1Mes, $hoy);
-        $consumo2Meses = $calcular($hace2Meses, $hoy);
+        $consumo1Mes     = $calcular($hace1Mes, $hoy);
+        $consumo2Meses   = $calcular($hace2Meses, $hoy);
 
-        // 👉 Combinar consumos + manuales
-        $consumo2SemanasTotal = $consumo2Semanas->mapWithKeys(fn($v, $id) => [$id => $v + ($manual2Semanas[$id] ?? 0)]);
-        $consumo1MesTotal     = $consumo1Mes->mapWithKeys(fn($v, $id) => [$id => $v + ($manual1Mes[$id] ?? 0)]);
-        $consumo2MesesTotal   = $consumo2Meses->mapWithKeys(fn($v, $id) => [$id => $v + ($manual2Meses[$id] ?? 0)]);
+        // 👉 combinar todos los ids
+        $ids2Semanas = $consumo2Semanas->keys()->merge($manual2Semanas->keys())->unique();
+        $ids1Mes     = $consumo1Mes->keys()->merge($manual1Mes->keys())->unique();
+        $ids2Meses   = $consumo2Meses->keys()->merge($manual2Meses->keys())->unique();
+
+        $consumo2SemanasTotal = $ids2Semanas->mapWithKeys(fn($id) => [$id => ($consumo2Semanas[$id] ?? 0) + ($manual2Semanas[$id] ?? 0)]);
+        $consumo1MesTotal     = $ids1Mes->mapWithKeys(fn($id) => [$id => ($consumo1Mes[$id] ?? 0) + ($manual1Mes[$id] ?? 0)]);
+        $consumo2MesesTotal   = $ids2Meses->mapWithKeys(fn($id) => [$id => ($consumo2Meses[$id] ?? 0) + ($manual2Meses[$id] ?? 0)]);
 
         return [
             'ultimas_2_semanas' => $consumo2SemanasTotal,
@@ -289,6 +293,7 @@ class EstadisticasController extends Controller
             'ultimos_2_meses'   => $consumo2MesesTotal,
         ];
     }
+
 
     private function getResumenReposicion($consumos)
     {
