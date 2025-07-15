@@ -410,8 +410,11 @@
                             <td class="px-4 py-2 border">{{ number_format($rec['stock_actual'], 0, ',', '.') }} kg
                             </td>
                             <td class="px-4 py-2 border">{{ number_format($rec['pedido'], 0, ',', '.') }} kg</td>
-                            <td class="px-4 py-2 border font-bold text-red-600">
-                                {{ number_format($rec['reponer'], 0, ',', '.') }} kg</td>
+                            <td
+                                class="px-4 py-2 border font-bold {{ $rec['reponer'] > 0 ? 'text-red-600' : 'text-green-600' }}">
+                                {{ number_format($rec['reponer'], 0, ',', '.') }} kg
+                            </td>
+
                         </tr>
                     @endforeach
                 </tbody>
