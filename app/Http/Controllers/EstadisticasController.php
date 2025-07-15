@@ -327,12 +327,13 @@ class EstadisticasController extends Controller
                 'reposicion' => round($reposicionNecesaria, 2),
             ]];
         });
-        $ids = collect($consumo2Semanas)
+        $ids = collect($consumo2SemanasTotal)
             ->keys()
-            ->merge($consumo1Mes->keys())
-            ->merge($consumo2Meses->keys())
+            ->merge($consumo1MesTotal->keys())
+            ->merge($consumo2MesesTotal->keys())
             ->unique()
             ->sort();
+
         // 📌 Devolvemos todos los datos listos para las vistas
         return [
             'stockData' => $stockData,
