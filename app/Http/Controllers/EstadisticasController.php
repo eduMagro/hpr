@@ -119,23 +119,33 @@ class EstadisticasController extends Controller
         // Por si alguien entra en /estadisticas sin sub-ruta
         return redirect()->route('estadisticas.stock');
     }
-    // ---------------------------------------------------------------- Funciones para calcular el stockaje
+    // ---------------------------------------------------------------- Función para calcular datos de stock, pedidos, necesario y consumos
     private function obtenerDatosStock()
     {
+        // 📌 Diámetros estándar con los que vamos a trabajar
         $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
+        // 📌 Calcular cuántos elementos pendientes hay por tipo y diámetro
         $elementosPendientes = Elemento::with('maquina')
             ->where('estado', 'pendiente')
             ->get()
+            // Filtramos solo los elementos que tengan máquina y datos válidos
             ->filter(fn($e) => $e->maquina && $e->maquina->tipo && $e->diametro)
+            // Agrupamos por tipo de material y diámetro (ej: "barra-12")
             ->groupBy(fn($e) => $e->maquina->tipo_material . '-' . intval($e->diametro))
+            // Sumamos el peso de cada grupo
             ->map(fn($group) => $group->sum('peso'));
 
+        // 📌 Necesario por diámetro (basado en elementos pendientes)
         $necesarioPorDiametro = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($elementosPendientes) {
+            // Peso necesario de encarretes
             $encarretado = $elementosPendientes["encarretado-$diametro"] ?? 0;
+            // Inicializamos las longitudes de barra con 0
             $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
+            // Solo consideramos barras de 12 m como estándar
             $barrasPorLongitud[12] = $elementosPendientes["barra-$diametro"] ?? 0;
             $barrasTotal = $barrasPorLongitud->sum();
+            // Devolvemos estructura
             return [$diametro => [
                 'encarretado' => $encarretado,
                 'barras' => $barrasPorLongitud,
@@ -144,6 +154,7 @@ class EstadisticasController extends Controller
             ]];
         });
 
+        // 📌 Pedidos pendientes agrupados por tipo y diámetro
         $pedidosPendientes = Pedido::with('productos')
             ->where('estado', 'pendiente')
             ->get()
@@ -155,6 +166,7 @@ class EstadisticasController extends Controller
             ->groupBy(fn($i) => "{$i['tipo']}-{$i['diametro']}")
             ->map(fn($g) => collect($g)->sum('cantidad'));
 
+        // 📌 Pedidos por diámetro (estructura similar a necesarioPorDiametro)
         $pedidosPorDiametro = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($pedidosPendientes) {
             $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0;
             $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
@@ -168,18 +180,24 @@ class EstadisticasController extends Controller
             ]];
         });
 
-        $productos = Producto::with('productoBase')->where('estado', 'almacenado')->get();
+        // 📌 Productos almacenados actualmente
+        $productos = Producto::with('productoBase')
+            ->where('estado', 'almacenado')
+            ->get();
 
+        // 📌 Stock por producto base (agrupamos por ID de producto base)
         $stockPorProductoBase = $productos
             ->whereNotNull('producto_base_id')
             ->groupBy('producto_base_id')
             ->map(fn($grupo) => round($grupo->sum('peso_stock'), 2));
 
+        // 📌 Stock por diámetro (estructurado igual que necesario y pedidos)
         $stockData = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
             $grupo = $productos->filter(fn($p) => intval($p->productoBase->diametro) === $diametro);
             $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_stock');
             $barras = $grupo->where('productoBase.tipo', 'barra');
-            $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)->map(fn($g) => $g->sum('peso_stock'));
+            $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)
+                ->map(fn($g) => $g->sum('peso_stock'));
             $barrasTotal = $barrasPorLongitud->sum();
             return [$diametro => [
                 'encarretado' => $encarretado,
@@ -189,8 +207,8 @@ class EstadisticasController extends Controller
             ]];
         });
 
+        // 📌 Comparativa: disponible + pedido - necesario
         $comparativa = [];
-
         foreach ($stockData as $diametro => $data) {
             foreach (['barra', 'encarretado'] as $tipo) {
                 $clave = "{$tipo}-{$diametro}";
@@ -202,13 +220,13 @@ class EstadisticasController extends Controller
             }
         }
 
-        //------ CONSUMO A PARTIR DE MOVIMIENTOS A MÁQUINAS
+        // ------------------- 📈 Consumo histórico
         $hoy = now();
         $hace2Semanas = $hoy->copy()->subWeeks(2);
         $hace1Mes = $hoy->copy()->subMonth();
         $hace2Meses = $hoy->copy()->subMonths(2);
 
-        // Función para calcular el consumo entre dos fechas
+        // Función interna para sumar consumos entre fechas
         $calcularConsumo = function ($desde, $hasta) {
             return Movimiento::whereNotNull('maquina_destino')
                 ->whereBetween('fecha_ejecucion', [$desde, $hasta])
@@ -219,10 +237,12 @@ class EstadisticasController extends Controller
                 ->map(fn($peso) => round($peso, 2));
         };
 
+        // Consumos reales
         $consumo2Semanas = $calcularConsumo($hace2Semanas, $hoy);
         $consumo1Mes     = $calcularConsumo($hace1Mes, $hoy);
         $consumo2Meses   = $calcularConsumo($hace2Meses, $hoy);
 
+        // Consumo manual (productos marcados como consumidos manualmente)
         $consumoManual = Producto::where('estado', 'consumido')
             ->whereNotNull('fecha_consumido')
             ->whereNotNull('producto_base_id')
@@ -232,6 +252,7 @@ class EstadisticasController extends Controller
             ->pluck('total_manual', 'producto_base_id')
             ->map(fn($peso) => round($peso, 2));
 
+        // 📌 Pedidos pendientes por producto base
         $kgPedidosPorProductoBase = DB::table('pedido_productos')
             ->join('productos_base', 'productos_base.id', '=', 'pedido_productos.producto_base_id')
             ->join('pedidos', 'pedidos.id', '=', 'pedido_productos.pedido_id')
@@ -241,6 +262,8 @@ class EstadisticasController extends Controller
             ->select('pedido_productos.producto_base_id', DB::raw('SUM(pedido_productos.cantidad) as total_pedido'))
             ->pluck('total_pedido', 'pedido_productos.producto_base_id')
             ->map(fn($valor) => round($valor, 2));
+
+        // 📌 Información básica de productos base
         $productosBase = ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
             ->keyBy('id')
             ->map(fn($p) => [
@@ -249,22 +272,25 @@ class EstadisticasController extends Controller
                 'longitud' => $p->tipo === 'barra' ? $p->longitud : null,
             ]);
 
+        // 📌 Resumen de reposición sugerida
         $resumenReposicion = collect($productosBase)->mapWithKeys(function ($info, $id) use (
             $consumo1Mes,
             $consumo2Semanas,
             $consumo2Meses,
+            $consumoManual,
             $stockPorProductoBase,
             $kgPedidosPorProductoBase
         ) {
-            $consumo14d = $consumo2Semanas[$id] ?? 0;
-            $consumo30d = $consumo1Mes[$id] ?? 0;
-            $consumo60d = $consumo2Meses[$id] ?? 0;
+            // Sumamos consumo real y manual
+            $consumo14d = ($consumo2Semanas[$id] ?? 0) + ($consumoManual[$id] ?? 0);
+            $consumo30d = ($consumo1Mes[$id] ?? 0) + ($consumoManual[$id] ?? 0);
+            $consumo60d = ($consumo2Meses[$id] ?? 0) + ($consumoManual[$id] ?? 0);
 
             $stock = $stockPorProductoBase[$id] ?? 0;
             $pedido = $kgPedidosPorProductoBase[$id] ?? 0;
 
-            $consumoReferencia = $consumo30d; // podrías usar un promedio ponderado si prefieres
-            $reposicionNecesaria = max($consumoReferencia - $stock - $pedido, 0); // nunca negativa
+            // Puedes aplicar aquí stock de seguridad o promedio ponderado
+            $reposicionNecesaria = max($consumo30d - $stock - $pedido, 0);
 
             return [$id => [
                 'tipo' => $info['tipo'],
@@ -278,8 +304,13 @@ class EstadisticasController extends Controller
                 'reposicion' => round($reposicionNecesaria, 2),
             ]];
         });
-
-
+        $ids = collect($consumo2Semanas)
+            ->keys()
+            ->merge($consumo1Mes->keys())
+            ->merge($consumo2Meses->keys())
+            ->unique()
+            ->sort();
+        // 📌 Devolvemos todos los datos listos para las vistas
         return [
             'stockData' => $stockData,
             'pedidosPorDiametro' => $pedidosPorDiametro,
@@ -295,8 +326,10 @@ class EstadisticasController extends Controller
             'stockPorProductoBase' => $stockPorProductoBase,
             'kgPedidosPorProductoBase' => $kgPedidosPorProductoBase,
             'resumenReposicion' => $resumenReposicion,
+            'ids' => $ids,
         ];
     }
+
     // ---------------------------------------------------------------- Función para calcular el stock deseado
 
 

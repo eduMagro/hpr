@@ -20,7 +20,6 @@
                             <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fecha_entrega'] ?? 'F. Entrega' !!}</th>
                             <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
-
                             <th class="p-2 border">Acciones</th>
                         </tr>
 
@@ -72,10 +71,6 @@
                                     ]" :selected="request('estado')" empty="Todos"
                                         class="w-full text-xs" />
                                 </th>
-
-
-
-
                                 <x-tabla.botones-filtro ruta="pedidos.index" />
                             </form>
                         </tr>
@@ -178,8 +173,6 @@
             <div class="mb-6"> <!-- Tabla stock -->
                 <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral"
                     :consumo-por-producto-base="$consumoPorProductoBase" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" />
-
-
                 <div class="mt-4 text-right">
                     <button type="button" onclick="mostrarConfirmacion()"
                         class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
