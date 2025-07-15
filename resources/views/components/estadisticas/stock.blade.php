@@ -1,3 +1,18 @@
+@props([
+    'nombreMeses',
+    'stockData',
+    'pedidosPorDiametro',
+    'necesarioPorDiametro',
+    'totalGeneral',
+    'consumoOrigen' => [],
+    'consumosPorMes' => [],
+    'productoBaseInfo' => [],
+    'stockPorProductoBase' => [],
+    'kgPedidosPorProductoBase' => [],
+    'resumenReposicion' => [],
+    'recomendacionReposicion' => [],
+])
+
 <div class="space-y-12">
 
     @php
@@ -191,6 +206,15 @@
                             Longitud<br>
                             <span class="text-blue-200 text-[9px]">Metros (solo barras)</span>
                         </th>
+                        <th class="px-4 py-2 border">
+                            Total a origen<br>
+                            <span class="text-blue-200 text-[9px]">Kg consumidos desde el inicio</span>
+                        </th>
+                        <th class="px-4 py-2 border">
+                            Media mensual a Origen<br>
+                            <span class="text-blue-200 text-[9px]">Promedio Kg/mes </span>
+                        </th>
+
                         <th class="px-4 py-2 border">{{ $nombreMeses['haceDosMeses'] }}</th>
                         <th class="px-4 py-2 border">{{ $nombreMeses['mesAnterior'] }}</th>
                         <th class="px-4 py-2 border">{{ $nombreMeses['mesActual'] }}</th>
@@ -226,7 +250,11 @@
                                 {{ $item['tipo'] === 'barra' ? $item['longitud'] . ' m' : '—' }}
                             </td>
 
-                            {{-- Aquí usamos el ID para acceder a los consumos por mes --}}
+                            <td class="border px-2 py-1">
+                                {{ number_format($consumoOrigen[$id]['total_origen'] ?? 0, 0, ',', '.') }} Kg</td>
+                            <td class="border px-2 py-1">
+                                {{ number_format($consumoOrigen[$id]['media_mensual'] ?? 0, 0, ',', '.') }} Kg/mes
+                            </td>
                             <td class="border px-2 py-1">
                                 {{ number_format($consumosPorMes['mes_hace_dos'][$id] ?? 0, 0, ',', '.') }} Kg
                             </td>
@@ -275,6 +303,7 @@
                         </th>
                         <th class="px-4 py-2 border">Longitud<br><span class="text-blue-200 text-[9px]">Metros (si
                                 aplica)</span></th>
+
                         <th class="px-4 py-2 border">Consumo 14d<br><span class="text-blue-200 text-[9px]">Últimas 2
                                 semanas</span></th>
                         <th class="px-4 py-2 border">Consumo 30d<br><span class="text-blue-200 text-[9px]">Último
@@ -297,12 +326,16 @@
                                 <td class="px-4 py-2 border">{{ $item['diametro'] }}</td>
                                 <td class="px-4 py-2 border">
                                     {{ $item['tipo'] === 'barra' ? $item['longitud'] . ' m' : '—' }}</td>
-                                {{-- <td class="px-4 py-2 border text-right">
-                                    {{ number_format($item['consumo_14d'], 2, ',', '.') }} kg</td>
-                                <td class="px-4 py-2 border text-right">
-                                    {{ number_format($item['consumo_30d'], 2, ',', '.') }} kg</td>
-                                <td class="px-4 py-2 border text-right">
-                                    {{ number_format($item['consumo_60d'], 2, ',', '.') }} kg</td> --}}
+                                <td class="border px-2 py-1">
+                                    {{ number_format($consumosPorMes['mes_hace_dos'][$id] ?? 0, 0, ',', '.') }} Kg
+                                </td>
+                                <td class="border px-2 py-1">
+                                    {{ number_format($consumosPorMes['mes_anterior'][$id] ?? 0, 0, ',', '.') }} Kg
+                                </td>
+                                <td class="border px-2 py-1">
+                                    {{ number_format($consumosPorMes['mes_actual'][$id] ?? 0, 0, ',', '.') }} Kg
+                                </td>
+
                                 <td class="px-4 py-2 border text-right text-blue-700 font-semibold">
                                     {{ number_format($item['stock'], 2, ',', '.') }} kg</td>
                                 <td class="px-4 py-2 border text-right text-indigo-600 font-semibold">
@@ -317,34 +350,39 @@
         </div>
     @endif
 
-    {{-- 📐 COMPARATIVA OPCIONAL --}}
-    @if (!empty($comparativa))
-        <h2 class="text-2xl font-bold text-blue-900 mt-4">📐 Comparativa rápida</h2>
-        <p class="text-sm text-blue-700 mb-4">Disponible + pedido - necesario.</p>
-        <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200">
+
+    {{-- 📦 RECOMENDACION REPOSICIÓN --}}
+    @if (!empty($recomendacionReposicion))
+        <h2 class="text-2xl font-bold text-blue-900 mt-4">📦 Recomendación de Reposición</h2>
+        <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200 mt-4">
             <table class="min-w-full text-sm text-center border-collapse">
                 <thead class="bg-blue-900 text-white text-xs">
                     <tr>
                         <th class="px-4 py-2 border">Tipo</th>
                         <th class="px-4 py-2 border">Ø mm</th>
-                        <th class="px-4 py-2 border">Pendiente</th>
-                        <th class="px-4 py-2 border">Pedido</th>
-                        <th class="px-4 py-2 border">Disponible</th>
-                        <th class="px-4 py-2 border">Diferencia</th>
+                        <th class="px-4 py-2 border">Longitud</th>
+                        <th class="px-4 py-2 border">Tendencia consumo</th>
+                        <th class="px-4 py-2 border">Stock objetivo (2 meses)</th>
+                        <th class="px-4 py-2 border">Stock actual</th>
+                        <th class="px-4 py-2 border">Pedidos</th>
+                        <th class="px-4 py-2 border">A pedir</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white">
-                    @foreach ($comparativa as $item)
+                    @foreach ($recomendacionReposicion as $rec)
                         <tr class="hover:bg-blue-50 transition">
-                            <td class="px-4 py-2 border">{{ ucfirst($item['tipo']) }}</td>
-                            <td class="px-4 py-2 border">{{ $item['diametro'] }}</td>
-                            <td class="px-4 py-2 border">{{ number_format($item['pendiente'], 2, ',', '.') }} kg</td>
-                            <td class="px-4 py-2 border">{{ number_format($item['pedido'], 2, ',', '.') }} kg</td>
-                            <td class="px-4 py-2 border">{{ number_format($item['disponible'], 2, ',', '.') }} kg</td>
-                            <td
-                                class="px-4 py-2 border font-bold {{ $item['diferencia'] < 0 ? 'text-red-600' : 'text-green-700' }}">
-                                {{ number_format($item['diferencia'], 2, ',', '.') }} kg
+                            <td class="px-4 py-2 border">{{ ucfirst($rec['tipo']) }}</td>
+                            <td class="px-4 py-2 border">{{ $rec['diametro'] }}</td>
+                            <td class="px-4 py-2 border">{{ $rec['longitud'] ?? '—' }}</td>
+                            <td class="px-4 py-2 border">{{ number_format($rec['tendencia'], 0, ',', '.') }} kg/mes
                             </td>
+                            <td class="px-4 py-2 border">{{ number_format($rec['stock_objetivo'], 0, ',', '.') }} kg
+                            </td>
+                            <td class="px-4 py-2 border">{{ number_format($rec['stock_actual'], 0, ',', '.') }} kg
+                            </td>
+                            <td class="px-4 py-2 border">{{ number_format($rec['pedido'], 0, ',', '.') }} kg</td>
+                            <td class="px-4 py-2 border font-bold text-red-600">
+                                {{ number_format($rec['reponer'], 0, ',', '.') }} kg</td>
                         </tr>
                     @endforeach
                 </tbody>

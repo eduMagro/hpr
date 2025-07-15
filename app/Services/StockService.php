@@ -22,33 +22,29 @@ class StockService
 
         // 👉 Obtenemos consumos mensuales unificados
         $consumosMensuales = $this->obtenerConsumosMensuales();
+        $consumoOrigen = $this->getConsumoTotalOrigen();
 
         // ✅ Usamos el array correcto de consumos
         $resumenReposicion = $this->getResumenReposicion($consumosMensuales['consumos']);
         $ids               = $this->getIds($consumosMensuales['consumos']);
-        // 👉 Depuración de los datos
-        \Log::info('📊 Consumos Mensuales', $consumosMensuales['consumos']); // Lo envía al log de Laravel
-        // O para depurar en pantalla:
-        // dd($consumosMensuales['consumos'], $this->getStockPorProductoBase());
 
         $resumenReposicion = $this->getResumenReposicion($consumosMensuales['consumos']);
+        $recomendacionReposicion = $this->getRecomendacionReposicion($resumenReposicion, $consumosMensuales['consumos']);
 
-        \Log::info('📦 Resumen Reposición', $resumenReposicion->toArray());
         return [
             'stockData'              => $stockData,
             'pedidosPorDiametro'     => $pedidosPorDiametro,
             'necesarioPorDiametro'   => $necesarioPorDiametro,
             'comparativa'            => $comparativa,
             'totalGeneral'           => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
-
-            // 👇 Consumimos el método unificado
+            'consumoOrigen' => $consumoOrigen,
             'consumosPorMes'         => $consumosMensuales['consumos'],
             'nombreMeses'            => $consumosMensuales['nombreMeses'],
-
             'productoBaseInfo'       => $this->getProductoBaseInfo(),
             'stockPorProductoBase'   => $this->getStockPorProductoBase(),
             'kgPedidosPorProductoBase' => $this->getKgPedidosPorProductoBase(),
             'resumenReposicion'      => $resumenReposicion,
+            'recomendacionReposicion' => $recomendacionReposicion,
             'ids'                    => $ids,
         ];
     }
@@ -240,6 +236,38 @@ class StockService
         // Devolvemos como array asociativo (conservar id como clave si quieres)
         return $ordenada->mapWithKeys(fn($item) => [$item['id'] => $item]);
     }
+    private function getRecomendacionReposicion($resumenReposicion, $consumosPorMes): array
+    {
+        return collect($resumenReposicion)->map(function ($item, $id) use ($consumosPorMes) {
+            $consumoMayo  = $consumosPorMes['mes_hace_dos'][$id] ?? 0;
+            $consumoJunio = $consumosPorMes['mes_anterior'][$id] ?? 0;
+            $consumoJulio = $consumosPorMes['mes_actual'][$id] ?? 0;
+
+            // ponderar tendencia
+            $tendencia = ($consumoMayo * 0.2) + ($consumoJunio * 0.3) + ($consumoJulio * 0.5);
+
+            // stock objetivo = 2 meses de tendencia
+            $stockObjetivo = $tendencia * 2;
+
+            $stockActual = $item['stock'];
+            $pedido = $item['pedido'];
+            $reponer = max($stockObjetivo - $stockActual - $pedido, 0);
+
+            return [
+                'id' => $id,
+                'tipo' => $item['tipo'],
+                'diametro' => $item['diametro'],
+                'longitud' => $item['longitud'],
+                'tendencia' => round($tendencia, 2),
+                'stock_objetivo' => round($stockObjetivo, 2),
+                'stock_actual' => $stockActual,
+                'pedido' => $pedido,
+                'reponer' => round($reponer, 2),
+            ];
+        })->filter(fn($r) => $r['reponer'] > 0) // solo mostrar los que necesitan
+            ->values()
+            ->toArray();
+    }
 
     public function obtenerConsumosMensuales(): array
     {
@@ -305,6 +333,55 @@ class StockService
             return [$id => round($mov + $man, 2)];
         })->toArray();
     }
+    private function getConsumoTotalOrigen(): array
+    {
+        // obtenemos la fecha más antigua de movimientos o manuales
+        $fechaInicioMov = Movimiento::min('fecha_ejecucion');
+        $fechaInicioMan = Producto::where('estado', 'consumido')->min('fecha_consumido');
+
+        $fechaDesde = collect([$fechaInicioMov, $fechaInicioMan])->filter()->min();
+        if (!$fechaDesde) {
+            return [];
+        }
+
+        $fechaDesde = Carbon::parse($fechaDesde);
+        $fechaHasta = now();
+
+        // cantidad de meses completos transcurridos
+        $meses = $fechaDesde->diffInMonths($fechaHasta) + 1;
+
+        // obtenemos totales de movimientos
+        $movimientos = Movimiento::where('tipo', 'movimiento libre')
+            ->whereNotNull('maquina_destino')
+            ->whereBetween('fecha_ejecucion', [$fechaDesde, $fechaHasta])
+            ->join('productos', 'productos.id', '=', 'movimientos.producto_id')
+            ->select('productos.producto_base_id', DB::raw('SUM(productos.peso_inicial) as total'))
+            ->groupBy('productos.producto_base_id')
+            ->pluck('total', 'productos.producto_base_id');
+
+        // obtenemos totales de consumidos manuales
+        $manuales = Producto::where('estado', 'consumido')
+            ->whereNotNull('producto_base_id')
+            ->whereBetween('fecha_consumido', [$fechaDesde, $fechaHasta])
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total'))
+            ->groupBy('producto_base_id')
+            ->pluck('total', 'producto_base_id');
+
+        $ids = $movimientos->keys()->merge($manuales->keys())->unique();
+
+        return $ids->mapWithKeys(function ($id) use ($movimientos, $manuales, $meses) {
+            $total = ($movimientos[$id] ?? 0) + ($manuales[$id] ?? 0);
+            $mediaMensual = $meses > 0 ? round($total / $meses, 2) : 0;
+            return [
+                $id => [
+                    'total_origen' => round($total, 2),
+                    'media_mensual' => $mediaMensual,
+                ],
+            ];
+        })->toArray();
+    }
+
+
     private function getIds($consumosPorMes)
     {
         return collect($consumosPorMes['mes_hace_dos'])->keys()
