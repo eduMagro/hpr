@@ -198,166 +198,166 @@ class EntradaController extends Controller
         ));
     }
 
-    // public function store(Request $request)
-    // {
-    //     DB::beginTransaction();
-    //     try {
-    //         $request->validate([
-    //             'codigo'            => [
-    //                 'required',
-    //                 'string',
-    //                 'unique:productos,codigo',
-    //                 'max:20',
-    //                 'regex:/^MP.*/i',
-    //             ],
-    //             'codigo_2'          => [
-    //                 'nullable',
-    //                 'string',
-    //                 'unique:productos,codigo',
-    //                 'max:20',
-    //                 'regex:/^MP.*/i',
-    //             ],
-    //             'fabricante_id'     => 'required|exists:fabricantes,id',
-    //             'albaran'           => 'required|string|min:1|max:30',
-    //             'pedido_id'         => 'nullable|exists:pedidos,id',
-    //             'producto_base_id'  => 'required|exists:productos_base,id',
-    //             'n_colada'          => 'required|string|max:50',
-    //             'n_paquete'         => 'required|string|max:50',
-    //             'n_colada_2'        => 'nullable|string|max:50',
-    //             'n_paquete_2'       => 'nullable|string|max:50',
-    //             'peso'              => 'required|numeric|min:1',
-    //             'ubicacion_id'      => 'nullable|integer|exists:ubicaciones,id',
-    //             'otros'             => 'nullable|string|max:255',
-    //         ], [
-    //             'codigo.required'   => 'El código generado es obligatorio.',
-    //             'codigo.string'     => 'El código debe ser una cadena de texto.',
-    //             'codigo.unique'     => 'Ese código ya existe.',
-    //             'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
-    //             'codigo.regex'      => 'El código debe empezar por MP.',
+    public function store(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $request->validate([
+                'codigo'            => [
+                    'required',
+                    'string',
+                    'unique:productos,codigo',
+                    'max:20',
+                    'regex:/^MP.*/i',
+                ],
+                'codigo_2'          => [
+                    'nullable',
+                    'string',
+                    'unique:productos,codigo',
+                    'max:20',
+                    'regex:/^MP.*/i',
+                ],
+                'fabricante_id'     => 'required|exists:fabricantes,id',
+                'albaran'           => 'required|string|min:1|max:30',
+                'pedido_id'         => 'nullable|exists:pedidos,id',
+                'producto_base_id'  => 'required|exists:productos_base,id',
+                'n_colada'          => 'required|string|max:50',
+                'n_paquete'         => 'required|string|max:50',
+                'n_colada_2'        => 'nullable|string|max:50',
+                'n_paquete_2'       => 'nullable|string|max:50',
+                'peso'              => 'required|numeric|min:1',
+                'ubicacion_id'      => 'nullable|integer|exists:ubicaciones,id',
+                'otros'             => 'nullable|string|max:255',
+            ], [
+                'codigo.required'   => 'El código generado es obligatorio.',
+                'codigo.string'     => 'El código debe ser una cadena de texto.',
+                'codigo.unique'     => 'Ese código ya existe.',
+                'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
+                'codigo.regex'      => 'El código debe empezar por MP.',
 
-    //             'codigo_2.string'      => 'El segundo código debe ser una cadena de texto.',
-    //             'codigo_2.unique'      => 'El segundo código ya existe.',
-    //             'codigo_2.max'         => 'El segundo código no puede tener más de 20 caracteres.',
+                'codigo_2.string'      => 'El segundo código debe ser una cadena de texto.',
+                'codigo_2.unique'      => 'El segundo código ya existe.',
+                'codigo_2.max'         => 'El segundo código no puede tener más de 20 caracteres.',
 
-    //             'fabricante_id.required' => 'El fabricante es obligatorio.',
-    //             'fabricante_id.exists'   => 'El fabricante seleccionado no es válido.',
+                'fabricante_id.required' => 'El fabricante es obligatorio.',
+                'fabricante_id.exists'   => 'El fabricante seleccionado no es válido.',
 
-    //             'albaran.required'     => 'El albarán es obligatorio.',
-    //             'albaran.string'       => 'El albarán debe ser una cadena de texto.',
-    //             'albaran.min'          => 'El albarán debe tener al menos 1 carácter.',
-    //             'albaran.max'          => 'El albarán no puede tener más de 30 caracteres.',
+                'albaran.required'     => 'El albarán es obligatorio.',
+                'albaran.string'       => 'El albarán debe ser una cadena de texto.',
+                'albaran.min'          => 'El albarán debe tener al menos 1 carácter.',
+                'albaran.max'          => 'El albarán no puede tener más de 30 caracteres.',
 
-    //             'pedido_id.exists'     => 'El pedido seleccionado no es válido.',
+                'pedido_id.exists'     => 'El pedido seleccionado no es válido.',
 
-    //             'producto_base_id.required' => 'El producto base es obligatorio.',
-    //             'producto_base_id.exists'   => 'El producto base seleccionado no es válido.',
+                'producto_base_id.required' => 'El producto base es obligatorio.',
+                'producto_base_id.exists'   => 'El producto base seleccionado no es válido.',
 
-    //             'n_colada.required'    => 'El número de colada es obligatorio.',
-    //             'n_colada.string'      => 'El número de colada debe ser una cadena de texto.',
-    //             'n_colada.max'         => 'El número de colada no puede tener más de 50 caracteres.',
+                'n_colada.required'    => 'El número de colada es obligatorio.',
+                'n_colada.string'      => 'El número de colada debe ser una cadena de texto.',
+                'n_colada.max'         => 'El número de colada no puede tener más de 50 caracteres.',
 
-    //             'n_paquete.required'   => 'El número de paquete es obligatorio.',
-    //             'n_paquete.string'     => 'El número de paquete debe ser una cadena de texto.',
-    //             'n_paquete.max'        => 'El número de paquete no puede tener más de 50 caracteres.',
+                'n_paquete.required'   => 'El número de paquete es obligatorio.',
+                'n_paquete.string'     => 'El número de paquete debe ser una cadena de texto.',
+                'n_paquete.max'        => 'El número de paquete no puede tener más de 50 caracteres.',
 
-    //             'n_colada_2.string'    => 'El segundo número de colada debe ser una cadena de texto.',
-    //             'n_colada_2.max'       => 'El segundo número de colada no puede tener más de 50 caracteres.',
+                'n_colada_2.string'    => 'El segundo número de colada debe ser una cadena de texto.',
+                'n_colada_2.max'       => 'El segundo número de colada no puede tener más de 50 caracteres.',
 
-    //             'n_paquete_2.string'   => 'El segundo número de paquete debe ser una cadena de texto.',
-    //             'n_paquete_2.max'      => 'El segundo número de paquete no puede tener más de 50 caracteres.',
+                'n_paquete_2.string'   => 'El segundo número de paquete debe ser una cadena de texto.',
+                'n_paquete_2.max'      => 'El segundo número de paquete no puede tener más de 50 caracteres.',
 
-    //             'peso.required'        => 'El peso es obligatorio.',
-    //             'peso.numeric'         => 'El peso debe ser un número.',
-    //             'peso.min'             => 'El peso debe ser mayor que cero.',
+                'peso.required'        => 'El peso es obligatorio.',
+                'peso.numeric'         => 'El peso debe ser un número.',
+                'peso.min'             => 'El peso debe ser mayor que cero.',
 
-    //             'ubicacion.integer'    => 'La ubicación debe ser un número entero.',
-    //             'ubicacion.exists'     => 'La ubicación seleccionada no es válida.',
+                'ubicacion.integer'    => 'La ubicación debe ser un número entero.',
+                'ubicacion.exists'     => 'La ubicación seleccionada no es válida.',
 
-    //             'otros.string'         => 'El campo "otros" debe ser una cadena de texto.',
-    //             'otros.max'            => 'El campo "otros" no puede tener más de 255 caracteres.',
-    //         ]);
-    //         Log::info('📝 Datos recibidos', $request->all());
+                'otros.string'         => 'El campo "otros" debe ser una cadena de texto.',
+                'otros.max'            => 'El campo "otros" no puede tener más de 255 caracteres.',
+            ]);
+            Log::info('📝 Datos recibidos', $request->all());
 
-    //         $productoBase = ProductoBase::findOrFail($request->producto_base_id);
-    //         $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
-    //         $pesoPorPaquete = $esDoble ? round($request->peso / 2, 3) : $request->peso;
-    //         $codigo1 = strtoupper($request->codigo);
-    //         $codigo2 = strtoupper($request->codigo_2);
-    //         $pedidoProductoId = null;
+            $productoBase = ProductoBase::findOrFail($request->producto_base_id);
+            $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
+            $pesoPorPaquete = $esDoble ? round($request->peso / 2, 3) : $request->peso;
+            $codigo1 = strtoupper($request->codigo);
+            $codigo2 = strtoupper($request->codigo_2);
+            $pedidoProductoId = null;
 
-    //         if ($request->filled('pedido_id')) {
-    //             Log::info('📦 Intentando vincular pedido_id al crear entrada', [
-    //                 'pedido_id' => $request->pedido_id,
-    //                 'producto_base_id' => $request->producto_base_id,
-    //             ]);
-    //             $pedidoProducto = DB::table('pedido_productos')
-    //                 ->where('pedido_id', $request->pedido_id)
-    //                 ->where('producto_base_id', $request->producto_base_id)
-    //                 ->where('estado', '!=', 'completado')
-    //                 ->orderBy('fecha_estimada_entrega')
-    //                 ->first();
+            if ($request->filled('pedido_id')) {
+                Log::info('📦 Intentando vincular pedido_id al crear entrada', [
+                    'pedido_id' => $request->pedido_id,
+                    'producto_base_id' => $request->producto_base_id,
+                ]);
+                $pedidoProducto = DB::table('pedido_productos')
+                    ->where('pedido_id', $request->pedido_id)
+                    ->where('producto_base_id', $request->producto_base_id)
+                    ->where('estado', '!=', 'completado')
+                    ->orderBy('fecha_estimada_entrega')
+                    ->first();
 
-    //             if ($pedidoProducto) {
-    //                 $pedidoProductoId = $pedidoProducto->id;
-    //             }
-    //         }
+                if ($pedidoProducto) {
+                    $pedidoProductoId = $pedidoProducto->id;
+                }
+            }
 
-    //         // Crear entrada principal
-    //         $entrada = Entrada::create([
-    //             'albaran'              => $request->albaran,
-    //             'usuario_id'           => auth()->id(),
-    //             'peso_total'           => $request->peso,
-    //             'estado'               => 'cerrado',
-    //             'otros'                => $request->otros ?? null,
-    //             'pedido_id'            => $request->pedido_id,
-    //             'pedido_producto_id'   => $pedidoProductoId,
-    //         ]);
+            // Crear entrada principal
+            $entrada = Entrada::create([
+                'albaran'              => $request->albaran,
+                'usuario_id'           => auth()->id(),
+                'peso_total'           => $request->peso,
+                'estado'               => 'cerrado',
+                'otros'                => $request->otros ?? null,
+                'pedido_id'            => $request->pedido_id,
+                'pedido_producto_id'   => $pedidoProductoId,
+            ]);
 
-    //         // Primer producto
-    //         $producto1 = Producto::create([
-    //             'codigo'           => $codigo1,
-    //             'producto_base_id' => $request->producto_base_id,
-    //             'fabricante_id'     => $request->fabricante_id,
-    //             'entrada_id'       => $entrada->id,
-    //             'n_colada'         => $request->n_colada,
-    //             'n_paquete'        => $request->n_paquete,
-    //             'peso_inicial'     => $pesoPorPaquete,
-    //             'peso_stock'       => $pesoPorPaquete,
-    //             'estado'           => 'almacenado',
-    //             'ubicacion_id' => $request->ubicacion_id,
-    //             'maquina_id'       => null,
-    //             'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
-    //         ]);
+            // Primer producto
+            $producto1 = Producto::create([
+                'codigo'           => $codigo1,
+                'producto_base_id' => $request->producto_base_id,
+                'fabricante_id'     => $request->fabricante_id,
+                'entrada_id'       => $entrada->id,
+                'n_colada'         => $request->n_colada,
+                'n_paquete'        => $request->n_paquete,
+                'peso_inicial'     => $pesoPorPaquete,
+                'peso_stock'       => $pesoPorPaquete,
+                'estado'           => 'almacenado',
+                'ubicacion_id' => $request->ubicacion_id,
+                'maquina_id'       => null,
+                'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
+            ]);
 
 
-    //         // Segundo producto si aplica
-    //         if ($esDoble) {
-    //             $producto2 = Producto::create([
-    //                 'codigo'           => $codigo2,
-    //                 'producto_base_id' => $request->producto_base_id,
-    //                 'fabricante_id'     => $request->fabricante_id,
-    //                 'entrada_id'   => $entrada->id,
-    //                 'n_colada'         => $request->n_colada_2,
-    //                 'n_paquete'        => $request->n_paquete_2,
-    //                 'peso_inicial'     => $pesoPorPaquete,
-    //                 'peso_stock'       => $pesoPorPaquete,
-    //                 'estado'           => 'almacenado',
-    //                 'ubicacion_id' => $request->ubicacion_id,
-    //                 'maquina_id'       => null,
-    //                 'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
-    //             ]);
-    //         }
+            // Segundo producto si aplica
+            if ($esDoble) {
+                $producto2 = Producto::create([
+                    'codigo'           => $codigo2,
+                    'producto_base_id' => $request->producto_base_id,
+                    'fabricante_id'     => $request->fabricante_id,
+                    'entrada_id'   => $entrada->id,
+                    'n_colada'         => $request->n_colada_2,
+                    'n_paquete'        => $request->n_paquete_2,
+                    'peso_inicial'     => $pesoPorPaquete,
+                    'peso_stock'       => $pesoPorPaquete,
+                    'estado'           => 'almacenado',
+                    'ubicacion_id' => $request->ubicacion_id,
+                    'maquina_id'       => null,
+                    'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
+                ]);
+            }
 
-    //         DB::commit();
-    //         return redirect()->route('productos.index')->with('success', 'Entrada registrada correctamente.');
-    //     } catch (ValidationException $e) {
-    //         DB::rollBack();
-    //         return redirect()->back()->withErrors($e->errors())->withInput();
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
-    //     }
-    // }
+            DB::commit();
+            return redirect()->route('productos.index')->with('success', 'Entrada registrada correctamente.');
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
+        }
+    }
 
     public function edit($id)
     {
