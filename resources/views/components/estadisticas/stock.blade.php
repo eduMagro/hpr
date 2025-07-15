@@ -82,9 +82,21 @@
                             {{ !$claseRojo ? number_format($pedidoVal, 2, ',', '.') : '' }}</td>
                         <td class="border px-2 py-1 {{ $claseRojo }}">
                             @if (!$claseRojo)
-                                <span class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
+                                <div class="flex items-center justify-start gap-1">
+                                    <input type="checkbox" name="seleccionados[]"
+                                        value="encarretado-{{ $diametro }}">
+                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
+                                        value="encarretado">
+                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][diametro]"
+                                        value="{{ $diametro }}">
+                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][cantidad]"
+                                        value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
+                                    <span
+                                        class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
+                                </div>
                             @endif
                         </td>
+
 
                         @foreach ([12, 14, 15, 16] as $longitud)
                             @php
@@ -103,8 +115,24 @@
                                 {{ !$claseRojo ? number_format($pedidoVal, 2, ',', '.') : '' }}</td>
                             <td class="border px-2 py-1 {{ $claseRojo }}">
                                 @if (!$claseRojo)
-                                    <span
-                                        class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
+                                    <div class="flex items-center justify-start gap-1">
+                                        <input type="checkbox" name="seleccionados[]"
+                                            value="barra-{{ $diametro }}-{{ $longitud }}">
+                                        <input type="hidden"
+                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][tipo]"
+                                            value="barra">
+                                        <input type="hidden"
+                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][diametro]"
+                                            value="{{ $diametro }}">
+                                        <input type="hidden"
+                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][longitud]"
+                                            value="{{ $longitud }}">
+                                        <input type="hidden"
+                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][cantidad]"
+                                            value="{{ round($necesarioVal, 2) }}">
+                                        <span
+                                            class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
+                                    </div>
                                 @endif
                             </td>
                         @endforeach
@@ -237,7 +265,8 @@
                                 kg
                             </td>
 
-                            <td class="px-4 py-2 border font-semibold">{{ number_format($stock, 2, ',', '.') }} kg</td>
+                            <td class="px-4 py-2 border font-semibold">{{ number_format($stock, 2, ',', '.') }} kg
+                            </td>
                             <td class="px-4 py-2 border {{ $alertaCobertura }}">{{ $diasCobertura }} días</td>
                             <td class="px-4 py-2 border {{ $alertaStockSeguridad }}">
                                 {{ number_format($stockSeguridad, 2, ',', '.') }} kg</td>
@@ -261,7 +290,8 @@
                     <tr>
                         <th class="px-4 py-2 border">Tipo<br><span class="text-blue-200 text-[9px]">Barra o
                                 encarrete</span></th>
-                        <th class="px-4 py-2 border">Diámetro<br><span class="text-blue-200 text-[9px]">Ø mm</span></th>
+                        <th class="px-4 py-2 border">Diámetro<br><span class="text-blue-200 text-[9px]">Ø mm</span>
+                        </th>
                         <th class="px-4 py-2 border">Longitud<br><span class="text-blue-200 text-[9px]">Metros (si
                                 aplica)</span></th>
                         <th class="px-4 py-2 border">Consumo 14d<br><span class="text-blue-200 text-[9px]">Últimas 2
