@@ -254,7 +254,7 @@ class ProductoController extends Controller
         if (!$request->filled('estado') && !$request->filled('codigo') && !$request->filled('id')) {
             $query->whereNotIn('estado', ['consumido', 'fabricando']);
         }
-
+        $totalPesoInicial = (clone $query)->sum('peso_inicial');
         // Paginación segura
         $perPage = is_numeric($request->input('per_page')) ? max(5, min((int)$request->input('per_page'), 100)) : 10;
         $registrosProductos = $query->paginate($perPage)->appends($request->except('page'));
@@ -268,7 +268,7 @@ class ProductoController extends Controller
                 ->get();
         });
 
-        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables'));
+        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial'));
     }
 
     public function generarYExportar(Request $request)

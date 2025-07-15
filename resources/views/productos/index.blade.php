@@ -295,6 +295,18 @@
                             </tr>
                         @endforelse
                     </tbody>
+                    <tfoot>
+                        <tr class="bg-gradient-to-r from-blue-50 to-blue-100 border-t border-blue-300">
+                            <td colspan="100%" class="px-6 py-3" style="padding: 0" colspan="999">
+                                <div class="flex justify-end items-center gap-4 px-6 py-3 text-sm text-gray-700">
+                                    <span class="font-semibold">Total peso filtrado:</span>
+                                    <span class="text-base font-bold text-blue-800">
+                                        {{ number_format($totalPesoInicial, 2, ',', '.') }} kg
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
