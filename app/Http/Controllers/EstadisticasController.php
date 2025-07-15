@@ -158,10 +158,10 @@ class EstadisticasController extends Controller
 
         return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
             $grupo = $productos->filter(fn($p) => intval($p->productoBase->diametro) === $diametro);
-            $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_stock');
+            $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_inicial');
             $barras = $grupo->where('productoBase.tipo', 'barra');
             $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)
-                ->map(fn($g) => $g->sum('peso_stock'));
+                ->map(fn($g) => $g->sum('peso_inicial'));
             $barrasTotal = $barrasPorLongitud->sum();
             return [$diametro => [
                 'encarretado' => $encarretado,
