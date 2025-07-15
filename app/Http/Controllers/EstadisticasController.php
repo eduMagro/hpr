@@ -130,6 +130,7 @@ class EstadisticasController extends Controller
 
         // 👉 Usa consumos unificados
         $consumos             = $this->getConsumosUnificadosPorRango();
+
         $resumenReposicion    = $this->getResumenReposicion($consumos);
         $ids                  = $this->getIds($consumos);
 
@@ -147,7 +148,6 @@ class EstadisticasController extends Controller
             'ids'                    => $ids,
         ];
     }
-
     private function getStockData()
     {
         $productos = Producto::with('productoBase')
@@ -273,9 +273,6 @@ class EstadisticasController extends Controller
             'ultimos_2_meses'   => $this->getConsumosUnificados($hoy->copy()->subMonths(2), $hoy),
         ];
     }
-
-
-
     private function getResumenReposicion($consumos)
     {
         $stockPorProductoBase   = $this->getStockPorProductoBase();
@@ -291,7 +288,7 @@ class EstadisticasController extends Controller
             $productosBase,
             $consumos,
             $stockPorProductoBase,
-            $kgPedidosPorProductoBase
+            $kgPedidosPorProductoBase,
         ) {
             $info = $productosBase[$id] ?? ['tipo' => 'desconocido', 'diametro' => 0, 'longitud' => null];
             $consumo14d = $consumos['ultimas_2_semanas'][$id] ?? 0;
@@ -314,7 +311,6 @@ class EstadisticasController extends Controller
             ]];
         });
     }
-
     private function getProductoBaseInfo()
     {
         return ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
@@ -325,7 +321,6 @@ class EstadisticasController extends Controller
                 'longitud' => $p->tipo === 'barra' ? $p->longitud : null,
             ]);
     }
-
     private function getStockPorProductoBase()
     {
         return Producto::where('estado', 'almacenado')
@@ -335,7 +330,6 @@ class EstadisticasController extends Controller
             ->pluck('total', 'producto_base_id')
             ->map(fn($p) => round($p, 2));
     }
-
     private function getKgPedidosPorProductoBase()
     {
         return DB::table('pedido_productos')
@@ -346,7 +340,6 @@ class EstadisticasController extends Controller
             ->pluck('total_pedido', 'pedido_productos.producto_base_id')
             ->map(fn($p) => round($p, 2));
     }
-
     private function getIds($consumos)
     {
         return collect($consumos['ultimas_2_semanas'])
