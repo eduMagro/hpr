@@ -179,7 +179,7 @@ class StockService
             ->pluck('total_pedido', 'pedido_productos.producto_base_id')
             ->map(fn($p) => round($p, 2));
     }
-
+    //Este no lo usamos ya, pendiente de quitar
     private function getResumenReposicion($consumosPorMes)
     {
         $stockPorProductoBase     = $this->getStockPorProductoBase();
