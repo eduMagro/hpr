@@ -291,7 +291,7 @@
     @endif
 
     {{-- 📦 REPOSICIÓN SUGERIDA --}}
-    @if (!empty($resumenReposicion))
+    {{-- @if (!empty($resumenReposicion))
         <h2 class="text-2xl font-bold text-blue-900 mt-4">📦 Reposición sugerida</h2>
         <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200">
             <table class="min-w-full text-sm text-center border-collapse">
@@ -348,11 +348,40 @@
                 </tbody>
             </table>
         </div>
-    @endif
-
+    @endif --}}
 
     {{-- 📦 RECOMENDACION REPOSICIÓN --}}
     @if (!empty($recomendacionReposicion))
+        <div class="p-4 bg-blue-50 rounded border border-blue-200 mb-4 text-sm text-blue-900 leading-relaxed">
+            <h3 class="font-bold text-lg mb-2">🔎 ¿Cómo se calcula la recomendación de reposición?</h3>
+            <p>
+                Para cada producto base (distinguiendo tipo, diámetro y longitud) se analizan los consumos de los
+                últimos tres meses:
+                <strong>{{ $nombreMeses['haceDosMeses'] }}</strong>,
+                <strong>{{ $nombreMeses['mesAnterior'] }}</strong> y <strong>{{ $nombreMeses['mesActual'] }}</strong>.
+            </p>
+            <p class="mt-2">
+                A partir de esos tres valores, calculamos una <strong>tendencia de consumo mensual</strong> usando un
+                promedio ponderado:
+                el mes más reciente pesa un 50 %, el mes anterior un 30 % y el mes de hace dos meses un 20 %.
+            </p>
+            <p class="mt-2">
+                Con esa tendencia mensual calculada, definimos un <strong>stock objetivo</strong> equivalente a
+                <strong>dos meses de consumo</strong>
+                (para asegurar cobertura suficiente ante variaciones).
+            </p>
+            <p class="mt-2">
+                Finalmente, comparamos ese stock objetivo con tu <strong>stock actual</strong> y con los <strong>pedidos
+                    pendientes</strong>.
+                Si <code>stock objetivo - stock actual - pedidos</code> es mayor que cero, el resultado es la
+                <strong>cantidad recomendada a reponer</strong>.
+            </p>
+            <p class="mt-2 font-semibold">
+                En la tabla de abajo puedes ver, para cada producto, la tendencia detectada, el stock objetivo, el stock
+                actual y la cantidad a pedir si es necesario.
+            </p>
+        </div>
+
         <h2 class="text-2xl font-bold text-blue-900 mt-4">📦 Recomendación de Reposición</h2>
         <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200 mt-4">
             <table class="min-w-full text-sm text-center border-collapse">

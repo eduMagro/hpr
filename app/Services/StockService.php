@@ -243,10 +243,10 @@ class StockService
             $consumoJunio = $consumosPorMes['mes_anterior'][$id] ?? 0;
             $consumoJulio = $consumosPorMes['mes_actual'][$id] ?? 0;
 
-            // ponderar tendencia
+            // 📊 Tendencia ponderada: mayo 20%, junio 30%, julio 50%
             $tendencia = ($consumoMayo * 0.2) + ($consumoJunio * 0.3) + ($consumoJulio * 0.5);
 
-            // stock objetivo = 2 meses de tendencia
+            // 🎯 Stock objetivo: cubrir 2 meses de consumo
             $stockObjetivo = $tendencia * 2;
 
             $stockActual = $item['stock'];
@@ -254,20 +254,22 @@ class StockService
             $reponer = max($stockObjetivo - $stockActual - $pedido, 0);
 
             return [
-                'id' => $id,
-                'tipo' => $item['tipo'],
-                'diametro' => $item['diametro'],
-                'longitud' => $item['longitud'],
-                'tendencia' => round($tendencia, 2),
+                'id'            => $id,
+                'tipo'          => $item['tipo'],
+                'diametro'      => $item['diametro'],
+                'longitud'      => $item['longitud'],
+                'tendencia'     => round($tendencia, 2),
                 'stock_objetivo' => round($stockObjetivo, 2),
-                'stock_actual' => $stockActual,
-                'pedido' => $pedido,
-                'reponer' => round($reponer, 2),
+                'stock_actual'  => $stockActual,
+                'pedido'        => $pedido,
+                'reponer'       => round($reponer, 2),
             ];
-        })->filter(fn($r) => $r['reponer'] > 0) // solo mostrar los que necesitan
+        })
+            // ❌ quitamos el filter para no excluir nada
             ->values()
             ->toArray();
     }
+
 
     public function obtenerConsumosMensuales(): array
     {
