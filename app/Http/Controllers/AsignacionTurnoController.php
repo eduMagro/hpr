@@ -255,18 +255,23 @@ class AsignacionTurnoController extends Controller
 
             $hora = Carbon::createFromFormat('H:i:s', $horaActual);
 
-            if ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(7, 59))) {
-                $turnoDetectado = 'mañana';
-                $fechaTurnoDetectado = $fecha;
-            } elseif ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(15, 59))) {
-                $turnoDetectado = 'tarde';
-                $fechaTurnoDetectado = $fecha;
-            } elseif (
+            // NOCHE: 20:00 (día actual) hasta 05:59 (día siguiente)
+            if (
                 $hora->between(Carbon::createFromTime(20, 0), Carbon::createFromTime(23, 59)) ||
                 $hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(5, 59))
             ) {
                 $turnoDetectado = 'noche';
                 $fechaTurnoDetectado = $hora->hour >= 20 ? $fechaSiguiente : $fecha;
+            }
+            // MAÑANA: 04:00 hasta 13:59
+            elseif ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(13, 59))) {
+                $turnoDetectado = 'mañana';
+                $fechaTurnoDetectado = $fecha;
+            }
+            // TARDE: 12:00 hasta 21:59
+            elseif ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(21, 59))) {
+                $turnoDetectado = 'tarde';
+                $fechaTurnoDetectado = $fecha;
             }
 
             if (!$turnoDetectado || !$fechaTurnoDetectado) {
