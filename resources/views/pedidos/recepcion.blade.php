@@ -32,13 +32,11 @@
                     <h3 class="text-base font-semibold text-gray-800">
                         Albarán abierto: <span class="text-blue-600">{{ $entradaAbierta->albaran }}</span>
                     </h3>
-
                     <form id="cerrar-albaran-form" method="POST"
                         action="{{ route('entradas.cerrar', $entradaAbierta->id) }}" class="hidden">
                         @csrf
                         @method('PATCH')
                     </form>
-
                     <button onclick="confirmarCerrarAlbaran()"
                         class="bg-red-600 text-white text-xs px-3 py-1 rounded hover:bg-red-700">
                         Cerrar Albarán
@@ -53,7 +51,11 @@
                 <ul class="divide-y text-sm text-gray-800">
                     @foreach ($productosDeEstaEntrada as $prod)
                         <li class="py-2 flex justify-between">
-                            <span class="font-semibold uppercase text-gray-900">{{ $prod->codigo }}</span>
+                            <a href="javascript:void(0);" class="font-semibold uppercase text-blue-600 hover:underline"
+                                onclick='editarProducto(@json($prod))'>
+                                {{ $prod->codigo }}
+                            </a>
+
                             <span>
                                 {{ ucfirst($prod->productoBase->tipo ?? '-') }} /
                                 Ø{{ $prod->productoBase->diametro ?? '-' }} mm —
@@ -61,125 +63,219 @@
                             </span>
                         </li>
                     @endforeach
+
                 </ul>
             </div>
         @endif
 
-        @if ($entradaAbierta)
-            <div class="mb-6 bg-white border border-gray-300 rounded shadow p-6 space-y-6 max-w-4xl mx-auto"
-                x-data="{ paquetes: '1' }">
 
-                <h4 class="text-md font-semibold text-gray-800">
-                    {{ ucfirst($producto->tipo) }} / {{ $producto->diametro }} mm —
-                    {{ number_format($producto->pendiente, 2, ',', '.') }} kg restantes
-                </h4>
+        <div class="text-center mt-4">
+            <button onclick="iniciarRecepcion()"
+                class="bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700">
+                ➕ Registrar nuevo paquete
+            </button>
+        </div>
+        {{-- Formulario oculto --}}
+        <form id="recepcionForm" method="POST"
+            action="{{ route('pedidos.recepcion.guardar', ['pedido' => $pedido->id, 'producto_base' => $producto->id]) }}"
+            style="display:none;">
+            @csrf
+            <input type="hidden" name="pedido_id" value="{{ $pedido->id }}">
+            <input type="hidden" name="producto_base_id" value="{{ $producto->id }}">
+            <input type="hidden" name="cantidad_paquetes" id="cantidad_paquetes_input">
+            <input type="hidden" name="codigo" id="codigo_input">
+            <input type="hidden" name="fabricante_manual" id="fabricante_id_input">
+            <input type="hidden" name="n_colada" id="n_colada_input">
+            <input type="hidden" name="n_paquete" id="n_paquete_input">
+            <input type="hidden" name="codigo_2" id="codigo_2_input">
+            <input type="hidden" name="n_colada_2" id="n_colada_2_input">
+            <input type="hidden" name="n_paquete_2" id="n_paquete_2_input">
+            <input type="hidden" name="peso" id="peso_input">
+            <input type="hidden" name="ubicacion_id" id="ubicacion_input">
+            <input type="hidden" name="otros" id="otros_input">
+        </form>
 
-                <form
-                    action="{{ route('pedidos.recepcion.guardar', ['pedido' => $pedido->id, 'producto_base' => $producto->id]) }}"
-                    method="POST" class="space-y-4">
-                    @csrf
-                    <input type="hidden" name="pedido_id" value="{{ $pedido->id }}">
-                    <input type="hidden" name="producto_base_id" value="{{ $producto->id }}">
-                    <input type="hidden" name="cantidad_paquetes" :value="paquetes">
-
-                    {{-- Selector de cantidad --}}
-                    <div class="mb-4">
-                        <label for="cantidad_paquetes" class="block text-gray-700 font-bold mb-2">
-                            ¿Cuántos paquetes quieres recepcionar?
-                        </label>
-                        <select id="cantidad_paquetes" class="w-full px-3 py-2 border rounded-lg" x-model="paquetes">
-                            <option value="1">1 paquete</option>
-                            <option value="2">2 paquetes</option>
-                        </select>
-                    </div>
-
-                    {{-- Primer paquete --}}
-                    <div class="flex flex-col gap-3 bg-gray-100 p-4 rounded-lg border border-gray-300 shadow-sm">
-                        <h3 class="text-blue-700 font-semibold text-base">🧱 Primer paquete</h3>
-
-                        <input type="text" name="codigo" placeholder="Código primer paquete" required
-                            value="{{ old('codigo') }}" class="w-full px-3 py-2 border rounded-lg">
-                        @if ($requiereFabricanteManual)
-
-                            <select name="fabricante_manual" id="fabricante_manual" required
-                                class="w-full px-3 py-2 border rounded-lg">
-                                <option value="">Selecciona un fabricante...</option>
-                                @foreach ($fabricantes as $fabricante)
-                                    <option value="{{ $fabricante->id }}" @selected(old('fabricante_manual', $ultimoFabricante) == $fabricante->id)>
-                                        {{ $fabricante->nombre }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        @endif
-
-
-                        <input type="text" name="n_colada" value="{{ old('n_colada', $coladaPorDefecto) }}"
-                            placeholder="Nº colada" required class="border px-2 py-2 rounded w-full bg-white">
-
-                        <input type="text" name="n_paquete" placeholder="Nº paquete" required
-                            value="{{ old('n_paquete') }}" class="border px-2 py-2 rounded w-full bg-white">
-                    </div>
-
-                    {{-- Segundo paquete (condicional) --}}
-                    <template x-if="paquetes === '2'">
-                        <div
-                            class="flex flex-col gap-3 bg-blue-50 p-4 mt-4 rounded-lg border border-blue-200 shadow-sm">
-                            <h3 class="text-blue-700 font-semibold text-base">🧱 Segundo paquete</h3>
-
-                            <input type="text" name="codigo_2" placeholder="Código segundo paquete"
-                                value="{{ old('codigo_2') }}" class="w-full px-3 py-2 border rounded-lg">
-
-                            <input type="text" name="n_colada_2" placeholder="Nº colada"
-                                value="{{ old('n_colada_2') }}" class="border px-2 py-2 rounded w-full bg-white">
-
-                            <input type="text" name="n_paquete_2" placeholder="Nº paquete"
-                                value="{{ old('n_paquete_2') }}" class="border px-2 py-2 rounded w-full bg-white">
-                        </div>
-                    </template>
-
-                    {{-- Peso y ubicación --}}
-                    <div class="bg-white p-4 border rounded shadow-md">
-                        <div class="mb-2">
-                            <label for="peso" class="block text-gray-700">Peso total (kg):</label>
-                            <input type="number" name="peso" min="1" step="0.01" required x-model="peso"
-                                value="{{ old('peso') }}" class="w-full px-3 py-2 border rounded-lg">
-                            <p class="text-sm text-gray-500 mt-1" x-show="paquetes === '2'">
-                                Se dividirá en partes iguales entre los dos paquetes.
-                            </p>
-                        </div>
-
-                        <div class="mt-4">
-                            <label for="ubicacion_id" class="block text-gray-700">Ubicación:</label>
-                            <select name="ubicacion_id" required class="w-full px-3 py-2 border rounded-lg">
-                                <option value="">Seleccione una ubicación</option>
-                                @foreach ($ubicaciones as $ubicacion)
-                                    <option value="{{ $ubicacion->id }}"
-                                        {{ old('ubicacion_id', $ubicacionPorDefecto) == $ubicacion->id ? 'selected' : '' }}>
-                                        {{ $ubicacion->nombre_sin_prefijo }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="mt-4">
-                            <label for="otros" class="block text-gray-700">Observaciones:</label>
-                            <input type="text" name="otros" value="{{ old('otros') }}"
-                                class="w-full px-3 py-2 border rounded-lg">
-                        </div>
-                    </div>
-
-                    <div class="text-right">
-                        <button type="submit"
-                            class="mt-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                            Confirmar paquete(s)
-                        </button>
-                    </div>
-                </form>
-            </div>
-        @endif
     </div>
 
+
     <script>
+        async function iniciarRecepcion() {
+            try {
+                console.log('🟢 Inicio flujo SweetAlert');
+
+                // Paquetes
+                const {
+                    value: paquetes
+                } = await Swal.fire({
+                    title: '¿Cuántos paquetes?',
+                    input: 'select',
+                    inputOptions: {
+                        '1': '1 paquete',
+                        '2': '2 paquetes'
+                    },
+                    inputPlaceholder: 'Selecciona cantidad',
+                    showCancelButton: true,
+                    inputValidator: (value) => !value && 'Debes seleccionar una opción'
+                });
+                console.log('👉 paquetes', paquetes);
+                if (!paquetes) return;
+                document.getElementById('cantidad_paquetes_input').value = paquetes;
+
+                // Código primer paquete
+                const {
+                    value: codigo
+                } = await Swal.fire({
+                    title: 'Código (escaneado)',
+                    input: 'text',
+                    inputPlaceholder: 'Escanea el código MP...',
+                    inputValidator: (value) => !value && 'Código requerido'
+                });
+                console.log('👉 codigo', codigo);
+                if (!codigo) return;
+                document.getElementById('codigo_input').value = codigo;
+
+                // Nº Colada
+                const {
+                    value: n_colada
+                } = await Swal.fire({
+                    title: 'Número de colada',
+                    input: 'text',
+                    inputValue: '{{ $coladaPorDefecto }}',
+                    inputValidator: (value) => !value && 'Número de colada requerido'
+                });
+                console.log('👉 n_colada', n_colada);
+                if (!n_colada) return;
+                document.getElementById('n_colada_input').value = n_colada;
+
+                // Nº Paquete
+                const {
+                    value: n_paquete
+                } = await Swal.fire({
+                    title: 'Número de paquete',
+                    input: 'number',
+                    inputValidator: (value) => !value && 'Número de paquete requerido'
+                });
+                console.log('👉 n_paquete', n_paquete);
+                if (!n_paquete) return;
+                document.getElementById('n_paquete_input').value = n_paquete;
+
+                // Segundo paquete
+                if (paquetes === '2') {
+                    const {
+                        value: codigo_2
+                    } = await Swal.fire({
+                        title: 'Código segundo paquete',
+                        input: 'text',
+                        inputValidator: (value) => !value && 'Código requerido'
+                    });
+                    console.log('👉 codigo_2', codigo_2);
+                    if (!codigo_2) return;
+                    document.getElementById('codigo_2_input').value = codigo_2;
+
+                    const {
+                        value: n_colada_2
+                    } = await Swal.fire({
+                        title: 'Colada segundo paquete',
+                        input: 'text'
+                    });
+                    console.log('👉 n_colada_2', n_colada_2);
+                    document.getElementById('n_colada_2_input').value = n_colada_2 || '';
+
+                    const {
+                        value: n_paquete_2
+                    } = await Swal.fire({
+                        title: 'Número segundo paquete',
+                        input: 'number'
+                    });
+                    console.log('👉 n_paquete_2', n_paquete_2);
+                    document.getElementById('n_paquete_2_input').value = n_paquete_2 || '';
+                }
+
+                // Peso
+                const {
+                    value: peso
+                } = await Swal.fire({
+                    title: 'Peso total (kg)',
+                    input: 'number',
+                    inputValidator: (value) => (value <= 0 ? 'Introduce un peso válido' : undefined)
+                });
+                console.log('👉 peso', peso);
+                if (!peso) return;
+                document.getElementById('peso_input').value = peso;
+
+                // Ubicación
+                const {
+                    value: metodoUbicacion
+                } = await Swal.fire({
+                    title: '¿Cómo quieres introducir la ubicación?',
+                    input: 'radio',
+                    inputOptions: {
+                        'select': 'Seleccionar de la lista',
+                        'scan': 'Escanear código ubicación'
+                    },
+                    inputValidator: (value) => !value && 'Debes elegir un método',
+                    showCancelButton: true,
+                });
+                console.log('👉 metodoUbicacion', metodoUbicacion);
+                if (!metodoUbicacion) return;
+
+                let ubicacionElegida = '';
+
+                if (metodoUbicacion === 'select') {
+                    const ubicaciones = @json($ubicaciones->pluck('nombre_sin_prefijo', 'id'));
+                    console.log('👉 ubicaciones cargadas', ubicaciones);
+                    const {
+                        value: ubicacion
+                    } = await Swal.fire({
+                        title: 'Ubicación',
+                        input: 'select',
+                        inputOptions: ubicaciones,
+                        inputPlaceholder: 'Selecciona ubicación',
+                        inputValidator: (value) => !value && 'Selecciona ubicación'
+                    });
+                    console.log('👉 ubicacion', ubicacion);
+                    if (!ubicacion) return;
+                    ubicacionElegida = ubicacion;
+                }
+
+                if (metodoUbicacion === 'scan') {
+                    const {
+                        value: ubicacionScan
+                    } = await Swal.fire({
+                        title: 'Escanea la ubicación',
+                        input: 'text',
+                        inputPlaceholder: 'Escanea o introduce el código de ubicación',
+                        inputValidator: (value) => !value && 'Debes introducir un código'
+                    });
+                    console.log('👉 ubicacionScan', ubicacionScan);
+                    if (!ubicacionScan) return;
+                    ubicacionElegida = ubicacionScan;
+                }
+
+                document.getElementById('ubicacion_input').value = ubicacionElegida;
+
+                // Observaciones
+                const {
+                    value: otros
+                } = await Swal.fire({
+                    title: 'Observaciones',
+                    input: 'text',
+                    inputPlaceholder: 'Escribe observaciones (opcional)',
+                    showCancelButton: true
+                });
+                console.log('👉 otros', otros);
+                document.getElementById('otros_input').value = otros || '';
+
+                // ✅ Enviar
+                console.log('✅ Enviando formulario...');
+                document.getElementById('recepcionForm').submit();
+
+            } catch (e) {
+                console.error('❌ Error capturado en catch:', e);
+                Swal.fire('Error', 'Ha ocurrido un error inesperado.', 'error');
+            }
+        }
+
         function confirmarCerrarAlbaran() {
             Swal.fire({
                 title: '¿Cerrar albarán?',
@@ -197,4 +293,100 @@
             });
         }
     </script>
+    <script>
+        function verProducto(prod) {
+            // Puedes personalizar los campos a mostrar:
+            const html = `
+            <div style="text-align:left;">
+                <p><strong>Código:</strong> ${prod.codigo}</p>
+                <p><strong>Tipo:</strong> ${prod.producto_base.tipo ?? ''}</p>
+                <p><strong>Diámetro:</strong> Ø${prod.producto_base.diametro ?? ''} mm</p>
+                <p><strong>Peso inicial:</strong> ${prod.peso_inicial} kg</p>
+                <p><strong>Colada:</strong> ${prod.n_colada ?? '-'}</p>
+                <p><strong>Nº paquete:</strong> ${prod.n_paquete ?? '-'}</p>
+                <p><strong>Ubicación:</strong> ${prod.ubicacion_id ?? '-'}</p>
+                <p><strong>Creado:</strong> ${prod.created_at}</p>
+            </div>
+        `;
+
+            Swal.fire({
+                title: `📦 Detalles`,
+                html: html,
+                confirmButtonText: 'Cerrar',
+                customClass: {
+                    popup: 'text-sm'
+                }
+            });
+        }
+    </script>
+    <script>
+        const fabricantesOptions = @json($fabricantes->pluck('nombre', 'id'));
+
+        async function editarProducto(prod) {
+            console.log('🟢 Abriendo modal para producto', prod);
+
+
+
+            const formHtml = `
+            <input id="swal-codigo" class="swal2-input" placeholder="Código" value="${prod.codigo || ''}">
+            <input id="swal-colada" class="swal2-input" placeholder="Nº Colada" value="${prod.n_colada || ''}">
+            <input id="swal-paquete" class="swal2-input" placeholder="Nº Paquete" value="${prod.n_paquete || ''}">
+            <input id="swal-peso" class="swal2-input" type="number" step="0.01" placeholder="Peso inicial (kg)" value="${prod.peso_inicial || ''}">
+           
+            <input id="swal-ubicacion" class="swal2-input" placeholder="Ubicación" value="${prod.ubicacion_id || ''}">
+        `;
+
+            const {
+                value: formValues
+            } = await Swal.fire({
+                title: 'Editar producto',
+                html: formHtml,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: '💾 Guardar cambios',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    return {
+                        codigo: document.getElementById('swal-codigo').value,
+                        n_colada: document.getElementById('swal-colada').value,
+                        n_paquete: document.getElementById('swal-paquete').value,
+                        peso_inicial: document.getElementById('swal-peso').value,
+
+                        ubicacion_id: document.getElementById('swal-ubicacion').value,
+                    };
+                }
+            });
+
+            if (formValues) {
+                console.log('✅ Datos editados (POST):', formValues);
+
+                // 👉 POST con _method: 'PUT'
+                fetch(`/productos/${prod.id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            ...formValues,
+                            _method: 'PUT'
+                        })
+                    })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Error al actualizar');
+                        return res.json();
+                    })
+                    .then(data => {
+                        Swal.fire('Guardado', 'El producto se actualizó correctamente.', 'success')
+                            .then(() => location.reload());
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Swal.fire('Error', 'No se pudo guardar.', 'error');
+                    });
+            }
+        }
+    </script>
+
 </x-app-layout>

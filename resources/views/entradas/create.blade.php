@@ -137,7 +137,7 @@
                     value: n_paquete
                 } = await Swal.fire({
                     title: 'Número de paquete',
-                    input: 'text',
+                    input: 'number',
                     inputValidator: (value) => !value && 'Número de paquete requerido'
                 });
                 if (!n_paquete) return;
@@ -167,7 +167,7 @@
                         value: n_paquete_2
                     } = await Swal.fire({
                         title: 'Número segundo paquete',
-                        input: 'text'
+                        input: 'number'
                     });
                     document.getElementById('n_paquete_2_input').value = n_paquete_2 || '';
                 }

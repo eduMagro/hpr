@@ -362,43 +362,41 @@ class ProductoController extends Controller
         try {
             $validated = $request->validate([
                 'codigo' => ['required', 'string', 'regex:/^MP.*/i', 'max:255'],
-                'fabricante_id'      => 'required|exists:fabricantes,id',
-                'producto_base_id'  => 'required|exists:productos_base,id',
-                'nombre'            => 'nullable|string|max:255',
-                'n_colada'          => 'required|string|max:255',
-                'n_paquete'         => 'required|string|max:255',
-                'peso_inicial'      => 'required|numeric|between:0,9999999.99',
-                'ubicacion_id'      => 'nullable|integer|exists:ubicaciones,id',
-                'maquina_id'        => 'nullable|integer|exists:maquinas,id',
-                'estado'            => 'nullable|string|max:50',
-                'otros'             => 'nullable|string|max:255',
+                'fabricante_id'      => 'nullable|exists:fabricantes,id',
+                'producto_base_id'   => 'nullable|exists:productos_base,id',
+                'nombre'             => 'nullable|string|max:255',
+                'n_colada'           => 'required|string|max:255',
+                'n_paquete'          => 'required|string|max:255',
+                'peso_inicial'       => 'required|numeric|between:0,9999999.99',
+                'ubicacion_id'       => 'nullable|integer|exists:ubicaciones,id',
+                'maquina_id'         => 'nullable|integer|exists:maquinas,id',
+                'estado'             => 'nullable|string|max:50',
+                'otros'              => 'nullable|string|max:255',
             ], [
                 'codigo.required' => 'El código es obligatorio.',
-                'codigo.regex' => 'El código debe empezar por "MP".',
-
-                'fabricante_id.required'      => 'El fabricante es obligatorio.',
-                'fabricante_id.exists'        => 'El fabricante seleccionado no es válido.',
-                'producto_base_id.required'  => 'El producto base es obligatorio.',
-                'producto_base_id.exists'    => 'El producto base seleccionado no es válido.',
-                'peso_inicial.*'             => 'El peso inicial debe ser un número válido mayor que 0.',
-                'ubicacion_id.exists'        => 'La ubicación seleccionada no es válida.',
-                'maquina_id.exists'          => 'La máquina seleccionada no es válida.',
+                'codigo.regex'    => 'El código debe empezar por "MP".',
+                'fabricante_id.exists'     => 'El fabricante seleccionado no es válido.',
+                'producto_base_id.exists'  => 'El producto base seleccionado no es válido.',
+                'peso_inicial.*'           => 'El peso inicial debe ser un número válido mayor que 0.',
+                'ubicacion_id.exists'      => 'La ubicación seleccionada no es válida.',
+                'maquina_id.exists'        => 'La máquina seleccionada no es válida.',
             ]);
+
             $validated['updated_by'] = auth()->id();
-            // Opcional: si necesitas reflejar los datos del producto base también en el producto
-            $productoBase = ProductoBase::find($validated['producto_base_id']);
 
-            if (!$productoBase) {
-                throw ValidationException::withMessages([
-                    'producto_base_id' => 'No se ha encontrado el producto base seleccionado.',
-                ]);
+            // Solo si se envió producto_base_id
+            if (!empty($validated['producto_base_id'])) {
+                $productoBase = ProductoBase::find($validated['producto_base_id']);
+                if (!$productoBase) {
+                    throw ValidationException::withMessages([
+                        'producto_base_id' => 'No se ha encontrado el producto base seleccionado.',
+                    ]);
+                }
+
+                $validated['tipo']     = strtoupper($productoBase->tipo);
+                $validated['diametro'] = $productoBase->diametro;
+                $validated['longitud'] = $productoBase->longitud;
             }
-
-            // Si los campos existen en la tabla productos y quieres copiarlos:
-            $validated['tipo']     = strtoupper($productoBase->tipo);
-            $validated['diametro'] = $productoBase->diametro;
-            $validated['longitud'] = $productoBase->longitud;
-
 
             if (isset($validated['estado']) && strtoupper($validated['estado']) === 'CONSUMIDO' && $producto->estado !== 'CONSUMIDO') {
                 $this->marcarComoConsumido($producto);
@@ -407,23 +405,35 @@ class ProductoController extends Controller
             $producto->update($validated);
 
             DB::commit();
+
+            // 👇 Si es AJAX, respondemos JSON
+            if ($request->wantsJson()) {
+                return response()->json(['ok' => true, 'producto' => $producto]);
+            }
+
             return redirect()->route('productos.index')->with('success', 'Producto actualizado con éxito.');
         } catch (ValidationException $ve) {
             DB::rollBack();
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $ve->errors()], 422);
+            }
             $errores = collect($ve->errors())
                 ->flatten()
                 ->map(fn($msg) => '• ' . $msg)
                 ->implode("\n");
-
             return redirect()->back()->with('error', $errores)->withInput();
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al actualizar producto: ' . $e->getMessage());
+            if ($request->wantsJson()) {
+                return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
+            }
             return redirect()->back()
                 ->with('error', 'Error inesperado: ' . $e->getMessage())
                 ->withInput();
         }
     }
+
 
     public function solicitarStock(Request $request)
     {
