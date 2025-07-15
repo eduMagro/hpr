@@ -120,79 +120,41 @@ class EstadisticasController extends Controller
         return redirect()->route('estadisticas.stock');
     }
     // ---------------------------------------------------------------- Función para calcular datos de stock, pedidos, necesario y consumos
+    // 👉 Este será tu método principal que llama a los otros
     private function obtenerDatosStock()
     {
-        // 📌 Diámetros estándar con los que vamos a trabajar
-        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
+        $stockData            = $this->getStockData();
+        $pedidosPorDiametro   = $this->getPedidosPorDiametro();
+        $necesarioPorDiametro = $this->getNecesarioPorDiametro();
+        $comparativa          = $this->getComparativa($stockData, $pedidosPorDiametro, $necesarioPorDiametro);
 
-        // 📌 Calcular cuántos elementos pendientes hay por tipo y diámetro
-        $elementosPendientes = Elemento::with('maquina')
-            ->where('estado', 'pendiente')
-            ->get()
-            // Filtramos solo los elementos que tengan máquina y datos válidos
-            ->filter(fn($e) => $e->maquina && $e->maquina->tipo && $e->diametro)
-            // Agrupamos por tipo de material y diámetro (ej: "barra-12")
-            ->groupBy(fn($e) => $e->maquina->tipo_material . '-' . intval($e->diametro))
-            // Sumamos el peso de cada grupo
-            ->map(fn($group) => $group->sum('peso'));
+        $consumos             = $this->getConsumos(); // 👉 devuelve ultimas_2_semanas, ultimo_mes, ultimos_2_meses
+        $resumenReposicion    = $this->getResumenReposicion($consumos);
+        $ids                  = $this->getIds($consumos);
 
-        // 📌 Necesario por diámetro (basado en elementos pendientes)
-        $necesarioPorDiametro = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($elementosPendientes) {
-            // Peso necesario de encarretes
-            $encarretado = $elementosPendientes["encarretado-$diametro"] ?? 0;
-            // Inicializamos las longitudes de barra con 0
-            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
-            // Solo consideramos barras de 12 m como estándar
-            $barrasPorLongitud[12] = $elementosPendientes["barra-$diametro"] ?? 0;
-            $barrasTotal = $barrasPorLongitud->sum();
-            // Devolvemos estructura
-            return [$diametro => [
-                'encarretado' => $encarretado,
-                'barras' => $barrasPorLongitud,
-                'barras_total' => $barrasTotal,
-                'total' => $barrasTotal + $encarretado,
-            ]];
-        });
-
-        // 📌 Pedidos pendientes agrupados por tipo y diámetro
-        $pedidosPendientes = Pedido::with('productos')
-            ->where('estado', 'pendiente')
-            ->get()
-            ->flatMap(fn($pedido) => $pedido->productos->map(fn($p) => [
-                'tipo' => $p->tipo,
-                'diametro' => $p->diametro,
-                'cantidad' => $p->pivot->cantidad,
-            ]))
-            ->groupBy(fn($i) => "{$i['tipo']}-{$i['diametro']}")
-            ->map(fn($g) => collect($g)->sum('cantidad'));
-
-        // 📌 Pedidos por diámetro (estructura similar a necesarioPorDiametro)
-        $pedidosPorDiametro = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($pedidosPendientes) {
-            $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0;
-            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
-            $barrasPorLongitud[12] = $pedidosPendientes["barra-$diametro"] ?? 0;
-            $barrasTotal = $barrasPorLongitud->sum();
-            return [$diametro => [
-                'encarretado' => $encarretado,
-                'barras' => $barrasPorLongitud,
-                'barras_total' => $barrasTotal,
-                'total' => $encarretado + $barrasTotal,
-            ]];
-        });
-
-        // 📌 Productos almacenados actualmente
+        return [
+            'stockData'            => $stockData,
+            'pedidosPorDiametro'   => $pedidosPorDiametro,
+            'necesarioPorDiametro' => $necesarioPorDiametro,
+            'comparativa'          => $comparativa,
+            'totalGeneral'         => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
+            'consumoPorProductoBase' => $consumos,
+            'productoBaseInfo'     => $this->getProductoBaseInfo(),
+            'stockPorProductoBase' => $this->getStockPorProductoBase(),
+            'kgPedidosPorProductoBase' => $this->getKgPedidosPorProductoBase(),
+            'resumenReposicion'    => $resumenReposicion,
+            'ids'                  => $ids,
+        ];
+    }
+    private function getStockData()
+    {
         $productos = Producto::with('productoBase')
             ->where('estado', 'almacenado')
             ->get();
 
-        // 📌 Stock por producto base (agrupamos por ID de producto base)
-        $stockPorProductoBase = $productos
-            ->whereNotNull('producto_base_id')
-            ->groupBy('producto_base_id')
-            ->map(fn($grupo) => round($grupo->sum('peso_stock'), 2));
+        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
-        // 📌 Stock por diámetro (estructurado igual que necesario y pedidos)
-        $stockData = collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
+        return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
             $grupo = $productos->filter(fn($p) => intval($p->productoBase->diametro) === $diametro);
             $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_stock');
             $barras = $grupo->where('productoBase.tipo', 'barra');
@@ -206,113 +168,135 @@ class EstadisticasController extends Controller
                 'total' => $barrasTotal + $encarretado,
             ]];
         });
+    }
+    private function getNecesarioPorDiametro()
+    {
+        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
-        // 📌 Comparativa: disponible + pedido - necesario
+        $elementosPendientes = Elemento::with('maquina')
+            ->where('estado', 'pendiente')
+            ->get()
+            ->filter(fn($e) => $e->maquina && $e->maquina->tipo && $e->diametro)
+            ->groupBy(fn($e) => $e->maquina->tipo_material . '-' . intval($e->diametro))
+            ->map(fn($group) => $group->sum('peso'));
+
+        return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($elementosPendientes) {
+            $encarretado = $elementosPendientes["encarretado-$diametro"] ?? 0;
+            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
+            $barrasPorLongitud[12] = $elementosPendientes["barra-$diametro"] ?? 0;
+            $barrasTotal = $barrasPorLongitud->sum();
+            return [$diametro => [
+                'encarretado' => $encarretado,
+                'barras' => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total' => $barrasTotal + $encarretado,
+            ]];
+        });
+    }
+    private function getPedidosPorDiametro()
+    {
+        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
+
+        $pedidosPendientes = Pedido::with('productos')
+            ->where('estado', 'pendiente')
+            ->get()
+            ->flatMap(fn($pedido) => $pedido->productos->map(fn($p) => [
+                'tipo' => $p->tipo,
+                'diametro' => $p->diametro,
+                'cantidad' => $p->pivot->cantidad,
+            ]))
+            ->groupBy(fn($i) => "{$i['tipo']}-{$i['diametro']}")
+            ->map(fn($g) => collect($g)->sum('cantidad'));
+
+        return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($pedidosPendientes) {
+            $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0;
+            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
+            $barrasPorLongitud[12] = $pedidosPendientes["barra-$diametro"] ?? 0;
+            $barrasTotal = $barrasPorLongitud->sum();
+            return [$diametro => [
+                'encarretado' => $encarretado,
+                'barras' => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total' => $encarretado + $barrasTotal,
+            ]];
+        });
+    }
+    private function getComparativa($stockData, $pedidosPendientes, $necesarioPorDiametro)
+    {
         $comparativa = [];
         foreach ($stockData as $diametro => $data) {
             foreach (['barra', 'encarretado'] as $tipo) {
                 $clave = "{$tipo}-{$diametro}";
-                $pendiente = $elementosPendientes[$clave] ?? 0;
-                $pedido = $pedidosPendientes[$clave] ?? 0;
+                $pendiente = ($tipo === 'barra') ? $necesarioPorDiametro[$diametro]['barras_total'] : $necesarioPorDiametro[$diametro]['encarretado'];
+                $pedido = ($tipo === 'barra') ? $pedidosPendientes[$diametro]['barras_total'] : $pedidosPendientes[$diametro]['encarretado'];
                 $disponible = $tipo === 'barra' ? $data['barras_total'] : $data['encarretado'];
                 $diferencia = $disponible + $pedido - $pendiente;
                 $comparativa[$clave] = compact('tipo', 'diametro', 'pendiente', 'pedido', 'disponible', 'diferencia');
             }
         }
-
-        // ------------------- 📈 Consumo histórico
+        return $comparativa;
+    }
+    private function getConsumos()
+    {
         $hoy = now();
         $hace2Semanas = $hoy->copy()->subWeeks(2);
         $hace1Mes = $hoy->copy()->subMonth();
         $hace2Meses = $hoy->copy()->subMonths(2);
 
-        // Función interna para sumar consumos entre fechas
-        $calcularConsumo = function ($desde, $hasta) {
-            return Movimiento::whereNotNull('maquina_destino')
-                ->whereBetween('fecha_ejecucion', [$desde, $hasta])
-                ->join('productos', 'productos.id', '=', 'movimientos.producto_id')
-                ->select('productos.producto_base_id', DB::raw('SUM(productos.peso_inicial) as total_consumido'))
-                ->groupBy('productos.producto_base_id')
-                ->pluck('total_consumido', 'productos.producto_base_id')
-                ->map(fn($peso) => round($peso, 2));
-        };
+        $calcular = fn($desde, $hasta) =>
+        Movimiento::whereNotNull('maquina_destino')
+            ->whereBetween('fecha_ejecucion', [$desde, $hasta])
+            ->join('productos', 'productos.id', '=', 'movimientos.producto_id')
+            ->select('productos.producto_base_id', DB::raw('SUM(productos.peso_inicial) as total_consumido'))
+            ->groupBy('productos.producto_base_id')
+            ->pluck('total_consumido', 'productos.producto_base_id')
+            ->map(fn($peso) => round($peso, 2));
 
-        // Consumos reales
-        $consumo2Semanas = $calcularConsumo($hace2Semanas, $hoy);
-        $consumo1Mes     = $calcularConsumo($hace1Mes, $hoy);
-        $consumo2Meses   = $calcularConsumo($hace2Meses, $hoy);
+        $consumo2Semanas = $calcular($hace2Semanas, $hoy);
+        $consumo1Mes     = $calcular($hace1Mes, $hoy);
+        $consumo2Meses   = $calcular($hace2Meses, $hoy);
 
-        $consumoManual2Semanas = Producto::where('estado', 'consumido')
-            ->whereBetween('fecha_consumido', [$hace2Semanas, $hoy])
+        $manual = fn($desde, $hasta) =>
+        Producto::where('estado', 'consumido')
+            ->whereBetween('fecha_consumido', [$desde, $hasta])
             ->whereNotNull('producto_base_id')
             ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
             ->groupBy('producto_base_id')
             ->pluck('total_manual', 'producto_base_id')
             ->map(fn($peso) => round($peso, 2));
 
-        $consumoManual1Mes = Producto::where('estado', 'consumido')
-            ->whereBetween('fecha_consumido', [$hace1Mes, $hoy])
-            ->whereNotNull('producto_base_id')
-            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
-            ->groupBy('producto_base_id')
-            ->pluck('total_manual', 'producto_base_id')
-            ->map(fn($peso) => round($peso, 2));
-
-        $consumoManual2Meses = Producto::where('estado', 'consumido')
-            ->whereBetween('fecha_consumido', [$hace2Meses, $hoy])
-            ->whereNotNull('producto_base_id')
-            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
-            ->groupBy('producto_base_id')
-            ->pluck('total_manual', 'producto_base_id')
-            ->map(fn($peso) => round($peso, 2));
         $consumo2SemanasTotal = $consumo2Semanas->mapWithKeys(
-            fn($valor, $id) => [$id => $valor + ($consumoManual2Semanas[$id] ?? 0)]
+            fn($v, $id) => [$id => $v + ($manual($hace2Semanas, $hoy)[$id] ?? 0)]
         );
-
         $consumo1MesTotal = $consumo1Mes->mapWithKeys(
-            fn($valor, $id) => [$id => $valor + ($consumoManual1Mes[$id] ?? 0)]
+            fn($v, $id) => [$id => $v + ($manual($hace1Mes, $hoy)[$id] ?? 0)]
         );
-
         $consumo2MesesTotal = $consumo2Meses->mapWithKeys(
-            fn($valor, $id) => [$id => $valor + ($consumoManual2Meses[$id] ?? 0)]
+            fn($v, $id) => [$id => $v + ($manual($hace2Meses, $hoy)[$id] ?? 0)]
         );
 
+        return [
+            'ultimas_2_semanas' => $consumo2SemanasTotal,
+            'ultimo_mes'        => $consumo1MesTotal,
+            'ultimos_2_meses'   => $consumo2MesesTotal,
+        ];
+    }
+    private function getResumenReposicion($consumos)
+    {
+        $stockPorProductoBase = $this->getStockPorProductoBase();
+        $kgPedidosPorProductoBase = $this->getKgPedidosPorProductoBase();
+        $productosBase = $this->getProductoBaseInfo();
 
-        // 📌 Pedidos pendientes por producto base
-        $kgPedidosPorProductoBase = DB::table('pedido_productos')
-            ->join('productos_base', 'productos_base.id', '=', 'pedido_productos.producto_base_id')
-            ->join('pedidos', 'pedidos.id', '=', 'pedido_productos.pedido_id')
-            ->where('pedidos.estado', 'pendiente')
-            ->whereNotNull('pedido_productos.cantidad')
-            ->groupBy('pedido_productos.producto_base_id')
-            ->select('pedido_productos.producto_base_id', DB::raw('SUM(pedido_productos.cantidad) as total_pedido'))
-            ->pluck('total_pedido', 'pedido_productos.producto_base_id')
-            ->map(fn($valor) => round($valor, 2));
-
-        // 📌 Información básica de productos base
-        $productosBase = ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
-            ->keyBy('id')
-            ->map(fn($p) => [
-                'tipo' => $p->tipo,
-                'diametro' => intval($p->diametro),
-                'longitud' => $p->tipo === 'barra' ? $p->longitud : null,
-            ]);
-
-        // 📌 Ahora cuando prepares el resumenReposicion, usa ya estas variables:
-        $resumenReposicion = collect($productosBase)->mapWithKeys(function ($info, $id) use (
-            $consumo2SemanasTotal,
-            $consumo1MesTotal,
-            $consumo2MesesTotal,
+        return collect($productosBase)->mapWithKeys(function ($info, $id) use (
+            $consumos,
             $stockPorProductoBase,
             $kgPedidosPorProductoBase
         ) {
-            $consumo14d = $consumo2SemanasTotal[$id] ?? 0;
-            $consumo30d = $consumo1MesTotal[$id] ?? 0;
-            $consumo60d = $consumo2MesesTotal[$id] ?? 0;
-
+            $consumo14d = $consumos['ultimas_2_semanas'][$id] ?? 0;
+            $consumo30d = $consumos['ultimo_mes'][$id] ?? 0;
+            $consumo60d = $consumos['ultimos_2_meses'][$id] ?? 0;
             $stock = $stockPorProductoBase[$id] ?? 0;
             $pedido = $kgPedidosPorProductoBase[$id] ?? 0;
-
             $reposicionNecesaria = max($consumo30d - $stock - $pedido, 0);
 
             return [$id => [
@@ -327,32 +311,49 @@ class EstadisticasController extends Controller
                 'reposicion' => round($reposicionNecesaria, 2),
             ]];
         });
-        $ids = collect($consumo2SemanasTotal)
+    }
+    private function getProductoBaseInfo()
+    {
+        return ProductoBase::all(['id', 'tipo', 'diametro', 'longitud'])
+            ->keyBy('id')
+            ->map(fn($p) => [
+                'tipo' => $p->tipo,
+                'diametro' => intval($p->diametro),
+                'longitud' => $p->tipo === 'barra' ? $p->longitud : null,
+            ]);
+    }
+
+    private function getStockPorProductoBase()
+    {
+        return Producto::where('estado', 'almacenado')
+            ->whereNotNull('producto_base_id')
+            ->groupBy('producto_base_id')
+            ->select('producto_base_id', DB::raw('SUM(peso_stock) as total'))
+            ->pluck('total', 'producto_base_id')
+            ->map(fn($p) => round($p, 2));
+    }
+
+    private function getKgPedidosPorProductoBase()
+    {
+        return DB::table('pedido_productos')
+            ->join('pedidos', 'pedidos.id', '=', 'pedido_productos.pedido_id')
+            ->where('pedidos.estado', 'pendiente')
+            ->groupBy('pedido_productos.producto_base_id')
+            ->select('pedido_productos.producto_base_id', DB::raw('SUM(pedido_productos.cantidad) as total_pedido'))
+            ->pluck('total_pedido', 'pedido_productos.producto_base_id')
+            ->map(fn($p) => round($p, 2));
+    }
+
+    private function getIds($consumos)
+    {
+        return collect($consumos['ultimas_2_semanas'])
             ->keys()
-            ->merge($consumo1MesTotal->keys())
-            ->merge($consumo2MesesTotal->keys())
+            ->merge($consumos['ultimo_mes']->keys())
+            ->merge($consumos['ultimos_2_meses']->keys())
             ->unique()
             ->sort();
-
-        // 📌 Devolvemos todos los datos listos para las vistas
-        return [
-            'stockData' => $stockData,
-            'pedidosPorDiametro' => $pedidosPorDiametro,
-            'necesarioPorDiametro' => $necesarioPorDiametro,
-            'comparativa' => $comparativa,
-            'totalGeneral' => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
-            'consumoPorProductoBase' => [
-                'ultimas_2_semanas' => $consumo2SemanasTotal,
-                'ultimo_mes' => $consumo1MesTotal,
-                'ultimos_2_meses' => $consumo2MesesTotal,
-            ],
-            'productoBaseInfo' => $productosBase,
-            'stockPorProductoBase' => $stockPorProductoBase,
-            'kgPedidosPorProductoBase' => $kgPedidosPorProductoBase,
-            'resumenReposicion' => $resumenReposicion,
-            'ids' => $ids,
-        ];
     }
+
 
     // ---------------------------------------------------------------- Función para calcular el stock deseado
 
