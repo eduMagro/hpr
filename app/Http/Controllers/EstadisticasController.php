@@ -150,26 +150,37 @@ class EstadisticasController extends Controller
     }
     private function getStockData()
     {
-        $productos = Producto::with('productoBase')
+        // Obtenemos todos los productos almacenados junto con su base
+        $productos = Producto::with('productoBase:id,tipo,diametro,longitud')
             ->where('estado', 'almacenado')
             ->get();
 
-        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
+        // Agrupamos por diámetro
+        return $productos
+            ->groupBy(fn($p) => $p->productoBase->diametro)
+            ->mapWithKeys(function ($productosPorDiametro, $diametro) {
+                // Filtrar por tipo encarretado
+                $encarretado = $productosPorDiametro
+                    ->where('productoBase.tipo', 'encarretado')
+                    ->sum('peso_inicial');
 
-        return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
-            $grupo = $productos->filter(fn($p) => intval($p->productoBase->diametro) === $diametro);
-            $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_inicial');
-            $barras = $grupo->where('productoBase.tipo', 'barra');
-            $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)
-                ->map(fn($g) => $g->sum('peso_inicial'));
-            $barrasTotal = $barrasPorLongitud->sum();
-            return [$diametro => [
-                'encarretado' => $encarretado,
-                'barras' => $barrasPorLongitud,
-                'barras_total' => $barrasTotal,
-                'total' => $barrasTotal + $encarretado,
-            ]];
-        });
+                // Filtrar por barras y agrupar por longitud
+                $barrasPorLongitud = $productosPorDiametro
+                    ->where('productoBase.tipo', 'barra')
+                    ->groupBy(fn($p) => $p->productoBase->longitud)
+                    ->map(fn($grupo) => $grupo->sum('peso_inicial'));
+
+                $barrasTotal = $barrasPorLongitud->sum();
+
+                return [
+                    $diametro => [
+                        'encarretado' => $encarretado,
+                        'barras' => $barrasPorLongitud,
+                        'barras_total' => $barrasTotal,
+                        'total' => $barrasTotal + $encarretado,
+                    ]
+                ];
+            });
     }
     private function getNecesarioPorDiametro()
     {
