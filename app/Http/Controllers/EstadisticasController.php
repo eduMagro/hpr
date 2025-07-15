@@ -243,37 +243,45 @@ class EstadisticasController extends Controller
         $hace1Mes = $hoy->copy()->subMonth();
         $hace2Meses = $hoy->copy()->subMonths(2);
 
+        // 👉 Consultas separadas una sola vez
+        $manual2Semanas = Producto::where('estado', 'consumido')
+            ->whereBetween('fecha_consumido', [$hace2Semanas, $hoy])
+            ->whereNotNull('producto_base_id')
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
+            ->groupBy('producto_base_id')
+            ->pluck('total_manual', 'producto_base_id');
+
+        $manual1Mes = Producto::where('estado', 'consumido')
+            ->whereBetween('fecha_consumido', [$hace1Mes, $hoy])
+            ->whereNotNull('producto_base_id')
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
+            ->groupBy('producto_base_id')
+            ->pluck('total_manual', 'producto_base_id');
+
+        $manual2Meses = Producto::where('estado', 'consumido')
+            ->whereBetween('fecha_consumido', [$hace2Meses, $hoy])
+            ->whereNotNull('producto_base_id')
+            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
+            ->groupBy('producto_base_id')
+            ->pluck('total_manual', 'producto_base_id');
+
+        // 👉 Consumos reales
         $calcular = fn($desde, $hasta) =>
         Movimiento::whereNotNull('maquina_destino')
             ->whereBetween('fecha_ejecucion', [$desde, $hasta])
             ->join('productos', 'productos.id', '=', 'movimientos.producto_id')
             ->select('productos.producto_base_id', DB::raw('SUM(productos.peso_inicial) as total_consumido'))
             ->groupBy('productos.producto_base_id')
-            ->pluck('total_consumido', 'productos.producto_base_id')
-            ->map(fn($peso) => round($peso, 2));
+            ->pluck('total_consumido', 'productos.producto_base_id');
 
         $consumo2Semanas = $calcular($hace2Semanas, $hoy);
-        $consumo1Mes     = $calcular($hace1Mes, $hoy);
-        $consumo2Meses   = $calcular($hace2Meses, $hoy);
+        $consumo1Mes = $calcular($hace1Mes, $hoy);
+        $consumo2Meses = $calcular($hace2Meses, $hoy);
 
-        $manual = fn($desde, $hasta) =>
-        Producto::where('estado', 'consumido')
-            ->whereBetween('fecha_consumido', [$desde, $hasta])
-            ->whereNotNull('producto_base_id')
-            ->select('producto_base_id', DB::raw('SUM(peso_inicial) as total_manual'))
-            ->groupBy('producto_base_id')
-            ->pluck('total_manual', 'producto_base_id')
-            ->map(fn($peso) => round($peso, 2));
-
-        $consumo2SemanasTotal = $consumo2Semanas->mapWithKeys(
-            fn($v, $id) => [$id => $v + ($manual($hace2Semanas, $hoy)[$id] ?? 0)]
-        );
-        $consumo1MesTotal = $consumo1Mes->mapWithKeys(
-            fn($v, $id) => [$id => $v + ($manual($hace1Mes, $hoy)[$id] ?? 0)]
-        );
-        $consumo2MesesTotal = $consumo2Meses->mapWithKeys(
-            fn($v, $id) => [$id => $v + ($manual($hace2Meses, $hoy)[$id] ?? 0)]
-        );
+        // 👉 Combinar consumos + manuales
+        $consumo2SemanasTotal = $consumo2Semanas->mapWithKeys(fn($v, $id) => [$id => $v + ($manual2Semanas[$id] ?? 0)]);
+        $consumo1MesTotal     = $consumo1Mes->mapWithKeys(fn($v, $id) => [$id => $v + ($manual1Mes[$id] ?? 0)]);
+        $consumo2MesesTotal   = $consumo2Meses->mapWithKeys(fn($v, $id) => [$id => $v + ($manual2Meses[$id] ?? 0)]);
 
         return [
             'ultimas_2_semanas' => $consumo2SemanasTotal,
@@ -281,6 +289,7 @@ class EstadisticasController extends Controller
             'ultimos_2_meses'   => $consumo2MesesTotal,
         ];
     }
+
     private function getResumenReposicion($consumos)
     {
         $stockPorProductoBase = $this->getStockPorProductoBase();
