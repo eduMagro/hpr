@@ -469,18 +469,57 @@ class PedidoController extends Controller
                 return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
             }
 
-            $request->validate([
-                'codigo'             => 'required|string|unique:productos,codigo|max:20',
-                'codigo_2'           => 'nullable|string|unique:productos,codigo|max:20',
-                'producto_base_id'   => 'required|exists:productos_base,id',
-                'peso'               => 'required|numeric|min:1',
-                'n_colada'           => 'required|string|max:50',
-                'n_paquete'          => 'required|string|max:50',
-                'n_colada_2'         => 'nullable|string|max:50',
-                'n_paquete_2'        => 'nullable|string|max:50',
-                'ubicacion_id'       => 'required|exists:ubicaciones,id',
-                'fabricante_manual'  => 'nullable|string|max:100',
-            ]);
+            $request->validate(
+                [
+                    'codigo'             => 'required|string|unique:productos,codigo|max:20',
+                    'codigo_2'           => 'nullable|string|unique:productos,codigo|max:20',
+                    'producto_base_id'   => 'required|exists:productos_base,id',
+                    'peso'               => 'required|numeric|min:1',
+                    'n_colada'           => 'required|string|max:50',
+                    'n_paquete'          => 'required|string|max:50',
+                    'n_colada_2'         => 'nullable|string|max:50',
+                    'n_paquete_2'        => 'nullable|string|max:50',
+                    'ubicacion_id'       => 'required|exists:ubicaciones,id',
+                    'fabricante_manual'  => 'nullable|string|max:100',
+                ],
+                [
+                    'codigo.required'   => 'El código es obligatorio.',
+                    'codigo.string'     => 'El código debe ser un texto.',
+                    'codigo.unique'     => 'Ese código ya existe.',
+                    'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
+
+                    'codigo_2.string'   => 'El segundo código debe ser un texto.',
+                    'codigo_2.unique'   => 'Ese segundo código ya existe.',
+                    'codigo_2.max'      => 'El segundo código no puede tener más de 20 caracteres.',
+
+                    'producto_base_id.required' => 'El producto base es obligatorio.',
+                    'producto_base_id.exists'   => 'El producto base seleccionado no es válido.',
+
+                    'peso.required'     => 'El peso es obligatorio.',
+                    'peso.numeric'      => 'El peso debe ser un número.',
+                    'peso.min'          => 'El peso debe ser mayor que cero.',
+
+                    'n_colada.required' => 'El número de colada es obligatorio.',
+                    'n_colada.string'   => 'El número de colada debe ser texto.',
+                    'n_colada.max'      => 'El número de colada no puede tener más de 50 caracteres.',
+
+                    'n_paquete.required' => 'El número de paquete es obligatorio.',
+                    'n_paquete.string'   => 'El número de paquete debe ser texto.',
+                    'n_paquete.max'      => 'El número de paquete no puede tener más de 50 caracteres.',
+
+                    'n_colada_2.string' => 'El número de colada del segundo paquete debe ser texto.',
+                    'n_colada_2.max'    => 'El número de colada del segundo paquete no puede tener más de 50 caracteres.',
+
+                    'n_paquete_2.string' => 'El número de paquete del segundo paquete debe ser texto.',
+                    'n_paquete_2.max'    => 'El número de paquete del segundo paquete no puede tener más de 50 caracteres.',
+
+                    'ubicacion_id.required' => 'La ubicación es obligatoria.',
+                    'ubicacion_id.exists'   => 'La ubicación seleccionada no es válida.',
+
+                    'fabricante_manual.string' => 'El fabricante debe ser texto.',
+                    'fabricante_manual.max'    => 'El fabricante no puede tener más de 100 caracteres.',
+                ]
+            );
 
             $esDoble         = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
             $peso            = floatval($request->input('peso'));

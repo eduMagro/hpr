@@ -206,50 +206,55 @@
                 document.getElementById('peso_input').value = peso;
 
                 // Ubicación
-                const {
-                    value: metodoUbicacion
-                } = await Swal.fire({
-                    title: '¿Cómo quieres introducir la ubicación?',
-                    input: 'radio',
-                    inputOptions: {
-                        'select': 'Seleccionar de la lista',
-                        'scan': 'Escanear código ubicación'
-                    },
-                    inputValidator: (value) => !value && 'Debes elegir un método',
-                    showCancelButton: true,
-                });
-                console.log('👉 metodoUbicacion', metodoUbicacion);
-                if (!metodoUbicacion) return;
-
                 let ubicacionElegida = '';
+                const {
+                    value: ubicacionSel
+                } = await Swal.fire({
+                    title: 'Selecciona ubicación',
+                    html: `
+    <div style="display:flex;flex-direction:column;align-items:stretch;gap:12px;text-align:left;">
+      <label style="font-weight:600;font-size:14px;">Ubicación</label>
+      <select id="swal-ubicacion" style="
+        width:100%;
+        padding:8px;
+        border:1px solid #ccc;
+        border-radius:4px;
+        font-size:14px;
+        box-sizing:border-box;
+      ">
+        ${Object.entries(@json($ubicaciones->pluck('nombre_sin_prefijo', 'id')))
+          .map(([id,nombre]) =>
+            `<option value="${id}" ${id == '{{ $ubicacionPorDefecto }}' ? 'selected' : ''}>${nombre}</option>`
+          ).join('')}
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:14px;margin-top:4px;">
+        <input type="checkbox" id="swal-scan-checkbox" style="transform:scale(1.2);">
+        Quiero escanear en su lugar
+      </label>
+    </div>
+  `,
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Continuar',
+                    preConfirm: () => {
+                        return document.getElementById('swal-ubicacion').value;
+                    }
+                });
+                if (!ubicacionSel) return;
+                ubicacionElegida = ubicacionSel;
 
-                if (metodoUbicacion === 'select') {
-                    const ubicaciones = @json($ubicaciones->pluck('nombre_sin_prefijo', 'id'));
-                    console.log('👉 ubicaciones cargadas', ubicaciones);
-                    const {
-                        value: ubicacion
-                    } = await Swal.fire({
-                        title: 'Ubicación',
-                        input: 'select',
-                        inputOptions: ubicaciones,
-                        inputPlaceholder: 'Selecciona ubicación',
-                        inputValidator: (value) => !value && 'Selecciona ubicación'
-                    });
-                    console.log('👉 ubicacion', ubicacion);
-                    if (!ubicacion) return;
-                    ubicacionElegida = ubicacion;
-                }
-
-                if (metodoUbicacion === 'scan') {
+                // Si marcó escanear
+                const scanCheckbox = Swal.getPopup()?.querySelector('#swal-scan-checkbox');
+                if (scanCheckbox && scanCheckbox.checked) {
                     const {
                         value: ubicacionScan
                     } = await Swal.fire({
                         title: 'Escanea la ubicación',
                         input: 'text',
                         inputPlaceholder: 'Escanea o introduce el código de ubicación',
-                        inputValidator: (value) => !value && 'Debes introducir un código'
+                        inputValidator: (value) => !value && 'Debes introducir un código',
+                        showCancelButton: true
                     });
-                    console.log('👉 ubicacionScan', ubicacionScan);
                     if (!ubicacionScan) return;
                     ubicacionElegida = ubicacionScan;
                 }

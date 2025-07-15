@@ -33,10 +33,36 @@
         </button> --}}
 
     </div>
+
+    @if ($errors->any())
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const errores = `{!! implode('<br>', $errors->all()) !!}`;
+
+                Swal.fire({
+                    title: '⚠️ Errores de validación',
+                    html: errores,
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    // ✅ Relanza el flujo solo después de ver los errores
+                    iniciarRegistro();
+                });
+            });
+        </script>
+    @else
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                iniciarRegistro(); // 🚀 Llama directamente al flujo de SweetAlert al cargar
+            });
+        </script>
+    @endif
+
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            iniciarRegistro(); // 🚀 Llama directamente al flujo de SweetAlert al cargar
-        });
+        const ubicaciones = @json($ubicaciones->pluck('nombre_sin_prefijo', 'id'));
+        const fabricantes = @json($fabricantes->pluck('nombre', 'id'));
+
         async function iniciarRegistro() {
             try {
                 // Paquetes
@@ -49,10 +75,12 @@
                         '1': '1 paquete',
                         '2': '2 paquetes'
                     },
+                    inputValue: '1', // 👈 Valor por defecto seleccionado
                     inputPlaceholder: 'Selecciona cantidad',
                     showCancelButton: true,
                     inputValidator: (value) => !value && 'Debes seleccionar una opción'
                 });
+                console.log('👉 paquetes', paquetes);
                 if (!paquetes) return;
                 document.getElementById('cantidad_paquetes_input').value = paquetes;
 
@@ -71,17 +99,13 @@
                 document.getElementById('codigo_input').value = codigo;
 
                 // Fabricante
-                const fabricantes = {
-                    @foreach ($fabricantes as $fabricante)
-                        {{ $fabricante->id }}: '{{ $fabricante->nombre }}',
-                    @endforeach
-                };
                 const {
                     value: fabricante_id
                 } = await Swal.fire({
                     title: 'Fabricante',
                     input: 'select',
                     inputOptions: fabricantes,
+                    inputValue: '{{ $ultimoFabricanteId }}', // ✅ valor por defecto
                     inputPlaceholder: 'Selecciona fabricante',
                     showCancelButton: true,
                     inputValidator: (value) => !value && 'Selecciona fabricante'
@@ -90,16 +114,7 @@
                 document.getElementById('fabricante_id_input').value = fabricante_id;
 
                 // Albarán
-                const {
-                    value: albaran
-                } = await Swal.fire({
-                    title: 'Albarán',
-                    input: 'text',
-                    inputValue: 'Entrada manual',
-                    inputValidator: (value) => !value && 'Albarán requerido'
-                });
-                if (!albaran) return;
-                document.getElementById('albaran_input').value = albaran;
+                document.getElementById('albaran_input').value = 'Entrada manual';
 
                 // Producto base
                 const productosBase = {
@@ -113,10 +128,12 @@
                     title: 'Producto base',
                     input: 'select',
                     inputOptions: productosBase,
+                    inputValue: '{{ $ultimoProductoBaseId }}', // ✅ valor por defecto
                     inputPlaceholder: 'Selecciona producto base',
                     showCancelButton: true,
                     inputValidator: (value) => !value && 'Selecciona producto base'
                 });
+
                 if (!producto_base_id) return;
                 document.getElementById('producto_base_id_input').value = producto_base_id;
 
@@ -183,58 +200,64 @@
                 if (!peso) return;
                 document.getElementById('peso_input').value = peso;
 
-                // Ubicación
-                // Preguntar método de ubicación
-                const {
-                    value: metodoUbicacion
-                } = await Swal.fire({
-                    title: '¿Cómo quieres introducir la ubicación?',
-                    input: 'radio',
-                    inputOptions: {
-                        'select': 'Seleccionar de la lista',
-                        'scan': 'Escanear código ubicación'
-                    },
-                    inputValidator: (value) => !value && 'Debes elegir un método',
-                    showCancelButton: true,
-                });
-                if (!metodoUbicacion) return;
-
+                // 👉 Primero mostrar el select con la última ubicación seleccionada por defecto
                 let ubicacionElegida = '';
+                const {
+                    value: ubicacionSel
+                } = await Swal.fire({
+                    title: 'Selecciona ubicación',
+                    html: `
+  <div style="display:flex;flex-direction:column;align-items:stretch;gap:12px;text-align:left;">
+    <label style="font-weight:600;font-size:14px;">Ubicación</label>
+    <select id="swal-ubicacion" style="
+      width:100%;
+      padding:8px;
+      border:1px solid #ccc;
+      border-radius:4px;
+      font-size:14px;
+      box-sizing:border-box;
+    ">
+      ${Object.entries(@json($ubicaciones->pluck('nombre_sin_prefijo', 'id')))
+        .map(([id,nombre]) =>
+          `<option value="${id}" ${id == '{{ $ultimaUbicacionId }}' ? 'selected' : ''}>${nombre}</option>`
+        ).join('')}
+    </select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:14px;margin-top:4px;">
+      <input type="checkbox" id="swal-scan-checkbox" style="transform:scale(1.2);">
+      Quiero escanear en su lugar
+    </label>
+  </div>
+`,
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Continuar',
+                    preConfirm: () => {
+                        // devuelve la seleccion inicial
+                        return document.getElementById('swal-ubicacion').value;
+                    }
+                });
+                if (!ubicacionSel) return;
+                ubicacionElegida = ubicacionSel;
 
-                // Si selecciona de lista
-                if (metodoUbicacion === 'select') {
-
-                    const ubicaciones = @json($ubicaciones->pluck('nombre_sin_prefijo', 'id'));
-
-                    const {
-                        value: ubicacion
-                    } = await Swal.fire({
-                        title: 'Ubicación',
-                        input: 'select',
-                        inputOptions: ubicaciones,
-                        inputPlaceholder: 'Selecciona ubicación',
-                        inputValidator: (value) => !value && 'Selecciona ubicación'
-                    });
-                    if (!ubicacion) return;
-                    ubicacionElegida = ubicacion;
-                }
-
-                // Si escanea código
-                if (metodoUbicacion === 'scan') {
+                // 👉 Ahora comprobamos si el usuario quiere escanear
+                const scanCheckbox = Swal.getPopup()?.querySelector('#swal-scan-checkbox');
+                if (scanCheckbox && scanCheckbox.checked) {
                     const {
                         value: ubicacionScan
                     } = await Swal.fire({
                         title: 'Escanea la ubicación',
                         input: 'text',
                         inputPlaceholder: 'Escanea o introduce el código de ubicación',
-                        inputValidator: (value) => !value && 'Debes introducir un código'
+                        inputValidator: (value) => !value && 'Debes introducir un código',
+                        showCancelButton: true
                     });
                     if (!ubicacionScan) return;
-                    ubicacionElegida = ubicacionScan; // aquí guardas el texto escaneado
+                    ubicacionElegida = ubicacionScan;
                 }
 
-                // Guardar en el hidden y enviar
+                // 👉 Guardar el resultado final en el input oculto
                 document.getElementById('ubicacion_input').value = ubicacionElegida;
+
 
 
                 // ✅ Enviar
