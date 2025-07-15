@@ -150,35 +150,34 @@ class EstadisticasController extends Controller
     }
     private function getStockData()
     {
-        // Obtenemos todos los productos almacenados junto con su base
         $productos = Producto::with('productoBase:id,tipo,diametro,longitud')
             ->where('estado', 'almacenado')
             ->get();
 
-        // Agrupamos por diámetro
+        // Agrupamos por producto_base_id
         return $productos
-            ->groupBy(fn($p) => $p->productoBase->diametro)
-            ->mapWithKeys(function ($productosPorDiametro, $diametro) {
-                // Filtrar por tipo encarretado
-                $encarretado = $productosPorDiametro
-                    ->where('productoBase.tipo', 'encarretado')
-                    ->sum('peso_inicial');
+            ->groupBy('producto_base_id')
+            ->map(function ($grupo) {
+                $base = $grupo->first()->productoBase;
+                $encarretado = $base->tipo === 'encarretado'
+                    ? $grupo->sum('peso_inicial')
+                    : 0;
 
-                // Filtrar por barras y agrupar por longitud
-                $barrasPorLongitud = $productosPorDiametro
-                    ->where('productoBase.tipo', 'barra')
-                    ->groupBy(fn($p) => $p->productoBase->longitud)
-                    ->map(fn($grupo) => $grupo->sum('peso_inicial'));
-
-                $barrasTotal = $barrasPorLongitud->sum();
+                // Si es barra, agrupar por longitud
+                $barrasPorLongitud = collect();
+                if ($base->tipo === 'barra') {
+                    $barrasPorLongitud = $grupo->groupBy(fn($p) => $p->productoBase->longitud)
+                        ->map(fn($g) => $g->sum('peso_inicial'));
+                }
 
                 return [
-                    $diametro => [
-                        'encarretado' => $encarretado,
-                        'barras' => $barrasPorLongitud,
-                        'barras_total' => $barrasTotal,
-                        'total' => $barrasTotal + $encarretado,
-                    ]
+                    'producto_base_id' => $base->id,
+                    'tipo' => $base->tipo,
+                    'diametro' => $base->diametro,
+                    'longitudes' => $barrasPorLongitud,
+                    'barras_total' => $barrasPorLongitud->sum(),
+                    'encarretado' => $encarretado,
+                    'total' => $barrasPorLongitud->sum() + $encarretado,
                 ];
             });
     }
