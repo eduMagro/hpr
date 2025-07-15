@@ -170,8 +170,9 @@
     </div>
 
 
+
     {{-- 📊 CONSUMO HISTÓRICO --}}
-    @if (!empty($consumoPorProductoBase))
+    @if (!empty($resumenReposicion))
         <h2 class="text-2xl font-bold text-blue-900 mt-4">📊 Consumo histórico por producto base</h2>
 
         <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200">
@@ -217,42 +218,44 @@
                 </thead>
 
                 <tbody class="bg-white">
-                    @foreach ($resumenReposicion as $item)
+                    @foreach ($resumenReposicion as $id => $item)
                         <tr class="hover:bg-blue-50 transition">
                             <td class="px-4 py-2 border">{{ ucfirst($item['tipo']) }}</td>
                             <td class="px-4 py-2 border">{{ $item['diametro'] }}</td>
                             <td class="px-4 py-2 border">
                                 {{ $item['tipo'] === 'barra' ? $item['longitud'] . ' m' : '—' }}
                             </td>
+
+                            {{-- Aquí usamos el ID para acceder a los consumos por mes --}}
                             <td class="border px-2 py-1">
-                                {{ $consumosPorMes['mes_hace_dos'][$item] ?? 0 }}
+                                {{ number_format($consumosPorMes['mes_hace_dos'][$id] ?? 0, 2, ',', '.') }}
                             </td>
                             <td class="border px-2 py-1">
-                                {{ $consumosPorMes['mes_anterior'][$item] ?? 0 }}
+                                {{ number_format($consumosPorMes['mes_anterior'][$id] ?? 0, 2, ',', '.') }}
                             </td>
                             <td class="border px-2 py-1">
-                                {{ $consumosPorMes['mes_actual'][$item] ?? 0 }}
+                                {{ number_format($consumosPorMes['mes_actual'][$id] ?? 0, 2, ',', '.') }}
                             </td>
+
                             <td class="px-4 py-2 border">{{ number_format($item['stock'], 2, ',', '.') }} kg</td>
                             <td class="px-4 py-2 border">
                                 {{ ($item['consumo_ant'] ?? 0) > 0 ? round($item['stock'] / ($item['consumo_ant'] / 30), 1) : '∞' }}
                                 días
                             </td>
-
                             <td class="px-4 py-2 border">
                                 {{ number_format((($item['consumo_ant'] ?? 0) / 30) * 5, 2, ',', '.') }} kg
                             </td>
-
+                            <td class="px-4 py-2 border">
+                                {{ number_format($item['pedido'], 2, ',', '.') }} kg
+                            </td>
                             <td
                                 class="px-4 py-2 border {{ $item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0) < 0 ? 'text-red-600' : 'text-green-700' }}">
                                 {{ number_format($item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0), 2, ',', '.') }}
                                 kg
                             </td>
-
-                            <td class="px-4 py-2 border">{{ number_format($item['pedido'], 2, ',', '.') }} kg</td>
-
                         </tr>
                     @endforeach
+
                 </tbody>
 
             </table>
