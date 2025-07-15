@@ -190,18 +190,9 @@
                             Longitud<br>
                             <span class="text-blue-200 text-[9px]">Metros (solo barras)</span>
                         </th>
-                        <th class="px-4 py-2 border">
-                            Últimas 2 semanas<br>
-                            <span class="text-blue-200 text-[9px]">Consumo en 14 días</span>
-                        </th>
-                        <th class="px-4 py-2 border">
-                            Último mes<br>
-                            <span class="text-blue-200 text-[9px]">Consumo en 30 días</span>
-                        </th>
-                        <th class="px-4 py-2 border">
-                            Últimos 2 meses<br>
-                            <span class="text-blue-200 text-[9px]">Consumo en 60 días</span>
-                        </th>
+                        <th class="px-4 py-2 border">{{ $nombreMeses['haceDosMeses'] }}</th>
+                        <th class="px-4 py-2 border">{{ $nombreMeses['mesAnterior'] }}</th>
+                        <th class="px-4 py-2 border">{{ $nombreMeses['mesActual'] }}</th>
                         <th class="px-4 py-2 border">
                             Stock actual<br>
                             <span class="text-blue-200 text-[9px]">Disponible en almacén</span>
@@ -233,26 +224,33 @@
                             <td class="px-4 py-2 border">
                                 {{ $item['tipo'] === 'barra' ? $item['longitud'] . ' m' : '—' }}
                             </td>
-                            <td class="px-4 py-2 border">{{ number_format($item['consumo_14d'], 2, ',', '.') }} kg
+                            <td class="border px-2 py-1">
+                                {{ $consumosPorMes['mes_hace_dos'][$item] ?? 0 }}
                             </td>
-                            <td class="px-4 py-2 border">{{ number_format($item['consumo_30d'], 2, ',', '.') }} kg
+                            <td class="border px-2 py-1">
+                                {{ $consumosPorMes['mes_anterior'][$item] ?? 0 }}
                             </td>
-                            <td class="px-4 py-2 border">{{ number_format($item['consumo_60d'], 2, ',', '.') }} kg
+                            <td class="border px-2 py-1">
+                                {{ $consumosPorMes['mes_actual'][$item] ?? 0 }}
                             </td>
                             <td class="px-4 py-2 border">{{ number_format($item['stock'], 2, ',', '.') }} kg</td>
                             <td class="px-4 py-2 border">
-                                {{ $item['consumo_30d'] > 0 ? round($item['stock'] / ($item['consumo_30d'] / 30), 1) : '∞' }}
+                                {{ ($item['consumo_ant'] ?? 0) > 0 ? round($item['stock'] / ($item['consumo_ant'] / 30), 1) : '∞' }}
                                 días
                             </td>
+
                             <td class="px-4 py-2 border">
-                                {{ number_format(($item['consumo_30d'] / 30) * 5, 2, ',', '.') }} kg
+                                {{ number_format((($item['consumo_ant'] ?? 0) / 30) * 5, 2, ',', '.') }} kg
                             </td>
-                            <td class="px-4 py-2 border">{{ number_format($item['pedido'], 2, ',', '.') }} kg</td>
+
                             <td
-                                class="px-4 py-2 border {{ $item['stock'] + $item['pedido'] - $item['consumo_30d'] < 0 ? 'text-red-600' : 'text-green-700' }}">
-                                {{ number_format($item['stock'] + $item['pedido'] - $item['consumo_30d'], 2, ',', '.') }}
+                                class="px-4 py-2 border {{ $item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0) < 0 ? 'text-red-600' : 'text-green-700' }}">
+                                {{ number_format($item['stock'] + $item['pedido'] - ($item['consumo_ant'] ?? 0), 2, ',', '.') }}
                                 kg
                             </td>
+
+                            <td class="px-4 py-2 border">{{ number_format($item['pedido'], 2, ',', '.') }} kg</td>
+
                         </tr>
                     @endforeach
                 </tbody>
@@ -296,12 +294,12 @@
                                 <td class="px-4 py-2 border">{{ $item['diametro'] }}</td>
                                 <td class="px-4 py-2 border">
                                     {{ $item['tipo'] === 'barra' ? $item['longitud'] . ' m' : '—' }}</td>
-                                <td class="px-4 py-2 border text-right">
+                                {{-- <td class="px-4 py-2 border text-right">
                                     {{ number_format($item['consumo_14d'], 2, ',', '.') }} kg</td>
                                 <td class="px-4 py-2 border text-right">
                                     {{ number_format($item['consumo_30d'], 2, ',', '.') }} kg</td>
                                 <td class="px-4 py-2 border text-right">
-                                    {{ number_format($item['consumo_60d'], 2, ',', '.') }} kg</td>
+                                    {{ number_format($item['consumo_60d'], 2, ',', '.') }} kg</td> --}}
                                 <td class="px-4 py-2 border text-right text-blue-700 font-semibold">
                                     {{ number_format($item['stock'], 2, ',', '.') }} kg</td>
                                 <td class="px-4 py-2 border text-right text-indigo-600 font-semibold">

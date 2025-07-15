@@ -174,8 +174,9 @@
             </div>
             <x-tabla.paginacion :paginador="$pedidos" />
             <div class="mb-6"> <!-- Tabla stock -->
-                <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral"
-                    :consumo-por-producto-base="$consumoPorProductoBase" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" />
+                <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
+                    :total-general="$totalGeneral" :consumo-por-producto-base="$consumoPorProductoBase" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase"
+                    :resumen-reposicion="$resumenReposicion" />
                 <div class="mt-4 text-right">
 
                     <div id="modalConfirmacion"
