@@ -24,10 +24,6 @@
 
     {{-- 📦 TABLA PRINCIPAL --}}
     <h2 class="text-2xl font-bold text-blue-900 mt-4">📦 Estado actual de stock, pedidos y necesidades</h2>
-    <p class="text-sm text-blue-700 mb-4">
-        Stock disponible, pedidos pendientes y material necesario para cubrir producción.
-    </p>
-
     <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200">
         <table class="w-full text-sm text-center border-collapse">
             <thead>
@@ -140,7 +136,7 @@
     {{-- 📊 CONSUMO HISTÓRICO --}}
     @if (!empty($consumoPorProductoBase))
         <h2 class="text-2xl font-bold text-blue-900 mt-4">📊 Consumo histórico por producto base</h2>
-        <p class="text-sm text-blue-700 mb-4">Incluye consumos reales, stock actual y pedidos pendientes.</p>
+
         <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200">
             <table class="min-w-full text-sm text-center border-collapse">
                 <thead class="bg-blue-900 text-white text-xs">
@@ -259,7 +255,6 @@
     {{-- 📦 REPOSICIÓN SUGERIDA --}}
     @if (!empty($resumenReposicion))
         <h2 class="text-2xl font-bold text-blue-900 mt-4">📦 Reposición sugerida</h2>
-        <p class="text-sm text-blue-700 mb-4">Basada en el consumo de 30 días, el stock actual y pedidos en curso.</p>
         <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200">
             <table class="min-w-full text-sm text-center border-collapse">
                 <thead class="bg-blue-900 text-white text-xs">
