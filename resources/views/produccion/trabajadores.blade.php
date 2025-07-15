@@ -266,7 +266,94 @@
                         delay: [100, 0],
                         offset: [0, 10],
                     });
+                    // 👉 Listener para clic derecho
+                    info.el.addEventListener('contextmenu', function(e) {
+                        e.preventDefault(); // evitar el menú contextual por defecto
 
+                        const evento = info.event;
+                        const props = evento.extendedProps;
+                        const entradaActual = props.entrada || '';
+                        const salidaActual = props.salida || '';
+
+                        Swal.fire({
+                            title: 'Editar fichaje',
+                            html: `
+                <div class="flex flex-col gap-3">
+                    <label class="text-left text-sm">Entrada</label>
+                    <input id="entradaHora" type="time" class="swal2-input" value="${entradaActual}">
+                    <label class="text-left text-sm">Salida</label>
+                    <input id="salidaHora" type="time" class="swal2-input" value="${salidaActual}">
+                </div>
+            `,
+                            showCancelButton: true,
+                            confirmButtonText: 'Guardar',
+                            cancelButtonText: 'Cancelar',
+                            preConfirm: () => {
+                                const entradaNueva = document.getElementById('entradaHora')
+                                    .value;
+                                const salidaNueva = document.getElementById('salidaHora')
+                                    .value;
+
+                                if (!entradaNueva && !salidaNueva) {
+                                    Swal.showValidationMessage(
+                                        'Debes indicar al menos una hora');
+                                    return false;
+                                }
+
+                                return {
+                                    entrada: entradaNueva,
+                                    salida: salidaNueva
+                                };
+                            }
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                const {
+                                    entrada,
+                                    salida
+                                } = result.value;
+                                const idLimpio = info.event.id.toString().replace(/^turno-/,
+                                    '');
+                                fetch(`/asignaciones-turno/${idLimpio}/actualizar-horas`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                        },
+                                        body: JSON.stringify({
+                                            entrada,
+                                            salida
+                                        })
+                                    })
+                                    .then(res => res.json().then(data => ({
+                                        ok: res.ok,
+                                        data
+                                    })))
+                                    .then(({
+                                        ok,
+                                        data
+                                    }) => {
+                                        if (!ok) throw new Error(data.message ||
+                                            'Error al actualizar');
+
+                                        // Actualizar propiedades sin recargar
+                                        evento.setExtendedProp('entrada', entrada);
+                                        evento.setExtendedProp('salida', salida);
+
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Horas actualizadas',
+                                            timer: 1500,
+                                            showConfirmButton: false
+                                        });
+                                    })
+                                    .catch(err => {
+                                        console.error(err);
+                                        Swal.fire('Error', err.message ||
+                                            'Error al actualizar', 'error');
+                                    });
+                            }
+                        });
+                    });
                 },
                 eventClick: function(info) {
                     const userId = info.event.extendedProps.user_id;

@@ -641,6 +641,41 @@ class AsignacionTurnoController extends Controller
         }
     }
 
+    public function actualizarHoras(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'entrada' => 'nullable|date_format:H:i',
+                'salida'  => 'nullable|date_format:H:i',
+            ]);
+
+            $asignacion = AsignacionTurno::findOrFail($id);
+            $asignacion->entrada = $request->entrada;
+            $asignacion->salida  = $request->salida;
+            $asignacion->save();
+
+            return response()->json([
+                'ok'      => true,
+                'entrada' => $request->entrada,
+                'salida'  => $request->salida,
+                'message' => 'Horas actualizadas correctamente'
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Errores de validación
+            return response()->json([
+                'ok'      => false,
+                'message' => 'Datos no válidos',
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            // Cualquier otro error
+            return response()->json([
+                'ok'      => false,
+                'message' => 'Error al actualizar horas: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function destroy(Request $request)
     {
         try {
@@ -839,8 +874,6 @@ class AsignacionTurnoController extends Controller
 
         return response()->json(['success' => true]);
     }
-
-
 
     public function quitarObra($id)
     {
