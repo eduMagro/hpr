@@ -8,30 +8,29 @@
                 return '';
             }
             if ($tipo === 'encarretado' && in_array($diametro, [25, 32])) {
-                return 'bg-red-100';
+                return 'bg-red-200'; // 🔴 marcar producto no disponible
             }
             if ($tipo === 'barra') {
                 if (in_array($diametro, [8, 10])) {
-                    return 'bg-red-100';
+                    return 'bg-red-200';
                 }
                 if ($diametro == 12 && in_array($longitud, [15, 16])) {
-                    return 'bg-red-100';
+                    return 'bg-red-200';
                 }
             }
             return '';
         }
     @endphp
 
-    {{-- 📦 TABLA PRINCIPAL --}}
-    <h2 class="text-2xl font-bold text-blue-900 mt-4">📦 Estado actual de stock, pedidos y necesidades</h2>
-    <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-blue-200">
+    <h2 class="text-2xl font-bold text-gray-800 mt-4">📦 Estado actual de stock, pedidos y necesidades</h2>
+    <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-gray-300">
         <table class="w-full text-sm text-center border-collapse">
             <thead>
                 <tr class="bg-blue-900 text-white text-xs">
-                    <th rowspan="2" class="border px-2 py-2">Ø mm<br><span
-                            class="text-blue-200 text-[10px]">Diámetro</span></th>
-                    <th colspan="3" class="border px-2 py-2">Encarretado<br><span
-                            class="text-blue-200 text-[10px]">Bobinas</span></th>
+                    <th rowspan="2" class="border px-2 py-2">Ø mm<br>
+                        <span class="text-blue-200 text-[10px]">Diámetro</span>
+                    </th>
+                    <th colspan="3" class="border px-2 py-2">Encarretado</th>
                     <th colspan="3" class="border px-2 py-2">Barras 12 m</th>
                     <th colspan="3" class="border px-2 py-2">Barras 14 m</th>
                     <th colspan="3" class="border px-2 py-2">Barras 15 m</th>
@@ -47,6 +46,7 @@
                     @endfor
                 </tr>
             </thead>
+
             <tbody class="bg-white">
                 @foreach ($stockData as $diametro => $stock)
                     @php
@@ -63,18 +63,19 @@
                             'total' => 0,
                         ];
                     @endphp
-                    <tr class="hover:bg-blue-50 transition">
-                        <td class="border px-2 py-1 font-bold text-blue-900">{{ $diametro }}</td>
+                    <tr class="hover:bg-gray-100 transition">
+                        <td class="border px-2 py-1 font-bold text-gray-800">{{ $diametro }}</td>
 
+                        {{-- 🔵 Encarretado --}}
                         @php
-                            $claseRojo = rojo($diametro, 'encarretado');
                             $stockVal = $stock['encarretado'];
                             $pedidoVal = $pedido['encarretado'];
                             $necesarioVal = $necesario['encarretado'];
-                            $colorTexto =
+                            $claseRojo = rojo($diametro, 'encarretado');
+                            $colorNecesario =
                                 $necesarioVal > $stockVal
                                     ? 'text-red-600 font-semibold'
-                                    : 'text-blue-700 font-semibold';
+                                    : 'text-green-600 font-semibold';
                         @endphp
                         <td class="border px-2 py-1 {{ $claseRojo }}">
                             {{ !$claseRojo ? number_format($stockVal, 2, ',', '.') : '' }}</td>
@@ -92,22 +93,22 @@
                                     <input type="hidden" name="detalles[encarretado-{{ $diametro }}][cantidad]"
                                         value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
                                     <span
-                                        class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
+                                        class="{{ $colorNecesario }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
                                 </div>
                             @endif
                         </td>
 
-
+                        {{-- 🔵 Barras por longitud --}}
                         @foreach ([12, 14, 15, 16] as $longitud)
                             @php
-                                $claseRojo = rojo($diametro, 'barra', $longitud);
                                 $stockVal = $stock['barras'][$longitud] ?? 0;
                                 $pedidoVal = $pedido['barras'][$longitud] ?? 0;
                                 $necesarioVal = $necesario['barras'][$longitud] ?? 0;
-                                $colorTexto =
+                                $claseRojo = rojo($diametro, 'barra', $longitud);
+                                $colorNecesario =
                                     $necesarioVal > $stockVal
                                         ? 'text-red-600 font-semibold'
-                                        : 'text-blue-700 font-semibold';
+                                        : 'text-green-600 font-semibold';
                             @endphp
                             <td class="border px-2 py-1 {{ $claseRojo }}">
                                 {{ !$claseRojo ? number_format($stockVal, 2, ',', '.') : '' }}</td>
@@ -131,23 +132,23 @@
                                             name="detalles[barra-{{ $diametro }}-{{ $longitud }}][cantidad]"
                                             value="{{ round($necesarioVal, 2) }}">
                                         <span
-                                            class="{{ $colorTexto }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
+                                            class="{{ $colorNecesario }}">{{ number_format($necesarioVal, 2, ',', '.') }}</span>
                                     </div>
                                 @endif
                             </td>
                         @endforeach
 
-                        <td class="border px-2 py-1 font-semibold text-blue-900">
+                        <td class="border px-2 py-1 font-semibold text-gray-800">
                             {{ number_format($stock['barras_total'], 2, ',', '.') }}</td>
-                        <td class="border px-2 py-1 font-semibold text-blue-900">
+                        <td class="border px-2 py-1 font-semibold text-gray-800">
                             {{ number_format($pedido['barras_total'], 2, ',', '.') }}</td>
-                        <td class="border px-2 py-1 font-semibold text-blue-900">
+                        <td class="border px-2 py-1 font-semibold text-gray-800">
                             {{ number_format($necesario['barras_total'], 2, ',', '.') }}</td>
-                        <td class="border px-2 py-1 font-bold bg-blue-50">
+                        <td class="border px-2 py-1 font-bold bg-gray-100">
                             {{ number_format($stock['total'], 2, ',', '.') }}</td>
-                        <td class="border px-2 py-1 font-bold bg-blue-50">
+                        <td class="border px-2 py-1 font-bold bg-gray-100">
                             {{ number_format($pedido['total'], 2, ',', '.') }}</td>
-                        <td class="border px-2 py-1 font-bold bg-blue-50">
+                        <td class="border px-2 py-1 font-bold bg-gray-100">
                             {{ number_format($necesario['total'], 2, ',', '.') }}</td>
                     </tr>
                 @endforeach
@@ -156,10 +157,18 @@
     </div>
 
     <div class="mt-4 flex justify-end">
-        <span class="bg-blue-900 text-white rounded px-4 py-2 font-bold shadow">
+
+        <button type="button" onclick="mostrarConfirmacion()"
+            class="bg-blue-600 text-white px-4 py-2 mr-4 rounded hover:bg-blue-700">
+            Crear pedido con seleccionados
+        </button>
+
+
+        <span class="bg-gray-700 text-white rounded px-4 py-2 font-bold shadow">
             📌 Total general disponible: {{ number_format($totalGeneral, 2, ',', '.') }} kg
         </span>
     </div>
+
 
     {{-- 📊 CONSUMO HISTÓRICO --}}
     @if (!empty($consumoPorProductoBase))

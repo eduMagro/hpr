@@ -92,9 +92,11 @@
                                         class="text-xs border rounded px-2 py-1 ml-1 w-32 inline-block transition-all duration-300"
                                         placeholder="Código Sage" />
 
+                                    <span class="text-blue-600">Peso Total: </span> {{ $pedido->peso_total_formateado }}
                                     |
-                                    Estado: {{ $pedido->estado }} |
-                                    Fecha Pedido: {{ $pedido->fecha_pedido_formateada }}
+                                    <span class="text-blue-600">Estado: </span>{{ $pedido->estado }} |
+                                    <span class="text-blue-600">Fecha Pedido:
+                                    </span>{{ $pedido->fecha_pedido_formateada }}
                                 </td>
                             </tr>
 
@@ -175,10 +177,7 @@
                 <x-estadisticas.stock :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro" :total-general="$totalGeneral"
                     :consumo-por-producto-base="$consumoPorProductoBase" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase" :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" />
                 <div class="mt-4 text-right">
-                    <button type="button" onclick="mostrarConfirmacion()"
-                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        Crear pedido con seleccionados
-                    </button>
+
                     <div id="modalConfirmacion"
                         class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
                         <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
