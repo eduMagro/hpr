@@ -145,7 +145,7 @@
                                         class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
-                                    <x-tabla.input name="entrada_id" type="text" :value="request('entrada_id')"
+                                    <x-tabla.input name="albaran" type="text" :value="request('albaran')"
                                         class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">
