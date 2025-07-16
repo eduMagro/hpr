@@ -15,6 +15,7 @@ class Maquina extends Model
         'nombre',
         'estado',
         'tipo',
+        'obra_id',
         'diametro_min',
         'diametro_max',
         'peso_min',

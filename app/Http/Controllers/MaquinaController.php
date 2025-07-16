@@ -96,11 +96,16 @@ class MaquinaController extends Controller
             ->whereNotNull('maquina_id')
             ->get()
             ->groupBy('maquina_id');
-
+        $obras = Obra::whereHas('cliente', function ($query) {
+            $query->where('empresa', 'like', '%Hierros Paco Reyes%');
+        })
+            ->orderBy('obra')
+            ->get();
         // ▸ 2.3 Render vista
         return view('maquinas.index', compact(
             'registrosMaquina',
-            'usuariosPorMaquina'
+            'usuariosPorMaquina',
+            'obras'
         ));
     }
 
@@ -567,29 +572,31 @@ class MaquinaController extends Controller
     {
         // Validar los datos del formulario
         $validatedData = $request->validate([
-            'codigo' => 'required|string|max:6|unique:maquinas,codigo,' . $id,
-            'nombre' => 'required|string|max:40',
+            'codigo'       => 'required|string|max:6|unique:maquinas,codigo,' . $id,
+            'nombre'       => 'required|string|max:40',
+            'obra_id'      => 'nullable|exists:obras,id', // 👈 añadimos validación para la obra
             'diametro_min' => 'nullable|integer',
             'diametro_max' => 'nullable|integer',
-            'peso_min' => 'nullable|integer',
-            'peso_max' => 'nullable|integer',
-            'estado' => 'required|string|in:activa,en mantenimiento,inactiva',
+            'peso_min'     => 'nullable|integer',
+            'peso_max'     => 'nullable|integer',
+            'estado'       => 'nullable|string|in:activa,en mantenimiento,inactiva',
         ], [
-            'codigo.required' => 'El campo "código" es obligatorio.',
-            'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
-            'codigo.max' => 'El campo "código" no puede tener más de 6 caracteres.',
-            'codigo.unique' => 'El código ya existe, por favor ingrese otro diferente.',
+            'codigo.required'   => 'El campo "código" es obligatorio.',
+            'codigo.string'     => 'El campo "código" debe ser una cadena de texto.',
+            'codigo.max'        => 'El campo "código" no puede tener más de 6 caracteres.',
+            'codigo.unique'     => 'El código ya existe, por favor ingrese otro diferente.',
 
-            'nombre.required' => 'El campo "nombre" es obligatorio.',
-            'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
-            'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
+            'nombre.required'   => 'El campo "nombre" es obligatorio.',
+            'nombre.string'     => 'El campo "nombre" debe ser una cadena de texto.',
+            'nombre.max'        => 'El campo "nombre" no puede tener más de 40 caracteres.',
+
+            'obra_id.exists'    => 'La obra seleccionada no es válida.', // 👈 mensaje personalizado
 
             'diametro_min.integer' => 'El "diámetro mínimo" debe ser un número entero.',
             'diametro_max.integer' => 'El "diámetro máximo" debe ser un número entero.',
-            'peso_min.integer' => 'El "peso mínimo" debe ser un número entero.',
-            'peso_max.integer' => 'El "peso máximo" debe ser un número entero.',
+            'peso_min.integer'     => 'El "peso mínimo" debe ser un número entero.',
+            'peso_max.integer'     => 'El "peso máximo" debe ser un número entero.',
 
-            'estado.required' => 'El campo "estado" es obligatorio.',
             'estado.in' => 'El estado debe ser: activa, en mantenimiento o inactiva.',
         ]);
 
@@ -607,15 +614,20 @@ class MaquinaController extends Controller
             DB::commit();
 
             // Redirigir con un mensaje de éxito
-            return redirect()->route('maquinas.index')->with('success', 'La máquina se actualizó correctamente.');
+            return redirect()
+                ->route('maquinas.index')
+                ->with('success', 'La máquina se actualizó correctamente.');
         } catch (\Exception $e) {
             // Revertir la transacción en caso de error
             DB::rollBack();
 
             // Redirigir con un mensaje de error
-            return redirect()->back()->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente. Error: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente. Error: ' . $e->getMessage());
         }
     }
+
 
     public function actualizarImagen(Request $request, Maquina $maquina)
     {

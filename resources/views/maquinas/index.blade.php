@@ -66,6 +66,14 @@
                                 {{ $inProduction ? 'En producción' : 'Sin trabajo' }}
                             </span>
                         </p>
+                        <p class="text-sm text-gray-700">
+                            Nave:
+
+                            <span>
+                                {{ $maquina->obra?->obra ?? 'Sin Nave asignada' }}
+
+                            </span>
+                        </p>
 
                         @php
                             $asignacionesHoy = $usuariosPorMaquina->get($maquina->id, collect());
@@ -142,9 +150,87 @@
     <div class="mt-6 flex justify-center">
         {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
     </div>
+    <!-- Modal de edición -->
+    <!-- Modal de edición -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 justify-center items-center">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">Editar Máquina</h2>
 
-    <!-- Alpine.js -->
-    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+            <form id="editMaquinaForm">
+                @csrf
+                <input type="hidden" id="edit-id" name="id">
+
+                <!-- Código -->
+                <div class="mb-3">
+                    <label for="edit-codigo" class="block text-sm font-semibold text-gray-700 mb-1">Código</label>
+                    <input id="edit-codigo" name="codigo" type="text"
+                        class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+
+                <!-- Nombre -->
+                <div class="mb-3">
+                    <label for="edit-nombre" class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+                    <input id="edit-nombre" name="nombre" type="text"
+                        class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+
+                <!-- Obra asignada -->
+                <div class="mb-3">
+                    <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-1">Obra
+                        asignada</label>
+                    <select id="edit-obra_id" name="obra_id" class="w-full border rounded px-3 py-2 text-sm">
+                        <option value="">Sin asignar</option>
+                        @foreach ($obras as $obra)
+                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Diámetro mínimo -->
+                <div class="mb-3">
+                    <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-1">Diámetro
+                        mínimo</label>
+                    <input id="edit-diametro_min" name="diametro_min" type="number"
+                        class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+
+                <!-- Diámetro máximo -->
+                <div class="mb-3">
+                    <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-1">Diámetro
+                        máximo</label>
+                    <input id="edit-diametro_max" name="diametro_max" type="number"
+                        class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+
+                <!-- Peso mínimo -->
+                <div class="mb-3">
+                    <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-1">Peso
+                        mínimo</label>
+                    <input id="edit-peso_min" name="peso_min" type="number"
+                        class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+
+                <!-- Peso máximo -->
+                <div class="mb-3">
+                    <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-1">Peso
+                        máximo</label>
+                    <input id="edit-peso_max" name="peso_max" type="number"
+                        class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+
+                <!-- Botones -->
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" id="closeModal"
+                        class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
     <script>
