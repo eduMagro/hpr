@@ -48,8 +48,22 @@
                                     <x-tabla.select name="distribuidor_id" :options="$distribuidores->pluck('nombre', 'id')" :selected="request('distribuidor_id')"
                                         empty="Todos" class="w-full text-xs" />
                                 </th>
+                                <th class="py-1 px-0 border">
+                                    <div class="flex gap-2 justify-center">
+                                        <input type="text" name="producto_tipo"
+                                            value="{{ request('producto_tipo') }}" placeholder="T"
+                                            class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
 
-                                <th class="p-1 border"></th>
+                                        <input type="text" name="producto_diametro"
+                                            value="{{ request('producto_diametro') }}" placeholder="Ø"
+                                            class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
+
+                                        <input type="text" name="producto_longitud"
+                                            value="{{ request('producto_longitud') }}" placeholder="L"
+                                            class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
+                                    </div>
+                                </th>
+
                                 <th class="p-1 border"></th>
 
 

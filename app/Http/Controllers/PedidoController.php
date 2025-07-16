@@ -117,6 +117,19 @@ class PedidoController extends Controller
         if ($request->filled('pedido_global_id')) {
             $query->where('pedido_global_id', $request->pedido_global_id);
         }
+        if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
+            $query->whereHas('pedidoProductos.productoBase', function ($q) use ($request) {
+                if ($request->filled('producto_tipo')) {
+                    $q->where('tipo', 'like', '%' . $request->producto_tipo . '%');
+                }
+                if ($request->filled('producto_diametro')) {
+                    $q->where('diametro', 'like', '%' . $request->producto_diametro . '%');
+                }
+                if ($request->filled('producto_longitud')) {
+                    $q->where('longitud', 'like', '%' . $request->producto_longitud . '%');
+                }
+            });
+        }
 
         if ($request->filled('fabricante_id')) {
             $query->where('fabricante_id', $request->fabricante_id);
