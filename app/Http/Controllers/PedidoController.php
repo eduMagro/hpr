@@ -133,10 +133,14 @@ class PedidoController extends Controller
             $query->whereDate('fecha_entrega', $request->fecha_entrega);
         }
 
-        if ($request->filled('estado')) {
-            $query->where('estado', $request->estado);
+        if ($request->has('estado')) {
+            if ($request->estado !== '' && $request->estado !== null) {
+                $query->where('estado', $request->estado);
+            }
+            // Si request('estado') viene vacío porque eligió "Todos", no aplicamos filtro
         } else {
-            $query->where('estado', 'pendiente'); // 👈 aquí está el filtro por defecto
+            // 👉 Si no envía nada de estado (primera carga) aplicamos filtro por defecto pendiente
+            $query->where('estado', 'pendiente');
         }
 
         // Ordenación
