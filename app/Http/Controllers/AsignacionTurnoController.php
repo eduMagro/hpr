@@ -348,21 +348,16 @@ class AsignacionTurnoController extends Controller
             $turnoDetectado      = null;
             $fechaTurnoDetectado = null;
 
-            // NOCHE: 19:00 (día actual) hasta 03:59 (día siguiente)
             if (
                 $hora->between(Carbon::createFromTime(19, 0), Carbon::createFromTime(23, 59)) ||
                 $hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(3, 59))
             ) {
                 $turnoDetectado      = 'noche';
                 $fechaTurnoDetectado = $hora->hour >= 19 ? $fecha : $fechaAnterior;
-            }
-            // MAÑANA: 04:00 hasta 11:59
-            elseif ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(11, 59))) {
+            } elseif ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(11, 59))) {
                 $turnoDetectado      = 'mañana';
                 $fechaTurnoDetectado = $fecha;
-            }
-            // TARDE: 12:00 hasta 18:59
-            elseif ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(18, 59))) {
+            } elseif ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(18, 59))) {
                 $turnoDetectado      = 'tarde';
                 $fechaTurnoDetectado = $fecha;
             }
@@ -371,15 +366,12 @@ class AsignacionTurnoController extends Controller
                 return response()->json(['error' => 'No se pudo determinar el turno para esta hora.'], 403);
             }
 
-            // 🔍 Buscar asignaciones posibles
+            // 🔍 Buscar asignación de esa fecha
             $asignaciones = $user->asignacionesTurnos()
                 ->whereIn('fecha', [$fechaAnterior, $fecha])
                 ->with('turno')
                 ->get();
 
-            Log::info('🔎 Asignaciones encontradas', $asignaciones->toArray());
-
-            // 🧾 Buscar la asignación correcta (por fecha)
             $asignacionTurno = $asignaciones->first(function ($a) use ($fechaTurnoDetectado) {
                 return $a->fecha === $fechaTurnoDetectado;
             });
@@ -388,32 +380,33 @@ class AsignacionTurnoController extends Controller
                 return response()->json(['error' => 'No tienes un turno asignado para esta hora.'], 403);
             }
 
-            // ✅ Actualizar turno si no coincide
-            if (strtolower($asignacionTurno->turno->nombre) !== strtolower($turnoDetectado)) {
-                $nuevoTurno = Turno::where('nombre', $turnoDetectado)->first();
-                if ($nuevoTurno) {
-                    $asignacionTurno->turno_id = $nuevoTurno->id;
-                    $asignacionTurno->save();
+            // ✅ Solo si es ENTRADA comprobamos y cambiamos turno
+            if ($request->tipo === 'entrada') {
+                if (strtolower($asignacionTurno->turno->nombre) !== strtolower($turnoDetectado)) {
+                    $nuevoTurno = Turno::where('nombre', $turnoDetectado)->first();
+                    if ($nuevoTurno) {
+                        $asignacionTurno->turno_id = $nuevoTurno->id;
+                        $asignacionTurno->save();
 
-                    Log::info("🔁 Turno actualizado automáticamente a '{$turnoDetectado}' para user_id {$user->id}");
+                        Log::info("🔁 Turno actualizado automáticamente a '{$turnoDetectado}' para user_id {$user->id}");
 
-                    // Enviar alerta
-                    try {
-                        $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
-                        $alerta = Alerta::create([
-                            'mensaje'   => "🔁 Se corrigió automáticamente el turno de {$user->name} a '{$turnoDetectado}' para la fecha {$fechaTurnoDetectado}.",
-                            'user_id_1' => $user->id,
-                            'user_id_2' => null,
-                            'leida'     => false,
-                        ]);
-                        foreach ($programadores as $p) {
-                            AlertaLeida::firstOrCreate([
-                                'alerta_id' => $alerta->id,
-                                'user_id'   => $p->id,
+                        try {
+                            $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
+                            $alerta = Alerta::create([
+                                'mensaje'   => "🔁 Se corrigió automáticamente el turno de {$user->name} a '{$turnoDetectado}' para la fecha {$fechaTurnoDetectado}.",
+                                'user_id_1' => $user->id,
+                                'user_id_2' => null,
+                                'leida'     => false,
                             ]);
+                            foreach ($programadores as $p) {
+                                AlertaLeida::firstOrCreate([
+                                    'alerta_id' => $alerta->id,
+                                    'user_id'   => $p->id,
+                                ]);
+                            }
+                        } catch (\Throwable $e) {
+                            Log::error('❌ No se pudo enviar alerta al programador: ' . $e->getMessage());
                         }
-                    } catch (\Throwable $e) {
-                        Log::error('❌ No se pudo enviar alerta al programador: ' . $e->getMessage());
                     }
                 }
             }
@@ -434,8 +427,8 @@ class AsignacionTurnoController extends Controller
                     $warning = 'Has fichado entrada fuera de tu horario.';
                 }
                 $asignacionTurno->update([
-                    'entrada'  => $horaActual,
-                    'obra_id'  => $request->obra_id,
+                    'entrada' => $horaActual,
+                    'obra_id' => $request->obra_id,
                 ]);
             } else { // salida
                 if (!$asignacionTurno->entrada) {
@@ -445,8 +438,8 @@ class AsignacionTurnoController extends Controller
                     $warning = 'Has fichado salida fuera de tu horario.';
                 }
                 $asignacionTurno->update([
-                    'salida'   => $horaActual,
-                    'obra_id'  => $request->obra_id,
+                    'salida'  => $horaActual,
+                    'obra_id' => $request->obra_id,
                 ]);
             }
 
