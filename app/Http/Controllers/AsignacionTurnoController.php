@@ -254,30 +254,30 @@ class AsignacionTurnoController extends Controller
             $fechaTurnoDetectado = null;
 
             $hora = Carbon::createFromFormat('H:i:s', $horaActual);
+            if ($request->tipo === 'entrada') {
+                // NOCHE: 19:00 (día actual) hasta 03:59 (día siguiente)
+                if (
+                    $hora->between(Carbon::createFromTime(19, 0), Carbon::createFromTime(23, 59)) ||
+                    $hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(3, 59))
+                ) {
+                    $turnoDetectado = 'noche';
+                    $fechaTurnoDetectado = $hora->hour >= 19 ? $fechaSiguiente : $fecha;
+                }
+                // MAÑANA: 04:00 hasta 11:59
+                elseif ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(11, 59))) {
+                    $turnoDetectado = 'mañana';
+                    $fechaTurnoDetectado = $fecha;
+                }
+                // TARDE: 12:00 hasta 18:59
+                elseif ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(18, 59))) {
+                    $turnoDetectado = 'tarde';
+                    $fechaTurnoDetectado = $fecha;
+                }
 
-            // NOCHE: 20:00 (día actual) hasta 05:59 (día siguiente)
-            if (
-                $hora->between(Carbon::createFromTime(20, 0), Carbon::createFromTime(23, 59)) ||
-                $hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(5, 59))
-            ) {
-                $turnoDetectado = 'noche';
-                $fechaTurnoDetectado = $hora->hour >= 20 ? $fechaSiguiente : $fecha;
+                if (!$turnoDetectado || !$fechaTurnoDetectado) {
+                    return response()->json(['error' => 'No se pudo determinar el turno para esta hora.'], 403);
+                }
             }
-            // MAÑANA: 04:00 hasta 13:59
-            elseif ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(13, 59))) {
-                $turnoDetectado = 'mañana';
-                $fechaTurnoDetectado = $fecha;
-            }
-            // TARDE: 12:00 hasta 21:59
-            elseif ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(21, 59))) {
-                $turnoDetectado = 'tarde';
-                $fechaTurnoDetectado = $fecha;
-            }
-
-            if (!$turnoDetectado || !$fechaTurnoDetectado) {
-                return response()->json(['error' => 'No se pudo determinar el turno para esta hora.'], 403);
-            }
-
             // 🧾 Buscar la asignación correcta
             $asignacionTurno = $asignaciones->first(function ($a) use ($fechaTurnoDetectado) {
                 return $a->fecha === $fechaTurnoDetectado;
