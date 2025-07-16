@@ -4,7 +4,8 @@
     <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
     <div class="max-w-6xl mx-auto mt-8 mb-8 px-4 sm:px-6 lg:px-8">
         <div class="bg-white shadow-xl rounded-2xl p-6 sm:p-10 border border-gray-200">
-            <form method="POST" action="{{ route('register') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form method="POST" action="{{ route('register') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4"
+                x-data="{ cargando: false }">
                 @csrf
 
                 {{-- INPUT --}}
@@ -141,10 +142,7 @@
 
                 {{-- BOTÓN --}}
                 <div class="md:col-span-3 flex justify-center mt-2">
-                    <button type="submit"
-                        class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
-                        Registrar
-                    </button>
+                    <x-boton-submit texto="Registrar usuario" color="blue" />
                 </div>
             </form>
         </div>

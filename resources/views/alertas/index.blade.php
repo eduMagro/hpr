@@ -21,8 +21,8 @@
                     <button @click="mostrarModal = false"
                         class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">✖</button>
                     <h2 class="text-lg font-semibold mb-4">📢 Enviar Mensaje</h2>
-
-                    <form method="POST" action="{{ route('alertas.store') }}">
+                    <form method="POST" action="{{ route('alertas.store') }}" x-data="{ cargando: false }"
+                        @submit="cargando = true">
                         @csrf
                         <div class="mb-4">
                             <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
@@ -72,10 +72,8 @@
                                 class="bg-gray-400 hover:bg-gray-500 text-white py-2 px-4 rounded-lg">
                                 Cancelar
                             </button>
-                            <button type="submit"
-                                class="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg">
-                                Enviar
-                            </button>
+                            <x-boton-submit texto="Enviar" color="blue" />
+
                         </div>
                     </form>
                 </div>

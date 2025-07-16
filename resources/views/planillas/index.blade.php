@@ -83,7 +83,10 @@
                 <x-tabla.input type="file" name="file" id="file" class="file:mr-2" />
 
                 {{-- Botón importar --}}
-                <x-boton-submit texto="Importar" color="blue" />
+                <form x-data="{ cargando: false }" @submit="cargando = true">
+                    <x-boton-submit texto="Importar" color="blue" :cargando="true" />
+                </form>
+
             </form>
 
         </div>
