@@ -991,24 +991,29 @@ class AsignacionTurnoController extends Controller
 
     public function export(Request $request)
     {
-        Log::info('✅ Entrando al export con filtros:', $request->all());
-
-        $query = AsignacionTurno::with(['user', 'obra', 'turno', 'maquina'])
-            ->whereDate('fecha', '<=', \Carbon\Carbon::tomorrow())
+        // 💡 Usa la misma query base que index()
+        $query = AsignacionTurno::with(['user', 'turno', 'maquina', 'obra'])
+            ->whereDate('fecha', '<=', Carbon::tomorrow())
             ->where('estado', 'activo')
             ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
             ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
-            ->select('asignaciones_turnos.*'); // 👈 usa el nombre correcto de la tabla
+            ->orderBy('fecha', 'desc')
+            ->orderByRaw("FIELD(turnos.nombre, 'mañana', 'tarde', 'noche')")
+            ->orderBy('asignaciones_turnos.id')
+            ->select('asignaciones_turnos.*');
 
-        // aplicar filtros
+        // 🔍 aplica los mismos filtros
         $query = $this->aplicarFiltros($query, $request);
+
+        // 🔀 aplica el mismo orden dinámico
+        $query = $this->aplicarOrdenamiento($query, $request);
+
+        // 🔥 ejecuta la query
         $asignaciones = $query->get();
 
-        Log::info('✅ Exportando asignaciones:', ['count' => $asignaciones->count()]);
-
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\AsignacionesTurnosExport($asignaciones),
-            'asignaciones_filtradas.xlsx'
+        return Excel::download(
+            new AsignacionesTurnosExport($asignaciones),
+            'Registros entrada y salida.xlsx'
         );
     }
 }

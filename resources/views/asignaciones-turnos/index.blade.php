@@ -66,15 +66,10 @@
             @endforeach
         </div>
  --}}
-        <div class="mb-4 flex justify-end">
-            <a href="{{ route('asignaciones-turnos.export', request()->all()) }}">📤 Exportar Excel</a>
-
-
-        </div>
 
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- Tabla de asignaciones -->
-        <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
+        <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg">
 
             <table class="w-full border border-gray-300 rounded-lg text-xs uppercase text-center">
                 <thead class="bg-blue-500 text-white">
@@ -127,7 +122,8 @@
                             <th class="p-1 border">
 
                             </th>
-                            <x-tabla.botones-filtro ruta="asignaciones-turnos.index" />
+                            <x-tabla.botones-filtro ruta="asignaciones-turnos.index"
+                                rutaExportar="asignaciones-turno.exportar" />
                         </form>
                     </tr>
 

@@ -151,9 +151,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/asignaciones-turno/repetir-semana', [AsignacionTurnoController::class, 'repetirSemana'])->name('asignaciones-turno.repetirSemana');
     Route::post('/asignaciones-turno/{id}/actualizar-horas', [AsignacionTurnoController::class, 'actualizarHoras'])
         ->name('asignaciones-turno.actualizar-horas');
-    Route::get('/asignaciones-turnos/export', [AsignacionTurnoController::class, 'export'])
-        ->name('asignaciones-turnos.export');
-
+    Route::get('/asignaciones-turno/exportar', [AsignacionTurnoController::class, 'export'])->name('asignaciones-turno.exportar');
 
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class)->middleware('acceso.seccion:maquinas.index');
