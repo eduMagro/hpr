@@ -38,6 +38,7 @@
                             </label>
                             <x-tabla.select name="tipo" :options="[
                                 'cortadora_dobladora' => 'Cortadora y Dobladora',
+                                'estribadora' => 'Estribadora',
                                 'ensambladora' => 'Ensambladora',
                                 'soldadora' => 'Soldadora',
                                 'cortadora manual' => 'Cortadora Manual',

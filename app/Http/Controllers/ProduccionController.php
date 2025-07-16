@@ -55,13 +55,27 @@ class ProduccionController extends Controller
                     ]
                 ];
             });
-        $maquinas = Maquina::orderBy('id')->get(['id', 'nombre', 'codigo'])->map(function ($maquina) {
-            return [
-                'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
-                'title' => $maquina->codigo,
-                'codigo' => strtolower($maquina->codigo)
-            ];
-        });
+        // define colores por obra
+        $coloresObras = [
+            1 => '#1E90FF', // azul
+            2 => '#28A745', // verde
+            3 => '#FFC107', // amarillo
+            4 => '#DC3545', // rojo
+        ];
+
+        $maquinas = Maquina::orderBy('id')
+            ->get(['id', 'nombre', 'codigo', 'obra_id'])
+            ->map(function ($maquina) use ($coloresObras) {
+                $color = $coloresObras[$maquina->obra_id] ?? '#6c757d';
+                return [
+                    'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
+                    'title' => $maquina->codigo,
+                    'extendedProps' => [
+                        'backgroundColor' => $color,
+                        'obra_id' => $maquina->obra_id,
+                    ]
+                ];
+            });
 
         $trabajadores = User::with([
             'asignacionesTurnos.turno:id,hora_entrada,hora_salida',

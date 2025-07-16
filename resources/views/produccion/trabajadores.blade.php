@@ -178,6 +178,13 @@
                 editable: true,
                 resources: resources, // Usamos los recursos ordenados
                 resourceAreaWidth: '100px',
+                resourceLabelDidMount: function(info) {
+                    const color = info.resource.extendedProps.backgroundColor;
+                    if (color) {
+                        info.el.style.backgroundColor = color;
+                        info.el.style.color = '#fff';
+                    }
+                },
                 events: trabajadores,
                 resourceAreaColumns: [{
                     field: 'title',
