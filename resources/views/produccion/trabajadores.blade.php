@@ -192,7 +192,6 @@
                 }],
                 eventDrop: function(info) {
                     const asignacionId = info.event.id.replace(/^turno-/, '');
-
                     const recurso = info.event.getResources()?.[0];
                     const nuevoMaquinaId = recurso ? parseInt(recurso.id, 10) : null;
                     const nuevaHoraInicio = info.event.start?.toISOString();
@@ -228,7 +227,6 @@
                                 start: nuevaHoraInicio,
                                 turno_id: turnoId
                             })
-
                         })
                         .then(response => response.json().then(data => ({
                             ok: response.ok,
@@ -244,7 +242,16 @@
                                 throw new Error(data?.message || `Error ${status}`);
                             }
                             console.log('✅ Asignación actualizada:', data);
-                            // Aquí podrías actualizar info.event.setExtendedProp() si necesitas
+
+                            // 🔥 ACTUALIZAR COLOR DEL EVENTO SIN RECARGAR
+                            if (data.color) {
+                                info.event.setProp('backgroundColor', data.color);
+                                info.event.setProp('borderColor', data.color);
+                            }
+                            if (typeof data.nuevo_obra_id !== 'undefined') {
+                                info.event.setExtendedProp('obra_id', data.nuevo_obra_id);
+                            }
+
                         })
                         .catch(error => {
                             console.error('❌ Error al actualizar:', error);

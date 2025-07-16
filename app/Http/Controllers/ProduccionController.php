@@ -31,6 +31,28 @@ function toCarbon($valor, $format = 'd/m/Y H:i')
 }
 class ProduccionController extends Controller
 {
+    private function obtenerColores(): array
+    {
+        $coloresMaquinas = [
+            1 => '#2563EB', // azul intenso
+            2 => '#059669', // verde intenso
+            3 => '#D97706', // naranja intenso
+        ];
+
+        // 🎨 Colores para eventos (tonos pastel)
+        $coloresEventos = [
+            1 => ['bg' => '#93C5FD', 'border' => '#60A5FA'], // azul claro
+            2 => ['bg' => '#6EE7B7', 'border' => '#34D399'], // verde claro
+            3 => ['bg' => '#FDBA74', 'border' => '#F59E0B'], // naranja claro
+        ];
+
+
+        return [
+            'maquinas' => $coloresMaquinas,
+            'eventos'  => $coloresEventos,
+        ];
+    }
+
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES ALMACEN
     public function trabajadores()
     {
@@ -55,18 +77,16 @@ class ProduccionController extends Controller
                     ]
                 ];
             });
-        // define colores por obra
-        $coloresObras = [
-            1 => '#FFC107', // amarillo
-            2 => '#28A745', // verde
-            3 => '#DC3545', // rojo
 
-        ];
+        $colores = $this->obtenerColores();
+        $coloresMaquinas = $colores['maquinas'];
+        $coloresEventos  = $colores['eventos'];
 
+        // ✅ Pintar las máquinas
         $maquinas = Maquina::orderBy('id')
             ->get(['id', 'nombre', 'codigo', 'obra_id'])
-            ->map(function ($maquina) use ($coloresObras) {
-                $color = $coloresObras[$maquina->obra_id] ?? '#6c757d';
+            ->map(function ($maquina) use ($coloresMaquinas) {
+                $color = $coloresMaquinas[$maquina->obra_id] ?? '#6c757d';
                 return [
                     'id' => str_pad($maquina->id, 3, '0', STR_PAD_LEFT),
                     'title' => $maquina->codigo,
@@ -76,6 +96,7 @@ class ProduccionController extends Controller
                     ]
                 ];
             });
+
 
         $trabajadores = User::with([
             'asignacionesTurnos.turno:id,hora_entrada,hora_salida',
@@ -100,20 +121,8 @@ class ProduccionController extends Controller
             ->unique()
             ->values();
 
-        $coloresPorObra = [];
-        $coloresEventos = [
-            1 => ['bg' => '#FFE082', 'border' => '#FFECB3'], // amarillo pastel
-            2 => ['bg' => '#81C784', 'border' => '#A5D6A7'], // verde pastel
-            3 => ['bg' => '#E57373', 'border' => '#EF9A9A'], // rojo pastel
-        ];
-
-
-
-
-
         $fechaHoy = Carbon::today()->subWeek();
         $fechaLimite = $fechaHoy->copy()->addDays(40);
-
 
         $eventos = [];
 
@@ -270,7 +279,17 @@ class ProduccionController extends Controller
             'obra_id'    => $maquina->obra_id, // 👈 se asigna automáticamente
         ]);
 
-        return response()->json(['message' => 'Actualización exitosa']);
+        $colores = $this->obtenerColores();
+        $coloresEventos = $colores['eventos'];
+
+        $color = $coloresEventos[$maquina->obra_id] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
+
+        return response()->json([
+            'message'       => 'Actualización exitosa',
+            'color'         => $color['bg'],
+            'borderColor'   => $color['border'],
+            'nuevo_obra_id' => $maquina->obra_id,
+        ]);
     }
 
 
