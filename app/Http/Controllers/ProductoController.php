@@ -257,12 +257,16 @@ class ProductoController extends Controller
         ];
 
         // Si no se está filtrando por estado ni código, excluir consumido/fabricando
-        if ($request->filled('estado') && $request->estado !== 'todos') {
+        if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
-        } elseif (!$request->filled('estado') && !$request->filled('codigo') && !$request->filled('id')) {
-            // si no hay estado ni código ni id, aplica el filtro por defecto
+        } elseif (
+            !$request->filled('codigo') &&
+            !$request->filled('id') &&
+            !$request->boolean('mostrar_todos')
+        ) {
             $query->whereNotIn('estado', ['consumido', 'fabricando']);
         }
+
 
         $totalPesoInicial = (clone $query)->sum('peso_inicial');
         // Paginación segura

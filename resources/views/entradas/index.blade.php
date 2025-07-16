@@ -69,8 +69,8 @@
                             <td class="px-3 py-2">{{ $entrada->created_at->format('d/m/Y H:i') }}</td>
                             <td class="px-3 py-2 text-center">
                                 @if ($entrada->productos_count > 0)
-                                    <a
-                                        href="{{ route('productos.index', ['entrada_id' => $entrada->id, 'estado' => 'todos']) }}">
+                                    <a href="{{ route('productos.index', ['entrada_id' => $entrada->id, 'mostrar_todos' => 1]) }}"
+                                        class="text-blue-600 hover:underline">
                                         {{ $entrada->productos_count }}
                                     </a>
                                 @else
