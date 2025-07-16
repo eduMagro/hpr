@@ -26,6 +26,9 @@ class ProductoController extends Controller
         if ($request->filled('id') && is_numeric($request->id)) {
             $query->where('id', (int) $request->id);
         }
+        if ($request->filled('entrada_id') && is_numeric($request->entrada_id)) {
+            $query->where('entrada_id', (int) $request->entrada_id);
+        }
 
         if ($request->filled('albaran')) {
             $albaran = $request->albaran;
