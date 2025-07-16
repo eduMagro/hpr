@@ -149,11 +149,17 @@ class PedidoController extends Controller
     {
         $query = Pedido::with(['fabricante', 'distribuidor', 'productos', 'pedidoGlobal', 'pedidoProductos.productoBase'])->latest();
 
-        // Si el usuario autenticado es operario, solo puede ver pedidos pendientes o parciales
+        // 👉 Si el usuario es operario, ya aplicas un filtro específico
         if (auth()->user()->rol === 'operario') {
             $query->whereIn('estado', ['pendiente', 'parcial']);
+        } else {
+            // 👉 Si no viene un filtro de estado en la request, por defecto solo mostramos 'pendiente'
+            if (!$request->filled('estado')) {
+                $query->where('estado', 'pendiente');
+                // 👇 opcional: para que aparezca el filtro activo en la vista
+                $request->merge(['estado' => 'pendiente']);
+            }
         }
-
         // Aplicar filtros personalizados
         $this->aplicarFiltrosPedidos($query, $request);
 
