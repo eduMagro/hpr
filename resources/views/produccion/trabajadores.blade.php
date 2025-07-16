@@ -384,22 +384,30 @@
                         horasTexto = `${props.entrada} / ${props.salida}`;
                     } else if (props.entrada && !props.salida) {
                         horasTexto = props.entrada;
-                    } else if (props.entrada && !props.salida) {
+                    } else if (props.salida && !props.entrada) {
                         horasTexto = props.salida;
                     }
 
-
                     let html = `
-                        <div class="px-2 py-1 text-xs font-semibold flex items-center gap-1">
-                            <span>${arg.event.title}</span>
-                            <span class="text-[10px] font-normal opacity-80">(${props.categoria_nombre ?? ''}  </span>
-                            <span class="text-[10px] font-normal opacity-80">🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})</span>
-                            <span class="text-[10px] font-normal opacity-80">${horasTexto}</span>
-                        </div>`;
+        <div class="px-2 py-1 text-xs font-semibold flex items-center">
+            <!-- Bloque izquierdo -->
+            <div class="flex flex-col">
+                <span>${arg.event.title}</span>
+                <span class="text-[10px] font-normal opacity-80">
+                    (${props.categoria_nombre ?? ''} 🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})
+                </span>
+            </div>
+            <!-- Bloque derecho (horas alineadas a la derecha) -->
+            <div class="ml-auto text-right">
+                <span class="text-[10px] font-normal opacity-80">${horasTexto}</span>
+            </div>
+        </div>
+    `;
+
                     return {
                         html
                     };
-                }
+                },
 
             });
             // Forzar el orden de los recursos explícitamente usando setResources
