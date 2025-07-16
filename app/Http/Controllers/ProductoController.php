@@ -27,8 +27,11 @@ class ProductoController extends Controller
             $query->where('id', (int) $request->id);
         }
 
-        if ($request->filled('entrada_id') && is_numeric($request->entrada_id)) {
-            $query->where('entrada_id', (int) $request->entrada_id);
+        if ($request->filled('entrada_id')) {
+            $albaran = $request->entrada_id; // aquí realmente estás pasando el albarán
+            $query->whereHas('entrada', function ($q) use ($albaran) {
+                $q->where('albaran', 'like', "%{$albaran}%");
+            });
         }
 
         if ($request->filled('codigo')) {
