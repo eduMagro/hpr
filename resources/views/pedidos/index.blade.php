@@ -71,6 +71,7 @@
                                         'cancelado' => 'Cancelado',
                                     ]" :selected="request('estado')" empty="Todos"
                                         class="w-full text-xs" />
+
                                 </th>
                                 <x-tabla.botones-filtro ruta="pedidos.index" />
                             </form>

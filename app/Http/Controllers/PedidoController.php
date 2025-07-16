@@ -133,11 +133,8 @@ class PedidoController extends Controller
             $query->whereDate('fecha_entrega', $request->fecha_entrega);
         }
 
-        $hayFiltros = $request->except(['page', 'sort', 'order']);
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
-        } elseif (empty($hayFiltros)) {
-            $query->where('estado', 'pendiente');
         }
 
 
