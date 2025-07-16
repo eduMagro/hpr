@@ -208,14 +208,15 @@
 
                                 <td class="px-2 py-3 text-center border">
                                     @if ($entradaId)
-                                        <a href="{{ route('entradas.index', ['entrada_id' => $entradaId]) }}"
+                                        <a href="{{ route('entradas.index', ['albaran' => $producto->entrada->albaran]) }}"
                                             class="text-blue-600 hover:underline">
                                             {{ $producto->entrada->albaran }}
                                         </a>
                                     @else
-                                        — {{-- Sin entrada asociada --}}
+                                        —
                                     @endif
                                 </td>
+
                                 <td class="px-2 py-3 text-center border">{{ $producto->codigo ?? 'N/A' }}</td>
                                 <td class="px-2 py-3 text-center border">{{ $producto->fabricante->nombre ?? '—' }}
                                 </td>
