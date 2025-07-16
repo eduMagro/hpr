@@ -101,14 +101,14 @@ class ProduccionController extends Controller
             ->values();
 
         $coloresPorObra = [];
-        $paleta = ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa', '#fb7185', '#10b981', '#f97316', '#06b6d4', '#c084fc'];
+        $coloresEventos = [
+            1 => ['bg' => '#FFE082', 'border' => '#FFECB3'], // amarillo pastel
+            2 => ['bg' => '#81C784', 'border' => '#A5D6A7'], // verde pastel
+            3 => ['bg' => '#E57373', 'border' => '#EF9A9A'], // rojo pastel
+        ];
 
-        foreach ($obraIds as $index => $obraId) {
-            $coloresPorObra[$obraId] = [
-                'bg' => $paleta[$index % count($paleta)],
-                'border' => $paleta[$index % count($paleta)],
-            ];
-        }
+
+
 
 
         $fechaHoy = Carbon::today()->subWeek();
@@ -181,7 +181,7 @@ class ProduccionController extends Controller
                             };
                         } else {
                             $obraId = $asignacionTurno->obra_id;
-                            $color = $coloresPorObra[$obraId] ?? ['bg' => '#9ca3af', 'border' => '#6b7280']; // gris por defecto
+                            $color = $coloresEventos[$obraId] ?? ['bg' => '#d1d5db', 'border' => '#9ca3af'];
                         }
 
                         $eventos[] = [
@@ -191,9 +191,9 @@ class ProduccionController extends Controller
                             'end' => $end,
                             'resourceId' => $resourceId,
                             'user_id' => $trabajador->id,
-                            'backgroundColor' => $color['bg'],
+                            'backgroundColor' => $color['bg'], // tono más claro
                             'borderColor' => $color['border'],
-                            'textColor' => '#ffffff',
+                            'textColor' => '#000000',
                             'extendedProps' => [
                                 'user_id' => $trabajador->id,
                                 'categoria_id' => $trabajador->categoria_id,
@@ -251,22 +251,28 @@ class ProduccionController extends Controller
 
     public function actualizarPuesto(Request $request, $id)
     {
+        // Validar datos
         $request->validate([
             'maquina_id' => 'required|exists:maquinas,id',
-
-            'turno_id' => 'nullable|exists:turnos,id', // por si lo sigues enviando
+            'turno_id'   => 'nullable|exists:turnos,id',
         ]);
 
+        // Buscar la máquina para obtener su obra_id
+        $maquina = Maquina::findOrFail($request->maquina_id);
+
+        // Buscar la asignación
         $asignacion = AsignacionTurno::findOrFail($id);
 
+        // Actualizar datos incluyendo obra_id de la máquina
         $asignacion->update([
             'maquina_id' => $request->maquina_id,
-
-            'turno_id' => $request->turno_id, // o puedes omitirlo si usas lógica automática
+            'turno_id'   => $request->turno_id,
+            'obra_id'    => $maquina->obra_id, // 👈 se asigna automáticamente
         ]);
 
         return response()->json(['message' => 'Actualización exitosa']);
     }
+
 
     //---------------------------------------------------------- MAQUINAS
     public function maquinas()

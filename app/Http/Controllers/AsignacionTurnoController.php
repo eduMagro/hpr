@@ -15,23 +15,27 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Database\Eloquent\Builder; // ✅ Correcto
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\AsignacionesTurnosExport;
 
 class AsignacionTurnoController extends Controller
 {
     public function aplicarFiltros($query, Request $request)
     {
-        // 🔹 Filtro por ID
+        // 🔹 Filtro por ID empleado
         if ($request->filled('id')) {
             $query->where('user_id', $request->input('id'));
         }
+
+        // 🔹 Filtro por nombre de empleado
         if ($request->filled('empleado')) {
-            $query->whereHas('user', function ($q) use ($request) {
-                $valor = $request->empleado;
+            $valor = $request->empleado;
+            $query->whereHas('user', function ($q) use ($valor) {
                 $q->whereRaw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido) LIKE ?", ["%{$valor}%"]);
             });
         }
 
-
+        // 🔹 Filtros de fecha
         if ($request->filled('fecha_inicio') && $request->filled('fecha_fin')) {
             $query->whereBetween('fecha', [$request->fecha_inicio, $request->fecha_fin]);
         } elseif ($request->filled('fecha_inicio')) {
@@ -40,30 +44,28 @@ class AsignacionTurnoController extends Controller
             $query->where('fecha', '<=', $request->fecha_fin);
         }
 
+        // 🔹 Filtro por obra
         if ($request->filled('obra')) {
-            $query->whereHas(
-                'obra',
-                fn($q) =>
-                $q->where('obra', 'like', '%' . $request->obra . '%')
-            );
+            $query->whereHas('obra', function ($q) use ($request) {
+                $q->where('obra', 'like', '%' . $request->obra . '%');
+            });
         }
 
+        // 🔹 Filtro por turno
         if ($request->filled('turno')) {
-            $query->whereHas(
-                'turno',
-                fn($q) =>
-                $q->where('nombre', 'like', '%' . $request->turno . '%')
-            );
+            $query->whereHas('turno', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->turno . '%');
+            });
         }
 
+        // 🔹 Filtro por máquina
         if ($request->filled('maquina')) {
-            $query->whereHas(
-                'maquina',
-                fn($q) =>
-                $q->where('nombre', 'like', '%' . $request->maquina . '%')
-            );
+            $query->whereHas('maquina', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->maquina . '%');
+            });
         }
 
+        // 🔹 Filtro por entrada y salida
         if ($request->filled('entrada')) {
             $query->where('entrada', 'like', '%' . $request->entrada . '%');
         }
@@ -72,12 +74,93 @@ class AsignacionTurnoController extends Controller
             $query->where('salida', 'like', '%' . $request->salida . '%');
         }
 
-        if ($request->filled('sort') && in_array($request->sort, ['user_id', 'fecha', 'turno_id', 'maquina_id'])) {
-            $direction = $request->direction === 'asc' ? 'asc' : 'desc';
-            $query->orderBy($request->sort, $direction);
+        return $query;
+    }
+
+    private function filtrosActivos(Request $request): array
+    {
+        $filtros = [];
+
+        if ($request->filled('id')) {
+            $filtros[] = 'ID Empleado: <strong>' . $request->id . '</strong>';
         }
 
-        return $query;
+        if ($request->filled('empleado')) {
+            $filtros[] = 'Empleado: <strong>' . e($request->empleado) . '</strong>';
+        }
+
+        if ($request->filled('fecha_inicio') || $request->filled('fecha_fin')) {
+            $rango = ($request->fecha_inicio ?? '—') . ' a ' . ($request->fecha_fin ?? '—');
+            $filtros[] = 'Fecha: <strong>' . $rango . '</strong>';
+        }
+
+        if ($request->filled('obra')) {
+            $filtros[] = 'Obra: <strong>' . e($request->obra) . '</strong>';
+        }
+
+        if ($request->filled('turno')) {
+            $filtros[] = 'Turno: <strong>' . e($request->turno) . '</strong>';
+        }
+
+        if ($request->filled('maquina')) {
+            $filtros[] = 'Máquina: <strong>' . e($request->maquina) . '</strong>';
+        }
+
+        if ($request->filled('entrada')) {
+            $filtros[] = 'Entrada: <strong>' . e($request->entrada) . '</strong>';
+        }
+
+        if ($request->filled('salida')) {
+            $filtros[] = 'Salida: <strong>' . e($request->salida) . '</strong>';
+        }
+
+        if ($request->filled('sort')) {
+            $orden = $request->direction === 'asc' ? 'ascendente' : 'descendente';
+            $filtros[] = 'Ordenado por <strong>' . e($request->sort) . '</strong> en <strong>' . $orden . '</strong>';
+        }
+
+        if ($request->filled('per_page')) {
+            $filtros[] = 'Mostrando <strong>' . e($request->per_page) . '</strong> registros por página';
+        }
+
+        return $filtros;
+    }
+
+    private function getOrdenamiento(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = '';
+        if ($isSorted) {
+            $icon = $currentOrder === 'asc'
+                ? '▲' // flecha hacia arriba
+                : '▼'; // flecha hacia abajo
+        } else {
+            $icon = '⇅'; // símbolo de orden genérico
+        }
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+    }
+
+    private function aplicarOrdenamiento($query, Request $request)
+    {
+        $sortBy = $request->input('sort', 'fecha');
+        $order  = $request->input('direction', 'desc');
+
+        $columnasPermitidas = ['user_id', 'fecha', 'turno_id', 'maquina_id', 'entrada', 'salida'];
+        if (!in_array($sortBy, $columnasPermitidas, true)) {
+            $sortBy = 'fecha';
+        }
+
+        $order = strtolower($order) === 'asc' ? 'asc' : 'desc';
+
+        return $query->orderBy($sortBy, $order);
     }
 
     public function index(Request $request)
@@ -93,12 +176,29 @@ class AsignacionTurnoController extends Controller
             ->orderBy('asignaciones_turnos.id') // 🟡 Orden estable
             ->select('asignaciones_turnos.*');
 
+
+        // aplicar filtros
         $query = $this->aplicarFiltros($query, $request);
+
+        // aplicar ordenamiento separado
+        $query = $this->aplicarOrdenamiento($query, $request);
+        $ordenables = [
+            'user_id'    => $this->getOrdenamiento('user_id', 'ID Empleado'),
+            'fecha'      => $this->getOrdenamiento('fecha', 'Fecha'),
+            'obra_id'    => $this->getOrdenamiento('obra_id', 'Lugar'),
+            'turno_id'   => $this->getOrdenamiento('turno_id', 'Turno'),
+            'maquina_id' => $this->getOrdenamiento('maquina_id', 'Máquina'),
+            'entrada'    => $this->getOrdenamiento('entrada', 'Entrada'),
+            'salida'     => $this->getOrdenamiento('salida', 'Salida'),
+        ];
+
         $perPage = $request->input('per_page', 15);
         $asignaciones = $query->paginate($perPage)->withQueryString();
-        $turnos = Turno::where('nombre', '!=', 'festivo')
-            ->orderBy('nombre')
-            ->get();
+        // 🔹 Filtros activos para mostrarlos en la vista
+        $filtrosActivos = $this->filtrosActivos($request);
+
+        // 🔹 Turnos para los select
+        $turnos = Turno::where('nombre', '!=', 'festivo')->orderBy('nombre')->get();
 
         // 2. Estadísticas del trabajador (cuando se filtra por nombre)
         $asignacionesFiltradas = (clone $query)->get();
@@ -214,7 +314,9 @@ class AsignacionTurnoController extends Controller
             'diasSinFichaje',
             'estadisticasPuntualidad',
             'turnos',
-            'totalSolicitudesPendientes'
+            'totalSolicitudesPendientes',
+            'filtrosActivos',
+            'ordenables',
         ));
     }
 
@@ -277,11 +379,13 @@ class AsignacionTurnoController extends Controller
                 if (!$turnoDetectado || !$fechaTurnoDetectado) {
                     return response()->json(['error' => 'No se pudo determinar el turno para esta hora.'], 403);
                 }
+
+                // 🧾 Buscar la asignación correcta
+                $asignacionTurno = $asignaciones->first(function ($a) use ($fechaTurnoDetectado) {
+                    return $a->fecha === $fechaTurnoDetectado;
+                });
             }
-            // 🧾 Buscar la asignación correcta
-            $asignacionTurno = $asignaciones->first(function ($a) use ($fechaTurnoDetectado) {
-                return $a->fecha === $fechaTurnoDetectado;
-            });
+
 
 
             if (!$asignacionTurno) {
@@ -892,5 +996,28 @@ class AsignacionTurnoController extends Controller
             'success' => true,
             'message' => '🗑️ Asignación eliminada correctamente.'
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        Log::info('✅ Entrando al export con filtros:', $request->all());
+
+        $query = AsignacionTurno::with(['user', 'obra', 'turno', 'maquina'])
+            ->whereDate('fecha', '<=', \Carbon\Carbon::tomorrow())
+            ->where('estado', 'activo')
+            ->whereHas('turno', fn($q) => $q->where('nombre', '!=', 'vacaciones'))
+            ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
+            ->select('asignaciones_turnos.*'); // 👈 usa el nombre correcto de la tabla
+
+        // aplicar filtros
+        $query = $this->aplicarFiltros($query, $request);
+        $asignaciones = $query->get();
+
+        Log::info('✅ Exportando asignaciones:', ['count' => $asignaciones->count()]);
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AsignacionesTurnosExport($asignaciones),
+            'asignaciones_filtradas.xlsx'
+        );
     }
 }

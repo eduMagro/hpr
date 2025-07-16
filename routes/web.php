@@ -41,6 +41,7 @@ use App\Http\Controllers\DepartamentoController;
 use App\Http\Controllers\SeccionController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ClaveSeccionController;
+use Illuminate\Support\Facades\Log;
 
 Route::get('/', [PageController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -150,6 +151,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/asignaciones-turno/repetir-semana', [AsignacionTurnoController::class, 'repetirSemana'])->name('asignaciones-turno.repetirSemana');
     Route::post('/asignaciones-turno/{id}/actualizar-horas', [AsignacionTurnoController::class, 'actualizarHoras'])
         ->name('asignaciones-turno.actualizar-horas');
+    Route::get('/asignaciones-turnos/export', [AsignacionTurnoController::class, 'export'])
+        ->name('asignaciones-turnos.export');
+
 
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class)->middleware('acceso.seccion:maquinas.index');

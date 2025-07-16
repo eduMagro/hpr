@@ -66,47 +66,28 @@
             @endforeach
         </div>
  --}}
+        <div class="mb-4 flex justify-end">
+            <a href="{{ route('asignaciones-turnos.export', request()->all()) }}">📤 Exportar Excel</a>
 
+
+        </div>
+
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- Tabla de asignaciones -->
         <div class="w-full max-w-full overflow-x-auto bg-white shadow-lg rounded-lg mt-4">
 
             <table class="w-full border border-gray-300 rounded-lg text-xs uppercase text-center">
                 <thead class="bg-blue-500 text-white">
                     <tr>
-                        <th class="p-2 border">ID Empleado</th>
-                        <th class="p-2 border">
-                            <a
-                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'user_id', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                Empleado
-                            </a>
-                        </th>
-                        <th class="p-2 border">
-                            <a
-                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'fecha', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                Fecha
-                            </a>
-                        </th>
-                        <th class="p-2 border">
-                            <a
-                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'fecha', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                Lugar
-                            </a>
-                        </th>
-                        <th class="p-2 border">
-                            <a
-                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'turno_id', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                Turno
-                            </a>
-                        </th>
-                        <th class="p-2 border">
-                            <a
-                                href="{{ route('asignaciones-turnos.index', array_merge(request()->all(), ['sort' => 'maquina_id', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                Máquina
-                            </a>
-                        </th>
+                        <th class="p-2 border">{!! $ordenables['user_id'] !!}</th>
+                        <th class="p-2 border">Empleado</th>
+                        <th class="p-2 border">{!! $ordenables['fecha'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['obra_id'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['turno_id'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['maquina_id'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['entrada'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['salida'] !!}</th>
 
-                        <th class="p-2 border">Entrada</th>
-                        <th class="p-2 border">Salida</th>
                         <th class="p-2 border">Resumen</th>
                         <th class="p-2 border">Acciones</th>
                     </tr>
@@ -140,7 +121,8 @@
                                 <x-tabla.input name="entrada" type="text" :value="request('entrada')" class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input name="salida" type="text" :value="request('salida')" class="w-full text-xs" />
+                                <x-tabla.input name="salida" type="text" :value="request('salida')"
+                                    class="w-full text-xs" />
                             </th>
                             <th class="p-1 border">
 
@@ -178,7 +160,7 @@
                             <td class="px-2 py-2 border">
                                 {{ \Carbon\Carbon::parse($asignacion->fecha)->format('d/m/Y') }}
                             </td>
-                            <td class="px-2 py-2 border">{{ $asignacion->obra_id->obra ?? '—' }}</td>
+                            <td class="px-2 py-2 border">{{ $asignacion->obra->obra ?? '—' }}</td>
                             <td class="px-2 py-2 border">
                                 <template x-if="editando">
                                     <select x-model="asignacion.turno_id"
