@@ -57,10 +57,10 @@ class ProduccionController extends Controller
             });
         // define colores por obra
         $coloresObras = [
-            1 => '#1E90FF', // azul
+            1 => '#FFC107', // amarillo
             2 => '#28A745', // verde
-            3 => '#FFC107', // amarillo
-            4 => '#DC3545', // rojo
+            3 => '#DC3545', // rojo
+
         ];
 
         $maquinas = Maquina::orderBy('id')
