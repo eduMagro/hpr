@@ -442,68 +442,57 @@ class MaquinaController extends Controller
         try {
             // Validación de los datos del formulario
             $request->validate([
-                'codigo' => 'required|string|max:6|unique:maquinas,codigo',
-                'nombre' => 'required|string|max:40|unique:maquinas,nombre',
-                'tipo' => 'string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual ',
-                'obra_id' => 'nullable|exists:obras,id',
-                'diametro_min' => 'integer',
-                'diametro_max' => 'integer',
-                'peso_min' => 'integer',
-                'peso_max' => 'integer',
+                'codigo'       => 'required|string|max:6|unique:maquinas,codigo',
+                'nombre'       => 'required|string|max:40|unique:maquinas,nombre',
+                'tipo'         => 'nullable|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual',
+                'obra_id'      => 'nullable|exists:obras,id',
+                'diametro_min' => 'nullable|integer',
+                'diametro_max' => 'nullable|integer',
+                'peso_min'     => 'nullable|integer',
+                'peso_max'     => 'nullable|integer',
             ], [
                 // Mensajes personalizados
                 'codigo.required' => 'El campo "código" es obligatorio.',
-                'codigo.string' => 'El campo "código" debe ser una cadena de texto.',
-                'codigo.max' => 'El campo "código" no puede tener más de 6 caracteres.',
-                'codigo.unique' => 'Ya existe una máquina con el mismo código',
+                'codigo.string'   => 'El campo "código" debe ser una cadena de texto.',
+                'codigo.max'      => 'El campo "código" no puede tener más de 6 caracteres.',
+                'codigo.unique'   => 'Ya existe una máquina con el mismo código.',
 
                 'nombre.required' => 'El campo "nombre" es obligatorio.',
-                'nombre.string' => 'El campo "nombre" debe ser una cadena de texto.',
-                'nombre.max' => 'El campo "nombre" no puede tener más de 40 caracteres.',
-                'nombre.unique' => 'Ya existe una máquina con el mismo nombre',
+                'nombre.string'   => 'El campo "nombre" debe ser una cadena de texto.',
+                'nombre.max'      => 'El campo "nombre" no puede tener más de 40 caracteres.',
+                'nombre.unique'   => 'Ya existe una máquina con el mismo nombre.',
 
-                'tipo.string' => 'El campo "tpo" debe ser una cadena de texto.',
-                'tipo.max' => 'El campo "tipo" no puede tener más de 50 caracteres.',
-                'tipo.in' => 'El tipo no está entre los posibles',
+                'tipo.string'     => 'El campo "tipo" debe ser una cadena de texto.',
+                'tipo.max'        => 'El campo "tipo" no puede tener más de 50 caracteres.',
+                'tipo.in'         => 'El tipo no está entre los posibles.',
 
-                // 'diametro_min.required' => 'El campo "diámetro mínimo" es obligatorio.',
                 'diametro_min.integer' => 'El campo "diámetro mínimo" debe ser un número entero.',
-
-                // 'diametro_max.required' => 'El campo "diámetro máximo" es obligatorio.',
                 'diametro_max.integer' => 'El campo "diámetro máximo" debe ser un número entero.',
-
-                // 'peso_min.required'     => 'El campo "peso mínimo" es obligatorio.',
-                'peso_min.integer' => 'El campo "peso mínimo" debe ser un número entero.',
-
-                //'peso_max.required'     => 'El campo "peso máximo" es obligatorio.',
-                'peso_max.integer' => 'El campo "peso máximo" debe ser un número entero.',
-                'obra_id.exists' => 'La obra seleccionada no es válida.',
-
+                'peso_min.integer'     => 'El campo "peso mínimo" debe ser un número entero.',
+                'peso_max.integer'     => 'El campo "peso máximo" debe ser un número entero.',
+                'obra_id.exists'       => 'La obra seleccionada no es válida.',
             ]);
-
 
             // Crear la nueva máquina en la base de datos
             Maquina::create([
-                'codigo' => $request->codigo,
-                'nombre' => $request->nombre,
-                'tipo' => $request->tipo,
-                'obra_id'       => $request->obra_id,
+                'codigo'       => $request->codigo,
+                'nombre'       => $request->nombre,
+                'tipo'         => $request->tipo,
+                'obra_id'      => $request->obra_id,
                 'diametro_min' => $request->diametro_min,
                 'diametro_max' => $request->diametro_max,
-                'peso_min' => $request->peso_min,
-                'peso_max' => $request->peso_max,
+                'peso_min'     => $request->peso_min,
+                'peso_max'     => $request->peso_max,
             ]);
 
             DB::commit();  // Confirmamos la transacción
-            // Redirigir a la página de listado con un mensaje de éxito
+
             return redirect()->route('maquinas.index')->with('success', 'Máquina creada con éxito.');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            // Mostrar todos los errores de validación
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            DB::rollBack();  // Revertimos la transacción si hay error de validación
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            // Mostrar errores generales
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            DB::rollBack();  // Revertimos la transacción si hay error general
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
