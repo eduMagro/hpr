@@ -256,10 +256,10 @@ class ProductoController extends Controller
             'ubicacion'      => $this->getOrdenamiento('ubicacion', 'Ubicación'),
         ];
 
-        // Si no se está filtrando por estado ni código, excluir consumido/fabricando
-        if (!$request->filled('estado') && !$request->filled('codigo') && !$request->filled('id')) {
-            $query->whereNotIn('estado', ['consumido', 'fabricando']);
-        }
+        // // Si no se está filtrando por estado ni código, excluir consumido/fabricando
+        // if (!$request->filled('estado') && !$request->filled('codigo') && !$request->filled('id')) {
+        //     $query->whereNotIn('estado', ['consumido', 'fabricando']);
+        // }
         $totalPesoInicial = (clone $query)->sum('peso_inicial');
         // Paginación segura
         $perPage = is_numeric($request->input('per_page')) ? max(5, min((int)$request->input('per_page'), 100)) : 10;
