@@ -436,19 +436,6 @@ class ProduccionController extends Controller
             'resources' => $resources,
         ]);
     }
-    private function calcularEstadoEntrega($planilla, Carbon $ultimoFin)
-    {
-        if (!$planilla || !$planilla->fecha_estimada_entrega) {
-            return 'Sin fecha';
-        }
-
-        try {
-            $entrega = toCarbon($planilla->fecha_estimada_entrega);
-            return $ultimoFin->lte($entrega) ? '🟢 En tiempo' : '🔴 Retraso';
-        } catch (\Exception $e) {
-            return 'Sin fecha';
-        }
-    }
 
     private function generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas)
     {

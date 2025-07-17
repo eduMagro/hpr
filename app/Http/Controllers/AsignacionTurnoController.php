@@ -411,9 +411,9 @@ class AsignacionTurnoController extends Controller
             $obra      = Obra::findOrFail($request->obra_id);
             $distancia = $this->calcularDistancia($request->latitud, $request->longitud, $obra->latitud, $obra->longitud);
             Log::info('📍 Distancia hasta la obra', ['distancia' => $distancia]);
-            // if ($distancia > $obra->distancia) {
-            //     return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
-            // }
+            if ($distancia > $obra->distancia) {
+                return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
+            }
 
             // 🕒 Guardar fichaje
             $warning = null;

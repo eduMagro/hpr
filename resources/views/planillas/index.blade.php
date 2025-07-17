@@ -93,10 +93,10 @@
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
         <!-- TABLA DE PLANILLAS -->
         <div x-data="{ modalReimportar: false, planillaId: null }" class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
-
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-4">
                     <tr class="text-center text-xs uppercase">
+
                         <th class="p-2 border">{!! $ordenables['codigo'] !!}</th>
                         <th class="p-2 border">Codigo Cliente</th>
                         <th class="p-2 border">Cliente</th>
@@ -119,6 +119,7 @@
 
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('planillas.index') }}">
+
                             <th class="p-1 border">
                                 <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
                             </th>
@@ -177,8 +178,8 @@
                             <th class="p-1 border">
                                 <x-tabla.input name="nombre_completo" value="{{ request('nombre_completo') }}" />
                             </th>
-                            <x-tabla.botones-filtro ruta="planillas.index" />
                         </form>
+                        <x-tabla.botones-filtro ruta="planillas.index" />
                     </tr>
 
                 </thead>
@@ -200,6 +201,7 @@
                             @keydown.enter.stop="guardarCambios(planilla); editando = false"
                             :class="{ 'bg-yellow-100': editando }"
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase">
+
 
                             <!-- Código -->
                             <td class="p-2 text-center border">
@@ -357,6 +359,7 @@
                                 <span x-text="planilla.user?.nombre_completo ?? 'Desconocido'"></span>
                             </td>
 
+                            <!-- Acciones Fila -->
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
                                     <!-- Mostrar solo en modo edición -->
@@ -432,7 +435,8 @@
                             @csrf
 
                             <div>
-                                <label for="archivo" class="block text-sm font-medium text-gray-700">Selecciona el
+                                <label for="archivo" class="block text-sm font-medium text-gray-700">Selecciona
+                                    el
                                     nuevo archivo:</label>
                                 <input type="file" name="archivo" id="archivo" accept=".csv,.xlsx,.xls"
                                     required class="mt-1 block w-full border border-gray-300 rounded p-2 text-sm">
@@ -458,6 +462,7 @@
     </div>
 
     <x-tabla.paginacion :paginador="$planillas" />
+
     <script>
         function guardarCambios(planilla) {
             fetch(`{{ route('planillas.update', '') }}/${planilla.id}`, {

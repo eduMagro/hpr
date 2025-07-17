@@ -97,7 +97,6 @@
         <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto mb-6 border border-gray-200">
             <!-- Encabezado con avatar -->
             <div class="flex items-center space-x-4 border-b pb-4 mb-4">
-                <!-- Avatar -->
                 @if ($user->ruta_imagen)
                     <img src="{{ $user->ruta_imagen }}" alt="Foto de perfil"
                         class="w-16 h-16 rounded-full object-cover ring-2 ring-blue-400 shadow">
@@ -107,13 +106,17 @@
                         {{ strtoupper(substr($user->name, 0, 1)) }}
                     </div>
                 @endif
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">{{ $user->name }}</h2>
+                    <p class="text-sm text-gray-500">Ficha de trabajador</p>
+                </div>
             </div>
 
             <!-- Contenido en dos columnas -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Información del usuario -->
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Información</h3>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">📌 Información</h3>
                     <p><strong>Email:</strong> <span class="text-gray-600">{{ $user->email }}</span></p>
                     <p><strong>Categoría:</strong> <span
                             class="text-gray-600">{{ $user->categoria->nombre ?? 'N/A' }}</span></p>
@@ -123,16 +126,34 @@
 
                 <!-- Resumen de asistencias -->
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Asistencias</h3>
-                    <div id="resumen-asistencia" class="bg-gray-100 p-3 rounded-lg">
-                        <p><strong>Vacaciones asignadas: </strong> {{ $resumen['diasVacaciones'] }}</p>
-                        <p><strong>Faltas injustificadas: </strong> {{ $resumen['faltasInjustificadas'] }}</p>
-                        <p><strong>Faltas justificadas: </strong> {{ $resumen['faltasJustificadas'] }}</p>
-                        <p><strong>Días de baja: </strong> {{ $resumen['diasBaja'] }}</p>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">📅 Asistencias</h3>
+                    <div class="bg-gray-100 p-3 rounded-lg mb-4">
+                        <p><strong>Vacaciones asignadas:</strong> {{ $resumen['diasVacaciones'] }}</p>
+                        <p><strong>Faltas injustificadas:</strong> {{ $resumen['faltasInjustificadas'] }}</p>
+                        <p><strong>Faltas justificadas:</strong> {{ $resumen['faltasJustificadas'] }}</p>
+                        <p><strong>Días de baja:</strong> {{ $resumen['diasBaja'] }}</p>
+                    </div>
+
+                    <!-- Resumen de horas -->
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">⏱️ Horas trabajadas (mes actual)</h3>
+                    <div class="bg-gray-100 p-3 rounded-lg">
+                        <p><strong>Horas trabajadas:</strong>
+                            {{ number_format($horasMensuales['horas_trabajadas'], 2, ',', '.') }} h
+                        </p>
+                        <p><strong>Horas que debería llevar hasta hoy:</strong>
+                            {{ number_format($horasMensuales['horas_deberia_llevar'], 2, ',', '.') }} h
+                        </p>
+                        <p><strong>Horas planificadas del mes:</strong>
+                            {{ number_format($horasMensuales['horas_planificadas_mes'], 2, ',', '.') }} h
+                        </p>
+                        <p class="text-red-600 font-semibold">
+                            ⚠️ Días con errores de fichaje: {{ $horasMensuales['dias_con_errores'] }}
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
+
 
         <div class="bg-white rounded-lg shadow-lg">
             <div id="calendario"></div>

@@ -1197,4 +1197,40 @@ class PlanillaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar la planilla: ' . $e->getMessage());
         }
     }
+    public function destroyMultiple(Request $request)
+    {
+        if (auth()->user()->rol !== 'oficina') {
+            return redirect()->route('planillas.index')->with('abort', 'No tienes los permisos necesarios.');
+        }
+
+        $ids = $request->input('seleccionados', []);
+        // 🐛 Debug: ver qué IDs llegan
+        Log::info('🗑️ IDs recibidos para eliminar múltiples:', $ids);
+
+        if (empty($ids)) {
+            return redirect()->route('planillas.index')->with('error', 'No seleccionaste ninguna planilla.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Buscar todas las planillas con sus elementos
+            $planillas = Planilla::with('elementos')->whereIn('id', $ids)->get();
+
+            foreach ($planillas as $planilla) {
+                // Eliminar elementos asociados
+                foreach ($planilla->elementos as $elemento) {
+                    $elemento->delete();
+                }
+
+                // Eliminar la planilla
+                $planilla->delete();
+            }
+
+            DB::commit();
+            return redirect()->route('planillas.index')->with('success', 'Planillas eliminadas correctamente.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Ocurrió un error al eliminar las planillas: ' . $e->getMessage());
+        }
+    }
 }

@@ -161,31 +161,7 @@ class EstadisticasController extends Controller
             });
     }
 
-    // private function getPesoPorPlanilleroPorDia()
-    // {
-    //     $primerDiaMes  = now()->startOfMonth();
-    //     $ultimoDiaMes  = now()->endOfMonth();
 
-    //     return Planilla::where('estado', 'pendiente')
-    //         ->whereBetween('created_at', [$primerDiaMes, $ultimoDiaMes])
-    //         ->with('user:id,name,primer_apellido,segundo_apellido')          // ⬅️  idem
-    //         ->select(
-    //             'users_id',
-    //             DB::raw('DATE(created_at) AS fecha'),
-    //             DB::raw('SUM(peso_total) AS peso_importado')
-    //         )
-    //         ->groupBy('users_id', 'fecha')
-    //         ->orderBy('fecha', 'asc')
-    //         ->get()
-    //         ->map(function ($planilla) {
-    //             return (object) [
-    //                 'users_id'       => $planilla->users_id,
-    //                 'nombre_completo' => optional($planilla->user)->nombre_completo,
-    //                 'fecha'          => $planilla->fecha,
-    //                 'peso_importado' => $planilla->peso_importado,
-    //             ];
-    //         });
-    // }
     private function getPesoPorPlanilleroAgrupado($modo = 'mes')
     {
         $query = Planilla::where('estado', 'pendiente')
@@ -254,7 +230,6 @@ class EstadisticasController extends Controller
             'series' => $series->toArray(),
         ];
     }
-
 
     // ---------------------------------------------------------------- consumo de materia prima / maquina
 
