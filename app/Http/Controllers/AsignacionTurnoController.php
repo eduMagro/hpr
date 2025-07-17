@@ -343,17 +343,18 @@ class AsignacionTurnoController extends Controller
             $hora          = Carbon::createFromFormat('H:i:s', $horaActual);
             $fecha         = $ahora->toDateString();
             $fechaAnterior = $ahora->copy()->subDay()->toDateString();
+            $fechaSiguiente = $ahora->copy()->addDay()->toDateString();
 
             // 🧠 Detectar turno lógico según hora real (con 2h de margen)
             $turnoDetectado      = null;
             $fechaTurnoDetectado = null;
 
-            if (
-                $hora->between(Carbon::createFromTime(19, 0), Carbon::createFromTime(23, 59)) ||
-                $hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(3, 59))
-            ) {
-                $turnoDetectado      = 'noche';
-                $fechaTurnoDetectado = $hora->hour >= 19 ? $fecha : $fechaAnterior;
+            if ($hora->between(Carbon::createFromTime(19, 0), Carbon::createFromTime(23, 59))) {
+                $turnoDetectado = 'noche';
+                $fechaTurnoDetectado = $fechaSiguiente; // noche que empieza hoy pero se asigna al día siguiente
+            } elseif ($hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(3, 59))) {
+                $turnoDetectado = 'noche';
+                $fechaTurnoDetectado = $fecha; // madrugada, sigue contando para la noche anterior
             } elseif ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(11, 59))) {
                 $turnoDetectado      = 'mañana';
                 $fechaTurnoDetectado = $fecha;
@@ -366,15 +367,10 @@ class AsignacionTurnoController extends Controller
                 return response()->json(['error' => 'No se pudo determinar el turno para esta hora.'], 403);
             }
 
-            // 🔍 Buscar asignación de esa fecha
-            $asignaciones = $user->asignacionesTurnos()
-                ->whereIn('fecha', [$fechaAnterior, $fecha])
+            $asignacionTurno = $user->asignacionesTurnos()
+                ->where('fecha', $fechaTurnoDetectado)
                 ->with('turno')
-                ->get();
-
-            $asignacionTurno = $asignaciones->first(function ($a) use ($fechaTurnoDetectado) {
-                return $a->fecha === $fechaTurnoDetectado;
-            });
+                ->first();
 
             if (!$asignacionTurno) {
                 return response()->json(['error' => 'No tienes un turno asignado para esta hora.'], 403);
