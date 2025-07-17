@@ -60,42 +60,7 @@
         @endforeach
 
     </div>
-    @if ($tablaPlanillas->isNotEmpty())
-        <div class="mt-8 bg-white shadow rounded-lg overflow-hidden">
-            <h3 class="px-6 py-3 font-semibold text-gray-800 bg-gray-50">
-                Control de plazos de planillas
-            </h3>
 
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
-                <thead class="bg-gray-100 text-left">
-                    <tr>
-                        <th class="px-4 py-2">Código</th>
-                        <th class="px-4 py-2">Fin&nbsp;programado</th>
-                        <th class="px-4 py-2">Entrega&nbsp;estimada</th>
-                        <th class="px-4 py-2">Estado</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    @foreach ($tablaPlanillas as $fila)
-                        <tr
-                            class="{{ $fila['estado'] === '🟢 En tiempo' ? 'bg-green-50' : ($fila['estado'] === '🔴 Retraso' ? 'bg-red-50' : '') }}">
-                            <td class="px-4 py-2 font-medium">
-                                <a href="{{ route('planillas.show', $fila['planilla_id']) }}"
-                                    class="text-blue-600 hover:underline">
-                                    {{ $fila['codigo'] }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-2">{{ $fila['fin_programado'] }}</td>
-                            <td class="px-4 py-2">{{ $fila['entrega_estimada'] }}</td>
-                            <td class="px-4 py-2">
-                                {{ $fila['estado'] }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
@@ -219,14 +184,22 @@
                         return;
                     }
 
-                    /* 2️⃣  Preguntar confirmación */
+                    // 👉 Confirmación con SweetAlert2
+                    const resultado = await Swal.fire({
+                        title: '¿Reordenar planilla?',
+                        html: `¿Quieres reordenar la planilla <strong>${codigoPlanilla}</strong>?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Sí, reordenar',
+                        cancelButtonText: 'Cancelar'
+                    });
 
-                    if (!confirm(`¿Quieres reordenar la planilla ${codigoPlanilla}?`)) {
-
+                    if (!resultado.isConfirmed) {
                         info.revert();
                         return;
                     }
-
                     /* 3️⃣  Calcular la nueva posición (1, 2, 3, …) dentro de la máquina */
                     const eventosOrdenados = calendar.getEvents()
                         .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
@@ -246,19 +219,21 @@
                             },
                             body: JSON.stringify({
                                 id: planillaId,
-                                maquina_id: maquinaId, // 👈 nuevo
+                                maquina_id: maquinaDestinoId,
                                 nueva_posicion: nuevaPosicion
                             })
                         });
 
-                        if (!res.ok) {
-                            // leer texto devuelto por la excepción (422, 500, …)
-                            const errorMsg = await res.text();
-                            throw new Error(errorMsg || 'Error desconocido');
+                        const data = await res.json();
+                        if (!res.ok || !data.success) {
+                            throw new Error(data.message || 'Error al reordenar');
                         }
 
-                        const data = await res.json();
-                        if (!data.success) throw new Error('El servidor informó de fallo.');
+                        // ✅ 5️⃣ Reemplazar los eventos en el calendario sin recargar
+                        calendar.removeAllEvents();
+                        calendar.addEventSource(data
+                            .eventos); // 👈 aquí vienen ordenados desde tu backend
+
 
                     } catch (e) {
                         // Si algo falla, revertimos el drag & drop y mostramos mensaje
@@ -269,15 +244,17 @@
                 },
                 eventDidMount: function(info) {
                     const props = info.event.extendedProps;
+
                     const tooltip = document.createElement('div');
                     tooltip.className = 'fc-tooltip';
                     tooltip.innerHTML = `
-                        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
-                            <strong>${info.event.title}</strong><br>
-                            Obra: ${props.obra}<br>
-                            Estado: ${props.estado}<br>
-                            Duración: ${props.duracion_horas} horas
-                        </div>`;
+        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
+            <strong>${info.event.title}</strong><br>
+            Obra: ${props.obra}<br>
+            Estado producción: ${props.estado}<br>
+            Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
+            Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>
+        </div>`;
                     tooltip.style.position = 'absolute';
                     tooltip.style.zIndex = 9999;
                     tooltip.style.display = 'none';
@@ -299,6 +276,7 @@
                         tooltip.style.display = 'none';
                     });
                 }
+
             });
 
             calendar.render();
