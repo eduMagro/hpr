@@ -2,43 +2,6 @@
     <x-slot name="title">Planificación por Máquina</x-slot>
     <x-menu.planificacion />
 
-    @if ($tablaPlanillas->isNotEmpty())
-        <div class="mt-8 bg-white shadow rounded-lg overflow-hidden">
-            <h3 class="px-6 py-3 font-semibold text-gray-800 bg-gray-50">
-                Control de plazos de planillas
-            </h3>
-
-            <table class="min-w-full divide-y divide-gray-200 text-sm">
-                <thead class="bg-gray-100 text-left">
-                    <tr>
-                        <th class="px-4 py-2">Código</th>
-                        <th class="px-4 py-2">Fin&nbsp;programado</th>
-                        <th class="px-4 py-2">Entrega&nbsp;estimada</th>
-                        <th class="px-4 py-2">Estado</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    @foreach ($tablaPlanillas as $fila)
-                        <tr
-                            class="{{ $fila['estado'] === '🟢 En tiempo' ? 'bg-green-50' : ($fila['estado'] === '🔴 Retraso' ? 'bg-red-50' : '') }}">
-                            <td class="px-4 py-2 font-medium">
-                                <a href="{{ route('planillas.show', $fila['planilla_id']) }}"
-                                    class="text-blue-600 hover:underline">
-                                    {{ $fila['codigo'] }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-2">{{ $fila['fin_programado'] }}</td>
-                            <td class="px-4 py-2">{{ $fila['entrega_estimada'] }}</td>
-                            <td class="px-4 py-2">
-                                {{ $fila['estado'] }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
-
     <div class="py-6">
         @if (!empty($erroresPlanillas))
             <div class="mb-4 bg-yellow-100 text-yellow-800 p-4 rounded shadow">
@@ -97,7 +60,42 @@
         @endforeach
 
     </div>
+    @if ($tablaPlanillas->isNotEmpty())
+        <div class="mt-8 bg-white shadow rounded-lg overflow-hidden">
+            <h3 class="px-6 py-3 font-semibold text-gray-800 bg-gray-50">
+                Control de plazos de planillas
+            </h3>
 
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-100 text-left">
+                    <tr>
+                        <th class="px-4 py-2">Código</th>
+                        <th class="px-4 py-2">Fin&nbsp;programado</th>
+                        <th class="px-4 py-2">Entrega&nbsp;estimada</th>
+                        <th class="px-4 py-2">Estado</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach ($tablaPlanillas as $fila)
+                        <tr
+                            class="{{ $fila['estado'] === '🟢 En tiempo' ? 'bg-green-50' : ($fila['estado'] === '🔴 Retraso' ? 'bg-red-50' : '') }}">
+                            <td class="px-4 py-2 font-medium">
+                                <a href="{{ route('planillas.show', $fila['planilla_id']) }}"
+                                    class="text-blue-600 hover:underline">
+                                    {{ $fila['codigo'] }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-2">{{ $fila['fin_programado'] }}</td>
+                            <td class="px-4 py-2">{{ $fila['entrega_estimada'] }}</td>
+                            <td class="px-4 py-2">
+                                {{ $fila['estado'] }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
