@@ -251,7 +251,7 @@ class StockService
 
             $stockActual = $item['stock'];
             $pedido = $item['pedido'];
-            $reponer = max($stockObjetivo - $stockActual - $pedido, 0);
+            $reponer = $stockObjetivo - $stockActual - $pedido;
 
             return [
                 'id'            => $id,
