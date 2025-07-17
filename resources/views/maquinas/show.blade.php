@@ -42,7 +42,8 @@
             @elseif ($maquina->tipo === 'cortadora_manual')
                 <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :materiaPrima="$materiaPrima" />
             @else
-                <x-maquinas.tipo.tipo-normal :maquina="$maquina" :elementosAgrupados="$elementosAgrupados" />
+                <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados" :productosBaseCompatibles="$productosBaseCompatibles" />
+
                 @include('components.maquinas.modales.normal.modales-normal')
             @endif
 
@@ -244,6 +245,10 @@
             }
 
             async function imprimirEtiquetasLote(etiquetaIds) {
+                await new Promise(resolve => {
+                    // simular proceso de carga real:
+                    setTimeout(resolve, 5000); // simula 5 segundos
+                });
                 const etiquetas = [];
 
                 for (const id of etiquetaIds) {

@@ -65,11 +65,35 @@
 
       <div class="flex flex-col gap-2 p-4">
           @if ($elementosAgrupados->isNotEmpty())
-              <button onclick='imprimirEtiquetasLote(@json($elementosAgrupados->keys()->values()))'
-                  class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded shadow">
-                  🖨️
-              </button>
+              <div id="datos-lote" data-lote='@json($elementosAgrupados->keys()->values())'></div>
+
+              <div x-data="{ cargando: false }">
+                  <button type="button"
+                      @click="
+                cargando = true;
+                let datos = document.getElementById('datos-lote').dataset.lote;
+                let lote = JSON.parse(datos);
+                Promise.resolve(imprimirEtiquetasLote(lote))
+                    .finally(() => cargando = false);
+            "
+                      :disabled="cargando"
+                      class="inline-flex items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
+                   bg-blue-700 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+
+                      <svg x-show="cargando" class="h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg"
+                          fill="none" viewBox="0 0 24 24" role="status" aria-hidden="true">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                              stroke-width="4" />
+                          <path class="opacity-75" fill="currentColor"
+                              d="M4 12a8 8 0 018-8v4l3.536-3.536A9 9 0 103 12h4z" />
+                      </svg>
+
+                      <span x-show="!cargando">🖨️ Imprimir Lote</span>
+                      <span x-show="cargando">Cargando…</span>
+                  </button>
+              </div>
           @endif
+
           <!-- Botón Reportar Incidencia -->
           <button onclick="document.getElementById('modalIncidencia').classList.remove('hidden')"
               class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md w-full sm:w-auto">
@@ -345,5 +369,17 @@
               });
           });
       </script>
+      <script>
+          function imprimirLoteConCarga(el) {
+              el.__x.$data.cargando = true; // accedemos al x-data si queremos
+              let datos = document.getElementById('datos-lote').dataset.lote;
+              let lote = JSON.parse(datos);
+              imprimirEtiquetasLote(lote);
+              setTimeout(() => {
+                  el.__x.$data.cargando = false;
+              }, 2000);
+          }
+      </script>
+
 
   </div>
