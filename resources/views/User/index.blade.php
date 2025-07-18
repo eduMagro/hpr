@@ -564,11 +564,9 @@
                                 .then(data => {
                                     if (data.success) {
                                         Swal.fire({
-                                            toast: true,
-                                            position: 'top-end',
                                             icon: 'success',
                                             title: data.success,
-                                            text: `📍 Obra: ${data.obra_nombre}`,
+                                            text: `📍 Lugar: ${data.obra_nombre}`,
                                             showConfirmButton: false,
                                             timer: 3000
                                         });
