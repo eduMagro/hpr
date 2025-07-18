@@ -440,7 +440,7 @@ class AsignacionTurnoController extends Controller
                 }
                 $asignacionTurno->update([
                     'entrada' => $horaActual,
-                    'obra_id' => $request->obra_id,
+                    'obra_id' => $obraEncontrada->id,
                 ]);
             } else { // salida
                 if (!$asignacionTurno->entrada) {
@@ -451,7 +451,7 @@ class AsignacionTurnoController extends Controller
                 }
                 $asignacionTurno->update([
                     'salida'  => $horaActual,
-                    'obra_id' => $request->obra_id,
+                    'obra_id' => $obraEncontrada->id,
                 ]);
             }
 
