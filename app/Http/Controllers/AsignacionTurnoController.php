@@ -455,10 +455,14 @@ class AsignacionTurnoController extends Controller
                 ]);
             }
 
+            $mensajeSuccess = $request->tipo === 'entrada'
+                ? 'Entrada registrada correctamente.'
+                : 'Salida registrada correctamente.';
+
             return response()->json([
-                'success' => 'Fichaje registrado correctamente.',
-                'warning' => $warning,
-                'obra_nombre' => $obraEncontrada->obra
+                'success'     => $mensajeSuccess,
+                'warning'     => $warning,
+                'obra_nombre' => $obraEncontrada->obra,
             ]);
         } catch (\Exception $e) {
             Log::error('❌ Error en fichaje', ['exception' => $e]);
