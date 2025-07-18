@@ -209,10 +209,19 @@ class ProfileController extends Controller
     public function index(Request $request)
     {
         $usuariosConectados = DB::table('sessions')->whereNotNull('user_id')->distinct('user_id')->count();
-        $obras = Obra::where('estado', 'activa')->get();
+        $obras = Obra::where('estado', 'activa')
+            ->where(function ($query) {
+                $query->where('tipo', 'montaje')
+                    ->orWhereHas('cliente', function ($q) {
+                        $q->where('empresa', 'like', '%Hierros Paco Reyes%');
+                    });
+            })
+            ->select('id', 'obra')
+            ->get();
+
         $obrasHierrosPacoReyes = Obra::where('estado', 'activa')
             ->whereHas('cliente', function ($q) {
-                $q->where('empresa', 'Hierros Paco Reyes');
+                $q->where('empresa', 'like', '%Hierros Paco Reyes%');
             })
             ->select('id', 'obra')
             ->get();

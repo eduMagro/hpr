@@ -330,14 +330,38 @@ class AsignacionTurnoController extends Controller
                 'tipo'     => 'required|in:entrada,salida',
                 'latitud'  => 'required|numeric',
                 'longitud' => 'required|numeric',
-                'obra_id'  => 'required|exists:obras,id',
             ]);
 
             $user = User::findOrFail($request->user_id);
             if ($user->rol !== 'operario') {
                 return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
             }
+            // ============================
+            // 🔎 Buscar obra más cercana
+            // ============================
+            $lat = $request->latitud;
+            $lon = $request->longitud;
 
+            // Obtener todas las obras activas (puedes filtrar más si quieres)
+            $obras = Obra::where('estado', 'activa')->get();
+
+            $obraEncontrada = null;
+            $distanciaMin = null;
+
+            foreach ($obras as $obra) {
+                $dist = $this->calcularDistancia($lat, $lon, $obra->latitud, $obra->longitud);
+
+                if ($dist <= $obra->distancia) {
+                    if (is_null($distanciaMin) || $dist < $distanciaMin) {
+                        $distanciaMin = $dist;
+                        $obraEncontrada = $obra;
+                    }
+                }
+            }
+
+            if (!$obraEncontrada) {
+                return response()->json(['error' => 'No estás dentro de ninguna nave de trabajo.'], 403);
+            }
             $ahora         = now();
             $horaActual    = $ahora->format('H:i:s');
             $hora          = Carbon::createFromFormat('H:i:s', $horaActual);
@@ -405,14 +429,6 @@ class AsignacionTurnoController extends Controller
                         }
                     }
                 }
-            }
-
-            // 📍 Verificar ubicación
-            $obra      = Obra::findOrFail($request->obra_id);
-            $distancia = $this->calcularDistancia($request->latitud, $request->longitud, $obra->latitud, $obra->longitud);
-            Log::info('📍 Distancia hasta la obra', ['distancia' => $distancia]);
-            if ($distancia > $obra->distancia) {
-                return response()->json(['error' => 'No puedes fichar fuera de la nave de trabajo.'], 403);
             }
 
             // 🕒 Guardar fichaje

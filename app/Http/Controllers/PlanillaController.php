@@ -623,19 +623,17 @@ class PlanillaController extends Controller
                         );
 
                         // Si no hay máquina compatible, igualmente se importa con maquina_id = null
+                        // Si no hay máquina compatible, igualmente se importa con maquina_id = null
                         if (!$maquina_id) {
                             $advertencias[] = sprintf(
-                                "Sin máquina compatible (planilla %s) → fila:%s | marca:%s | diámetro:%s | longitud:%s | figura:%s | etiqueta:%s",
+                                "Sin máquina compatible (planilla %s) → diámetro:%s | dimensiones:%s",
                                 $codigoPlanilla,
-                                $row[21] ?? 'N/A',
-                                $row[23] ?? 'N/A',
-                                $row[25] ?? 'N/A',
-                                $row[27] ?? 'N/A',
-                                $row[26] ?? 'N/A',
-                                $row[30] ?? 'N/A'
+                                $row[25] ?? 'N/A', // diámetro
+                                $row[47] ?? 'N/A'  // dimensiones
                             );
                             $maquina_id = null;
                         }
+
 
                         // Registrar la fila en el grupo (usando null como clave si no hay máquina)
                         $gruposPorMaquina[$maquina_id][] = $row;
@@ -678,6 +676,9 @@ class PlanillaController extends Controller
                         foreach ($agrupados as $item) {
                             $row     = $item['row'];
                             $tiempos = $this->calcularTiemposElemento($row);
+                            if ($maquina_id === '' || $maquina_id === false) {
+                                $maquina_id = null;
+                            }
 
                             Elemento::create([
                                 'codigo'             => Elemento::generarCodigo(),
@@ -736,8 +737,12 @@ class PlanillaController extends Controller
             DB::commit();
 
             $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s).";
-            if ($planillasOmitidas) $mensaje .= ' ⚠️ Omitidas: ' . implode(', ', $planillasOmitidas) . '.';
-            if ($advertencias)     $mensaje .= ' ⚠️ ' . implode(' | ', $advertencias);
+            if ($planillasOmitidas) {
+                $mensaje .= ' ⚠️ Omitidas: ' . implode(', ', $planillasOmitidas) . '.';
+            }
+            if ($advertencias) {
+                $mensaje .= ' ⚠️ ' . implode('⚠️', $advertencias);
+            }
 
             return redirect()->route('planillas.index')->with('success', $mensaje);
         } catch (\Illuminate\Validation\ValidationException $e) {
