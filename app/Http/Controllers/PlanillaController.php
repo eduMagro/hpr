@@ -622,13 +622,29 @@ class PlanillaController extends Controller
                             $planilla->id
                         );
 
+                        // Si no hay máquina compatible, igualmente se importa con maquina_id = null
                         if (!$maquina_id) {
-                            $advertencias[] = "Fila {$row[21]} sin máquina compatible (planilla {$codigoPlanilla}).";
-                            continue;
+                            $advertencias[] = sprintf(
+                                "Sin máquina compatible (planilla %s) → fila:%s | marca:%s | diámetro:%s | longitud:%s | figura:%s | etiqueta:%s",
+                                $codigoPlanilla,
+                                $row[21] ?? 'N/A',
+                                $row[23] ?? 'N/A',
+                                $row[25] ?? 'N/A',
+                                $row[27] ?? 'N/A',
+                                $row[26] ?? 'N/A',
+                                $row[30] ?? 'N/A'
+                            );
+                            $maquina_id = null;
                         }
 
+
+                        // Registrar la fila en el grupo (usando null como clave si no hay máquina)
                         $gruposPorMaquina[$maquina_id][] = $row;
-                        $maquinasUsadas[$maquina_id] = true;   // <- registrar la máquina
+
+                        // Registrar la máquina solo si existe
+                        if ($maquina_id !== null) {
+                            $maquinasUsadas[$maquina_id] = true;
+                        }
                     }
 
                     /* === Crear sub-etiquetas y elementos === */
