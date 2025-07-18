@@ -524,8 +524,6 @@
         // ---------------------------------------------------- REGISTRAR FICHAJE
         function registrarFichaje(tipo) {
 
-            let obraId = document.getElementById("obraSeleccionada").value;
-
             if (!navigator.geolocation) {
                 console.error("❌ Geolocalización no soportada en este navegador.");
                 Swal.fire({
@@ -581,7 +579,6 @@
                                         tipo: tipo,
                                         latitud: latitud, // ✅ Ahora enviamos correctamente latitud
                                         longitud: longitud, // ✅ Ahora enviamos correctamente longitud
-                                        obra_id: obraId
                                     })
                                 })
                                 .then(response => response.json())
