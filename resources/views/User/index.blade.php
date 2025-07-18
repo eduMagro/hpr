@@ -523,25 +523,18 @@
         });
         // ---------------------------------------------------- REGISTRAR FICHAJE
         function registrarFichaje(tipo) {
+            const boton = event.currentTarget;
+            const textoOriginal = boton.querySelector('.texto').textContent;
 
-            if (!navigator.geolocation) {
-                console.error("❌ Geolocalización no soportada en este navegador.");
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Geolocalización no disponible',
-                    text: '⚠️ Tu navegador no soporta geolocalización.',
-                });
-                return;
-            }
+            boton.disabled = true;
+            boton.querySelector('.texto').textContent = 'Obteniendo ubicación…';
+            boton.classList.add('opacity-50', 'cursor-not-allowed');
 
             navigator.geolocation.getCurrentPosition(
                 function(position) {
-                    console.log("🟢 Callback ejecutado. Datos de posición:", position);
 
                     let latitud = position?.coords?.latitude;
                     let longitud = position?.coords?.longitude;
-
-                    console.log(`📍 Coordenadas obtenidas: Latitud ${latitud}, Longitud ${longitud}`);
 
                     // 🔍 Verificar si latitud y longitud son undefined
                     if (latitud === undefined || longitud === undefined) {
@@ -583,34 +576,24 @@
                                 })
                                 .then(response => response.json())
                                 .then(data => {
-                                    console.log("📩 Respuesta del servidor:", data);
-
                                     if (data.success) {
-                                        let mensaje = data.success;
-
-                                        if (data.warning) {
-                                            mensaje += "\n⚠️ " + data.warning;
-                                        }
-
+                                        let mensaje = `📍 Obra: ${data.obra_nombre}\n` + data.success;
+                                        if (data.warning) mensaje += "\n⚠️ " + data.warning;
                                         Swal.fire({
-                                            title: "Fichaje registrado",
-                                            text: mensaje,
-                                            icon: data.warning ? "warning" : "success",
-                                            showConfirmButton: true
-                                        }).then(() => {
-                                            window.location.reload();
+                                            toast: true,
+                                            position: 'top-end',
+                                            icon: 'success',
+                                            title: 'Entrada registrada',
+                                            text: `📍 Obra: ${data.obra_nombre}`,
+                                            showConfirmButton: false,
+                                            timer: 2500
                                         });
+
                                     } else {
-                                        let errorMessage = data.error;
-                                        if (data.messages) {
-                                            errorMessage = data.messages.join("\n");
-                                        }
                                         Swal.fire({
                                             icon: 'error',
                                             title: 'Error',
-                                            text: errorMessage,
-                                        }).then(() => {
-                                            window.location.reload();
+                                            text: data.error
                                         });
                                     }
                                 })
@@ -626,16 +609,19 @@
                                 });
                         }
                     });
+                    boton.disabled = false;
+                    boton.querySelector('.texto').textContent = textoOriginal;
+                    boton.classList.remove('opacity-50', 'cursor-not-allowed');
                 },
                 function(error) {
-                    console.error(`⚠️ Error de geolocalización: ${error.message}`);
                     Swal.fire({
                         icon: 'error',
                         title: 'Error de ubicación',
-                        text: `⚠️ No se pudo obtener la ubicación: ${error.message}`,
+                        text: `${error.message}`
                     });
-                }, {
-                    enableHighAccuracy: true
+                    boton.disabled = false;
+                    boton.querySelector('.texto').textContent = textoOriginal;
+                    boton.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
             );
         }
