@@ -96,7 +96,15 @@ class ProduccionController extends Controller
                     ]
                 ];
             });
-
+        // 👇 Aquí añadimos el recurso especial
+        $maquinas->push([
+            'id' => 'SIN',
+            'title' => 'N/A',
+            'extendedProps' => [
+                'backgroundColor' => '#9ca3af',
+                'obra_id' => null,
+            ]
+        ]);
 
         $trabajadores = User::with([
             'asignacionesTurnos.turno:id,hora_entrada,hora_salida',
@@ -105,7 +113,6 @@ class ProduccionController extends Controller
             'maquina'
         ])
             ->where('rol', 'operario')
-            ->whereNotNull('maquina_id')
             ->whereHas('asignacionesTurnos', function ($q) {
                 $q->whereHas('obra.cliente', function ($q) {
                     $q->whereRaw('LOWER(empresa) LIKE ?', ['%hierros paco reyes%']);
@@ -155,7 +162,7 @@ class ProduccionController extends Controller
                     }
 
                     $maquinaId = $asignacionTurno->maquina_id ?? $trabajador->maquina_id;
-                    $resourceId = $maquinaId ? str_pad($maquinaId, 3, '0', STR_PAD_LEFT) : null;
+                    $resourceId = $maquinaId ? str_pad($maquinaId, 3, '0', STR_PAD_LEFT) : 'SIN';
 
                     // 🕓 Formatear entrada y salida reales
                     $entrada = $asignacionTurno->entrada

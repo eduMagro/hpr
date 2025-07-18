@@ -185,6 +185,7 @@
                         info.el.style.color = '#fff';
                     }
                 },
+                filterResourcesWithEvents: false,
                 events: trabajadores,
                 resourceAreaColumns: [{
                     field: 'title',
