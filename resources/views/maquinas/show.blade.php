@@ -58,378 +58,179 @@
         </script>
 
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
-        <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script>
+        {{-- <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script> --}}
 
         <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
         {{-- Al final del archivo Blade --}}
 
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
         <script>
-            function imprimirEtiqueta(etiquetaSubId) {
-                const canvas = document.getElementById(`canvas-imprimir-etiqueta-${etiquetaSubId}`);
-                if (!canvas) {
-                    alert("No se encontró el canvas de impresión limpio.");
-                    return;
-                }
+            async function imprimirEtiquetas(ids) {
+                if (!Array.isArray(ids)) ids = [ids];
 
-                // Aumentamos tamaño del canvas para impresión (doble escala)
-                const scaleFactor = 2;
-                const tempCanvas = document.createElement("canvas");
-                tempCanvas.width = canvas.width * scaleFactor;
-                tempCanvas.height = canvas.height * scaleFactor;
-                const ctx = tempCanvas.getContext("2d");
-                ctx.scale(scaleFactor, scaleFactor);
-                ctx.drawImage(canvas, 0, 0);
+                const etiquetasHtml = [];
 
-                const canvasImg = tempCanvas.toDataURL("image/png");
-
-                // Clonar contenedor de etiqueta
-                const contenedor = document.getElementById(`etiqueta-${etiquetaSubId}`);
-                const clone = contenedor.cloneNode(true);
-                clone.classList.add("etiqueta-print");
-
-                // Quitar botones u otros elementos no imprimibles
-                clone.querySelectorAll(".no-print").forEach(el => el.remove());
-
-                // Reemplazar canvas por imagen generada
-                const img = new Image();
-                img.src = canvasImg;
-                img.style.width = "100%";
-                img.style.height = "auto";
-                const canvasContainer = clone.querySelector("canvas").parentNode;
-                canvasContainer.innerHTML = "";
-                canvasContainer.appendChild(img);
-
-                // Crear QR en div temporal
-                const tempQR = document.createElement("div");
-                document.body.appendChild(tempQR);
-                const qrSize = 100;
-
-                new QRCode(tempQR, {
-                    text: etiquetaSubId.toString(),
-                    width: qrSize,
-                    height: qrSize
-                });
-
-                setTimeout(() => {
-                    const qrImg = tempQR.querySelector("img");
-                    if (qrImg) {
-                        const qrWrapper = document.createElement("div");
-                        qrWrapper.className = "qr-box";
-                        qrWrapper.appendChild(qrImg);
-                        clone.insertBefore(qrWrapper, clone.firstChild);
-                    }
-
-                    const style = `
-<style>
-    @media print {
-        body {
-            margin: 0;
-            padding: 0;
-        }
-    }
-
-    .etiqueta-print {
-        width: 16cm;
-        margin: 2cm auto;
-        padding: 1.5cm;
-        border: 2px solid #000;
-        font-family: Arial, sans-serif;
-        font-size: 15px;
-        color: #000;
-        box-sizing: border-box;
-    }
-
-    .etiqueta-print > * {
-        padding: 6px;
-        box-sizing: border-box;
-    }
-
-    .etiqueta-print h2 {
-        font-size: 22px;
-        margin-bottom: 8px;
-    }
-
-    .etiqueta-print h3 {
-        font-size: 18px;
-        margin-bottom: 6px;
-    }
-
-    .etiqueta-print p,
-    .etiqueta-print span,
-    .etiqueta-print strong {
-        font-size: 15px;
-    }
-
-    .etiqueta-print img:not(.qr-print) {
-        width: 100%;
-        height: auto;
-        display: block;
-        margin-top: 14px;
-    }
-
-    .qr-box {
-        float: right;
-        margin-left: 14px;
-        margin-bottom: 14px;
-        border: 2px solid #000;
-        padding: 6px;
-    }
-
-    .qr-box img {
-        width: 100px;
-        height: 100px;
-    }
-
-    .proceso {
-        box-shadow: none;
-        border: none;
-        padding: 0;
-    }
-
-    .no-print {
-        display: none !important;
-    }
-</style>
-`;
-
-                    const printWindow = window.open("", "_blank");
-                    printWindow.document.open();
-                    printWindow.document.write(`
-<html>
-<head>
-    <title>Etiqueta ${etiquetaSubId}</title>
-    ${style}
-</head>
-<body>
-    ${clone.outerHTML}
-  <script>
-    window.onload = () => {
-        const images = document.images;
-        let loadedImages = 0;
-        const totalImages = images.length;
-
-        if (totalImages === 0) {
-            window.print();
-            setTimeout(() => window.close(), 1000);
-            return;
-        }
-
-        for (const img of images) {
-            if (img.complete) {
-                loadedImages++;
-            } else {
-                img.onload = img.onerror = () => {
-                    loadedImages++;
-                    if (loadedImages === totalImages) {
-                        window.print();
-                        setTimeout(() => window.close(), 1000);
-                    }
-                };
-            }
-        }
-
-        if (loadedImages === totalImages) {
-            window.print();
-            setTimeout(() => window.close(), 1000);
-        }
-    };
-<\/script>
-
-
-</body>
-</html>
-`);
-                    printWindow.document.close();
-                    tempQR.remove();
-                }, 300);
-            }
-
-            async function imprimirEtiquetasLote(etiquetaIds) {
-                await new Promise(resolve => {
-                    // simular proceso de carga real:
-                    setTimeout(resolve, 5000); // simula 5 segundos
-                });
-                const etiquetas = [];
-
-                for (const id of etiquetaIds) {
+                for (const id of ids) {
                     const canvas = document.getElementById(`canvas-imprimir-etiqueta-${id}`);
                     const contenedor = document.getElementById(`etiqueta-${id}`);
-
                     if (!canvas || !contenedor) continue;
 
-                    const scaleFactor = 2;
-                    const tempCanvas = document.createElement("canvas");
-                    tempCanvas.width = canvas.width * scaleFactor;
-                    tempCanvas.height = canvas.height * scaleFactor;
-                    const ctx = tempCanvas.getContext("2d");
-                    ctx.scale(scaleFactor, scaleFactor);
+                    // Escalar canvas
+                    const scale = 2;
+                    const tmp = document.createElement('canvas');
+                    tmp.width = canvas.width * scale;
+                    tmp.height = canvas.height * scale;
+                    const ctx = tmp.getContext('2d');
+                    ctx.scale(scale, scale);
                     ctx.drawImage(canvas, 0, 0);
-                    const canvasImg = tempCanvas.toDataURL("image/png");
+                    const canvasImg = tmp.toDataURL('image/png');
 
+                    // Clonar
                     const clone = contenedor.cloneNode(true);
-                    clone.classList.add("etiqueta-print");
-                    clone.querySelectorAll(".no-print").forEach(el => el.remove());
+                    clone.classList.add('etiqueta-print');
+                    clone.querySelectorAll('.no-print').forEach(el => el.remove());
 
-                    const img = new Image();
-                    img.src = canvasImg;
-                    img.style.width = "100%";
-                    img.style.height = "auto";
-                    const canvasContainer = clone.querySelector("canvas").parentNode;
-                    canvasContainer.innerHTML = "";
-                    canvasContainer.appendChild(img);
+                    // Reemplazar canvas
+                    const canvasContainer = clone.querySelector('canvas')?.parentNode;
+                    if (canvasContainer) {
+                        canvasContainer.innerHTML = '';
+                        const img = new Image();
+                        img.src = canvasImg;
+                        img.style.width = '100%';
+                        img.style.height = 'auto';
+                        canvasContainer.appendChild(img);
+                    }
 
-                    const tempQR = document.createElement("div");
+                    // Generar QR
+                    const tempQR = document.createElement('div');
                     document.body.appendChild(tempQR);
-
-                    await new Promise(resolve => {
+                    await new Promise(res => {
                         new QRCode(tempQR, {
                             text: id.toString(),
-                            width: 100,
-                            height: 100
+                            width: 50,
+                            height: 50
                         });
-
                         setTimeout(() => {
-                            const qrImg = tempQR.querySelector("img");
+                            const qrImg = tempQR.querySelector('img');
                             if (qrImg) {
-                                const qrWrapper = document.createElement("div");
-                                qrWrapper.className = "qr-box";
-                                qrWrapper.appendChild(qrImg);
-                                clone.insertBefore(qrWrapper, clone.firstChild);
+                                const qrBox = document.createElement('div');
+                                qrBox.className = 'qr-box';
+                                qrBox.appendChild(qrImg);
+                                clone.insertBefore(qrBox, clone.firstChild);
                             }
-
-                            etiquetas.push(clone.outerHTML);
                             tempQR.remove();
-                            resolve();
-                        }, 300);
+                            res();
+                        }, 200);
                     });
+
+                    etiquetasHtml.push(clone.outerHTML);
                 }
 
-                const style = `
-        <style>
-            @media print {
-                body {
-                    margin: 0;
-                    padding: 0;
-                }
+                const css = `
+    <style>
+      @page{size:A4 portrait;margin:10;}
+      body{margin:0;padding:0;background:#fff;}
+      .sheet-grid{display:grid;grid-template-columns:105mm 105mm;grid-template-rows:repeat(5,59.4mm);width:210mm;height:297mm;}
+      .etiqueta-print{position:relative;width:105mm;height:59.4mm;box-sizing:border-box;border:0.2mm solid #000;overflow:hidden;padding:3mm;background:#fff;page-break-inside:avoid;}
+      .etiqueta-print h2{font-size:10pt;margin:0;}
+      .etiqueta-print h3{font-size:9pt;margin:0;}
+      .etiqueta-print img:not(.qr-print){width:100%;height:auto;margin-top:2mm;}
+      .qr-box{position:absolute;top:3mm;right:3mm;border:0.2mm solid #000;padding:1mm;background:#fff;}
+      .qr-box img{width:20mm;height:20mm;}
+      .no-print{display:none!important;}
+    </style>
+  `;
+
+                const w = window.open('', '_blank');
+                w.document.open();
+                w.document.write(`
+    <html>
+      <head><title>Impresión</title>${css}</head>
+      <body>
+        <div class="sheet-grid">${etiquetasHtml.join('')}</div>
+        <script>
+          window.onload = () => {
+            const imgs = document.images;
+            let loaded = 0, total = imgs.length;
+            if(total===0){window.print();setTimeout(()=>window.close(),500);return;}
+            for(const img of imgs){
+              if(img.complete){loaded++;if(loaded===total){window.print();setTimeout(()=>window.close(),500);}}
+              else{img.onload=img.onerror=()=>{loaded++;if(loaded===total){window.print();setTimeout(()=>window.close(),500);}};}
             }
-
-          .etiqueta-print {
-            width: 16cm;
-            margin: 1cm auto;
-            padding: 1.5cm;
-            border: 2px solid #000;
-            font-family: Arial, sans-serif;
-            font-size: 15px;
-            color: #000;
-            box-sizing: border-box;
-            /* 🔴 Esta línea la tienes que eliminar: */
-            /* page-break-after: always; */
-             break-inside: avoid; /* 👈 Esto evita que se parta entre páginas */
-        }
-
-        .etiqueta-print + .etiqueta-print {
-            margin-top: 1cm;
-        }
-            .etiqueta-print > * {
-                padding: 6px;
-                box-sizing: border-box;
-            }
-
-            .etiqueta-print h2 {
-                font-size: 22px;
-                margin-bottom: 8px;
-            }
-
-            .etiqueta-print h3 {
-                font-size: 18px;
-                margin-bottom: 6px;
-            }
-
-            .etiqueta-print p,
-            .etiqueta-print span,
-            .etiqueta-print strong {
-                font-size: 15px;
-            }
-
-            .etiqueta-print img:not(.qr-print) {
-                width: 100%;
-                height: auto;
-                display: block;
-                margin-top: 14px;
-            }
-
-            .qr-box {
-                float: right;
-                margin-left: 14px;
-                margin-bottom: 14px;
-                border: 2px solid #000;
-                padding: 6px;
-            }
-
-            .qr-box img {
-                width: 140px;
-                height: 140px;
-            }
-
-            .proceso {
-                box-shadow: none;
-                border: none;
-                padding: 0;
-            }
-
-            .no-print {
-                display: none !important;
-            }
-        </style>`;
-
-                const printWindow = window.open("", "_blank");
-                printWindow.document.open();
-                printWindow.document.write(`
-<html>
-<head>
-    <title>Etiquetas</title>
-    ${style}
-</head>
-<body>
-    ${etiquetas.join('')}
-   <script>
-    window.onload = () => {
-        const images = document.images;
-        let loaded = 0;
-        const total = images.length;
-
-        if (total === 0) {
-            window.print();
-            setTimeout(() => window.close(), 1000);
-            return;
-        }
-
-        for (const img of images) {
-            if (img.complete) {
-                loaded++;
-            } else {
-                img.onload = img.onerror = () => {
-                    loaded++;
-                    if (loaded === total) {
-                        window.print();
-                        setTimeout(() => window.close(), 1000);
-                    }
-                };
-            }
-        }
-
-        if (loaded === total) {
-            window.print();
-            setTimeout(() => window.close(), 1000);
-        }
-    };
-<\/script>
-
-</body>
-</html>`);
-                printWindow.document.close();
+          };
+        <\/script>
+      </body>
+    </html>
+  `);
+                w.document.close();
             }
         </script>
 
+        <style>
+            @page {
+                size: A4 portrait;
+                margin: 10 mm;
+            }
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                background: #fff;
+            }
+
+            .sheet-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                /* dos columnas iguales */
+                grid-template-rows: repeat(5, 1fr);
+                /* cinco filas iguales */
+                width: 100vw;
+                /* usar ancho total del viewport de impresión */
+                height: 100vh;
+                /* usar alto total del viewport de impresión */
+            }
+
+            .etiqueta-print {
+                position: relative;
+                width: 105mm;
+                height: 59.4mm;
+                box-sizing: border-box;
+                /* 🔥 padding incluido en el tamaño fijo */
+                border: 0.2mm solid #000;
+                overflow: hidden;
+                background: #fff;
+                page-break-inside: avoid;
+
+                /* 👇 Aquí está tu padding interno */
+                padding: 4mm;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+            }
+
+            .qr-box {
+                position: absolute;
+                top: 2%;
+                right: 2%;
+                border: 0.2mm solid #000;
+                padding: 2px;
+                background: #fff;
+            }
+
+            .qr-box img {
+                width: 20mm;
+                /* mantenemos tamaño físico del QR */
+                height: 20mm;
+            }
+
+            @media print {
+                .no-print {
+                    display: none !important;
+                }
+            }
+        </style>
 
 </x-app-layout>

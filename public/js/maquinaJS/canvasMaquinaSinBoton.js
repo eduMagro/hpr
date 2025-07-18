@@ -42,16 +42,12 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const parent = canvas.parentElement;
-        const canvasWidth = parent.clientWidth;
-        const textHeight = 60;
+        const textHeight = 10;
         const buttonHeight = 0; // eliminamos altura para botones
         const numElementos = grupo.elementos.length;
-        const canvasHeight =
-            textHeight +
-            numElementos * minSlotHeight +
-            (numElementos - 1) * gapSpacing +
-            buttonHeight;
+
+        const canvasWidth = 400; // o parent.clientWidth si quieres
+        const canvasHeight = 300; // altura fija
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
 
