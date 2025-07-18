@@ -464,12 +464,15 @@ class ProfileController extends Controller
                 }
                 $horasTrabajadas += $horasDia;
             } else {
-                $diasConErrores++;
+                // 👉 Sólo contar error si la fecha ya pasó o es hoy
+                if ($asignacion->fecha < $hoy) {
+                    $diasConErrores++;
+                }
             }
         }
 
         // Horas que debería llevar hasta hoy
-        $horasDeberiaLlevar = $diasHastaHoy * 8;
+        $horasDeberiaLlevar = ($diasHastaHoy - 1) * 8;
 
         // Horas planificadas en el mes completo (todas las asignaciones activas × 8)
         $horasPlanificadasMes = $totalAsignacionesMes * 8;
