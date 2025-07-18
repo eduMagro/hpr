@@ -637,7 +637,6 @@ class PlanillaController extends Controller
                             $maquina_id = null;
                         }
 
-
                         // Registrar la fila en el grupo (usando null como clave si no hay máquina)
                         $gruposPorMaquina[$maquina_id][] = $row;
 
