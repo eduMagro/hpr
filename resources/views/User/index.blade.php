@@ -532,21 +532,10 @@
 
             navigator.geolocation.getCurrentPosition(
                 function(position) {
+                    const latitud = position.coords.latitude;
+                    const longitud = position.coords.longitude;
 
-                    let latitud = position?.coords?.latitude;
-                    let longitud = position?.coords?.longitude;
-
-                    // 🔍 Verificar si latitud y longitud son undefined
-                    if (latitud === undefined || longitud === undefined) {
-                        console.error("❌ Error: La API no devolvió coordenadas.");
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error de ubicación',
-                            text: 'No se pudieron obtener las coordenadas. Intenta nuevamente.',
-                        });
-                        return;
-                    }
-
+                    // Ya tenemos coordenadas rápidas
                     Swal.fire({
                         title: 'Confirmar Fichaje',
                         text: `¿Quieres registrar una ${tipo}?`,
@@ -558,10 +547,7 @@
                         cancelButtonText: 'Cancelar'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            console.log("🟢 Enviando datos al backend...");
-
                             fetch("{{ url('/fichar') }}", {
-
                                     method: "POST",
                                     headers: {
                                         "Content-Type": "application/json",
@@ -570,25 +556,22 @@
                                     body: JSON.stringify({
                                         user_id: "{{ auth()->id() }}",
                                         tipo: tipo,
-                                        latitud: latitud, // ✅ Ahora enviamos correctamente latitud
-                                        longitud: longitud, // ✅ Ahora enviamos correctamente longitud
+                                        latitud: latitud,
+                                        longitud: longitud,
                                     })
                                 })
-                                .then(response => response.json())
+                                .then(r => r.json())
                                 .then(data => {
                                     if (data.success) {
-                                        let mensaje = `📍 Obra: ${data.obra_nombre}\n` + data.success;
-                                        if (data.warning) mensaje += "\n⚠️ " + data.warning;
                                         Swal.fire({
                                             toast: true,
                                             position: 'top-end',
                                             icon: 'success',
-                                            title: 'Entrada registrada',
+                                            title: data.success,
                                             text: `📍 Obra: ${data.obra_nombre}`,
                                             showConfirmButton: false,
-                                            timer: 2500
+                                            timer: 3000
                                         });
-
                                     } else {
                                         Swal.fire({
                                             icon: 'error',
@@ -597,18 +580,16 @@
                                         });
                                     }
                                 })
-                                .catch(error => {
-                                    console.error("❌ Error en la solicitud fetch:", error);
+                                .catch(err => {
                                     Swal.fire({
                                         icon: 'error',
-                                        title: 'Error de conexión',
-                                        text: 'No se pudo comunicar con el servidor.',
-                                    }).then(() => {
-                                        window.location.reload();
+                                        title: 'Error',
+                                        text: 'No se pudo comunicar con el servidor'
                                     });
                                 });
                         }
                     });
+
                     boton.disabled = false;
                     boton.querySelector('.texto').textContent = textoOriginal;
                     boton.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -622,9 +603,14 @@
                     boton.disabled = false;
                     boton.querySelector('.texto').textContent = textoOriginal;
                     boton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }, {
+                    enableHighAccuracy: false, // 💡 más rápido
+                    timeout: 8000, // 💡 máximo 8 segundos
+                    maximumAge: 60000 // 💡 usar cache si tiene <1 min
                 }
             );
         }
+
 
         function guardarCambios(usuario) {
             fetch(`{{ route('usuarios.actualizar', '') }}/${usuario.id}`, {
