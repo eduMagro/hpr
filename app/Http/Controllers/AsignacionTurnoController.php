@@ -456,8 +456,8 @@ class AsignacionTurnoController extends Controller
             }
 
             $mensajeSuccess = $request->tipo === 'entrada'
-                ? 'Entrada registrada correctamente.'
-                : 'Salida registrada correctamente.';
+                ? 'Entrada registrada.'
+                : 'Salida registrada.';
 
             return response()->json([
                 'success'     => $mensajeSuccess,
