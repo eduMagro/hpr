@@ -131,29 +131,47 @@
                 // ✅ EVENTO CLICK: SOLO PARA FICHAJES (entrada/salida)
                 eventClick: function(info) {
                     const props = info.event.extendedProps;
-
+                    console.log('🔍 Click en evento', props);
+                    // ahora cualquier evento que tenga asignacion_id sirve
                     if (!props || !props.asignacion_id) return;
 
                     Swal.fire({
-                        title: `📋 Fichajes del ${props.fecha}`,
+                        title: `📋 Fichaje del ${props.fecha}`,
                         html: `
-            <div class="text-left">
-                <label>Hora de entrada:</label>
-                <input type="time" id="horaEntrada" class="swal2-input" value="${props.entrada ?? ''}">
-                <label>Hora de salida:</label>
-                <input type="time" id="horaSalida" class="swal2-input" value="${props.salida ?? ''}">
-            </div>
-        `,
+  <div class="text-center">
+    <div class="mb-4">
+      <label class="block mb-2 font-semibold">Hora de entrada:</label>
+      <input type="time"
+             id="horaEntrada"
+             class="swal2-input"
+             style="display:block; margin:0 auto; width:auto;"
+             value="${props.entrada ?? ''}">
+    </div>
+    <div>
+      <label class="block mb-2 font-semibold">Hora de salida:</label>
+      <input type="time"
+             id="horaSalida"
+             class="swal2-input"
+             style="display:block; margin:0 auto; width:auto;"
+             value="${props.salida ?? ''}">
+    </div>
+  </div>
+`,
+
                         showCancelButton: true,
                         confirmButtonText: "Guardar",
                         cancelButtonText: "Cancelar"
                     }).then(res => {
                         if (!res.isConfirmed) return;
 
-                        const entrada = document.getElementById('horaEntrada').value;
-                        const salida = document.getElementById('horaSalida').value;
+                        let entrada = document.getElementById('horaEntrada').value;
+                        let salida = document.getElementById('horaSalida').value;
 
-                        fetch(`/asignaciones-turnos/${props.asignacion_id}/actualizar-horas`, {
+                        // recortamos segundos si vienen en formato HH:mm:ss
+                        if (entrada && entrada.length === 8) entrada = entrada.slice(0, 5);
+                        if (salida && salida.length === 8) salida = salida.slice(0, 5);
+
+                        fetch(`/asignaciones-turno/${props.asignacion_id}/actualizar-horas`, {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/json",
@@ -164,23 +182,46 @@
                                     salida
                                 })
                             })
-                            .then(r => r.json())
-                            .then(data => {
-                                if (data.ok) {
-                                    Swal.fire("✅ Guardado", data.message, "success");
-                                    calendar.refetchEvents();
+                            .then(async response => {
+                                const contentType = response.headers.get(
+                                    'content-type');
+                                let data = {};
+                                if (contentType && contentType.includes(
+                                        'application/json')) {
+                                    data = await response.json();
                                 } else {
-                                    Swal.fire("⚠️ Error", data.message, "error");
+                                    const text = await response.text();
+                                    throw new Error("Respuesta inesperada: " + text
+                                        .slice(0, 100));
+                                }
+
+                                if (response.ok && data.ok) {
+                                    calendar.refetchEvents();
+                                    setTimeout(actualizarResumenAsistencia, 200);
+                                } else {
+                                    let errorMsg = data.message ||
+                                        "Ha ocurrido un error inesperado.";
+                                    if (data.errors) {
+                                        errorMsg = Object.values(data.errors).flat()
+                                            .join('<br>');
+                                    }
+                                    Swal.fire({
+                                        icon: "error",
+                                        title: "Error al guardar",
+                                        html: errorMsg
+                                    });
                                 }
                             })
                             .catch(err => {
-                                console.error(err);
-                                Swal.fire("Error", "No se pudo guardar el fichaje.",
-                                    "error");
+                                console.error("Error en Fetch:", err);
+                                Swal.fire({
+                                    icon: "error",
+                                    title: "Error de conexión",
+                                    text: "No se pudo actualizar la asignación. Inténtalo nuevamente."
+                                });
                             });
                     });
                 },
-
                 // ✅ SELECT DE DÍAS: ASIGNACIÓN DE TURNOS, VACACIONES, ETC.
                 select: function(info) {
                     const fechaInicio = info.startStr;

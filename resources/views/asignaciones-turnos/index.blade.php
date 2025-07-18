@@ -269,79 +269,36 @@
         const turnosPorId = @json($turnos->pluck('nombre', 'id'));
 
         function guardarCambios(asignacionData, originalData) {
-            if (asignacionData.entrada && asignacionData.entrada.length === 8) {
-                asignacionData.entrada = asignacionData.entrada.slice(0, 5);
-            }
-            if (asignacionData.salida && asignacionData.salida.length === 8) {
-                asignacionData.salida = asignacionData.salida.slice(0, 5);
-            }
+            let entrada = asignacionData.entrada;
+            let salida = asignacionData.salida;
 
-            const payload = {
-                user_id: asignacionData.user_id,
-                fecha_inicio: asignacionData.fecha,
-                fecha_fin: asignacionData.fecha,
-                turno_id: asignacionData.turno_id,
-                tipo: turnosPorId[asignacionData.turno_id] ?? (asignacionData.estado || 'manual'),
-                entrada: asignacionData.entrada,
-                salida: asignacionData.salida,
-                maquina_id: asignacionData.maquina_id,
-                obra_id: asignacionData.obra_id,
-            };
+            if (entrada && entrada.length === 8) entrada = entrada.slice(0, 5);
+            if (salida && salida.length === 8) salida = salida.slice(0, 5);
 
-            fetch(`{{ route('asignaciones-turnos.store') }}`, {
+            fetch(`{{ url('/asignaciones-turno') }}/${asignacionData.id}/actualizar-horas`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        entrada,
+                        salida
+                    })
                 })
                 .then(async response => {
-                    const contentType = response.headers.get('content-type');
-                    let data = {};
-
-                    if (contentType && contentType.includes('application/json')) {
-                        data = await response.json();
-                    } else {
-                        const text = await response.text();
-                        throw new Error("El servidor devolvió una respuesta inesperada: " + text.slice(0, 100));
-                    }
-
-                    if (response.ok && data.success) {
+                    const data = await response.json();
+                    if (response.ok && data.ok) {
                         window.location.reload();
                     } else {
-                        let errorMsg = data.message || "Ha ocurrido un error inesperado.";
-                        if (data.errors) {
-                            errorMsg = Object.values(data.errors).flat().join("<br>");
-                        }
-
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error al actualizar",
-                            html: errorMsg,
-                            confirmButtonText: "OK",
-                            showCancelButton: true,
-                            cancelButtonText: "Reportar Error"
-                        }).then((result) => {
-                            if (result.dismiss === Swal.DismissReason.cancel) {
-                                notificarProgramador(errorMsg);
-                            }
-                        });
-
+                        Swal.fire("❌ Error", data.message || "No se pudo actualizar.", "error");
                         Object.assign(asignacionData, JSON.parse(JSON.stringify(originalData)));
                     }
                 })
-                .catch(async error => {
+                .catch(error => {
                     console.error("❌ Error en Fetch:", error);
-
                     Object.assign(asignacionData, JSON.parse(JSON.stringify(originalData)));
-
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error de conexión",
-                        html: "No se pudo actualizar la asignación. Inténtalo nuevamente.",
-                        confirmButtonText: "OK"
-                    });
+                    Swal.fire("⚠️ Error de conexión", "No se pudo actualizar la asignación.", "error");
                 });
         }
     </script>

@@ -1001,37 +1001,55 @@ class ProfileController extends Controller
 
         // 1. Turnos (primero)
         foreach ($user->asignacionesTurnos as $asig) {
-            if ($asig->turno) {
-                $nombre = $asig->turno->nombre;
-                $color = $colores[$nombre] ?? ['bg' => '#1d4ed8', 'border' => '#1e40af', 'text' => '#ffffff'];
-
-                $eventos->push([
-                    'title' => ucfirst($nombre),
-                    'start' => $asig->fecha,
-                    'allDay' => true,
-                    'backgroundColor' => $color['bg'],
-                    'borderColor' => $color['border'],
-                    'textColor' => $color['text'],
-                ]);
-            }
-        }
-
-        // 2. Estados (después de turnos)
-        foreach ($user->asignacionesTurnos as $asig) {
             if ($asig->estado && strtolower($asig->estado) !== 'activo') {
                 $nombre = strtolower($asig->estado);
                 $color = $colores[$nombre] ?? ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => '#ffffff'];
 
                 $eventos->push([
+                    'id' => 'estado-' . $asig->id,
                     'title' => ucfirst($nombre),
                     'start' => $asig->fecha,
                     'allDay' => true,
                     'backgroundColor' => $color['bg'],
                     'borderColor' => $color['border'],
                     'textColor' => $color['text'],
+                    'extendedProps' => [
+                        'asignacion_id' => $asig->id,
+                        'fecha'         => $asig->fecha,
+                        'entrada'       => $asig->entrada,
+                        'salida'        => $asig->salida,
+                        'es_turno'      => false
+                    ],
                 ]);
             }
         }
+
+
+        // 2. Estados (después de turnos)
+        foreach ($user->asignacionesTurnos as $asig) {
+            if ($asig->turno) {
+                $nombre = $asig->turno->nombre;
+                $color = $colores[$nombre] ?? ['bg' => '#1d4ed8', 'border' => '#1e40af', 'text' => '#ffffff'];
+
+                $eventos->push([
+                    'id' => 'turno-' . $asig->id,
+                    'title' => ucfirst($nombre),
+                    'start' => $asig->fecha,
+                    'allDay' => true,
+                    'backgroundColor' => $color['bg'],
+                    'borderColor' => $color['border'],
+                    'textColor' => $color['text'],
+                    'extendedProps' => [
+                        'asignacion_id' => $asig->id,
+                        'fecha'         => $asig->fecha,
+                        'entrada'       => $asig->entrada,
+                        'salida'        => $asig->salida,
+                        'es_turno'      => true
+                    ],
+                ]);
+            }
+        }
+
 
         // 3. Fichajes
         $eventos = $eventos->merge($this->getEventosFichajes($user));

@@ -733,10 +733,16 @@ class AsignacionTurnoController extends Controller
         Log::info('📌 actualizarHoras recibido', $request->all());
 
         try {
-            $request->validate([
-                'entrada' => 'nullable|date_format:H:i',
-                'salida'  => 'nullable|date_format:H:i',
-            ]);
+            $request->validate(
+                [
+                    'entrada' => 'nullable|date_format:H:i',
+                    'salida'  => 'nullable|date_format:H:i',
+                ],
+                [
+                    'entrada.date_format' => 'El campo entrada debe tener el formato HH:mm (por ejemplo 08:30).',
+                    'salida.date_format'  => 'El campo salida debe tener el formato HH:mm (por ejemplo 17:45).',
+                ]
+            );
 
             $asignacion = AsignacionTurno::findOrFail($id);
             $asignacion->entrada = $request->entrada;
