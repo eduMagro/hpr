@@ -449,8 +449,6 @@ class AsignacionTurnoController extends Controller
         }
     }
 
-
-
     private function validarHoraEntrada($turno, $horaActual)
     {
         try {
@@ -484,7 +482,6 @@ class AsignacionTurnoController extends Controller
             default => false,
         };
     }
-
 
     /**
      * Calcula la distancia en metros entre dos puntos geográficos usando la fórmula de Haversine.
@@ -649,7 +646,6 @@ class AsignacionTurnoController extends Controller
         }
     }
 
-
     private function getFestivos()
     {
         $response = Http::get("https://date.nager.at/api/v3/PublicHolidays/" . date('Y') . "/ES");
@@ -734,6 +730,8 @@ class AsignacionTurnoController extends Controller
 
     public function actualizarHoras(Request $request, $id)
     {
+        Log::info('📌 actualizarHoras recibido', $request->all());
+
         try {
             $request->validate([
                 'entrada' => 'nullable|date_format:H:i',

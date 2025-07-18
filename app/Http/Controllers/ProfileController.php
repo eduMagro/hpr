@@ -561,9 +561,9 @@ class ProfileController extends Controller
         return $user->asignacionesTurnos->flatMap(function ($asignacion) use ($coloresTurnos) {
             $eventos = [];
 
-            $fecha = Carbon::parse($asignacion->fecha)->toIso8601String();
+            $fecha = Carbon::parse($asignacion->fecha)->toDateString(); // mejor solo fecha para allDay
 
-            // 🎯 Evento de turno (si existe)
+            // 🎯 Evento de turno
             if ($asignacion->turno) {
                 $turnoNombre = $asignacion->turno->nombre;
                 $colorTurno = $coloresTurnos[$turnoNombre] ?? [
@@ -573,38 +573,54 @@ class ProfileController extends Controller
                 ];
 
                 $eventos[] = [
+                    'id' => 'turno-' . $asignacion->id,
                     'title' => ucfirst($turnoNombre),
                     'start' => $fecha,
                     'backgroundColor' => $colorTurno['bg'],
                     'borderColor' => $colorTurno['border'],
                     'textColor' => $colorTurno['text'],
                     'allDay' => true,
+                    'extendedProps' => [
+                        'asignacion_id' => $asignacion->id,
+                        'fecha'         => $asignacion->fecha,
+                        'entrada'       => $asignacion->entrada,
+                        'salida'        => $asignacion->salida,
+                        'es_turno'      => true
+                    ],
                 ];
             }
 
-            // 🎯 Evento de estado (si no es "activo")
+            // 🎯 Evento de estado
             if ($asignacion->estado && strtolower($asignacion->estado) !== 'activo') {
                 $estadoNombre = ucfirst($asignacion->estado);
                 $colorEstado = $coloresTurnos[$asignacion->estado] ?? [
                     'bg' => '#f87171',
                     'border' => '#dc2626',
-                    'textColor' => 'white',
                     'text' => '#FFFFFF'
                 ];
 
                 $eventos[] = [
+                    'id' => 'estado-' . $asignacion->id,
                     'title' => $estadoNombre,
                     'start' => $fecha,
                     'backgroundColor' => $colorEstado['bg'],
                     'borderColor' => $colorEstado['border'],
                     'textColor' => $colorEstado['text'],
                     'allDay' => true,
+                    'extendedProps' => [
+                        'asignacion_id' => $asignacion->id,
+                        'fecha'         => $asignacion->fecha,
+                        'entrada'       => $asignacion->entrada,
+                        'salida'        => $asignacion->salida,
+                        'es_turno'      => false
+                    ],
                 ];
             }
 
             return $eventos;
         });
     }
+
 
     protected function getEventosFichajes($user)
     {

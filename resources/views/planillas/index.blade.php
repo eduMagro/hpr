@@ -178,8 +178,9 @@
                             <th class="p-1 border">
                                 <x-tabla.input name="nombre_completo" value="{{ request('nombre_completo') }}" />
                             </th>
+
+                            <x-tabla.botones-filtro ruta="planillas.index" />
                         </form>
-                        <x-tabla.botones-filtro ruta="planillas.index" />
                     </tr>
 
                 </thead>
