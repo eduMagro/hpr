@@ -224,6 +224,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/simulacion-irpf', [NominaController::class, 'simular'])->name('nomina.simular');
     Route::get('/simulacion-inversa', [NominaController::class, 'formularioInverso'])->name('nomina.inversa');
     Route::post('/simulacion-inversa', [NominaController::class, 'simularDesdeNeto'])->name('nomina.inversa.calcular');
+    Route::post('/nominas/dividir', [NominaController::class, 'dividirNominas'])->name('nominas.dividir');
 
     // === ALERTAS Y ESTADISTICAS ===
     Route::prefix('estadisticas')->group(function () {

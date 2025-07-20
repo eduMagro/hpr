@@ -34,12 +34,23 @@ class MaquinaController extends Controller
      * ─────────────────────────────────────────── */
         if ($usuario->rol === 'operario') {
             $hoy = Carbon::today();
+            $maniana = Carbon::tomorrow();
 
             $asignacion = AsignacionTurno::where('user_id', $usuario->id)
                 ->whereDate('fecha', $hoy)
                 ->whereNotNull('maquina_id')
                 ->whereNotNull('turno_id')
                 ->first();
+
+            if (!$asignacion) {
+                // 👉 No encontró turno para hoy, probamos para mañana
+                $asignacion = AsignacionTurno::where('user_id', $usuario->id)
+                    ->whereDate('fecha', $maniana)
+                    ->whereNotNull('maquina_id')
+                    ->whereNotNull('turno_id')
+                    ->first();
+            }
+
 
             if (!$asignacion) {
                 abort(403, 'No tienes ningún turno hoy.');

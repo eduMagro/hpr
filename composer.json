@@ -16,6 +16,8 @@
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
         "phpmailer/phpmailer": "^6.10",
+        "setasign/fpdf": "^1.8",
+        "setasign/fpdi": "^2.6",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/laravel-csp": "^2.10",
         "symfony/css-selector": "^7.2",

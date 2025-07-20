@@ -2,15 +2,49 @@
     <x-slot name="title">Empresas - {{ config('app.name') }}</x-slot>
     <x-clave.modal-clave seccion="nominas" />
     <div class="py-6 px-4">
-        <div class="flex justify-end mb-4 px-4">
-            <a href="{{ route('nominas.index') }}"
-                class="inline-block bg-blue-600 hover:bg-blue-900 text-white font-semibold py-2 px-4 rounded shadow transition">
-                ➕ Nóminas
-            </a>
-            <a href="{{ route('nomina.simulacion') }}"
-                class="inline-block bg-blue-600 hover:bg-blue-900 text-white font-semibold py-2 px-4 rounded shadow transition">
-                Simulación Nóminas
-            </a>
+
+        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <!-- Botones de navegación y título alineados a la izquierda -->
+            <div class="flex flex-col gap-4 mb-6">
+                <div class="flex gap-3 flex-wrap">
+                    <a href="{{ route('nominas.index') }}"
+                        class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow transition">
+                        ➕ Nóminas
+                    </a>
+                    <a href="{{ route('nomina.simulacion') }}"
+                        class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow transition">
+                        🧮 Simulación Nóminas
+                    </a>
+                </div>
+
+                <h1 class="text-2xl font-bold text-gray-800">
+                    📥 Importar Nóminas
+                </h1>
+            </div>
+
+            <!-- Formulario -->
+            <form action="{{ route('nominas.dividir') }}" method="POST" enctype="multipart/form-data"
+                class="space-y-4">
+                @csrf
+
+                <div>
+                    <label for="archivo" class="block text-sm font-medium text-gray-700 mb-1">
+                        Selecciona el PDF con las nóminas
+                    </label>
+                    <input type="file" name="archivo" id="archivo" accept=".pdf"
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    @error('archivo')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
+                        🚀 Importar y dividir
+                    </button>
+                </div>
+            </form>
         </div>
 
         <h3 class="text-lg font-semibold px-4 pt-4 text-gray-800">Listado Empresas</h3>
@@ -54,7 +88,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center py-4 text-gray-500">No hay empresas registradas.</td>
+                            <td colspan="11" class="text-center py-4 text-gray-500">No hay empresas registradas.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -116,7 +151,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="text-center py-4 text-gray-500">No hay tramos IRPF registrados.
+                            <td colspan="4" class="text-center py-4 text-gray-500">No hay tramos IRPF
+                                registrados.
                             </td>
                         </tr>
                     @endforelse
@@ -144,7 +180,8 @@
                     @forelse ($convenio as $convenio)
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-2 border text-center">{{ $convenio->id }}</td>
-                            <td class="px-4 py-2 border">{{ $convenio->categoria->nombre ?? 'Sin categoría' }}</td>
+                            <td class="px-4 py-2 border">{{ $convenio->categoria->nombre ?? 'Sin categoría' }}
+                            </td>
                             <td class="px-4 py-2 border text-right">
                                 {{ number_format($convenio->salario_base, 2, ',', '.') }} €</td>
                             <td class="px-4 py-2 border text-right">
@@ -164,7 +201,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-4 text-gray-500">No hay convenios registrados.
+                            <td colspan="9" class="text-center py-4 text-gray-500">No hay convenios
+                                registrados.
                             </td>
                         </tr>
                     @endforelse

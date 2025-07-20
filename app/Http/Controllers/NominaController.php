@@ -10,9 +10,52 @@ use App\Models\TasaSeguridadSocial;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+//Importacion PDF nominas
+use setasign\Fpdi\Fpdi;
+use Illuminate\Support\Facades\Storage;
 
 class NominaController extends Controller
 {
+    // --------------------- IMPORTACION NOMINASS
+
+    public function dividirNominas(Request $request)
+    {
+        $request->validate([
+            'archivo' => 'required|mimes:pdf|max:102400',
+        ]);
+
+        // aseguramos carpeta temp
+        Storage::disk('private')->makeDirectory('temp');
+
+        // guardamos el archivo en el disco private
+        $rutaRelativa = $request->file('archivo')->store('temp', 'private');
+        $rutaAbsoluta = storage_path('app/private/' . str_replace('temp/', '', $rutaRelativa));
+
+        if (!file_exists($rutaAbsoluta)) {
+            return back()->with('error', '❌ No se encontró el archivo subido en: ' . $rutaAbsoluta);
+        }
+
+        // carpeta destino
+        $carpetaDestino = 'nominas_divididas/' . now()->format('Ymd_His');
+        Storage::disk('private')->makeDirectory($carpetaDestino);
+        $carpetaDestinoAbsoluta = storage_path('app/private/' . $carpetaDestino);
+
+        // dividir PDF
+        $pdfOriginal = new \setasign\Fpdi\Fpdi();
+        $pageCount = $pdfOriginal->setSourceFile($rutaAbsoluta);
+
+        for ($i = 1; $i <= $pageCount; $i++) {
+            $pdfIndividual = new \setasign\Fpdi\Fpdi();
+            $pdfIndividual->AddPage();
+            $tpl = $pdfIndividual->importPage($i);
+            $pdfIndividual->useTemplate($tpl);
+
+            $nombreArchivo = 'nomina_' . str_pad($i, 3, '0', STR_PAD_LEFT) . '.pdf';
+            $pdfIndividual->Output($carpetaDestinoAbsoluta . DIRECTORY_SEPARATOR . $nombreArchivo, 'F');
+        }
+
+        return back()->with('success', '✅ Se dividió en ' . $pageCount . ' PDFs en ' . $carpetaDestinoAbsoluta);
+    }
 
     // --------------------- GENERACION NOMINA
     public function index()
