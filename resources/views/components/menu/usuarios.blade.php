@@ -1,6 +1,7 @@
 @php
     $rutaActual = request()->route()->getName();
 
+    // 🎨 Color base para personalizar fácilmente
     $colorBase = 'blue';
 
     $colores = [
@@ -16,6 +17,15 @@
         'hoverLite' => "hover:bg-$colorBase-50",
     ];
 
+    // 🔗 Enlaces del menú (móvil y escritorio usan este mismo array)
+    $links = [
+        ['route' => 'users.index', 'label' => '👤 Usuarios'],
+        ['route' => 'register', 'label' => '📋 Registrar Usuario'],
+        ['route' => 'vacaciones.index', 'label' => '🌴 Vacaciones'],
+        ['route' => 'asignaciones-turnos.index', 'label' => '⏱️ Registros Entrada y Salida'],
+        ['route' => 'produccion.trabajadores', 'label' => '⏱️ Planificación Trabajadores'],
+        ['route' => 'produccion.trabajadoresObra', 'label' => '⏱️ Planificación Trabajadores OBRA'],
+    ];
 @endphp
 
 @if (auth()->check() && auth()->user()->rol === 'oficina')
@@ -30,20 +40,16 @@
             <div x-show="open" x-transition @click.away="open = false"
                 class="absolute z-30 mt-0 w-1/2 bg-white border {{ $colores['borde'] }} rounded-b-lg shadow-xl overflow-hidden divide-y {{ $colores['borde'] }}"
                 x-cloak>
-                @foreach ([
-        'users.index' => '👤 Usuarios',
-        'register' => '📋 Registrar Usuario',
-        'vacaciones.index' => '🌴 Vacaciones',
-        'asignaciones-turnos.index' => '⏱️ Registros',
-    ] as $ruta => $texto)
-                    <a href="{{ route($ruta) }}"
+                @foreach ($links as $link)
+                    @php $active = request()->routeIs(Str::before($link['route'], '.') . '.*'); @endphp
+                    <a href="{{ route($link['route']) }}"
                         class="relative block px-2 py-3 text-sm font-medium transition
-                        {{ request()->routeIs(Str::before($ruta, '.') . '.*')
+                        {{ $active
                             ? $colores['bgLite'] . ' ' . $colores['activoTxt'] . ' font-semibold'
                             : $colores['txtBase'] . ' ' . $colores['hoverLite'] . ' ' . $colores['txtHover'] }}">
-                        {{ $texto }}
+                        {{ $link['label'] }}
 
-                        @if ($ruta === 'vacaciones.index' && isset($totalSolicitudesPendientes) && $totalSolicitudesPendientes > 0)
+                        @if ($link['route'] === 'vacaciones.index' && isset($totalSolicitudesPendientes) && $totalSolicitudesPendientes > 0)
                             <span
                                 class="absolute z-20 right-4 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                                 {{ $totalSolicitudesPendientes }}
@@ -56,21 +62,16 @@
 
         <!-- Menú escritorio -->
         <div class="hidden sm:flex w-full mb-4">
-            @foreach ([
-        'users.index' => '👤 Usuarios',
-        'register' => '📋 Registrar Usuario',
-        'vacaciones.index' => '🌴 Vacaciones',
-        'asignaciones-turnos.index' => '⏱️ Registros Entrada y Salida',
-    ] as $ruta => $texto)
-                <a href="{{ route($ruta) }}"
+            @foreach ($links as $link)
+                @php $active = request()->routeIs(Str::before($link['route'], '.') . '.*'); @endphp
+                <a href="{{ route($link['route']) }}"
                     class="relative flex-1 text-center px-4 py-2 font-semibold transition
-               
-                    {{ request()->routeIs(Str::before($ruta, '.') . '.*')
-                        ? $colores['bgActivo'] . ' ' . $colores['txt']
-                        : $colores['bg'] . ' ' . $colores['bgHover'] . ' ' . $colores['txt'] }}">
-                    {{ $texto }}
+                        {{ $active
+                            ? $colores['bgActivo'] . ' ' . $colores['txt']
+                            : $colores['bg'] . ' ' . $colores['bgHover'] . ' ' . $colores['txt'] }}">
+                    {{ $link['label'] }}
 
-                    @if ($ruta === 'vacaciones.index' && isset($totalSolicitudesPendientes) && $totalSolicitudesPendientes > 0)
+                    @if ($link['route'] === 'vacaciones.index' && isset($totalSolicitudesPendientes) && $totalSolicitudesPendientes > 0)
                         <span
                             class="absolute z-20 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
                             {{ $totalSolicitudesPendientes }}

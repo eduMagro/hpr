@@ -1,7 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Planificación por Máquina</x-slot>
-    <x-menu.planificacion />
-
+    <x-menu.planillas />
     <div class="py-6">
         @if (!empty($erroresPlanillas))
             <div class="mb-4 bg-yellow-100 text-yellow-800 p-4 rounded shadow">

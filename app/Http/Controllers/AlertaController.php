@@ -14,6 +14,7 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class AlertaController extends Controller
 {
@@ -76,19 +77,128 @@ class AlertaController extends Controller
         $perPage = request('per_page', 10);
         return $query->paginate($perPage);
     }
+    private function filtrosActivosAlertas(Request $request): array
+    {
+        $filtros = [];
 
-    public function index()
+        if ($request->filled('alerta_id')) {
+            $filtros[] = 'ID: <strong>' . $request->alerta_id . '</strong>';
+        }
+
+        if ($request->filled('emisor')) {
+            $filtros[] = 'Emisor: <strong>' . $request->emisor . '</strong>';
+        }
+
+        if ($request->filled('receptor')) {
+            $filtros[] = 'Receptor: <strong>' . $request->receptor . '</strong>';
+        }
+
+        if ($request->filled('destino')) {
+            $filtros[] = 'Destino: <strong>' . $request->destino . '</strong>';
+        }
+
+        if ($request->filled('destinatario')) {
+            $filtros[] = 'Destinatario: <strong>' . $request->destinatario . '</strong>';
+        }
+
+        if ($request->filled('mensaje')) {
+            $filtros[] = 'Mensaje contiene: <strong>' . $request->mensaje . '</strong>';
+        }
+
+        if ($request->filled('fecha_creada')) {
+            $filtros[] = 'Fecha creada: <strong>' . $request->fecha_creada . '</strong>';
+        }
+
+        if ($request->filled('fecha_actualizada')) {
+            $filtros[] = 'Fecha actualizada: <strong>' . $request->fecha_actualizada . '</strong>';
+        }
+
+        if ($request->filled('sort')) {
+            $orden = $request->order === 'desc' ? 'descendente' : 'ascendente';
+            $filtros[] = 'Ordenado por <strong>' . $request->sort . "</strong> en orden <strong>$orden</strong>";
+        }
+
+        if ($request->filled('per_page_todas')) {
+            $filtros[] = 'Mostrando <strong>' . $request->per_page_todas . '</strong> registros por página';
+        }
+
+        return $filtros;
+    }
+
+    private function getOrdenamientoAlertas(string $columna, string $titulo): string
+    {
+        $currentSort = request('sort');
+        $currentOrder = request('order');
+        $isSorted = $currentSort === $columna;
+        $nextOrder = ($isSorted && $currentOrder === 'asc') ? 'desc' : 'asc';
+
+        $icon = '';
+        if ($isSorted) {
+            $icon = $currentOrder === 'asc' ? '▲' : '▼';
+        } else {
+            $icon = '⇅';
+        }
+
+        $url = request()->fullUrlWithQuery(['sort' => $columna, 'order' => $nextOrder]);
+
+        return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
+            '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
+    }
+
+    private function aplicarFiltrosAlertas($query, Request $request)
+    {
+        if ($request->filled('alerta_id')) {
+            $query->where('id', $request->alerta_id);
+        }
+
+        if ($request->filled('emisor')) {
+            $query->whereHas('usuario1', function ($q) use ($request) {
+                $q->where(DB::raw("CONCAT(users.name, ' ', users.primer_apellido, ' ', users.segundo_apellido)"), 'like', '%' . $request->emisor . '%');
+            });
+        }
+
+        if ($request->filled('receptor')) {
+            $query->whereHas('usuario2', function ($q) use ($request) {
+                $q->where(DB::raw("CONCAT(users.name, ' ', users.primer_apellido, ' ', users.segundo_apellido)"), 'like', '%' . $request->receptor . '%');
+            });
+        }
+
+        if ($request->filled('destino')) {
+            $query->where('destino', 'like', '%' . $request->destino . '%');
+        }
+
+        if ($request->filled('destinatario')) {
+            $query->where('destinatario', 'like', '%' . $request->destinatario . '%');
+        }
+
+        if ($request->filled('mensaje')) {
+            $query->where('mensaje', 'like', '%' . $request->mensaje . '%');
+        }
+
+        if ($request->filled('fecha_creada')) {
+            $query->whereDate('created_at', Carbon::parse($request->fecha_creada)->format('Y-m-d'));
+        }
+
+        if ($request->filled('fecha_actualizada')) {
+            $query->whereDate('updated_at', Carbon::parse($request->fecha_actualizada)->format('Y-m-d'));
+        }
+
+        return $query;
+    }
+
+    public function index(Request $request)
     {
         $user = Auth::user();
 
         $categoriaNombre = optional($user->categoriaRelacion)->nombre ?? $user->categoria;
-
+        $perPage = $request->input('per_page', 10); // valor por defecto 10
+        $perPageTodas = $request->input('per_page_todas', 20); // por defecto 20
         $alertas = Alerta::whereHas('leidas', function ($q) use ($user) {
             $q->where('user_id', $user->id);
         })
             ->orWhere('user_id_1', $user->id) // permite ver las enviadas por él mismo
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->paginate($perPage);
 
 
         // Clasificar cada alerta y añadir mensajes
@@ -116,8 +226,51 @@ class AlertaController extends Controller
         $roles = User::distinct()->pluck('rol')->filter()->values();
         $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
         $usuarios = User::orderBy('name')->get();
+        $todasLasAlertas = collect();
+        $esAdministrador = $user->esAdminDepartamento();
 
-        return view('alertas.index', compact('alertas', 'user', 'roles', 'categorias', 'usuarios', 'alertasLeidas'));
+        if ($esAdministrador) {
+            $query = Alerta::with(['usuario1', 'usuario2', 'destinatarioUser']);
+            $query = $this->aplicarFiltrosAlertas($query, $request);
+
+            // ordenamiento
+            $sortBy = $request->input('sort', 'created_at');
+            $order  = $request->input('order', 'desc');
+            $query->orderBy($sortBy, $order);
+
+            $todasLasAlertas = $query->paginate($perPageTodas, ['*'], 'todas_alertas_page')
+                ->appends($request->except('todas_alertas_page'));
+
+            // texto filtros activos
+            $filtrosActivos = $this->filtrosActivosAlertas($request);
+            $ordenablesAlertas = [
+                'id'            => $this->getOrdenamientoAlertas('id', 'ID'),
+                'user_id_1'     => $this->getOrdenamientoAlertas('user_id_1', 'Emisor'),
+                'user_id_2'     => $this->getOrdenamientoAlertas('user_id_2', 'Compañero'),
+                'destino'       => $this->getOrdenamientoAlertas('destino', 'Destino'),
+                'destinatario'  => $this->getOrdenamientoAlertas('destinatario', 'Destinatario'),
+                'created_at'    => $this->getOrdenamientoAlertas('created_at', 'Creada'),
+                'updated_at'    => $this->getOrdenamientoAlertas('updated_at', 'Actualizada'),
+            ];
+        } else {
+            $todasLasAlertas = collect();
+            $filtrosActivos = [];
+        }
+
+        return view('alertas.index', compact(
+            'alertas',
+            'user',
+            'roles',
+            'categorias',
+            'usuarios',
+            'alertasLeidas',
+            'todasLasAlertas',
+            'esAdministrador',
+            'perPage',
+            'perPageTodas',
+            'filtrosActivos',
+            'ordenablesAlertas'
+        ));
     }
 
     public function marcarLeidas(Request $request)

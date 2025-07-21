@@ -150,8 +150,10 @@
 
                                 </td>
 
-                                <td class="px-4 py-2 hidden sm:table-cell">{{ $alerta->created_at->diffForHumans() }}
+                                <td class="px-4 py-2 text-center">
+                                    {{ $alerta->created_at->diffForHumans() }}
                                 </td>
+
 
                             </tr>
                         @empty
@@ -169,8 +171,90 @@
             <x-tabla.paginacion :paginador="$alertas" />
         </div>
     </div>
+
+    @if ($esAdministrador)
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
+        <h2 class="text-2xl font-bold text-blue-900 mt-6 mb-4">📋 Todas las alertas</h2>
+
+        <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
+            <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
+                <thead class="bg-blue-500 text-white text-4">
+                    <tr class="text-center text-xs uppercase">
+                        <th class="p-2 border">{!! $ordenablesAlertas['id'] !!}</th>
+                        <th class="p-2 border">{!! $ordenablesAlertas['user_id_1'] !!}</th>
+                        <th class="p-2 border">{!! $ordenablesAlertas['user_id_2'] !!}</th>
+                        <th class="p-2 border">{!! $ordenablesAlertas['destino'] !!}</th>
+                        <th class="p-2 border">{!! $ordenablesAlertas['destinatario'] !!}</th>
+                        <th class="p-2 border">Mensaje</th>
+                        <th class="p-2 border">{!! $ordenablesAlertas['created_at'] !!}</th>
+                        <th class="p-2 border">Acciones</th>
+                    </tr>
+                    <tr class="text-center text-xs uppercase">
+                        <form method="GET" action="{{ route('alertas.index') }}">
+                            {{-- mantenemos paginación actual --}}
+                            <th class="p-1 border">
+                                <x-tabla.input name="alerta_id" value="{{ request('alerta_id') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="emisor" value="{{ request('emisor') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="receptor" value="{{ request('receptor') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="destino" value="{{ request('destino') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="destinatario" value="{{ request('destinatario') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="mensaje" value="{{ request('mensaje') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input type="date" name="fecha_creada"
+                                    value="{{ request('fecha_creada') }}" />
+                            </th>
+
+
+                            <x-tabla.botones-filtro ruta="alertas.index" />
+                        </form>
+                    </tr>
+                </thead>
+
+                <tbody class="text-gray-700">
+                    @forelse ($todasLasAlertas as $alerta)
+                        <tr
+                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none uppercase">
+                            <td class="p-2 text-center border">{{ $alerta->id }}</td>
+                            <td class="p-2 text-center border">{{ $alerta->usuario1?->nombre_completo ?? '—' }}</td>
+                            <td class="p-2 text-center border">
+                                {{ $alerta->usuario2?->nombre_completo ?? '—' }}
+                            </td>
+                            <td class="p-2 text-center border">{{ $alerta->destino ?? '—' }}</td>
+                            <td class="p-2 text-center border">{{ $alerta->destinatarioUser->nombre_completo ?? '—' }}
+                            </td>
+                            <td class="p-2 border text-left truncate max-w-xs" title="{{ $alerta->mensaje }}">
+                                {{ $alerta->mensaje }}
+                            </td>
+                            <td class="p-2 text-center border">{{ $alerta->created_at?->format('d/m/Y H:i') }}</td>
+
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" class="text-center py-4 text-gray-500">No hay alertas disponibles.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <x-tabla.paginacion :paginador="$todasLasAlertas" />
+    @endif
+
+
     <!-- Modal de mensaje -->
-    <div id="modalVerMensaje" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div id="modalVerMensaje"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg relative">
             <button onclick="cerrarModalMensaje()"
                 class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">✖</button>
@@ -200,7 +284,8 @@
                     </button>
                 </div>
 
-                <button onclick="eliminarAlerta()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
+                <button onclick="eliminarAlerta()"
+                    class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
                     🗑 Eliminar
                 </button>
             </div>

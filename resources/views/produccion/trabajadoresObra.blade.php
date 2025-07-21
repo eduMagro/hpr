@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Planificación por Obra</x-slot>
-    <x-menu.planificacion />
+    <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
 
     <div id="lista-trabajadores" class="p-4 bg-white border rounded shadow w-full mt-4">
         {{-- hpr servicios --}}

@@ -414,7 +414,7 @@ class AsignacionTurnoController extends Controller
                             $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
                             $alerta = Alerta::create([
                                 'mensaje'   => "🔁 Se corrigió automáticamente el turno de {$user->name} a '{$turnoDetectado}' para la fecha {$fechaTurnoDetectado}.",
-                                'user_id_1' => $user->id,
+                                'user_id_1' => null,
                                 'user_id_2' => null,
                                 'leida'     => false,
                             ]);

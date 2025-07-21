@@ -7,10 +7,10 @@ const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
 const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
 const ELEMENT_TEXT_COLOR = "blue";
 
-const marginX = 50;
-const marginY = 50;
+const marginX = 10;
+const marginY = 10;
 const gapSpacing = 25;
-const minSlotHeight = 80;
+const minSlotHeight = 50;
 
 // =======================
 // Funciones SVG Helpers
@@ -53,31 +53,6 @@ function agregarTexto(
     txt.setAttribute("alignment-baseline", "middle");
     txt.textContent = texto;
     svg.appendChild(txt);
-}
-
-function agregarFlecha(
-    svg,
-    fromX,
-    fromY,
-    toX,
-    toY,
-    color = LINEA_COTA_COLOR,
-    size = 5
-) {
-    const angle = Math.atan2(toY - fromY, toX - fromX);
-    const x1 = fromX + size * Math.cos(angle + Math.PI / 6);
-    const y1 = fromY + size * Math.sin(angle + Math.PI / 6);
-    const x2 = fromX + size * Math.cos(angle - Math.PI / 6);
-    const y2 = fromY + size * Math.sin(angle - Math.PI / 6);
-    const poly = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "polygon"
-    );
-    poly.setAttribute("points", `${fromX},${fromY} ${x1},${y1} ${x2},${y2}`);
-    poly.setAttribute("fill", "none");
-    poly.setAttribute("stroke", color);
-    poly.setAttribute("stroke-width", 1);
-    svg.appendChild(poly);
 }
 
 function agregarPath(svg, puntos, color = FIGURE_LINE_COLOR, ancho = 2) {
@@ -208,7 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // tamaño del área de dibujo
         const ancho = 600;
-        const alto = 250;
+        const alto = 150;
         const svg = crearSVG(ancho, alto);
 
         const numElementos = grupo.elementos.length;
@@ -217,8 +192,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const columnas = Math.ceil(Math.sqrt(numElementos));
         const filas = Math.ceil(numElementos / columnas);
 
-        const cellWidth = (ancho - marginX * 2) / columnas;
-        const cellHeight = (alto - marginY * 2) / filas;
+        const cellWidth = (ancho - marginX) / columnas;
+        const cellHeight = (alto - marginY) / filas;
 
         grupo.elementos.forEach((elemento, index) => {
             const fila = Math.floor(index / columnas);
@@ -236,7 +211,7 @@ document.addEventListener("DOMContentLoaded", () => {
             agregarTexto(
                 svg,
                 centerX,
-                centerY - cellHeight / 2 + 12,
+                centerY - cellHeight / 3 + 12,
                 `Ø${diametro} | ${peso} | x${barras}`,
                 BARS_TEXT_COLOR,
                 10,
@@ -245,7 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
             agregarTexto(
                 svg,
                 centerX,
-                centerY + cellHeight / 2 - 8,
+                centerY + cellHeight / 4 - 8,
                 `#${elemento.id}`,
                 ELEMENT_TEXT_COLOR,
                 10,
@@ -294,8 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const q2 = { x: p2.x + ux * o, y: p2.y + uy * o };
 
                 agregarLinea(svg, q1.x, q1.y, q2.x, q2.y, LINEA_COTA_COLOR, 1);
-                agregarFlecha(svg, q1.x, q1.y, q2.x, q2.y);
-                agregarFlecha(svg, q2.x, q2.y, q1.x, q1.y);
+
                 agregarTexto(
                     svg,
                     (q1.x + q2.x) / 2,

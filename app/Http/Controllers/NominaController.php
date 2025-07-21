@@ -127,7 +127,7 @@ class NominaController extends Controller
         $carpetaUsuario = $carpetaBase . '/' . $slugUsuario;
 
         if (!is_dir($carpetaUsuario)) {
-            return back()->with('error', 'No se encontraron nóminas para ese mes.');
+            return back()->with('error', 'No se encontró nómina para ' . $mes . '.');
         }
 
         // Buscar PDFs del usuario
