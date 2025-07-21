@@ -19,6 +19,7 @@
         "setasign/fpdf": "^1.8",
         "setasign/fpdi": "^2.6",
         "simplesoftwareio/simple-qrcode": "^4.2",
+        "smalot/pdfparser": "^2.12",
         "spatie/laravel-csp": "^2.10",
         "symfony/css-selector": "^7.2",
         "symfony/dom-crawler": "^7.2"

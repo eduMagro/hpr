@@ -176,6 +176,9 @@ class ProfileController extends Controller
         if ($request->filled('movil_empresa')) {
             $query->where('users.movil_empresa', 'like', '%' . $request->input('movil_empresa') . '%');
         }
+        if ($request->filled('dni')) {
+            $query->where('users.dni', 'like', '%' . $request->input('dni') . '%');
+        }
 
         if ($request->filled('empresa_id')) {
             $query->where('empresa_id', $request->empresa_id);

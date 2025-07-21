@@ -13,10 +13,16 @@ use Illuminate\Support\Facades\DB;
 //Importacion PDF nominas
 use setasign\Fpdi\Fpdi;
 use Illuminate\Support\Facades\Storage;
+//Leer nominas para saber nombre
+use Smalot\PdfParser\Parser;
+use Illuminate\Support\Str;
 
 class NominaController extends Controller
 {
     // --------------------- IMPORTACION NOMINASS
+
+
+
 
     public function dividirNominas(Request $request)
     {
@@ -24,38 +30,74 @@ class NominaController extends Controller
             'archivo' => 'required|mimes:pdf|max:102400',
         ]);
 
-        // aseguramos carpeta temp
-        Storage::disk('private')->makeDirectory('temp');
+        // 📂 Crear carpeta temporal
+        Storage::makeDirectory('private/temp');
 
-        // guardamos el archivo en el disco private
-        $rutaRelativa = $request->file('archivo')->store('temp', 'private');
-        $rutaAbsoluta = storage_path('app/private/' . str_replace('temp/', '', $rutaRelativa));
+        // 📥 Guardar archivo
+        $rutaRelativa = $request->file('archivo')->store('private/temp');
+        $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
 
         if (!file_exists($rutaAbsoluta)) {
             return back()->with('error', '❌ No se encontró el archivo subido en: ' . $rutaAbsoluta);
         }
 
-        // carpeta destino
-        $carpetaDestino = 'nominas_divididas/' . now()->format('Ymd_His');
-        Storage::disk('private')->makeDirectory($carpetaDestino);
-        $carpetaDestinoAbsoluta = storage_path('app/private/' . $carpetaDestino);
+        // 📂 Carpeta base de salida
+        $carpetaBaseRelativa = 'private/nominas_divididas/' . now()->format('Ymd_His');
+        Storage::makeDirectory($carpetaBaseRelativa);
+        $carpetaBaseAbsoluta = storage_path('app/' . $carpetaBaseRelativa);
 
-        // dividir PDF
-        $pdfOriginal = new \setasign\Fpdi\Fpdi();
-        $pageCount = $pdfOriginal->setSourceFile($rutaAbsoluta);
-
-        for ($i = 1; $i <= $pageCount; $i++) {
-            $pdfIndividual = new \setasign\Fpdi\Fpdi();
-            $pdfIndividual->AddPage();
-            $tpl = $pdfIndividual->importPage($i);
-            $pdfIndividual->useTemplate($tpl);
-
-            $nombreArchivo = 'nomina_' . str_pad($i, 3, '0', STR_PAD_LEFT) . '.pdf';
-            $pdfIndividual->Output($carpetaDestinoAbsoluta . DIRECTORY_SEPARATOR . $nombreArchivo, 'F');
+        // 📋 Crear mapa de DNI => nombre_completo
+        // ⚠️ Ajusta el campo DNI si en tu base de datos se llama distinto
+        $usuarios = User::all();
+        $mapaDnis = [];
+        foreach ($usuarios as $u) {
+            if ($u->dni) {
+                $mapaDnis[strtoupper($u->dni)] = $u->nombre_completo;
+            }
         }
 
-        return back()->with('success', '✅ Se dividió en ' . $pageCount . ' PDFs en ' . $carpetaDestinoAbsoluta);
+        // 📑 Parsear PDF
+        $parser = new Parser();
+        $pdf = $parser->parseFile($rutaAbsoluta);
+        $pages = $pdf->getPages();
+        $pageCount = count($pages);
+
+        for ($i = 0; $i < $pageCount; $i++) {
+            $textoPagina = strtoupper($pages[$i]->getText());
+            $nombreCarpeta = null;
+
+            // 🔎 Buscar coincidencia de cualquier DNI en el texto
+            foreach ($mapaDnis as $dni => $nombreCompleto) {
+                if (strpos($textoPagina, $dni) !== false) {
+                    $nombreCarpeta = Str::slug($nombreCompleto, '_');
+                    break;
+                }
+            }
+
+            // Si no encontró ningún DNI, asigna genérico
+            if (!$nombreCarpeta) {
+                $nombreCarpeta = 'nomina_' . str_pad($i + 1, 3, '0', STR_PAD_LEFT);
+            }
+
+            // 📂 Crear carpeta para esta nómina
+            $carpetaNominaRelativa = $carpetaBaseRelativa . '/' . $nombreCarpeta;
+            Storage::makeDirectory($carpetaNominaRelativa);
+            $carpetaNominaAbsoluta = $carpetaBaseAbsoluta . DIRECTORY_SEPARATOR . $nombreCarpeta;
+
+            // 📄 Generar PDF individual
+            $pdfIndividual = new Fpdi();
+            $pdfIndividual->setSourceFile($rutaAbsoluta);
+            $pdfIndividual->AddPage();
+            $tpl = $pdfIndividual->importPage($i + 1);
+            $pdfIndividual->useTemplate($tpl);
+
+            $rutaSalida = $carpetaNominaAbsoluta . DIRECTORY_SEPARATOR . $nombreCarpeta . '.pdf';
+            $pdfIndividual->Output($rutaSalida, 'F');
+        }
+
+        return back()->with('success', '✅ Se dividió en ' . $pageCount . ' PDFs comparando DNI y usando nombre_completo, en: ' . $carpetaBaseAbsoluta);
     }
+
 
     // --------------------- GENERACION NOMINA
     public function index()
