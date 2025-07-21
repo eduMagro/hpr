@@ -248,7 +248,7 @@
             </table>
         </div>
 
-        <x-tabla.paginacion :paginador="$todasLasAlertas" />
+        <x-tabla.paginacion :paginador="$todasLasAlertas" perPageName="per_page_todas" />
     @endif
 
 
