@@ -305,26 +305,27 @@
             {{-- ------------------------------- FICHA MODO OPERARIO -------------------------------- --}}
 
             <div class="bg-white rounded-2xl shadow-lg p-6 max-w-4xl mx-auto mb-8 border border-gray-200">
-                <!-- Encabezado -->
-                <div class="flex flex-col md:flex-row md:items-center gap-6 border-b pb-6">
-                    <!-- Avatar -->
-                    <div class="flex-shrink-0 mx-auto md:mx-0 relative">
+                <!-- Encabezado compacto -->
+                <div class="flex gap-6 border-b pb-6 items-center">
+                    <!-- Avatar con botón de cambiar foto -->
+                    <div class="relative flex-shrink-0 mx-auto md:mx-0">
                         @if (auth()->user()->ruta_imagen)
                             <img src="{{ auth()->user()->ruta_imagen }}" alt="Foto de perfil"
-                                class="w-28 h-28 rounded-full object-cover ring-4 ring-blue-500 shadow-lg">
+                                class="w-24 h-24 rounded-full object-cover ring-4 ring-blue-500 shadow-lg">
                         @else
                             <div
-                                class="w-28 h-28 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-4xl font-bold text-gray-700 shadow-inner ring-4 ring-blue-500">
+                                class="w-24 h-24 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-3xl font-bold text-gray-700 shadow-inner ring-4 ring-blue-500">
                                 {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                             </div>
                         @endif
-                        <!-- Botón para cambiar foto -->
+
+                        <!-- Botón cambiar foto sobre la imagen -->
                         <form method="POST" action="{{ route('usuario.subirImagen') }}"
                             enctype="multipart/form-data" class="absolute bottom-0 right-0">
                             @csrf
                             <label
-                                class="flex items-center gap-1 bg-white shadow rounded-full p-1 text-blue-600 cursor-pointer hover:bg-gray-50">
-                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                class="flex items-center justify-center bg-white border border-gray-300 rounded-full p-1 shadow-md cursor-pointer hover:bg-gray-50">
+                                <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                                     <path
                                         d="M4 3a2 2 0 00-2 2v3.586A1.5 1.5 0 003.5 10H4v6a2 2 0 002 2h8a2 2 0 002-2v-6h.5A1.5 1.5 0 0018 8.586V5a2 2 0 00-2-2H4zm3 3a1 1 0 112 0 1 1 0 01-2 0zm2 4a2 2 0 114 0 2 2 0 01-4 0z" />
                                 </svg>
@@ -335,60 +336,57 @@
                     </div>
 
                     <!-- Datos principales -->
-                    <div class="flex-1 text-center md:text-left">
-                        <h2 class="text-3xl font-bold text-gray-900 leading-tight">
+                    <div class="flex-1">
+                        <h2 class="text-2xl font-bold text-gray-900 leading-tight">
                             {{ auth()->user()->name }}
                         </h2>
-                        <p class="text-sm text-gray-500 mb-3">{{ ucfirst(auth()->user()->rol) }}</p>
-
-                        <!-- Correo y teléfono -->
-                        <div
-                            class="flex flex-col sm:flex-row sm:items-center gap-3 text-sm justify-center md:justify-start">
-                            <div class="flex items-center gap-2">
-                                📧 <span class="text-gray-700">{{ auth()->user()->email }}</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                📞 <span class="text-gray-700">{{ auth()->user()->telefono ?? 'Sin teléfono' }}</span>
+                        <p class="text-sm text-gray-500 mb-2">{{ ucfirst(auth()->user()->rol) }}</p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                            <div class="flex items-center gap-1">📧 <span
+                                    class="text-gray-700">{{ auth()->user()->email }}</span></div>
+                            <div class="flex items-center gap-1">📞 <span
+                                    class="text-gray-700">{{ auth()->user()->telefono ?? 'Sin teléfono' }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Datos detallados -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 text-sm">
-                    <div class="space-y-3">
-                        <div>
-                            <p class="text-gray-500 font-medium">🆔 DNI</p>
-                            <p class="text-gray-900 font-semibold">{{ auth()->user()->dni ?? 'Sin DNI registrado' }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500 font-medium">🏷 Rol</p>
-                            <p class="text-gray-900 font-semibold">{{ auth()->user()->rol }}</p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500 font-medium">📂 Categoría</p>
-                            <p class="text-gray-900 font-semibold">{{ auth()->user()->categoria->nombre ?? 'N/A' }}
-                            </p>
-                        </div>
-                        <div>
-                            <p class="text-gray-500 font-medium">⚙️ Especialidad</p>
-                            <p class="text-gray-900 font-semibold">{{ auth()->user()->maquina->nombre ?? 'N/A' }}</p>
-                        </div>
+                <div class="mt-6 grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p class="text-gray-500 font-medium">🆔 DNI</p>
+                        <p class="text-gray-900 font-semibold">{{ auth()->user()->dni ?? 'Sin DNI registrado' }}</p>
                     </div>
+                    <div>
+                        <p class="text-gray-500 font-medium">🏷 Rol</p>
+                        <p class="text-gray-900 font-semibold">{{ auth()->user()->rol }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 font-medium">📂 Categoría</p>
+                        <p class="text-gray-900 font-semibold">{{ auth()->user()->categoria->nombre ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 font-medium">⚙️ Especialidad</p>
+                        <p class="text-gray-900 font-semibold">{{ auth()->user()->maquina->nombre ?? 'N/A' }}</p>
+                    </div>
+                </div>
 
-                    <!-- Resumen de asistencias -->
-                    <div class="bg-gray-50 rounded-lg p-4 shadow-inner space-y-2">
-                        <h3 class="text-lg font-semibold text-gray-700 mb-2">📋 Resumen asistencias</h3>
-                        <p><strong class="text-gray-600">Faltas injustificadas:</strong> <span
-                                class="text-red-600">{{ $faltasInjustificadas }}</span></p>
-                        <p><strong class="text-gray-600">Faltas justificadas:</strong> <span
-                                class="text-green-600">{{ $faltasJustificadas }}</span></p>
-                        <p><strong class="text-gray-600">Días de baja:</strong> <span
-                                class="text-purple-600">{{ $diasBaja }}</span></p>
-                        <p class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center font-medium">
-                            Vacaciones asignadas: {{ $diasVacaciones }}
-                        </p>
+                <!-- Resumen asistencias -->
+                <div class="mt-6 bg-gray-50 rounded-lg p-4 shadow-inner grid grid-cols-3 gap-4 text-center text-sm">
+                    <div>
+                        <p class="text-gray-500 font-medium">Faltas injustificadas</p>
+                        <p class="text-red-600 font-semibold">{{ $faltasInjustificadas }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 font-medium">Faltas justificadas</p>
+                        <p class="text-green-600 font-semibold">{{ $faltasJustificadas }}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-500 font-medium">Días de baja</p>
+                        <p class="text-purple-600 font-semibold">{{ $diasBaja }}</p>
+                    </div>
+                    <div class="col-span-3 mt-3 p-2 bg-blue-100 text-blue-700 rounded-md font-medium">
+                        Vacaciones asignadas: {{ $diasVacaciones }}
                     </div>
                 </div>
 
@@ -396,7 +394,7 @@
                 <div class="mt-6 border-t pt-6">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>
                     <form action="{{ route('nominas.descargarMes') }}" method="GET"
-                        class="flex flex-col sm:flex-row gap-4 max-w-md">
+                        class="flex flex-wrap items-center gap-3 max-w-md">
                         @csrf
                         <input type="month" name="mes_anio" id="mes_anio" required
                             class="flex-1 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
