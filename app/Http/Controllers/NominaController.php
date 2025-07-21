@@ -45,7 +45,7 @@ class NominaController extends Controller
         $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
 
         if (!file_exists($rutaAbsoluta)) {
-            return back()->with('error', '❌ No se encontró el archivo subido en: ' . $rutaAbsoluta);
+            return back()->with('error', 'No se encontró el archivo subido en: ' . $rutaAbsoluta);
         }
 
         // 🔥 Lógica de división por DNI
@@ -127,14 +127,14 @@ class NominaController extends Controller
         $carpetaUsuario = $carpetaBase . '/' . $slugUsuario;
 
         if (!is_dir($carpetaUsuario)) {
-            return back()->with('error', '❌ No se encontraron nóminas para ese mes.');
+            return back()->with('error', 'No se encontraron nóminas para ese mes.');
         }
 
         // Buscar PDFs del usuario
         $archivos = glob($carpetaUsuario . '/*.pdf');
 
         if (empty($archivos)) {
-            return back()->with('error', '❌ No hay archivos PDF en esa carpeta.');
+            return back()->with('error', 'No hay archivos PDF en esa carpeta.');
         }
 
         // Crear PDF combinado
