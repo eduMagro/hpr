@@ -402,6 +402,8 @@ class ProfileController extends Controller
             $solicitudesVacaciones->toArray()
         );
 
+        $resumen = $this->getResumenAsistencia($user);
+        $horasMensuales = $this->getHorasMensuales($user);
 
         return view('User.index', compact(
             'registrosUsuarios',
@@ -423,7 +425,9 @@ class ProfileController extends Controller
             'diasBaja',
             'totalSolicitudesPendientes',
             'diasVacaciones',
-            'obrasHierrosPacoReyes'
+            'obrasHierrosPacoReyes',
+            'resumen',
+            'horasMensuales'
         ));
     }
 

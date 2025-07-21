@@ -258,7 +258,9 @@
                                     <template x-if="!editando">
                                         <div class="flex items-center space-x-2">
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
-                                            <x-tabla.boton-ver :href="route('users.show', $user->id)" />
+                                            <x-tabla.boton-ver :href="route('users.show', $user->id)" target="_blank"
+                                                rel="noopener noreferrer" />
+
                                             <a href="{{ route('users.edit', $user->id) }}" title="Configuración"
                                                 class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
@@ -338,55 +340,53 @@
                     <!-- Datos principales -->
                     <div class="flex-1">
                         <h2 class="text-2xl font-bold text-gray-900 leading-tight">
-                            {{ auth()->user()->name }}
+                            {{ auth()->user()->nombre_completo }}
                         </h2>
-                        <p class="text-sm text-gray-500 mb-2">{{ ucfirst(auth()->user()->rol) }}</p>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                            <div class="flex items-center gap-1">📧 <span
-                                    class="text-gray-700">{{ auth()->user()->email }}</span></div>
-                            <div class="flex items-center gap-1">📞 <span
-                                    class="text-gray-700">{{ auth()->user()->telefono ?? 'Sin teléfono' }}</span>
-                            </div>
+                        <p class="text-sm text-gray-500 mb-2">Ficha del trabajador</p>
+
+                    </div>
+                </div>
+
+                <!-- Contenido en dos columnas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Información del usuario -->
+                    <div>
+
+                        <div>📧 <span class="text-gray-700">{{ auth()->user()->email }}</span></div>
+                        <div>📞 <span class="text-gray-700">{{ auth()->user()->telefono ?? 'Sin teléfono' }}</span>
                         </div>
+                        <p><strong>Categoría:</strong> <span
+                                class="text-gray-600">{{ $user->categoria->nombre ?? 'N/A' }}</span></p>
+                        <p><strong>Especialidad:</strong> <span
+                                class="text-gray-600">{{ $user->maquina->nombre ?? 'N/A' }}</span></p>
                     </div>
-                </div>
 
-                <!-- Datos detallados -->
-                <div class="mt-6 grid grid-cols-2 gap-4 text-sm">
+                    <!-- Resumen de asistencias -->
                     <div>
-                        <p class="text-gray-500 font-medium">🆔 DNI</p>
-                        <p class="text-gray-900 font-semibold">{{ auth()->user()->dni ?? 'Sin DNI registrado' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 font-medium">🏷 Rol</p>
-                        <p class="text-gray-900 font-semibold">{{ auth()->user()->rol }}</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 font-medium">📂 Categoría</p>
-                        <p class="text-gray-900 font-semibold">{{ auth()->user()->categoria->nombre ?? 'N/A' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 font-medium">⚙️ Especialidad</p>
-                        <p class="text-gray-900 font-semibold">{{ auth()->user()->maquina->nombre ?? 'N/A' }}</p>
-                    </div>
-                </div>
 
-                <!-- Resumen asistencias -->
-                <div class="mt-6 bg-gray-50 rounded-lg p-4 shadow-inner grid grid-cols-3 gap-4 text-center text-sm">
-                    <div>
-                        <p class="text-gray-500 font-medium">Faltas injustificadas</p>
-                        <p class="text-red-600 font-semibold">{{ $faltasInjustificadas }}</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 font-medium">Faltas justificadas</p>
-                        <p class="text-green-600 font-semibold">{{ $faltasJustificadas }}</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-500 font-medium">Días de baja</p>
-                        <p class="text-purple-600 font-semibold">{{ $diasBaja }}</p>
-                    </div>
-                    <div class="col-span-3 mt-3 p-2 bg-blue-100 text-blue-700 rounded-md font-medium">
-                        Vacaciones asignadas: {{ $diasVacaciones }}
+                        <div class="bg-gray-100 p-3 rounded-lg mb-4">
+                            <p><strong>Vacaciones asignadas:</strong> {{ $resumen['diasVacaciones'] }}</p>
+                            <p><strong>Faltas injustificadas:</strong> {{ $resumen['faltasInjustificadas'] }}</p>
+                            <p><strong>Faltas justificadas:</strong> {{ $resumen['faltasJustificadas'] }}</p>
+                            <p><strong>Días de baja:</strong> {{ $resumen['diasBaja'] }}</p>
+                        </div>
+
+                        <!-- Resumen de horas -->
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">⏱️ Horas trabajadas (mes actual)</h3>
+                        <div class="bg-gray-100 p-3 rounded-lg">
+                            <p><strong>Horas trabajadas:</strong>
+                                {{ number_format($horasMensuales['horas_trabajadas'], 2, ',', '.') }} h
+                            </p>
+                            <p><strong>Horas que debería llevar hasta hoy:</strong>
+                                {{ number_format($horasMensuales['horas_deberia_llevar'], 2, ',', '.') }} h
+                            </p>
+                            <p><strong>Horas planificadas del mes:</strong>
+                                {{ number_format($horasMensuales['horas_planificadas_mes'], 2, ',', '.') }} h
+                            </p>
+                            <p class="text-red-600 font-semibold">
+                                ⚠️ Días con errores de fichaje: {{ $horasMensuales['dias_con_errores'] }}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -397,13 +397,17 @@
                         class="flex flex-wrap items-center gap-3 max-w-md">
                         @csrf
                         <input type="month" name="mes_anio" id="mes_anio" required
-                            class="flex-1 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            class="w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+           hover:border-gray-400 transition-colors duration-200" />
+
                         <button type="submit"
                             class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
-                            📥 Descargar
+                            📥
                         </button>
                     </form>
                 </div>
+
             </div>
 
         </div>
