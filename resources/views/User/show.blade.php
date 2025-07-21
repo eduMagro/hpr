@@ -85,7 +85,7 @@
                     </div>
                 </div>
             </div>
-            @if ($user->rol === 'oficina' && $user->id === auth()->id())
+            @if ($user->id === auth()->id())
                 <!-- Descargar nóminas -->
                 <div class="mt-6 border-t pt-6">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>

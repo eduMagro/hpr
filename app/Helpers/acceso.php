@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Models\Seccion;
 
 // ✅ Rutas permitidas para operarios (pueden ser exactas o prefijos)
 if (!function_exists('rutasPermitidasOperario')) {
@@ -37,7 +38,7 @@ if (!function_exists('usuarioTieneAcceso')) {
         if ($user->rol === 'oficina') {
             $departamentosUsuario = $user->departamentos->pluck('id')->toArray();
 
-            $seccion = \App\Models\Seccion::where('ruta', $ruta)
+            $seccion = Seccion::where('ruta', $ruta)
                 ->with('departamentos')
                 ->first();
 
