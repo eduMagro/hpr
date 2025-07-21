@@ -17,32 +17,43 @@
                     </a>
                 </div>
 
-                <h1 class="text-2xl font-bold text-gray-800">
-                    📥 Importar Nóminas
-                </h1>
             </div>
-
+            <hr>
+            <h1 class="text-2xl font-bold text-gray-800">
+                📥 Importar Nóminas
+            </h1>
             <!-- Formulario -->
-            <form action="{{ route('nominas.dividir') }}" method="POST" enctype="multipart/form-data"
-                class="space-y-4">
+            <form action="{{ route('nominas.dividir') }}" method="POST" enctype="multipart/form-data" class="space-y-4"
+                x-data="{ cargando: false }" @submit="cargando = true">
                 @csrf
+                <!-- Selección de mes -->
 
-                <div>
+                <div class="max-w-xs">
+                    <label for="mes_anio" class="block text-sm font-medium text-gray-700 mb-1">
+                        Mes y año de las nóminas
+                    </label>
+                    <input type="month" name="mes_anio" id="mes_anio" required
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    @error('mes_anio')
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Archivo PDF -->
+                <div class="max-w-xs">
                     <label for="archivo" class="block text-sm font-medium text-gray-700 mb-1">
                         Selecciona el PDF con las nóminas
                     </label>
-                    <input type="file" name="archivo" id="archivo" accept=".pdf"
+                    <input type="file" name="archivo" id="archivo" accept=".pdf" required
                         class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
                     @error('archivo')
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
+                <!-- Botón -->
                 <div>
-                    <button type="submit"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
-                        🚀 Importar y dividir
-                    </button>
+                    <x-boton-submit texto="Importar Nóminas" color="blue" :cargando="true" />
                 </div>
             </form>
         </div>

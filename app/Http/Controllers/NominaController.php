@@ -21,19 +21,26 @@ class NominaController extends Controller
 {
     // --------------------- IMPORTACION NOMINASS
 
-
-
-
     public function dividirNominas(Request $request)
     {
         $request->validate([
-            'archivo' => 'required|mimes:pdf|max:102400',
+            'archivo'   => 'required|mimes:pdf|max:102400',
+            'mes_anio'  => 'required|date_format:Y-m', // valida formato año-mes
         ]);
 
-        // 📂 Crear carpeta temporal
-        Storage::makeDirectory('private/temp');
+        // Parseamos mes y año
+        $fecha = \Carbon\Carbon::createFromFormat('Y-m', $request->mes_anio);
+        $mesEnEspañol = $fecha->locale('es')->translatedFormat('F'); // devuelve el mes en español
+        $mesEnEspañol = ucfirst($mesEnEspañol); // primera letra mayúscula
+        $anio = $fecha->format('Y');
 
-        // 📥 Guardar archivo
+        // Carpeta final
+        $carpetaBaseRelativa = 'private/nominas_divididas/Nominas_' . $mesEnEspañol . '_' . $anio;
+        Storage::makeDirectory($carpetaBaseRelativa);
+        $carpetaBaseAbsoluta = storage_path('app/' . $carpetaBaseRelativa);
+
+        // Guardar archivo temporal
+        Storage::makeDirectory('private/temp');
         $rutaRelativa = $request->file('archivo')->store('private/temp');
         $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
 
@@ -41,51 +48,47 @@ class NominaController extends Controller
             return back()->with('error', '❌ No se encontró el archivo subido en: ' . $rutaAbsoluta);
         }
 
-        // 📂 Carpeta base de salida
-        $carpetaBaseRelativa = 'private/nominas_divididas/' . now()->format('Ymd_His');
-        Storage::makeDirectory($carpetaBaseRelativa);
-        $carpetaBaseAbsoluta = storage_path('app/' . $carpetaBaseRelativa);
-
-        // 📋 Crear mapa de DNI => nombre_completo
-        // ⚠️ Ajusta el campo DNI si en tu base de datos se llama distinto
-        $usuarios = User::all();
-        $mapaDnis = [];
-        foreach ($usuarios as $u) {
-            if ($u->dni) {
-                $mapaDnis[strtoupper($u->dni)] = $u->nombre_completo;
-            }
-        }
-
-        // 📑 Parsear PDF
-        $parser = new Parser();
+        // 🔥 Lógica de división por DNI
+        $parser = new \Smalot\PdfParser\Parser();
         $pdf = $parser->parseFile($rutaAbsoluta);
         $pages = $pdf->getPages();
         $pageCount = count($pages);
 
-        for ($i = 0; $i < $pageCount; $i++) {
-            $textoPagina = strtoupper($pages[$i]->getText());
+        // mapa de dnis
+        $usuarios = User::all();
+        $mapaDnis = [];
+        foreach ($usuarios as $u) {
+            if ($u->dni) {
+                $dniNormalizado = strtoupper(preg_replace('/[^A-Z0-9]/', '', $u->dni));
+                $mapaDnis[$dniNormalizado] = $u->nombre_completo;
+            }
+        }
+
+        $warningCount = 0;
+        foreach ($pages as $i => $page) {
+            $textoPagina = strtoupper($page->getText());
+            $textoNormalizado = preg_replace('/[^A-Z0-9]/', '', $textoPagina);
             $nombreCarpeta = null;
 
-            // 🔎 Buscar coincidencia de cualquier DNI en el texto
             foreach ($mapaDnis as $dni => $nombreCompleto) {
-                if (strpos($textoPagina, $dni) !== false) {
+                if (strpos($textoNormalizado, $dni) !== false) {
                     $nombreCarpeta = Str::slug($nombreCompleto, '_');
                     break;
                 }
             }
 
-            // Si no encontró ningún DNI, asigna genérico
             if (!$nombreCarpeta) {
+                $warningCount++;
                 $nombreCarpeta = 'nomina_' . str_pad($i + 1, 3, '0', STR_PAD_LEFT);
             }
 
-            // 📂 Crear carpeta para esta nómina
+            // crea subcarpeta por cada nómina
             $carpetaNominaRelativa = $carpetaBaseRelativa . '/' . $nombreCarpeta;
             Storage::makeDirectory($carpetaNominaRelativa);
             $carpetaNominaAbsoluta = $carpetaBaseAbsoluta . DIRECTORY_SEPARATOR . $nombreCarpeta;
 
-            // 📄 Generar PDF individual
-            $pdfIndividual = new Fpdi();
+            // generar PDF individual
+            $pdfIndividual = new \setasign\Fpdi\Fpdi();
             $pdfIndividual->setSourceFile($rutaAbsoluta);
             $pdfIndividual->AddPage();
             $tpl = $pdfIndividual->importPage($i + 1);
@@ -95,10 +98,62 @@ class NominaController extends Controller
             $pdfIndividual->Output($rutaSalida, 'F');
         }
 
-        return back()->with('success', '✅ Se dividió en ' . $pageCount . ' PDFs comparando DNI y usando nombre_completo, en: ' . $carpetaBaseAbsoluta);
+        $mensaje = '✅ Se dividió en ' . $pageCount . ' PDFs en: ' . $carpetaBaseAbsoluta;
+        if ($warningCount > 0) {
+            $mensaje .= ' ⚠️ ' . $warningCount . ' páginas sin coincidencia.';
+        }
+
+        return back()->with('success', $mensaje);
     }
 
+    public function descargarNominasMes(Request $request)
+    {
+        $request->validate([
+            'mes_anio' => 'required|date_format:Y-m',
+        ]);
 
+        // Obtener mes y año
+        $fecha = \Carbon\Carbon::createFromFormat('Y-m', $request->mes_anio);
+        $mes = ucfirst($fecha->locale('es')->translatedFormat('F')); // Ejemplo: Julio
+        $anio = $fecha->format('Y');
+
+        // Ruta de la carpeta base
+        $carpetaBase = storage_path('app/private/nominas_divididas/Nominas_' . $mes . '_' . $anio);
+
+        // Usuario actual
+        $user = auth()->user();
+        $slugUsuario = Str::slug($user->nombre_completo, '_');
+
+        $carpetaUsuario = $carpetaBase . '/' . $slugUsuario;
+
+        if (!is_dir($carpetaUsuario)) {
+            return back()->with('error', '❌ No se encontraron nóminas para ese mes.');
+        }
+
+        // Buscar PDFs del usuario
+        $archivos = glob($carpetaUsuario . '/*.pdf');
+
+        if (empty($archivos)) {
+            return back()->with('error', '❌ No hay archivos PDF en esa carpeta.');
+        }
+
+        // Crear PDF combinado
+        $pdf = new Fpdi();
+        foreach ($archivos as $archivo) {
+            $pageCount = $pdf->setSourceFile($archivo);
+            for ($i = 1; $i <= $pageCount; $i++) {
+                $tpl = $pdf->importPage($i);
+                $pdf->AddPage();
+                $pdf->useTemplate($tpl);
+            }
+        }
+
+        // Generar PDF combinado en memoria y descargar
+        $nombreArchivo = 'Nominas_' . $mes . '_' . $anio . '.pdf';
+        return response($pdf->Output('S', $nombreArchivo))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
+    }
     // --------------------- GENERACION NOMINA
     public function index()
     {

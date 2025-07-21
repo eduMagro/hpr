@@ -61,7 +61,7 @@
         document.addEventListener("DOMContentLoaded", function() {
             Swal.fire({
                 icon: 'success',
-                text: '{{ session('success') }}',
+                text: @json(session('success')),
                 confirmButtonColor: '#28a745'
             }).then(() => {
                 window.location.reload(); // Recarga la página tras el mensaje

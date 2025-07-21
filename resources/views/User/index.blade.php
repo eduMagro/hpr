@@ -304,110 +304,110 @@
         <div class="container mx-auto px-4 py-6">
             {{-- ------------------------------- FICHA MODO OPERARIO -------------------------------- --}}
 
-            <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto mb-6 border border-gray-200">
-                <div class="flex items-center gap-4 border-b pb-4 mb-4">
+            <div class="bg-white rounded-2xl shadow-lg p-6 max-w-4xl mx-auto mb-8 border border-gray-200">
+                <!-- Encabezado -->
+                <div class="flex flex-col md:flex-row md:items-center gap-6 border-b pb-6">
                     <!-- Avatar -->
-                    @if (auth()->user()->ruta_imagen)
-                        <img src="{{ auth()->user()->ruta_imagen }}" alt="Foto de perfil"
-                            class="w-16 h-16 rounded-full object-cover ring-2 ring-blue-400 shadow">
-                    @else
-                        <div
-                            class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-700 shadow">
-                            {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                        </div>
-                    @endif
-
-                    <!-- Datos + formulario -->
-                    <div class="flex-1">
-                        <h3 class="text-xl font-semibold text-gray-900 leading-tight">{{ auth()->user()->name }}</h3>
-                        <p class="text-sm text-gray-500 mb-2">{{ auth()->user()->rol }}</p>
-
-                        <!-- Subida de imagen con estilo -->
+                    <div class="flex-shrink-0 mx-auto md:mx-0 relative">
+                        @if (auth()->user()->ruta_imagen)
+                            <img src="{{ auth()->user()->ruta_imagen }}" alt="Foto de perfil"
+                                class="w-28 h-28 rounded-full object-cover ring-4 ring-blue-500 shadow-lg">
+                        @else
+                            <div
+                                class="w-28 h-28 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-4xl font-bold text-gray-700 shadow-inner ring-4 ring-blue-500">
+                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                            </div>
+                        @endif
+                        <!-- Botón para cambiar foto -->
                         <form method="POST" action="{{ route('usuario.subirImagen') }}"
-                            enctype="multipart/form-data" class="flex items-center gap-2 text-sm group relative">
+                            enctype="multipart/form-data" class="absolute bottom-0 right-0">
                             @csrf
-
-                            <label class="flex items-center gap-1 text-blue-600 hover:underline cursor-pointer">
+                            <label
+                                class="flex items-center gap-1 bg-white shadow rounded-full p-1 text-blue-600 cursor-pointer hover:bg-gray-50">
                                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                     <path
                                         d="M4 3a2 2 0 00-2 2v3.586A1.5 1.5 0 003.5 10H4v6a2 2 0 002 2h8a2 2 0 002-2v-6h.5A1.5 1.5 0 0018 8.586V5a2 2 0 00-2-2H4zm3 3a1 1 0 112 0 1 1 0 01-2 0zm2 4a2 2 0 114 0 2 2 0 01-4 0z" />
                                 </svg>
-                                <span>Cambiar foto</span>
-                                <input type="file" name="imagen" accept="image/*" capture="environment"
-                                    class="hidden" onchange="this.form.submit()">
+                                <input type="file" name="imagen" accept="image/*" class="hidden"
+                                    onchange="this.form.submit()">
                             </label>
-
-                            <span class="text-gray-400 text-xs group-hover:text-gray-500 transition">
-                                Formatos: JPG, PNG, WEBP · Máx 5MB
-                            </span>
                         </form>
-
-
-                        <script>
-                            document.querySelector('input[type="file"]').addEventListener('change', function() {
-                                if (!this.files.length) {
-                                    alert('No se seleccionó ninguna imagen.');
-                                }
-                            });
-
-                            document.getElementById('input-imagen').addEventListener('change', function(e) {
-                                const archivo = e.target.files[0];
-
-                                if (!archivo) return;
-
-                                if (!archivo.type.startsWith('image/')) {
-                                    alert('El archivo seleccionado no es una imagen válida.');
-                                    return;
-                                }
-
-                                const lector = new FileReader();
-                                lector.onload = function(event) {
-                                    const preview = document.getElementById('preview');
-                                    preview.src = event.target.result;
-                                    preview.classList.remove('hidden');
-
-                                    document.getElementById('boton-confirmar').classList.remove('hidden');
-                                };
-
-                                lector.readAsDataURL(archivo);
-                            });
-                        </script>
-                    </div>
-                </div>
-
-
-
-
-                <!-- Contenido en dos columnas -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Información del usuario -->
-                    <div>
-                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Información</h3>
-                        <p><strong>Email:</strong> <span class="text-gray-600">{{ auth()->user()->email }}</span></p>
-                        <p><strong>Categoría:</strong> <span
-                                class="text-gray-600">{{ auth()->user()->categoria->nombre ?? 'N/A' }}</span></p>
-                        <p><strong>Especialidad:</strong> <span
-                                class="text-gray-600">{{ auth()->user()->maquina->nombre ?? 'N/A' }}</span></p>
-                        <p id="vacaciones-restantes"
-                            class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center">
-                            Vacaciones asignadas: {{ $diasVacaciones }}
-                        </p>
                     </div>
 
-                    <!-- Resumen de asistencias -->
-                    <div>
-                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Asistencias</h3>
-                        <div class="bg-gray-100 p-3 rounded-lg">
-                            <p><strong>Faltas injustificadas:</strong> <span
-                                    class="text-red-600">{{ $faltasInjustificadas }}</span></p>
-                            <p><strong>Faltas justificadas:</strong> <span
-                                    class="text-green-600">{{ $faltasJustificadas }}</span></p>
-                            <p><strong>Días de baja:</strong> <span class="text-purple-600">{{ $diasBaja }}</span>
-                            </p>
+                    <!-- Datos principales -->
+                    <div class="flex-1 text-center md:text-left">
+                        <h2 class="text-3xl font-bold text-gray-900 leading-tight">
+                            {{ auth()->user()->name }}
+                        </h2>
+                        <p class="text-sm text-gray-500 mb-3">{{ ucfirst(auth()->user()->rol) }}</p>
+
+                        <!-- Correo y teléfono -->
+                        <div
+                            class="flex flex-col sm:flex-row sm:items-center gap-3 text-sm justify-center md:justify-start">
+                            <div class="flex items-center gap-2">
+                                📧 <span class="text-gray-700">{{ auth()->user()->email }}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                📞 <span class="text-gray-700">{{ auth()->user()->telefono ?? 'Sin teléfono' }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Datos detallados -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 text-sm">
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-gray-500 font-medium">🆔 DNI</p>
+                            <p class="text-gray-900 font-semibold">{{ auth()->user()->dni ?? 'Sin DNI registrado' }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 font-medium">🏷 Rol</p>
+                            <p class="text-gray-900 font-semibold">{{ auth()->user()->rol }}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 font-medium">📂 Categoría</p>
+                            <p class="text-gray-900 font-semibold">{{ auth()->user()->categoria->nombre ?? 'N/A' }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 font-medium">⚙️ Especialidad</p>
+                            <p class="text-gray-900 font-semibold">{{ auth()->user()->maquina->nombre ?? 'N/A' }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Resumen de asistencias -->
+                    <div class="bg-gray-50 rounded-lg p-4 shadow-inner space-y-2">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">📋 Resumen asistencias</h3>
+                        <p><strong class="text-gray-600">Faltas injustificadas:</strong> <span
+                                class="text-red-600">{{ $faltasInjustificadas }}</span></p>
+                        <p><strong class="text-gray-600">Faltas justificadas:</strong> <span
+                                class="text-green-600">{{ $faltasJustificadas }}</span></p>
+                        <p><strong class="text-gray-600">Días de baja:</strong> <span
+                                class="text-purple-600">{{ $diasBaja }}</span></p>
+                        <p class="mt-3 p-2 bg-blue-100 text-blue-700 rounded-md text-center font-medium">
+                            Vacaciones asignadas: {{ $diasVacaciones }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Descargar nóminas -->
+                <div class="mt-6 border-t pt-6">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>
+                    <form action="{{ route('nominas.descargarMes') }}" method="GET"
+                        class="flex flex-col sm:flex-row gap-4 max-w-md">
+                        @csrf
+                        <input type="month" name="mes_anio" id="mes_anio" required
+                            class="flex-1 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
+                            📥 Descargar
+                        </button>
+                    </form>
+                </div>
             </div>
+
         </div>
         {{-- ------------------------------- CALENDARIO MODO OPERARIO -------------------------------- --}}
         <div class="bg-white rounded-lg shadow-lg">
