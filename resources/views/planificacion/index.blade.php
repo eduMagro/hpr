@@ -84,6 +84,7 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+
     {{-- TOOLTIP --}}
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
     <script src="https://unpkg.com/@popperjs/core@2"></script>
@@ -93,10 +94,9 @@
     <script>
         let calendar; // hacemos la variable accesible desde fuera
 
-        // const todasLasObras = @json($todasLasObras);
         const obrasConSalidas = @json($obrasConSalidasResources);
         const todosLosEventos = @json($eventos); // ¡ojo, guarda todos los eventos!
-
+console.log(obrasConSalidas);
         function crearCalendario(resources, eventosFiltrados) {
             if (calendar) {
                 calendar.destroy(); // 🔥 destruye el anterior antes de renderizar el nuevo
@@ -105,11 +105,23 @@
             const vistaGuardada = localStorage.getItem('ultimaVistaCalendario') || 'resourceTimelineDay';
             const fechaGuardada = localStorage.getItem('fechaCalendario');
 
-            calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
-                schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
-                locale: 'es',
-                initialView: vistaGuardada,
-                initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
+           calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
+  schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
+  locale: 'es',
+  initialView: 'resourceTimelineWeek',
+ resources: {
+  url: '{{ url('/planificacion?resources=1') }}',
+  method: 'GET'
+},
+  events: {
+  url: '{{ url('/planificacion') }}',
+  method: 'GET',
+  // quita o comenta esto:
+  // failure: function() {
+  //   alert('Error al cargar eventos');
+  // }
+},
+
                 datesSet: function(info) {
                     let fechaActual = info.startStr;
 
@@ -152,8 +164,8 @@
 
                 },
                 editable: true,
-                resources: resources,
-                events: eventosFiltrados,
+               
+              
                 resourceAreaColumns: [{
                         field: 'title',
                         headerContent: 'Obra'
