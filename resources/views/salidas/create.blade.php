@@ -50,7 +50,7 @@
                                                     data-planilla-id="{{ $planilla->id }}" name="paquete_ids[]"
                                                     value="{{ $paquete->id }}" id="paquete-{{ $paquete->id }}">
                                                 <label for="paquete-{{ $paquete->id }}" class="text-gray-800">
-                                                    Paquete #{{ $paquete->id }}
+                                                    Paquete {{ $paquete->codigo }}
                                                 </label>
                                                 <span class="text-gray-600 ml-auto">Peso: {{ $paquete->peso }}
                                                     kg</span>

@@ -14,14 +14,14 @@
     <div class="w-full">
         <!-- Acciones visibles en escritorio -->
         <div class="hidden sm:flex sm:mt-0 w-full">
-            <button id="ver-todas"
+            {{-- <button id="ver-todas"
                 class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none first:rounded-l-lg last:rounded-r-lg transition">
                 Ver todas las obras
-            </button>
+            </button> --}}
 
             <button id="ver-con-salidas"
                 class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none transition">
-                Obras con salida asociada
+                Obras con salida
             </button>
 
             <a href="{{ route('salidas.create') }}"
@@ -93,7 +93,7 @@
     <script>
         let calendar; // hacemos la variable accesible desde fuera
 
-        const todasLasObras = @json($todasLasObras);
+        // const todasLasObras = @json($todasLasObras);
         const obrasConSalidas = @json($obrasConSalidasResources);
         const todosLosEventos = @json($eventos); // ¡ojo, guarda todos los eventos!
 
@@ -355,10 +355,10 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             // 👇 Al cargar, mostramos todo
-            crearCalendario(todasLasObras, todosLosEventos);
+            crearCalendario(obrasConSalidas, todosLosEventos);
 
             document.getElementById('ver-todas').addEventListener('click', () => {
-                crearCalendario(todasLasObras, todosLosEventos);
+                crearCalendario(obrasConSalidas, todosLosEventos);
             });
 
             document.getElementById('ver-con-salidas').addEventListener('click', () => {

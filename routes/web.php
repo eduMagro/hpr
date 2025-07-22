@@ -188,7 +188,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/planificacion/comentario/{id}', [PlanificacionController::class, 'guardarComentario']);
     Route::post('/planillas/{planilla}/reimportar', [PlanillaController::class, 'reimportar'])
         ->name('planillas.reimportar');
-
+Route::post('/planillas/completar', [PlanillaController::class, 'completar'])
+    ->name('planillas.completar');
+    
     // === EMPRESAS TRANSPORTE ===
     Route::resource('empresas-transporte', EmpresaTransporteController::class)
         ->middleware('acceso.seccion:empresas-transporte.index');

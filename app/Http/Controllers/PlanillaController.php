@@ -21,6 +21,7 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use App\Services\AsignacionMaquinaIAService;
 use App\Models\OrdenPlanilla;
+use App\Services\PlanillaService;
 
 class PlanillaController extends Controller
 {
@@ -356,9 +357,13 @@ class PlanillaController extends Controller
             $query->whereDate('created_at', Carbon::parse($request->fecha_importacion)->format('Y-m-d'));
         }
 
-        if ($request->filled('fecha_estimada_entrega')) {
-            $query->whereDate('fecha_estimada_entrega', Carbon::parse($request->fecha_estimada_entrega)->format('Y-m-d'));
-        }
+if ($request->filled('fecha_estimada_entrega')) {
+    $query->whereDate(
+        'fecha_estimada_entrega',
+        Carbon::parse($request->fecha_estimada_entrega)->format('Y-m-d')
+    );
+}
+
 
 
         return $query;
@@ -1252,5 +1257,29 @@ class PlanillaController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar las planillas: ' . $e->getMessage());
         }
+    }
+ //------------------------------------------------------------------------------------ COMPLETAR PLANILLA()
+     public function completar(Request $request, PlanillaService $ordenPlanillaService)
+    {
+        // ✅ Validamos que exista la planilla
+        $request->validate([
+            'id' => 'required|integer|exists:planillas,id',
+        ]);
+
+        // ✅ Llamamos al service
+        $resultado = $ordenPlanillaService->completarPlanilla($request->id);
+
+        // ✅ Respondemos según resultado
+        if ($resultado['success']) {
+            return response()->json([
+                'success' => true,
+                'message' => $resultado['message'],
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => $resultado['message'] ?? 'Error desconocido',
+        ], 422);
     }
 }

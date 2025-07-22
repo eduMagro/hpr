@@ -312,6 +312,18 @@
                                                 </svg>
                                             </button>
 
+                                            <!-- Botón Completar -->
+                                            <button 
+                                                @click="completarPlanilla({{ $planilla->id }})"
+                                                class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
+                                                title="Completar Planilla">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </button>
 
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
                                             <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />
@@ -448,5 +460,51 @@
                 });
         }
     </script>
+<script>
+   async function completarPlanilla(planillaId) {
+    Swal.fire({
+        title: '¿Completar planilla?',
+        text: "Esta acción marcará la planilla, sus etiquetas y elementos como completados y la eliminará de la cola.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, completar',
+        cancelButtonText: 'Cancelar'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch('/planillas/completar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ id: planillaId })
+                });
 
+                const data = await res.json();
+
+                if (data.success) {
+                    Swal.fire({
+                        title: '¡Completada!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        // Refrescar la tabla o la página
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.message || 'Error al completar la planilla', 'error');
+                }
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Error', 'Error de conexión al completar la planilla', 'error');
+            }
+        }
+    });
+}
+
+</script>
 </x-app-layout>

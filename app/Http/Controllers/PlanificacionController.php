@@ -16,26 +16,43 @@ class PlanificacionController extends Controller
 {
     public function index(Request $request)
     {
-        // 🔹 Obtener las salidas con relaciones necesarias
-        $salidas = Salida::with([
-            'salidaClientes.obra:id,obra',
-            'salidaClientes.cliente:id,empresa',
-            'paquetes.planilla.user',
-            'empresaTransporte:id,nombre'
-        ])->get();
+       // 🔹 Obtener las salidas con relaciones necesarias
+$salidas = Salida::with([
+    'salidaClientes.obra:id,obra',
+    'salidaClientes.cliente:id,empresa',
+    'paquetes.planilla.user',
+    'empresaTransporte:id,nombre'
+])->get();
 
-        // 🔹 Obras activas
-        $obras = Obra::with('cliente')->where('estado', 'activa')->get();
+// 🔹 Planillas que aún no tienen salida
+$planillas = Planilla::with('obra', 'elementos')
+    ->whereDoesntHave('paquetes.salidas')
+    ->get();
 
-        $obrasConSalidasIds = $salidas->pluck('salidaClientes')->flatten()
-            ->pluck('obra_id')
-            ->unique()
-            ->filter();
+// 🔹 Obras activas
+$obras = Obra::with('cliente')->where('estado', 'activa')->get();
 
-        $obrasConSalidas = Obra::with('cliente')
-            ->whereIn('id', $obrasConSalidasIds)
-            ->orderBy('obra')
-            ->get();
+// 🔹 IDs de obras con salidas
+$obrasConSalidasIds = $salidas->pluck('salidaClientes')->flatten()
+    ->pluck('obra_id')
+    ->unique()
+    ->filter();
+
+// 🔹 IDs de obras que tienen planillas agrupadas
+$obrasPlanillasIds = $planillas->pluck('obra_id')->unique()->filter();
+
+// 🔹 Unimos ambos
+$obrasConSalidasIds = $obrasConSalidasIds
+    ->merge($obrasPlanillasIds)
+    ->unique();
+
+// 🔹 Obtener obras finales
+$obrasConSalidas = Obra::with('cliente')
+    ->whereIn('id', $obrasConSalidasIds)
+    ->orderBy('obra')
+    ->get();
+
+
 
         $obrasConSalidasResources = $obrasConSalidas->map(fn($obra) => [
             'id' => (string) $obra->id,
@@ -99,7 +116,11 @@ class PlanificacionController extends Controller
             ->get();
 
         $eventosPlanillas = $planillas
-            ->groupBy(fn($p) => $p->obra_id . '|' . $p->fecha_estimada_entrega)
+            ->groupBy(function ($p) {
+        // Convertimos la fecha completa a solo Y-m-d
+        $fechaSolo = Carbon::createFromFormat('d/m/Y H:i', $p->fecha_estimada_entrega)->format('Y-m-d');
+        return $p->obra_id . '|' . $fechaSolo;
+    })
             ->map(function ($grupoPlanillas) {
                 $obraId = $grupoPlanillas->first()->obra_id;
                 $nombreObra = optional($grupoPlanillas->first()->obra)->obra ?? 'Obra desconocida';

@@ -38,7 +38,7 @@ class SalidaController extends Controller
                     'paquetes' => function ($query) {
                         $query->distinct();
                     },
-                    'paquetes.elementos',
+                    'paquetes.etiquetas',
                     'empresaTransporte',
                     'camion',
                     // No cargamos 'clientes', sino la relación de salidaClientes
@@ -102,7 +102,7 @@ class SalidaController extends Controller
 
         // Obtener los paquetes asociados con los elementos y la planilla (incluyendo cliente y obra)
         $paquetes = $salida->paquetes()->with([
-            'elementos',
+            'etiquetas',
             'planilla.cliente',
             'planilla.obra'
         ])->get();
@@ -169,7 +169,7 @@ class SalidaController extends Controller
                 // Si quieres aquí puedes seguir filtrando paquetes sin salida
                 $query->whereDoesntHave('salidas');
             },
-            'paquetes.elementos',
+            'paquetes.etiquetas',
             'cliente',
             'obra'
         ]);
