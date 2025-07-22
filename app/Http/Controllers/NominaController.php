@@ -29,7 +29,7 @@ class NominaController extends Controller
 
     $rutaRelativa = $request->file('archivo')->store('private/temp');
     $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
-Log::info('Lanzamos el job');
+\Log::info('Lanzamos el job');
     // 🚀 Lanzar job en segundo plano
 DividirNominasJob::dispatch($rutaAbsoluta, $request->mes_anio, auth()->id());
 

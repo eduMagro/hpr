@@ -42,13 +42,13 @@ class DividirNominasJob implements ShouldQueue
         $fecha = Carbon::createFromFormat('Y-m', $this->mesAnio);
         $mesEnEspañol = ucfirst($fecha->locale('es')->translatedFormat('F'));
         $anio = $fecha->format('Y');
-Log::info('Empezamos cogiendo mes y año');
+\Log::info('Empezamos cogiendo mes y año');
         // Carpeta final
         $carpetaBaseRelativa = 'private/nominas/nominas_' . $anio . '/nomina_' . $mesEnEspañol . '_' . $anio;
         Storage::deleteDirectory($carpetaBaseRelativa);
         Storage::makeDirectory($carpetaBaseRelativa);
         $carpetaBaseAbsoluta = storage_path('app/' . $carpetaBaseRelativa);
-Log::info('Creamos la carpeta con el mes y el año');
+\Log::info('Creamos la carpeta con el mes y el año');
         // mapa de DNIs
         $usuarios = User::all();
         $mapaDnis = [];
