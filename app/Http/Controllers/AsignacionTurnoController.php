@@ -360,7 +360,7 @@ class AsignacionTurnoController extends Controller
             }
 
             if (!$obraEncontrada) {
-                return response()->json(['error' => 'No estás dentro de ninguna nave de trabajo.'], 403);
+                return response()->json(['error' => 'No estás dentro de ninguna zona de trabajo.'], 403);
             }
             $ahora         = now();
             $horaActual    = $ahora->format('H:i:s');
@@ -413,7 +413,7 @@ class AsignacionTurnoController extends Controller
                         try {
                             $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
                             $alerta = Alerta::create([
-                                'mensaje'   => "🔁 Se corrigió automáticamente el turno de {$user->name} a '{$turnoDetectado}' para la fecha {$fechaTurnoDetectado}.",
+                                'mensaje'   => "🔁 Se corrigió automáticamente el turno de {$user->nombre_completo} a '{$turnoDetectado}' para la fecha {$fechaTurnoDetectado}.",
                                 'user_id_1' => null,
                                 'user_id_2' => null,
                                 'leida'     => false,
