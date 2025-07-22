@@ -21,7 +21,7 @@
                     <button @click="mostrarModal = false"
                         class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">✖</button>
                     <h2 class="text-lg font-semibold mb-4">📢 Enviar Mensaje</h2>
-                    <form method="POST" action="{{ route('alertas.store') }}" x-data="{ cargando: false }"
+                    <form method="POST" action="{{ route('alertas.store') }}" enctype="multipart/form-data" x-data="{ cargando: false }"
                         @submit="cargando = true">
                         @csrf
                         <div class="mb-4">
@@ -29,6 +29,12 @@
                             <textarea id="mensaje" name="mensaje" rows="3"
                                 class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
                         </div>
+<div class="mb-4">
+    <label for="imagen" class="block text-sm font-semibold">Imagen (opcional):</label>
+    <input type="file" id="imagen" name="imagen"
+           class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+           accept="image/*">
+</div>
 
                         @if (auth()->user()->rol === 'oficina')
                             <div class="mb-4">

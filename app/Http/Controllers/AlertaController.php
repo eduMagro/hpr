@@ -392,7 +392,7 @@ class AlertaController extends Controller
                 })->get();
 
                 if ($usuariosDestino->isEmpty()) {
-                    throw new \Exception('No hay usuarios en los departamentos seleccionados.');
+                    throw new Exception('No hay usuarios en los departamentos seleccionados.');
                 }
 
                 $alerta = Alerta::create([
