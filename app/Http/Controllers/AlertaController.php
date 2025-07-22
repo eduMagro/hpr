@@ -228,7 +228,7 @@ class AlertaController extends Controller
         $usuarios = User::orderBy('name')->get();
         $todasLasAlertas = collect();
         $esAdministrador = $user->esAdminDepartamento();
-
+$ordenablesAlertas = [];
         if ($esAdministrador) {
             $query = Alerta::with(['usuario1', 'usuario2', 'destinatarioUser']);
             $query = $this->aplicarFiltrosAlertas($query, $request);
