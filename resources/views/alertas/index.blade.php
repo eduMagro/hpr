@@ -290,10 +290,10 @@
                     </button>
                 </div>
 
-                <button onclick="eliminarAlerta()"
+                {{-- <button onclick="eliminarAlerta()"
                     class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg">
                     🗑 Eliminar
-                </button>
+                </button> --}}
             </div>
         </div>
     </div>

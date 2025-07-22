@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\Nomina;
 use App\Models\Empresa;
 use App\Models\Modelo145;
+use App\Models\Alerta;
+use App\Models\AlertaLeida;
 use App\Models\TasaSeguridadSocial;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -100,6 +102,28 @@ DividirNominasJob::dispatch($rutaAbsoluta, $request->mes_anio, auth()->id());
 
     // Generar PDF combinado
     $nombreArchivo = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
+
+    try {
+    $alerta = Alerta::create([
+        'user_id_1'       => $user->id,
+        'user_id_2'       => null,
+        'destino'         => null,
+        'destinatario'    => null,
+        'destinatario_id' => $user->id,
+        'mensaje'         => 'Te has descargado ' . $nombreArchivo,
+        'tipo'            => 'usuario',
+    ]);
+
+    AlertaLeida::create([
+        'alerta_id' => $alerta->id,
+        'user_id'   => $user->id,
+        'leida_en'  => null,
+    ]);
+
+   
+} catch (\Exception $e) {
+    \Log::error('❌ Error creando alerta o alertaLeida: ' . $e->getMessage());
+}
     return response($pdf->Output('S', $nombreArchivo))
         ->header('Content-Type', 'application/pdf')
         ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
