@@ -186,21 +186,20 @@
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-4">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">{!! $ordenablesAlertas['id'] !!}</th>
+                      
                         <th class="p-2 border">{!! $ordenablesAlertas['user_id_1'] !!}</th>
                         <th class="p-2 border">{!! $ordenablesAlertas['user_id_2'] !!}</th>
                         <th class="p-2 border">{!! $ordenablesAlertas['destino'] !!}</th>
                         <th class="p-2 border">{!! $ordenablesAlertas['destinatario'] !!}</th>
                         <th class="p-2 border">Mensaje</th>
+                        <th class="p-2 border">{!! $ordenablesAlertas['tipo'] !!}</th>
                         <th class="p-2 border">{!! $ordenablesAlertas['created_at'] !!}</th>
                         <th class="p-2 border">Acciones</th>
                     </tr>
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('alertas.index') }}">
                             {{-- mantenemos paginación actual --}}
-                            <th class="p-1 border">
-                                <x-tabla.input name="alerta_id" value="{{ request('alerta_id') }}" />
-                            </th>
+                           
                             <th class="p-1 border">
                                 <x-tabla.input name="emisor" value="{{ request('emisor') }}" />
                             </th>
@@ -216,6 +215,18 @@
                             <th class="p-1 border">
                                 <x-tabla.input name="mensaje" value="{{ request('mensaje') }}" />
                             </th>
+<th class="p-1 border">
+    <x-tabla.select
+        name="tipo"
+        :options="$tiposAlerta"
+        :selected="request('tipo')"
+        empty="-- Todos --"
+        class="text-xs"
+    />
+</th>
+
+
+
                             <th class="p-1 border">
                                 <x-tabla.input type="date" name="fecha_creada"
                                     value="{{ request('fecha_creada') }}" />
@@ -231,7 +242,7 @@
                     @forelse ($todasLasAlertas as $alerta)
                         <tr
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none uppercase">
-                            <td class="p-2 text-center border">{{ $alerta->id }}</td>
+                           
                             <td class="p-2 text-center border">{{ $alerta->usuario1?->nombre_completo ?? '—' }}</td>
                             <td class="p-2 text-center border">
                                 {{ $alerta->usuario2?->nombre_completo ?? '—' }}
@@ -241,6 +252,9 @@
                             </td>
                             <td class="p-2 border text-left truncate max-w-xs" title="{{ $alerta->mensaje }}">
                                 {{ $alerta->mensaje }}
+                            </td>
+                            <td class="p-2 text-center border">
+                                {{ $alerta->tipo }}
                             </td>
                             <td class="p-2 text-center border">{{ $alerta->created_at?->format('d/m/Y H:i') }}</td>
 

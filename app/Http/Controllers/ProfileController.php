@@ -49,6 +49,12 @@ class ProfileController extends Controller
     {
         $filtros = [];
 
+        if ($request->filled('id')) {
+            $filtros[] = 'ID: <strong>' . $request->id . '</strong>';
+        }
+        if ($request->filled('nombre_completo')) {
+            $filtros[] = 'Nombre: <strong>' . $request->nombre_completo . '</strong>';
+        }
         if ($request->filled('nombre_completo')) {
             $filtros[] = 'Nombre: <strong>' . $request->nombre_completo . '</strong>';
         }

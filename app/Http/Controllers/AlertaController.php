@@ -104,6 +104,9 @@ class AlertaController extends Controller
         if ($request->filled('mensaje')) {
             $filtros[] = 'Mensaje contiene: <strong>' . $request->mensaje . '</strong>';
         }
+        if ($request->filled('tipo')) {
+            $filtros[] = 'Tipo contiene: <strong>' . $request->tipo . '</strong>';
+        }
 
         if ($request->filled('fecha_creada')) {
             $filtros[] = 'Fecha creada: <strong>' . $request->fecha_creada . '</strong>';
@@ -174,6 +177,9 @@ class AlertaController extends Controller
         if ($request->filled('mensaje')) {
             $query->where('mensaje', 'like', '%' . $request->mensaje . '%');
         }
+        if ($request->filled('tipo')) {
+            $query->where('tipo', 'like', '%' . $request->tipo . '%');
+        }
 
         if ($request->filled('fecha_creada')) {
             $query->whereDate('created_at', Carbon::parse($request->fecha_creada)->format('Y-m-d'));
@@ -222,6 +228,7 @@ class AlertaController extends Controller
 
         $leidas = AlertaLeida::where('user_id', $user->id)->get()->keyBy('alerta_id');
         $alertasLeidas = $leidas->mapWithKeys(fn($r) => [$r->alerta_id => $r->leida_en])->all();
+$tiposAlerta = Alerta::distinct()->pluck('tipo')->filter()->values();
 
         $roles = User::distinct()->pluck('rol')->filter()->values();
         $categorias = Categoria::distinct()->pluck('nombre')->filter()->values();
@@ -249,6 +256,7 @@ $ordenablesAlertas = [];
                 'user_id_2'     => $this->getOrdenamientoAlertas('user_id_2', 'Compañero'),
                 'destino'       => $this->getOrdenamientoAlertas('destino', 'Destino'),
                 'destinatario'  => $this->getOrdenamientoAlertas('destinatario', 'Destinatario'),
+                'tipo'          => $this->getOrdenamientoAlertas('tipo', 'Tipo'),
                 'created_at'    => $this->getOrdenamientoAlertas('created_at', 'Creada'),
                 'updated_at'    => $this->getOrdenamientoAlertas('updated_at', 'Actualizada'),
             ];
@@ -269,7 +277,8 @@ $ordenablesAlertas = [];
             'perPage',
             'perPageTodas',
             'filtrosActivos',
-            'ordenablesAlertas'
+            'ordenablesAlertas',
+            'tiposAlerta'
         ));
     }
 

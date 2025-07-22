@@ -33,8 +33,8 @@
                     </tr>
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('users.index') }}">
-                            <th class="p-1 border"></th> <!-- ID: sin filtro directo -->
-
+                            <th class="p-1 border">
+                                 <x-tabla.input name="id" :value="request('id')" /></th> <!-- ID: sin filtro directo -->
                             <th class="p-1 border">
                                 <x-tabla.input name="nombre_completo" :value="request('nombre_completo')" />
                             </th>

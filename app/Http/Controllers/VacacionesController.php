@@ -174,6 +174,7 @@ class VacacionesController extends Controller
                 'destinatario_id' => $rrhh->id,
                 'mensaje' => auth()->user()->name . ' ha solicitado vacaciones del ' .
                     $request->fecha_inicio . ' al ' . $request->fecha_fin,
+                    'tipo'            => 'vacaciones',
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -250,6 +251,7 @@ class VacacionesController extends Controller
             'user_id_1'       => auth()->id(),
             'destinatario_id' => $user->id,
             'mensaje'         => "Tus vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} han sido aprobadas.",
+            'tipo'            => 'vacaciones',
             'created_at'      => now(),
             'updated_at'      => now(),
         ]);
@@ -270,6 +272,7 @@ class VacacionesController extends Controller
             'user_id_1'       => auth()->id(), // quien deniega
             'destinatario_id' => $user->id,    // quien recibe
             'mensaje'         => "Tu solicitud de vacaciones del {$solicitud->fecha_inicio} al {$solicitud->fecha_fin} ha sido denegada.",
+            'tipo'            => 'vacaciones',
             'created_at'      => now(),
             'updated_at'      => now(),
         ]);
