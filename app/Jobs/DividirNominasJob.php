@@ -44,13 +44,16 @@ class DividirNominasJob implements ShouldQueue
         $anio = $fecha->format('Y');
 \Log::info('Empezamos cogiendo mes y año');
         // Carpeta final
-      $carpetaBaseRelativa = 'private/nominas/nominas_' . $anio . '/nomina_' . $mesEnEspañol . '_' . $anio;
+$carpetaBaseRelativa = 'private/nominas/nominas_' . $anio . '/nomina_' . $mesEnEspañol . '_' . $anio;
 
-// 👉 Comprobar si la carpeta NO existe antes de crearla
+// 👉 Crear la carpeta solo si no existe (NO la borramos)
 if (!Storage::exists($carpetaBaseRelativa)) {
     Storage::makeDirectory($carpetaBaseRelativa);
-   
+    \Log::info('✅ Carpeta creada: ' . $carpetaBaseRelativa);
+} else {
+    \Log::info('ℹ️ Carpeta ya existente, no se borra: ' . $carpetaBaseRelativa);
 }
+
 
         $carpetaBaseAbsoluta = storage_path('app/' . $carpetaBaseRelativa);
 \Log::info('Creamos la carpeta con el mes y el año');
