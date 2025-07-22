@@ -12,6 +12,9 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 //Importacion PDF nominas
 use App\Jobs\DividirNominasJob;
+use setasign\Fpdi\Fpdi;
+use Smalot\PdfParser\Parser;
+use Illuminate\Support\Str;
 
 class NominaController extends Controller
 {
@@ -30,58 +33,77 @@ class NominaController extends Controller
     // 🚀 Lanzar job en segundo plano
 DividirNominasJob::dispatch($rutaAbsoluta, $request->mes_anio, auth()->id());
 
-
-
     return back()->with('success', 'El proceso de dividir nóminas se ha puesto en cola. Te avisaremos al terminar.');
 }
-    public function descargarNominasMes(Request $request)
-    {
-        $request->validate([
-            'mes_anio' => 'required|date_format:Y-m',
-        ]);
+ public function descargarNominasMes(Request $request)
+{
+    $request->validate([
+        'mes_anio' => 'required|date_format:Y-m',
+    ]);
 
-        // Obtener mes y año
-        $fecha = Carbon::createFromFormat('Y-m', $request->mes_anio);
-        $mes = ucfirst($fecha->locale('es')->translatedFormat('F')); // Ejemplo: Julio
-        $anio = $fecha->format('Y');
+    // Obtener mes y año
+    $fecha = Carbon::createFromFormat('Y-m', $request->mes_anio);
+    $mes = ucfirst($fecha->locale('es')->translatedFormat('F'));
+    $anio = $fecha->format('Y');
 
-        // Ruta de la carpeta base
-        $carpetaBase = storage_path('app/private/nominas_divididas/Nominas_' . $mes . '_' . $anio);
+    // Ruta base
+    $carpetaBase = storage_path('app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio);
 
-        // Usuario actual
-        $user = auth()->user();
-        $slugUsuario = Str::slug($user->nombre_completo, '_');
+    // Usuario actual
+    $user = auth()->user();
+    $dniNormalizado = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
+    $carpetaUsuario = $carpetaBase . '/' . $dniNormalizado;
 
-        $carpetaUsuario = $carpetaBase . '/' . $slugUsuario;
+    if (!is_dir($carpetaUsuario)) {
+        return back()->with('error', 'No se encontró nómina para ' . $mes . '.');
+    }
 
-        if (!is_dir($carpetaUsuario)) {
-            return back()->with('error', 'No se encontró nómina para ' . $mes . '.');
-        }
+    $archivos = glob($carpetaUsuario . '/*.pdf');
 
-        // Buscar PDFs del usuario
-        $archivos = glob($carpetaUsuario . '/*.pdf');
+    if (empty($archivos)) {
+        return back()->with('error', 'No hay archivos PDF en esa carpeta.');
+    }
 
-        if (empty($archivos)) {
-            return back()->with('error', 'No hay archivos PDF en esa carpeta.');
-        }
+    // Preparar parser
+    $parser = new Parser();
+    $pdf = new Fpdi();
+    $dniEnPdf = false;
 
-        // Crear PDF combinado
-        $pdf = new Fpdi();
-        foreach ($archivos as $archivo) {
+    foreach ($archivos as $archivo) {
+        try {
+            $pdfData = $parser->parseFile($archivo);
+            $texto = strtoupper($pdfData->getText());
+
+            // Comprobar que el texto contiene el DNI del usuario
+            if (strpos($texto, $dniNormalizado) === false) {
+                // Si no lo contiene, saltamos este archivo
+                continue;
+            }
+
+            // Si lo contiene, lo añadimos al combinado
+            $dniEnPdf = true;
             $pageCount = $pdf->setSourceFile($archivo);
             for ($i = 1; $i <= $pageCount; $i++) {
                 $tpl = $pdf->importPage($i);
                 $pdf->AddPage();
                 $pdf->useTemplate($tpl);
             }
+        } catch (\Exception $e) {
+            \Log::error('Error leyendo PDF ' . $archivo . ': ' . $e->getMessage());
+            continue;
         }
-
-        // Generar PDF combinado en memoria y descargar
-        $nombreArchivo = 'Nominas_' . $mes . '_' . $anio . '.pdf';
-        return response($pdf->Output('S', $nombreArchivo))
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
     }
+
+    if (!$dniEnPdf) {
+        return back()->with('error', 'Hay un error en la nómina. Reporta el error, por favor.');
+    }
+
+    // Generar PDF combinado
+    $nombreArchivo = 'Nominas_' . $mes . '_' . $anio . '.pdf';
+    return response($pdf->Output('S', $nombreArchivo))
+        ->header('Content-Type', 'application/pdf')
+        ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
+}
     // --------------------- GENERACION NOMINA
     public function index()
     {
