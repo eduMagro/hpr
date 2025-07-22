@@ -11,151 +11,29 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 //Importacion PDF nominas
-use setasign\Fpdi\Fpdi;
-use Illuminate\Support\Facades\Storage;
-//Leer nominas para saber nombre
-use Smalot\PdfParser\Parser;
-use Illuminate\Support\Str;
+use App\Jobs\DividirNominasJob;
 
 class NominaController extends Controller
 {
     // --------------------- IMPORTACION NOMINASS
 
-   public function dividirNominas(Request $request)
+ public function dividirNominas(Request $request)
 {
     $request->validate([
         'archivo'   => 'required|mimes:pdf|max:102400',
         'mes_anio'  => 'required|date_format:Y-m',
     ]);
 
-    // Parsear mes y año
-    $fecha = Carbon::createFromFormat('Y-m', $request->mes_anio);
-    $mes = $fecha->format('m');
-    $anio = $fecha->format('Y');
-
-    // ✅ Carpeta base "nominas"
-    $carpetaBaseRelativa = 'private/nominas';
-    Storage::makeDirectory($carpetaBaseRelativa);
-    $carpetaBaseAbsoluta = storage_path('app/'.$carpetaBaseRelativa);
-
-    // ✅ Carpeta por año "nominas_2025"
-    $carpetaAnioRelativa = $carpetaBaseRelativa.'/nominas_'.$anio;
-    Storage::makeDirectory($carpetaAnioRelativa);
-    $carpetaAnioAbsoluta = storage_path('app/'.$carpetaAnioRelativa);
-
-    // ✅ Carpeta por mes "nomina_07_2025"
-    $carpetaMesRelativa = $carpetaAnioRelativa.'/nomina_'.$mes.'_'.$anio;
-    Storage::makeDirectory($carpetaMesRelativa);
-    $carpetaMesAbsoluta = storage_path('app/'.$carpetaMesRelativa);
-
-    // Guardar archivo temporal
-    Storage::makeDirectory('private/temp');
     $rutaRelativa = $request->file('archivo')->store('private/temp');
-    $rutaAbsoluta = storage_path('app/'.$rutaRelativa);
+    $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
 
-    if (!file_exists($rutaAbsoluta)) {
-        return back()->with('error', 'No se encontró el archivo subido en: '.$rutaAbsoluta);
-    }
+    // 🚀 Lanzar job en segundo plano
+DividirNominasJob::dispatch($rutaAbsoluta, $request->mes_anio, auth()->id());
 
-    // 🔥 Lógica de división
-    $parser = new \Smalot\PdfParser\Parser();
-    $pdf = $parser->parseFile($rutaAbsoluta);
-    $pages = $pdf->getPages();
-    $pageCount = count($pages);
 
-   $usuarios = User::all();
-$mapaDnis = [];
-$mapaNombres = [];
-foreach ($usuarios as $u) {
-    if ($u->dni) {
-        $dniNormalizado = strtoupper(preg_replace('/[^A-Z0-9]/', '', $u->dni));
-        $mapaDnis[$dniNormalizado] = $u->nombre_completo;
-    }
-    if ($u->nombre_completo) {
-        $nombreNormalizado = strtoupper(preg_replace('/[^A-Z0-9 ]/', '', $u->nombre_completo));
-        $mapaNombres[$nombreNormalizado] = $u->nombre_completo;
-    }
+
+    return back()->with('success', 'El proceso de dividir nóminas se ha puesto en cola. Te avisaremos al terminar.');
 }
-
-$warningCount = 0;
-$nombresSinCoincidencia = []; // 🆕 lista para avisos de nombre
-foreach ($pages as $i => $page) {
-    $textoPagina = strtoupper($page->getText());
-    $textoNormalizado = preg_replace('/[^A-Z0-9 ]/', '', $textoPagina);
-
-    $nombrePorDni = null;
-    $nombrePorNombre = null;
-
-    // ✅ Control por DNI
-    foreach ($mapaDnis as $dni => $nombreCompleto) {
-        if (strpos($textoNormalizado, $dni) !== false) {
-            $nombrePorDni = $nombreCompleto;
-            break;
-        }
-    }
-
-    // ✅ Control por nombre (se hace SIEMPRE)
-    foreach ($mapaNombres as $nombreNormalizado => $nombreCompleto) {
-        if (strpos($textoNormalizado, $nombreNormalizado) !== false) {
-            $nombrePorNombre = $nombreCompleto;
-            break;
-        }
-    }
-
-    // ✅ Comprobamos coherencia
-    if ($nombrePorDni && $nombrePorNombre) {
-        // Ambos encontrados, comparamos
-        if ($nombrePorDni !== $nombrePorNombre) {
-            $warningCount++;
-            $nombresSinCoincidencia[] = "DNI: {$nombrePorDni} vs Nombre: {$nombrePorNombre}";
-        }
-        // usamos el del DNI para la carpeta
-        $nombreCarpeta = Str::slug($nombrePorDni, '_');
-    } elseif ($nombrePorDni && !$nombrePorNombre) {
-        // Encontrado por DNI pero no por nombre
-        $warningCount++;
-        $nombresSinCoincidencia[] = "Sin coincidencia de nombre para: {$nombrePorDni}";
-        $nombreCarpeta = Str::slug($nombrePorDni, '_');
-    } elseif (!$nombrePorDni && $nombrePorNombre) {
-        // No hay DNI pero sí nombre
-        $warningCount++;
-        $nombresSinCoincidencia[] = "Sin coincidencia de DNI para: {$nombrePorNombre}";
-        $nombreCarpeta = Str::slug($nombrePorNombre, '_');
-    } else {
-        // Ninguno encontrado
-        $warningCount++;
-        // Intentamos extraer la primera línea
-        $lineas = preg_split('/\r\n|\r|\n/', $page->getText());
-        $primeraLinea = isset($lineas[0]) ? trim($lineas[0]) : 'Desconocido';
-        $nombresSinCoincidencia[] = "Sin coincidencia total: {$primeraLinea}";
-        $nombreCarpeta = 'nomina_' . str_pad($i + 1, 3, '0', STR_PAD_LEFT);
-    }
-
-    // ✅ Crear subcarpeta y generar PDF
-    $carpetaNominaRelativa = $carpetaMesRelativa . '/' . $nombreCarpeta;
-    Storage::makeDirectory($carpetaNominaRelativa);
-    $carpetaNominaAbsoluta = storage_path('app/' . $carpetaNominaRelativa);
-
-    $pdfIndividual = new \setasign\Fpdi\Fpdi();
-    $pdfIndividual->setSourceFile($rutaAbsoluta);
-    $pdfIndividual->AddPage();
-    $tpl = $pdfIndividual->importPage($i + 1);
-    $pdfIndividual->useTemplate($tpl);
-
-    $rutaSalida = $carpetaNominaAbsoluta . DIRECTORY_SEPARATOR . $nombreCarpeta . '.pdf';
-    $pdfIndividual->Output($rutaSalida, 'F');
-}
-
-// ✅ Mensaje final
-$mensaje = '✅ Se dividió en ' . count($pages) . ' PDFs en: ' . $carpetaMesAbsoluta;
-if ($warningCount > 0) {
-    $mensaje .= ' ⚠️ ' . $warningCount . ' advertencias. Detalles: ' . implode(' | ', $nombresSinCoincidencia);
-}
-
-return back()->with('success', $mensaje);
-}
-
-
     public function descargarNominasMes(Request $request)
     {
         $request->validate([

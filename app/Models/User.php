@@ -96,26 +96,7 @@ class User extends Authenticatable
         return trim("{$this->name} {$this->primer_apellido} {$this->segundo_apellido}");
     }
 
-    public function getApellidosNombreAttribute()
-    {
-        $partes = explode(' ', trim($this->name));
-
-        if (count($partes) < 3) {
-            // Si no tiene al menos un nombre y dos apellidos, devolvemos el nombre tal cual
-            return $this->name;
-        }
-
-        // Tomamos los dos últimos elementos como apellidos
-        $apellido1 = array_pop($partes);
-        $apellido2 = array_pop($partes);
-
-        // El resto lo consideramos como el nombre (puede ser compuesto)
-        $nombre = implode(' ', $partes);
-
-        // Devolvemos en formato: Apellido1 Apellido2, Nombre
-        return "$apellido2 $apellido1, $nombre";
-    }
-
+   
     // Relación: Un usuario tiene muchas entradas
     public function entradas()
     {
