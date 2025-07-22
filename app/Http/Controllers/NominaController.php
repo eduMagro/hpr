@@ -99,7 +99,7 @@ DividirNominasJob::dispatch($rutaAbsoluta, $request->mes_anio, auth()->id());
     }
 
     // Generar PDF combinado
-    $nombreArchivo = 'Nominas_' . $mes . '_' . $anio . '.pdf';
+    $nombreArchivo = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
     return response($pdf->Output('S', $nombreArchivo))
         ->header('Content-Type', 'application/pdf')
         ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
