@@ -150,14 +150,10 @@ $planillas = Planilla::with('obra', 'elementos')
     ]);
 
 Log::info('🎯 Eventos generados', $eventos->toArray());
-
-   return view('planificacion.index', [
+return view('planificacion.index', [
     'fechas' => $fechas,
-    'eventos' => $eventos,
-    'obrasConSalidas' => $obrasConSalidasResources, // ya filtradas
-    'todasLasObras' => $obrasConSalidasResources,
-    'obrasConSalidasResources' => $obrasConSalidasResources
 ]);
+
 
 }
 
