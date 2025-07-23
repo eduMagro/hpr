@@ -65,24 +65,24 @@ class SalidaController extends Controller
                 $empresaId = $salida->empresaTransporte->id;
                 if (!isset($empresaSummary[$nombreEmpresa])) {
                     $empresaSummary[$nombreEmpresa] = [
-                        'empresa_id'          => $empresaId,
-                        'horas_paralizacion'  => 0,
+                        'empresa_id' => $empresaId,
+                        'horas_paralizacion' => 0,
                         'importe_paralizacion' => 0,
-                        'horas_grua'          => 0,
-                        'importe_grua'        => 0,
-                        'horas_almacen'       => 0,
-                        'importe'             => 0,
-                        'total'               => 0,
+                        'horas_grua' => 0,
+                        'importe_grua' => 0,
+                        'horas_almacen' => 0,
+                        'importe' => 0,
+                        'total' => 0,
                     ];
                 }
                 // Ahora se suma desde cada registro en salidaClientes
                 foreach ($salida->salidaClientes as $registro) {
-                    $empresaSummary[$nombreEmpresa]['horas_paralizacion']   += $registro->horas_paralizacion ?? 0;
+                    $empresaSummary[$nombreEmpresa]['horas_paralizacion'] += $registro->horas_paralizacion ?? 0;
                     $empresaSummary[$nombreEmpresa]['importe_paralizacion'] += $registro->importe_paralizacion ?? 0;
-                    $empresaSummary[$nombreEmpresa]['horas_grua']           += $registro->horas_grua ?? 0;
-                    $empresaSummary[$nombreEmpresa]['importe_grua']         += $registro->importe_grua ?? 0;
-                    $empresaSummary[$nombreEmpresa]['horas_almacen']        += $registro->horas_almacen ?? 0;
-                    $empresaSummary[$nombreEmpresa]['importe']              += $registro->importe ?? 0;
+                    $empresaSummary[$nombreEmpresa]['horas_grua'] += $registro->horas_grua ?? 0;
+                    $empresaSummary[$nombreEmpresa]['importe_grua'] += $registro->importe_grua ?? 0;
+                    $empresaSummary[$nombreEmpresa]['horas_almacen'] += $registro->horas_almacen ?? 0;
+                    $empresaSummary[$nombreEmpresa]['importe'] += $registro->importe ?? 0;
                 }
             }
             foreach ($empresaSummary as $nombreEmpresa => &$data) {
@@ -120,8 +120,8 @@ class SalidaController extends Controller
         foreach ($groupedPackages as $key => $group) {
             list($clienteName, $obraName) = explode('|', $key);
             $groupedPackagesFormatted[] = [
-                'cliente'  => $clienteName,
-                'obra'     => $obraName,
+                'cliente' => $clienteName,
+                'obra' => $obraName,
                 'paquetes' => $group,
             ];
         }
@@ -158,74 +158,74 @@ class SalidaController extends Controller
     }
 
 
-  public function create(Request $request)
-{
-    // Si se han pasado planillas desde el calendario, usamos solo esas
-    $planillasIds = explode(',', $request->get('planillas', ''));
+    public function create(Request $request)
+    {
+        // Si se han pasado planillas desde el calendario, usamos solo esas
+        $planillasIds = explode(',', $request->get('planillas', ''));
 
-    // Base del query
-    $planillasQuery = Planilla::with([
-        'paquetes' => function ($query) {
-            // Filtramos paquetes sin salida
-            $query->whereDoesntHave('salidas');
-        },
-        'paquetes.etiquetas',
-        'cliente',
-        'obra'
-    ]);
+        // Base del query
+        $planillasQuery = Planilla::with([
+            'paquetes' => function ($query) {
+                // Filtramos paquetes sin salida
+                $query->whereDoesntHave('salidas');
+            },
+            'paquetes.etiquetas',
+            'cliente',
+            'obra'
+        ]);
 
-    // Si se recibieron planillas por parámetro, filtramos
-    if (!empty($planillasIds[0])) {
-        $planillasQuery->whereIn('id', $planillasIds);
+        // Si se recibieron planillas por parámetro, filtramos
+        if (!empty($planillasIds[0])) {
+            $planillasQuery->whereIn('id', $planillasIds);
+        }
+
+        // Obtener las planillas
+        $planillasCompletadas = $planillasQuery
+            ->orderBy('fecha_estimada_entrega', 'asc')
+            ->get()
+            ->map(function ($planilla) {
+                // Aquí definimos colores y etiquetas según estado
+                $estado = $planilla->estado;
+                $colorClass = match ($estado) {
+                    'completada' => 'bg-green-500 text-white',
+                    'pendiente' => 'bg-yellow-500 text-black',
+                    'en_proceso' => 'bg-blue-500 text-white',
+                    default => 'bg-gray-400 text-white',
+                };
+
+                // Le añadimos atributos dinámicos que luego usarás en Blade
+                $planilla->estado_label = ucfirst($estado);
+                $planilla->estado_class = $colorClass;
+
+                return $planilla;
+            });
+
+        // Obtener paquetes
+        $paquetes = $planillasCompletadas->pluck('paquetes')->flatten();
+
+        // Empresas con camiones
+        $empresas = EmpresaTransporte::with('camiones')->get();
+
+        return view('salidas.create', [
+            'planillasCompletadas' => $planillasCompletadas,
+            'paquetes' => $paquetes,
+            'empresas' => $empresas,
+        ]);
     }
-
-    // Obtener las planillas
-    $planillasCompletadas = $planillasQuery
-        ->orderBy('fecha_estimada_entrega', 'asc')
-        ->get()
-        ->map(function ($planilla) {
-            // Aquí definimos colores y etiquetas según estado
-            $estado = $planilla->estado;
-            $colorClass = match ($estado) {
-                'completada' => 'bg-green-500 text-white',
-                'pendiente'  => 'bg-yellow-500 text-black',
-                'en_proceso' => 'bg-blue-500 text-white',
-                default      => 'bg-gray-400 text-white',
-            };
-
-            // Le añadimos atributos dinámicos que luego usarás en Blade
-            $planilla->estado_label = ucfirst($estado);
-            $planilla->estado_class = $colorClass;
-
-            return $planilla;
-        });
-
-    // Obtener paquetes
-    $paquetes = $planillasCompletadas->pluck('paquetes')->flatten();
-
-    // Empresas con camiones
-    $empresas = EmpresaTransporte::with('camiones')->get();
-
-    return view('salidas.create', [
-        'planillasCompletadas' => $planillasCompletadas,
-        'paquetes'             => $paquetes,
-        'empresas'             => $empresas,
-    ]);
-}
 
 
     public function store(Request $request)
     {
         try {
             $request->validate([
-                'camion_id'   => 'required|exists:camiones,id',
+                'camion_id' => 'required|exists:camiones,id',
                 'paquete_ids' => 'required|array',
                 'paquete_ids.*' => 'exists:paquetes,id',
             ], [
-                'camion_id.required'   => 'Por favor, seleccione un camión.',
-                'camion_id.exists'     => 'El camión seleccionado no existe en el sistema.',
+                'camion_id.required' => 'Por favor, seleccione un camión.',
+                'camion_id.exists' => 'El camión seleccionado no existe en el sistema.',
                 'paquete_ids.required' => 'Debe seleccionar al menos un paquete.',
-                'paquete_ids.array'    => 'Los paquetes seleccionados no son válidos.',
+                'paquete_ids.array' => 'Los paquetes seleccionados no son válidos.',
                 'paquete_ids.*.exists' => 'Uno o más paquetes seleccionados no existen en el sistema.',
             ]);
 
@@ -245,12 +245,25 @@ class SalidaController extends Controller
             $camion = Camion::find($request->camion_id);
             $empresa = $camion->empresaTransporte;
 
+            // Obtener la primera planilla de los paquetes seleccionados
+            $primeraPlanilla = Paquete::with('planilla')
+                ->whereIn('id', $request->paquete_ids)
+                ->get()
+                ->pluck('planilla')    // colección de planillas
+                ->filter()             // quitamos nulos
+                ->first();             // primera planilla válida
+
+            // Si hay planilla válida, usamos su fecha_estimada_entrega
+            $fechaSalida = $primeraPlanilla
+                ? $primeraPlanilla->getRawOriginal('fecha_estimada_entrega')
+                : now();
+
             // Crear la salida
             $salida = Salida::create([
-                'empresa_id'   => $empresa->id,
-                'camion_id'    => $request->camion_id,
-                'fecha_salida' => now(),
-                'estado'       => 'pendiente', // Estado por defecto
+                'empresa_id' => $empresa->id,
+                'camion_id' => $request->camion_id,
+                'fecha_salida' => $fechaSalida,
+                'estado' => 'pendiente', // Estado por defecto
             ]);
 
             // Generar el código de salida y asignarlo
@@ -298,17 +311,17 @@ class SalidaController extends Controller
                 // Solo se añade si no existe ya
                 if (!isset($pivotData[$clave])) {
                     $pivotData[$clave] = [
-                        'salida_id'            => $salida->id,
-                        'cliente_id'           => $cliente_id,
-                        'obra_id'              => $obra_id,
-                        'horas_paralizacion'   => 0,
+                        'salida_id' => $salida->id,
+                        'cliente_id' => $cliente_id,
+                        'obra_id' => $obra_id,
+                        'horas_paralizacion' => 0,
                         'importe_paralizacion' => 0,
-                        'horas_grua'           => 0,
-                        'importe_grua'         => 0,
-                        'horas_almacen'        => 0,
-                        'importe'              => 0,
-                        'created_at'           => now(),
-                        'updated_at'           => now(),
+                        'horas_grua' => 0,
+                        'importe_grua' => 0,
+                        'horas_almacen' => 0,
+                        'importe' => 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                 }
             }
@@ -337,7 +350,7 @@ class SalidaController extends Controller
             $field = $request->input('field');
             $value = $request->input('value');
             $clienteId = $request->input('cliente_id'); // Para actualización en salida_cliente
-            $obraId    = $request->input('obra_id');    // Nuevo: para identificar la obra
+            $obraId = $request->input('obra_id');    // Nuevo: para identificar la obra
 
             // Definir campos para cada tabla
             $salidaFields = ['fecha_salida', 'estado'];
@@ -359,14 +372,14 @@ class SalidaController extends Controller
 
             // Validaciones
             $rules = [
-                'importe'              => 'nullable|numeric',
-                'horas_paralizacion'   => 'nullable|numeric',
+                'importe' => 'nullable|numeric',
+                'horas_paralizacion' => 'nullable|numeric',
                 'importe_paralizacion' => 'nullable|numeric',
-                'horas_grua'           => 'nullable|numeric',
-                'importe_grua'         => 'nullable|numeric',
-                'horas_almacen'        => 'nullable|numeric',
-                'fecha_salida'         => 'nullable|date',
-                'estado'               => 'nullable|string|max:50',
+                'horas_grua' => 'nullable|numeric',
+                'importe_grua' => 'nullable|numeric',
+                'horas_almacen' => 'nullable|numeric',
+                'fecha_salida' => 'nullable|date',
+                'estado' => 'nullable|string|max:50',
             ];
 
             $request->validate([$field => $rules[$field]]);
@@ -409,18 +422,18 @@ class SalidaController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Salida actualizada correctamente.',
-                'data'    => $salida
+                'data' => $salida
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'errors'  => $e->errors()
+                'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Error al actualizar la salida.',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -429,18 +442,18 @@ class SalidaController extends Controller
     public function export($mes)
     {
         $meses = [
-            'enero'      => 'January',
-            'febrero'    => 'February',
-            'marzo'      => 'March',
-            'abril'      => 'April',
-            'mayo'       => 'May',
-            'junio'      => 'June',
-            'julio'      => 'July',
-            'agosto'     => 'August',
+            'enero' => 'January',
+            'febrero' => 'February',
+            'marzo' => 'March',
+            'abril' => 'April',
+            'mayo' => 'May',
+            'junio' => 'June',
+            'julio' => 'July',
+            'agosto' => 'August',
             'septiembre' => 'September',
-            'octubre'    => 'October',
-            'noviembre'  => 'November',
-            'diciembre'  => 'December',
+            'octubre' => 'October',
+            'noviembre' => 'November',
+            'diciembre' => 'December',
         ];
 
         try {
@@ -491,14 +504,14 @@ class SalidaController extends Controller
 
                 if (!isset($empresaSummary[$nombreEmpresa])) {
                     $empresaSummary[$nombreEmpresa] = [
-                        'obras'              => collect(),
+                        'obras' => collect(),
                         'horas_paralizacion' => 0,
                         'importe_paralizacion' => 0,
-                        'horas_grua'         => 0,
-                        'importe_grua'       => 0,
-                        'horas_almacen'      => 0,
-                        'importe'            => 0,
-                        'total'              => 0,
+                        'horas_grua' => 0,
+                        'importe_grua' => 0,
+                        'horas_almacen' => 0,
+                        'importe' => 0,
+                        'total' => 0,
                     ];
                 }
 

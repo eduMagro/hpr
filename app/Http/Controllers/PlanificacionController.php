@@ -14,212 +14,307 @@ use Illuminate\Support\Facades\Log;
 
 class PlanificacionController extends Controller
 {
-  public function index(Request $request)
-{
+    public function index(Request $request)
+    {
+        [$startDate, $endDate] = $this->getDateRange($request);
+        $viewType = $request->input('viewType', 'resourceTimelineDay');
+
+        // Eventos
+        $salidasEventos = $this->getEventosSalidas($startDate, $endDate);
+        $planillasEventos = $this->getEventosPlanillas($startDate, $endDate);
+        $resumenEventos = $this->getEventosResumen($planillasEventos['planillas'], $viewType);
+
+        $eventos = collect(array_merge(
+            $this->getFestivos(),
+            $salidasEventos->toArray(),
+            $planillasEventos['eventos']->toArray(),
+            $resumenEventos->toArray()
+        ));
+
+        // Resources
+        $resources = $this->getResources($eventos);
+        if ($request->input('tipo') === 'resources') {
+            return response()->json($resources); // ✅ usa la variable correcta
+        }
+        if ($request->input('tipo') === 'events') {
+            return response()->json($eventos->values());
+        }
+
+        // Vista normal (no AJAX)
+        $fechas = collect(range(0, 13))->map(fn($i) => [
+            'fecha' => now()->addDays($i)->format('Y-m-d'),
+            'dia' => now()->addDays($i)->locale('es')->translatedFormat('l'),
+        ]);
+
+        return view('planificacion.index', [
+            'fechas' => $fechas,
+        ]);
+    }
 
 
-    // 📌 Rango de fechas desde el calendario (AJAX)
-    $start = $request->input('start');
-    $end   = $request->input('end');
+    private function getDateRange(Request $request): array
+    {
+        $start = $request->input('start');
+        $end = $request->input('end');
 
-    $startDate = $start ? Carbon::parse($start)->startOfDay() : Carbon::now()->startOfMonth();
-    $endDate   = $end   ? Carbon::parse($end)->endOfDay()   : Carbon::now()->endOfMonth();
-Log::info('🧭 Fechas filtradas', [
-    'startDate' => $startDate->toDateTimeString(),
-    'endDate'   => $endDate->toDateTimeString()
-]);
-    // 🔹 Salidas filtradas
-    $salidas = Salida::with([
-        'salidaClientes.obra:id,obra',
-        'salidaClientes.cliente:id,empresa',
-        'paquetes.planilla.user',
-        'empresaTransporte:id,nombre'
-    ])
-    ->whereBetween('fecha_salida', [$startDate, $endDate])
-    ->get();
+        $startDate = $start ? Carbon::parse($start)->startOfDay() : Carbon::now()->startOfMonth();
+        $endDate = $end ? Carbon::parse($end)->endOfDay() : Carbon::now()->endOfMonth();
 
-$planillas = Planilla::with('obra', 'elementos')
-    ->whereDoesntHave('paquetes.salidas')
-    ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
-    ->get();
+        return [$startDate, $endDate];
+    }
+    public function getTotalesAjax(Request $request)
+    {
+        $fechaReferencia = Carbon::parse($request->input('fecha')); // 👈 usa la fecha de la vista
+        $startOfWeek = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY);
+        $endOfWeek = $fechaReferencia->copy()->endOfWeek(Carbon::SUNDAY);
+
+        // ✅ semana basada en la fecha visitada
+        $planillasSemana = Planilla::whereBetween('fecha_estimada_entrega', [$startOfWeek, $endOfWeek])->get();
+
+        // ✅ mes basado en la fecha visitada
+        $planillasMes = Planilla::whereMonth('fecha_estimada_entrega', $fechaReferencia->month)
+            ->whereYear('fecha_estimada_entrega', $fechaReferencia->year)
+            ->get();
+
+        return response()->json([
+            'semana' => [
+                'peso' => $planillasSemana->sum('peso_total'),
+                'longitud' => $planillasSemana->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                'diametro' => $planillasSemana->flatMap->elementos->pluck('diametro')->filter()->avg(),
+            ],
+            'mes' => [
+                'peso' => $planillasMes->sum('peso_total'),
+                'longitud' => $planillasMes->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                'diametro' => $planillasMes->flatMap->elementos->pluck('diametro')->filter()->avg(),
+            ],
+        ]);
+    }
 
 
-    // 🔹 Eventos de salidas
-    $salidasEventos = $salidas->flatMap(function ($salida) {
-        $empresa = optional($salida->empresaTransporte)->nombre;
-        $pesoTotal = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
-        $fechaInicio = Carbon::parse($salida->fecha_salida);
-        $fechaFin = $fechaInicio->copy()->addHours(3);
-        $color = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
+    private function getEventosResumen($planillas, string $viewType)
+    {
+        // ------------------- RESUMEN POR DÍA -------------------
+        $resumenPorDia = $planillas
+            ->groupBy(fn($p) => Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString())
+            ->map(fn($grupo, $fechaDia) => [
+                'fecha' => Carbon::parse($fechaDia),
+                'pesoTotal' => $grupo->sum('peso_total'),
+                'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                'diametroMedio' => $grupo->flatMap->elementos->pluck('diametro')->filter()->avg(),
+            ])->values();
 
-        return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $pesoTotal, $fechaInicio, $fechaFin, $color) {
-            $obra = $relacion->obra;
-            $nombreObra = optional($obra)->obra ?? 'Obra desconocida';
-
+        $resumenEventosDia = $resumenPorDia->map(function ($r) {
+            $titulo = "📦 " . number_format($r['pesoTotal'], 0, ',', '.') . " kg | 📏 " . number_format($r['longitudTotal'], 0, ',', '.') . " m";
+            if ($r['diametroMedio'] !== null) {
+                $titulo .= " | ⌀ " . number_format($r['diametroMedio'], 2, '.', '') . " mm";
+            }
             return [
-                'title' => "{$salida->codigo_salida} - {$nombreObra} - {$pesoTotal} kg",
-                'id' => $salida->id . '-' . $obra->id,
-                'start' => $fechaInicio->toDateTimeString(),
-                'end' => $fechaFin->toDateTimeString(),
-                'resourceId' => (string)$obra->id,
-                'tipo' => 'salida',
-                'backgroundColor' => $color,
-                'borderColor' => $color,
-                'extendedProps' => [
-                    'empresa' => $empresa,
-                    'tipo' => 'salida',
-                    'comentario' => $salida->comentario,
-                ],
+                'title' => $titulo,
+                'start' => $r['fecha']->startOfDay()->toIso8601String(),
+                'end' => $r['fecha']->endOfDay()->toIso8601String(),
+                'resourceId' => 'resumen-dia',
+                'allDay' => true,
+                'backgroundColor' => '#fbbf24',
+                'borderColor' => '#92400e',
+                'textColor' => '#000',
+                'tipo' => 'resumen-dia',
             ];
         });
-    });
 
-    // 🔹 Eventos de planillas agrupadas por obra y fecha
-$eventosPlanillas = $planillas
-    ->groupBy(function ($p) {
-        return $p->obra_id . '|' . Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
-    })
-    ->map(function ($grupo) {
-        $obraId = $grupo->first()->obra_id;
-        $nombreObra = optional($grupo->first()->obra)->obra ?? 'Obra desconocida';
-        $planillasIds = $grupo->pluck('id')->toArray();
- $diametros = $grupo->flatMap->elementos->pluck('diametro')->filter();
-    $diametroMedio = $diametros->isNotEmpty()
-        ? number_format($diametros->avg(), 2, '.', '')
-        : null;
-        // ✔️ totales
-        $fabricados = $grupo->where('estado', 'completada')->sum(fn($p) => $p->peso_total ?? 0);
-        $fabricando = $grupo->where('estado', 'fabricando')->sum(fn($p) => $p->peso_total ?? 0);
-        $pendientes = $grupo->where('estado', 'pendiente')->sum(fn($p) => $p->peso_total ?? 0);
+        // ------------------- RESUMEN POR SEMANA -------------------
+        $resumenPorSemana = $planillas
+            ->groupBy(fn($p) => Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->format('o-W'))
+            ->map(fn($grupo, $semanaKey) => [
+                'fecha' => Carbon::parse($grupo->min(fn($p) => $p->getRawOriginal('fecha_estimada_entrega'))),
+                'pesoTotal' => $grupo->sum('peso_total'),
+                'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                'diametroMedio' => $grupo->flatMap->elementos->pluck('diametro')->filter()->avg(),
+                'semana' => $semanaKey,
+            ])->values();
 
-        // ✔️ comprobar si todas están completadas
-        $todasCompletadas = $grupo->every(fn($p) => $p->estado === 'completada');
+        $resumenEventosSemana = $resumenPorSemana->map(function ($r) {
+            $titulo = "🗓️ Semana {$r['semana']} → " . number_format($r['pesoTotal'], 0, ',', '.') . " kg";
+            return [
+                'title' => $titulo,
+                'start' => $r['fecha']->startOfWeek()->toIso8601String(),
+                'end' => $r['fecha']->endOfWeek()->toIso8601String(),
+                'resourceId' => 'resumen-semana',
+                'allDay' => true,
+                'backgroundColor' => '#60a5fa',
+                'borderColor' => '#1e3a8a',
+                'textColor' => '#fff',
+                'tipo' => 'resumen-semana',
+            ];
+        });
 
-        // 📌 color según estado
-        $color = $todasCompletadas ? '#22c55e' : '#9CA3AF'; // verde si todas completadas
+        // ------------------- RESUMEN POR MES -------------------
+        $resumenPorMes = $planillas
+            ->groupBy(fn($p) => Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->format('Y-m'))
+            ->map(fn($grupo, $mesKey) => [
+                'fecha' => Carbon::parse($grupo->min(fn($p) => $p->getRawOriginal('fecha_estimada_entrega'))),
+                'pesoTotal' => $grupo->sum('peso_total'),
+                'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                'diametroMedio' => $grupo->flatMap->elementos->pluck('diametro')->filter()->avg(),
+                'mes' => $mesKey,
+            ])->values();
 
-        // fecha
-        $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'));
+        $resumenEventosMes = $resumenPorMes->map(function ($r) {
+            $titulo = "📅 Mes {$r['mes']} → " . number_format($r['pesoTotal'], 0, ',', '.') . " kg";
+            return [
+                'title' => $titulo,
+                'start' => $r['fecha']->startOfMonth()->toIso8601String(),
+                'end' => $r['fecha']->endOfMonth()->toIso8601String(),
+                'resourceId' => 'resumen-mes',
+                'allDay' => true,
+                'backgroundColor' => '#34d399',
+                'borderColor' => '#065f46',
+                'textColor' => '#000',
+                'tipo' => 'resumen-mes',
+            ];
+        });
+
+        // ------------------- SELECCIÓN SEGÚN VISTA -------------------
+        $eventosResumen = collect();
+
+        if ($viewType === 'resourceTimelineDay') {
+            $eventosResumen = $eventosResumen->merge($resumenEventosDia);
+        }
+        if ($viewType === 'resourceTimelineWeek') {
+            $eventosResumen = $eventosResumen->merge($resumenEventosDia)->merge($resumenEventosSemana);
+        }
+        if ($viewType === 'dayGridMonth') {
+            $eventosResumen = $eventosResumen->merge($resumenEventosDia)->merge($resumenEventosSemana)->merge($resumenEventosMes);
+        }
+
+        return $eventosResumen;
+    }
+
+    private function getEventosSalidas(Carbon $startDate, Carbon $endDate)
+    {
+        $salidas = Salida::with([
+            'salidaClientes.obra:id,obra',
+            'salidaClientes.cliente:id,empresa',
+            'paquetes.planilla.user',
+            'empresaTransporte:id,nombre'
+        ])->whereBetween('fecha_salida', [$startDate, $endDate])->get();
+
+        return $salidas->flatMap(function ($salida) {
+            $empresa = optional($salida->empresaTransporte)->nombre;
+            $pesoTotal = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
+            $fechaInicio = Carbon::parse($salida->fecha_salida);
+            $fechaFin = $fechaInicio->copy()->addHours(3);
+            $color = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
+
+            return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $pesoTotal, $fechaInicio, $fechaFin, $color) {
+                $obra = $relacion->obra;
+                return [
+                    'title' => "{$salida->codigo_salida} - {$obra->obra} - {$pesoTotal} kg",
+                    'id' => $salida->id . '-' . $obra->id,
+                    'start' => $fechaInicio->toDateTimeString(),
+                    'end' => $fechaFin->toDateTimeString(),
+                    'resourceId' => (string) $obra->id,
+                    'tipo' => 'salida',
+                    'backgroundColor' => $color,
+                    'borderColor' => $color,
+                    'extendedProps' => [
+                        'empresa' => $empresa,
+                        'tipo' => 'salida',
+                        'comentario' => $salida->comentario,
+                    ],
+                ];
+            });
+        });
+    }
+    private function getEventosPlanillas(Carbon $startDate, Carbon $endDate): array
+    {
+        // 🔹 Traer planillas sin salidas en el rango
+        $planillas = Planilla::with('obra', 'elementos')
+            ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
+
+            ->get();
+        \Log::warning('Fechas del rango', [
+            'startDate' => $startDate->toDateTimeString(),
+            'endDate' => $endDate->toDateTimeString(),
+        ]);
+
+        // 🔹 Agrupar por obra y día
+        $eventos = $planillas->groupBy(function ($p) {
+            return $p->obra_id . '|' . Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
+        })->map(function ($grupo) {
+            $obraId = $grupo->first()->obra_id;
+            $nombreObra = optional($grupo->first()->obra)->obra ?? 'Obra desconocida';
+            $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'));
+
+            // 👉 IDs de planillas agrupadas
+            $planillasIds = $grupo->pluck('id')->toArray();
+
+            // 👉 Totales por estado
+            $fabricados = $grupo->where('estado', 'completada')->sum(fn($p) => $p->peso_total ?? 0);
+            $fabricando = $grupo->where('estado', 'fabricando')->sum(fn($p) => $p->peso_total ?? 0);
+            $pendientes = $grupo->where('estado', 'pendiente')->sum(fn($p) => $p->peso_total ?? 0);
+
+            // 👉 Diámetro medio
+            $diametros = $grupo->flatMap->elementos->pluck('diametro')->filter();
+            $diametroMedio = $diametros->isNotEmpty()
+                ? number_format($diametros->avg(), 2, '.', '')
+                : null;
+
+            // 👉 Color según estado
+            $todasCompletadas = $grupo->every(fn($p) => $p->estado === 'completada');
+            $color = $todasCompletadas ? '#22c55e' : '#9CA3AF';
+
+            return [
+                'title' => $nombreObra,
+                'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
+                'start' => $fechaInicio->toIso8601String(),
+                'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
+                'resourceId' => (string) $obraId,
+                'allDay' => false,
+                'backgroundColor' => $color,
+                'borderColor' => $color,
+                'tipo' => 'planilla',
+                'extendedProps' => [
+                    'tipo' => 'planilla',
+                    'pesoTotal' => $grupo->sum(fn($p) => $p->peso_total ?? 0),
+                    'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                    'planillas_ids' => $planillasIds,
+                    'diametroMedio' => $diametroMedio,
+                    'fabricadosKg' => $fabricados,
+                    'fabricandoKg' => $fabricando,
+                    'pendientesKg' => $pendientes,
+                    'todasCompletadas' => $todasCompletadas,
+                ],
+            ];
+        })->values();
 
         return [
-            'title' => $nombreObra,
-            'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
-            'start' => $fechaInicio->toIso8601String(),
-            'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
-            'resourceId' => (string)$obraId,
-            'allDay' => false,
-            'backgroundColor' => $color,
-            'borderColor' => $color,
-            'tipo' => 'planilla',
-            'extendedProps' => [
-                'tipo' => 'planilla',
-                'pesoTotal' => $grupo->sum(fn($p) => $p->peso_total ?? 0),
-                'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
-                'planillas_ids' => $planillasIds,
-                'diametroMedio' => $diametroMedio,
-                'fabricadosKg' => $fabricados,
-                'fabricandoKg' => $fabricando,
-                'pendientesKg' => $pendientes,
-                'todasCompletadas' => $todasCompletadas,
-            ],
+            'planillas' => $planillas,
+            'eventos' => $eventos,
         ];
-    })
-    ->values();
-
-
-
-$resumenPorDia = $planillas
-    ->groupBy(function ($p) {
-return Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
-
-    })
-   ->map(function ($grupo, $fechaDia) {
-    $pesoTotal = $grupo->sum(fn($p) => $p->peso_total ?? 0);
-    $longitudTotal = $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0));
-    $diametros = $grupo->flatMap->elementos->pluck('diametro')->filter();
-    $diametroMedio = $diametros->isNotEmpty() ? round($diametros->avg(), 2) : null;
-
-    return [
-        'fecha' => Carbon::parse($fechaDia), // 👈 esto arregla el toDateString()
-        'pesoTotal' => $pesoTotal,
-        'longitudTotal' => $longitudTotal,
-        'diametroMedio' => $diametroMedio,
-    ];
-})
-
-    ->values();
-
-// 🔹 Convertimos a eventos asociados al recurso "resumen"
-$resumenEventos = $resumenPorDia->map(function ($r) {
-    $titulo = "📦 ".number_format($r['pesoTotal'],0,',','.')." kg | 📏 ".number_format($r['longitudTotal'],0,',','.')." m";
-    if (!is_null($r['diametroMedio'])) {
-        $titulo .= " | ⌀ {$r['diametroMedio']} mm";
     }
 
-    return [
-        'title' => $titulo,
-        'start' => $r['fecha']->startOfDay()->toIso8601String(),
-        'end'   => $r['fecha']->endOfDay()->toIso8601String(),
-        'resourceId' => 'resumen',
-        'allDay' => true,
-        'backgroundColor' => '#fbbf24',
-        'borderColor' => '#92400e',
-        'textColor' => '#000000',
-        'tipo' => 'resumen'
-    ];
-})->values();
+    private function getResources($eventos)
+    {
+        $resourceIds = $eventos->pluck('resourceId')->filter()->unique()->values();
+        $obras = Obra::with('cliente')->whereIn('id', $resourceIds)->orderBy('obra')->get();
 
+        $resources = $obras->map(fn($obra) => [
+            'id' => (string) $obra->id,
+            'title' => $obra->obra,
+            'cliente' => optional($obra->cliente)->empresa,
+            'cod_obra' => $obra->cod_obra,
+        ])->values();
 
-// 🔹 Unir eventos
-$eventos = collect(array_merge(
-    $this->getFestivos(),
-    $salidasEventos->toArray(),
-    $eventosPlanillas->toArray(),
-    $resumenEventos->values()->toArray() // 👈 añadimos los de resumen
-));
+        $resources->prepend([
+            'id' => 'resumen-dia',
+            'title' => '📊 Resumen Diario',
+            'cliente' => '',
+            'cod_obra' => '',
+        ]);
 
-    // 🎯 FILTRAR resources SOLO para los resourceId presentes en los eventos
-    $resourceIdsConEventos = $eventos->pluck('resourceId')->filter()->unique()->values();
-    $obrasConSalidas = Obra::with('cliente')
-        ->whereIn('id', $resourceIdsConEventos)
-        ->orderBy('obra')
-        ->get();
-
-    $obrasConSalidasResources = $obrasConSalidas->map(fn($obra) => [
-        'id'    => (string)$obra->id,
-        'title' => $obra->obra,
-        'cliente' => optional($obra->cliente)->empresa,
-        'cod_obra' => $obra->cod_obra,
-    ])->values();
-// 🔝 Añadimos un recurso fijo para los resúmenes diarios
-$obrasConSalidasResources->prepend([
-    'id' => 'resumen',
-    'title' => '📊 Resumen diario',
-    'cliente' => '',
-    'cod_obra' => '',
-]);
-
-    // ✅ RESPONDER JSON SEGÚN 'tipo'
-    if ($request->input('tipo') === 'resources') {
-        return response()->json($obrasConSalidasResources);
-    }
-    if ($request->input('tipo') === 'events') {
-        return response()->json($eventos->values());
+        return $resources;
     }
 
-    // 🖥 Vista normal
-    $fechas = collect(range(0, 13))->map(fn($i) => [
-        'fecha' => now()->addDays($i)->format('Y-m-d'),
-        'dia' => now()->addDays($i)->locale('es')->translatedFormat('l')
-    ]);
-
-Log::info('🎯 Eventos generados', $eventos->toArray());
-return view('planificacion.index', [
-    'fechas' => $fechas,
-]);
-
-
-}
 
 
 
@@ -335,8 +430,8 @@ return view('planificacion.index', [
     }
 
     public function show($id)
-{
-    abort(404); // o haz algo según necesites
-}
+    {
+        abort(404); // o haz algo según necesites
+    }
 
 }
