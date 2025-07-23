@@ -152,12 +152,10 @@ class PlanificacionController extends Controller
             ];
         });
 
-    
-
         // ------------------- SELECCIÓN SEGÚN VISTA -------------------
         $eventosResumen = collect();
 
-        if ($viewType === 'resourceTimelineDay') {
+        if ($viewType === 'resourceTimelineDay' || $viewType === 'resourceTimelineWeek') {
             $eventosResumen = $eventosResumen->merge($resumenEventosDia);
         }
       
@@ -289,9 +287,6 @@ $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_ent
 
         return $resources;
     }
-
-
-
 
     private function getFestivos()
     {

@@ -17,7 +17,7 @@
 
             <a href="{{ route('salidas.create') }}"
                 class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none transition">
-                Crear Nueva Salida
+                Crear Salida con más de una obra
             </a>
 
         </div>
