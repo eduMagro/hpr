@@ -101,8 +101,8 @@
                                     value="{{ request('fecha_importacion') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.input type="date" name="fecha_entrega"
-                                    value="{{ request('fecha_entrega') }}" />
+                                <x-tabla.input type="date" name="fecha_estimada_entrega"
+                                    value="{{ request('fecha_estimada_entrega') }}" />
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.input name="nombre_completo" value="{{ request('nombre_completo') }}" />
