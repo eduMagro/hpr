@@ -158,7 +158,7 @@ events: {
 
             eventMinHeight: 30,
             slotMinTime: "06:00:00",
-            slotMaxTime: "18:00:00",
+            slotMaxTime: "22:00:00",
             firstDay: 1,
             height: 'auto',
             headerToolbar: {
