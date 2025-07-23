@@ -16,11 +16,7 @@ class PlanificacionController extends Controller
 {
   public function index(Request $request)
 {
-    Log::info('📥 Parámetros recibidos en planificacion.index', [
-        'query' => $request->query(),
-        'all' => $request->all(),
-        'wantsJson' => $request->wantsJson()
-    ]);
+
 
     // 📌 Rango de fechas desde el calendario (AJAX)
     $start = $request->input('start');
@@ -28,7 +24,10 @@ class PlanificacionController extends Controller
 
     $startDate = $start ? Carbon::parse($start)->startOfDay() : Carbon::now()->startOfMonth();
     $endDate   = $end   ? Carbon::parse($end)->endOfDay()   : Carbon::now()->endOfMonth();
-
+Log::info('🧭 Fechas filtradas', [
+    'startDate' => $startDate->toDateTimeString(),
+    'endDate'   => $endDate->toDateTimeString()
+]);
     // 🔹 Salidas filtradas
     $salidas = Salida::with([
         'salidaClientes.obra:id,obra',
@@ -39,11 +38,11 @@ class PlanificacionController extends Controller
     ->whereBetween('fecha_salida', [$startDate, $endDate])
     ->get();
 
-    // 🔹 Planillas filtradas (sin salida)
-    $planillas = Planilla::with('obra', 'elementos')
-        ->whereDoesntHave('paquetes.salidas')
-        ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
-        ->get();
+$planillas = Planilla::with('obra', 'elementos')
+    ->whereDoesntHave('paquetes.salidas')
+    ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
+    ->get();
+
 
     // 🔹 Eventos de salidas
     $salidasEventos = $salidas->flatMap(function ($salida) {
@@ -150,14 +149,7 @@ class PlanificacionController extends Controller
         'dia' => now()->addDays($i)->locale('es')->translatedFormat('l')
     ]);
 
-    $todasLasObras = Obra::with('cliente')
-        ->where('estado', 'activa')
-        ->get()
-        ->map(fn($obra) => [
-            'id' => (string)$obra->id,
-            'title' => $obra->obra,
-            'cliente' => optional($obra->cliente)->empresa,
-        ]);
+Log::info('🎯 Eventos generados', $eventos->toArray());
 
    return view('planificacion.index', [
     'fechas' => $fechas,
