@@ -14,13 +14,22 @@ use Illuminate\Support\Facades\Log;
 
 class PlanificacionController extends Controller
 {
-   public function index(Request $request)
+  public function index(Request $request)
 {
-    // ✅ Fechas del rango
-    $startDate = $request->input('start') ? Carbon::parse($request->input('start'))->startOfDay() : Carbon::now()->startOfMonth();
-    $endDate   = $request->input('end')   ? Carbon::parse($request->input('end'))->endOfDay()   : Carbon::now()->endOfMonth();
+    Log::info('📥 Parámetros recibidos en planificacion.index', [
+        'query' => $request->query(),
+        'all' => $request->all(),
+        'wantsJson' => $request->wantsJson()
+    ]);
 
-    // ✅ Salidas filtradas por rango
+    // 📌 Rango de fechas desde el calendario (AJAX)
+    $start = $request->input('start');
+    $end   = $request->input('end');
+
+    $startDate = $start ? Carbon::parse($start)->startOfDay() : Carbon::now()->startOfMonth();
+    $endDate   = $end   ? Carbon::parse($end)->endOfDay()   : Carbon::now()->endOfMonth();
+
+    // 🔹 Salidas filtradas
     $salidas = Salida::with([
         'salidaClientes.obra:id,obra',
         'salidaClientes.cliente:id,empresa',
@@ -30,35 +39,13 @@ class PlanificacionController extends Controller
     ->whereBetween('fecha_salida', [$startDate, $endDate])
     ->get();
 
-    // ✅ Planillas filtradas por rango (sin salida)
+    // 🔹 Planillas filtradas (sin salida)
     $planillas = Planilla::with('obra', 'elementos')
         ->whereDoesntHave('paquetes.salidas')
         ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
         ->get();
 
-    // ✅ Obras activas
-    $obras = Obra::with('cliente')->where('estado', 'activa')->get();
-
-    // ✅ Obras con salidas y/o planillas
-    $obrasConSalidasIds = $salidas->pluck('salidaClientes')->flatten()->pluck('obra_id');
-    $obrasPlanillasIds = $planillas->pluck('obra_id');
-    $obrasConSalidasIds = $obrasConSalidasIds->merge($obrasPlanillasIds)->unique();
-
-    $obrasConSalidas = Obra::with('cliente')
-        ->whereIn('id', $obrasConSalidasIds)
-        ->orderBy('obra')
-        ->get();
-
-    $obrasConSalidasResources = $obrasConSalidas->map(fn($obra) => [
-        'id' => (string) $obra->id,
-        'title' => $obra->obra,
-        'cliente' => optional($obra->cliente)->empresa,
-    ]);
-
-    // ✅ Festivos
-    $festivos = $this->getFestivos();
-
-    // ✅ Salidas → eventos
+    // 🔹 Eventos de salidas
     $salidasEventos = $salidas->flatMap(function ($salida) {
         $empresa = optional($salida->empresaTransporte)->nombre;
         $pesoTotal = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
@@ -83,105 +70,103 @@ class PlanificacionController extends Controller
                     'empresa' => $empresa,
                     'tipo' => 'salida',
                     'comentario' => $salida->comentario,
-                ]
+                ],
             ];
         });
     });
-$eventosPlanillas = $planillas
-    ->groupBy(function ($p) {
-        if (empty($p->fecha_estimada_entrega)) {
-            // Si no hay fecha, evita romper
-            return $p->obra_id . '|sin-fecha';
-        }
 
-        try {
+    // 🔹 Eventos de planillas agrupadas por obra y fecha
+    $eventosPlanillas = $planillas
+        ->groupBy(function ($p) {
             $fechaSolo = Carbon::createFromFormat('d/m/Y H:i', $p->fecha_estimada_entrega)->format('Y-m-d');
-        } catch (\Exception $e) {
-            // Si falla el parseo, márcalo como error o sin-fecha
-            $fechaSolo = 'sin-fecha';
-        }
+            return $p->obra_id . '|' . $fechaSolo;
+        })
+        ->map(function ($grupo) {
+            $obraId = $grupo->first()->obra_id;
+            $nombreObra = optional($grupo->first()->obra)->obra ?? 'Obra desconocida';
+            $planillasIds = $grupo->pluck('id')->toArray();
+            $color = '#9CA3AF';
 
-        return $p->obra_id . '|' . $fechaSolo;
-    })
-    ->map(function ($grupoPlanillas) {
-        $primera = $grupoPlanillas->first();
-        $obraId = $primera->obra_id;
-        $nombreObra = optional($primera->obra)->obra ?? 'Obra desconocida';
-        $planillasIds = $grupoPlanillas->pluck('id')->toArray();
-        $color = '#9CA3AF';
+            $fechaInicio = Carbon::createFromFormat('d/m/Y H:i', $grupo->first()->fecha_estimada_entrega);
 
-        $fechaInicio = null;
-        try {
-            $fechaInicio = Carbon::createFromFormat('d/m/Y H:i', $primera->fecha_estimada_entrega);
-        } catch (\Exception $e) {
-            // Usa fecha actual si está mal
-            $fechaInicio = now();
-        }
+            $pesoTotal = $grupo->sum(fn($p) => $p->peso_total ?? 0);
+            $longitudTotal = $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0));
+            $diametros = $grupo->flatMap->elementos->pluck('diametro')->filter();
+            $diametroMedio = $diametros->isNotEmpty() ? round($diametros->avg(), 2) : null;
 
-        $pesoTotal = $grupoPlanillas->sum(fn($p) => $p->peso_total ?? 0);
-        $longitudTotal = $grupoPlanillas->flatMap->elementos
-            ->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0));
-
-        $elementos = $grupoPlanillas->flatMap->elementos;
-        $diametros = $elementos->pluck('diametro')->filter();
-        $diametroMedio = $diametros->isNotEmpty() ? round($diametros->avg(), 2) : null;
-
-        return [
-            'title' => $nombreObra,
-            'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
-            'start' => $fechaInicio->toIso8601String(),
-            'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
-            'resourceId' => (string)$obraId,
-            'allDay' => false,
-            'backgroundColor' => $color,
-            'borderColor' => $color,
-            'tipo' => 'planilla',
-            'extendedProps' => [
+            return [
+                'title' => $nombreObra,
+                'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
+                'start' => $fechaInicio->toIso8601String(),
+                'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
+                'resourceId' => (string)$obraId,
+                'allDay' => false,
+                'backgroundColor' => $color,
+                'borderColor' => $color,
                 'tipo' => 'planilla',
-                'pesoTotal' => $pesoTotal,
-                'longitudTotal' => $longitudTotal,
-                'planillas_ids' => $planillasIds,
-                'diametroMedio' => $diametroMedio,
-            ]
-        ];
-    })
-    ->values();
+                'extendedProps' => [
+                    'tipo' => 'planilla',
+                    'pesoTotal' => $pesoTotal,
+                    'longitudTotal' => $longitudTotal,
+                    'planillas_ids' => $planillasIds,
+                    'diametroMedio' => $diametroMedio,
+                ],
+            ];
+        })
+        ->values();
 
-
+    // 🔹 Unir eventos
     $eventos = collect(array_merge(
-        $festivos,
+        $this->getFestivos(),
         $salidasEventos->toArray(),
         $eventosPlanillas->toArray()
-    ))->map(function ($evento) {
-        if (isset($evento['resourceId'])) {
-            $evento['resourceId'] = (string) $evento['resourceId'];
-        }
-        return $evento;
-    })->values();
+    ));
 
-    // ✅ Respuesta JSON según lo que pide el calendario
-    if ($request->wantsJson() && $request->query('resources')) {
+    // 🎯 FILTRAR resources SOLO para los resourceId presentes en los eventos
+    $resourceIdsConEventos = $eventos->pluck('resourceId')->filter()->unique()->values();
+    $obrasConSalidas = Obra::with('cliente')
+        ->whereIn('id', $resourceIdsConEventos)
+        ->orderBy('obra')
+        ->get();
+
+    $obrasConSalidasResources = $obrasConSalidas->map(fn($obra) => [
+        'id'    => (string)$obra->id,
+        'title' => $obra->obra,
+        'cliente' => optional($obra->cliente)->empresa,
+    ])->values();
+
+    // ✅ RESPONDER JSON SEGÚN 'tipo'
+    if ($request->input('tipo') === 'resources') {
         return response()->json($obrasConSalidasResources);
     }
-
-    if ($request->wantsJson()) {
-        return response()->json($eventos);
+    if ($request->input('tipo') === 'events') {
+        return response()->json($eventos->values());
     }
 
-    // ✅ Vista normal
+    // 🖥 Vista normal
     $fechas = collect(range(0, 13))->map(fn($i) => [
         'fecha' => now()->addDays($i)->format('Y-m-d'),
         'dia' => now()->addDays($i)->locale('es')->translatedFormat('l')
     ]);
 
+    $todasLasObras = Obra::with('cliente')
+        ->where('estado', 'activa')
+        ->get()
+        ->map(fn($obra) => [
+            'id' => (string)$obra->id,
+            'title' => $obra->obra,
+            'cliente' => optional($obra->cliente)->empresa,
+        ]);
+
     return view('planificacion.index', compact(
         'fechas',
         'eventos',
         'obrasConSalidas',
-        'obras',
+        'todasLasObras',
         'obrasConSalidasResources'
     ));
 }
+
 
 
     private function getFestivos()
@@ -294,4 +279,10 @@ $eventosPlanillas = $planillas
 
         return response()->json(['error' => 'Tipo no válido'], 400);
     }
+
+    public function show($id)
+{
+    abort(404); // o haz algo según necesites
+}
+
 }
