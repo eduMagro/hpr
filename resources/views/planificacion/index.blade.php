@@ -91,18 +91,33 @@
     <script src="https://unpkg.com/tippy.js@6"></script>
 
 
-       <script>
-        let calendar;
+      <script>
+    let calendar;
 
-   document.addEventListener('DOMContentLoaded', function () {
-    console.log("🔥 DOM listo, iniciando calendario...");
-    crearCalendario();
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log("🔥 DOM listo, iniciando calendario...");
+        crearCalendario();
 
-function crearCalendario() {
-    if (calendar) {
-        calendar.destroy();
-    }
+        // 👉 Llamamos a la misma función que el botón para que cargue como si hubieras hecho click
+        cargarObrasConSalidas();
+
+        // Dejas el listener por si quieres pulsarlo manualmente después
+        document.getElementById('ver-con-salidas').addEventListener('click', cargarObrasConSalidas);
+
+        // También puedes dejar el de "ver todas" si quieres recargar todo
+        const btnTodas = document.getElementById('ver-todas');
+        if (btnTodas) {
+            btnTodas.addEventListener('click', () => {
+                calendar.refetchResources();
+                calendar.refetchEvents();
+            });
+        }
+    });
+
+    function crearCalendario() {
+        if (calendar) {
+            calendar.destroy();
+        }
 
 calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
     schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
@@ -124,17 +139,22 @@ events: {
   }
 },
 
+ datesSet: function(info) {
+            // guarda vista y fecha
+            let fechaActual = info.startStr;
+            if (calendar.view.type === 'dayGridMonth') {
+                const middleDate = new Date(info.start);
+                middleDate.setDate(middleDate.getDate() + 15);
+                fechaActual = middleDate.toISOString().split('T')[0];
+            }
+            localStorage.setItem('fechaCalendario', fechaActual);
+            localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
 
-            datesSet: function(info) {
-                let fechaActual = info.startStr;
-                if (calendar.view.type === 'dayGridMonth') {
-                    const middleDate = new Date(info.start);
-                    middleDate.setDate(middleDate.getDate() + 15);
-                    fechaActual = middleDate.toISOString().split('T')[0];
-                }
-                localStorage.setItem('fechaCalendario', fechaActual);
-                localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
-            },
+            // 👇👇 aquí haces el mismo refresco que tu botón "obras con salida"
+            console.log("🔄 Refrescando resources y events según nueva vista");
+            calendar.refetchResources();
+            calendar.refetchEvents();
+        },
 
             eventMinHeight: 30,
             slotMinTime: "06:00:00",
@@ -250,21 +270,12 @@ events: {
         calendar.render();
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        crearCalendario();
-
-        // Si no necesitas estos botones puedes quitarlos, pero si los dejas puedes reutilizarlos para aplicar filtros extra
-        document.getElementById('ver-todas').addEventListener('click', () => {
-            calendar.refetchResources();
-            calendar.refetchEvents();
-        });
-
-        document.getElementById('ver-con-salidas').addEventListener('click', () => {
-            // Podrías aplicar aquí un filtro extra si quieres, pero en modo dinámico basta con recargar
-            calendar.refetchResources();
-            calendar.refetchEvents();
-        });
-    });
+       // 👉 Función para recargar solo obras con salida
+    function cargarObrasConSalidas() {
+        console.log("🚀 Cargando obras con salida automáticamente");
+        calendar.refetchResources();
+        calendar.refetchEvents();
+    }
     </script>
 
 </x-app-layout>

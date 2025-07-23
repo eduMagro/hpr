@@ -158,13 +158,14 @@ class PlanificacionController extends Controller
             'cliente' => optional($obra->cliente)->empresa,
         ]);
 
-    return view('planificacion.index', compact(
-        'fechas',
-        'eventos',
-        'obrasConSalidas',
-        'todasLasObras',
-        'obrasConSalidasResources'
-    ));
+   return view('planificacion.index', [
+    'fechas' => $fechas,
+    'eventos' => $eventos,
+    'obrasConSalidas' => $obrasConSalidasResources, // ya filtradas
+    'todasLasObras' => $obrasConSalidasResources,
+    'obrasConSalidasResources' => $obrasConSalidasResources
+]);
+
 }
 
 
