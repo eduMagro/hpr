@@ -219,6 +219,22 @@ events: {
 
             eventDidMount: function(info) {
                 const props = info.event.extendedProps;
+                 if (props.tipo === 'planilla') {
+        let contenidoTooltip = `
+            ✅ Fabricados: ${Number(props.fabricadosKg).toLocaleString()} kg<br>
+            🔄 Fabricando: ${Number(props.fabricandoKg).toLocaleString()} kg<br>
+            ⏳ Pendientes: ${Number(props.pendientesKg).toLocaleString()} kg
+        `;
+
+        tippy(info.el, {
+            content: contenidoTooltip,
+            allowHTML: true,
+            theme: 'light-border',
+            placement: 'top',
+            animation: 'shift-away',
+            arrow: true,
+        });
+    }
                 if (props.tipo === 'salida') {
                     let contenidoTooltip = '';
                     if (props.empresa) contenidoTooltip += `🚛 ${props.empresa}<br>`;

@@ -158,45 +158,60 @@ class SalidaController extends Controller
     }
 
 
-    public function create(Request $request)
-    {
-        // Si se han pasado planillas desde el calendario, usamos solo esas
-        $planillasIds = explode(',', $request->get('planillas', ''));
+  public function create(Request $request)
+{
+    // Si se han pasado planillas desde el calendario, usamos solo esas
+    $planillasIds = explode(',', $request->get('planillas', ''));
 
-        // Base del query SIN filtrar por estado y SIN whereHas
-        $planillasQuery = Planilla::with([
-            'paquetes' => function ($query) {
-                // Si quieres aquí puedes seguir filtrando paquetes sin salida
-                $query->whereDoesntHave('salidas');
-            },
-            'paquetes.etiquetas',
-            'cliente',
-            'obra'
-        ]);
+    // Base del query
+    $planillasQuery = Planilla::with([
+        'paquetes' => function ($query) {
+            // Filtramos paquetes sin salida
+            $query->whereDoesntHave('salidas');
+        },
+        'paquetes.etiquetas',
+        'cliente',
+        'obra'
+    ]);
 
-
-        // Si se recibieron planillas por parámetro, filtramos
-        if (!empty($planillasIds[0])) {
-            $planillasQuery->whereIn('id', $planillasIds);
-        }
-
-        // Ejecutar query
-        $planillasCompletadas = $planillasQuery
-            ->orderBy('fecha_estimada_entrega', 'asc')
-            ->get();
-
-        // Obtener los paquetes de las planillas (filtrados previamente)
-        $paquetes = $planillasCompletadas->pluck('paquetes')->flatten();
-
-        // Empresas con camiones
-        $empresas = EmpresaTransporte::with('camiones')->get();
-
-        return view('salidas.create', [
-            'planillasCompletadas' => $planillasCompletadas,
-            'paquetes' => $paquetes,
-            'empresas' => $empresas,
-        ]);
+    // Si se recibieron planillas por parámetro, filtramos
+    if (!empty($planillasIds[0])) {
+        $planillasQuery->whereIn('id', $planillasIds);
     }
+
+    // Obtener las planillas
+    $planillasCompletadas = $planillasQuery
+        ->orderBy('fecha_estimada_entrega', 'asc')
+        ->get()
+        ->map(function ($planilla) {
+            // Aquí definimos colores y etiquetas según estado
+            $estado = $planilla->estado;
+            $colorClass = match ($estado) {
+                'completada' => 'bg-green-500 text-white',
+                'pendiente'  => 'bg-yellow-500 text-black',
+                'en_proceso' => 'bg-blue-500 text-white',
+                default      => 'bg-gray-400 text-white',
+            };
+
+            // Le añadimos atributos dinámicos que luego usarás en Blade
+            $planilla->estado_label = ucfirst($estado);
+            $planilla->estado_class = $colorClass;
+
+            return $planilla;
+        });
+
+    // Obtener paquetes
+    $paquetes = $planillasCompletadas->pluck('paquetes')->flatten();
+
+    // Empresas con camiones
+    $empresas = EmpresaTransporte::with('camiones')->get();
+
+    return view('salidas.create', [
+        'planillasCompletadas' => $planillasCompletadas,
+        'paquetes'             => $paquetes,
+        'empresas'             => $empresas,
+    ]);
+}
 
 
     public function store(Request $request)

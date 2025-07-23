@@ -75,44 +75,58 @@ $planillas = Planilla::with('obra', 'elementos')
     });
 
     // 🔹 Eventos de planillas agrupadas por obra y fecha
-    $eventosPlanillas = $planillas
-        ->groupBy(function ($p) {
-            $fechaSolo = Carbon::createFromFormat('d/m/Y H:i', $p->fecha_estimada_entrega)->format('Y-m-d');
-            return $p->obra_id . '|' . $fechaSolo;
-        })
-        ->map(function ($grupo) {
-            $obraId = $grupo->first()->obra_id;
-            $nombreObra = optional($grupo->first()->obra)->obra ?? 'Obra desconocida';
-            $planillasIds = $grupo->pluck('id')->toArray();
-            $color = '#9CA3AF';
+$eventosPlanillas = $planillas
+    ->groupBy(function ($p) {
+        return $p->obra_id . '|' . Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
+    })
+    ->map(function ($grupo) {
+        $obraId = $grupo->first()->obra_id;
+        $nombreObra = optional($grupo->first()->obra)->obra ?? 'Obra desconocida';
+        $planillasIds = $grupo->pluck('id')->toArray();
+ $diametros = $grupo->flatMap->elementos->pluck('diametro')->filter();
+    $diametroMedio = $diametros->isNotEmpty()
+        ? number_format($diametros->avg(), 2, '.', '')
+        : null;
+        // ✔️ totales
+        $fabricados = $grupo->where('estado', 'completada')->sum(fn($p) => $p->peso_total ?? 0);
+        $fabricando = $grupo->where('estado', 'fabricando')->sum(fn($p) => $p->peso_total ?? 0);
+        $pendientes = $grupo->where('estado', 'pendiente')->sum(fn($p) => $p->peso_total ?? 0);
 
-            $fechaInicio = Carbon::createFromFormat('d/m/Y H:i', $grupo->first()->fecha_estimada_entrega);
+        // ✔️ comprobar si todas están completadas
+        $todasCompletadas = $grupo->every(fn($p) => $p->estado === 'completada');
 
-            $pesoTotal = $grupo->sum(fn($p) => $p->peso_total ?? 0);
-            $longitudTotal = $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0));
-            $diametros = $grupo->flatMap->elementos->pluck('diametro')->filter();
-            $diametroMedio = $diametros->isNotEmpty() ? round($diametros->avg(), 2) : null;
+        // 📌 color según estado
+        $color = $todasCompletadas ? '#22c55e' : '#9CA3AF'; // verde si todas completadas
 
-            return [
-                'title' => $nombreObra,
-                'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
-                'start' => $fechaInicio->toIso8601String(),
-                'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
-                'resourceId' => (string)$obraId,
-                'allDay' => false,
-                'backgroundColor' => $color,
-                'borderColor' => $color,
+        // fecha
+        $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'));
+
+        return [
+            'title' => $nombreObra,
+            'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
+            'start' => $fechaInicio->toIso8601String(),
+            'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
+            'resourceId' => (string)$obraId,
+            'allDay' => false,
+            'backgroundColor' => $color,
+            'borderColor' => $color,
+            'tipo' => 'planilla',
+            'extendedProps' => [
                 'tipo' => 'planilla',
-                'extendedProps' => [
-                    'tipo' => 'planilla',
-                    'pesoTotal' => $pesoTotal,
-                    'longitudTotal' => $longitudTotal,
-                    'planillas_ids' => $planillasIds,
-                    'diametroMedio' => $diametroMedio,
-                ],
-            ];
-        })
-        ->values();
+                'pesoTotal' => $grupo->sum(fn($p) => $p->peso_total ?? 0),
+                'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
+                'planillas_ids' => $planillasIds,
+                'diametroMedio' => $diametroMedio,
+                'fabricadosKg' => $fabricados,
+                'fabricandoKg' => $fabricando,
+                'pendientesKg' => $pendientes,
+                'todasCompletadas' => $todasCompletadas,
+            ],
+        ];
+    })
+    ->values();
+
+
 
 $resumenPorDia = $planillas
     ->groupBy(function ($p) {

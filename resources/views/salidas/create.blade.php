@@ -31,6 +31,10 @@
                                             class="font-semibold text-lg text-gray-800">
                                             {{ $planilla->codigo_limpio }}
                                         </label>
+                                        {{-- Badge listo --}}
+<span class="ml-3 px-2 py-1 rounded text-xs font-semibold {{ $planilla->estado_class }}">
+    {{ $planilla->estado_label }}
+</span>
                                     </div>
                                     <span class="text-sm text-gray-600">{{ $planilla->peso_total_kg }} kg</span>
                                     <span class="text-sm text-gray-600">Fecha Entrega:
