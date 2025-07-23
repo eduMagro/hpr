@@ -303,6 +303,7 @@ class PlanificacionController extends Controller
             'title' => $obra->obra,
             'cliente' => optional($obra->cliente)->empresa,
             'cod_obra' => $obra->cod_obra,
+             'orderIndex' => 2,
         ])->values();
 
         $resources->prepend([
@@ -310,6 +311,7 @@ class PlanificacionController extends Controller
             'title' => '📊 Resumen Diario',
             'cliente' => '',
             'cod_obra' => '',
+            'orderIndex' => 1,
         ]);
 
         return $resources;

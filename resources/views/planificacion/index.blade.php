@@ -132,6 +132,8 @@
                 locale: 'es',
                 initialView: vistaGuardada,
                 initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
+                slotMinTime: "06:00:00",
+                slotMaxTime: "18:00:00",
                 extraParams: function() {
                     return {
                         tipo: 'events',
@@ -173,7 +175,7 @@
                         fechaActual = middleDate.toISOString().split('T')[0];
                     } else {
                         // Para vista diaria usamos directamente la fecha
-                        fechaActual = info.startStr;
+                       fechaActual = info.startStr.split('T')[0];
                     }
 
                     // Guardar vista y fecha en localStorage
@@ -227,6 +229,7 @@
                         headerContent: 'Cliente'
                     }
                 ],
+                resourceOrder: 'orderIndex',
                 eventClick: function(info) {
                     const tipo = info.event.extendedProps.tipo;
                     if (tipo === 'planilla') {
