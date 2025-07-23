@@ -55,7 +55,10 @@
             <div class="mb-6 flex flex-col md:flex-row gap-4 justify-center">
                 <!-- Resumen Semanal -->
                 <div class="max-w-sm bg-blue-50 border border-blue-200 rounded-md p-3 shadow-sm text-sm">
-                    <h3 class="text-base font-semibold text-blue-700 mb-1 text-center">Resumen semanal</h3>
+                    <h3 class="text-base font-semibold text-blue-700 mb-1 text-center">
+                        Resumen semanal <span id="resumen-semanal-fecha" class="text-gray-600 text-sm"></span>
+                    </h3>
+
                     <div class="flex items-center justify-center gap-3">
                         <p id="resumen-semanal-peso">📦 0 kg</p>
                         <p id="resumen-semanal-longitud">📏 0 m</p>
@@ -65,7 +68,10 @@
 
                 <!-- Resumen Mensual -->
                 <div class="max-w-sm bg-blue-50 border border-blue-200 rounded-md p-3 shadow-sm text-sm">
-                    <h3 class="text-base font-semibold text-blue-700 mb-1 text-center">Resumen mensual</h3>
+                    <h3 class="text-base font-semibold text-blue-700 mb-1 text-center">
+                        Resumen mensual <span id="resumen-mensual-fecha" class="text-gray-600 text-sm"></span>
+                    </h3>
+
                     <div class="flex items-center justify-center gap-3">
                         <p id="resumen-mensual-peso">📦 0 kg</p>
                         <p id="resumen-mensual-longitud">📏 0 m</p>
@@ -175,7 +181,7 @@
                         fechaActual = middleDate.toISOString().split('T')[0];
                     } else {
                         // Para vista diaria usamos directamente la fecha
-                       fechaActual = info.startStr.split('T')[0];
+                        fechaActual = info.startStr.split('T')[0];
                     }
 
                     // Guardar vista y fecha en localStorage
@@ -347,11 +353,28 @@
         }
 
         function actualizarTotales(fecha) {
-            console.log("🔄 Actualizando totales para la fecha:", fecha);
+            // 👉 Convertir fecha a objeto Date
+            const dateObj = new Date(fecha);
+            // 👉 Obtener nombre de mes y año en español
+            const opciones = {
+                year: 'numeric',
+                month: 'long'
+            };
+            let mesTexto = dateObj.toLocaleDateString('es-ES', opciones);
+            // Capitalizar primera letra
+            mesTexto = mesTexto.charAt(0).toUpperCase() + mesTexto.slice(1);
+
+            // ✨ Mostrar el mes en texto con primera mayúscula
+            document.querySelector('#resumen-mensual-fecha').textContent = `(${mesTexto})`;
 
             fetch(`/planificacion/totales?fecha=${fecha}`)
                 .then(res => res.json())
                 .then(data => {
+                    // ✅ Resumen semanal
+                    document.querySelector('#resumen-semanal-peso').textContent =
+                        `📦 ${Number(data.semana.peso).toLocaleString()} kg`;
+                    document.querySelector('#resumen-semanal-longitud').textContent =
+                        `📏 ${Number(data.semana.longitud).toLocaleString()} m`;
                     // ✅ Resumen semanal
                     document.querySelector('#resumen-semanal-peso').textContent =
                         `📦 ${Number(data.semana.peso).toLocaleString()} kg`;
