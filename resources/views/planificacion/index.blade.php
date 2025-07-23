@@ -118,11 +118,20 @@
         if (calendar) {
             calendar.destroy();
         }
+        const vistasValidas = ['resourceTimelineDay', 'resourceTimelineWeek', 'dayGridMonth'];
+
+   let vistaGuardada = localStorage.getItem('ultimaVistaCalendario');
+            if (!vistasValidas.includes(vistaGuardada)) {
+                vistaGuardada = 'resourceTimelineDay';
+            }
+
+            const fechaGuardada = localStorage.getItem('fechaCalendario');
 
 calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
     schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
     locale: 'es',
-    initialView: 'resourceTimelineWeek',
+  initialView: vistaGuardada,
+                initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
 
 resources: {
   url: '{{ url("/planificacion") }}',
@@ -157,8 +166,6 @@ events: {
         },
 
             eventMinHeight: 30,
-            slotMinTime: "06:00:00",
-            slotMaxTime: "22:00:00",
             firstDay: 1,
             height: 'auto',
             headerToolbar: {
@@ -178,13 +185,12 @@ events: {
                     slotLabelFormat: { weekday: 'long', day: 'numeric', month: 'short' }
                 },
             },
-
             editable: true,
             resourceAreaColumns: [
+                 { field: 'cod_obra', headerContent: 'Código' },
                 { field: 'title', headerContent: 'Obra' },
                 { field: 'cliente', headerContent: 'Cliente' }
             ],
-
             eventClick: function(info) {
                 const tipo = info.event.extendedProps.tipo;
                 if (tipo === 'planilla') {
@@ -277,5 +283,15 @@ events: {
         calendar.refetchEvents();
     }
     </script>
+<style>
+    /* ejemplo: la tercera columna (index empieza en 1) */
+.fc .fc-datagrid-cell:nth-child(1) {
+    width: 70px; /* tu ancho deseado */
+    max-width: 150px;
+    white-space: nowrap; /* para que no haga salto de línea */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
+</style>
 </x-app-layout>

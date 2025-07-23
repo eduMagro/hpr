@@ -133,6 +133,7 @@ class PlanificacionController extends Controller
         'id'    => (string)$obra->id,
         'title' => $obra->obra,
         'cliente' => optional($obra->cliente)->empresa,
+        'cod_obra' => $obra->cod_obra,
     ])->values();
 
     // ✅ RESPONDER JSON SEGÚN 'tipo'
