@@ -519,11 +519,11 @@ if ($request->filled('fecha_estimada_entrega')) {
             $advertencias        = [];
 
             $file         = $request->file('file');
-            $firstSheet   = \Maatwebsite\Excel\Facades\Excel::toArray([], $file)[0] ?? [];
+            $firstSheet   = Excel::toArray([], $file)[0] ?? [];
             $filteredData = array_filter(array_slice($firstSheet, 1), fn($row) => array_filter($row));
 
             if (!$filteredData) {
-                throw new \Exception('El archivo está vacío o no contiene filas válidas.');
+                throw new Exception('El archivo está vacío o no contiene filas válidas.');
             }
 
             /* -------------------------------------------------- */
@@ -536,7 +536,7 @@ if ($request->filled('fecha_estimada_entrega')) {
             $nombreObra    = trim($primerRow[3] ?? 'Obra sin nombre');
 
             if (!$codigoCliente || !$codigoObra) {
-                throw new \Exception('Faltan códigos de cliente u obra en el archivo.');
+                throw new Exception('Faltan códigos de cliente u obra en el archivo.');
             }
 
             $cliente = Cliente::firstOrCreate(
@@ -557,7 +557,7 @@ if ($request->filled('fecha_estimada_entrega')) {
                 $codigoPlanilla = $row[10] ?? 'Sin código';
                 $planillas[$codigoPlanilla][] = $row;
             }
-
+ $fechaEntrega = now()->addDays(7)->setTime(10, 0, 0);
             /* ================================================== */
             /* Bucle principal : una iteración por planilla       */
             /* ================================================== */
@@ -580,7 +580,7 @@ if ($request->filled('fecha_estimada_entrega')) {
                     'ensamblado'            => $rows[0][4]  ?? null,
                     'codigo'                => $codigoPlanilla,
                     'peso_total'            => $pesoTotal,
-                    'fecha_estimada_entrega' => now()->addDays(7),
+                    'fecha_estimada_entrega' => $fechaEntrega,
                 ]);
 
                 $planillasImportadas++;

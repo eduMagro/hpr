@@ -114,12 +114,55 @@ $planillas = Planilla::with('obra', 'elementos')
         })
         ->values();
 
-    // 🔹 Unir eventos
-    $eventos = collect(array_merge(
-        $this->getFestivos(),
-        $salidasEventos->toArray(),
-        $eventosPlanillas->toArray()
-    ));
+$resumenPorDia = $planillas
+    ->groupBy(function ($p) {
+return Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
+
+    })
+   ->map(function ($grupo, $fechaDia) {
+    $pesoTotal = $grupo->sum(fn($p) => $p->peso_total ?? 0);
+    $longitudTotal = $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0));
+    $diametros = $grupo->flatMap->elementos->pluck('diametro')->filter();
+    $diametroMedio = $diametros->isNotEmpty() ? round($diametros->avg(), 2) : null;
+
+    return [
+        'fecha' => Carbon::parse($fechaDia), // 👈 esto arregla el toDateString()
+        'pesoTotal' => $pesoTotal,
+        'longitudTotal' => $longitudTotal,
+        'diametroMedio' => $diametroMedio,
+    ];
+})
+
+    ->values();
+
+// 🔹 Convertimos a eventos asociados al recurso "resumen"
+$resumenEventos = $resumenPorDia->map(function ($r) {
+    $titulo = "📦 ".number_format($r['pesoTotal'],0,',','.')." kg | 📏 ".number_format($r['longitudTotal'],0,',','.')." m";
+    if (!is_null($r['diametroMedio'])) {
+        $titulo .= " | ⌀ {$r['diametroMedio']} mm";
+    }
+
+    return [
+        'title' => $titulo,
+        'start' => $r['fecha']->startOfDay()->toIso8601String(),
+        'end'   => $r['fecha']->endOfDay()->toIso8601String(),
+        'resourceId' => 'resumen',
+        'allDay' => true,
+        'backgroundColor' => '#fbbf24',
+        'borderColor' => '#92400e',
+        'textColor' => '#000000',
+        'tipo' => 'resumen'
+    ];
+})->values();
+
+
+// 🔹 Unir eventos
+$eventos = collect(array_merge(
+    $this->getFestivos(),
+    $salidasEventos->toArray(),
+    $eventosPlanillas->toArray(),
+    $resumenEventos->values()->toArray() // 👈 añadimos los de resumen
+));
 
     // 🎯 FILTRAR resources SOLO para los resourceId presentes en los eventos
     $resourceIdsConEventos = $eventos->pluck('resourceId')->filter()->unique()->values();
@@ -134,6 +177,13 @@ $planillas = Planilla::with('obra', 'elementos')
         'cliente' => optional($obra->cliente)->empresa,
         'cod_obra' => $obra->cod_obra,
     ])->values();
+// 🔝 Añadimos un recurso fijo para los resúmenes diarios
+$obrasConSalidasResources->prepend([
+    'id' => 'resumen',
+    'title' => '📊 Resumen diario',
+    'cliente' => '',
+    'cod_obra' => '',
+]);
 
     // ✅ RESPONDER JSON SEGÚN 'tipo'
     if ($request->input('tipo') === 'resources') {
