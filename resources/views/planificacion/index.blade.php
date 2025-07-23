@@ -101,7 +101,6 @@
         let calendar;
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("🔥 DOM listo, iniciando calendario...");
             crearCalendario();
 
             // 👉 Llamamos a la misma función que el botón para que cargue como si hubieras hecho click
@@ -119,7 +118,7 @@
                 });
             }
         });
-
+let currentViewType = 'resourceTimelineDay'; // valor por defecto
         function crearCalendario() {
             if (calendar) {
                 calendar.destroy();
@@ -146,28 +145,29 @@
                         viewType: calendar.view.type // 👈 pasamos el tipo de vista
                     };
                 },
-                resources: {
-                    url: '{{ url('/planificacion') }}',
-                    method: 'GET',
-                    extraParams: function() {
-                        return {
-                            tipo: 'resources'
-                        };
-                    }
-                },
-                events: {
-                    url: '{{ url('/planificacion') }}',
-                    method: 'GET',
-                    extraParams: function() {
-                        return {
-                            tipo: 'events'
-                        };
-                    }
-                },
-
+               resources: {
+            url: '{{ url('/planificacion') }}',
+            method: 'GET',
+            extraParams: function() {
+                return {
+                    tipo: 'resources',
+                    viewType: currentViewType // 👈 usamos la variable
+                };
+            }
+        },
+        events: {
+            url: '{{ url('/planificacion') }}',
+            method: 'GET',
+            extraParams: function() {
+                return {
+                    tipo: 'events',
+                    viewType: currentViewType // 👈 usamos la variable
+                };
+            }
+        },
                 datesSet: function(info) {
                     let fechaActual;
-
+      currentViewType = calendar.view.type;
                     if (calendar.view.type === 'dayGridMonth') {
                         // Para la vista mensual, calculamos una fecha del medio del mes
                         const middleDate = new Date(info.start);
@@ -325,7 +325,6 @@
                             return res.json();
                         })
                         .then(() => {
-                            console.log("✅ Fecha actualizada");
                             calendar.refetchEvents();
                             calendar.refetchResources();
                         })
@@ -347,7 +346,6 @@
 
         // 👉 Función para recargar solo obras con salida
         function cargarObrasConSalidas() {
-            console.log("🚀 Cargando obras con salida automáticamente");
             calendar.refetchResources();
             calendar.refetchEvents();
         }
@@ -401,7 +399,6 @@
                             `⌀ ${Number(data.mes.diametro).toFixed(2)} mm`;
                     }
 
-                    console.log("✅ Totales actualizados correctamente.");
                 })
                 .catch(err => {
                     console.error("❌ Error al actualizar los totales:", err);

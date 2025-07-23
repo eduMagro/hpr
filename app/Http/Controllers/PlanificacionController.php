@@ -17,6 +17,7 @@ class PlanificacionController extends Controller
     public function index(Request $request)
     {
         [$startDate, $endDate] = $this->getDateRange($request);
+
         $viewType = $request->input('viewType', 'resourceTimelineDay');
 
         // Eventos
@@ -52,16 +53,46 @@ class PlanificacionController extends Controller
     }
 
 
-    private function getDateRange(Request $request): array
-    {
-        $start = $request->input('start');
-        $end = $request->input('end');
+   private function getDateRange(Request $request): array
+{
+  
+    $start = $request->input('start');
+    $end = $request->input('end');
+    $viewType = $request->input('viewType');
 
-        $startDate = $start ? Carbon::parse($start)->startOfDay() : Carbon::now()->startOfMonth();
-        $endDate = $end ? Carbon::parse($end)->endOfDay() : Carbon::now()->endOfMonth();
-
-        return [$startDate, $endDate];
+    // Vista día
+    if ($viewType === 'resourceTimelineDay' && $start) {
+        $fecha = Carbon::parse($start)->startOfDay();
+        return [$fecha, $fecha->copy()->endOfDay()];
     }
+
+    // Vista semana
+    if ($viewType === 'resourceTimelineWeek' && $start && $end) {
+        return [
+            Carbon::parse($start)->startOfDay(),
+            Carbon::parse($end)->subSecond()
+        ];
+    }
+
+    // Vista mes
+    if ($viewType === 'dayGridMonth' && $start && $end) {
+        return [
+            Carbon::parse($start)->startOfDay(),
+            Carbon::parse($end)->subSecond()
+        ];
+    }
+
+    // Por defecto
+    return [
+        $start ? Carbon::parse($start)->startOfDay() : now()->startOfMonth(),
+        $end ? Carbon::parse($end)->subSecond() : now()->endOfMonth()
+    ];
+}
+
+
+
+
+
     public function getTotalesAjax(Request $request)
     {
         $fechaReferencia = Carbon::parse($request->input('fecha')); // 👈 usa la fecha de la vista
@@ -121,57 +152,7 @@ class PlanificacionController extends Controller
             ];
         });
 
-        // ------------------- RESUMEN POR SEMANA -------------------
-        $resumenPorSemana = $planillas
-            ->groupBy(fn($p) => Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->format('o-W'))
-            ->map(fn($grupo, $semanaKey) => [
-                'fecha' => Carbon::parse($grupo->min(fn($p) => $p->getRawOriginal('fecha_estimada_entrega'))),
-                'pesoTotal' => $grupo->sum('peso_total'),
-                'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
-                'diametroMedio' => $grupo->flatMap->elementos->pluck('diametro')->filter()->avg(),
-                'semana' => $semanaKey,
-            ])->values();
-
-        $resumenEventosSemana = $resumenPorSemana->map(function ($r) {
-            $titulo = "🗓️ Semana {$r['semana']} → " . number_format($r['pesoTotal'], 0, ',', '.') . " kg";
-            return [
-                'title' => $titulo,
-                'start' => $r['fecha']->startOfWeek()->toIso8601String(),
-                'end' => $r['fecha']->endOfWeek()->toIso8601String(),
-                'resourceId' => 'resumen-semana',
-                'allDay' => true,
-                'backgroundColor' => '#60a5fa',
-                'borderColor' => '#1e3a8a',
-                'textColor' => '#fff',
-                'tipo' => 'resumen-semana',
-            ];
-        });
-
-        // ------------------- RESUMEN POR MES -------------------
-        $resumenPorMes = $planillas
-            ->groupBy(fn($p) => Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->format('Y-m'))
-            ->map(fn($grupo, $mesKey) => [
-                'fecha' => Carbon::parse($grupo->min(fn($p) => $p->getRawOriginal('fecha_estimada_entrega'))),
-                'pesoTotal' => $grupo->sum('peso_total'),
-                'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
-                'diametroMedio' => $grupo->flatMap->elementos->pluck('diametro')->filter()->avg(),
-                'mes' => $mesKey,
-            ])->values();
-
-        $resumenEventosMes = $resumenPorMes->map(function ($r) {
-            $titulo = "📅 Mes {$r['mes']} → " . number_format($r['pesoTotal'], 0, ',', '.') . " kg";
-            return [
-                'title' => $titulo,
-                'start' => $r['fecha']->startOfMonth()->toIso8601String(),
-                'end' => $r['fecha']->endOfMonth()->toIso8601String(),
-                'resourceId' => 'resumen-mes',
-                'allDay' => true,
-                'backgroundColor' => '#34d399',
-                'borderColor' => '#065f46',
-                'textColor' => '#000',
-                'tipo' => 'resumen-mes',
-            ];
-        });
+    
 
         // ------------------- SELECCIÓN SEGÚN VISTA -------------------
         $eventosResumen = collect();
@@ -179,13 +160,7 @@ class PlanificacionController extends Controller
         if ($viewType === 'resourceTimelineDay') {
             $eventosResumen = $eventosResumen->merge($resumenEventosDia);
         }
-        if ($viewType === 'resourceTimelineWeek') {
-            $eventosResumen = $eventosResumen->merge($resumenEventosDia)->merge($resumenEventosSemana);
-        }
-        if ($viewType === 'dayGridMonth') {
-            $eventosResumen = $eventosResumen->merge($resumenEventosDia)->merge($resumenEventosSemana)->merge($resumenEventosMes);
-        }
-
+      
         return $eventosResumen;
     }
 
@@ -230,12 +205,8 @@ class PlanificacionController extends Controller
         // 🔹 Traer planillas sin salidas en el rango
         $planillas = Planilla::with('obra', 'elementos')
             ->whereBetween('fecha_estimada_entrega', [$startDate, $endDate])
-
             ->get();
-        \Log::warning('Fechas del rango', [
-            'startDate' => $startDate->toDateTimeString(),
-            'endDate' => $endDate->toDateTimeString(),
-        ]);
+
 
         // 🔹 Agrupar por obra y día
         $eventos = $planillas->groupBy(function ($p) {
@@ -243,7 +214,8 @@ class PlanificacionController extends Controller
         })->map(function ($grupo) {
             $obraId = $grupo->first()->obra_id;
             $nombreObra = optional($grupo->first()->obra)->obra ?? 'Obra desconocida';
-            $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'));
+    
+$fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'))->setTime(6, 0, 0);
 
             // 👉 IDs de planillas agrupadas
             $planillasIds = $grupo->pluck('id')->toArray();
@@ -295,6 +267,7 @@ class PlanificacionController extends Controller
 
     private function getResources($eventos)
     {
+
         $resourceIds = $eventos->pluck('resourceId')->filter()->unique()->values();
         $obras = Obra::with('cliente')->whereIn('id', $resourceIds)->orderBy('obra')->get();
 
@@ -303,7 +276,7 @@ class PlanificacionController extends Controller
             'title' => $obra->obra,
             'cliente' => optional($obra->cliente)->empresa,
             'cod_obra' => $obra->cod_obra,
-             'orderIndex' => 2,
+            'orderIndex' => 2,
         ])->values();
 
         $resources->prepend([
