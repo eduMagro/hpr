@@ -34,7 +34,8 @@
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('users.index') }}">
                             <th class="p-1 border">
-                                 <x-tabla.input name="id" :value="request('id')" /></th> <!-- ID: sin filtro directo -->
+                                <x-tabla.input name="id" :value="request('id')" />
+                            </th> <!-- ID: sin filtro directo -->
                             <th class="p-1 border">
                                 <x-tabla.input name="nombre_completo" :value="request('nombre_completo')" />
                             </th>
@@ -428,15 +429,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('calendario');
 
-            // Eventos y colores desde Laravel
-            const eventosDesdeLaravel = {!! json_encode($eventos) !!};
-            const coloresTurnos = {!! json_encode($coloresTurnos) !!};
-
-            // Fechas bloqueadas por vacaciones ya solicitadas o aprobadas
-            const fechasBloqueadas = eventosDesdeLaravel
-                .filter(e => e.title === 'Solicitud pendiente' || e.title === 'Vacaciones')
-                .map(e => e.start);
-
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'es',
@@ -459,6 +451,14 @@
                         actual.add(1, 'day');
                     }
 
+                    // 🔹 Obtener eventos actuales cargados en el calendario
+                    const eventosActuales = calendar.getEvents();
+                    const fechasBloqueadas = eventosActuales
+                        .filter(e => e.title === 'V. pendiente' || e.title === 'V. denegadas' || e
+                            .title === 'Vacaciones')
+                        .map(e => moment(e.start).format('YYYY-MM-DD'));
+
+                    // 🔹 Buscar conflictos
                     const conflicto = rangoSeleccionado.find(fecha => fechasBloqueadas.includes(fecha));
                     if (conflicto) {
                         Swal.fire('🚫 No permitido',
@@ -518,7 +518,7 @@
                     });
                 },
                 editable: false,
-                events: eventosDesdeLaravel
+                events: '{{ route('users.eventos-turnos', $user->id) }}'
             });
 
             calendar.render();

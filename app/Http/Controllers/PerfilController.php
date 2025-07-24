@@ -5,27 +5,26 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Turno;
 use App\Models\AsignacionTurno;
+use App\Models\VacacionesSolicitud;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class PerfilController extends Controller
 {
+
+
     public function show(User $user)
     {
-        // 🔒 Si solo debe ver su propio perfil:
+        // 🔒 Si quieres que solo pueda ver su propio perfil:
         if (Auth::id() !== $user->id) {
             abort(403, 'No tienes permiso para ver este perfil.');
         }
-        $user = User::with(['asignacionesTurnos.turno'])->findOrFail($user->id);
-        $inicioAño = Carbon::now()->startOfYear();
-        $turnos = Turno::all();
 
-        $resumen = $this->getResumenAsistencia($user);
-        $horasMensuales = $this->getHorasMensuales($user);
-
-
-        $user->load([
+        // Recarga el usuario con todas sus relaciones necesarias
+        $user = User::with([
             'empresa',
             'categoria',
             'convenio',
@@ -43,7 +42,16 @@ class PerfilController extends Controller
             'etiquetasComoEnsamblador1',
             'etiquetasComoEnsamblador2',
             'permisosAcceso',
-        ]);
+        ])->findOrFail($user->id);
+
+        // Turnos disponibles para mostrarlos si hace falta
+        $turnos = Turno::all();
+
+        // Resumen de asistencias
+        $resumen = $this->getResumenAsistencia($user);
+
+        // Horas trabajadas del mes
+        $horasMensuales = $this->getHorasMensuales($user);
 
         return view('perfil.show', compact(
             'user',
@@ -52,7 +60,23 @@ class PerfilController extends Controller
             'horasMensuales'
         ));
     }
+    private function getResumenAsistencia(User $user): array
+    {
+        $inicioAño = Carbon::now()->startOfYear();
 
+        $conteos = AsignacionTurno::select('estado', DB::raw('count(*) as total'))
+            ->where('user_id', $user->id)
+            ->where('fecha', '>=', $inicioAño)
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        return [
+            'diasVacaciones'        => $conteos['vacaciones'] ?? 0,
+            'faltasInjustificadas'  => $conteos['injustificada'] ?? 0,
+            'faltasJustificadas'    => $conteos['justificada'] ?? 0,
+            'diasBaja'              => $conteos['baja'] ?? 0,
+        ];
+    }
     private function getHorasMensuales(User $user): array
     {
         $inicioMes = Carbon::now()->startOfMonth();
@@ -104,24 +128,6 @@ class PerfilController extends Controller
             'horas_deberia_llevar'   => $horasDeberiaLlevar,
             'dias_con_errores'       => $diasConErrores,
             'horas_planificadas_mes' => $horasPlanificadasMes,
-        ];
-    }
-
-    private function getResumenAsistencia(User $user): array
-    {
-        $inicioAño = Carbon::now()->startOfYear();
-
-        $conteos = AsignacionTurno::select('estado', DB::raw('count(*) as total'))
-            ->where('user_id', $user->id)
-            ->where('fecha', '>=', $inicioAño)
-            ->groupBy('estado')
-            ->pluck('total', 'estado');
-
-        return [
-            'diasVacaciones'        => $conteos['vacaciones'] ?? 0,
-            'faltasInjustificadas'  => $conteos['injustificada'] ?? 0,
-            'faltasJustificadas'    => $conteos['justificada'] ?? 0,
-            'diasBaja'              => $conteos['baja'] ?? 0,
         ];
     }
 }
