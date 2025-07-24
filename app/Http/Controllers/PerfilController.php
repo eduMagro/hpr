@@ -118,7 +118,7 @@ class PerfilController extends Controller
         }
 
         // Horas que debería llevar hasta hoy
-        $horasDeberiaLlevar = ($diasHastaHoy - 1) * 8;
+        $horasDeberiaLlevar = ($diasHastaHoy) * 8;
 
         // Horas planificadas en el mes completo (todas las asignaciones activas × 8)
         $horasPlanificadasMes = $totalAsignacionesMes * 8;

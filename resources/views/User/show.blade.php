@@ -3,105 +3,13 @@
     <x-menu.usuarios :totalSolicitudesPendientes="$totalSolicitudesPendientes ?? 0" />
 
     <div class="container mx-auto px-4 py-6">
-        <div class="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto mb-6 border border-gray-200">
-            <!-- Encabezado compacto -->
-            <div class="flex gap-6 border-b pb-6 items-center">
-                <!-- Avatar con botón de cambiar foto -->
-                <div class="relative flex-shrink-0 mx-auto md:mx-0">
-                    @if ($user->ruta_imagen)
-                        <img src="{{ $user->ruta_imagen }}" alt="Foto de perfil"
-                            class="w-24 h-24 rounded-full object-cover ring-4 ring-blue-500 shadow-lg">
-                    @else
-                        <div
-                            class="w-24 h-24 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-3xl font-bold text-gray-700 shadow-inner ring-4 ring-blue-500">
-                            {{ strtoupper(substr($user->name, 0, 1)) }}
-                        </div>
-                    @endif
-
-                    <!-- Botón cambiar foto sobre la imagen -->
-                    <form method="POST" action="{{ route('usuario.subirImagen') }}" enctype="multipart/form-data"
-                        class="absolute bottom-0 right-0">
-                        @csrf
-                        <label
-                            class="flex items-center justify-center bg-white border border-gray-300 rounded-full p-1 shadow-md cursor-pointer hover:bg-gray-50">
-                            <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                    d="M4 3a2 2 0 00-2 2v3.586A1.5 1.5 0 003.5 10H4v6a2 2 0 002 2h8a2 2 0 002-2v-6h.5A1.5 1.5 0 0018 8.586V5a2 2 0 00-2-2H4zm3 3a1 1 0 112 0 1 1 0 01-2 0zm2 4a2 2 0 114 0 2 2 0 01-4 0z" />
-                            </svg>
-                            <input type="file" name="imagen" accept="image/*" class="hidden"
-                                onchange="this.form.submit()">
-                        </label>
-                    </form>
-                </div>
-
-                <!-- Datos principales -->
-                <div class="flex-1">
-                    <h2 class="text-2xl font-bold text-gray-900 leading-tight">
-                        {{ $user->nombre_completo }}
-                    </h2>
-                    <p class="text-sm text-gray-500 mb-2">Ficha del trabajador</p>
-
-                </div>
-            </div>
-            <!-- Contenido en dos columnas -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Información del usuario -->
-                <div>
-
-                    <div>📧 <span class="text-gray-700">{{ $user->email }}</span></div>
-                    <div>📞 <span class="text-gray-700">{{ auth()->user()->telefono ?? 'Sin teléfono' }}</span>
-                    </div>
-                    <p><strong>Categoría:</strong> <span
-                            class="text-gray-600">{{ $user->categoria->nombre ?? 'N/A' }}</span></p>
-                    <p><strong>Especialidad:</strong> <span
-                            class="text-gray-600">{{ $user->maquina->nombre ?? 'N/A' }}</span></p>
-                </div>
-
-                <!-- Resumen de asistencias -->
-                <div>
-
-                    <div class="bg-gray-100 p-3 rounded-lg mb-4">
-                        <p><strong>Vacaciones asignadas:</strong> {{ $resumen['diasVacaciones'] }}</p>
-                        <p><strong>Faltas injustificadas:</strong> {{ $resumen['faltasInjustificadas'] }}</p>
-                        <p><strong>Faltas justificadas:</strong> {{ $resumen['faltasJustificadas'] }}</p>
-                        <p><strong>Días de baja:</strong> {{ $resumen['diasBaja'] }}</p>
-                    </div>
-
-                    <!-- Resumen de horas -->
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">⏱️ Horas trabajadas (mes actual)</h3>
-                    <div class="bg-gray-100 p-3 rounded-lg">
-                        <p><strong>Horas trabajadas:</strong>
-                            {{ number_format($horasMensuales['horas_trabajadas'], 2, ',', '.') }} h
-                        </p>
-                        <p><strong>Horas que debería llevar hasta hoy:</strong>
-                            {{ number_format($horasMensuales['horas_deberia_llevar'], 2, ',', '.') }} h
-                        </p>
-                        <p><strong>Horas planificadas del mes:</strong>
-                            {{ number_format($horasMensuales['horas_planificadas_mes'], 2, ',', '.') }} h
-                        </p>
-                        <p class="text-red-600 font-semibold">
-                            ⚠️ Días con errores de fichaje: {{ $horasMensuales['dias_con_errores'] }}
-                        </p>
-                    </div>
-                </div>
-            </div>
-            @if ($user->id === auth()->id())
-                <!-- Descargar nóminas -->
-                <div class="mt-6 border-t pt-6">
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>
-                    <form action="{{ route('nominas.descargarMes') }}" method="GET"
-                        class="flex flex-wrap items-center gap-3 max-w-md">
-                        @csrf
-                        <input type="month" name="mes_anio" id="mes_anio" required
-                            class="flex-1 border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                        <button type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow transition">
-                            📥
-                        </button>
-                    </form>
-                </div>
-            @endif
-        </div>
+        @if (auth()->user()->rol === 'operario')
+            <x-ficha-operario :user="$user" :resumen="$resumen" />
+        @elseif (auth()->user()->rol === 'oficina')
+            <x-ficha-oficina :user="$user" :resumen="$resumen" />
+        @else
+            {{-- --}}
+        @endif
 
 
         <div class="bg-white rounded-lg shadow-lg">

@@ -243,32 +243,8 @@ class ProfileController extends Controller
         $totalSolicitudesPendientes = VacacionesSolicitud::where('estado', 'pendiente')->count();
         $user = auth()->user();
 
-        $inicioAño = Carbon::now()->startOfYear();
-        $diasVacaciones = $user->asignacionesTurnos
-            ->where('estado', 'vacaciones')
-            ->where('fecha', '>=', $inicioAño)
-            ->count();
-
         // Obtener todos los nombres de turnos válidos (mañana, tarde, noche, festivo, etc.)
         $turnosValidos = Turno::pluck('nombre')->toArray();
-
-        // Fecha de inicio (1 de enero del año actual)
-        $inicioAño = Carbon::now()->startOfYear();
-
-        $faltasInjustificadas = $user->asignacionesTurnos
-            ->where('estado', 'falta_injustificada')
-            ->where('fecha', '>=', $inicioAño)
-            ->count();
-
-        $faltasJustificadas = $user->asignacionesTurnos
-            ->where('estado', 'falta_justificada')
-            ->where('fecha', '>=', $inicioAño)
-            ->count();
-
-        $diasBaja = AsignacionTurno::where('user_id', $user->id)
-            ->where('estado', 'baja')
-            ->where('fecha', '>=', $inicioAño)
-            ->count();
 
         $ordenables = [
             'id' => $this->getOrdenamiento('id', 'ID'),
@@ -282,11 +258,6 @@ class ProfileController extends Controller
             'turno' => $this->getOrdenamiento('turno', 'Turno'),
             'estado' => $this->getOrdenamiento('estado', 'Estado'),
         ];
-
-        $hoy = Carbon::today()->toDateString();
-        $turnosHoy = AsignacionTurno::where('fecha', $hoy)
-            ->join('turnos', 'asignaciones_turnos.turno_id', '=', 'turnos.id')
-            ->pluck('turnos.nombre')->unique()->sort();
 
         // Obtener usuarios según filtros (sin paginar aún)
         $usuarios = $this->aplicarFiltros($request)->with('categoria', 'empresa', 'maquina')->get();
@@ -314,100 +285,6 @@ class ProfileController extends Controller
 
         $filtrosActivos = $this->filtrosActivos($request);
 
-        $eventosFichajes = $this->getEventosFichajes($user);
-        $coloresTurnos = $this->getColoresTurnosYEstado();
-
-        $asignaciones = AsignacionTurno::where('user_id', $user->id)
-            ->with('turno')
-            ->get();
-
-        $eventosAsignaciones = $asignaciones->flatMap(function ($asig) use ($coloresTurnos) {
-            $eventos = [];
-
-            // Turno (si existe)
-            if ($asig->turno) {
-                $nombre = $asig->turno->nombre;
-                $color = $coloresTurnos[$nombre] ?? ['bg' => '#708090', 'border' => '#505d6e', 'text' => '#FFFFFF'];
-
-                $eventos[] = [
-                    'title' => ucfirst($nombre),
-                    'start' => $asig->fecha,
-                    'allDay' => true,
-                    'backgroundColor' => $color['bg'],
-                    'borderColor' => $color['border'],
-                    'textColor' => $color['text'],
-                ];
-            }
-
-            // Estado (si distinto de "activo")
-            if ($asig->estado && strtolower($asig->estado) !== 'activo') {
-                $estado = strtolower($asig->estado);
-                $color = $coloresTurnos[$estado] ?? ['bg' => '#6b7280', 'border' => '#4b5563', 'text' => '#FFFFFF'];
-
-                $eventos[] = [
-                    'title' => ucfirst($estado),
-                    'start' => $asig->fecha,
-                    'allDay' => true,
-                    'backgroundColor' => $color['bg'],
-                    'borderColor' => $color['border'],
-                    'textColor' => $color['text'],
-                ];
-            }
-
-            return $eventos;
-        });
-
-
-        // Festivos comunes
-        $festivos = Festivo::select('fecha', 'titulo')->get()->map(function ($festivo) {
-            return [
-                'title' => $festivo->titulo,
-                'start' => $festivo->fecha,
-                'backgroundColor' => '#ff2800',
-                'borderColor' => '#b22222',
-                'textColor' => 'white',
-                'allDay' => true,
-                'editable' => true
-            ];
-        })->toArray();
-
-        // Solicitudes pendientes y denegadas
-        $solicitudesVacaciones = VacacionesSolicitud::where('user_id', $user->id)
-            ->whereIn('estado', ['pendiente', 'denegada'])
-            ->get()
-            ->flatMap(function ($solicitud) {
-                if ($solicitud->estado === 'pendiente') {
-                    $color = '#fcdde8';
-                    $textColor = 'black';
-                    $title = 'V. pendiente';
-                } else {
-                    $color = '#000000';
-                    $textColor = 'white';
-                    $title = 'V. denegadas';
-                }
-
-                return collect(CarbonPeriod::create($solicitud->fecha_inicio, $solicitud->fecha_fin)->toArray())
-                    ->map(function ($fecha) use ($title, $color, $textColor) {
-                        return [
-                            'title' => $title,
-                            'start' => $fecha->toDateString(),
-                            'end' => $fecha->copy()->addDay()->toDateString(),
-                            'allDay' => true,
-                            'backgroundColor' => $color,
-                            'borderColor' => $color,
-                            'textColor' => $textColor,
-                        ];
-                    });
-            })->values();
-
-        // Merge final de eventos
-        $eventos = array_merge(
-            $eventosFichajes->toArray(),
-            $eventosAsignaciones->toArray(),
-            $festivos,
-            $solicitudesVacaciones->toArray()
-        );
-
         $resumen = $this->getResumenAsistencia($user);
         $horasMensuales = $this->getHorasMensuales($user);
 
@@ -417,20 +294,13 @@ class ProfileController extends Controller
             'obras',
             'user',
             'empresas',
-            'eventos',
-            'coloresTurnos',
             'categorias',
             'maquinas',
             'roles',
             'turnos',
-            'turnosHoy',
             'filtrosActivos',
             'ordenables',
-            'faltasInjustificadas',
-            'faltasJustificadas',
-            'diasBaja',
             'totalSolicitudesPendientes',
-            'diasVacaciones',
             'obrasHierrosPacoReyes',
             'resumen',
             'horasMensuales'
@@ -495,7 +365,7 @@ class ProfileController extends Controller
         }
 
         // Horas que debería llevar hasta hoy
-        $horasDeberiaLlevar = ($diasHastaHoy - 1) * 8;
+        $horasDeberiaLlevar = ($diasHastaHoy) * 8;
 
         // Horas planificadas en el mes completo (todas las asignaciones activas × 8)
         $horasPlanificadasMes = $totalAsignacionesMes * 8;
