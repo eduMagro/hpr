@@ -24,7 +24,7 @@ class DividirNominasJob implements ShouldQueue
     protected $rutaAbsoluta;
     protected $mesAnio;
 
-   protected $userId;
+    protected $userId;
 
     public function __construct($rutaAbsoluta, $mesAnio, $userId)
     {
@@ -42,21 +42,18 @@ class DividirNominasJob implements ShouldQueue
         $fecha = Carbon::createFromFormat('Y-m', $this->mesAnio);
         $mesEnEspañol = ucfirst($fecha->locale('es')->translatedFormat('F'));
         $anio = $fecha->format('Y');
-\Log::info('Empezamos cogiendo mes y año');
-        // Carpeta final
-$carpetaBaseRelativa = 'private/nominas/nominas_' . $anio . '/nomina_' . $mesEnEspañol . '_' . $anio;
 
-// 👉 Crear la carpeta solo si no existe (NO la borramos)
-if (!Storage::exists($carpetaBaseRelativa)) {
-    Storage::makeDirectory($carpetaBaseRelativa);
-    \Log::info('✅ Carpeta creada: ' . $carpetaBaseRelativa);
-} else {
-    \Log::info('ℹ️ Carpeta ya existente, no se borra: ' . $carpetaBaseRelativa);
-}
+        // Carpeta final
+        $carpetaBaseRelativa = 'private/nominas/nominas_' . $anio . '/nomina_' . $mesEnEspañol . '_' . $anio;
+
+        // 👉 Crear la carpeta solo si no existe (NO la borramos)
+        if (!Storage::exists($carpetaBaseRelativa)) {
+            Storage::makeDirectory($carpetaBaseRelativa);
+        }
 
 
         $carpetaBaseAbsoluta = storage_path('app/' . $carpetaBaseRelativa);
-\Log::info('Creamos la carpeta con el mes y el año');
+
         // mapa de DNIs
         $usuarios = User::all();
         $mapaDnis = [];
@@ -111,31 +108,28 @@ if (!Storage::exists($carpetaBaseRelativa)) {
         }
 
         // Construimos el mensaje de alerta
-            if (!empty($dnisNoEncontrados)) {
-                $mensajeAlerta = 'Nóminas importadas. DNIs no encontrados: ' . implode(', ', $dnisNoEncontrados);
+        if (!empty($dnisNoEncontrados)) {
+            $mensajeAlerta = 'Nóminas importadas (' . $mesEnEspañol . ' - ' . $anio .  '). DNIs no encontrados: ' . implode(', ', $dnisNoEncontrados);
 
-try {
-    $alerta = Alerta::create([
-        'user_id_1'       => $this->userId,
-        'user_id_2'       => null,
-        'destino'         => null,
-        'destinatario'    => null,
-        'destinatario_id' => $this->userId,
-        'mensaje'         => $mensajeAlerta,
-        'tipo'            => 'warning',
-    ]);
+            try {
+                $alerta = Alerta::create([
+                    'user_id_1'       => $this->userId,
+                    'user_id_2'       => null,
+                    'destino'         => null,
+                    'destinatario'    => null,
+                    'destinatario_id' => $this->userId,
+                    'mensaje'         => $mensajeAlerta,
+                    'tipo'            => 'warning',
+                ]);
 
-    AlertaLeida::create([
-        'alerta_id' => $alerta->id,
-        'user_id'   => $this->userId,
-        'leida_en'  => null,
-    ]);
-
-   
-} catch (\Exception $e) {
-    \Log::error('❌ Error creando alerta o alertaLeida: ' . $e->getMessage());
-}
-
+                AlertaLeida::create([
+                    'alerta_id' => $alerta->id,
+                    'user_id'   => $this->userId,
+                    'leida_en'  => null,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('❌ Error creando alerta o alertaLeida: ' . $e->getMessage());
             }
+        }
     }
 }
