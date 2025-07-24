@@ -127,6 +127,7 @@ class MovimientoController extends Controller
 
         return $query;
     }
+
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
@@ -236,6 +237,7 @@ class MovimientoController extends Controller
         return '<a href="' . $url . '" class="inline-flex items-center space-x-1">' .
             '<span>' . $titulo . '</span><span class="text-xs">' . $icon . '</span></a>';
     }
+
     private function aplicarOrdenamiento($query, Request $request)
     {
         // → Columnas que SÍ se pueden ordenar

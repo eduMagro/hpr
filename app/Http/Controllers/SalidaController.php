@@ -12,6 +12,7 @@ use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Models\EmpresaTransporte;
 use App\Models\Camion;
+use App\Models\Movimiento;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -137,7 +138,7 @@ class SalidaController extends Controller
 
             // Verificamos que el estado actual sea pendiente antes de cambiarlo a completado
             if ($salida->estado != 'pendiente') {
-                return response()->json(['message' => 'La salida ya estaba completada de antes.'], 400);
+                return response()->json(['message' => 'La salida ya estaba completada.'], 400);
             }
             // Asignamos el usuario autenticado (gruista)
             $salida->user_id = auth()->id();
@@ -154,6 +155,47 @@ class SalidaController extends Controller
         } catch (\Exception $e) {
             // Capturamos cualquier error y retornamos un mensaje
             return response()->json(['message' => 'Hubo un error al completar la salida. ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function completarDesdeMovimiento($movimientoId)
+    {
+        try {
+            // 🔹 Buscar el movimiento
+            $movimiento = \App\Models\Movimiento::findOrFail($movimientoId);
+
+            // Validar que efectivamente es tipo salida
+            if ($movimiento->tipo !== 'salida') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El movimiento no es de tipo salida.'
+                ], 422);
+            }
+
+            // 🔹 Actualizar el movimiento
+            $movimiento->estado = 'completado';
+            $movimiento->fecha_ejecucion = now();
+            $movimiento->ejecutado_por = auth()->id();
+            $movimiento->save();
+
+            // 🔹 Actualizar la salida asociada
+            if ($movimiento->salida_id) {
+                $salida = \App\Models\Salida::find($movimiento->salida_id);
+                if ($salida) {
+                    $salida->estado = 'completada';
+                    $salida->save();
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Movimiento y salida marcados como completados.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al completar la salida: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -212,7 +254,6 @@ class SalidaController extends Controller
             'empresas' => $empresas,
         ]);
     }
-
 
     public function store(Request $request)
     {
@@ -571,7 +612,6 @@ class SalidaController extends Controller
         }
     }
 
-
     public function export($mes)
     {
         $meses = [
@@ -687,8 +727,6 @@ class SalidaController extends Controller
             return redirect()->route('salidas.index')->with('error', 'Hubo un problema al exportar las salidas: ' . $e->getMessage());
         }
     }
-
-
 
     public function actualizarFechaSalida(Request $request)
     {

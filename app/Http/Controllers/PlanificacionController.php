@@ -7,6 +7,7 @@ use App\Models\Planilla;
 use App\Models\Paquete;
 use App\Models\Salida;
 use App\Models\Obra;
+use App\Models\Camion;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -48,11 +49,11 @@ class PlanificacionController extends Controller
         ]);
 
         // 👉 Obtenemos camiones con su empresa
-    $camiones = \App\Models\Camion::with('empresaTransporte:id,nombre')
-        ->get(['id', 'modelo', 'empresa_id']);
+        $camiones = Camion::with('empresaTransporte:id,nombre')
+            ->get(['id', 'modelo', 'empresa_id']);
         return view('planificacion.index', [
             'fechas' => $fechas,
-             'camiones' => $camiones,
+            'camiones' => $camiones,
         ]);
     }
 
@@ -235,6 +236,15 @@ class PlanificacionController extends Controller
             $todasCompletadas = $grupo->every(fn($p) => $p->estado === 'completada');
             $color = $todasCompletadas ? '#22c55e' : '#9CA3AF';
 
+            // Antes del return de cada evento, obtén todas las salidas relacionadas con esas planillas
+            // 👉 Buscar primero los paquetes asociados a esas planillas
+            $paqueteIds = Paquete::whereIn('planilla_id', $planillasIds)->pluck('id');
+
+            // 👉 Buscar las salidas que tengan esos paquetes en la tabla pivote
+            $salidaRelacionada = Salida::whereHas('paquetes', function ($q) use ($paqueteIds) {
+                $q->whereIn('paquete_id', $paqueteIds);
+            })->get();
+
             return [
                 'title' => $nombreObra,
                 'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
@@ -255,6 +265,8 @@ class PlanificacionController extends Controller
                     'fabricandoKg' => $fabricando,
                     'pendientesKg' => $pendientes,
                     'todasCompletadas' => $todasCompletadas,
+                    'tieneSalidas' => $salidaRelacionada->count() > 0,
+                    'salidas_codigos' => $salidaRelacionada->pluck('codigo_salida')->toArray(),
                 ],
             ];
         })->values();
@@ -405,5 +417,4 @@ class PlanificacionController extends Controller
     {
         abort(404); // o haz algo según necesites
     }
-
 }

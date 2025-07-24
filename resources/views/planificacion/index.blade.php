@@ -37,7 +37,6 @@
         </div>
     </div>
 
-
     <!-- FullCalendar -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
@@ -49,11 +48,9 @@
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
     <script>
-    // Hacemos disponible la lista de camiones al JS
-    window.camiones = @json($camiones);
-</script>
-
-
+        // Hacemos disponible la lista de camiones al JS
+        window.camiones = @json($camiones);
+    </script>
 
     <script>
         let calendar;
@@ -208,8 +205,13 @@
                 eventContent: function(arg) {
                     const bg = arg.event.backgroundColor || '#9CA3AF';
                     const props = arg.event.extendedProps;
-                    let html =
-                        `<div style="background-color:${bg}; color:white;" class="rounded px-2 py-1 text-xs font-semibold">${arg.event.title}`;
+
+                    let html = `
+      <div style="background-color:${bg}; color:white;" class="rounded px-2 py-1 text-xs font-semibold">
+        ${arg.event.title}
+    `;
+
+                    // 👉 datos de la planilla
                     if (props.tipo === 'planilla') {
                         html +=
                             `<br><span class="text-[10px] font-normal">🧱 ${Number(props.pesoTotal).toLocaleString()} kg</span>`;
@@ -219,22 +221,32 @@
                             html +=
                                 `<br><span class="text-[10px] font-normal">⌀ ${props.diametroMedio} mm</span>`;
                         }
+
+                        // 👉 si tiene salidas asociadas, las listamos
+                        if (props.tieneSalidas && Array.isArray(props.salidas_codigos) && props.salidas_codigos
+                            .length > 0) {
+                            html += `<div class="mt-1 text-[10px] font-normal bg-yellow-400 text-black rounded px-1 py-0.5 inline-block">
+                        🔗 Salidas: ${props.salidas_codigos.join(', ')}
+                     </div>`;
+                        }
                     }
+
                     html += `</div>`;
                     return {
                         html
                     };
                 },
+
                 eventDidMount: function(info) { // 🔹 abre 1 (A)
                     const props = info.event.extendedProps;
 
                     // 👉 Tooltip planilla
                     if (props.tipo === 'planilla') { // 🔹 abre 2 (B)
                         let contenidoTooltip = `
-            ✅ Fabricados: ${Number(props.fabricadosKg).toLocaleString()} kg<br>
-            🔄 Fabricando: ${Number(props.fabricandoKg).toLocaleString()} kg<br>
-            ⏳ Pendientes: ${Number(props.pendientesKg).toLocaleString()} kg
-        `;
+                        ✅ Fabricados: ${Number(props.fabricadosKg).toLocaleString()} kg<br>
+                        🔄 Fabricando: ${Number(props.fabricandoKg).toLocaleString()} kg<br>
+                        ⏳ Pendientes: ${Number(props.pendientesKg).toLocaleString()} kg
+                    `;
                         tippy(info.el, {
                             content: contenidoTooltip,
                             allowHTML: true,
@@ -271,37 +283,46 @@
 
                                             // Generamos dinámicamente las opciones de camiones
                                             let optionsHtml = camiones.map(
-                                            camion => {
-                                                let empresa = camion
-                                                    .empresa_transporte
-                                                    ?.nombre ??
-                                                    'Sin empresa';
-                                                return `<option value="${camion.id}">${camion.modelo} - ${empresa}</option>`;
-                                            }).join('');
+                                                camion => {
+                                                    let empresa = camion
+                                                        .empresa_transporte
+                                                        ?.nombre ??
+                                                        'Sin empresa';
+                                                    return `<option value="${camion.id}">${camion.modelo} - ${empresa}</option>`;
+                                                }).join('');
 
-                                           // ejemplo de creación de un <select> dinámico para el Swal
-let opcionesCamiones = window.camiones.map(c => {
-    let empresa = c.empresa_transporte ? c.empresa_transporte.nombre : 'Sin empresa';
-    return `<option value="${c.id}">${c.modelo} (${empresa})</option>`;
-}).join('');
+                                            // ejemplo de creación de un <select> dinámico para el Swal
+                                            let opcionesCamiones = window.camiones
+                                                .map(c => {
+                                                    let empresa = c
+                                                        .empresa_transporte ? c
+                                                        .empresa_transporte
+                                                        .nombre : 'Sin empresa';
+                                                    return `<option value="${c.id}">${c.modelo} (${empresa})</option>`;
+                                                }).join('');
 
-Swal.fire({
-    title: 'Selecciona un camión',
-    html: `
+                                            Swal.fire({
+                                                title: 'Selecciona un camión',
+                                                html: `
         <select id="swalCamion" class="swal2-select" style="width:100%;padding:5px;">
             ${opcionesCamiones}
         </select>
     `,
-    preConfirm: () => {
-        const seleccionado = document.getElementById('swalCamion').value;
-        return seleccionado;
-    },
-    showCancelButton: true,
-    confirmButtonText: 'Confirmar'
-}).then(result => {
-    if(result.isConfirmed) {
-        const camionId = result.value;
-   
+                                                preConfirm: () => {
+                                                    const seleccionado =
+                                                        document
+                                                        .getElementById(
+                                                            'swalCamion'
+                                                        ).value;
+                                                    return seleccionado;
+                                                },
+                                                showCancelButton: true,
+                                                confirmButtonText: 'Confirmar'
+                                            }).then(result => {
+                                                if (result.isConfirmed) {
+                                                    const camionId = result
+                                                        .value;
+
                                                     // Llamada AJAX
                                                     fetch('/planificacion/crear-salida-desde-calendario', {
                                                             method: 'POST',
@@ -310,7 +331,7 @@ Swal.fire({
                                                                 'X-CSRF-TOKEN': document
                                                                     .querySelector(
                                                                         'meta[name="csrf-token"]'
-                                                                        )
+                                                                    )
                                                                     .content
                                                             },
                                                             body: JSON
@@ -324,13 +345,13 @@ Swal.fire({
                                                         .then(data => {
                                                             if (data
                                                                 .success
-                                                                ) {
+                                                            ) {
                                                                 Swal.fire(
                                                                     '✅',
                                                                     data
                                                                     .message,
                                                                     'success'
-                                                                    );
+                                                                );
                                                                 calendar
                                                                     .refetchEvents();
                                                                 calendar
@@ -341,24 +362,24 @@ Swal.fire({
                                                                     data
                                                                     .message,
                                                                     'warning'
-                                                                    );
+                                                                );
                                                             }
                                                         })
                                                         .catch(err => {
                                                             console
                                                                 .error(
                                                                     err
-                                                                    );
+                                                                );
                                                             Swal.fire(
                                                                 '❌',
                                                                 'Hubo un problema al crear la salida.',
                                                                 'error'
-                                                                );
+                                                            );
                                                         });
                                                 }
                                             });
                                         });
-                                       
+
                                     } // 🔹 cierra 6 (F)
                                 } // 🔹 cierra 5 (E)
                             }); // 🔹 cierra 4 (D)
@@ -368,8 +389,8 @@ Swal.fire({
                     // 👉 Tooltip y clic derecho para salidas
                     if (props.tipo === 'salida') { // 🔹 abre 14 (N)
                         let contenidoTooltip = '';
-                         const camion = props.camion ? ` (${props.camion})` : '';
-    contenidoTooltip += `🚛 ${props.empresa}${camion}<br>`;
+                        const camion = props.camion ? ` (${props.camion})` : '';
+                        contenidoTooltip += `🚛 ${props.empresa}${camion}<br>`;
                         if (props.comentario) contenidoTooltip += `📝 ${props.comentario}`;
                         if (contenidoTooltip) {
                             tippy(info.el, {
@@ -413,7 +434,7 @@ Swal.fire({
                                         .then(res => res.json())
                                         .then(data => { // 🔹 abre 18 (R)
                                             if (data.success) { // 🔹 abre 19 (S)
-                                             
+
                                                 calendar.refetchEvents();
                                             }
                                         }) // 🔹 cierra 18 (R)

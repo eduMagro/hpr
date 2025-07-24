@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Maquina;
+use App\Models\Salida;
 use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Models\Producto;
@@ -143,6 +144,8 @@ class MaquinaController extends Controller
             'productos'
         ])->findOrFail($id);
 
+        // 👉 Antes de cargar la vista, ejecutamos el método auxiliar
+        $this->activarMovimientosSalidasHoy();
         // ---------------------------------------------------------------
         // 2) Buscar la ubicación vinculada al código de la máquina
         // ---------------------------------------------------------------
@@ -435,7 +438,52 @@ class MaquinaController extends Controller
             'turnoHoy'
         ));
     }
+    private function activarMovimientosSalidasHoy(): void
+    {
+        // 👉 Fecha actual (sin hora)
+        $hoy = Carbon::today();
 
+        // 🔎 Buscar todas las salidas programadas para hoy
+        $salidasHoy = Salida::whereDate('fecha_salida', $hoy)->get();
+
+        foreach ($salidasHoy as $salida) {
+            // 🔎 Comprobar si ya existe un movimiento asociado a esta salida
+            $existeMovimiento = Movimiento::where('salida_id', $salida->id)
+                ->where('tipo', 'salida')
+                ->exists();
+
+            if (!$existeMovimiento) {
+
+                // 👉 Datos básicos
+                $camion = optional($salida->camion)->modelo ?? 'Sin modelo';
+                $empresaTransporte = optional($salida->empresaTransporte)->nombre ?? 'Sin empresa';
+                $horaSalida = \Carbon\Carbon::parse($salida->fecha_salida)->format('H:i');
+                $codigoSalida = $salida->codigo_salida;
+                // 👉 Armar listado de obras y clientes relacionados
+                $obrasClientes = $salida->salidaClientes->map(function ($sc) {
+                    $obra = optional($sc->obra)->obra ?? 'Sin obra';
+                    $cliente = optional($sc->cliente)->empresa ?? 'Sin cliente';
+                    return "$obra - $cliente";
+                })->filter()->implode(', ');
+
+                // 👉 Construir la descripción final (sin usar optional de nuevo)
+                $descripcion = "$codigoSalida. Se solicita carga del camión ($camion) - ($empresaTransporte) para [$obrasClientes], tiene que estar listo a las $horaSalida";
+
+
+                // ⚡ Crear movimiento nuevo
+                Movimiento::create([
+                    'tipo' => 'salida',
+                    'salida_id' => $salida->id,
+                    'estado' => 'pendiente',
+                    'fecha_solicitud' => now(),
+                    'solicitado_por' => auth()->id(),
+                    'prioridad' => 2,
+                    'descripcion' => $descripcion,
+                    // 👉 Rellena otros campos si lo necesitas, por ejemplo prioridad o descripción
+                ]);
+            }
+        }
+    }
     public function create()
     {
         if (auth()->user()->rol !== 'oficina') {

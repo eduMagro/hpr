@@ -569,7 +569,7 @@ class PedidoController extends Controller
             ]);
 
             Movimiento::create([
-                'tipo'                => 'descarga materia prima',
+                'tipo'                => 'entrada',
                 'estado'              => 'pendiente',
                 'descripcion'         => $descripcion,
                 'fecha_solicitud'     => now(),

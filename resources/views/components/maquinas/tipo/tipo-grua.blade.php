@@ -57,11 +57,18 @@
                                 </button>
                             @endif
 
-                            @if (strtolower($mov->tipo) === 'descarga materia prima' && $mov->pedido)
+                            @if (strtolower($mov->tipo) === 'entrada' && $mov->pedido)
                                 <button onclick='abrirModalPedidoDesdeMovimiento(@json($mov))'
                                     style="background-color: orange; color: white;"
                                     class="text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto border border-black">
                                     🏗️ Ver pedido
+                                </button>
+                            @endif
+
+                            @if (strtolower($mov->tipo) === 'salida')
+                                <button onclick='ejecutarSalida(@json($mov->id))'
+                                    class="bg-purple-600 hover:bg-purple-700 text-white text-sm px-3 py-2 rounded mt-2 w-full sm:w-auto">
+                                    🚛 Ejecutar salida
                                 </button>
                             @endif
 
@@ -141,4 +148,42 @@
             mostrarPagina(1);
         }
     });
+</script>
+<script>
+    function ejecutarSalida(movimientoId) {
+        Swal.fire({
+            title: '¿Ejecutar salida?',
+            text: '¿Seguro que quieres marcar esta salida como ejecutada?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, ejecutar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // 👉 Llamada AJAX directamente aquí
+                fetch(`/salidas/completar-desde-movimiento/${movimientoId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('✅', data.message, 'success');
+                            // 👉 Recargar la página o quitar el elemento de la lista
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            Swal.fire('⚠️', data.message, 'warning');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Swal.fire('❌', 'Hubo un error al completar la salida.', 'error');
+                    });
+            }
+        });
+    }
 </script>
