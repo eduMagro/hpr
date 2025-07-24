@@ -31,14 +31,39 @@
             </form>
         </div>
 
-        {{-- Datos básicos --}}
+        {{-- Datos principales --}}
         <div class="text-center md:text-left max-w-full overflow-hidden">
             <p class="text-lg font-semibold break-words">{{ $user->nombre_completo }}</p>
-            <p class="text-sm text-gray-500 break-words">{{ ucfirst($user->rol) }}</p>
-            <p class="break-all text-sm md:text-base">📧 {{ $user->email }}</p>
-            <p class="break-all text-sm md:text-base">
-                📞 {{ $user->movil_empresa ?? ($user->movil_personal ?? 'Sin teléfono') }}
-            </p>
+            <p class="text-sm text-gray-500">Oficina</p>
+
+            {{-- Departamentos --}}
+            <div class="mt-2 flex flex-wrap justify-center md:justify-start gap-2">
+                @forelse($user->departamentos as $dep)
+                    <span
+                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 break-words">
+                        {{ $dep->nombre }}
+                        @if ($dep->pivot && $dep->pivot->rol_departamental)
+                            <span class="ml-1 text-gray-500 text-[10px]">({{ $dep->pivot->rol_departamental }})</span>
+                        @endif
+                    </span>
+                @empty
+                    <span class="text-sm text-gray-500 italic">Sin departamentos asignados</span>
+                @endforelse
+            </div>
+
+            {{-- Contactos --}}
+            <p class="mt-2 break-all text-sm md:text-base">📧 {{ $user->email }}</p>
+            @if ($user->movil_empresa)
+                <p class="break-all text-sm md:text-base">📞 <span class="font-semibold">Empresa:</span>
+                    {{ $user->movil_empresa }}</p>
+            @endif
+            @if ($user->movil_personal)
+                <p class="break-all text-sm md:text-base">📱 <span class="font-semibold">Personal:</span>
+                    {{ $user->movil_personal }}</p>
+            @endif
+            @if (!$user->movil_empresa && !$user->movil_personal)
+                <p class="italic text-gray-500 text-sm">Sin teléfonos registrados</p>
+            @endif
         </div>
     </div>
 
