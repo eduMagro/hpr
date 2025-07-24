@@ -1,57 +1,10 @@
 <x-app-layout>
     <x-slot name="title">Planificación - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Planificación de Salidas') }}
-        </h2>
-    </x-slot>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-    </style>
-    <!-- Contenedor de las dos columnas -->
+
     <div class="w-full">
-        <!-- Acciones visibles en escritorio -->
-        <div class="hidden sm:flex sm:mt-0 w-full">
+        <x-menu.salidas />
 
-            <a href="{{ route('salidas.create') }}"
-                class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-none transition">
-                Crear Salida con más de una obra
-            </a>
-
-        </div>
-        <!-- Botonera responsive para planificación (solo en móvil) -->
-        <div class="sm:hidden relative" x-data="{ open: false }">
-            <!-- Botón que abre el menú -->
-            <button @click="open = !open"
-                class="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 shadow transition">
-                Opciones
-            </button>
-
-            <!-- Menú desplegable estilizado -->
-            <div x-show="open" x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100"
-                x-transition:leave-end="opacity-0 scale-95" @click.away="open = false"
-                class="absolute z-30 mt-0 w-1/2 bg-white border border-gray-200 rounded-b-lg shadow-xl overflow-hidden divide-y divide-gray-200"
-                x-cloak>
-
-
-                <a href="{{ route('salidas.create') }}"
-                    class="block px-4 py-3 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition text-sm font-medium">
-                    ➕ Crear Nueva Salida
-                </a>
-            </div>
-        </div>
-
-        <!-- Acciones visibles en escritorio -->
-
-        <!-- 📅 Calendario (Derecha) -->
-
-
-
-        <div class="w-full bg-white">
+        <div class="w-full bg-white pt-4">
             <div class="mb-6 flex flex-col md:flex-row gap-4 justify-center">
                 <!-- Resumen Semanal -->
                 <div class="max-w-sm bg-blue-50 border border-blue-200 rounded-md p-3 shadow-sm text-sm">
@@ -95,6 +48,11 @@
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
+    <script>
+    // Hacemos disponible la lista de camiones al JS
+    window.camiones = @json($camiones);
+</script>
+
 
 
     <script>
@@ -118,7 +76,7 @@
                 });
             }
         });
-let currentViewType = 'resourceTimelineDay'; // valor por defecto
+        let currentViewType = 'resourceTimelineDay'; // valor por defecto
         function crearCalendario() {
             if (calendar) {
                 calendar.destroy();
@@ -145,29 +103,29 @@ let currentViewType = 'resourceTimelineDay'; // valor por defecto
                         viewType: calendar.view.type // 👈 pasamos el tipo de vista
                     };
                 },
-               resources: {
-            url: '{{ url('/planificacion') }}',
-            method: 'GET',
-            extraParams: function() {
-                return {
-                    tipo: 'resources',
-                    viewType: currentViewType // 👈 usamos la variable
-                };
-            }
-        },
-        events: {
-            url: '{{ url('/planificacion') }}',
-            method: 'GET',
-            extraParams: function() {
-                return {
-                    tipo: 'events',
-                    viewType: currentViewType // 👈 usamos la variable
-                };
-            }
-        },
+                resources: {
+                    url: '{{ url('/planificacion') }}',
+                    method: 'GET',
+                    extraParams: function() {
+                        return {
+                            tipo: 'resources',
+                            viewType: currentViewType // 👈 usamos la variable
+                        };
+                    }
+                },
+                events: {
+                    url: '{{ url('/planificacion') }}',
+                    method: 'GET',
+                    extraParams: function() {
+                        return {
+                            tipo: 'events',
+                            viewType: currentViewType // 👈 usamos la variable
+                        };
+                    }
+                },
                 datesSet: function(info) {
                     let fechaActual;
-      currentViewType = calendar.view.type;
+                    currentViewType = calendar.view.type;
                     if (calendar.view.type === 'dayGridMonth') {
                         // Para la vista mensual, calculamos una fecha del medio del mes
                         const middleDate = new Date(info.start);
@@ -267,15 +225,16 @@ let currentViewType = 'resourceTimelineDay'; // valor por defecto
                         html
                     };
                 },
-                eventDidMount: function(info) {
+                eventDidMount: function(info) { // 🔹 abre 1 (A)
                     const props = info.event.extendedProps;
-                    if (props.tipo === 'planilla') {
+
+                    // 👉 Tooltip planilla
+                    if (props.tipo === 'planilla') { // 🔹 abre 2 (B)
                         let contenidoTooltip = `
             ✅ Fabricados: ${Number(props.fabricadosKg).toLocaleString()} kg<br>
             🔄 Fabricando: ${Number(props.fabricandoKg).toLocaleString()} kg<br>
             ⏳ Pendientes: ${Number(props.pendientesKg).toLocaleString()} kg
         `;
-
                         tippy(info.el, {
                             content: contenidoTooltip,
                             allowHTML: true,
@@ -284,10 +243,133 @@ let currentViewType = 'resourceTimelineDay'; // valor por defecto
                             animation: 'shift-away',
                             arrow: true,
                         });
-                    }
-                    if (props.tipo === 'salida') {
+
+                        // 👉 Clic derecho para opciones
+                        info.el.addEventListener('contextmenu', function(e) { // 🔹 abre 3 (C)
+                            e.preventDefault();
+
+                            const planillasIds = info.event.extendedProps.planillas_ids || [];
+
+                            Swal.fire({ // 🔹 abre 4 (D)
+                                title: '📋 Opciones de planilla',
+                                html: `
+                    <button id="crear-salida-btn"
+                        class="swal2-confirm swal2-styled"
+                        style="background:#3b82f6; margin:5px;">
+                        🚛 Crear salida
+                    </button>
+                `,
+                                showConfirmButton: false,
+                                showCancelButton: true,
+                                cancelButtonText: 'Cerrar',
+                                didOpen: () => { // 🔹 abre 5 (E)
+                                    const btnCrearSalida = document.getElementById(
+                                        'crear-salida-btn');
+                                    if (btnCrearSalida) { // 🔹 abre 6 (F)
+                                        btnCrearSalida.addEventListener('click', () => {
+                                            Swal.close();
+
+                                            // Generamos dinámicamente las opciones de camiones
+                                            let optionsHtml = camiones.map(
+                                            camion => {
+                                                let empresa = camion
+                                                    .empresa_transporte
+                                                    ?.nombre ??
+                                                    'Sin empresa';
+                                                return `<option value="${camion.id}">${camion.modelo} - ${empresa}</option>`;
+                                            }).join('');
+
+                                           // ejemplo de creación de un <select> dinámico para el Swal
+let opcionesCamiones = window.camiones.map(c => {
+    let empresa = c.empresa_transporte ? c.empresa_transporte.nombre : 'Sin empresa';
+    return `<option value="${c.id}">${c.modelo} (${empresa})</option>`;
+}).join('');
+
+Swal.fire({
+    title: 'Selecciona un camión',
+    html: `
+        <select id="swalCamion" class="swal2-select" style="width:100%;padding:5px;">
+            ${opcionesCamiones}
+        </select>
+    `,
+    preConfirm: () => {
+        const seleccionado = document.getElementById('swalCamion').value;
+        return seleccionado;
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Confirmar'
+}).then(result => {
+    if(result.isConfirmed) {
+        const camionId = result.value;
+   
+                                                    // Llamada AJAX
+                                                    fetch('/planificacion/crear-salida-desde-calendario', {
+                                                            method: 'POST',
+                                                            headers: {
+                                                                'Content-Type': 'application/json',
+                                                                'X-CSRF-TOKEN': document
+                                                                    .querySelector(
+                                                                        'meta[name="csrf-token"]'
+                                                                        )
+                                                                    .content
+                                                            },
+                                                            body: JSON
+                                                                .stringify({
+                                                                    planillas_ids: planillasIds,
+                                                                    camion_id: camionId
+                                                                })
+                                                        })
+                                                        .then(res => res
+                                                            .json())
+                                                        .then(data => {
+                                                            if (data
+                                                                .success
+                                                                ) {
+                                                                Swal.fire(
+                                                                    '✅',
+                                                                    data
+                                                                    .message,
+                                                                    'success'
+                                                                    );
+                                                                calendar
+                                                                    .refetchEvents();
+                                                                calendar
+                                                                    .refetchResources();
+                                                            } else {
+                                                                Swal.fire(
+                                                                    '⚠️',
+                                                                    data
+                                                                    .message,
+                                                                    'warning'
+                                                                    );
+                                                            }
+                                                        })
+                                                        .catch(err => {
+                                                            console
+                                                                .error(
+                                                                    err
+                                                                    );
+                                                            Swal.fire(
+                                                                '❌',
+                                                                'Hubo un problema al crear la salida.',
+                                                                'error'
+                                                                );
+                                                        });
+                                                }
+                                            });
+                                        });
+                                       
+                                    } // 🔹 cierra 6 (F)
+                                } // 🔹 cierra 5 (E)
+                            }); // 🔹 cierra 4 (D)
+                        }); // 🔹 cierra 3 (C)
+                    } // 🔹 cierra 2 (B)
+
+                    // 👉 Tooltip y clic derecho para salidas
+                    if (props.tipo === 'salida') { // 🔹 abre 14 (N)
                         let contenidoTooltip = '';
-                        if (props.empresa) contenidoTooltip += `🚛 ${props.empresa}<br>`;
+                         const camion = props.camion ? ` (${props.camion})` : '';
+    contenidoTooltip += `🚛 ${props.empresa}${camion}<br>`;
                         if (props.comentario) contenidoTooltip += `📝 ${props.comentario}`;
                         if (contenidoTooltip) {
                             tippy(info.el, {
@@ -299,8 +381,56 @@ let currentViewType = 'resourceTimelineDay'; // valor por defecto
                                 arrow: true,
                             });
                         }
-                    }
-                },
+
+                        info.el.addEventListener('contextmenu', function(e) { // 🔹 abre 15 (O)
+                            e.preventDefault();
+                            Swal.fire({
+                                title: '✏️ Agregar comentario',
+                                input: 'textarea',
+                                inputLabel: 'Escribe el comentario',
+                                inputValue: props.comentario || '',
+                                inputPlaceholder: 'Escribe aquí…',
+                                showCancelButton: true,
+                                confirmButtonText: '💾 Guardar',
+                                cancelButtonText: 'Cancelar',
+                                inputAttributes: {
+                                    maxlength: 1000,
+                                    style: 'min-height:100px'
+                                }
+                            }).then((result) => { // 🔹 abre 16 (P)
+                                if (result.isConfirmed) { // 🔹 abre 17 (Q)
+                                    fetch(`/planificacion/comentario/${info.event.id}`, {
+                                            method: 'PUT',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': document.querySelector(
+                                                    'meta[name="csrf-token"]').content
+                                            },
+                                            body: JSON.stringify({
+                                                comentario: result.value
+                                            })
+                                        })
+                                        .then(res => res.json())
+                                        .then(data => { // 🔹 abre 18 (R)
+                                            if (data.success) { // 🔹 abre 19 (S)
+                                             
+                                                calendar.refetchEvents();
+                                            }
+                                        }) // 🔹 cierra 18 (R)
+                                        .catch(err => { // 🔹 abre 20 (T)
+                                            console.error(err);
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: 'Error',
+                                                text: 'Ocurrió un error al guardar'
+                                            });
+                                        }); // 🔹 cierra 20 (T)
+                                } // 🔹 cierra 17 (Q)
+                            }); // 🔹 cierra 16 (P)
+                        }); // 🔹 cierra 15 (O)
+                    } // 🔹 cierra 14 (N)
+                }, // 🔹 cierra 1 (A)
+
                 eventDrop: function(info) {
                     const tipo = info.event.extendedProps.tipo;
                     const nuevaFecha = info.event.start.toISOString();
@@ -329,7 +459,7 @@ let currentViewType = 'resourceTimelineDay'; // valor por defecto
                             calendar.refetchResources();
                         })
                         .catch(err => {
-                            console.error("❌ Error:", err);
+                            console.error("Error:", err);
                             info.revert();
                         });
                 },
@@ -415,6 +545,20 @@ let currentViewType = 'resourceTimelineDay'; // valor por defecto
             /* para que no haga salto de línea */
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .fc-toolbar-title {
+            background: linear-gradient(90deg, #60a5fa, #3b82f6);
+            /* degradado azul */
+            color: white;
+            padding: 0.3em 0.8em;
+            border-radius: 0.5em;
+            text-transform: capitalize;
+            font-size: 1.8rem;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            display: inline-block;
+            /* para que el fondo se ajuste */
         }
     </style>
 </x-app-layout>

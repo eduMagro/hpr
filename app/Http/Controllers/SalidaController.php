@@ -229,7 +229,7 @@ class SalidaController extends Controller
                 'paquete_ids.*.exists' => 'Uno o más paquetes seleccionados no existen en el sistema.',
             ]);
 
-            // Comprobar si alguno de los paquetes seleccionados ya está asociado a una salida
+            // Paquetes repetidos por ID
             $paquetesRepetidos = DB::table('salidas_paquetes')
                 ->whereIn('paquete_id', $request->paquete_ids)
                 ->whereNotNull('salida_id')
@@ -237,9 +237,24 @@ class SalidaController extends Controller
                 ->toArray();
 
             $repetidos = array_intersect($request->paquete_ids, $paquetesRepetidos);
+
             if ($repetidos) {
-                return back()->withErrors(['paquete_ids' => 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $repetidos)]);
+                // 🔎 Buscar los paquetes para obtener código y planilla
+                $paquetesInfo = Paquete::with('planilla')
+                    ->whereIn('id', $repetidos)
+                    ->get()
+                    ->map(function ($paquete) {
+                        $codigoPaquete = $paquete->codigo ?? 'Sin código';
+                        $codigoPlanilla = $paquete->planilla ? ($paquete->planilla->codigo ?? $paquete->planilla->id) : 'Sin planilla';
+                        return "{$codigoPaquete} (Planilla {$codigoPlanilla})";
+                    })
+                    ->toArray();
+
+                $mensaje = 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $paquetesInfo);
+
+                return back()->withErrors(['paquete_ids' => $mensaje]);
             }
+
 
             // Obtener el camión y la empresa de transporte asociada
             $camion = Camion::find($request->camion_id);
@@ -339,6 +354,124 @@ class SalidaController extends Controller
         }
     }
 
+    public function crearSalidaDesdeCalendario(Request $request)
+    {
+        try {
+            $request->validate([
+                'planillas_ids' => 'required|array|min:1',
+                'planillas_ids.*' => 'exists:planillas,id',
+                'camion_id' => 'required|exists:camiones,id',
+            ]);
+
+            // Buscar todos los paquetes asociados a las planillas dadas
+            $paqueteIds = Paquete::whereIn('planilla_id', $request->planillas_ids)
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($paqueteIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron paquetes asociados a las planillas seleccionadas.'
+                ], 422);
+            }
+
+            // Paquetes repetidos por ID
+            $paquetesRepetidos = DB::table('salidas_paquetes')
+                ->whereIn('paquete_id', $paqueteIds)
+                ->whereNotNull('salida_id')
+                ->pluck('paquete_id')
+                ->toArray();
+
+            $repetidos = array_intersect($paqueteIds, $paquetesRepetidos);
+
+            if ($repetidos) {
+                // 🔎 Buscar los paquetes para obtener código y planilla
+                $paquetesInfo = Paquete::with('planilla')
+                    ->whereIn('id', $repetidos)
+                    ->get()
+                    ->map(function ($paquete) {
+                        $codigoPaquete = $paquete->codigo ?? 'Sin código';
+                        $codigoPlanilla = $paquete->planilla ? ($paquete->planilla->codigo ?? $paquete->planilla->id) : 'Sin planilla';
+                        return "{$codigoPaquete} (Planilla {$codigoPlanilla})";
+                    })
+                    ->toArray();
+
+                $mensaje = 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $paquetesInfo);
+
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $mensaje
+                ], 422);
+            }
+
+            // Obtener el camión y la empresa de transporte
+            $camion = Camion::findOrFail($request->camion_id);
+            $empresa = $camion->empresaTransporte;
+
+            // Obtener la primera planilla para la fecha
+            $primeraPlanilla = Planilla::whereIn('id', $request->planillas_ids)->first();
+            $fechaSalida = $primeraPlanilla
+                ? $primeraPlanilla->getRawOriginal('fecha_estimada_entrega')
+                : now();
+
+            // Crear la salida
+            $salida = Salida::create([
+                'empresa_id' => $empresa?->id,
+                'camion_id' => $camion->id,
+                'fecha_salida' => $fechaSalida,
+                'estado' => 'pendiente',
+            ]);
+
+            // Generar código salida
+            $codigo_salida = 'AS' . substr(date('Y'), 2) . '/' . str_pad($salida->id, 4, '0', STR_PAD_LEFT);
+            $salida->codigo_salida = $codigo_salida;
+            $salida->save();
+
+            // Asociar paquetes a la salida
+            $salida->paquetes()->attach($paqueteIds);
+
+            // Asociar cliente y obra en salida_cliente
+            $pivotData = [];
+            foreach ($paqueteIds as $paquete_id) {
+                $paquete = Paquete::with('planilla.obra')->find($paquete_id);
+                if ($paquete?->planilla && $paquete->planilla->cliente_id && $paquete->planilla->obra) {
+                    $clave = $paquete->planilla->cliente_id . '_' . $paquete->planilla->obra->id;
+                    if (!isset($pivotData[$clave])) {
+                        $pivotData[$clave] = [
+                            'salida_id' => $salida->id,
+                            'cliente_id' => $paquete->planilla->cliente_id,
+                            'obra_id' => $paquete->planilla->obra->id,
+                            'horas_paralizacion' => 0,
+                            'importe_paralizacion' => 0,
+                            'horas_grua' => 0,
+                            'importe_grua' => 0,
+                            'horas_almacen' => 0,
+                            'importe' => 0,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }
+                }
+            }
+            if (!empty($pivotData)) {
+                \DB::table('salida_cliente')->insert(array_values($pivotData));
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salida creada con éxito',
+                'salida_id' => $salida->id,
+                'codigo_salida' => $codigo_salida
+            ]);
+        } catch (\Exception $e) {
+            \Log::info('hola');
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear la salida: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function update(Request $request, $id)
     {

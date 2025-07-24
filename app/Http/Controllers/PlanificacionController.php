@@ -47,51 +47,51 @@ class PlanificacionController extends Controller
             'dia' => now()->addDays($i)->locale('es')->translatedFormat('l'),
         ]);
 
+        // 👉 Obtenemos camiones con su empresa
+    $camiones = \App\Models\Camion::with('empresaTransporte:id,nombre')
+        ->get(['id', 'modelo', 'empresa_id']);
         return view('planificacion.index', [
             'fechas' => $fechas,
+             'camiones' => $camiones,
         ]);
     }
 
 
-   private function getDateRange(Request $request): array
-{
-  
-    $start = $request->input('start');
-    $end = $request->input('end');
-    $viewType = $request->input('viewType');
+    private function getDateRange(Request $request): array
+    {
 
-    // Vista día
-    if ($viewType === 'resourceTimelineDay' && $start) {
-        $fecha = Carbon::parse($start)->startOfDay();
-        return [$fecha, $fecha->copy()->endOfDay()];
-    }
+        $start = $request->input('start');
+        $end = $request->input('end');
+        $viewType = $request->input('viewType');
 
-    // Vista semana
-    if ($viewType === 'resourceTimelineWeek' && $start && $end) {
+        // Vista día
+        if ($viewType === 'resourceTimelineDay' && $start) {
+            $fecha = Carbon::parse($start)->startOfDay();
+            return [$fecha, $fecha->copy()->endOfDay()];
+        }
+
+        // Vista semana
+        if ($viewType === 'resourceTimelineWeek' && $start && $end) {
+            return [
+                Carbon::parse($start)->startOfDay(),
+                Carbon::parse($end)->subSecond()
+            ];
+        }
+
+        // Vista mes
+        if ($viewType === 'dayGridMonth' && $start && $end) {
+            return [
+                Carbon::parse($start)->startOfDay(),
+                Carbon::parse($end)->subSecond()
+            ];
+        }
+
+        // Por defecto
         return [
-            Carbon::parse($start)->startOfDay(),
-            Carbon::parse($end)->subSecond()
+            $start ? Carbon::parse($start)->startOfDay() : now()->startOfMonth(),
+            $end ? Carbon::parse($end)->subSecond() : now()->endOfMonth()
         ];
     }
-
-    // Vista mes
-    if ($viewType === 'dayGridMonth' && $start && $end) {
-        return [
-            Carbon::parse($start)->startOfDay(),
-            Carbon::parse($end)->subSecond()
-        ];
-    }
-
-    // Por defecto
-    return [
-        $start ? Carbon::parse($start)->startOfDay() : now()->startOfMonth(),
-        $end ? Carbon::parse($end)->subSecond() : now()->endOfMonth()
-    ];
-}
-
-
-
-
 
     public function getTotalesAjax(Request $request)
     {
@@ -158,7 +158,7 @@ class PlanificacionController extends Controller
         if ($viewType === 'resourceTimelineDay' || $viewType === 'resourceTimelineWeek') {
             $eventosResumen = $eventosResumen->merge($resumenEventosDia);
         }
-      
+
         return $eventosResumen;
     }
 
@@ -173,12 +173,13 @@ class PlanificacionController extends Controller
 
         return $salidas->flatMap(function ($salida) {
             $empresa = optional($salida->empresaTransporte)->nombre;
+            $camion = optional($salida->camion)->modelo;
             $pesoTotal = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
             $fechaInicio = Carbon::parse($salida->fecha_salida);
             $fechaFin = $fechaInicio->copy()->addHours(3);
             $color = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
 
-            return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $pesoTotal, $fechaInicio, $fechaFin, $color) {
+            return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $camion, $pesoTotal, $fechaInicio, $fechaFin, $color) {
                 $obra = $relacion->obra;
                 return [
                     'title' => "{$salida->codigo_salida} - {$obra->obra} - {$pesoTotal} kg",
@@ -191,6 +192,7 @@ class PlanificacionController extends Controller
                     'borderColor' => $color,
                     'extendedProps' => [
                         'empresa' => $empresa,
+                        'camion' => $camion,
                         'tipo' => 'salida',
                         'comentario' => $salida->comentario,
                     ],
@@ -212,8 +214,8 @@ class PlanificacionController extends Controller
         })->map(function ($grupo) {
             $obraId = $grupo->first()->obra_id;
             $nombreObra = optional($grupo->first()->obra)->obra ?? 'Obra desconocida';
-    
-$fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'))->setTime(6, 0, 0);
+
+            $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'))->setTime(6, 0, 0);
 
             // 👉 IDs de planillas agrupadas
             $planillasIds = $grupo->pluck('id')->toArray();

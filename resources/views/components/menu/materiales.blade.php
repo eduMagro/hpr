@@ -2,7 +2,7 @@
     'colorBase' => 'blue',
     'items' => [
         ['route' => 'productos.index', 'label' => '📦 Materiales'],
-        ['route' => 'entradas.index', 'label' => '📦 Entradas de Material'],
+        ['route' => 'entradas.index', 'label' => '⬇️ Entradas de Material'],
         ['route' => 'pedidos.index', 'label' => '🛒 Pedidos de Compra'],
         ['route' => 'pedidos_globales.index', 'label' => '🌐 Pedidos Globales'],
         ['route' => 'fabricantes.index', 'label' => '🏭 Proveedores'],

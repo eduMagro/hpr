@@ -1,24 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Salidas - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Listado de Salidas') }}
-        </h2>
-    </x-slot>
+<x-menu.salidas />
 
     <div class="w-full p-4 sm:p-4">
 
         {{-- Botón para crear nueva salida (solo rol oficina) --}}
         @if (auth()->user()->rol == 'oficina')
-            <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
-            <div class="mb-4 flex space-x-2">
-                <a href="{{ route('empresas-transporte.index') }}" class="btn btn-primary">
-                    Empresas de transporte
-                </a>
-
-            </div>
-
-            {{-- Verificamos que existan salidas --}}
+                      {{-- Verificamos que existan salidas --}}
             @if ($salidas->count())
                 {{-- Iteramos por cada grupo de salidas por mes --}}
                 @foreach ($salidasPorMes as $mes => $salidasGrupo)

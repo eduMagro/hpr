@@ -1,10 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Transporte - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            {{ __('Empresas de Transporte') }}
-        </h2>
-    </x-slot>
+ <x-menu.salidas />
 
     <div x-data="{ openEmpresaModal: false, openCamionModal: false }" class="container mx-auto p-6">
 

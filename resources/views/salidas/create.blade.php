@@ -1,15 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Crear Salidas - {{ config('app.name') }}</x-slot>
-    <x-slot name="header">
-        <h2 class="text-lg font-semibold text-gray-800">
-            <a href="{{ route('planificacion.index') }}" class="text-blue-600">
-                {{ __('Planificación') }}
-            </a>
-            <span class="mx-2">/</span>
-            {{ __('Crear Nuevas Salidas de Camiones') }}
-        </h2>
-    </x-slot>
-
+   <x-menu.salidas />
     <div class="container mx-auto p-6">
         <form action="{{ route('salidas.store') }}" method="POST" id="form-crear-salida">
             @csrf
@@ -32,9 +23,10 @@
                                             {{ $planilla->codigo_limpio }}
                                         </label>
                                         {{-- Badge listo --}}
-<span class="ml-3 px-2 py-1 rounded text-xs font-semibold {{ $planilla->estado_class }}">
-    {{ $planilla->estado_label }}
-</span>
+                                        <span
+                                            class="ml-3 px-2 py-1 rounded text-xs font-semibold {{ $planilla->estado_class }}">
+                                            {{ $planilla->estado_label }}
+                                        </span>
                                     </div>
                                     <span class="text-sm text-gray-600">{{ $planilla->peso_total_kg }} kg</span>
                                     <span class="text-sm text-gray-600">Fecha Entrega:

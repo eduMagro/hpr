@@ -213,6 +213,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/actualizar-fecha-salida', [SalidaController::class, 'actualizarFechaSalida']);
     Route::post('/escaneo', [SalidaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
     Route::get('/salidas/export/{mes}', [SalidaController::class, 'export'])->name('salidas.export');
+    Route::post(
+        '/planificacion/crear-salida-desde-calendario',
+        [SalidaController::class, 'crearSalidaDesdeCalendario']
+    )->name('planificacion.crearSalidaDesdeCalendario');
 
     // === OBRAS ===
     Route::resource('obras', ObraController::class)->middleware('acceso.seccion:obras.index');
