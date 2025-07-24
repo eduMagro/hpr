@@ -3,6 +3,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\PapeleraController;
 use App\Http\Controllers\VacacionesController;
 use App\Http\Controllers\EntradaController;
@@ -125,7 +126,7 @@ Route::middleware('auth')->group(function () {
 
         return response()->file($path); // envía con Content-Type correcto
     })->name('perfil.imagen');
-
+    Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('perfil.show');
     Route::resource('vacaciones', VacacionesController::class)->middleware('acceso.seccion:vacaciones.index');
     Route::post('/vacaciones/solicitar', [VacacionesController::class, 'store'])->name('vacaciones.solicitar');
     Route::post('/vacaciones/{id}/aprobar', [VacacionesController::class, 'aprobar'])->name('vacaciones.aprobar');

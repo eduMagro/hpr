@@ -96,11 +96,11 @@ class User extends Authenticatable
         return trim("{$this->name} {$this->primer_apellido} {$this->segundo_apellido}");
     }
 
-   
+
     // Relación: Un usuario tiene muchas entradas
     public function entradas()
     {
-        return $this->hasMany(Entrada::class, 'users_id'); // 'users_id' es la clave foránea en la tabla `entradas`
+        return $this->hasMany(Entrada::class, 'usuario_id'); // 'users_id' es la clave foránea en la tabla `entradas`
     }
     public function salidas()
     {
@@ -115,7 +115,7 @@ class User extends Authenticatable
     // Relación: Un usuario tiene muchos movimientos
     public function movimientos()
     {
-        return $this->hasMany(Movimiento::class, 'users_id'); // 'user_id' es la clave foránea en la tabla `movimientos`
+        return $this->hasMany(Movimiento::class, 'ejecutado_por'); // 'user_id' es la clave foránea en la tabla `movimientos`
     }
 
     // Relación con los elementos en los que este usuario es el usuario principal
@@ -141,22 +141,22 @@ class User extends Authenticatable
 
     public function etiquetasComoSoldador1()
     {
-        return $this->hasMany(Etiqueta::class, 'soldador1');
+        return $this->hasMany(Etiqueta::class, 'soldador1_id');
     }
 
     public function etiquetasComoSoldador2()
     {
-        return $this->hasMany(Etiqueta::class, 'soldador2');
+        return $this->hasMany(Etiqueta::class, 'soldador2_id');
     }
 
     public function etiquetasComoEnsamblador1()
     {
-        return $this->hasMany(Etiqueta::class, 'ensamblador1');
+        return $this->hasMany(Etiqueta::class, 'ensamblador1_id');
     }
 
     public function etiquetasComoEnsamblador2()
     {
-        return $this->hasMany(Etiqueta::class, 'ensamblador2');
+        return $this->hasMany(Etiqueta::class, 'ensamblador2_id');
     }
 
 

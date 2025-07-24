@@ -22,6 +22,10 @@ class VerificarAccesoSeccion
             return $next($request);
         }
         $rutaActual = $request->route()->getName(); // ej: departamentos.edit
+        // ✅ Permitir acceso libre a la ruta de perfil
+        if (in_array($rutaActual, ['perfil.show', 'perfil.index'])) {
+            return $next($request);
+        }
 
         $seccionBase = Str::before($rutaActual, '.'); // ej: departamentos
 
@@ -32,7 +36,7 @@ class VerificarAccesoSeccion
         $sinUsuariosAdmin = !$departamentoAdmin || !$departamentoAdmin->usuarios()->exists();
 
         $sinSeccionesAsignadas = Seccion::whereDoesntHave('departamentos')->count() === Seccion::count();
-
+        //Si aun no hemos denominado administrados o no hay secciones asignadas a ningun departamento tendremos acceso a todo, porque estara en desarrollo la app.
         if ($sinUsuariosAdmin || $sinSeccionesAsignadas) {
             return $next($request);
         }

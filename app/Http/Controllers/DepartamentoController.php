@@ -19,6 +19,7 @@ class DepartamentoController extends Controller
 
         return view('departamentos.index', compact('departamentos', 'usuariosOficina', 'todasLasSecciones'));
     }
+
     public function asignarUsuarios(Request $request, Departamento $departamento)
     {
         $request->validate([
@@ -34,9 +35,23 @@ class DepartamentoController extends Controller
             return [$id => ['rol_departamental' => 'miembro']];
         });
 
-        // Sincroniza: añade los nuevos y elimina los que no están
+        // 🔹 Obtener IDs de usuarios ANTES de sincronizar
+        $idsAnteriores = $departamento->usuarios()->pluck('users.id')->toArray();
+
+        // 🔹 Sincronizar la relación
         $departamento->usuarios()->sync($usuariosConRoles);
 
+        // 🔹 Calcular usuarios eliminados
+        $idsActuales = $usuariosSeleccionados->toArray();
+        $usuariosQuitados = array_diff($idsAnteriores, $idsActuales);
+
+        // 🔹 Eliminar sus permisos en la tabla permisos_acceso
+        if (!empty($usuariosQuitados)) {
+            PermisoAcceso::where('departamento_id', $departamento->id)
+                ->whereIn('user_id', $usuariosQuitados)
+                ->whereIn('seccion_id', $departamento->secciones()->pluck('secciones.id'))
+                ->delete();
+        }
         return redirect()->back()->with('success', 'Asignación actualizada correctamente.');
     }
     // DepartamentoController.php

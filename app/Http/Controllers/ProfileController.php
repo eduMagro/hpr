@@ -453,6 +453,7 @@ class ProfileController extends Controller
             'horasMensuales'
         ));
     }
+
     private function getHorasMensuales(User $user): array
     {
         $inicioMes = Carbon::now()->startOfMonth();
@@ -506,7 +507,6 @@ class ProfileController extends Controller
             'horas_planificadas_mes' => $horasPlanificadasMes,
         ];
     }
-
 
     protected function getColoresTurnosYEstado(): array
     {
@@ -643,7 +643,6 @@ class ProfileController extends Controller
         });
     }
 
-
     protected function getEventosFichajes($user)
     {
         return $user->asignacionesTurnos->flatMap(function ($asignacion) {
@@ -778,7 +777,6 @@ class ProfileController extends Controller
 
         return Redirect::route('profile.edit', ['id' => $id])->with('status', 'profile-updated');
     }
-
 
     public function subirImagen(Request $request)
     {
