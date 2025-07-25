@@ -527,7 +527,7 @@ class SalidaController extends Controller
             $obraId = $request->input('obra_id');    // Nuevo: para identificar la obra
 
             // Definir campos para cada tabla
-            $salidaFields = ['fecha_salida', 'estado'];
+            $salidaFields = ['fecha_salida', 'estado', 'codigo_sage'];
             $salidaClienteFields = [
                 'importe',
                 'horas_paralizacion',
@@ -554,6 +554,7 @@ class SalidaController extends Controller
                 'horas_almacen' => 'nullable|numeric',
                 'fecha_salida' => 'nullable|date',
                 'estado' => 'nullable|string|max:50',
+                'codigo_sage'        => 'nullable|string|max:100'
             ];
 
             $request->validate([$field => $rules[$field]]);

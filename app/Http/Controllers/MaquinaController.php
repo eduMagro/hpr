@@ -476,7 +476,7 @@ class MaquinaController extends Controller
                     'salida_id' => $salida->id,
                     'estado' => 'pendiente',
                     'fecha_solicitud' => now(),
-                    'solicitado_por' => auth()->id(),
+                    'solicitado_por' => null,
                     'prioridad' => 2,
                     'descripcion' => $descripcion,
                     // 👉 Rellena otros campos si lo necesitas, por ejemplo prioridad o descripción

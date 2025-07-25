@@ -1,12 +1,12 @@
 <x-app-layout>
     <x-slot name="title">Salidas - {{ config('app.name') }}</x-slot>
-<x-menu.salidas />
+    <x-menu.salidas />
 
     <div class="w-full p-4 sm:p-4">
 
         {{-- Botón para crear nueva salida (solo rol oficina) --}}
         @if (auth()->user()->rol == 'oficina')
-                      {{-- Verificamos que existan salidas --}}
+            {{-- Verificamos que existan salidas --}}
             @if ($salidas->count())
                 {{-- Iteramos por cada grupo de salidas por mes --}}
                 @foreach ($salidasPorMes as $mes => $salidasGrupo)
@@ -26,6 +26,7 @@
                             <thead>
                                 <tr class="bg-gray-100 text-left text-xs font-medium text-center text-gray-700">
                                     <th class="py-2 px-4 border-b">Salida</th>
+                                    <th class="py-2 px-4 border-b">Codigo Sage</th>
                                     <th class="py-2 px-4 border-b">Cliente</th>
                                     <th class="py-2 px-4 border-b">Obra</th>
                                     <th class="py-2 px-4 border-b">E. Transporte</th>
@@ -47,9 +48,16 @@
                                     @foreach ($salida->salidaClientes as $registro)
                                         <tr class="hover:bg-gray-50 text-xs text-center">
                                             <td class="py-2 px-4 border-b">{{ $salida->codigo_salida }}</td>
+                                            <td class="p-2 border-b editable" contenteditable="true"
+                                                data-id="{{ $salida->id }}"
+                                                data-cliente="{{ $registro->cliente->id }}"
+                                                data-obra="{{ $registro->obra->id }}" data-field="codigo_sage">
+                                                {{ $salida->codigo_sage ?? '' }}
+                                            </td>
                                             <td class="py-2 px-4 border-b">{{ $registro->cliente->empresa }}</td>
                                             <td class="py-2 px-4 border-b">{{ $registro->obra->obra ?? 'N/A' }}</td>
-                                            <td class="py-2 px-4 border-b">{{ $salida->empresaTransporte->nombre }}</td>
+                                            <td class="py-2 px-4 border-b">{{ $salida->empresaTransporte->nombre }}
+                                            </td>
                                             <td class="py-2 px-4 border-b">
                                                 {{ $salida->camion->modelo }}
                                             </td>
@@ -344,9 +352,12 @@
                             });
                             return;
                         }
-                    } else {
+                    } else if (esCampoMonetario(field) || esCampoHoras(field)) {
                         // Para los campos numéricos, obtener valor numérico
                         value = parseFloat(rawValue) || 0;
+                    } else {
+                        // Para campos de texto como codigo_sage
+                        value = rawValue;
                     }
 
                     // Enviar actualización

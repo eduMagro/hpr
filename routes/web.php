@@ -13,6 +13,7 @@ use App\Http\Controllers\ProductoBaseController;
 use App\Http\Controllers\PedidoGlobalController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\UbicacionController;
+use App\Http\Controllers\LocalizacionController;
 use App\Http\Controllers\EstadisticasController;
 use App\Http\Controllers\EmpresaTransporteController;
 use App\Http\Controllers\PlanificacionController;
@@ -104,7 +105,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('ubicaciones', UbicacionController::class)->middleware('acceso.seccion:ubicaciones.index');
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
 
+    // === LOCALIZACIONES ===
+    Route::resource('localizaciones', LocalizacionController::class)->middleware('acceso.seccion:localizaciones.index');
+    Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])
+        ->name('localizaciones.editarMapa');
+    Route::get('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])
+        ->name('localizaciones.verificar');
     // === USUARIOS Y VACACIONES ===
+
     Route::resource('users', ProfileController::class)->middleware('acceso.seccion:users.index');
     Route::put('/actualizar-usuario/{id}', [ProfileController::class, 'actualizarUsuario'])->name('usuarios.actualizar');
     Route::get('/users/{user}/resumen-asistencia', [ProfileController::class, 'resumenAsistencia'])->name('users.resumen-asistencia');
