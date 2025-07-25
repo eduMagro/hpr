@@ -11,15 +11,15 @@ use Illuminate\Support\Facades\DB;
 
 class PlanillaService
 {
-   public function completarPlanilla(int $planillaId): array
-{
-    try {
-        DB::transaction(function () use ($planillaId) {
+    public function completarPlanilla(int $planillaId): array
+    {
+        try {
+            DB::transaction(function () use ($planillaId) {
 
-            // ✅ Generar el código de paquete
-            $codigoPaquete = Paquete::generarCodigo();
+                // ✅ Generar el código de paquete
+                $codigoPaquete = Paquete::generarCodigo();
 
-            // ✅ Calcular el peso total de las etiquetas de la planilla
+                // ✅ Calcular el peso total de las etiquetas de la planilla
                 $pesoTotal = Etiqueta::where('planilla_id', $planillaId)->sum('peso');
 
                 // ✅ Generar código del paquete
@@ -33,49 +33,51 @@ class PlanillaService
                     'estado'      => 'completado',
                 ]);
 
-            // ✅ Marcar planilla como completada
-            Planilla::where('id', $planillaId)->update(['estado' => 'completada']);
+                // ✅ Marcar planilla como completada
+                Planilla::where('id', $planillaId)->update(['estado' => 'completada']);
 
-            // ✅ Marcar etiquetas como completadas y asignar paquete_id
-            Etiqueta::where('planilla_id', $planillaId)->update([
-                'estado'     => 'completada',
-                'paquete_id' => $paquete->id,
-            ]);
+                // ✅ Marcar etiquetas como completadas y asignar paquete_id
+                Etiqueta::where('planilla_id', $planillaId)
+                    ->whereNotNull('etiqueta_sub_id')
+                    ->update([
+                        'estado'     => 'completada',
+                        'paquete_id' => $paquete->id,
+                    ]);
 
-            // ✅ Marcar todos sus elementos como completados
-            Elemento::where('planilla_id', $planillaId)->update(['estado' => 'completado']);
+                // ✅ Marcar todos sus elementos como completados
+                Elemento::where('planilla_id', $planillaId)->update(['estado' => 'completado']);
 
-            // ✅ Reajustar colas
-            $ordenes = OrdenPlanilla::lockForUpdate()
-                ->where('planilla_id', $planillaId)
-                ->get();
-
-            $porMaquina = $ordenes->groupBy('maquina_id');
-
-            foreach ($porMaquina as $maquinaId => $ordenesDeMaquina) {
-                $posiciones = $ordenesDeMaquina->pluck('posicion')->sort()->values();
-
-                OrdenPlanilla::where('maquina_id', $maquinaId)
+                // ✅ Reajustar colas
+                $ordenes = OrdenPlanilla::lockForUpdate()
                     ->where('planilla_id', $planillaId)
-                    ->delete();
+                    ->get();
 
-                foreach ($posiciones as $pos) {
+                $porMaquina = $ordenes->groupBy('maquina_id');
+
+                foreach ($porMaquina as $maquinaId => $ordenesDeMaquina) {
+                    $posiciones = $ordenesDeMaquina->pluck('posicion')->sort()->values();
+
                     OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->where('posicion', '>', $pos)
-                        ->decrement('posicion');
-                }
-            }
-        });
+                        ->where('planilla_id', $planillaId)
+                        ->delete();
 
-        return [
-            'success' => true,
-            'message' => 'Planilla completada, paquete creado y etiquetas actualizadas correctamente.'
-        ];
-    } catch (\Exception $e) {
-        return [
-            'success' => false,
-            'message' => $e->getMessage(),
-        ];
+                    foreach ($posiciones as $pos) {
+                        OrdenPlanilla::where('maquina_id', $maquinaId)
+                            ->where('posicion', '>', $pos)
+                            ->decrement('posicion');
+                    }
+                }
+            });
+
+            return [
+                'success' => true,
+                'message' => 'Planilla completada, paquete creado y etiquetas actualizadas correctamente.'
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
     }
-}
 }

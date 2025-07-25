@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Paquete;
+use App\Models\LocalizacionPaquete;
 use App\Models\Etiqueta;
 use App\Models\Ubicacion;
 use App\Models\Elemento;
@@ -83,6 +84,7 @@ class PaqueteController extends Controller
         $sortAllowed = [
             'id',
             'planilla_id',
+            'paquete',
             'peso',
             'created_at',
             'fecha_limite_reparto',
@@ -455,5 +457,27 @@ class PaqueteController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Error al eliminar el paquete: ' . $e->getMessage());
         }
+    }
+
+    public function update(Request $request, $codigo)
+    {
+        $paquete = Paquete::where('codigo', $codigo)->first();
+        if (!$paquete) {
+            return response()->json(['error' => 'Paquete no encontrado'], 404);
+        }
+
+        $validated = $request->validate([
+            'x1' => 'required|integer|min:1',
+            'y1' => 'required|integer|min:1',
+            'x2' => 'required|integer|min:1',
+            'y2' => 'required|integer|min:1',
+        ]);
+
+        LocalizacionPaquete::updateOrCreate(
+            ['paquete_id' => $paquete->id],
+            $validated
+        );
+
+        return response()->json(['message' => 'Localización guardada correctamente']);
     }
 }

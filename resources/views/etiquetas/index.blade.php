@@ -13,6 +13,7 @@
                             <th class="p-2 border">Codigo</th>
                             <th class="p-2 border">Codigo SubEtiqueta</th>
                             <th class="p-2 border">{!! $ordenables['codigo_planilla'] ?? 'Planilla' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['paquete'] ?? 'Paquete' !!}</th>
                             <th class="p-2 border">Op 1</th>
                             <th class="p-2 border">Op 2</th>
                             <th class="p-2 border">Ens 1</th>
@@ -46,6 +47,9 @@
                                 </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="codigo_planilla" value="{{ request('codigo_planilla') }}" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.input name="paquete" value="{{ request('paquete') }}" />
                                 </th>
                                 <th class="p-1 border"></th> {{-- Op 1 --}}
                                 <th class="p-1 border"></th> {{-- Op 2 --}}
@@ -128,6 +132,16 @@
                                         <a href="{{ route('planillas.index', ['planilla_id' => $etiqueta->planilla_id]) }}"
                                             class="text-blue-500 hover:underline">
                                             {{ $etiqueta->planilla->codigo_limpio }}
+                                        </a>
+                                    @else
+                                        N/A
+                                    @endif
+                                </td>
+                                <td class="p-2 text-center border">
+                                    @if (isset($etiqueta->paquete->codigo))
+                                        <a href="{{ route('paquetes.index', [$etiqueta->paquete_id => $etiqueta->paquete->codigo]) }}"
+                                            class="text-blue-500 hover:underline">
+                                            {{ $etiqueta->paquete->codigo }}
                                         </a>
                                     @else
                                         N/A

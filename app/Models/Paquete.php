@@ -13,7 +13,6 @@ class Paquete extends Model
 
     protected $fillable = [
         'codigo',
-        'ubicacion_id',
         'planilla_id',
         'peso'
     ];
@@ -67,5 +66,58 @@ class Paquete extends Model
     public function salidasPaquetes()
     {
         return $this->hasMany(SalidaPaquete::class);
+    }
+
+    /**
+     * Calcula el tamaño del paquete basándose en las longitudes máximas
+     * de cada elemento (extraídas del campo dimensiones de cada elemento).
+     * El ancho es fijo: 1 metro.
+     * Las dimensiones almacenadas están en cm, convertimos a metros.
+     */
+    public function getTamañoAttribute()
+    {
+        $maxLongitudMm = 0;
+
+        foreach ($this->etiquetas as $etiqueta) {
+            foreach ($etiqueta->elementos as $elemento) {
+                $maxLongitudElemento = $this->extraerMaxLongitudDeDimensiones($elemento->dimensiones);
+
+                if ($maxLongitudElemento > $maxLongitudMm) {
+                    $maxLongitudMm = $maxLongitudElemento;
+                }
+            }
+        }
+
+        // 🔥 ahora convertimos de mm a metros
+        $maxLongitudM = $maxLongitudMm / 1000;
+
+        return [
+            'ancho'    => 1,               // ancho fijo en metros
+            'longitud' => $maxLongitudM    // mayor longitud encontrada en metros
+        ];
+    }
+
+    /**
+     * Extrae la longitud máxima de un string de dimensiones en cm.
+     * Ejemplo: "10 90d 200 90d" => devuelve 200 (cm).
+     */
+    protected function extraerMaxLongitudDeDimensiones($dimensiones)
+    {
+        if (!$dimensiones) return 0;
+
+        $partes = preg_split('/\s+/', trim($dimensiones));
+        $max = 0;
+
+        foreach ($partes as $parte) {
+            // ignoramos las partes que contengan 'd' (grados)
+            if (strpos($parte, 'd') === false && is_numeric($parte)) {
+                $valor = floatval($parte);
+                if ($valor > $max) {
+                    $max = $valor;
+                }
+            }
+        }
+
+        return $max; // en cm
     }
 }

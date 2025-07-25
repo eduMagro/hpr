@@ -81,17 +81,19 @@
     </div>
 
     {{-- 📥 Descargar nóminas --}}
-    <div class="mt-6 border-t pt-6">
-        <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>
-        <form action="{{ route('nominas.descargarMes') }}" method="GET"
-            class="flex flex-wrap items-center gap-3 max-w-md">
-            @csrf
-            <input type="month" name="mes_anio" id="mes_anio" required
-                class="flex-1 border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50">
-            <button type="submit"
-                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow transition">
-                📥
-            </button>
-        </form>
-    </div>
+    @if (auth()->check() && auth()->id() === $user->id)
+        <div class="mt-6 border-t pt-6">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>
+            <form action="{{ route('nominas.descargarMes') }}" method="GET"
+                class="flex flex-wrap items-center gap-3 max-w-md">
+                @csrf
+                <input type="month" name="mes_anio" id="mes_anio" required
+                    class="flex-1 border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50">
+                <button type="submit"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow transition">
+                    📥
+                </button>
+            </form>
+        </div>
+    @endif
 </div>

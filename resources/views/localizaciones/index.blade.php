@@ -13,6 +13,13 @@
             min-height: 100%;
         }
 
+        #grid-container {
+            transform: scale(1);
+            /* 1 = 100%, 1.2 = 120% zoom in, 0.8 = alejar */
+            transform-origin: top left;
+            /* para que no se desplace raro */
+        }
+
         #grid {
             display: grid;
             grid-template-columns: repeat(22, 1fr);
@@ -95,10 +102,21 @@
         .tipo-transitable {
             background-color: #6b7280 !important;
         }
+
+        .paquete-preview {
+            background-color: rgba(255, 165, 0, 0.6) !important;
+            /* naranja translúcido */
+            border: 2px solid orange;
+        }
+
+        .paquete-guardado {
+            background-color: rgba(57, 78, 183, 0.8) !important;
+            border: 2px solid darkblue;
+        }
     </style>
 
     <div class="w-screen flex flex-col">
-        <div class="p-2 bg-white z-10">
+        <div class="hidden md:block p-2 bg-white z-10">
             <a href="{{ route('localizaciones.create') }}"
                 class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition inline-block">Crear Nueva
                 Localización</a>
@@ -111,11 +129,16 @@
         </div>
 
         <!-- GRID Y SECTORES -->
-        <div class="flex">
-            <div id="grid-container" class="border-r w-full md:w-1/2">
+        <div class="p-2 flex gap-2">
+            <input id="codigoPaquete" type="text" class="border px-2 py-1 rounded" placeholder="Código de paquete">
+            <button onclick="dibujarPaquete()" class="bg-blue-600 text-white px-3 py-1 rounded">📦 Dibujar
+                paquete</button>
+        </div>
+
+        <div id="zoom-wrapper" class="flex origin-top-left">
+
+            <div id="grid-container" class="relative" style="width:75%;">
                 <div id="grid"></div>
-
-
                 <!-- Marcadores invisibles de cada sector -->
                 <div id="sector-markers">
                     <div id="sector7-marker" style="position:absolute;top:0;height:1px;width:1px;"></div>
@@ -133,27 +156,35 @@
         <!-- LEYENDA NAVEGACIÓN -->
         <div id="leyendaSectores"
             class="hidden md:block fixed top-1/2 right-4 -translate-y-1/2 bg-white/90 shadow-lg rounded p-2 space-y-2 z-50">
-            <a href="#sector1-marker"
-                class="block bg-green-100 hover:bg-green-200 px-3 py-1 rounded text-xs font-bold w-full">Sector 1</a>
-            <a href="#sector2-marker"
-                class="block bg-green-200 hover:bg-green-300 px-3 py-1 rounded text-xs font-bold w-full">Sector 2</a>
-            <a href="#sector3-marker"
-                class="block bg-green-300 hover:bg-green-400 px-3 py-1 rounded text-xs font-bold w-full">Sector 3</a>
+            <a href="#sector7-marker"
+                class="block bg-green-700 hover:bg-green-800 px-3 py-1 rounded text-xs font-bold w-full">Sector 7</a>
+            <a href="#sector6-marker"
+                class="block bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-xs font-bold w-full">Sector 6</a>
+            <a href="#sector5-marker"
+                class="block bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-xs font-bold w-full">Sector 5</a>
             <a href="#sector4-marker"
                 class="block bg-green-400 hover:bg-green-500 px-3 py-1 rounded text-xs font-bold w-full">Sector 4</a>
-            <a href="#sector5-marker"
-                class="block bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
-                5</a>
-            <a href="#sector6-marker"
-                class="block bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
-                6</a>
-            <a href="#sector7-marker"
-                class="block bg-green-700 hover:bg-green-800 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
-                7</a>
+            <a href="#sector3-marker"
+                class="block bg-green-300 hover:bg-green-400 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
+                3</a>
+            <a href="#sector2-marker"
+                class="block bg-green-200 hover:bg-green-300 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
+                2</a>
+            <a href="#sector1-marker"
+                class="block bg-green-100 hover:bg-green-200 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
+                1</a>
+            <div class="flex gap-2 p-2">
+                <button onclick="zoomOut()" class="bg-gray-300 px-3 py-1 rounded">➖ Alejar</button>
+                <button onclick="zoomIn()" class="bg-gray-300 px-3 py-1 rounded">➕ Acercar</button>
+                <button onclick="resetZoom()" class="bg-gray-300 px-3 py-1 rounded">🔄 Reset</button>
+            </div>
+
         </div>
 
     </div>
-
+    <script>
+        const paquetesEnMapa = @json($paquetesEnMapa);
+    </script>
     <script>
         const grid = document.getElementById('grid');
         const seleccionadas = new Set();
@@ -165,7 +196,7 @@
         let endY = null;
         let areaTemporal = new Set();
         const celdas = [];
-
+        const cellsMap = {};
         const columnas = 22;
         const filas = 115;
 
@@ -202,6 +233,8 @@
 
                 grid.appendChild(cell);
                 celdas.push(cell);
+
+                cellsMap[`${x},${y}`] = cell;
             }
         }
 
@@ -210,10 +243,22 @@
             for (let x = loc.x1; x <= loc.x2; x++) {
                 for (let y = loc.y1; y <= loc.y2; y++) {
                     const key = `${x},${y}`;
-                    const cell = celdas.find(c => c.dataset.coord === key);
+                    const cell = cellsMap[key];
                     if (cell) {
                         cell.classList.add('selected');
                         cell.classList.add(`tipo-${loc.tipo}`);
+                    }
+                }
+            }
+        }
+        // después de pintar localizaciones
+        for (const paquete of paquetesEnMapa) {
+            for (let x = paquete.x1; x <= paquete.x2; x++) {
+                for (let y = paquete.y1; y <= paquete.y2; y++) {
+                    const key = `${x},${y}`;
+                    const cell = cellsMap[key];
+                    if (cell) {
+                        cell.classList.add('paquete-guardado'); // usa el mismo estilo o crea uno específico
                     }
                 }
             }
@@ -222,86 +267,6 @@
         grid.addEventListener('mouseleave', () => {
             posicionActual.textContent = '—';
             isDragging = false;
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (!isDragging || areaTemporal.size === 0) return;
-            isDragging = false;
-
-            const minX = Math.min(startX, endX);
-            const maxX = Math.max(startX, endX);
-            const minY = Math.min(startY, endY);
-            const maxY = Math.max(startY, endY);
-
-            fetch("{{ route('localizaciones.verificar') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify({
-                        x1: minX,
-                        y1: minY,
-                        x2: maxX,
-                        y2: maxY
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.existe) {
-                        Swal.fire({
-                            title: 'Ya existe',
-                            text: `Esta área ya pertenece a "${data.localizacion.localizacion}" (tipo ${data.localizacion.tipo})`,
-                            icon: 'info'
-                        });
-                    } else {
-                        Swal.fire({
-                            title: 'Datos de la ubicación',
-                            html: `
-                            <label class="block text-left mb-1">Tipo:</label>
-                            <select id="tipo" class="swal2-input">
-                                <option value="material">Tipo Material</option>
-                                <option value="maquina">Tipo Máquina</option>
-                                <option value="transitable">Tipo Transitable</option>
-                            </select>
-                            <label class="block text-left mt-3 mb-1">Sección:</label>
-                            <input id="seccion" class="swal2-input" placeholder="Ej. A1, B2...">
-                            <label class="block text-left mt-3 mb-1">Nombre de la localización:</label>
-                            <input id="nombre" class="swal2-input" placeholder="Ej. Máquina 5, Pasillo 3...">
-                        `,
-                            focusConfirm: false,
-                            showCancelButton: true,
-                            confirmButtonText: 'Crear',
-                            cancelButtonText: 'Cancelar',
-                            preConfirm: () => {
-                                const tipo = document.getElementById('tipo').value;
-                                const seccion = document.getElementById('seccion').value.trim();
-                                const nombre = document.getElementById('nombre').value.trim();
-                                if (!seccion || !nombre) {
-                                    Swal.showValidationMessage('Sección y nombre son obligatorios');
-                                    return false;
-                                }
-                                return {
-                                    tipo,
-                                    seccion,
-                                    nombre
-                                };
-                            }
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                const {
-                                    tipo,
-                                    seccion,
-                                    nombre
-                                } = result.value;
-                                guardarConTipo(tipo, seccion, nombre);
-                            }
-                        });
-                    }
-                })
-                .catch(err => Swal.fire('Error', err.message, 'error'));
-
-            areaTemporal.clear();
         });
 
         function seleccionarRectangulo(x1, y1, x2, y2) {
@@ -320,7 +285,7 @@
             for (const key of areaTemporal) {
                 if (!nuevaArea.has(key)) {
                     const [cx, cy] = key.split(',').map(Number);
-                    const cell = celdas.find(c => c.dataset.x == cx && c.dataset.y == cy);
+                    const cell = cellsMap[key];
                     if (cell && seleccionadas.has(key)) {
                         seleccionadas.delete(key);
                         cell.classList.remove('selected');
@@ -330,7 +295,7 @@
             for (const key of nuevaArea) {
                 if (!areaTemporal.has(key)) {
                     const [cx, cy] = key.split(',').map(Number);
-                    const cell = celdas.find(c => c.dataset.x == cx && c.dataset.y == cy);
+                    const cell = cellsMap[key];
                     if (cell && !seleccionadas.has(key)) {
                         seleccionadas.add(key);
                         cell.classList.add('selected');
@@ -388,4 +353,200 @@
             sectoresContainer.appendChild(div);
         });
     </script>
+    {{--  ESTO ES PARA HACER ZOOM --}}
+    <script>
+        let zoom = 1;
+
+        function applyZoom() {
+            const wrapper = document.getElementById('zoom-wrapper');
+            wrapper.style.transform = `scale(${zoom})`;
+            wrapper.style.transformOrigin = 'top left'; // importante para que no se desplace raro
+        }
+
+        function zoomIn() {
+            zoom += 0.1;
+            applyZoom();
+        }
+
+        function zoomOut() {
+            zoom = Math.max(0.1, zoom - 0.1);
+            applyZoom();
+        }
+
+        function resetZoom() {
+            zoom = 1;
+            applyZoom();
+        }
+    </script>
+    {{-- CARGAR TAMAÑO PAQUETE --}}
+    <script>
+        function cargarPaquete() {
+            const codigo = document.getElementById('codigoPaquete').value.trim();
+            if (!codigo) {
+                Swal.fire('Error', 'Introduce un código', 'error');
+                return;
+            }
+
+            fetch("{{ route('paquetes.tamaño') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify({
+                        codigo
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        Swal.fire('Error', data.error, 'error');
+                        return;
+                    }
+
+                    // 🔥 data.ancho y data.longitud ya son en metros (celdas)
+                    crearPaqueteVisual(data.codigo, data.ancho, data.longitud);
+                })
+                .catch(err => Swal.fire('Error', err.message, 'error'));
+        }
+    </script>
+    <script>
+        async function dibujarPaquete() {
+            const codigo = document.getElementById('codigoPaquete').value.trim();
+            if (!codigo) {
+                Swal.fire('Error', 'Introduce un código', 'error');
+                return;
+            }
+
+            // limpia cualquier paquete anterior
+            limpiarPreview();
+
+            try {
+                const res = await fetch("{{ route('paquetes.tamaño') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify({
+                        codigo
+                    })
+                });
+
+                if (!res.ok) throw new Error('No se pudo obtener el tamaño');
+                const data = await res.json();
+                if (data.error) {
+                    Swal.fire('Error', data.error, 'error');
+                    return;
+                }
+
+                // dimensiones en metros = celdas
+                const ancho = Math.max(1, Math.round(data.ancho));
+                const largo = Math.max(1, Math.round(data.longitud));
+
+                Swal.fire({
+                    title: 'Selecciona posición',
+                    text: `Haz click en la celda donde quieres colocar la esquina superior izquierda (${ancho}×${largo})`,
+                    icon: 'info'
+                });
+
+                // espera a que el usuario haga click en la cuadrícula
+                prepararClickParaColocar(codigo, ancho, largo);
+
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
+            }
+        }
+
+        let codigoActual = null; // arriba del todo
+
+        function prepararClickParaColocar(codigo, ancho, largo) {
+            codigoActual = codigo; // guardamos el código para luego
+            // quitar cualquier click anterior
+            for (const cell of celdas) {
+                cell.removeEventListener('click', cell._clickHandlerPaquete);
+            }
+            for (const cell of celdas) {
+                cell._clickHandlerPaquete = () => {
+                    const startX = parseInt(cell.dataset.x);
+                    const startY = parseInt(cell.dataset.y);
+                    pintarPaqueteEnCeldas(startX, startY, ancho, largo);
+                };
+                cell.addEventListener('click', cell._clickHandlerPaquete);
+            }
+        }
+
+
+        function pintarPaqueteEnCeldas(startX, startY, ancho, largo) {
+            limpiarPreview();
+
+            for (let x = startX; x < startX + ancho; x++) {
+                for (let y = startY; y < startY + largo; y++) {
+                    const key = `${x},${y}`;
+                    const celda = cellsMap[key];
+                    if (celda) {
+                        celda.classList.add('paquete-preview');
+                    }
+                }
+            }
+
+            const x1 = startX;
+            const y1 = startY;
+            const x2 = startX + ancho - 1;
+            const y2 = startY + largo - 1;
+
+            // ⚡️ Pedimos confirmación
+            Swal.fire({
+                title: '¿Colocar paquete aquí?',
+                html: `Coordenadas: <b>${x1},${y1}</b> hasta <b>${x2},${y2}</b>`,
+                showCancelButton: true,
+                confirmButtonText: '✅ Confirmar',
+                cancelButtonText: '❌ Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    guardarLocalizacionPaquete(codigoActual, x1, y1, x2, y2);
+                } else {
+                    limpiarPreview();
+                }
+            });
+        }
+
+
+        function limpiarPreview() {
+            for (const cell of celdas) {
+                cell.classList.remove('paquete-preview');
+            }
+        }
+
+        function guardarLocalizacionPaquete(codigo, x1, y1, x2, y2) {
+            fetch(`/localizaciones-paquetes/${codigo}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    },
+                    body: JSON.stringify({
+                        x1,
+                        y1,
+                        x2,
+                        y2
+                    })
+                })
+                .then(async res => {
+                    const text = await res.text(); // lee como texto
+                    console.log('Respuesta cruda:', text);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return JSON.parse(text);
+                })
+                .then(data => {
+                    Swal.fire('Guardado', data.message, 'success');
+                })
+                .catch(err => {
+                    console.error('Error al guardar:', err);
+                    Swal.fire('Error', err.message, 'error');
+                });
+
+        }
+    </script>
+
 </x-app-layout>

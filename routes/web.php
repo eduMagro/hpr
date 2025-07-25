@@ -111,6 +111,9 @@ Route::middleware('auth')->group(function () {
         ->name('localizaciones.editarMapa');
     Route::get('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])
         ->name('localizaciones.verificar');
+    Route::post('/localizaciones-paquetes/{codigo}', [PaqueteController::class, 'update'])
+        ->name('localizaciones_paquetes.update');
+
     // === USUARIOS Y VACACIONES ===
 
     Route::resource('users', ProfileController::class)->middleware('acceso.seccion:users.index');
@@ -189,6 +192,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])->name('elementosEtiquetas');
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])
         ->where('id', '.*');
+    Route::post('/paquetes/tamaño', function (Request $request) {
+        $paquete = App\Models\Paquete::where('codigo', $request->codigo)->first();
+
+        if (!$paquete) {
+            return response()->json(['error' => 'No encontrado'], 404);
+        }
+
+        // devuelve directamente el accessor
+        return response()->json([
+            'codigo'   => $paquete->codigo,
+            'ancho'    => $paquete->tamaño['ancho'],
+            'longitud' => $paquete->tamaño['longitud'],
+        ]);
+    })->name('paquetes.tamaño');
+
     // === PLANILLAS Y PLANIFICACIÓN ===
     Route::resource('planillas', PlanillaController::class)->middleware('acceso.seccion:planillas.index');
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.import');

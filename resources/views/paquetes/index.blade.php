@@ -117,7 +117,7 @@
                                         <p class="font-semibold text-blue-700">
                                             🏷️ <a href="{{ route('etiquetas.index', ['id' => $etiqueta->id]) }}"
                                                 class="hover:underline">
-                                                {{ $etiqueta->nombre }}{{ $etiqueta->codigo }}
+                                                {{ $etiqueta->nombre }}{{ $etiqueta->etiqueta_sub_id }}
                                             </a> –
                                             {{ $etiqueta->peso_kg }}
                                         </p>

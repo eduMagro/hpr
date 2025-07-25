@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Elemento;
 use App\Models\Planilla;
+use App\Models\Paquete;
 use App\Models\OrdenPlanilla;
 use App\Models\Etiqueta;
 use App\Models\ProductoBase;
@@ -39,6 +40,18 @@ class EtiquetaController extends Controller
         if ($request->filled('etiqueta_sub_id')) {
             $query->where('etiqueta_sub_id', $request->etiqueta_sub_id);
         }
+        if ($request->filled('paquete')) {
+            // Buscar el paquete por su código
+            $paquete = Paquete::where('codigo', $request->paquete)->first();
+
+            if ($paquete) {
+                $query->where('paquete_id', $paquete->id);
+            } else {
+                // Si no existe el paquete con ese código, que no devuelva resultados
+                $query->whereRaw('1 = 0');
+            }
+        }
+
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
@@ -70,6 +83,7 @@ class EtiquetaController extends Controller
                 'id' => 'ID',
                 'codigo' => 'Código',
                 'codigo_planilla' => 'Código Planilla',
+                'paquete' => 'Paquete',
                 'estado' => 'Estado',
                 'numero_etiqueta' => 'Número de Etiqueta',
                 'nombre' => 'Nombre',
@@ -185,7 +199,7 @@ class EtiquetaController extends Controller
             'codigo_planilla' => $this->getOrdenamiento('codigo_planilla', 'Planilla'),
             'etiqueta' => $this->getOrdenamiento('etiqueta', 'Etiqueta'),
             'etiqueta_sub_id' => $this->getOrdenamiento('etiqueta_sub_id', 'Subetiqueta'),
-            'paquete_id' => $this->getOrdenamiento('paquete_id', 'Paquete'),
+            'paquete' => $this->getOrdenamiento('paquete_id', 'Paquete'),
             'maquina' => $this->getOrdenamiento('maquina', 'Máquina 1'),
             'maquina_2' => $this->getOrdenamiento('maquina_2', 'Máquina 2'),
             'maquina3' => $this->getOrdenamiento('maquina3', 'Máquina 3'),

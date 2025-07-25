@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Localizacion;
+use App\Models\LocalizacionPaquete;
 use App\Models\Producto;
 use App\Models\Paquete;
 use App\Models\Maquina;
@@ -16,7 +17,16 @@ class LocalizacionController extends Controller
     public function index()
     {
         $localizaciones = Localizacion::all();
-        return view('localizaciones.index', compact('localizaciones'));
+        $paquete = Paquete::with('etiquetas.elementos')->find(469);
+        $tamaño = $paquete->tamaño;
+
+        $localizaciones = Localizacion::all();
+        $localizacionesPaquetes = LocalizacionPaquete::with('paquete')->get();
+
+        return view('localizaciones.index', [
+            'localizaciones' => $localizaciones,
+            'paquetesEnMapa' => $localizacionesPaquetes,
+        ]);
     }
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
