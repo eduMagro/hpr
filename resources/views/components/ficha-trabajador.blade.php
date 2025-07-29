@@ -73,7 +73,7 @@
         <p><strong>Empresa:</strong> {{ $user->empresa->nombre ?? 'N/A' }}</p>
         <p><strong>Categoría:</strong> {{ $user->categoria->nombre ?? 'N/A' }}</p>
         @if ($user->rol == 'operario')
-            <p><strong>Especialidad: </strong>{{ $user->maquina->nombre }}</p>
+            <p><strong>Especialidad: </strong>{{ optional($user->maquina)->nombre ?? 'N/A' }}</p>
         @endif
     </div>
 
