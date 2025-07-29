@@ -34,23 +34,24 @@
         {{-- Datos principales --}}
         <div class="text-center md:text-left max-w-full overflow-hidden">
             <p class="text-lg font-semibold break-words">{{ $user->nombre_completo }}</p>
-            <p class="text-sm text-gray-500">Oficina</p>
 
-            {{-- Departamentos --}}
-            <div class="mt-2 flex flex-wrap justify-center md:justify-start gap-2">
-                @forelse($user->departamentos as $dep)
-                    <span
-                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 break-words">
-                        {{ $dep->nombre }}
-                        @if ($dep->pivot && $dep->pivot->rol_departamental)
-                            <span class="ml-1 text-gray-500 text-[10px]">({{ $dep->pivot->rol_departamental }})</span>
-                        @endif
-                    </span>
-                @empty
-                    <span class="text-sm text-gray-500 italic">Sin departamentos asignados</span>
-                @endforelse
-            </div>
-
+            @if ($user->rol == 'oficina')
+                {{-- Departamentos --}}
+                <div class="mt-2 flex flex-wrap justify-center md:justify-start gap-2">
+                    @forelse($user->departamentos as $dep)
+                        <span
+                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 break-words">
+                            {{ $dep->nombre }}
+                            @if ($dep->pivot && $dep->pivot->rol_departamental)
+                                <span
+                                    class="ml-1 text-gray-500 text-[10px]">({{ $dep->pivot->rol_departamental }})</span>
+                            @endif
+                        </span>
+                    @empty
+                        <span class="text-sm text-gray-500 italic">Sin departamentos asignados</span>
+                    @endforelse
+                </div>
+            @endif
             {{-- Contactos --}}
             <p class="mt-2 break-all text-sm md:text-base">📧 {{ $user->email }}</p>
             @if ($user->movil_empresa)
@@ -71,6 +72,9 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <p><strong>Empresa:</strong> {{ $user->empresa->nombre ?? 'N/A' }}</p>
         <p><strong>Categoría:</strong> {{ $user->categoria->nombre ?? 'N/A' }}</p>
+        @if ($user->rol == 'operario')
+            <p><strong>Especialidad: </strong>{{ $user->maquina->nombre }}</p>
+        @endif
     </div>
 
     <div class="bg-gray-100 p-3 rounded-lg mb-4">
@@ -85,15 +89,30 @@
         <div class="mt-6 border-t pt-6">
             <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>
             <form action="{{ route('nominas.descargarMes') }}" method="GET"
-                class="flex flex-wrap items-center gap-3 max-w-md">
+                class="flex flex-wrap items-center gap-3 max-w-md" x-data="{ cargando: false }"
+                @submit.prevent="if (!cargando) { cargando = true; $el.submit(); }">
                 @csrf
+
                 <input type="month" name="mes_anio" id="mes_anio" required
                     class="flex-1 border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50">
-                <button type="submit"
-                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow transition">
-                    📥
+
+                <button type="submit" x-bind:disabled="cargando"
+                    class="inline-flex items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
+               bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2
+               focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+
+                    {{-- Spinner animado --}}
+                    <div x-show="cargando" class="flex space-x-1" aria-hidden="true">
+                        <span class="h-2 w-2 rounded-full bg-white animate-bounce [animation-delay:-0.3s]"></span>
+                        <span class="h-2 w-2 rounded-full bg-white animate-bounce [animation-delay:-0.15s]"></span>
+                        <span class="h-2 w-2 rounded-full bg-white animate-bounce"></span>
+                    </div>
+
+                    <span x-show="!cargando">📥</span>
+                    <span x-show="cargando">Cargando...</span>
                 </button>
             </form>
+
         </div>
     @endif
 </div>
