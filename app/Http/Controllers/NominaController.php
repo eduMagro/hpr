@@ -45,7 +45,8 @@ class NominaController extends Controller
         ]);
 
         // Obtener mes y año
-        $fecha = Carbon::createFromFormat('Y-m', $request->mes_anio);
+        $fecha = Carbon::createFromFormat('Y-m-d', $request->mes_anio . '-01');
+
         $mes = ucfirst($fecha->locale('es')->translatedFormat('F'));
         $anio = $fecha->format('Y');
 
@@ -62,6 +63,7 @@ class NominaController extends Controller
         }
 
         $archivos = glob($carpetaUsuario . '/*.pdf');
+
 
         if (empty($archivos)) {
             return back()->with('error', 'No hay archivos PDF en esa carpeta.');
