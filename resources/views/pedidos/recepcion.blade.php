@@ -84,7 +84,7 @@
             <input type="hidden" name="producto_base_id" value="{{ $producto->id }}">
             <input type="hidden" name="cantidad_paquetes" id="cantidad_paquetes_input">
             <input type="hidden" name="codigo" id="codigo_input">
-            <input type="hidden" name="fabricante_manual" id="fabricante_id_input">
+            <input type="hidden" name="fabricante_id" id="fabricante_id_input">
             <input type="hidden" name="n_colada" id="n_colada_input">
             <input type="hidden" name="n_paquete" id="n_paquete_input">
             <input type="hidden" name="codigo_2" id="codigo_2_input">
@@ -97,8 +97,11 @@
 
     </div>
 
-
     <script>
+        const requiereFabricante = @json($requiereFabricanteManual);
+        const fabricantes = @json($fabricantes->pluck('nombre', 'id'));
+        const ultimoFabricanteId = @json($ultimoFabricante);
+
         async function iniciarRecepcion() {
             try {
                 console.log('🟢 Inicio flujo SweetAlert');
@@ -121,7 +124,24 @@
                 console.log('👉 paquetes', paquetes);
                 if (!paquetes) return;
                 document.getElementById('cantidad_paquetes_input').value = paquetes;
+                console.log(requiereFabricante);
+                console.log(ultimoFabricanteId);
+                if (requiereFabricante) {
+                    const {
+                        value: fabricante_id
+                    } = await Swal.fire({
+                        title: 'Selecciona el fabricante',
+                        input: 'select',
+                        inputOptions: fabricantes,
+                        inputValue: ultimoFabricanteId, // valor por defecto
+                        inputPlaceholder: 'Selecciona un fabricante',
+                        showCancelButton: true,
+                        inputValidator: (value) => !value && 'Debes seleccionar un fabricante'
+                    });
 
+                    if (!fabricante_id) return;
+                    document.getElementById('fabricante_id_input').value = fabricante_id;
+                }
 
                 // Código primer paquete
                 const {
@@ -186,7 +206,7 @@
                     const {
                         value: n_paquete_2
                     } = await Swal.fire({
-                        title: 'Número segundo paquete',
+                        title: 'Nº Paqute segundo paquete',
                         input: 'number'
                     });
                     console.log('👉 n_paquete_2', n_paquete_2);
@@ -332,16 +352,22 @@
         async function editarProducto(prod) {
             console.log('🟢 Abriendo modal para producto', prod);
 
-
+            const fabricanteOptions = Object.entries(fabricantesOptions).map(([id, nombre]) => {
+                const selected = id == prod.fabricante_id ? 'selected' : '';
+                return `<option value="${id}" ${selected}>${nombre}</option>`;
+            }).join('');
 
             const formHtml = `
-            <input id="swal-codigo" class="swal2-input" placeholder="Código" value="${prod.codigo || ''}">
-            <input id="swal-colada" class="swal2-input" placeholder="Nº Colada" value="${prod.n_colada || ''}">
-            <input id="swal-paquete" class="swal2-input" placeholder="Nº Paquete" value="${prod.n_paquete || ''}">
-            <input id="swal-peso" class="swal2-input" type="number" step="0.01" placeholder="Peso inicial (kg)" value="${prod.peso_inicial || ''}">
-           
-            <input id="swal-ubicacion" class="swal2-input" placeholder="Ubicación" value="${prod.ubicacion_id || ''}">
-        `;
+                <input id="swal-codigo" class="swal2-input" placeholder="Código" value="${prod.codigo || ''}">
+                <input id="swal-colada" class="swal2-input" placeholder="Nº Colada" value="${prod.n_colada || ''}">
+                <input id="swal-paquete" class="swal2-input" placeholder="Nº Paquete" value="${prod.n_paquete || ''}">
+                <input id="swal-peso" class="swal2-input" type="number" step="0.01" placeholder="Peso inicial (kg)" value="${prod.peso_inicial || ''}">
+                <input id="swal-ubicacion" class="swal2-input" placeholder="Ubicación" value="${prod.ubicacion_id || ''}">
+                <select id="swal-fabricante" class="swal2-input">
+                    <option value="">Sin fabricante</option>
+                    ${fabricanteOptions}
+                </select>
+            `;
 
             const {
                 value: formValues
@@ -358,10 +384,11 @@
                         n_colada: document.getElementById('swal-colada').value,
                         n_paquete: document.getElementById('swal-paquete').value,
                         peso_inicial: document.getElementById('swal-peso').value,
-
                         ubicacion_id: document.getElementById('swal-ubicacion').value,
+                        fabricante_id: document.getElementById('swal-fabricante').value,
                     };
                 }
+
             });
 
             if (formValues) {

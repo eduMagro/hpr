@@ -244,15 +244,15 @@ class PedidoController extends Controller
         $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
         $ultimoFabricante = null;
 
-        if ($requiereFabricanteManual) {
-            $ultimoFabricante = Producto::select('fabricante_id')
-                ->join('entradas', 'productos.entrada_id', '=', 'entradas.id')
-                ->where('entradas.usuario_id', auth()->id())
-                ->where('producto_base_id', $producto_base_id)
-                ->whereNotNull('fabricante_id')
-                ->latest('productos.created_at')
-                ->value('fabricante_id');
-        }
+        $ultimoProducto = Producto::with(['entrada', 'productoBase'])
+            ->whereHas('entrada', fn($q) => $q->where('usuario_id', auth()->id()))
+            ->latest()
+            ->first();
+
+        $ultimoFabricante = $ultimoProducto?->fabricante_id
+            ?? $ultimoProducto?->productoBase?->fabricante_id;
+
+
         $fabricantes = $requiereFabricanteManual ? Fabricante::orderBy('nombre')->get() : collect();
         // 🔹 Filtrar productos del pedido
         $productosIds = $pedido->productos->pluck('id')->filter()->all();
@@ -319,7 +319,7 @@ class PedidoController extends Controller
                     'n_colada_2'         => 'nullable|string|max:50',
                     'n_paquete_2'        => 'nullable|string|max:50',
                     'ubicacion_id'       => 'required|exists:ubicaciones,id',
-                    'fabricante_manual'  => 'nullable|string|max:100',
+                    'fabricante_id' => 'nullable|exists:fabricantes,id',
                 ],
                 [
                     'codigo.required'   => 'El código es obligatorio.',
@@ -355,8 +355,9 @@ class PedidoController extends Controller
                     'ubicacion_id.required' => 'La ubicación es obligatoria.',
                     'ubicacion_id.exists'   => 'La ubicación seleccionada no es válida.',
 
-                    'fabricante_manual.string' => 'El fabricante debe ser texto.',
-                    'fabricante_manual.max'    => 'El fabricante no puede tener más de 100 caracteres.',
+                    'fabricante_id.exists' => 'El fabricante seleccionado no es válido.',
+                    'fabricante_id.required' => 'El fabricante es obligatorio.',
+
                 ]
             );
 
@@ -394,11 +395,9 @@ class PedidoController extends Controller
                 $entrada->save();
             }
 
-            // Fabricante
-            $fabricanteFinal = $pedido->fabricante_id;
-            if (!$fabricanteFinal && $pedido->distribuidor_id && $request->filled('fabricante_manual')) {
-                $fabricanteTexto = $request->fabricante_manual; // Si tienes campo "otros", puedes guardarlo allí
-            }
+            // Fabricante: si el pedido no tiene fabricante definido, usamos el que venga del formulario
+            $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
+
 
             // Primer producto
             Producto::create([
