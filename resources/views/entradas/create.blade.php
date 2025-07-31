@@ -26,9 +26,9 @@
             <input type="hidden" name="n_colada_2" id="n_colada_2_input">
             <input type="hidden" name="n_paquete_2" id="n_paquete_2_input">
             <input type="hidden" name="peso" id="peso_input">
-            <input type="hidden" name="ubicacion" id="ubicacion_input">
+            <input type="hidden" name="ubicacion_id" id="ubicacion_input">
         </form>
-        {{-- <button onclick="iniciarRegistro()" class="bg-blue-500 text-white py-2 px-4 mt-4 rounded-lg hover:bg-blue-600">
+        {{-- <button onclick="iniciarRegistro()" class="bg-blu e-500 text-white py-2 px-4 mt-4 rounded-lg hover:bg-blue-600">
             Registrar Entrada
         </button> --}}
 
