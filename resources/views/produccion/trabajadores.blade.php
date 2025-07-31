@@ -104,7 +104,8 @@
                 calendar.destroy();
             }
 
-            const vistasValidas = ['resourceTimelineDay', 'resourceTimelineWeek'];
+            const vistasValidas = ['resourceTimelineDay', 'resourceTimelineWeek', 'dayGridMonth'];
+
             let vistaGuardada = localStorage.getItem('ultimaVistaCalendario');
             if (!vistasValidas.includes(vistaGuardada)) {
                 vistaGuardada = 'resourceTimelineDay';
@@ -137,10 +138,11 @@
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: ''
+                    right: 'resourceTimelineDay,resourceTimelineWeek,dayGridMonth'
                 },
                 buttonText: {
-                    today: 'Hoy'
+                    today: 'Hoy',
+                    month: 'Mes'
                 },
                 slotLabelDidMount: function(info) {
                     const viewType = info.view.type;
