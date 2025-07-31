@@ -357,12 +357,12 @@ class PlanillaController extends Controller
             $query->whereDate('created_at', Carbon::parse($request->fecha_importacion)->format('Y-m-d'));
         }
 
-if ($request->filled('fecha_estimada_entrega')) {
-    $query->whereDate(
-        'fecha_estimada_entrega',
-        Carbon::parse($request->fecha_estimada_entrega)->format('Y-m-d')
-    );
-}
+        if ($request->filled('fecha_estimada_entrega')) {
+            $query->whereDate(
+                'fecha_estimada_entrega',
+                Carbon::parse($request->fecha_estimada_entrega)->format('Y-m-d')
+            );
+        }
 
 
 
@@ -557,7 +557,7 @@ if ($request->filled('fecha_estimada_entrega')) {
                 $codigoPlanilla = $row[10] ?? 'Sin código';
                 $planillas[$codigoPlanilla][] = $row;
             }
- $fechaEntrega = now()->addDays(7)->setTime(10, 0, 0);
+            $fechaEntrega = now()->addDays(7)->setTime(10, 0, 0);
             /* ================================================== */
             /* Bucle principal : una iteración por planilla       */
             /* ================================================== */
@@ -881,14 +881,6 @@ if ($request->filled('fecha_estimada_entrega')) {
                         'peso'            => 0,
                         'marca'           => null,
                         'etiqueta_sub_id' => $codigoSub,
-                    ]);
-
-                    // 5.3 Posicionamiento en la cola de la máquina
-                    $ultimaPos = OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0;
-                    OrdenPlanilla::create([
-                        'planilla_id' => $planilla->id,
-                        'maquina_id'  => $maquinaId,
-                        'posicion'    => $ultimaPos + 1,
                     ]);
 
                     // 5.4 Agrupar filas idénticas y crear elementos
@@ -1258,8 +1250,8 @@ if ($request->filled('fecha_estimada_entrega')) {
             return redirect()->back()->with('error', 'Ocurrió un error al eliminar las planillas: ' . $e->getMessage());
         }
     }
- //------------------------------------------------------------------------------------ COMPLETAR PLANILLA()
-     public function completar(Request $request, PlanillaService $ordenPlanillaService)
+    //------------------------------------------------------------------------------------ COMPLETAR PLANILLA()
+    public function completar(Request $request, PlanillaService $ordenPlanillaService)
     {
         // ✅ Validamos que exista la planilla
         $request->validate([
