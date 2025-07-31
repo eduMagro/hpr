@@ -23,101 +23,101 @@ class NominaController extends Controller
 {
     // --------------------- IMPORTACION NOMINASS
 
- public function dividirNominas(Request $request)
-{
-    $request->validate([
-        'archivo'   => 'required|mimes:pdf|max:102400',
-        'mes_anio'  => 'required|date_format:Y-m',
-    ]);
+    public function dividirNominas(Request $request)
+    {
+        $request->validate([
+            'archivo'   => 'required|mimes:pdf|max:102400',
+            'mes_anio'  => 'required|date_format:Y-m',
+        ]);
 
-    $rutaRelativa = $request->file('archivo')->store('private/temp');
-    $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
-\Log::info('Lanzamos el job');
-    // 🚀 Lanzar job en segundo plano
-DividirNominasJob::dispatch($rutaAbsoluta, $request->mes_anio, auth()->id());
+        $rutaRelativa = $request->file('archivo')->store('private/temp');
+        $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
+        \Log::info('Lanzamos el job');
+        // 🚀 Lanzar job en segundo plano
+        DividirNominasJob::dispatch($rutaAbsoluta, $request->mes_anio, auth()->id());
 
-    return back()->with('success', 'El proceso de dividir nóminas se ha puesto en cola. Te avisaremos al terminar.');
-}
- public function descargarNominasMes(Request $request)
-{
-    $request->validate([
-        'mes_anio' => 'required|date_format:Y-m',
-    ]);
-
-    // Obtener mes y año
-    $fecha = Carbon::createFromFormat('Y-m', $request->mes_anio);
-    $mes = ucfirst($fecha->locale('es')->translatedFormat('F'));
-    $anio = $fecha->format('Y');
-
-    // Ruta base
-    $carpetaBase = storage_path('app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio);
-
-    // Usuario actual
-    $user = auth()->user();
-    $dniNormalizado = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
-    $carpetaUsuario = $carpetaBase . '/' . $dniNormalizado;
-
-    if (!is_dir($carpetaUsuario)) {
-        return back()->with('error', 'No se encontró nómina para ' . $mes . '.');
+        return back()->with('success', 'El proceso de dividir nóminas se ha puesto en cola. Te avisaremos al terminar.');
     }
+    public function descargarNominasMes(Request $request)
+    {
+        $request->validate([
+            'mes_anio' => 'required|date_format:Y-m',
+        ]);
 
-    $archivos = glob($carpetaUsuario . '/*.pdf');
+        // Obtener mes y año
+        $fecha = Carbon::createFromFormat('Y-m', $request->mes_anio);
+        $mes = ucfirst($fecha->locale('es')->translatedFormat('F'));
+        $anio = $fecha->format('Y');
 
-    if (empty($archivos)) {
-        return back()->with('error', 'No hay archivos PDF en esa carpeta.');
-    }
+        // Ruta base
+        $carpetaBase = storage_path('app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio);
 
-    // Preparar parser
-    $parser = new Parser();
-    $pdf = new Fpdi();
-    $dniEnPdf = false;
+        // Usuario actual
+        $user = auth()->user();
+        $dniNormalizado = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
+        $carpetaUsuario = $carpetaBase . '/' . $dniNormalizado;
 
-    foreach ($archivos as $archivo) {
-        try {
-            $pdfData = $parser->parseFile($archivo);
-            $texto = strtoupper($pdfData->getText());
+        if (!is_dir($carpetaUsuario)) {
+            return back()->with('error', 'No se encontró nómina para ' . $mes . '.');
+        }
 
-            // Comprobar que el texto contiene el DNI del usuario
-            if (strpos($texto, $dniNormalizado) === false) {
-                // Si no lo contiene, saltamos este archivo
+        $archivos = glob($carpetaUsuario . '/*.pdf');
+
+        if (empty($archivos)) {
+            return back()->with('error', 'No hay archivos PDF en esa carpeta.');
+        }
+
+        // Preparar parser
+        $parser = new Parser();
+        $pdf = new Fpdi();
+        $dniEnPdf = false;
+
+        foreach ($archivos as $archivo) {
+            try {
+                $pdfData = $parser->parseFile($archivo);
+                $texto = strtoupper($pdfData->getText());
+
+                // Comprobar que el texto contiene el DNI del usuario
+                if (strpos($texto, $dniNormalizado) === false) {
+                    // Si no lo contiene, saltamos este archivo
+                    continue;
+                }
+
+                // Si lo contiene, lo añadimos al combinado
+                $dniEnPdf = true;
+                $pageCount = $pdf->setSourceFile($archivo);
+                for ($i = 1; $i <= $pageCount; $i++) {
+                    $tpl = $pdf->importPage($i);
+                    $pdf->AddPage();
+                    $pdf->useTemplate($tpl);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error leyendo PDF ' . $archivo . ': ' . $e->getMessage());
                 continue;
             }
-
-            // Si lo contiene, lo añadimos al combinado
-            $dniEnPdf = true;
-            $pageCount = $pdf->setSourceFile($archivo);
-            for ($i = 1; $i <= $pageCount; $i++) {
-                $tpl = $pdf->importPage($i);
-                $pdf->AddPage();
-                $pdf->useTemplate($tpl);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error leyendo PDF ' . $archivo . ': ' . $e->getMessage());
-            continue;
         }
-    }
 
-    if (!$dniEnPdf) {
-        return back()->with('error', 'Hay un error en la nómina. Reporta el error, por favor.');
-    }
+        if (!$dniEnPdf) {
+            return back()->with('error', 'Hay un error en la nómina. Reporta el error, por favor.');
+        }
 
-    // Generar PDF combinado
-    $nombreArchivo = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
+        // Generar PDF combinado
+        $nombreArchivo = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
 
         // dentro de tu método donde ya tienes $user y $nombreArchivo
         $alertaService = app(AlertaService::class);
 
-      $alertaService->crearAlerta(
+        $alertaService->crearAlerta(
             emisorId: $user->id,
             destinatarioId: $user->id,
             mensaje: 'Te has descargado ' . $nombreArchivo,
             tipo: 'usuario'
         );
 
-    return response($pdf->Output('S', $nombreArchivo))
-        ->header('Content-Type', 'application/pdf')
-        ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
-}
+        return response($pdf->Output('S', $nombreArchivo))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
+    }
     // --------------------- GENERACION NOMINA
     public function index()
     {
