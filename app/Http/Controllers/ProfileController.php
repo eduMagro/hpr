@@ -795,33 +795,38 @@ class ProfileController extends Controller
 
     public function generarTurnos(User $user)
     {
-        // Obtener los IDs de los turnos
+        // IDs de turnos
         $turnoMañanaId = Turno::where('nombre', 'mañana')->value('id');
-        $turnoTardeId = Turno::where('nombre', 'tarde')->value('id');
-        $turnoNocheId = Turno::where('nombre', 'noche')->value('id');
+        $turnoTardeId  = Turno::where('nombre', 'tarde')->value('id');
+        $turnoNocheId  = Turno::where('nombre', 'noche')->value('id');
 
         $obraId = request()->input('obra_id');
 
-        // Definir el inicio y fin del año actual
+        // Rango: desde mañana hasta fin de año
         $inicio = Carbon::now()->addDay()->startOfDay();
-        $fin = Carbon::now()->endOfYear();
+        $fin    = Carbon::now()->endOfYear();
 
-        // Obtener festivos (nacionales, autonómicos y locales)
-        $festivos = $this->getFestivos();
-        $festivosArray = collect($festivos)->pluck('start')->toArray();
+        // ✅ Festivos desde tu BD por rango (rápido y sin API)
+        $festivosArray = Festivo::whereDate('fecha', '>=', $inicio->toDateString())
+            ->whereDate('fecha', '<=', $fin->toDateString())
+            ->pluck('fecha')
+            ->map(fn($f) => Carbon::parse($f)->toDateString())
+            ->all();
 
+        // (opcional) si quieres evitar también los días ya marcados como vacaciones:
         $diasVacaciones = AsignacionTurno::where('user_id', $user->id)
             ->where('estado', 'vacaciones')
             ->pluck('fecha')
-            ->toArray();
+            ->map(fn($f) => Carbon::parse($f)->toDateString())
+            ->all();
 
-        // Determinar el turno inicial según el tipo de turno del usuario
+        // Turno inicial según configuración del usuario
         if ($user->turno == 'diurno') {
             $turnoInicial = request()->input('turno_inicio');
             if (!in_array($turnoInicial, ['mañana', 'tarde'])) {
                 return redirect()->back()->with('error', 'Debe seleccionar un turno válido para comenzar (mañana o tarde).');
             }
-            $turnoAsignado = ($turnoInicial == 'mañana') ? $turnoMañanaId : $turnoTardeId;
+            $turnoAsignado = $turnoInicial === 'mañana' ? $turnoMañanaId : $turnoTardeId;
         } elseif ($user->turno == 'nocturno') {
             $turnoAsignado = $turnoNocheId;
         } elseif ($user->turno == 'mañana') {
@@ -830,17 +835,19 @@ class ProfileController extends Controller
             return redirect()->back()->with('error', 'El usuario no tiene un turno asignado.');
         }
 
-
         for ($fecha = $inicio->copy(); $fecha->lte($fin); $fecha->addDay()) {
-            $esViernes = $fecha->dayOfWeek == Carbon::FRIDAY;
-            $fechaStr = $fecha->toDateString();
+            $fechaStr  = $fecha->toDateString();
+            $esViernes = $fecha->dayOfWeek === Carbon::FRIDAY;
 
-            // Saltar solo sábados, domingos y festivos
-            if (
-                in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY]) ||
-                in_array($fechaStr, $festivosArray)
-            ) {
-                if ($user->turno == 'diurno' && $esViernes) {
+            // ⛔ Saltar sábados, domingos y festivos (desde BD)
+            $esNoLaborable =
+                in_array($fecha->dayOfWeek, [Carbon::SATURDAY, Carbon::SUNDAY])
+                || in_array($fechaStr, $festivosArray, true)
+                || in_array($fechaStr, $diasVacaciones ?? [], true); // (opcional) evita vacaciones
+
+            if ($esNoLaborable) {
+                // Mantén la rotación de viernes aunque se salte el día
+                if ($user->turno === 'diurno' && $esViernes) {
                     $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
                 }
                 continue;
@@ -849,7 +856,8 @@ class ProfileController extends Controller
             $asignacion = AsignacionTurno::where('user_id', $user->id)
                 ->whereDate('fecha', $fechaStr)
                 ->first();
-            // ⛔ Saltar si el turno existente tiene asignado un turno con nombre 'festivo'
+
+            // ⛔ No sobrescribir si ese día se marcó con turno 'festivo'
             if ($asignacion && optional($asignacion->turno)->nombre === 'festivo') {
                 if ($user->turno === 'diurno' && $esViernes) {
                     $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
@@ -874,14 +882,15 @@ class ProfileController extends Controller
                 ]);
             }
 
-            if ($user->turno == 'diurno' && $esViernes) {
+            // Rotación de viernes (para diurno)
+            if ($user->turno === 'diurno' && $esViernes) {
                 $turnoAsignado = ($turnoAsignado === $turnoMañanaId) ? $turnoTardeId : $turnoMañanaId;
             }
         }
 
-
         return redirect()->back()->with('success', "Turnos generados correctamente para {$user->name}, excluyendo los festivos.");
     }
+
     public function eventosTurnos(User $user)
     {
         $colores = $this->getColoresTurnosYEstado();
@@ -945,7 +954,7 @@ class ProfileController extends Controller
         $eventos = $eventos->merge($this->getEventosFichajes($user));
 
         // 4. Festivos
-        $eventos = $eventos->merge($this->getFestivos());
+        $eventos = $eventos->merge(Festivo::eventosCalendario());
 
         // 5. Vacaciones
         $vacaciones = VacacionesSolicitud::where('user_id', $user->id)
@@ -996,57 +1005,6 @@ class ProfileController extends Controller
         }
     }
 
-    private function getFestivos()
-    {
-        $response = Http::get("https://date.nager.at/api/v3/PublicHolidays/" . date('Y') . "/ES");
-
-        if ($response->failed()) {
-            return []; // Si la API falla, devolvemos un array vacío
-        }
-
-        $festivos = collect($response->json())->filter(function ($holiday) {
-            // Si no tiene 'counties', es un festivo NACIONAL
-            if (!isset($holiday['counties'])) {
-                return true;
-            }
-            // Si el festivo pertenece a Andalucía
-            return in_array('ES-AN', $holiday['counties']);
-        })->map(function ($holiday) {
-            return [
-                'title' => $holiday['localName'], // Nombre del festivo
-                'start' => Carbon::parse($holiday['date'])->toDateString(), // Fecha formateada correctamente
-                'backgroundColor' => '#ff0000', // Rojo para festivos
-                'borderColor' => '#b91c1c',
-                'textColor' => 'white',
-                'allDay' => true
-            ];
-        });
-
-        // Añadir festivos locales de Los Palacios y Villafranca
-        $festivosLocales = collect([
-            [
-                'title' => 'Festividad de Nuestra Señora de las Nieves',
-                'start' => date('Y') . '-08-05',
-                'backgroundColor' => '#ff0000',
-                'borderColor' => '#b91c1c',
-                'textColor' => 'white',
-                'editable' => true,
-                'allDay' => true
-            ],
-            [
-                'title' => 'Feria Los Palacios y Vfca',
-                'start' => date('Y') . '-09-25',
-                'backgroundColor' => '#ff0000',
-                'borderColor' => '#b91c1c',
-                'textColor' => 'white',
-                'editable' => true,
-                'allDay' => true
-            ]
-        ]);
-
-        // Combinar festivos nacionales, autonómicos y locales
-        return $festivos->merge($festivosLocales)->values()->toArray();
-    }
     public function cerrarSesionesDeUsuario(User $user)
     {
 

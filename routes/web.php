@@ -37,6 +37,7 @@ use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\IrpfTramoController;
 use App\Http\Controllers\SeguridadSocialController;
 use App\Http\Controllers\NominaController;
+use App\Http\Controllers\FestivoController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Http\Request;
 use App\Http\Controllers\DepartamentoController;
@@ -156,6 +157,11 @@ Route::middleware('auth')->group(function () {
     })->name('generar-turnos');
     Route::post('/profile/generar-turnos/{user}', [ProfileController::class, 'generarTurnos'])->name('profile.generar.turnos');
     Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
+    Route::put('/festivos/{festivo}/fecha', [FestivoController::class, 'actualizarFecha'])
+        ->name('festivos.actualizarFecha');
+    Route::delete('/festivos/{festivo}', [FestivoController::class, 'destroy'])
+        ->name('festivos.eliminar');
+    Route::post('/festivos', [FestivoController::class, 'store'])->name('festivos.store');
     Route::post('/asignaciones-turno/asignar-obra', [AsignacionTurnoController::class, 'asignarObra'])->name('asignaciones-turno.asignarObra');
     Route::post('/asignaciones-turno/asignar-multiple', [AsignacionTurnoController::class, 'asignarObraMultiple'])->name('asignaciones-turno.asignarObraMultiple');
     Route::put('/asignaciones-turno/{id}/quitar-obra', [AsignacionTurnoController::class, 'quitarObra'])->name('asignaciones-turno.quitarObra');

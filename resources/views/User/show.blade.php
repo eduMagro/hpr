@@ -80,26 +80,25 @@
                     Swal.fire({
                         title: `📋 Fichaje del ${props.fecha}`,
                         html: `
-  <div class="text-center">
-    <div class="mb-4">
-      <label class="block mb-2 font-semibold">Hora de entrada:</label>
-      <input type="time"
-             id="horaEntrada"
-             class="swal2-input"
-             style="display:block; margin:0 auto; width:auto;"
-             value="${props.entrada ?? ''}">
-    </div>
-    <div>
-      <label class="block mb-2 font-semibold">Hora de salida:</label>
-      <input type="time"
-             id="horaSalida"
-             class="swal2-input"
-             style="display:block; margin:0 auto; width:auto;"
-             value="${props.salida ?? ''}">
-    </div>
-  </div>
-`,
-
+                        <div class="text-center">
+                            <div class="mb-4">
+                            <label class="block mb-2 font-semibold">Hora de entrada:</label>
+                            <input type="time"
+                                    id="horaEntrada"
+                                    class="swal2-input"
+                                    style="display:block; margin:0 auto; width:auto;"
+                                    value="${props.entrada ?? ''}">
+                            </div>
+                            <div>
+                            <label class="block mb-2 font-semibold">Hora de salida:</label>
+                            <input type="time"
+                                    id="horaSalida"
+                                    class="swal2-input"
+                                    style="display:block; margin:0 auto; width:auto;"
+                                    value="${props.salida ?? ''}">
+                            </div>
+                        </div>
+                        `,
                         showCancelButton: true,
                         confirmButtonText: "Guardar",
                         cancelButtonText: "Cancelar"

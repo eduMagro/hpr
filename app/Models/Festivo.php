@@ -14,18 +14,46 @@ class Festivo extends Model
     protected $fillable = [
         'titulo',
         'fecha',
-        'editable',
         'anio',
     ];
 
     protected $casts = [
         'fecha' => 'date',
-        'editable' => 'boolean',
     ];
 
     // Scope para filtrar por año
     public function scopeDelAnio($query, $anio)
     {
         return $query->where('anio', $anio);
+    }
+
+    /**
+     * Devuelve los eventos de festivos listos para FullCalendar
+     */
+    //     $eventos = Festivo::eventosCalendario();        // año actual
+    //     $eventos = Festivo::eventosCalendario(2026);    // año concreto
+    public static function eventosCalendario(?int $anio = null)
+    {
+        $anio = $anio ?? (int) date('Y');
+
+        return self::delAnio($anio)
+            ->orderBy('fecha')
+            ->get(['id', 'titulo', 'fecha', 'anio'])
+            ->map(function ($f) {
+                return [
+                    'id'              => 'festivo-' . $f->id,
+                    'title'           => $f->titulo,
+                    'start'           => $f->fecha->toDateString(),
+                    'allDay'          => true,
+                    'backgroundColor' => '#ff0000',
+                    'borderColor'     => '#b91c1c',
+                    'textColor'       => 'white',
+                    'editable'        => true,
+                    'extendedProps'   => [
+                        'festivo_id' => $f->id,
+                        'anio'       => $f->anio ?? (int) $f->fecha->format('Y'),
+                    ],
+                ];
+            });
     }
 }

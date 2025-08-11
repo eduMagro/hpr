@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Database\Eloquent\Builder; // ✅ Correcto
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\AsignacionesTurnosExport;
+use App\Models\Festivo;
+use Carbon\CarbonPeriod;
 
 class AsignacionTurnoController extends Controller
 {
@@ -322,9 +324,9 @@ class AsignacionTurnoController extends Controller
 
     public function fichar(Request $request)
     {
-        Log::info('📩 Datos recibidos en fichar()', $request->all());
 
         try {
+            /* 1) Validación y permisos ------------------------------------------------ */
             $request->validate([
                 'user_id'  => 'required|exists:users,id',
                 'tipo'     => 'required|in:entrada,salida',
@@ -336,141 +338,218 @@ class AsignacionTurnoController extends Controller
             if ($user->rol !== 'operario') {
                 return response()->json(['error' => 'No tienes permisos para fichar.'], 403);
             }
-            // ============================
-            // 🔎 Buscar obra más cercana
-            // ============================
-            $lat = $request->latitud;
-            $lon = $request->longitud;
 
-            // Obtener todas las obras activas (puedes filtrar más si quieres)
-            $obras = Obra::where('estado', 'activa')->get();
-
-            $obraEncontrada = null;
-            $distanciaMin = null;
-
-            foreach ($obras as $obra) {
-                $dist = $this->calcularDistancia($lat, $lon, $obra->latitud, $obra->longitud);
-
-                if ($dist <= $obra->distancia) {
-                    if (is_null($distanciaMin) || $dist < $distanciaMin) {
-                        $distanciaMin = $dist;
-                        $obraEncontrada = $obra;
-                    }
-                }
-            }
-
+            /* 2) Obra cercana --------------------------------------------------------- */
+            $obraEncontrada = $this->buscarObraCercana($request->latitud, $request->longitud);
             if (!$obraEncontrada) {
                 return response()->json(['error' => 'No estás dentro de ninguna zona de trabajo.'], 403);
             }
-            $ahora         = now();
-            $horaActual    = $ahora->format('H:i:s');
-            $hora          = Carbon::createFromFormat('H:i:s', $horaActual);
-            $fecha         = $ahora->toDateString();
-            $fechaAnterior = $ahora->copy()->subDay()->toDateString();
-            $fechaSiguiente = $ahora->copy()->addDay()->toDateString();
 
-            // 🧠 Detectar turno lógico según hora real (con 2h de margen)
-            $turnoDetectado      = null;
-            $fechaTurnoDetectado = null;
+            /* 3) Hora actual + detección de turno/fecha ------------------------------ */
+            $ahora = now();
+            $horaActual = $ahora->format('H:i:s');
 
-            if ($hora->between(Carbon::createFromTime(19, 0), Carbon::createFromTime(23, 59))) {
-                $turnoDetectado = 'noche';
-                $fechaTurnoDetectado = $fechaSiguiente; // noche que empieza hoy pero se asigna al día siguiente
-            } elseif ($hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(3, 59))) {
-                $turnoDetectado = 'noche';
-                $fechaTurnoDetectado = $fecha; // madrugada, sigue contando para la noche anterior
-            } elseif ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(11, 59))) {
-                $turnoDetectado      = 'mañana';
-                $fechaTurnoDetectado = $fecha;
-            } elseif ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(18, 59))) {
-                $turnoDetectado      = 'tarde';
-                $fechaTurnoDetectado = $fecha;
-            }
-
+            [$turnoDetectado, $fechaTurnoDetectado] = $this->detectarTurnoYFecha($ahora);
             if (!$turnoDetectado || !$fechaTurnoDetectado) {
                 return response()->json(['error' => 'No se pudo determinar el turno para esta hora.'], 403);
             }
 
-            $asignacionTurno = $user->asignacionesTurnos()
-                ->where('fecha', $fechaTurnoDetectado)
-                ->with('turno')
-                ->first();
-
-            if (!$asignacionTurno) {
-                return response()->json(['error' => 'No tienes un turno asignado para esta hora.'], 403);
+            $turnoModelo = Turno::where('nombre', $turnoDetectado)->first();
+            if (!$turnoModelo) {
+                return response()->json(['error' => "No existe configurado el turno '{$turnoDetectado}'."], 500);
             }
 
-            // ✅ Solo si es ENTRADA comprobamos y cambiamos turno
-            if ($request->tipo === 'entrada') {
-                if (strtolower($asignacionTurno->turno->nombre) !== strtolower($turnoDetectado)) {
-                    $nuevoTurno = Turno::where('nombre', $turnoDetectado)->first();
-                    if ($nuevoTurno) {
-                        $asignacionTurno->turno_id = $nuevoTurno->id;
-                        $asignacionTurno->save();
+            /* 4) Rama por tipo de fichaje -------------------------------------------- */
+            $warning = null;
 
-                        Log::info("🔁 Turno actualizado automáticamente a '{$turnoDetectado}' para user_id {$user->id}");
+            if ($request->tipo === 'entrada') {
+                // ======= ENTRADA ======================================================
+                // Buscar asignación del día detectado o crearla
+                $asignacion = $user->asignacionesTurnos()
+                    ->whereDate('fecha', $fechaTurnoDetectado)
+                    ->with('turno')
+                    ->first();
+
+                if (!$asignacion) {
+                    $asignacion = $user->asignacionesTurnos()->create([
+                        'fecha'      => $fechaTurnoDetectado,
+                        'turno_id'   => $turnoModelo->id,
+                        'estado'     => 'activo',
+                        'maquina_id' => $user->maquina_id ?? null,
+                        'obra_id'    => null,
+                    ]);
+
+                    // (Opcional) notificación a programadores
+                    try {
+                        $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
+                        $alerta = Alerta::create([
+                            'mensaje'   => "🆕 Turno creado automáticamente ({$turnoDetectado}) para {$user->nombre_completo} en {$fechaTurnoDetectado}.",
+                            'tipo'      => 'Info Turnos',
+                            'leida'     => false,
+                        ]);
+                        foreach ($programadores as $p) {
+                            AlertaLeida::firstOrCreate(['alerta_id' => $alerta->id, 'user_id' => $p->id]);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('No se pudo notificar creación asignación: ' . $e->getMessage());
+                    }
+                } else {
+                    // Si existe pero con otro turno, lo corregimos automáticamente
+                    if (strtolower($asignacion->turno->nombre) !== strtolower($turnoDetectado)) {
+                        $asignacion->turno_id = $turnoModelo->id;
+                        $asignacion->save();
 
                         try {
                             $programadores = User::whereHas('departamentos', fn($q) => $q->where('nombre', 'Programador'))->get();
                             $alerta = Alerta::create([
-                                'mensaje'   => "🔁 Se corrigió automáticamente el turno de {$user->nombre_completo} a '{$turnoDetectado}' para la fecha {$fechaTurnoDetectado}.",
-                                'tipo'      => 'error app',
-                                'user_id_1' => null,
-                                'user_id_2' => null,
+                                'mensaje'   => "🔁 Corregido turno a '{$turnoDetectado}' para {$user->nombre_completo} en {$fechaTurnoDetectado}.",
+                                'tipo'      => 'Info Turnos',
                                 'leida'     => false,
                             ]);
                             foreach ($programadores as $p) {
-                                AlertaLeida::firstOrCreate([
-                                    'alerta_id' => $alerta->id,
-                                    'user_id'   => $p->id,
-                                ]);
+                                AlertaLeida::firstOrCreate(['alerta_id' => $alerta->id, 'user_id' => $p->id]);
                             }
                         } catch (\Throwable $e) {
-                            Log::error('❌ No se pudo enviar alerta al programador: ' . $e->getMessage());
+                            Log::error('No se pudo notificar corrección turno: ' . $e->getMessage());
                         }
                     }
                 }
-            }
 
-            // 🕒 Guardar fichaje
-            $warning = null;
-
-            if ($request->tipo === 'entrada') {
+                // Validación de horario (entrada)
                 if (!$this->validarHoraEntrada($turnoDetectado, $horaActual)) {
                     $warning = 'Has fichado entrada fuera de tu horario.';
                 }
-                $asignacionTurno->update([
+
+                // Guardar entrada y obra
+                $asignacion->update([
                     'entrada' => $horaActual,
                     'obra_id' => $obraEncontrada->id,
                 ]);
-            } else { // salida
-                if (!$asignacionTurno->entrada) {
-                    $warning = 'Estás registrando una salida sin haber fichado entrada.';
-                }
-                if (!$this->validarHoraSalida($turnoDetectado, $horaActual)) {
-                    $warning = 'Has fichado salida fuera de tu horario.';
-                }
-                $asignacionTurno->update([
-                    'salida'  => $horaActual,
-                    'obra_id' => $obraEncontrada->id,
+
+                return response()->json([
+                    'success'     => 'Entrada registrada.',
+                    'warning'     => $warning,
+                    'obra_nombre' => $obraEncontrada->obra,
                 ]);
             }
 
-            $mensajeSuccess = $request->tipo === 'entrada'
-                ? 'Entrada registrada.'
-                : 'Salida registrada.';
+            // ======= SALIDA ==========================================================
+            // Intentar cerrar la asignación abierta más razonable (últimas 36h)
+            $asignacion = $this->buscarAsignacionAbiertaParaSalida($user, $ahora);
+
+            // Fallback: usar el día detectado si no hay abierta
+            if (!$asignacion) {
+                $asignacion = $user->asignacionesTurnos()
+                    ->whereDate('fecha', $fechaTurnoDetectado)
+                    ->orderByDesc('id')
+                    ->first();
+            }
+
+            if (!$asignacion) {
+                // Si aun así no hay, crearla para no perder el fichaje
+                $asignacion = $user->asignacionesTurnos()->create([
+                    'fecha'      => $fechaTurnoDetectado,
+                    'turno_id'   => $turnoModelo->id,
+                    'estado'     => 'activo',
+                    'maquina_id' => $user->maquina_id ?? null,
+                    'obra_id'    => null,
+                ]);
+                $warning = 'No había una asignación abierta; se ha creado una nueva para registrar la salida.';
+            }
+
+            if (!$asignacion->entrada) {
+                $warning = 'Estás registrando una salida sin haber fichado entrada.';
+            }
+
+            if (!$this->validarHoraSalida($turnoDetectado, $horaActual)) {
+                $warning = 'Has fichado salida fuera de tu horario.';
+            }
+
+            $asignacion->update([
+                'salida'  => $horaActual,
+                'obra_id' => $obraEncontrada->id,
+            ]);
 
             return response()->json([
-                'success'     => $mensajeSuccess,
+                'success'     => 'Salida registrada.',
                 'warning'     => $warning,
                 'obra_nombre' => $obraEncontrada->obra,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('❌ Error en fichaje', ['exception' => $e]);
             return response()->json(['error' => 'Error al registrar el fichaje: ' . $e->getMessage()], 500);
         }
     }
 
+    /* ===================== HELPERS ===================== */
+
+    /**
+     * Detecta el turno y la fecha a la que debe imputarse.
+     * - Noche: 19:00–23:59 → fecha +1 ; 00:00–03:59 → fecha actual (sigue la noche previa)
+     * - Mañana: 04:00–11:59 → fecha actual
+     * - Tarde: 12:00–18:59 → fecha actual
+     */
+    private function detectarTurnoYFecha(Carbon $ahora): array
+    {
+        $hora   = Carbon::createFromFormat('H:i:s', $ahora->format('H:i:s'));
+        $fecha  = $ahora->toDateString();
+        $fechaS = $ahora->copy()->addDay()->toDateString();
+
+        if ($hora->between(Carbon::createFromTime(19, 0), Carbon::createFromTime(23, 59))) {
+            return ['noche', $fechaS];
+        }
+        if ($hora->between(Carbon::createFromTime(0, 0), Carbon::createFromTime(3, 59))) {
+            return ['noche', $fecha];
+        }
+        if ($hora->between(Carbon::createFromTime(4, 0), Carbon::createFromTime(11, 59))) {
+            return ['mañana', $fecha];
+        }
+        if ($hora->between(Carbon::createFromTime(12, 0), Carbon::createFromTime(18, 59))) {
+            return ['tarde', $fecha];
+        }
+        return [null, null];
+    }
+
+    /**
+     * Devuelve la obra activa más cercana dentro de su radio permitido.
+     */
+    private function buscarObraCercana(float $lat, float $lon): ?Obra
+    {
+        $obras = Obra::where('estado', 'activa')->get();
+
+        $mejor = null;
+        $distMin = null;
+
+        foreach ($obras as $obra) {
+            $dist = $this->calcularDistancia($lat, $lon, $obra->latitud, $obra->longitud);
+            if ($dist <= $obra->distancia) {
+                if (is_null($distMin) || $dist < $distMin) {
+                    $distMin = $dist;
+                    $mejor = $obra;
+                }
+            }
+        }
+
+        return $mejor;
+    }
+
+    /**
+     * Para SALIDA: intenta encontrar la asignación abierta más razonable
+     * en las últimas 36h (entrada no nula y salida nula).
+     */
+    private function buscarAsignacionAbiertaParaSalida(User $user, Carbon $ahora): ?AsignacionTurno
+    {
+        $desde = $ahora->copy()->subHours(36)->toDateString();
+        $hasta = $ahora->toDateString();
+
+        return $user->asignacionesTurnos()
+            ->whereBetween('fecha', [$desde, $hasta])
+            ->whereNotNull('entrada')
+            ->whereNull('salida')
+            ->orderByDesc('fecha')
+            ->orderByDesc('id')
+            ->first();
+    }
     private function validarHoraEntrada($turno, $horaActual)
     {
         try {
@@ -540,22 +619,49 @@ class AsignacionTurnoController extends Controller
                 return response()->json(['error' => 'Esta operación debe gestionarse por otro método.'], 400);
             }
 
-            $tipo = $request->tipo;
+            $tipo        = $request->tipo;
             $fechaInicio = Carbon::parse($request->fecha_inicio);
-            $fechaFin = Carbon::parse($request->fecha_fin);
+            $fechaFin    = Carbon::parse($request->fecha_fin);
+
+            // 🔹 NUEVO COMPORTAMIENTO PARA FESTIVOS
+            if ($tipo === 'festivo') {
+                $periodo = CarbonPeriod::create($fechaInicio, $fechaFin);
+                $titulo  = $request->filled('titulo') ? $request->titulo : 'Festivo';
+
+                $filas = collect($periodo)->map(function ($fecha) use ($titulo) {
+                    return [
+                        'titulo'     => $titulo,
+                        'fecha'      => $fecha->toDateString(),
+                        'anio'       => (int) $fecha->format('Y'),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                });
+
+                // Evita duplicados: upsert por (anio, fecha) y actualiza título si cambia
+                Festivo::upsert(
+                    $filas->toArray(),
+                    ['anio', 'fecha'],
+                    ['titulo', 'updated_at']
+                );
+
+                return response()->json([
+                    'success' => "Se han registrado {$filas->count()} día(s) festivo(s) en la tabla.",
+                ]);
+            }
+
+
+            // ====== A partir de aquí, el flujo normal para turnos/estados/vacaciones ======
 
             $turnosValidos = Turno::pluck('nombre')->toArray();
             $esTurno = in_array($tipo, $turnosValidos);
             $turno = $esTurno ? Turno::where('nombre', $tipo)->first() : null;
 
+            // Ahora los festivos vienen de tu tabla
             $festivos = collect($this->getFestivos())->pluck('start')->toArray();
 
-            if ($tipo === 'festivo') {
-                $usuarios = User::all(); // ✅ Se aplica a todos
-            } else {
-                $usuarios = collect([User::findOrFail($request->user_id)]); // ✅ Solo al usuario seleccionado
-            }
-
+            // Solo el usuario seleccionado (ya no “todos” en caso de festivo)
+            $usuarios = collect([User::findOrFail($request->user_id)]);
 
             foreach ($usuarios as $user) {
                 $maquinaAsignada = $request->maquina_id ?? $user->maquina?->id;
@@ -752,8 +858,6 @@ class AsignacionTurnoController extends Controller
 
     public function actualizarHoras(Request $request, $id)
     {
-        Log::info('📌 actualizarHoras recibido', $request->all());
-
         try {
             $request->validate(
                 [
@@ -821,7 +925,6 @@ class AsignacionTurnoController extends Controller
             ]);
 
             $tipo = trim($request->tipo); // ✅ evitar errores por espacios
-            Log::debug('Tipo recibido en destroy:', ['tipo' => $tipo]);
 
             $user = User::findOrFail($request->user_id);
 

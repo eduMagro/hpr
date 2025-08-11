@@ -4,6 +4,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\VerificarAccesoSeccion;
+use Illuminate\Console\Scheduling\Schedule;
+//use App\Console\Commands\SincronizarFestivosCommand;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,4 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
-    })->create();
+    })
+    ->withCommands([
+        // App\Console\Commands\SincronizarFestivosCommand::class,
+    ])
+
+    // Programación de tareas (Schedule)
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule->command('festivos:sincronizar')
+            ->yearlyOn(1, 1, '01:10')
+            ->timezone('Europe/Madrid');
+    })
+    ->create();

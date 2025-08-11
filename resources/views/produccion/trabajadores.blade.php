@@ -88,16 +88,21 @@
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
-
-
+    @php
+        $RUTA_FESTIVO_UPDATE = route('festivos.actualizarFecha', ['festivo' => '__ID__']);
+        $RUTA_FESTIVO_DELETE = route('festivos.eliminar', ['festivo' => '__ID__']);
+        $RUTA_FESTIVO_STORE = route('festivos.store');
+    @endphp
     <script>
         let calendar;
 
         const maquinas = @json($maquinas); // Datos de las máquinas
         const trabajadores = @json($trabajadoresEventos); // Datos de los trabajadores
 
-        console.log(maquinas); // Verificar que las máquinas y soldadoras están correctamente ordenadas
-        console.log(trabajadores); // Verificar que las máquinas y soldadoras están correctamente ordenadas
+        const CSRF = '{{ csrf_token() }}';
+        const FESTIVO_UPDATE_URL = @json($RUTA_FESTIVO_UPDATE); // "/festivos/__ID__/fecha"
+        const FESTIVO_DELETE_URL = @json($RUTA_FESTIVO_DELETE); // "/festivos/__ID__"
+        const FESTIVO_STORE_URL = @json($RUTA_FESTIVO_STORE);
 
         function crearCalendario(resources, eventosFiltrados) {
             if (calendar) {
@@ -118,6 +123,8 @@
                 locale: 'es',
                 initialView: vistaGuardada,
                 initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
+                selectable: true,
+                unselectAuto: true,
                 datesSet: function(info) {
                     let fechaActual = info.startStr;
 
@@ -130,6 +137,83 @@
                     localStorage.setItem('fechaCalendario', fechaActual);
                     localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
 
+                },
+                dateClick: async function(info) {
+                    // Obtenemos la fecha (solo día)
+                    const fechaISO = info.dateStr.slice(0, 10); // 'YYYY-MM-DD'
+
+                    // Pedimos el título
+                    const res = await Swal.fire({
+                        title: 'Nuevo festivo',
+                        input: 'text',
+                        inputLabel: 'Título del festivo',
+                        inputValue: 'Festivo',
+                        showCancelButton: true,
+                        confirmButtonText: 'Crear',
+                        cancelButtonText: 'Cancelar',
+                        inputValidator: (value) => {
+                            if (!value || !value.trim()) return 'Pon un título';
+                        }
+                    });
+
+                    if (!res.isConfirmed) return;
+
+                    try {
+                        // Guardar en backend
+                        const resp = await fetch(FESTIVO_STORE_URL, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': CSRF,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                fecha: fechaISO,
+                                titulo: res.value.trim()
+                            })
+                        });
+
+                        if (!resp.ok) throw new Error('Error HTTP ' + resp.status);
+                        const data = await resp.json();
+
+                        // Construir el evento para el calendario (mismo estilo que ya usas)
+                        const start = new Date(data.festivo.fecha + 'T00:00:00');
+                        const end = new Date(start);
+                        end.setDate(end.getDate() + 1); // end exclusivo
+
+                        const resourceIds = (window.maquinas || []).map(m => m
+                        .id); // que aparezca en todas las máquinas
+
+                        calendar.addEvent({
+                            id: 'festivo-' + data.festivo.id,
+                            title: data.festivo.titulo,
+                            start: start.toISOString(),
+                            end: end.toISOString(),
+                            allDay: true,
+                            resourceIds: resourceIds,
+                            backgroundColor: '#ff0000',
+                            borderColor: '#b91c1c',
+                            textColor: '#ffffff',
+                            editable: true, // podrás moverlo luego
+                            classNames: ['evento-festivo'],
+                            extendedProps: {
+                                es_festivo: true,
+                                festivo_id: data.festivo.id,
+                                entrada: null,
+                                salida: null,
+                            }
+                        });
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Festivo creado',
+                            timer: 1200,
+                            showConfirmButton: false
+                        });
+                    } catch (err) {
+                        console.error(err);
+                        Swal.fire('Error', 'No se pudo crear el festivo', 'error');
+                    }
                 },
                 displayEventEnd: true,
                 eventMinHeight: 30,
@@ -193,21 +277,50 @@
                     field: 'title',
                     headerContent: 'Máquinas'
                 }],
-                eventDrop: function(info) {
-                    const asignacionId = info.event.id.replace(/^turno-/, '');
-                    const recurso = info.event.getResources()?.[0];
+                eventDrop: async function(info) {
+                    const e = info.event;
+                    const props = e.extendedProps || {};
+
+                    // ✅ FESTIVO: actualizar fecha y salir
+                    if (props.es_festivo) {
+                        try {
+                            const nuevaFecha = e.startStr.slice(0, 10);
+                            const url = FESTIVO_UPDATE_URL.replace('__ID__', props.festivo_id);
+
+                            const resp = await fetch(url, {
+                                method: 'PUT',
+                                headers: {
+                                    'X-CSRF-TOKEN': CSRF,
+                                    'Accept': 'application/json',
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    fecha: nuevaFecha
+                                }),
+                            });
+
+                            if (!resp.ok) throw new Error('Error HTTP ' + resp.status);
+                            const data = await resp.json();
+                            e.setExtendedProp('anio', data.festivo.anio); // opcional
+                        } catch (err) {
+                            console.error(err);
+                            info.revert();
+                            Swal.fire('Error', 'No se pudo actualizar la fecha del festivo', 'error');
+                        }
+                        return; // ⬅️ no sigas con la lógica de asignaciones
+                    }
+
+                    // 🔽 tu lógica actual para mover asignaciones (tal cual la tenías)
+                    const asignacionId = e.id.replace(/^turno-/, '');
+                    const recurso = e.getResources()?.[0];
                     const nuevoMaquinaId = recurso ? parseInt(recurso.id, 10) : null;
-                    const nuevaHoraInicio = info.event.start?.toISOString();
+                    const nuevaHoraInicio = e.start?.toISOString();
                     let turnoId = null;
                     const hora = new Date(nuevaHoraInicio).getHours();
 
-                    if (hora >= 6 && hora < 14) {
-                        turnoId = 1; // mañana
-                    } else if (hora >= 14 && hora < 22) {
-                        turnoId = 2; // tarde
-                    } else {
-                        turnoId = 3; // noche
-                    }
+                    if (hora >= 6 && hora < 14) turnoId = 1;
+                    else if (hora >= 14 && hora < 22) turnoId = 2;
+                    else turnoId = 3;
 
                     if (!nuevoMaquinaId || !nuevaHoraInicio) {
                         Swal.fire({
@@ -223,7 +336,7 @@
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                'X-CSRF-TOKEN': CSRF
                             },
                             body: JSON.stringify({
                                 maquina_id: nuevoMaquinaId,
@@ -241,20 +354,14 @@
                             status,
                             data
                         }) => {
-                            if (!ok) {
-                                throw new Error(data?.message || `Error ${status}`);
-                            }
-                            console.log('✅ Asignación actualizada:', data);
-
-                            // 🔥 ACTUALIZAR COLOR DEL EVENTO SIN RECARGAR
+                            if (!ok) throw new Error(data?.message || `Error ${status}`);
                             if (data.color) {
-                                info.event.setProp('backgroundColor', data.color);
-                                info.event.setProp('borderColor', data.color);
+                                e.setProp('backgroundColor', data.color);
+                                e.setProp('borderColor', data.color);
                             }
                             if (typeof data.nuevo_obra_id !== 'undefined') {
-                                info.event.setExtendedProp('obra_id', data.nuevo_obra_id);
+                                e.setExtendedProp('obra_id', data.nuevo_obra_id);
                             }
-
                         })
                         .catch(error => {
                             console.error('❌ Error al actualizar:', error);
@@ -268,6 +375,8 @@
                 },
                 eventDidMount: function(info) {
                     const foto = info.event.extendedProps.foto;
+                    // No muestres tooltip si no hay foto (p. ej., festivos)
+                    if (!foto) return;
 
                     const content = `
     <img src="${foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow-lg">
@@ -295,13 +404,13 @@
                         Swal.fire({
                             title: 'Editar fichaje',
                             html: `
-                <div class="flex flex-col gap-3">
-                    <label class="text-left text-sm">Entrada</label>
-                    <input id="entradaHora" type="time" class="swal2-input" value="${entradaActual}">
-                    <label class="text-left text-sm">Salida</label>
-                    <input id="salidaHora" type="time" class="swal2-input" value="${salidaActual}">
-                </div>
-            `,
+                                <div class="flex flex-col gap-3">
+                                    <label class="text-left text-sm">Entrada</label>
+                                    <input id="entradaHora" type="time" class="swal2-input" value="${entradaActual}">
+                                    <label class="text-left text-sm">Salida</label>
+                                    <input id="salidaHora" type="time" class="swal2-input" value="${salidaActual}">
+                                </div>
+                            `,
                             showCancelButton: true,
                             confirmButtonText: 'Guardar',
                             cancelButtonText: 'Cancelar',
@@ -372,8 +481,49 @@
                         });
                     });
                 },
-                eventClick: function(info) {
-                    const userId = info.event.extendedProps.user_id;
+                eventClick: async function(info) {
+                    const e = info.event;
+                    const props = e.extendedProps || {};
+
+                    // ✅ FESTIVO: eliminar
+                    if (props.es_festivo) {
+                        const ok = await Swal.fire({
+                            icon: 'warning',
+                            title: `Eliminar festivo`,
+                            html: `<div>¿Seguro que quieres eliminar <b>${e.title}</b>?</div>`,
+                            showCancelButton: true,
+                            confirmButtonText: 'Eliminar',
+                            cancelButtonText: 'Cancelar'
+                        }).then(r => r.isConfirmed);
+
+                        if (!ok) return;
+
+                        try {
+                            const url = FESTIVO_DELETE_URL.replace('__ID__', props.festivo_id);
+                            const resp = await fetch(url, {
+                                method: 'DELETE',
+                                headers: {
+                                    'X-CSRF-TOKEN': CSRF,
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            if (!resp.ok) throw new Error('Error HTTP ' + resp.status);
+                            e.remove();
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Festivo eliminado',
+                                timer: 1200,
+                                showConfirmButton: false
+                            });
+                        } catch (err) {
+                            console.error(err);
+                            Swal.fire('Error', 'No se pudo eliminar el festivo', 'error');
+                        }
+                        return;
+                    }
+
+                    // 🔽 tu flujo actual para eventos de usuario
+                    const userId = e.extendedProps.user_id;
                     if (userId) {
                         const url = "{{ route('users.show', ':id') }}".replace(':id', userId);
                         window.location.href = url;
@@ -390,26 +540,36 @@
                     } else if (props.salida && !props.entrada) {
                         horasTexto = props.salida;
                     }
+                    // ➜ Si es festivo, mostramos solo el título, sin extras y sin estilos grises
+                    if (props && props.es_festivo) {
+                        return {
+                            html: `
+                            <div class="px-2 py-1 text-xs font-semibold" style="color:#fff">
+                                ${arg.event.title}
+                            </div>
+                            `
+                        };
+                    } else {
+                        let html = `
+                        <div class="px-2 py-1 text-xs font-semibold flex items-center">
+                            <!-- Bloque izquierdo -->
+                            <div class="flex flex-col">
+                                <span>${arg.event.title}</span>
+                                <span class="text-[10px] font-normal opacity-80">
+                                    (${props.categoria_nombre ?? ''} 🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})
+                                </span>
+                            </div>
+                            <!-- Bloque derecho (horas alineadas a la derecha) -->
+                            <div class="ml-auto text-right">
+                                <span class="text-[10px] font-normal opacity-80">${horasTexto}</span>
+                            </div>
+                        </div>
+                        `;
 
-                    let html = `
-        <div class="px-2 py-1 text-xs font-semibold flex items-center">
-            <!-- Bloque izquierdo -->
-            <div class="flex flex-col">
-                <span>${arg.event.title}</span>
-                <span class="text-[10px] font-normal opacity-80">
-                    (${props.categoria_nombre ?? ''} 🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})
-                </span>
-            </div>
-            <!-- Bloque derecho (horas alineadas a la derecha) -->
-            <div class="ml-auto text-right">
-                <span class="text-[10px] font-normal opacity-80">${horasTexto}</span>
-            </div>
-        </div>
-    `;
-
-                    return {
-                        html
-                    };
+                        return {
+                            html
+                        }; // 🔹 Devuelves el HTML aquí
+                    }
                 },
 
             });

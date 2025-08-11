@@ -8,6 +8,7 @@ use App\Models\Paquete;
 use App\Models\Salida;
 use App\Models\Obra;
 use App\Models\Camion;
+use App\Models\Festivo;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -26,12 +27,12 @@ class PlanificacionController extends Controller
         $planillasEventos = $this->getEventosPlanillas($startDate, $endDate);
         $resumenEventos = $this->getEventosResumen($planillasEventos['planillas'], $viewType);
 
-        $eventos = collect(array_merge(
-            $this->getFestivos(),
-            $salidasEventos->toArray(),
-            $planillasEventos['eventos']->toArray(),
-            $resumenEventos->toArray()
-        ));
+        $eventos = collect()
+            ->concat(Festivo::eventosCalendario())         // array o Collection, concat acepta ambos
+            ->concat($salidasEventos)                      // puede ser Collection o array
+            ->concat($planillasEventos['eventos'])         // idem
+            ->concat($resumenEventos)                      // idem
+            ->values();                                    // reindexa
 
         // Resources
         $resources = $this->getResources($eventos);
@@ -56,8 +57,9 @@ class PlanificacionController extends Controller
             'camiones' => $camiones,
         ]);
     }
-
-
+    /**
+     * Obtiene el rango de fechas según la vista y los parámetros de la solicitud.
+     */
     private function getDateRange(Request $request): array
     {
 
@@ -93,7 +95,9 @@ class PlanificacionController extends Controller
             $end ? Carbon::parse($end)->subSecond() : now()->endOfMonth()
         ];
     }
-
+    /**
+     * Obtiene los totales de planillas y elementos para la semana y mes basados en la fecha de la vista.
+     */
     public function getTotalesAjax(Request $request)
     {
         $fechaReferencia = Carbon::parse($request->input('fecha')); // 👈 usa la fecha de la vista
@@ -121,8 +125,12 @@ class PlanificacionController extends Controller
             ],
         ]);
     }
-
-
+    /**
+     * Obtiene los eventos de resumen y planillas
+     * @param \Illuminate\Support\Collection $planillas
+     * @param string $viewType
+     * @return \Illuminate\Support\Collection
+     */
     private function getEventosResumen($planillas, string $viewType)
     {
         // ------------------- RESUMEN POR DÍA -------------------
@@ -201,6 +209,12 @@ class PlanificacionController extends Controller
             });
         });
     }
+    /**
+     * Obtiene los eventos de planillas agrupados por obra y día.
+     * @param Carbon $startDate
+     * @param Carbon $endDate
+     * @return array
+     */
     private function getEventosPlanillas(Carbon $startDate, Carbon $endDate): array
     {
         // 🔹 Traer planillas sin salidas en el rango
@@ -300,59 +314,6 @@ class PlanificacionController extends Controller
         ]);
 
         return $resources;
-    }
-
-    private function getFestivos()
-    {
-        $response = Http::get("https://date.nager.at/api/v3/PublicHolidays/" . date('Y') . "/ES");
-
-        if ($response->failed()) {
-            return []; // Si la API falla, devolvemos un array vacío
-        }
-
-        $festivos = collect($response->json())->filter(function ($holiday) {
-            // Si no tiene 'counties', es un festivo NACIONAL
-            if (!isset($holiday['counties'])) {
-                return true;
-            }
-            // Si el festivo pertenece a Andalucía
-            return in_array('ES-AN', $holiday['counties']);
-        })->map(function ($holiday) {
-            return [
-                'title' => $holiday['localName'], // Nombre del festivo
-                'start' => Carbon::parse($holiday['date'])->toDateString(), // Fecha formateada correctamente
-                'backgroundColor' => '#ff0000', // Rojo para festivos
-                'borderColor' => '#b91c1c',
-                'textColor' => 'white',
-                'allDay' => true,
-                'tipo' => 'festivo'
-            ];
-        });
-
-        // Añadir festivos locales de Los Palacios y Villafranca
-        $festivosLocales = collect([
-            [
-                'title' => 'Festividad de Nuestra Señora de las Nieves',
-                'start' => date('Y') . '-08-05',
-                'backgroundColor' => '#ff0000',
-                'borderColor' => '#b91c1c',
-                'textColor' => 'white',
-                'allDay' => true,
-                'tipo' => 'festivo'
-            ],
-            [
-                'title' => 'Feria Los Palacios y Vfca',
-                'start' => date('Y') . '-09-25',
-                'backgroundColor' => '#ff0000',
-                'borderColor' => '#b91c1c',
-                'textColor' => 'white',
-                'allDay' => true,
-                'tipo' => 'festivo'
-            ]
-        ]);
-
-        // Combinar festivos nacionales, autonómicos y locales
-        return $festivos->merge($festivosLocales)->values()->toArray();
     }
 
     public function guardarComentario(Request $request, $id)

@@ -18,6 +18,13 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
+use Illuminate\Support\Collection;
+use Illuminate\Support\Arr;
+
+use App\Models\Festivo;
+use Throwable;
+
+
 function toCarbon($valor, $format = 'd/m/Y H:i')
 {
     if ($valor instanceof Carbon) return $valor;
@@ -148,8 +155,8 @@ class ProduccionController extends Controller
                     $horaSalida = $turno?->hora_salida ?? '16:00:00';
 
                     if ($horaEntrada === '22:00:00' && $horaSalida === '06:00:00') {
-                        $start = Carbon::parse($asignacionTurno->fecha)->subDay()->format('Y-m-d') . 'T22:00:00';
-                        $end = $asignacionTurno->fecha . 'T06:00:00';
+                        $start = $asignacionTurno->fecha . 'T00:00:00';
+                        $end   = $asignacionTurno->fecha . 'T06:00:00';
                     } elseif ($horaEntrada === '06:00:00') {
                         $start = $asignacionTurno->fecha . 'T06:00:00';
                         $end = $asignacionTurno->fecha . 'T14:00:00';
@@ -259,8 +266,36 @@ class ProduccionController extends Controller
                     ]
                 ];
             });
+        $resourceIds = $maquinas->pluck('id')->toArray();
+        $festivosEventos = collect(Festivo::eventosCalendario())
+            ->map(function ($e) use ($resourceIds) {
+                $start = \Carbon\Carbon::parse($e['start'])->startOfDay();
+                $end   = $start->copy()->addDay(); // end exclusivo
 
-        // Log::info('Trabajadores sin eventos:', $trabajadoresSinEvento->pluck('name')->toArray());
+                return [
+                    'id'              => $e['id'],
+                    'title'           => $e['title'],
+                    'start'           => $start->toIso8601String(),
+                    'end'             => $end->toIso8601String(),
+                    'allDay'          => true,
+                    'resourceIds'     => $resourceIds,   // se ve en todas las máquinas
+                    'backgroundColor' => '#ff0000',
+                    'borderColor'     => '#b91c1c',
+                    'textColor'       => '#ffffff',      // contraste alto
+                    'editable'        => true,
+                    'classNames'      => ['evento-festivo'],
+                    'extendedProps' => array_merge($e['extendedProps'] ?? [], [
+                        'es_festivo' => true,
+                        'festivo_id' => $e['extendedProps']['festivo_id'] ?? null, // ✅ numérico
+                        'entrada'    => null,
+                        'salida'     => null,
+                    ]),
+                ];
+            })
+            ->toArray();
+
+        $trabajadoresEventos = array_merge($eventos, $festivosEventos);
+
 
         return view('produccion.trabajadores', compact('maquinas', 'trabajadoresEventos', 'operariosTrabajando', 'estadoProduccionMaquinas', 'registroFichajes'));
     }
@@ -298,7 +333,6 @@ class ProduccionController extends Controller
             'nuevo_obra_id' => $maquina->obra_id,
         ]);
     }
-
 
     //---------------------------------------------------------- MAQUINAS
     public function maquinas()
@@ -385,8 +419,16 @@ class ProduccionController extends Controller
             ->groupBy('maquina_id')
             ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
 
+
+
         // ✅ Generar eventos a partir de los datos calculados
-        $planillasEventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
+        try {
+            $planillasEventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
+        } catch (\Throwable $e) {
+            Log::error('❌ generarEventosMaquinas', ['msg' => $e->getMessage(), 'file' => $e->getFile() . ':' . $e->getLine()]);
+            abort(500, $e->getMessage()); // te lo pinta en el navegador
+        }
+
 
         // ✅ Resto de cálculos de gráficas y tabla
         $erroresPlanillas = [];
@@ -444,77 +486,289 @@ class ProduccionController extends Controller
         ]);
     }
 
+    //---------------------------------------------------------- GENERAR EVENTOS MAQUINAS
     private function generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas)
     {
+
+
         $planillasEventos = collect();
 
+        // 1) Festivos
+        try {
+            $festivoFechas = collect(Festivo::eventosCalendario())
+                ->map(fn($e) => Carbon::parse($e['start'])->toDateString())
+                ->unique()
+                ->values();
+        } catch (\Throwable $e) {
+            Log::error('EVT B: Festivos no disponibles', ['err' => $e->getMessage()]);
+            $festivoFechas = collect();
+        }
+        $festivosSet = array_flip($festivoFechas->all());
+
+
+        // 2) Normaliza
+        $planillasAgrupadasCol = collect($planillasAgrupadas);
+        if ($ordenes instanceof Collection) $ordenes = $ordenes->all();
+
+        // 3) Índice estable
+        $agrupadasIndex = $planillasAgrupadasCol
+            ->values()
+            ->mapWithKeys(function ($data) {
+                $planilla   = Arr::get($data, 'planilla');
+                $planillaId = is_object($planilla) ? ($planilla->id ?? null) : Arr::get($planilla, 'id');
+                $maquinaId  = Arr::get($data, 'maquina_id');
+                if (!$planillaId || !$maquinaId) return [];
+                return ["{$planillaId}-{$maquinaId}" => $data];
+            });
+
+
+
+        if ($agrupadasIndex->isEmpty()) {
+            Log::warning('EVT E: índice vacío, devuelvo 0 eventos');
+            return $planillasEventos->values();
+        }
+
+        // 4) Recorre máquinas
+        $numMaquinas = is_array($ordenes) ? count($ordenes) : 0;
+
+
         foreach ($ordenes as $maquinaId => $planillasOrdenadas) {
-            foreach ($planillasOrdenadas as $planillaId) {
-                $clave = $planillaId . '-' . $maquinaId;
-                if (!isset($planillasAgrupadas[$clave])) {
-                    continue;
-                }
 
-                $data = $planillasAgrupadas[$clave];
-                $planilla = $data['planilla'];
-                $grupo = $data['elementos'];
+            if ($planillasOrdenadas instanceof Collection) {
+                $planillasOrdenadas = $planillasOrdenadas->values()->all();
+            } elseif (!is_array($planillasOrdenadas)) {
+                $planillasOrdenadas = (array) $planillasOrdenadas;
+            }
 
-                if (!$planilla || !$planilla->fecha_estimada_entrega) continue;
 
-                // ⏳ Duración y fechas
-                $duracionSegundos = max(count($grupo) * 20 * 60, 60);
-                $fechaInicio = $colasMaquinas[$maquinaId]->copy();
-                $fechaFin = $fechaInicio->copy()->addSeconds($duracionSegundos);
-                $colasMaquinas[$maquinaId] = $fechaFin;
-
-                // ✅ Calcular progreso si es primera
-                $progreso = null;
-                if ($planillasOrdenadas[0] === $planilla->id) {
-                    $completados = $grupo->where('estado', 'fabricado')->count();
-                    $total = $grupo->count();
-                    $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
-                }
-
-                // 📅 Fecha entrega
-                $fechaEntrega = null;
+            // Cola (Carbon)
+            $inicioCola = $colasMaquinas[$maquinaId] ?? Carbon::now();
+            if (!$inicioCola instanceof Carbon) {
                 try {
-                    $fechaEntrega = $planilla->fecha_estimada_entrega
-                        ? toCarbon($planilla->fecha_estimada_entrega)
-                        : null;
-                } catch (\Exception $e) {
-                    $fechaEntrega = null;
+                    $inicioCola = Carbon::parse($inicioCola);
+                } catch (\Throwable $e) {
+                    $inicioCola = Carbon::now();
                 }
+            }
 
-                // 🎨 Color según comparación
-                $backgroundColor = '#22c55e'; // verde por defecto
-                if ($fechaEntrega && $fechaFin->gt($fechaEntrega)) {
-                    $backgroundColor = '#ef4444'; // rojo si fin programado > entrega estimada
+            $primeraId = $planillasOrdenadas[0] ?? null;
+
+            foreach ($planillasOrdenadas as $planillaId) {
+                $clave = "{$planillaId}-{$maquinaId}";
+
+                try {
+                    if (!$agrupadasIndex->has($clave)) {
+                        Log::debug('EVT G1: clave no encontrada, continuo', ['clave' => $clave]);
+                        continue;
+                    }
+
+                    $data     = $agrupadasIndex->get($clave);
+                    $planilla = Arr::get($data, 'planilla');
+                    $grupo    = Arr::get($data, 'elementos');
+
+                    if (!$planilla || !$planilla->fecha_estimada_entrega) {
+                        Log::debug('EVT G2: planilla sin fecha_entrega, salto', ['planillaId' => $planillaId]);
+                        continue;
+                    }
+
+                    $grupoCount       = $grupo instanceof Collection ? $grupo->count() : (is_countable($grupo) ? count($grupo) : 0);
+                    $duracionSegundos = max($grupoCount * 20 * 60, 60);
+                    $fechaInicio      = $inicioCola->copy();
+
+                    Log::debug('EVT H: antes generar tramos', [
+                        'duracionSegundos' => $duracionSegundos,
+                        'inicio' => $fechaInicio->toIso8601String(),
+                    ]);
+
+                    $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
+
+                    if (empty($tramos)) {
+                        Log::warning('EVT H1: sin tramos', ['planillaId' => $planillaId, 'maquinaId' => $maquinaId]);
+                        continue;
+                    }
+
+                    $ultimoTramo  = end($tramos);
+                    $fechaFinReal = $ultimoTramo['end'] instanceof Carbon
+                        ? $ultimoTramo['end']->copy()
+                        : Carbon::parse($ultimoTramo['end']);
+
+                    Log::debug('EVT I: tramos OK', [
+                        'num_tramos' => count($tramos),
+                        'fin_real' => $fechaFinReal->toIso8601String(),
+                    ]);
+
+                    // Progreso
+                    $progreso = null;
+                    if ($primeraId !== null && $primeraId === $planilla->id) {
+                        if ($grupo instanceof Collection) {
+                            $completados = $grupo->where('estado', 'fabricado')->count();
+                            $total       = $grupo->count();
+                        } else {
+                            $completados = 0;
+                            $total       = $grupoCount;
+                        }
+                        $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
+                    }
+
+                    $appTz = config('app.timezone') ?: 'Europe/Madrid';
+
+                    /* ...dentro del bucle de planillas... */
+
+                    // Fin real ya lo tienes:
+                    $fechaFinReal = ($ultimoTramo['end'] instanceof Carbon ? $ultimoTramo['end'] : Carbon::parse($ultimoTramo['end']))
+                        ->copy()->setTimezone($appTz);
+
+                    // Fecha de entrega (ahora robusta)
+                    $fechaEntrega = $this->parseFechaEntregaFlexible($planilla->fecha_estimada_entrega, $appTz);
+
+                    // Semáforo (rojo si fin real supera entrega)
+                    $backgroundColor = ($fechaEntrega && $fechaFinReal->gt($fechaEntrega)) ? '#ef4444' : '#22c55e';
+
+                    // Eventos por tramo
+                    foreach ($tramos as $i => $t) {
+                        $tStart = $t['start'] instanceof Carbon ? $t['start'] : Carbon::parse($t['start']);
+                        $tEnd   = $t['end']   instanceof Carbon ? $t['end']   : Carbon::parse($t['end']);
+
+                        $planillasEventos->push([
+                            'id'              => 'planilla-' . $planilla->id . '-seg' . ($i + 1),
+                            'title'           => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
+                            'codigo'          => $planilla->codigo_limpio ?? ('Planilla #' . $planilla->id),
+                            'start'           => $tStart->toIso8601String(),
+                            'end'             => $tEnd->toIso8601String(),
+                            'resourceId'      => $maquinaId,
+                            'backgroundColor' => $backgroundColor,
+                            'extendedProps'   => [
+                                'obra'            => optional($planilla->obra)->obra ?? '—',
+                                'estado'          => $planilla->estado,
+                                'duracion_horas'  => round($duracionSegundos / 3600, 2),
+                                'progreso'        => $progreso,
+                                'fecha_entrega'   => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
+                                'fin_programado'  => $fechaFinReal->format('d/m/Y H:i'),
+                            ],
+                        ]);
+                    }
+
+                    // Avanza cola
+                    $inicioCola = $fechaFinReal->copy();
+                } catch (\Throwable $e) {
+                    Log::error('EVT X: excepción en bucle planilla', [
+                        'clave' => $clave,
+                        'err'   => $e->getMessage(),
+                        'file'  => $e->getFile() . ':' . $e->getLine(),
+                    ]);
+                    // si quieres ver el error en pantalla mientras debug:
+                    abort(500, "Error en generarEventosMaquinas (clave {$clave}): " . $e->getMessage());
                 }
+            }
 
-                // ✨ Añadir al evento
-                $planillasEventos->push([
-                    'id' => 'planilla-' . $planilla->id,
-                    'title' => $planilla->codigo_limpio ?? 'Planilla #' . $planilla->id,
-                    'codigo' => $planilla->codigo_limpio ?? 'Planilla #' . $planilla->id,
-                    'start' => $fechaInicio->toIso8601String(),
-                    'end' => $fechaFin->toIso8601String(),
-                    'resourceId' => $maquinaId,
-                    'backgroundColor' => $backgroundColor,
-                    'extendedProps' => [
-                        'obra' => optional($planilla->obra)->obra ?? '—',
-                        'estado' => $planilla->estado,
-                        'duracion_horas' => round($duracionSegundos / 3600, 2),
-                        'progreso' => $progreso,
-                        'fecha_entrega' => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
-                        'fin_programado' => $fechaFin->format('d/m/Y H:i'),
-                    ],
+            $colasMaquinas[$maquinaId] = $inicioCola;
+        }
+
+
+        return $planillasEventos->values();
+    }
+
+
+    /** ¿Es no laborable? (festivo o fin de semana) */
+    private function esNoLaborable(Carbon $dia, array $festivosSet): bool
+    {
+        return isset($festivosSet[$dia->toDateString()]) || $dia->isWeekend();
+    }
+
+    /** 00:00 del siguiente día laborable a partir de $dt. */
+    private function siguienteLaborableInicio(Carbon $dt, array $festivosSet): Carbon
+    {
+        $x = $dt->copy()->startOfDay();
+        while ($this->esNoLaborable($x, $festivosSet)) {
+            $x->addDay();
+        }
+        return $x;
+    }
+
+    /**
+     * Divide una duración (segundos) en tramos [start,end) exclusivamente en días laborables.
+     * Si el inicio cae en no laborable, arranca en el siguiente laborable 00:00.
+     * Consume hasta 24h del día laborable y continúa en el siguiente laborable.
+     */
+    private function generarTramosLaborales(Carbon $inicio, int $durSeg, array $festivosSet): array
+    {
+        Log::debug('TRAMOS T0: entrar', [
+            'inicio'   => $inicio->toIso8601String(),
+            'durSeg'   => $durSeg,
+            'festivos' => count($festivosSet),
+        ]);
+
+        $tramos   = [];
+        $restante = max(0, (int) $durSeg);
+
+        // Si el inicio cae en no laborable -> al siguiente laborable 00:00
+        if ($this->esNoLaborable($inicio, $festivosSet)) {
+            $inicio = $this->siguienteLaborableInicio($inicio, $festivosSet);
+            Log::debug('TRAMOS T1: inicio ajustado a laborable', ['inicio' => $inicio->toIso8601String()]);
+        }
+
+        $cursor  = $inicio->copy();
+        $iter    = 0;
+        $iterMax = 10000; // salvavidas
+
+        while ($restante > 0) {
+            if (++$iter > $iterMax) {
+                Log::error('TRAMOS TX: iteraciones excedidas, posible bucle', [
+                    'cursor'   => $cursor->toIso8601String(),
+                    'restante' => $restante,
                 ]);
+                break;
+            }
+
+            // Saltar no laborables completos
+            if ($this->esNoLaborable($cursor, $festivosSet)) {
+                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+                Log::debug('TRAMOS T2: salto no laborable', ['cursor' => $cursor->toIso8601String()]);
+                continue;
+            }
+
+            // Límite exclusivo del día = 00:00 del día siguiente
+            $limiteDia = $cursor->copy()->startOfDay()->addDay();
+
+            // Capacidad del día (en segundos) usando timestamps (evita rarezas DST)
+            $tsCursor   = (int) $cursor->getTimestamp();
+            $tsLimite   = (int) $limiteDia->getTimestamp();
+            $capacidad  = $tsLimite - $tsCursor; // >= 0
+
+            if ($capacidad <= 0) {
+                // avanzar primero al límite del día y luego al próximo laborable
+                if ($tsCursor < $tsLimite) {
+                    $cursor = $limiteDia->copy();
+                }
+                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+                Log::warning('TRAMOS T3: capacidad <= 0, salto a próximo laborable', ['cursor' => $cursor->toIso8601String()]);
+                continue;
+            }
+
+            $consume = min($restante, $capacidad);
+
+            // tramo
+            $start = $cursor->copy();
+            $end   = $cursor->copy()->addSeconds($consume);
+            $tramos[] = ['start' => $start, 'end' => $end];
+
+            // avanzar
+            $restante -= $consume;
+            $cursor    = $end;
+
+            // si queda trabajo y estamos en/tras el límite del día → próximo laborable
+            $tsCursor = (int) $cursor->getTimestamp();
+            if ($restante > 0 && $tsCursor >= $tsLimite) {
+                $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
+                Log::debug('TRAMOS T5: fin de día alcanzado, salto a próximo laborable', ['cursor' => $cursor->toIso8601String()]);
             }
         }
 
-        return $planillasEventos;
+        Log::debug('TRAMOS T9: salir', ['tramos' => count($tramos)]);
+        return $tramos;
     }
 
+    //---------------------------------------------------------- REORDENAR PLANILLAS
     public function reordenarPlanillas(Request $request)
     {
         $request->validate([
@@ -636,7 +890,6 @@ class ProduccionController extends Controller
         }
     }
 
-
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
     public function trabajadoresObra()
     {
@@ -729,6 +982,7 @@ class ProduccionController extends Controller
             'obras' => $todasLasObras, // ← esta es la nueva variable con todas las obras
         ]);
     }
+    //---------------------------------------------------------- EVENTOS OBRA
     public function eventosObra(Request $request)
     {
         $inicio = $request->query('start');
@@ -807,5 +1061,46 @@ class ProduccionController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    private function parseFechaEntregaFlexible($valor, string $tz = null): ?Carbon
+    {
+        $tz = $tz ?: (config('app.timezone') ?: 'Europe/Madrid');
+
+        try {
+            if ($valor instanceof Carbon) return $valor->copy()->setTimezone($tz);
+            if ($valor instanceof \DateTimeInterface) return Carbon::instance($valor)->setTimezone($tz);
+            if (is_int($valor)) return Carbon::createFromTimestamp($valor, $tz);
+            if (!is_string($valor) || trim($valor) === '') return null;
+
+            $s = trim($valor);
+
+            // intenta formatos comunes primero
+            $formatos = [
+                'd/m/Y H:i:s',
+                'd/m/Y H:i',
+                'Y-m-d H:i:s',
+                'Y-m-d H:i',
+                'Y-m-d',
+                'd/m/Y',
+            ];
+
+            foreach ($formatos as $fmt) {
+                try {
+                    $dt = Carbon::createFromFormat($fmt, $s, $tz);
+                    // si el formato no incluye segundos, Carbon rellena a :00 (ok)
+                    // si no incluye hora (solo fecha), lo dejamos tal cual (puedes usar ->endOfDay() si te interesa)
+                    return $dt;
+                } catch (\Throwable $e) {
+                    // sigue probando
+                }
+            }
+
+            // último intento: parse libre
+            return Carbon::parse($s, $tz);
+        } catch (\Throwable $e) {
+            Log::warning('parseFechaEntregaFlexible falló', ['valor' => $valor, 'err' => $e->getMessage()]);
+            return null;
+        }
     }
 }
