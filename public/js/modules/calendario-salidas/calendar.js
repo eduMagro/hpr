@@ -1,9 +1,8 @@
-import "./eventos.js";
-import "./recursos.js";
-import "./tooltips.js";
-import "./calendario-menu.js";
-import "./menuContextual.js";
-import "./totales.js"; // solo si tienes totales para esta vista
+import { dataEvents } from "./eventos.js";
+import { dataResources } from "./recursos.js";
+import { configurarTooltipsYMenus } from "./tooltips.js";
+import { attachEventoContextMenu } from "./calendario-menu.js";
+import { actualizarTotales } from "./totales.js";
 let currentViewType = "resourceTimelineDay";
 export let calendar = null;
 
@@ -134,29 +133,19 @@ export function crearCalendario() {
             expandRows: true,
             height: "auto", // ok, pero recalcamos con updateSize()
 
-            resources: (info, success, failure) => {
-                const vt =
-                    (info.view && info.view.type) ||
-                    calendar?.view?.type ||
-                    "resourceTimelineDay";
-                dataResources(vt, info)
-                    .then((res) => {
-                        success(res);
-                        safeUpdateSize();
-                    })
-                    .catch(failure);
-            },
             events: (info, success, failure) => {
                 const vt =
                     (info.view && info.view.type) ||
                     calendar?.view?.type ||
                     "resourceTimelineDay";
-                dataEvents(vt, info)
-                    .then((evs) => {
-                        success(evs);
-                        safeUpdateSize();
-                    })
-                    .catch(failure);
+                dataEvents(vt, info).then(success).catch(failure);
+            },
+            resources: (info, success, failure) => {
+                const vt =
+                    (info.view && info.view.type) ||
+                    calendar?.view?.type ||
+                    "resourceTimelineDay";
+                dataResources(vt, info).then(success).catch(failure);
             },
 
             headerToolbar: {

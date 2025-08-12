@@ -80,7 +80,7 @@
         // (opcional) deja activado el nuevo menú sin romper nada
         window.AppSalidas.useNewMenu = true;
     </script>
-    <link rel="stylesheet" href="{{ asset('css/calendario-salidas/estilosCalendarioSalidas.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/estilosCalendarioSalidas.css') }}">
     <script type="module" src="{{ asset('js/modules/calendario-salidas/index.js') }}"></script>
 
 
