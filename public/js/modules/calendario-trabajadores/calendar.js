@@ -32,9 +32,13 @@ export function initCalendar(domEl) {
         headerToolbar: {
             left: "prev,next today",
             center: "title",
-            right: "resourceTimelineDay,resourceTimelineWeek,dayGridMonth",
+            right: "resourceTimelineDay,resourceTimelineWeek",
         },
-        buttonText: { today: "Hoy", month: "Mes" },
+        buttonText: {
+            today: "Hoy",
+            week: "Semana",
+            day: "Día",
+        },
         slotLabelDidMount(info) {
             const viewType = info.view.type;
             if (viewType === "resourceTimelineDay") {
