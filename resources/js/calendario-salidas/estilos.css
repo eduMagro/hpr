@@ -1,0 +1,76 @@
+.fc-contextmenu button:hover {
+    background: #f3f4f6;
+}
+
+.tippy-box[data-theme~="transparent-avatar"] {
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+/* Contenedor general */
+.ctx-menu-container {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    min-width: 240px;
+    font-family: system-ui, sans-serif;
+}
+
+/* Cabecera */
+.ctx-menu-header {
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Botones */
+.ctx-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    background: white;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease-in-out;
+}
+
+.ctx-menu-item:hover {
+    background: #f3f4f6;
+}
+
+.ctx-menu-item:active {
+    background: #e5e7eb;
+}
+
+/* Icono */
+.ctx-menu-icon {
+    font-size: 16px;
+}
+
+/* Texto */
+.ctx-menu-label {
+    flex: 1;
+}
+
+/* Opción peligrosa */
+.ctx-menu-danger {
+    color: #b91c1c;
+}
+
+.ctx-menu-danger:hover {
+    background: #fee2e2;
+}
+.fc-event-festivo {
+    pointer-events: none;
+} /* bloquea clicks/hover */

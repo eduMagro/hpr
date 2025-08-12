@@ -923,7 +923,6 @@ class ProfileController extends Controller
             }
         }
 
-
         // 2. Estados (después de turnos)
         foreach ($user->asignacionesTurnos as $asig) {
             if ($asig->turno) {
@@ -948,7 +947,6 @@ class ProfileController extends Controller
                 ]);
             }
         }
-
 
         // 3. Fichajes
         $eventos = $eventos->merge($this->getEventosFichajes($user));

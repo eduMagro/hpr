@@ -251,6 +251,11 @@ Route::middleware('auth')->group(function () {
         [SalidaController::class, 'crearSalidaDesdeCalendario']
     )->name('planificacion.crearSalidaDesdeCalendario');
     Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaController::class, 'completarDesdeMovimiento']);
+    Route::put('/salidas/{salida}/codigo-sage', [
+        SalidaController::class,
+        'actualizarCodigoSage'
+    ])
+        ->name('salidas.codigoSage');
 
     // === OBRAS ===
     Route::resource('obras', ObraController::class)->middleware('acceso.seccion:obras.index');

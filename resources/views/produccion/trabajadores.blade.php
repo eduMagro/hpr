@@ -7,75 +7,6 @@
         <div class="w-full bg-white">
             <div id="calendario" class="h-[80vh] w-full"></div>
         </div>
-
-        {{-- <!-- Tabla de Operarios -->
-        <div class="mt-8">
-            <h3 class="text-2xl font-semibold text-gray-900 mb-4">Operarios que trabajan hoy</h3>
-            <div class="overflow-x-auto rounded-lg shadow">
-                <table class="min-w-full divide-y divide-gray-200 bg-white">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Nombre</th>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Categoría</th>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Especialidad</th>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Puesto asignado</th>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Turno</th>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Entrada</th>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Salida</th>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Estado</th>
-                            <th class="px-4 py-2 text-left text-sm text-gray-600">Evento</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @foreach ($operariosTrabajando as $operario)
-                            @php
-                                $turno = $operario->asignacionesTurnos()->whereDate('fecha', today())->first();
-                                $puestoAsignado = $turno->maquina?->nombre ?? '—';
-
-                                $turnoNombre = $turno->turno->nombre ?? '—';
-                                $tieneEvento = collect($trabajadoresEventos)->contains(function ($evento) use (
-                                    $operario,
-                                ) {
-                                    return isset($evento['resourceId']) && $evento['title'] === $operario->name;
-                                });
-                            @endphp
-                            <tr class="{{ $operario->estado == 'trabajando' ? 'bg-green-100' : '' }}">
-                                <td class="px-4 py-2 text-sm text-gray-900 font-medium">
-                                    {{ trim("{$operario->name} {$operario->primer_apellido} {$operario->segundo_apellido}") }}
-                                </td>
-
-                                <td class="px-4 py-2 text-sm text-gray-700">
-                                    {{ $operario->categoria->nombre ?? $operario->categoria_id }}
-                                </td>
-                                <td class="px-4 py-2 text-sm text-gray-700">
-                                    <span id="maquina-{{ $operario->id }}"
-                                        onclick="activarEdicion({{ $operario->id }}, '{{ $operario->maquina_id }}')">
-                                        {{ $operario->maquina->nombre ?? 'Sin asignar' }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-2 text-sm text-gray-700">{{ $puestoAsignado }}</td>
-                                <td class="px-4 py-2 text-sm text-gray-700">{{ $turnoNombre }}</td>
-                                <td class="px-4 py-2 text-sm text-gray-700">
-                                    {{ $registroFichajes[$operario->id]['entrada'] ?? '—' }}
-                                </td>
-                                <td class="px-4 py-2 text-sm text-gray-700">
-                                    {{ $registroFichajes[$operario->id]['salida'] ?? '—' }}
-                                </td>
-                                <td class="px-4 py-2 text-sm text-gray-700 capitalize">{{ $operario->estado }}</td>
-                                <td class="px-4 py-2 text-sm">
-                                    @if ($tieneEvento)
-                                        <span class="text-green-600 font-bold">✅</span>
-                                    @else
-                                        <span class="text-red-500 font-bold">❌</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div> --}}
-
     </div>
 
     <!-- ✅ FullCalendar Scheduler completo con vista resourceTimelineWeek -->
@@ -89,504 +20,103 @@
     <script src="https://unpkg.com/tippy.js@6"></script>
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
     @php
-        $RUTA_FESTIVO_UPDATE = route('festivos.actualizarFecha', ['festivo' => '__ID__']);
-        $RUTA_FESTIVO_DELETE = route('festivos.eliminar', ['festivo' => '__ID__']);
-        $RUTA_FESTIVO_STORE = route('festivos.store');
+        $cfg = [
+            'csrf' => csrf_token(),
+            'routes' => [
+                'festivo' => [
+                    'store' => route('festivos.store'),
+                    'update' => route('festivos.actualizarFecha', ['festivo' => '__ID__']),
+                    'delete' => route('festivos.eliminar', ['festivo' => '__ID__']),
+                ],
+                'asignacion' => [
+                    'delete' => route('asignaciones-turnos.destroy', ['asignacion' => '__ID__']),
+                    'updateHoras' => url('/asignaciones-turno/__ID__/actualizar-horas'),
+                    'updatePuesto' => url('/asignaciones-turno/__ID__/actualizar-puesto'),
+                ],
+                'userShow' => route('users.show', ':id'),
+            ],
+            'maquinas' => $maquinas,
+            'eventos' => $trabajadoresEventos,
+        ];
     @endphp
+
     <script>
-        let calendar;
-
-        const maquinas = @json($maquinas); // Datos de las máquinas
-        const trabajadores = @json($trabajadoresEventos); // Datos de los trabajadores
-
-        const CSRF = '{{ csrf_token() }}';
-        const FESTIVO_UPDATE_URL = @json($RUTA_FESTIVO_UPDATE); // "/festivos/__ID__/fecha"
-        const FESTIVO_DELETE_URL = @json($RUTA_FESTIVO_DELETE); // "/festivos/__ID__"
-        const FESTIVO_STORE_URL = @json($RUTA_FESTIVO_STORE);
-
-        function crearCalendario(resources, eventosFiltrados) {
-            if (calendar) {
-                calendar.destroy();
-            }
-
-            const vistasValidas = ['resourceTimelineDay', 'resourceTimelineWeek', 'dayGridMonth'];
-
-            let vistaGuardada = localStorage.getItem('ultimaVistaCalendario');
-            if (!vistasValidas.includes(vistaGuardada)) {
-                vistaGuardada = 'resourceTimelineDay';
-            }
-
-            const fechaGuardada = localStorage.getItem('fechaCalendario');
-
-            calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
-                schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
-                locale: 'es',
-                initialView: vistaGuardada,
-                initialDate: fechaGuardada ? new Date(fechaGuardada) : undefined,
-                selectable: true,
-                unselectAuto: true,
-                datesSet: function(info) {
-                    let fechaActual = info.startStr;
-
-                    if (calendar.view.type === 'dayGridMonth') {
-                        const middleDate = new Date(info.start);
-                        middleDate.setDate(middleDate.getDate() + 15); // Aproximadamente la mitad del mes
-                        fechaActual = middleDate.toISOString().split('T')[0];
-                    }
-
-                    localStorage.setItem('fechaCalendario', fechaActual);
-                    localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
-
-                },
-                dateClick: async function(info) {
-                    // Obtenemos la fecha (solo día)
-                    const fechaISO = info.dateStr.slice(0, 10); // 'YYYY-MM-DD'
-
-                    // Pedimos el título
-                    const res = await Swal.fire({
-                        title: 'Nuevo festivo',
-                        input: 'text',
-                        inputLabel: 'Título del festivo',
-                        inputValue: 'Festivo',
-                        showCancelButton: true,
-                        confirmButtonText: 'Crear',
-                        cancelButtonText: 'Cancelar',
-                        inputValidator: (value) => {
-                            if (!value || !value.trim()) return 'Pon un título';
-                        }
-                    });
-
-                    if (!res.isConfirmed) return;
-
-                    try {
-                        // Guardar en backend
-                        const resp = await fetch(FESTIVO_STORE_URL, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': CSRF,
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                fecha: fechaISO,
-                                titulo: res.value.trim()
-                            })
-                        });
-
-                        if (!resp.ok) throw new Error('Error HTTP ' + resp.status);
-                        const data = await resp.json();
-
-                        // Construir el evento para el calendario (mismo estilo que ya usas)
-                        const start = new Date(data.festivo.fecha + 'T00:00:00');
-                        const end = new Date(start);
-                        end.setDate(end.getDate() + 1); // end exclusivo
-
-                        const resourceIds = (window.maquinas || []).map(m => m
-                        .id); // que aparezca en todas las máquinas
-
-                        calendar.addEvent({
-                            id: 'festivo-' + data.festivo.id,
-                            title: data.festivo.titulo,
-                            start: start.toISOString(),
-                            end: end.toISOString(),
-                            allDay: true,
-                            resourceIds: resourceIds,
-                            backgroundColor: '#ff0000',
-                            borderColor: '#b91c1c',
-                            textColor: '#ffffff',
-                            editable: true, // podrás moverlo luego
-                            classNames: ['evento-festivo'],
-                            extendedProps: {
-                                es_festivo: true,
-                                festivo_id: data.festivo.id,
-                                entrada: null,
-                                salida: null,
-                            }
-                        });
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Festivo creado',
-                            timer: 1200,
-                            showConfirmButton: false
-                        });
-                    } catch (err) {
-                        console.error(err);
-                        Swal.fire('Error', 'No se pudo crear el festivo', 'error');
-                    }
-                },
-                displayEventEnd: true,
-                eventMinHeight: 30,
-                firstDay: 1,
-                height: 'auto',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'resourceTimelineDay,resourceTimelineWeek,dayGridMonth'
-                },
-                buttonText: {
-                    today: 'Hoy',
-                    month: 'Mes'
-                },
-                slotLabelDidMount: function(info) {
-                    const viewType = info.view.type;
-
-                    if (viewType === 'resourceTimelineDay') {
-                        const hour = parseInt(info.date.getHours());
-
-                        if (hour >= 6 && hour < 14) {
-                            info.el.style.backgroundColor = '#a7f3d0'; // verde claro
-                        } else if (hour >= 14 && hour < 22) {
-                            info.el.style.backgroundColor = '#bfdbfe'; // azul claro
-                        } else {
-                            info.el.style.backgroundColor = '#fde68a'; // amarillo claro
-                        }
-
-                        info.el.style.borderRight = '1px solid #e5e7eb';
-                    }
-                }, // eventOrder: 'orden',
-                views: {
-                    resourceTimelineDay: {
-                        slotMinTime: '00:00:00',
-                        slotMaxTime: '21:59:00',
-                    },
-                    resourceTimelineWeek: {
-                        slotDuration: {
-                            days: 1
-                        },
-                        slotLabelFormat: {
-                            weekday: 'long',
-                            day: 'numeric',
-                            month: 'short'
-                        }
-                    }
-                },
-                editable: true,
-                resources: resources, // Usamos los recursos ordenados
-                resourceAreaWidth: '100px',
-                resourceLabelDidMount: function(info) {
-                    const color = info.resource.extendedProps.backgroundColor;
-                    if (color) {
-                        info.el.style.backgroundColor = color;
-                        info.el.style.color = '#fff';
-                    }
-                },
-                filterResourcesWithEvents: false,
-                events: trabajadores,
-                resourceAreaColumns: [{
-                    field: 'title',
-                    headerContent: 'Máquinas'
-                }],
-                eventDrop: async function(info) {
-                    const e = info.event;
-                    const props = e.extendedProps || {};
-
-                    // ✅ FESTIVO: actualizar fecha y salir
-                    if (props.es_festivo) {
-                        try {
-                            const nuevaFecha = e.startStr.slice(0, 10);
-                            const url = FESTIVO_UPDATE_URL.replace('__ID__', props.festivo_id);
-
-                            const resp = await fetch(url, {
-                                method: 'PUT',
-                                headers: {
-                                    'X-CSRF-TOKEN': CSRF,
-                                    'Accept': 'application/json',
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    fecha: nuevaFecha
-                                }),
-                            });
-
-                            if (!resp.ok) throw new Error('Error HTTP ' + resp.status);
-                            const data = await resp.json();
-                            e.setExtendedProp('anio', data.festivo.anio); // opcional
-                        } catch (err) {
-                            console.error(err);
-                            info.revert();
-                            Swal.fire('Error', 'No se pudo actualizar la fecha del festivo', 'error');
-                        }
-                        return; // ⬅️ no sigas con la lógica de asignaciones
-                    }
-
-                    // 🔽 tu lógica actual para mover asignaciones (tal cual la tenías)
-                    const asignacionId = e.id.replace(/^turno-/, '');
-                    const recurso = e.getResources()?.[0];
-                    const nuevoMaquinaId = recurso ? parseInt(recurso.id, 10) : null;
-                    const nuevaHoraInicio = e.start?.toISOString();
-                    let turnoId = null;
-                    const hora = new Date(nuevaHoraInicio).getHours();
-
-                    if (hora >= 6 && hora < 14) turnoId = 1;
-                    else if (hora >= 14 && hora < 22) turnoId = 2;
-                    else turnoId = 3;
-
-                    if (!nuevoMaquinaId || !nuevaHoraInicio) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Datos incompletos',
-                            text: 'No se pudo determinar la máquina o la hora de inicio.'
-                        });
-                        info.revert();
-                        return;
-                    }
-
-                    fetch(`/asignaciones-turno/${asignacionId}/actualizar-puesto`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': CSRF
-                            },
-                            body: JSON.stringify({
-                                maquina_id: nuevoMaquinaId,
-                                start: nuevaHoraInicio,
-                                turno_id: turnoId
-                            })
-                        })
-                        .then(response => response.json().then(data => ({
-                            ok: response.ok,
-                            status: response.status,
-                            data
-                        })))
-                        .then(({
-                            ok,
-                            status,
-                            data
-                        }) => {
-                            if (!ok) throw new Error(data?.message || `Error ${status}`);
-                            if (data.color) {
-                                e.setProp('backgroundColor', data.color);
-                                e.setProp('borderColor', data.color);
-                            }
-                            if (typeof data.nuevo_obra_id !== 'undefined') {
-                                e.setExtendedProp('obra_id', data.nuevo_obra_id);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('❌ Error al actualizar:', error);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error al guardar',
-                                text: error.message || 'Ocurrió un error inesperado.'
-                            });
-                            info.revert();
-                        });
-                },
-                eventDidMount: function(info) {
-                    const foto = info.event.extendedProps.foto;
-                    // No muestres tooltip si no hay foto (p. ej., festivos)
-                    if (!foto) return;
-
-                    const content = `
-    <img src="${foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow-lg">
-`;
-
-                    tippy(info.el, {
-                        content: content,
-                        allowHTML: true,
-                        placement: 'top',
-                        theme: 'transparent-avatar',
-                        interactive: false,
-                        arrow: false,
-                        delay: [100, 0],
-                        offset: [0, 10],
-                    });
-                    // 👉 Listener para clic derecho
-                    info.el.addEventListener('contextmenu', function(e) {
-                        e.preventDefault(); // evitar el menú contextual por defecto
-
-                        const evento = info.event;
-                        const props = evento.extendedProps;
-                        const entradaActual = props.entrada || '';
-                        const salidaActual = props.salida || '';
-
-                        Swal.fire({
-                            title: 'Editar fichaje',
-                            html: `
-                                <div class="flex flex-col gap-3">
-                                    <label class="text-left text-sm">Entrada</label>
-                                    <input id="entradaHora" type="time" class="swal2-input" value="${entradaActual}">
-                                    <label class="text-left text-sm">Salida</label>
-                                    <input id="salidaHora" type="time" class="swal2-input" value="${salidaActual}">
-                                </div>
-                            `,
-                            showCancelButton: true,
-                            confirmButtonText: 'Guardar',
-                            cancelButtonText: 'Cancelar',
-                            preConfirm: () => {
-                                const entradaNueva = document.getElementById('entradaHora')
-                                    .value;
-                                const salidaNueva = document.getElementById('salidaHora')
-                                    .value;
-
-                                if (!entradaNueva && !salidaNueva) {
-                                    Swal.showValidationMessage(
-                                        'Debes indicar al menos una hora');
-                                    return false;
-                                }
-
-                                return {
-                                    entrada: entradaNueva,
-                                    salida: salidaNueva
-                                };
-                            }
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                const {
-                                    entrada,
-                                    salida
-                                } = result.value;
-                                const idLimpio = info.event.id.toString().replace(/^turno-/,
-                                    '');
-                                fetch(`/asignaciones-turno/${idLimpio}/actualizar-horas`, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                                        },
-                                        body: JSON.stringify({
-                                            entrada,
-                                            salida
-                                        })
-                                    })
-                                    .then(res => res.json().then(data => ({
-                                        ok: res.ok,
-                                        data
-                                    })))
-                                    .then(({
-                                        ok,
-                                        data
-                                    }) => {
-                                        if (!ok) throw new Error(data.message ||
-                                            'Error al actualizar');
-
-                                        // Actualizar propiedades sin recargar
-                                        evento.setExtendedProp('entrada', entrada);
-                                        evento.setExtendedProp('salida', salida);
-
-                                        Swal.fire({
-                                            icon: 'success',
-                                            title: 'Horas actualizadas',
-                                            timer: 1500,
-                                            showConfirmButton: false
-                                        });
-                                    })
-                                    .catch(err => {
-                                        console.error(err);
-                                        Swal.fire('Error', err.message ||
-                                            'Error al actualizar', 'error');
-                                    });
-                            }
-                        });
-                    });
-                },
-                eventClick: async function(info) {
-                    const e = info.event;
-                    const props = e.extendedProps || {};
-
-                    // ✅ FESTIVO: eliminar
-                    if (props.es_festivo) {
-                        const ok = await Swal.fire({
-                            icon: 'warning',
-                            title: `Eliminar festivo`,
-                            html: `<div>¿Seguro que quieres eliminar <b>${e.title}</b>?</div>`,
-                            showCancelButton: true,
-                            confirmButtonText: 'Eliminar',
-                            cancelButtonText: 'Cancelar'
-                        }).then(r => r.isConfirmed);
-
-                        if (!ok) return;
-
-                        try {
-                            const url = FESTIVO_DELETE_URL.replace('__ID__', props.festivo_id);
-                            const resp = await fetch(url, {
-                                method: 'DELETE',
-                                headers: {
-                                    'X-CSRF-TOKEN': CSRF,
-                                    'Accept': 'application/json'
-                                }
-                            });
-                            if (!resp.ok) throw new Error('Error HTTP ' + resp.status);
-                            e.remove();
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Festivo eliminado',
-                                timer: 1200,
-                                showConfirmButton: false
-                            });
-                        } catch (err) {
-                            console.error(err);
-                            Swal.fire('Error', 'No se pudo eliminar el festivo', 'error');
-                        }
-                        return;
-                    }
-
-                    // 🔽 tu flujo actual para eventos de usuario
-                    const userId = e.extendedProps.user_id;
-                    if (userId) {
-                        const url = "{{ route('users.show', ':id') }}".replace(':id', userId);
-                        window.location.href = url;
-                    }
-                },
-                eventContent: function(arg) {
-                    const props = arg.event.extendedProps;
-                    let horasTexto = '-- / --';
-
-                    if (props.entrada && props.salida) {
-                        horasTexto = `${props.entrada} / ${props.salida}`;
-                    } else if (props.entrada && !props.salida) {
-                        horasTexto = props.entrada;
-                    } else if (props.salida && !props.entrada) {
-                        horasTexto = props.salida;
-                    }
-                    // ➜ Si es festivo, mostramos solo el título, sin extras y sin estilos grises
-                    if (props && props.es_festivo) {
-                        return {
-                            html: `
-                            <div class="px-2 py-1 text-xs font-semibold" style="color:#fff">
-                                ${arg.event.title}
-                            </div>
-                            `
-                        };
-                    } else {
-                        let html = `
-                        <div class="px-2 py-1 text-xs font-semibold flex items-center">
-                            <!-- Bloque izquierdo -->
-                            <div class="flex flex-col">
-                                <span>${arg.event.title}</span>
-                                <span class="text-[10px] font-normal opacity-80">
-                                    (${props.categoria_nombre ?? ''} 🛠 ${props.especialidad_nombre ?? 'Sin especialidad'})
-                                </span>
-                            </div>
-                            <!-- Bloque derecho (horas alineadas a la derecha) -->
-                            <div class="ml-auto text-right">
-                                <span class="text-[10px] font-normal opacity-80">${horasTexto}</span>
-                            </div>
-                        </div>
-                        `;
-
-                        return {
-                            html
-                        }; // 🔹 Devuelves el HTML aquí
-                    }
-                },
-
-            });
-            // Forzar el orden de los recursos explícitamente usando setResources
-            calendar.render();
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // Mostrar todas las máquinas al cargar
-            crearCalendario(maquinas, trabajadores);
-        });
+        window.AppPlanif = @json($cfg);
     </script>
     <style>
-        .tippy-box[data-theme~='transparent-avatar'] {
+        .fc-contextmenu button:hover {
+            background: #f3f4f6;
+        }
+
+        .tippy-box[data-theme~="transparent-avatar"] {
             background: transparent !important;
             box-shadow: none !important;
             padding: 0 !important;
         }
+
+        /* Contenedor general */
+        .ctx-menu-container {
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            min-width: 240px;
+            font-family: system-ui, sans-serif;
+        }
+
+        /* Cabecera */
+        .ctx-menu-header {
+            padding: 10px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* Botones */
+        .ctx-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+            background: white;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out;
+        }
+
+        .ctx-menu-item:hover {
+            background: #f3f4f6;
+        }
+
+        .ctx-menu-item:active {
+            background: #e5e7eb;
+        }
+
+        /* Icono */
+        .ctx-menu-icon {
+            font-size: 16px;
+        }
+
+        /* Texto */
+        .ctx-menu-label {
+            flex: 1;
+        }
+
+        /* Opción peligrosa */
+        .ctx-menu-danger {
+            color: #b91c1c;
+        }
+
+        .ctx-menu-danger:hover {
+            background: #fee2e2;
+        }
     </style>
+    @vite(['resources/js/app.js'])
 </x-app-layout>

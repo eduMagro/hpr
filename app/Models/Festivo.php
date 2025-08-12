@@ -49,8 +49,10 @@ class Festivo extends Model
                     'borderColor'     => '#b91c1c',
                     'textColor'       => 'white',
                     'editable'        => true,
+                    'classNames'      => ['fc-event-festivo'],
                     'extendedProps'   => [
                         'festivo_id' => $f->id,
+                        'tipo'       => 'festivo',
                         'anio'       => $f->anio ?? (int) $f->fecha->format('Y'),
                     ],
                 ];

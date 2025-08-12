@@ -612,6 +612,30 @@ class SalidaController extends Controller
             ], 500);
         }
     }
+    public function actualizarCodigoSage(Request $request, \App\Models\Salida $salida)
+    {
+        $request->validate([
+            'codigo' => 'required|string|max:255',
+        ], [
+            'codigo.required' => 'El código es obligatorio.',
+        ]);
+
+        try {
+            $salida->codigo_sage = $request->codigo;
+            $salida->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Código SAGE actualizado correctamente.',
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo actualizar el código SAGE.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
 
     public function export($mes)
     {
