@@ -1,5 +1,5 @@
-import { httpJSON } from "../http";
-import { R } from "../config";
+import { httpJSON } from "../http.js";
+import { R } from "../config.js";
 
 export async function crearFestivo(fechaISO) {
     const res = await Swal.fire({

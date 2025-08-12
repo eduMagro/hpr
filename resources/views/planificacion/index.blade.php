@@ -80,8 +80,9 @@
         // (opcional) deja activado el nuevo menú sin romper nada
         window.AppSalidas.useNewMenu = true;
     </script>
+    <link rel="stylesheet" href="{{ asset('css/calendario-salidas/estilosCalendarioSalidas.css') }}">
+    <script type="module" src="{{ asset('js/modules/calendario-salidas/index.js') }}"></script>
 
-    @vite(['resources/js/calendario-salidas/index.js', 'resources/js/calendario-salidas/estilos.css'])
 
 
 </x-app-layout>

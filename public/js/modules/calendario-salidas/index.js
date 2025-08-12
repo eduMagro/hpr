@@ -1,4 +1,10 @@
 import { crearCalendario } from "./calendar.js";
+
+import "./eventos.js";
+import "./recursos.js";
+import "./tooltips.js";
+import "./calendario-menu.js";
+import "./totales.js";
 // ---- helpers para etiquetas semana/mes
 function etiquetaMes(fechaISO) {
     const d = new Date(fechaISO);

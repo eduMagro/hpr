@@ -1,4 +1,4 @@
-import { CSRF } from "./config";
+import { CSRF } from "./config.js";
 
 export async function httpJSON(url, options = {}) {
     const opts = {

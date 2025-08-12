@@ -1,8 +1,9 @@
-import { dataEvents } from "./eventos.js";
-import { dataResources } from "./recursos.js";
-import { configurarTooltipsYMenus } from "./tooltips.js";
-import { actualizarTotales } from "./totales.js";
-import { attachEventoContextMenu } from "./calendario-menu.js";
+import "./eventos.js";
+import "./recursos.js";
+import "./tooltips.js";
+import "./calendario-menu.js";
+import "./menuContextual.js";
+import "./totales.js"; // solo si tienes totales para esta vista
 let currentViewType = "resourceTimelineDay";
 export let calendar = null;
 

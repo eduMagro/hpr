@@ -1,5 +1,5 @@
-import { httpJSON } from "../http";
-import { R } from "../config";
+import { httpJSON } from "../../../../../js/modules/calendario-trabajadores/http.js";
+import { R } from "../config.js";
 
 export async function editarFichaje(event) {
     const props = event.extendedProps || {};

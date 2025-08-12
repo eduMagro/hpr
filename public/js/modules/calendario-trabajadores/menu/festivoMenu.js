@@ -1,6 +1,6 @@
-import { openMenuAt, closeMenu } from "./baseMenu";
-import { httpJSON } from "../http";
-import { R } from "../config";
+import { openMenuAt, closeMenu } from "./baseMenu.js";
+import { httpJSON } from "../http.js";
+import { R } from "../config.js";
 
 export function openFestivoMenu(x, y, { event, titulo }) {
     const el = openMenuAt(

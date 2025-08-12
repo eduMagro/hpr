@@ -118,5 +118,6 @@
             background: #fee2e2;
         }
     </style>
-    @vite(['resources/js/app.js'])
+
+    <script type="module" src="{{ asset('js/modules/calendario-trabajadores/index.js') }}"></script>
 </x-app-layout>

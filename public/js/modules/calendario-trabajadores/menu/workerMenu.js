@@ -1,7 +1,7 @@
-import { openMenuAt, closeMenu } from "./baseMenu";
-import { editarFichaje } from "../dialogs/fichaje";
-import { httpJSON } from "../http";
-import { R } from "../config";
+import { openMenuAt, closeMenu } from "./baseMenu.js";
+import { editarFichaje } from "../dialogs/fichaje.js";
+import { httpJSON } from "../http.js";
+import { R } from "../config.js";
 
 export function openWorkerMenu(x, y, event) {
     const nombre = event.title || "Operario";

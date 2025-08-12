@@ -1,4 +1,4 @@
-import { openActionsMenu } from "./baseMenu.js";
+import { openActionsMenu } from "../menu/baseMenu.js";
 import { crearFestivo } from "../dialogs/festivo.js";
 
 /** Copia eventos (no festivos) de un día a otro, manteniendo horas y recurso */
