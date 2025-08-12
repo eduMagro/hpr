@@ -46,4 +46,12 @@ class Obra extends Model
     {
         return $this->hasMany(Maquina::class);
     }
+    public function empresa()
+    {
+        return $this->belongsTo(Empresa::class);
+    }
+    public function productos()
+    {
+        return $this->hasMany(Producto::class);
+    }
 }

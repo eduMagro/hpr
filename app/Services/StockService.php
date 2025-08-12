@@ -5,56 +5,91 @@ namespace App\Services;
 use App\Models\Producto;
 use App\Models\Elemento;
 use App\Models\Pedido;
+use App\Models\Cliente;
 use App\Models\ProductoBase;
 use App\Models\Movimiento;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use App\Models\Obra;
+use Illuminate\Support\Facades\Schema;
 
 class StockService
 {
     // 👉 hazlo público para llamarlo desde los controladores
-    public function obtenerDatosStock(): array
+    public function obtenerDatosStock(?array $obraIds = null, ?string $clienteLike = null): array
     {
-        $stockData            = $this->getStockData();
-        $pedidosPorDiametro   = $this->getPedidosPorDiametro();
-        $necesarioPorDiametro = $this->getNecesarioPorDiametro();
+
+        // si no vienen obras pero sí patrón de cliente, resolvemos obras por cliente
+        if (empty($obraIds) && $clienteLike) {
+            $obraIds = $this->getObraIdsByClienteLike($clienteLike);
+        }
+        // normalizar: si llega string (p.ej. "123") lo convertimos a array [123]
+        if (is_string($obraIds) && is_numeric($obraIds)) {
+            $obraIds = [(int) $obraIds];
+        } elseif ($obraIds !== null && !is_array($obraIds)) {
+            // cualquier otra cosa inesperada => ignoramos
+            $obraIds = null;
+        }
+        $stockData            = $this->getStockData($obraIds); // estocaje = global (no depende de obra)
+        $pedidosPorDiametro   = $this->getPedidosPorDiametro($obraIds);     // 🔎 filtrado por obra si aplica
+        $necesarioPorDiametro = $this->getNecesarioPorDiametro($obraIds);   // 🔎 filtrado por obra si aplica
         $comparativa          = $this->getComparativa($stockData, $pedidosPorDiametro, $necesarioPorDiametro);
 
-        // 👉 Obtenemos consumos mensuales unificados
+        // ... resto tal cual
         $consumosMensuales = $this->obtenerConsumosMensuales();
-        $consumoOrigen = $this->getConsumoTotalOrigen();
-
-        // ✅ Usamos el array correcto de consumos
+        $consumoOrigen     = $this->getConsumoTotalOrigen();
         $resumenReposicion = $this->getResumenReposicion($consumosMensuales['consumos']);
         $ids               = $this->getIds($consumosMensuales['consumos']);
-
-        $resumenReposicion = $this->getResumenReposicion($consumosMensuales['consumos']);
         $recomendacionReposicion = $this->getRecomendacionReposicion($resumenReposicion, $consumosMensuales['consumos']);
 
         return [
-            'stockData'              => $stockData,
-            'pedidosPorDiametro'     => $pedidosPorDiametro,
-            'necesarioPorDiametro'   => $necesarioPorDiametro,
-            'comparativa'            => $comparativa,
-            'totalGeneral'           => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
-            'consumoOrigen' => $consumoOrigen,
-            'consumosPorMes'         => $consumosMensuales['consumos'],
-            'nombreMeses'            => $consumosMensuales['nombreMeses'],
-            'productoBaseInfo'       => $this->getProductoBaseInfo(),
-            'stockPorProductoBase'   => $this->getStockPorProductoBase(),
+            'stockData'                => $stockData,
+            'pedidosPorDiametro'       => $pedidosPorDiametro,
+            'necesarioPorDiametro'     => $necesarioPorDiametro,
+            'comparativa'              => $comparativa,
+            'totalGeneral'             => $stockData->sum(fn($d) => $d['encarretado']) + $stockData->sum(fn($d) => $d['barras_total']),
+            'consumoOrigen'            => $consumoOrigen,
+            'consumosPorMes'           => $consumosMensuales['consumos'],
+            'nombreMeses'              => $consumosMensuales['nombreMeses'],
+            'productoBaseInfo'         => $this->getProductoBaseInfo(),
+            'stockPorProductoBase'     => $this->getStockPorProductoBase(),
             'kgPedidosPorProductoBase' => $this->getKgPedidosPorProductoBase(),
-            'resumenReposicion'      => $resumenReposicion,
-            'recomendacionReposicion' => $recomendacionReposicion,
-            'ids'                    => $ids,
+            'resumenReposicion'        => $resumenReposicion,
+            'recomendacionReposicion'  => $recomendacionReposicion,
+            'ids'                      => $ids,
+            'obraIds_filtradas'        => $obraIds,
+            'clienteLike'              => $clienteLike,
         ];
     }
 
+    // 🔧 robusto: detecta columna de nombre en 'clientes' y obtiene obras por LIKE
+    private function getObraIdsByClienteLike(string $like): array
+    {
+        $posiblesCols = ['nombre', 'razon_social', 'cliente', 'name'];
+        $colsValidas  = array_values(array_filter($posiblesCols, fn($c) => Schema::hasColumn('clientes', $c)));
+        if (empty($colsValidas)) return [];
+
+        $clienteIds = Cliente::query()
+            ->where(function ($q) use ($colsValidas, $like) {
+                foreach ($colsValidas as $col) {
+                    $q->orWhere($col, 'like', $like);
+                }
+            })
+            ->pluck('id');
+
+        if ($clienteIds->isEmpty()) return [];
+
+        return Obra::whereIn('cliente_id', $clienteIds)->pluck('id')->all();
+    }
+
+    // ⬇️ añade parámetro $obraIds a estos dos
 
     // ======================= Helpers existentes =======================
-    private function getStockData()
+    private function getStockData(?array $obraIds = null)
     {
         $productos = Producto::with('productoBase')
             ->where('estado', 'almacenado')
+            ->when($obraIds, fn($q) => $q->whereIn('obra_id', $obraIds)) // 👈 filtro por obra
             ->get();
 
         $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
@@ -67,20 +102,24 @@ class StockService
                 ->map(fn($g) => $g->sum('peso_inicial'));
             $barrasTotal = $barrasPorLongitud->sum();
             return [$diametro => [
-                'encarretado' => $encarretado,
-                'barras' => $barrasPorLongitud,
+                'encarretado'  => $encarretado,
+                'barras'       => $barrasPorLongitud,
                 'barras_total' => $barrasTotal,
-                'total' => $barrasTotal + $encarretado,
+                'total'        => $barrasTotal + $encarretado,
             ]];
         });
     }
 
-    private function getNecesarioPorDiametro()
+
+    private function getNecesarioPorDiametro(?array $obraIds = null)
     {
         $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
-        $elementosPendientes = Elemento::with('maquina')
+        $elementosPendientes = Elemento::with('maquina', 'planilla')
             ->where('estado', 'pendiente')
+            ->when($obraIds, function ($q) use ($obraIds) {
+                $q->whereHas('planilla', fn($p) => $p->whereIn('obra_id', $obraIds));
+            })
             ->get()
             ->filter(fn($e) => $e->maquina && $e->maquina->tipo && $e->diametro)
             ->groupBy(fn($e) => $e->maquina->tipo_material . '-' . intval($e->diametro))
@@ -91,53 +130,46 @@ class StockService
             $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
             $barrasPorLongitud[12] = $elementosPendientes["barra-$diametro"] ?? 0;
             $barrasTotal = $barrasPorLongitud->sum();
+
             return [$diametro => [
-                'encarretado' => $encarretado,
-                'barras' => $barrasPorLongitud,
+                'encarretado'  => $encarretado,
+                'barras'       => $barrasPorLongitud,
                 'barras_total' => $barrasTotal,
-                'total' => $barrasTotal + $encarretado,
+                'total'        => $barrasTotal + $encarretado,
             ]];
         });
     }
 
-    private function getPedidosPorDiametro()
+    private function getPedidosPorDiametro(?array $obraIds = null)
     {
         $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
         $pedidosPendientes = Pedido::with('productos')
             ->where('estado', 'pendiente')
+            ->when($obraIds, fn($q) => $q->whereIn('obra_id', $obraIds))
             ->get()
             ->flatMap(fn($pedido) => $pedido->productos->map(fn($p) => [
-                'tipo'     => $p->tipo,                    // 'barra' | 'encarretado'
-                'diametro' => (int) $p->diametro,
-                'longitud' => $p->tipo === 'barra' ? (int) $p->longitud : null,
-                'cantidad' => (float) $p->pivot->cantidad,
+                'tipo'     => $p->tipo,
+                'diametro' => $p->diametro,
+                'cantidad' => $p->pivot->cantidad,
             ]))
-            // 🔴 clave distinta para barra (incluye longitud) y encarretado
-            ->groupBy(fn($i) => $i['tipo'] === 'barra'
-                ? "barra-{$i['diametro']}-{$i['longitud']}"
-                : "encarretado-{$i['diametro']}")
+            ->groupBy(fn($i) => "{$i['tipo']}-{$i['diametro']}")
             ->map(fn($g) => collect($g)->sum('cantidad'));
 
         return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($pedidosPendientes) {
-            $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0.0;
-
-            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(function ($l) use ($pedidosPendientes, $diametro) {
-                return [$l => (float) ($pedidosPendientes["barra-$diametro-$l"] ?? 0.0)];
-            });
-
-            $barrasTotal = (float) $barrasPorLongitud->sum();
+            $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0;
+            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
+            $barrasPorLongitud[12] = $pedidosPendientes["barra-$diametro"] ?? 0;
+            $barrasTotal = $barrasPorLongitud->sum();
 
             return [$diametro => [
-                'encarretado'  => round($encarretado, 2),
-                'barras'       => $barrasPorLongitud->map(fn($v) => round($v, 2)),
-                'barras_total' => round($barrasTotal, 2),
-                'total'        => round($encarretado + $barrasTotal, 2),
+                'encarretado'  => $encarretado,
+                'barras'       => $barrasPorLongitud,
+                'barras_total' => $barrasTotal,
+                'total'        => $encarretado + $barrasTotal,
             ]];
         });
     }
-
-
     private function getComparativa($stockData, $pedidosPendientes, $necesarioPorDiametro)
     {
         $comparativa = [];
@@ -188,7 +220,6 @@ class StockService
             ->pluck('total_pedido', 'pedido_productos.producto_base_id')
             ->map(fn($p) => round($p, 2));
     }
-
     //Este no lo usamos ya, pendiente de quitar
     private function getResumenReposicion($consumosPorMes)
     {
@@ -246,7 +277,6 @@ class StockService
         // Devolvemos como array asociativo (conservar id como clave si quieres)
         return $ordenada->mapWithKeys(fn($item) => [$item['id'] => $item]);
     }
-
     private function getRecomendacionReposicion($resumenReposicion, $consumosPorMes): array
     {
         return collect($resumenReposicion)->map(function ($item, $id) use ($consumosPorMes) {
@@ -280,6 +310,7 @@ class StockService
             ->values()
             ->toArray();
     }
+
 
     public function obtenerConsumosMensuales(): array
     {
@@ -345,7 +376,6 @@ class StockService
             return [$id => round($mov + $man, 2)];
         })->toArray();
     }
-
     private function getConsumoTotalOrigen(): array
     {
         // obtenemos la fecha más antigua de movimientos o manuales
@@ -393,6 +423,7 @@ class StockService
             ];
         })->toArray();
     }
+
 
     private function getIds($consumosPorMes)
     {

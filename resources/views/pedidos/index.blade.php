@@ -12,7 +12,6 @@
                     <thead class="bg-blue-500 text-white text-10">
                         <tr class="text-center text-xs uppercase">
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['codigo_sage'] ?? 'Código Sage' !!}</th>
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
@@ -30,10 +29,6 @@
                                     <x-tabla.input name="codigo" type="text" :value="request('codigo')"
                                         class="w-full text-xs" />
                                 </th>
-                                <th class="p-1 border">
-                                    <x-tabla.input name="codigo_sage" type="text" :value="request('codigo_sage')"
-                                        class="w-full text-xs" />
-                                </th>
 
                                 <th class="p-1 border">
                                     <x-tabla.select name="pedido_global_id" :options="$pedidosGlobales->pluck('codigo', 'id')" :selected="request('pedido_global_id')"
@@ -44,10 +39,12 @@
                                     <x-tabla.select name="fabricante_id" :options="$fabricantes->pluck('nombre', 'id')" :selected="request('fabricante_id')"
                                         empty="Todos" class="w-full text-xs" />
                                 </th>
+
                                 <th class="p-1 border">
                                     <x-tabla.select name="distribuidor_id" :options="$distribuidores->pluck('nombre', 'id')" :selected="request('distribuidor_id')"
                                         empty="Todos" class="w-full text-xs" />
                                 </th>
+
                                 <th class="py-1 px-0 border">
                                     <div class="flex gap-2 justify-center">
                                         <input type="text" name="producto_tipo"
@@ -63,14 +60,14 @@
                                             class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
                                     </div>
                                 </th>
+                                <th class="p-1 border">
 
-                                <th class="p-1 border"></th>
-
-
+                                </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="fecha_pedido" type="date" :value="request('fecha_pedido')"
                                         class="w-full text-xs" />
                                 </th>
+
 
                                 <th class="p-1 border">
                                     <x-tabla.input name="fecha_entrega" type="date" :value="request('fecha_entrega')"
@@ -85,7 +82,6 @@
                                         'cancelado' => 'Cancelado',
                                     ]" :selected="request('estado')" empty="Todos"
                                         class="w-full text-xs" />
-
                                 </th>
                                 <x-tabla.botones-filtro ruta="pedidos.index" />
                             </form>
@@ -96,17 +92,9 @@
                     <tbody>
                         @forelse ($pedidos as $pedido)
                             {{-- Fila principal del pedido --}}
-                            <tr class="bg-gray-100 text-xs font-bold uppercase" x-data="codigoSageEditable({{ $pedido->id }}, @js($pedido->codigo_sage))"
-                                @keydown.enter.stop.prevent="guardar">
-                                <td colspan="11" class="text-left px-3 py-2">
+                            <tr class="bg-gray-100 text-xs font-bold uppercase">
+                                <td colspan="10" class="text-left px-3 py-2">
                                     <span class="text-blue-600">Pedido:</span> {{ $pedido->codigo }} |
-                                    <span class="text-blue-600">SAGE:</span>
-                                    <input x-model="codigo" x-ref="input"
-                                        :class="{ 'border-green-500 ring-1 ring-green-300': guardadoExitoso }"
-                                        @animationend="guardadoExitoso = false"
-                                        class="text-xs border rounded px-2 py-1 ml-1 w-32 inline-block transition-all duration-300"
-                                        placeholder="Código Sage" />
-
                                     <span class="text-blue-600">Peso Total: </span> {{ $pedido->peso_total_formateado }}
                                     |
                                     <span class="text-blue-600">Estado: </span>{{ $pedido->estado }} |
@@ -132,7 +120,6 @@
 
                                 <tr class="text-xs {{ $claseFondo }}">
                                     <td class="border px-2 py-1">{{ $pedido->codigo }}</td>
-                                    <td class="border px-2 py-1">{{ $pedido->codigo_sage ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->pedidoGlobal?->codigo ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
@@ -191,7 +178,34 @@
                 </table>
             </div>
             <x-tabla.paginacion :paginador="$pedidos" />
-            <div class="mb-6"> <!-- Tabla stock -->
+            <hr>
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mt-4">📦 Estado actual de stock, pedidos y necesidades</h2>
+                <!-- Tabla stock -->
+                <form method="GET" action="{{ route('pedidos.index') }}"
+                    class="flex flex-wrap items-center gap-4 p-4">
+                    {{-- Mantener otros filtros activos --}}
+                    @foreach (request()->except('page', 'obra_id_hpr') as $key => $value)
+                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endforeach
+
+                    <div>
+                        <label for="obra_id_hpr" class="block text-sm font-medium text-gray-700 mb-1">
+                            Seleccionar obra (Hierros Paco Reyes)
+                        </label>
+                        <select name="obra_id_hpr" id="obra_id_hpr"
+                            class="rounded border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                            onchange="this.form.submit()">
+                            <option value="">-- Todas las obras --</option>
+                            @foreach ($obrasHpr as $obra)
+                                <option value="{{ $obra->id }}"
+                                    {{ request('obra_id_hpr') == $obra->id ? 'selected' : '' }}>
+                                    {{ $obra->obra }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </form>
                 <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
                     :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
                     :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" />
@@ -398,71 +412,6 @@
 
     </div>
     <script>
-        function guardarCodigoSage(pedidoId, codigoSage, callback = null) {
-            fetch(`/pedidos/${pedidoId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        codigo_sage: codigoSage
-                    })
-                })
-                .then(async res => {
-                    const data = await res.json();
-
-                    if (res.ok && data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Guardado',
-                            text: 'Código SAGE actualizado correctamente.',
-                            timer: 1200,
-                            showConfirmButton: false
-                        }).then(() => {
-                            location.reload();
-                        });;
-                        if (typeof callback === 'function') callback(true);
-                    } else {
-                        let errorMsg = data?.resumen || data?.message || 'Ocurrió un error inesperado.';
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error al guardar",
-                            text: errorMsg,
-                            showCancelButton: true,
-                            confirmButtonText: "Aceptar",
-                            cancelButtonText: "Reportar Error"
-                        }).then((result) => {
-                            if (result.dismiss === Swal.DismissReason.cancel) {
-                                notificarProgramador(errorMsg);
-                            }
-                        });
-                        if (typeof callback === 'function') callback(false);
-                    }
-                })
-                .catch(error => {
-                    Swal.fire({
-                        icon: "error",
-                        title: "Error de conexión",
-                        text: error.message || "No se pudo actualizar el código SAGE. Inténtalo nuevamente.",
-                        confirmButtonText: "OK"
-                    });
-                    if (typeof callback === 'function') callback(false);
-                });
-        }
-
-        function codigoSageEditable(pedidoId, valorInicial) {
-            return {
-                codigo: valorInicial,
-                guardadoExitoso: false,
-                guardar() {
-                    guardarCodigoSage(pedidoId, this.codigo, (ok) => {
-                        if (ok) this.guardadoExitoso = true;
-                    });
-                }
-            }
-        }
-
         function mostrarConfirmacion() {
             const checkboxes = document.querySelectorAll(
                 'input[type="checkbox"]:checked');

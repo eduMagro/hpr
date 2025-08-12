@@ -368,31 +368,59 @@ class EntradaController extends Controller
 
     public function update(Request $request, Entrada $entrada)
     {
-        DB::beginTransaction();  // Usamos una transacción para asegurar la integridad de los datos.
+        DB::beginTransaction();
+
         try {
-            $request->validate([
-                'fabricante' => 'required|string|max:255',
-                'albaran' => 'required|string|min:5|max:15|alpha_num',
-                'peso_total' => 'required|numeric|min:1',
+            $validated = $request->validate([
+
+                'codigo_sage'  => 'nullable|string|max:50',
+
             ]);
 
-            $entrada->update([
-                'fabricante' => $request->fabricante,
-                'albaran' => $request->albaran,
-                'peso_total' => $request->peso_total,
-            ]);
+            $entrada->update($validated);
+
             DB::commit();
-            return redirect()->route('entradas.index')->with('success', 'Entrada de material actualizada correctamente.');
+
+            // 🔁 Si viene de fetch (JSON)
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Entrada actualizada correctamente.',
+                    'data'    => $entrada->fresh()
+                ]);
+            }
+
+            // Navegación tradicional
+            return redirect()
+                ->route('entradas.index')
+                ->with('success', 'Entrada actualizada correctamente.');
         } catch (ValidationException $e) {
-            // Mostrar todos los errores de validación
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+            DB::rollBack();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de validación',
+                    'errors'  => $e->errors()
+                ], 422);
+            }
+
             return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (Exception $e) {
-            // Mostrar errores generales
-            DB::rollBack();  // Si ocurre un error, revertimos la transacción
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ocurrió un error en el servidor',
+                    'error'   => $e->getMessage()
+                ], 500);
+            }
+
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
 
     public function cerrar($id)
     {

@@ -18,7 +18,7 @@ class VerificarAccesoSeccion
         $user = Auth::user();
         if (!$user) abort(403, 'No autenticado.');
         // ✅ Acceso total para Eduardo
-        if ($user->email === 'eduardo.magro@pacoreyes.com' || $user->email === 'sebastian.duran@pacoreyes.com') {
+        if ($user->email === 'eduardo.magro@pacoreyes.com' || $user->email === 'sebastian.duran@pacoreyes.com' || $user->email === 'juanjose.dorado@pacoreyes.com') {
             return $next($request);
         }
         $rutaActual = $request->route()->getName(); // ej: departamentos.edit

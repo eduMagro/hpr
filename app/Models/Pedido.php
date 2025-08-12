@@ -11,7 +11,6 @@ class Pedido extends Model
 
     protected $fillable = [
         'codigo',
-        'codigo_sage',
         'pedido_global_id',
         'fabricante_id',
         'distribuidor_id',

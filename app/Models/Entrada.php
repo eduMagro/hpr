@@ -15,6 +15,7 @@ class Entrada extends Model
     // Los campos que son asignables masivamente
     protected $fillable = [
         'albaran',
+        'codigo_sage',
         'pedido_id',
         'pedido_producto_id',
         'peso_total',

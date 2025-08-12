@@ -10,6 +10,7 @@
                     <tr>
                         <th class="px-3 py-2 border">ID</th>
                         <th class="px-3 py-2 border">{!! $ordenables['albaran'] ?? 'Albarán' !!}</th>
+                        <th class="px-3 py-2 border">{!! $ordenables['codigo_sage'] ?? 'Código SAGE' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['pedido_codigo'] ?? 'Pedido Compra' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['created_at'] ?? 'Fecha' !!}</th>
                         <th class="px-3 py-2 border">Nº Productos</th>
@@ -24,6 +25,10 @@
 
                             <th class="border p-1">
                                 <x-tabla.input name="albaran" :value="request('albaran')" class="text-xs w-full" />
+                            </th>
+
+                            <th class="border p-1">
+                                <x-tabla.input name="codigo_sage" :value="request('codigo_sage')" class="text-xs w-full" />
                             </th>
 
                             <th class="border p-1">
@@ -49,13 +54,42 @@
                 </thead>
                 <tbody>
                     @forelse ($entradas as $entrada)
-                        <tr class="border-b hover:bg-blue-50">
+                        <tr tabindex="0" x-data="{
+                            editando: false,
+                            fila: {
+                                id: {{ $entrada->id }},
+                                albaran: @js($entrada->albaran),
+                                codigo_sage: @js($entrada->codigo_sage),
+                                peso_total: @js($entrada->peso_total),
+                                estado: @js($entrada->estado),
+                            },
+                            original: {}
+                        }" x-init="original = JSON.parse(JSON.stringify(fila))"
+                            @dblclick="if(!$event.target.closest('input,select,textarea,button,a')){ editando = !editando; if(!editando){ fila = JSON.parse(JSON.stringify(original)); }}"
+                            @keydown.enter.stop="guardarEntrada(fila); editando = false"
+                            :class="{ 'bg-yellow-100': editando }"
+                            class="border-b hover:bg-blue-50 text-sm text-center">
+                            <!-- ID -->
                             <td class="px-3 py-2">{{ $entrada->id }}</td>
-                            <td class="px-3 py-2">{{ $entrada->albaran }}</td>
-                            @php
-                                $pedido = $entrada->pedido; // Relación podría ser null
-                            @endphp
 
+                            <!-- Albarán -->
+                            <td class="px-3 py-2">
+
+                                <span x-text="fila.albaran"></span>
+
+                            </td>
+
+                            <!-- Código SAGE -->
+                            <td class="px-3 py-2">
+                                <template x-if="!editando">
+                                    <span x-text="fila.codigo_sage ?? 'N/A'"></span>
+                                </template>
+                                <input x-show="editando" type="text" x-model="fila.codigo_sage"
+                                    class="w-full border rounded px-2 py-1 text-xs" maxlength="50">
+                            </td>
+
+                            <!-- Pedido Compra (no editable) -->
+                            @php $pedido = $entrada->pedido; @endphp
                             <td class="px-3 py-2">
                                 @if ($pedido)
                                     <a href="{{ route('pedidos.index', ['pedido_id' => $pedido->id]) }}"
@@ -66,8 +100,12 @@
                                     N/A
                                 @endif
                             </td>
+
+                            <!-- Fecha -->
                             <td class="px-3 py-2">{{ $entrada->created_at->format('d/m/Y H:i') }}</td>
-                            <td class="px-3 py-2 text-center">
+
+                            <!-- Nº Productos -->
+                            <td class="px-3 py-2">
                                 @if ($entrada->productos_count > 0)
                                     <a href="{{ route('productos.index', ['entrada_id' => $entrada->id, 'mostrar_todos' => 1]) }}"
                                         class="text-blue-600 hover:underline">
@@ -77,55 +115,60 @@
                                     0
                                 @endif
                             </td>
-                            <td class="px-3 py-2">{{ number_format($entrada->peso_total ?? 0, 2, ',', '.') }} kg
+
+                            <!-- Peso Total -->
+                            <td class="px-3 py-2">
+
+                                <span
+                                    x-text="new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(fila.peso_total) || 0) + ' kg'"></span>
+
                             </td>
-                            <td class="px-3 py-2">{{ $entrada->estado ?? 'N/A' }}</td>
+
+                            <!-- Estado -->
+                            <td class="px-3 py-2">
+
+                                <span class="uppercase" x-text="fila.estado ?? 'N/A'"></span>
+
+                            </td>
+
+                            <!-- Usuario -->
                             <td class="px-3 py-2">{{ $entrada->user->nombre_completo ?? 'N/A' }}</td>
-                            {{-- <td class="px-3 py-2">
-                                <a href="{{ route('entradas.show', $entrada->id) }}"
-                                    class="text-blue-600 hover:underline text-sm">Ver</a> |
-                                <a href="{{ route('entradas.edit', $entrada->id) }}"
-                                    class="text-yellow-600 hover:underline text-sm">Editar</a> |
-                                <x-tabla.boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
-                            </td> --}}
+
+                            <!-- Acciones -->
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
-                                    {{-- Editar: va a la ruta entradas.edit --}}
-                                    <a href="{{ route('entradas.edit', $entrada->id) }}"
-                                        class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
-                                        title="Editar">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                        </svg>
-                                    </a>
+                                    <!-- Guardar / Cancelar cuando editando -->
+                                    <x-tabla.boton-guardar x-show="editando"
+                                        @click="guardarEntrada(fila); editando = false" />
+                                    <x-tabla.boton-cancelar-edicion x-show="editando"
+                                        @click="fila = JSON.parse(JSON.stringify(original)); editando=false" />
 
-                                    {{-- Ver --}}
-                                    <a href="#"
-                                        class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo"
-                                        data-productos='@json($entrada->productos)'
-                                        data-albaran="{{ $entrada->albaran }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                    </a>
-
-                                    {{-- Eliminar --}}
-                                    <x-tabla.boton-eliminar :action="route('productos.destroy', $entrada->id)" />
+                                    <!-- Botones normales cuando NO editando -->
+                                    <template x-if="!editando">
+                                        <div class="flex items-center space-x-2">
+                                            <button @click="editando = true" type="button"
+                                                class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
+                                                title="Editar">
+                                                <!-- ícono lápiz -->
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                </svg>
+                                            </button>
+                                            <x-tabla.boton-eliminar :action="route('entradas.destroy', $entrada->id)" />
+                                        </div>
+                                    </template>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-4 text-gray-500">No hay entradas de material registradas.
+                            <td colspan="10" class="py-4 text-gray-500">No hay entradas de material registradas.
                             </td>
                         </tr>
                     @endforelse
+
                 </tbody>
             </table>
         </div>
@@ -145,6 +188,57 @@
         </div>
     </div>
     <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
+    <script>
+        function guardarEntrada(fila) {
+            fetch(`{{ route('entradas.update', '') }}/${fila.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        albaran: fila.albaran,
+                        codigo_sage: fila.codigo_sage,
+                        peso_total: fila.peso_total,
+                        estado: fila.estado
+                    })
+                })
+                .then(async (response) => {
+                    const contentType = response.headers.get('content-type');
+                    let data = {};
+                    if (contentType && contentType.includes('application/json')) {
+                        data = await response.json();
+                    } else {
+                        const text = await response.text();
+                        throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 200));
+                    }
+
+                    if (response.ok && data.success) {
+                        // refresca para ver ordenables / totales recalculados si aplica
+                        window.location.reload();
+                    } else {
+                        let errorMsg = data.message || "Error al actualizar la entrada.";
+                        if (data.errors) {
+                            errorMsg = Object.values(data.errors).flat().join("<br>");
+                        }
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error al actualizar",
+                            html: errorMsg
+                        });
+                    }
+                })
+                .catch((err) => {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error de conexión",
+                        text: err.message || "No se pudo actualizar la entrada."
+                    });
+                });
+        }
+    </script>
+
     <script>
         document.querySelectorAll('.abrir-modal-dibujo').forEach(boton => {
             boton.addEventListener('click', function(e) {

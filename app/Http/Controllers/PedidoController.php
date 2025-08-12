@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Fabricante;
 use App\Models\Distribuidor;
+use App\Models\Cliente;
 use App\Models\PedidoGlobal;
 use App\Models\Pedido;
 use App\Models\Producto;
@@ -161,77 +162,96 @@ class PedidoController extends Controller
 
     public function index(Request $request, StockService $stockService)
     {
-        $query = Pedido::with(['fabricante', 'distribuidor', 'productos', 'pedidoGlobal', 'pedidoProductos.productoBase'])->latest();
+        $query = Pedido::with(['fabricante', 'distribuidor', 'productos', 'pedidoGlobal', 'pedidoProductos.productoBase'])
+            ->latest();
 
-        // Si el usuario autenticado es operario, solo puede ver pedidos pendientes o parciales
         if (auth()->user()->rol === 'operario') {
             $query->whereIn('estado', ['pendiente', 'parcial']);
         }
 
-        // Aplicar filtros personalizados
         $this->aplicarFiltrosPedidos($query, $request);
 
-        // Paginación configurable
         $perPage = $request->input('per_page', 10);
         $pedidos = $query->paginate($perPage)->appends($request->all());
         $pedidosGlobales = PedidoGlobal::orderBy('codigo')->get();
 
-        // Añadir productos formateados a cada pedido paginado
         $pedidos->getCollection()->transform(function ($pedido) {
             $pedido->lineas = $pedido->pedidoProductos->map(function ($linea) {
                 return [
-                    'id' => $linea->id,
-                    'tipo' => $linea->productoBase?->tipo ?? '—',
-                    'diametro' => $linea->productoBase?->diametro ?? '—',
-                    'longitud' => $linea->productoBase?->tipo === 'encarretado'
-                        ? ($linea->productoBase?->longitud ?? '—')
-                        : '—',
-                    'tipo' => $linea->productoBase?->tipo ?? '—',
-                    'diametro' => $linea->productoBase?->diametro ?? '—',
-                    'longitud' => $linea->productoBase?->longitud ?? '—',
-                    'cantidad' => $linea->cantidad,
-                    'cantidad_recepcionada' => $linea->cantidad_recepcionada,
-                    'estado' => $linea->estado ?? 'pendiente',
+                    'id'                     => $linea->id,
+                    'tipo'                   => $linea->productoBase?->tipo ?? '—',
+                    'diametro'               => $linea->productoBase?->diametro ?? '—',
+                    'longitud'               => $linea->productoBase?->longitud ?? '—',
+                    'cantidad'               => $linea->cantidad,
+                    'cantidad_recepcionada'  => $linea->cantidad_recepcionada,
+                    'estado'                 => $linea->estado ?? 'pendiente',
                     'fecha_estimada_entrega' => $linea->fecha_estimada_entrega ?? '—',
-                    'created_at' => $linea->created_at,
-                    'codigo_sage' => $linea->codigo_sage ?? '',
+                    'created_at'             => $linea->created_at,
+                    'codigo_sage'            => $linea->codigo_sage ?? '',
                 ];
             });
-
-
             return $pedido;
         });
 
         $filtrosActivos = $this->filtrosActivosPedidos($request);
-        $fabricantes = Fabricante::select('id', 'nombre')->get();
+        $fabricantes    = Fabricante::select('id', 'nombre')->get();
         $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
         $ordenables = [
-            'codigo' => $this->getOrdenamientoPedidos('codigo', 'Código'),
-            'fabricante' => $this->getOrdenamientoPedidos('fabricante', 'Fabricante'),
-            'distribuidor' => $this->getOrdenamientoPedidos('distribuidor', 'Distribuidor'),
-            'peso_total' => $this->getOrdenamientoPedidos('peso_total', 'Peso total'),
-            'fecha_pedido' => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
-            'fecha_entrega' => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Entrega'),
-            'estado' => $this->getOrdenamientoPedidos('estado', 'Estado'),
+            'codigo'         => $this->getOrdenamientoPedidos('codigo', 'Código'),
+            'fabricante'     => $this->getOrdenamientoPedidos('fabricante', 'Fabricante'),
+            'distribuidor'   => $this->getOrdenamientoPedidos('distribuidor', 'Distribuidor'),
+            'peso_total'     => $this->getOrdenamientoPedidos('peso_total', 'Peso total'),
+            'fecha_pedido'   => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
+            'fecha_entrega'  => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Entrega'),
+            'estado'         => $this->getOrdenamientoPedidos('estado', 'Estado'),
         ];
 
-        // Obtener datos de stock, pedidos y necesidad
-        $datosStock = $stockService->obtenerDatosStock();
+        // ===== Cargar obras de HPR para el <select> =====
+        $nombreCliente = 'Hierros Paco Reyes';
+        $idClienteHpr = Cliente::query()
+            ->where('empresa', 'like', "%{$nombreCliente}%")
+            ->orderByRaw("CASE WHEN empresa = ? THEN 0 ELSE 1 END", [$nombreCliente])
+            ->value('id');
 
-        // Obtener obras activas
+        $obrasHpr = $idClienteHpr
+            ? Obra::where('cliente_id', $idClienteHpr)->orderBy('obra')->get()
+            : collect();
+
         $obrasActivas = Obra::where('estado', 'activa')->orderBy('obra')->get();
 
+        // ===== Filtro para el cálculo del StockService =====
+        $obraIdSeleccionada = $request->input('obra_id_hpr');        // id concreto (string o null)
+        $soloHpr            = $request->boolean('solo_hpr');         // toggle opcional
+
+        $obraIds     = $obraIdSeleccionada ? [(int)$obraIdSeleccionada] : null;
+        $clienteLike = (!$obraIds && $soloHpr) ? '%Hierros Paco Reyes%' : null;
+        Log::info('[Stock DEBUG] obraIds y clienteLike', [
+            'obraIds'     => $obraIds,
+            'clienteLike' => $clienteLike,
+            'obra_id_hpr' => $request->input('obra_id_hpr'),
+            'solo_hpr'    => $request->boolean('solo_hpr'),
+        ]);
+
+        // ✅ Llamada correcta al service (primero obraIds[], luego clienteLike)
+        $datosStock = $stockService->obtenerDatosStock($obraIds, $clienteLike);
+
         return view('pedidos.index', array_merge([
-            'pedidos' => $pedidos,
-            'obrasActivas' => $obrasActivas,
-            'fabricantes' => $fabricantes,
+            'pedidos'        => $pedidos,
+            'obrasActivas'   => $obrasActivas,
+            'fabricantes'    => $fabricantes,
             'filtrosActivos' => $filtrosActivos,
-            'ordenables' => $ordenables,
+            'ordenables'     => $ordenables,
             'distribuidores' => $distribuidores,
             'pedidosGlobales' => $pedidosGlobales,
+            'obrasHpr'       => $obrasHpr,
+            'idClienteHpr'   => $idClienteHpr,
+            // para mantener el estado del UI
+            'solo_hpr'       => $soloHpr,
+            'obra_id_hpr'    => $obraIdSeleccionada,
         ], $datosStock));
     }
+
 
     public function recepcion($id, $producto_base_id)
     {
@@ -856,48 +876,7 @@ class PedidoController extends Controller
         //
     }
 
-    public function update(Request $request, Pedido $pedido)
-    {
-        try {
 
-            $validated = $request->validate([
-                'codigo_sage' => 'nullable|string|max:50',
-            ], [
-
-                'codigo_sage.string' => 'El código SAGE debe ser una cadena de texto.',
-                'codigo_sage.max' => 'El código SAGE no puede tener más de 50 caracteres.',
-            ]);
-
-            if ($pedido->fecha_pedido === null && !empty($validated['fabricante_id'])) {
-                $validated['fecha_pedido'] = now()->toDateString();
-            } else {
-                unset($validated['fecha_pedido']);
-            }
-
-            $pedido->update($validated);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Pedido actualizado correctamente.',
-            ]);
-        } catch (ValidationException $e) {
-            // 🔁 Devolver todos los errores juntos como string, además del array detallado
-            $mensajes = collect($e->errors())->flatten()->implode("\n");
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Error de validación',
-                'errores' => $e->errors(),
-                'resumen' => $mensajes,
-            ], 422);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ocurrió un error en el servidor',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
 
 
     public function destroy($id)

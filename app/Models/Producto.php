@@ -15,6 +15,8 @@ class Producto extends Model
         'codigo',
         'producto_base_id',
         'fabricante_id',
+        'distribuidor_id',
+        'obra_id',
         'entrada_id',
         'n_colada',
         'n_paquete',
@@ -44,6 +46,10 @@ class Producto extends Model
     public function entrada()
     {
         return $this->belongsTo(Entrada::class);
+    }
+    public function obra()
+    {
+        return $this->belongsTo(Obra::class);
     }
 
     /**
