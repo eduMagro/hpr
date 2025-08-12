@@ -34,8 +34,6 @@ class EstadisticasController extends Controller
 
     /* ───────────────────────── Panel STOCK ───────────────────────── */
 
-
-
     public function stock(StockService $stockService)
     {
         if ($redir = $this->abortIfNoOffice()) {
@@ -45,7 +43,6 @@ class EstadisticasController extends Controller
         $datosStock = $stockService->obtenerDatosStock();
         return view('estadisticas.stock', $datosStock);
     }
-
 
     /* ───────────────────────── Panel OBRAS ───────────────────────── */
 
@@ -80,7 +77,6 @@ class EstadisticasController extends Controller
             'modo'
         ));
     }
-
 
     /* ─────────────────────── Panel CONSUMO MÁQUINAS ───────────────── */
 
@@ -122,7 +118,6 @@ class EstadisticasController extends Controller
         return redirect()->route('estadisticas.stock');
     }
 
-
     // ---------------------------------------------------------------- Funciones para calcular peso suministrado a obras
     private function getSalidasPaquetesCompletadas()
     {
@@ -160,7 +155,6 @@ class EstadisticasController extends Controller
                 ];
             });
     }
-
 
     private function getPesoPorPlanilleroAgrupado($modo = 'mes')
     {

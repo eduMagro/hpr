@@ -108,26 +108,35 @@ class StockService
             ->where('estado', 'pendiente')
             ->get()
             ->flatMap(fn($pedido) => $pedido->productos->map(fn($p) => [
-                'tipo' => $p->tipo,
-                'diametro' => $p->diametro,
-                'cantidad' => $p->pivot->cantidad,
+                'tipo'     => $p->tipo,                    // 'barra' | 'encarretado'
+                'diametro' => (int) $p->diametro,
+                'longitud' => $p->tipo === 'barra' ? (int) $p->longitud : null,
+                'cantidad' => (float) $p->pivot->cantidad,
             ]))
-            ->groupBy(fn($i) => "{$i['tipo']}-{$i['diametro']}")
+            // 🔴 clave distinta para barra (incluye longitud) y encarretado
+            ->groupBy(fn($i) => $i['tipo'] === 'barra'
+                ? "barra-{$i['diametro']}-{$i['longitud']}"
+                : "encarretado-{$i['diametro']}")
             ->map(fn($g) => collect($g)->sum('cantidad'));
 
         return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($pedidosPendientes) {
-            $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0;
-            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
-            $barrasPorLongitud[12] = $pedidosPendientes["barra-$diametro"] ?? 0;
-            $barrasTotal = $barrasPorLongitud->sum();
+            $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0.0;
+
+            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(function ($l) use ($pedidosPendientes, $diametro) {
+                return [$l => (float) ($pedidosPendientes["barra-$diametro-$l"] ?? 0.0)];
+            });
+
+            $barrasTotal = (float) $barrasPorLongitud->sum();
+
             return [$diametro => [
-                'encarretado' => $encarretado,
-                'barras' => $barrasPorLongitud,
-                'barras_total' => $barrasTotal,
-                'total' => $encarretado + $barrasTotal,
+                'encarretado'  => round($encarretado, 2),
+                'barras'       => $barrasPorLongitud->map(fn($v) => round($v, 2)),
+                'barras_total' => round($barrasTotal, 2),
+                'total'        => round($encarretado + $barrasTotal, 2),
             ]];
         });
     }
+
 
     private function getComparativa($stockData, $pedidosPendientes, $necesarioPorDiametro)
     {
@@ -179,6 +188,7 @@ class StockService
             ->pluck('total_pedido', 'pedido_productos.producto_base_id')
             ->map(fn($p) => round($p, 2));
     }
+
     //Este no lo usamos ya, pendiente de quitar
     private function getResumenReposicion($consumosPorMes)
     {
@@ -236,6 +246,7 @@ class StockService
         // Devolvemos como array asociativo (conservar id como clave si quieres)
         return $ordenada->mapWithKeys(fn($item) => [$item['id'] => $item]);
     }
+
     private function getRecomendacionReposicion($resumenReposicion, $consumosPorMes): array
     {
         return collect($resumenReposicion)->map(function ($item, $id) use ($consumosPorMes) {
@@ -269,7 +280,6 @@ class StockService
             ->values()
             ->toArray();
     }
-
 
     public function obtenerConsumosMensuales(): array
     {
@@ -335,6 +345,7 @@ class StockService
             return [$id => round($mov + $man, 2)];
         })->toArray();
     }
+
     private function getConsumoTotalOrigen(): array
     {
         // obtenemos la fecha más antigua de movimientos o manuales
@@ -382,7 +393,6 @@ class StockService
             ];
         })->toArray();
     }
-
 
     private function getIds($consumosPorMes)
     {
