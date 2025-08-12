@@ -494,7 +494,7 @@
             <td class="border px-2 py-1">
                 <div class="flex flex-col gap-2">
                     <input type="number" class="peso-total w-full px-2 py-1 border rounded"
-                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="12500" min="125000"
+                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="12500" min="12500"
                            onchange="generarFechasPorPeso(this, '${clave}')">
                     <div class="fechas-camion flex flex-col gap-1" id="${fechasId}" data-producto-id="${clave}">
                         <!-- Fechas se insertarán aquí -->
