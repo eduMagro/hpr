@@ -41,7 +41,10 @@
                 class="absolute z-30 mt-0 w-1/2 bg-white border {{ $colores['borde'] }} rounded-b-lg shadow-xl overflow-hidden divide-y {{ $colores['borde'] }}"
                 x-cloak>
                 @foreach ($links as $link)
-                    @php $active = request()->routeIs(Str::before($link['route'], '.') . '.*'); @endphp
+                    @php
+                        $active = request()->routeIs($link['route']) || request()->routeIs($link['route'] . '.*');
+                    @endphp
+
                     <a href="{{ route($link['route']) }}"
                         class="relative block px-2 py-3 text-sm font-medium transition
                         {{ $active
@@ -63,7 +66,10 @@
         <!-- Menú escritorio -->
         <div class="hidden sm:flex w-full mb-4">
             @foreach ($links as $link)
-                @php $active = request()->routeIs(Str::before($link['route'], '.') . '.*'); @endphp
+                @php
+                    $active = request()->routeIs($link['route']) || request()->routeIs($link['route'] . '.*');
+                @endphp
+
                 <a href="{{ route($link['route']) }}"
                     class="relative flex-1 text-center px-4 py-2 font-semibold transition
                         {{ $active
