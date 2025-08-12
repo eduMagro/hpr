@@ -196,7 +196,7 @@
                         <select name="obra_id_hpr" id="obra_id_hpr"
                             class="rounded border-gray-300 text-sm shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                             onchange="this.form.submit()">
-                            <option value="">-- Todas las obras --</option>
+                            <option value="">-- Todas las naves --</option>
                             @foreach ($obrasHpr as $obra)
                                 <option value="{{ $obra->id }}"
                                     {{ request('obra_id_hpr') == $obra->id ? 'selected' : '' }}>
