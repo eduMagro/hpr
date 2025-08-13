@@ -375,7 +375,9 @@ class PedidoController extends Controller
 
                 ]
             );
-
+            // Normaliza a MAYÚSCULAS antes de crear
+            $codigo   = strtoupper(trim($request->input('codigo')));
+            $codigo2  = $request->filled('codigo_2') ? strtoupper(trim($request->input('codigo_2'))) : null;
             $esDoble         = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
             $peso            = floatval($request->input('peso'));
             $pesoPorPaquete  = $esDoble ? round($peso / 2, 3) : $peso;
@@ -416,7 +418,7 @@ class PedidoController extends Controller
 
             // Primer producto
             Producto::create([
-                'codigo'            => strtoupper($request->codigo),
+                'codigo'            => $codigo,
                 'producto_base_id'  => $request->producto_base_id,
                 'fabricante_id'     => $fabricanteFinal,
                 'obra_id'           => $obraIdActual,
@@ -434,7 +436,7 @@ class PedidoController extends Controller
             // Segundo producto si aplica
             if ($esDoble) {
                 Producto::create([
-                    'codigo'            => strtoupper($request->codigo_2),
+                    'codigo'            => $codigo2,
                     'producto_base_id'  => $request->producto_base_id,
                     'fabricante_id'     => $fabricanteFinal,
                     'obra_id'           => $obraIdActual,
