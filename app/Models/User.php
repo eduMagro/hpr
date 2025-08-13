@@ -249,29 +249,33 @@ class User extends Authenticatable
         $ahora = Carbon::now();
         $hora = (int) $ahora->format('H');
 
-        // Determinar turno y fecha de referencia (noche cuenta para el día anterior si es <06h)
+        // Turno lógico y fecha de referencia
         if ($hora >= 22 || $hora < 6) {
-            $slugTurno = 'noche';
+            $turnoSlug = 'noche';
             $fechaRef = ($hora < 6) ? $ahora->copy()->subDay()->toDateString() : $ahora->toDateString();
         } elseif ($hora < 14) {
-            $slugTurno = 'manana';
+            $turnoSlug = 'manana';
             $fechaRef = $ahora->toDateString();
         } else {
-            $slugTurno = 'tarde';
+            $turnoSlug = 'tarde';
             $fechaRef = $ahora->toDateString();
         }
 
-        // Para coincidir también por nombre con tilde
-        $nombreTurno = $slugTurno === 'manana' ? 'mañana' : $slugTurno;
+        // Mapear nombres de turnos -> id (cache estática en memoria PHP)
+        static $turnoMap = null;
+        if ($turnoMap === null) {
+            // crea un mapa: 'manana' => id, 'tarde' => id, 'noche' => id
+            $turnoMap = Turno::pluck('id', 'nombre')
+                ->mapWithKeys(fn($id, $nombre) => [Str::slug($nombre, '') => $id])
+                ->all();
+        }
+        $turnoId = $turnoMap[$turnoSlug] ?? null;
 
-        // Buscar asignación del turno del día (usando turno_id vía relación)
+        // Búsqueda exacta del día y turno (sin JOINs ni slug)
         $asig = AsignacionTurno::query()
             ->where('user_id', $this->id)
             ->whereDate('fecha', $fechaRef)
-            ->whereHas('turno', function ($q) use ($slugTurno, $nombreTurno) {
-                $q->where('slug', $slugTurno)
-                    ->orWhere('nombre', 'like', $nombreTurno . '%');
-            })
+            ->when($turnoId, fn($q) => $q->where('turno_id', $turnoId))
             ->whereNotNull('obra_id')
             ->latest('id')
             ->first();
