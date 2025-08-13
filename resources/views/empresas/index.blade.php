@@ -16,7 +16,6 @@
                         🧮 Simulación Nóminas
                     </a>
                 </div>
-
             </div>
             <hr>
             <h1 class="text-2xl font-bold text-gray-800">
@@ -94,6 +93,45 @@
                                     class="text-blue-600 hover:underline">Ver</a>
                                 <span class="mx-1">|</span>
                                 <a href="{{ route('empresas.edit', $empresa->id) }}"
+                                    class="text-green-600 hover:underline">Editar</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="11" class="text-center py-4 text-gray-500">No hay empresas registradas.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <h3 class="text-lg font-semibold px-4 pt-4 text-gray-800">Turnos Horarios</h3>
+        <div class="bg-white shadow-md rounded-lg overflow-x-auto">
+            <table class="min-w-full table-auto border border-gray-300">
+                <thead class="bg-gray-100 text-gray-700 text-sm uppercase">
+                    <tr>
+                        <th class="px-4 py-2 border">ID</th>
+                        <th class="px-4 py-2 border">Nombre</th>
+                        <th class="px-4 py-2 border">hora_entrada</th>
+                        <th class="px-4 py-2 border">hora_entrada</th>
+                        <th class="px-4 py-2 border">hora_salida</th>
+                        <th class="px-4 py-2 border">Salida_offset</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm text-gray-800">
+                    @forelse ($turnos as $turno)
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-2 border text-center">{{ $turno->id }}</td>
+                            <td class="px-4 py-2 border">{{ $turno->nombre }}</td>
+                            <td class="px-4 py-2 border">{{ $turno->hora_entrada }}</td>
+                            <td class="px-4 py-2 border">{{ $turno->entrada_offset }}</td>
+                            <td class="px-4 py-2 border">{{ $turno->hora_salida }}</td>
+                            <td class="px-4 py-2 border">{{ $turno->salida_offset }}</td>
+                            <td class="px-4 py-2 border">
+                                <a href="{{ route('turnos.show', $turno->id) }}"
+                                    class="text-blue-600 hover:underline">Ver</a>
+                                <span class="mx-1">|</span>
+                                <a href="{{ route('turnos.edit', $turno->id) }}"
                                     class="text-green-600 hover:underline">Editar</a>
                             </td>
                         </tr>

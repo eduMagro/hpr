@@ -9,8 +9,8 @@ class Turno extends Model
 {
     use HasFactory;
 
-    protected $table = 'turnos'; // Asegúrate de que coincide con la tabla en la BD
-    protected $fillable = ['nombre', 'hora_entrada', 'hora_salida'];
+    protected $table = 'turnos';
+    protected $fillable = ['nombre', 'hora_entrada', 'entrada_offset', 'hora_salida', 'salida_offset',];
 
     public function asignaciones()
     {

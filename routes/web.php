@@ -147,6 +147,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
 
     // === TURNOS ===
+    Route::resource('turnos', TurnoController::class);
     Route::resource('asignaciones-turnos', AsignacionTurnoController::class)->middleware('acceso.seccion:asignaciones-turnos.index');
     Route::post('/asignaciones-turnos/destroy', [AsignacionTurnoController::class, 'destroy'])->name('asignaciones-turnos.destroy');
     Route::post('/asignaciones-turno/{id}/actualizar-puesto', [ProduccionController::class, 'actualizarPuesto']);

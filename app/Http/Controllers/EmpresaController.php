@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Empresa;
 use App\Models\TasaSeguridadSocial;
 use App\Models\Convenio;
+use App\Models\Turno;
 use App\Models\TasaIrpf;
 use Illuminate\Http\Request;
 
@@ -16,8 +17,8 @@ class EmpresaController extends Controller
         $porcentajes_ss = TasaSeguridadSocial::all();
         $tramos = TasaIrpf::all();
         $convenio = Convenio::all();
-
-        return view('empresas.index', compact('empresas', 'porcentajes_ss', 'tramos', 'convenio'));
+        $turnos = Turno::all();
+        return view('empresas.index', compact('empresas', 'porcentajes_ss', 'tramos', 'convenio', 'turnos'));
     }
 
 

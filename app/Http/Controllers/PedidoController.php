@@ -26,6 +26,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\StockService;
+use App\Models\AsignacionTurno;
 
 class PedidoController extends Controller
 {
@@ -226,12 +227,7 @@ class PedidoController extends Controller
 
         $obraIds     = $obraIdSeleccionada ? [(int)$obraIdSeleccionada] : null;
         $clienteLike = (!$obraIds && $soloHpr) ? '%Hierros Paco Reyes%' : null;
-        Log::info('[Stock DEBUG] obraIds y clienteLike', [
-            'obraIds'     => $obraIds,
-            'clienteLike' => $clienteLike,
-            'obra_id_hpr' => $request->input('obra_id_hpr'),
-            'solo_hpr'    => $request->boolean('solo_hpr'),
-        ]);
+
 
         // ✅ Llamada correcta al service (primero obraIds[], luego clienteLike)
         $datosStock = $stockService->obtenerDatosStock($obraIds, $clienteLike);
@@ -246,7 +242,6 @@ class PedidoController extends Controller
             'pedidosGlobales' => $pedidosGlobales,
             'obrasHpr'       => $obrasHpr,
             'idClienteHpr'   => $idClienteHpr,
-            // para mantener el estado del UI
             'solo_hpr'       => $soloHpr,
             'obra_id_hpr'    => $obraIdSeleccionada,
         ], $datosStock));
@@ -325,6 +320,7 @@ class PedidoController extends Controller
             if (in_array($pedido->estado, ['completado', 'cancelado'])) {
                 return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
             }
+            $obraIdActual = auth()->user()->lugarActualTrabajador();
 
             $request->validate(
                 [
@@ -422,6 +418,7 @@ class PedidoController extends Controller
                 'codigo'            => strtoupper($request->codigo),
                 'producto_base_id'  => $request->producto_base_id,
                 'fabricante_id'     => $fabricanteFinal,
+                'obra_id'           => $obraIdActual,
                 'entrada_id'        => $entrada->id,
                 'n_colada'          => $request->n_colada,
                 'n_paquete'         => $request->n_paquete,
@@ -439,6 +436,7 @@ class PedidoController extends Controller
                     'codigo'            => strtoupper($request->codigo_2),
                     'producto_base_id'  => $request->producto_base_id,
                     'fabricante_id'     => $fabricanteFinal,
+                    'obra_id'           => $obraIdActual,
                     'entrada_id'        => $entrada->id,
                     'n_colada'          => $request->n_colada_2,
                     'n_paquete'         => $request->n_paquete_2,

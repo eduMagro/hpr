@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\AsignacionTurno;
 
 
 class User extends Authenticatable
@@ -241,5 +242,44 @@ class User extends Authenticatable
     public function permisosAcceso()
     {
         return $this->hasMany(PermisoAcceso::class);
+    }
+
+    public function lugarActualTrabajador(): ?int
+    {
+        $ahora = Carbon::now();
+        $hora = (int) $ahora->format('H');
+
+        // Determinar turno y fecha de referencia
+        if ($hora >= 22 || $hora < 6) {
+            $turno = 'noche';
+            $fechaRef = ($hora < 6) ? $ahora->copy()->subDay()->toDateString()
+                : $ahora->toDateString();
+        } elseif ($hora < 14) {
+            $turno = 'manana';
+            $fechaRef = $ahora->toDateString();
+        } else {
+            $turno = 'tarde';
+            $fechaRef = $ahora->toDateString();
+        }
+
+        // Buscar asignación exacta
+        $asig = AsignacionTurno::where('user_id', $this->id)
+            ->whereDate('fecha', $fechaRef)
+            ->where('turno', $turno)
+            ->latest('id')
+            ->first();
+
+        if ($asig?->obra_id) {
+            return (int) $asig->obra_id;
+        }
+
+        // Fallback: última asignación reciente
+        $asigReciente = AsignacionTurno::where('user_id', $this->id)
+            ->whereDate('fecha', '>=', Carbon::now()->subDays(2)->toDateString())
+            ->orderByDesc('fecha')
+            ->latest('id')
+            ->first();
+
+        return $asigReciente?->obra_id ?: null;
     }
 }
