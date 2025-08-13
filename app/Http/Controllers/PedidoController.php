@@ -324,8 +324,8 @@ class PedidoController extends Controller
 
             $request->validate(
                 [
-                    'codigo'             => 'required|string|unique:productos,codigo|max:20',
-                    'codigo_2'           => 'nullable|string|unique:productos,codigo|max:20',
+                    'codigo'            => ['required', 'string', 'max:20', 'unique:productos,codigo', 'regex:/^mp/i'],
+                    'codigo_2'          => ['nullable', 'string', 'max:20', 'different:codigo', 'unique:productos,codigo', 'regex:/^mp/i'],
                     'producto_base_id'   => 'required|exists:productos_base,id',
                     'peso'               => 'required|numeric|min:1',
                     'n_colada'           => 'required|string|max:50',
@@ -340,7 +340,8 @@ class PedidoController extends Controller
                     'codigo.string'     => 'El código debe ser un texto.',
                     'codigo.unique'     => 'Ese código ya existe.',
                     'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
-
+                    'codigo.regex'   => 'El código debe empezar por MP.',
+                    'codigo_2.regex' => 'El código del segundo paquete debe empezar por MP.',
                     'codigo_2.string'   => 'El segundo código debe ser un texto.',
                     'codigo_2.unique'   => 'Ese segundo código ya existe.',
                     'codigo_2.max'      => 'El segundo código no puede tener más de 20 caracteres.',

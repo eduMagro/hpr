@@ -150,11 +150,17 @@
                     title: 'Código (escaneado)',
                     input: 'text',
                     inputPlaceholder: 'Escanea el código MP...',
-                    inputValidator: (value) => !value && 'Código requerido'
+                    inputValidator: (value) => {
+                        const v = (value || '').trim();
+                        if (!v) return 'Código requerido';
+                        if (!/^mp/i.test(v)) return 'El código debe empezar por MP';
+                        if (v.length > 20) return 'Máximo 20 caracteres';
+                    }
                 });
-                console.log('👉 codigo', codigo);
                 if (!codigo) return;
-                document.getElementById('codigo_input').value = codigo;
+                const codigoNorm = codigo.trim().toUpperCase();
+                document.getElementById('codigo_input').value = codigoNorm;
+
 
                 // Nº Colada
                 const {
@@ -182,18 +188,23 @@
                 document.getElementById('n_paquete_input').value = n_paquete;
 
                 // Segundo paquete
+                // Segundo paquete
                 if (paquetes === '2') {
                     const {
                         value: codigo_2
                     } = await Swal.fire({
                         title: 'Código segundo paquete',
                         input: 'text',
-                        inputValidator: (value) => !value && 'Código requerido'
+                        inputValidator: (value) => {
+                            const v = (value || '').trim();
+                            if (!v) return 'Código requerido';
+                            if (!/^mp/i.test(v)) return 'El código debe empezar por MP';
+                            if (v.length > 20) return 'Máximo 20 caracteres';
+                        }
                     });
-                    console.log('👉 codigo_2', codigo_2);
                     if (!codigo_2) return;
-                    document.getElementById('codigo_2_input').value = codigo_2;
-
+                    const codigo2Norm = codigo_2.trim().toUpperCase();
+                    document.getElementById('codigo_2_input').value = codigo2Norm;
                     const {
                         value: n_colada_2
                     } = await Swal.fire({
