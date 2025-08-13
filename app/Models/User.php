@@ -249,29 +249,31 @@ class User extends Authenticatable
         $ahora = Carbon::now();
         $hora = (int) $ahora->format('H');
 
-        // Turno lógico y fecha de referencia
+        // Determinar fecha de referencia y etiqueta de turno
         if ($hora >= 22 || $hora < 6) {
-            $turnoSlug = 'noche';
+            // Noche empieza el día anterior; si son <06:00 la fechaRef es ayer
+            $etiqueta = 'noche';
             $fechaRef = ($hora < 6) ? $ahora->copy()->subDay()->toDateString() : $ahora->toDateString();
         } elseif ($hora < 14) {
-            $turnoSlug = 'manana';
+            $etiqueta = 'manana'; // “mañana”
             $fechaRef = $ahora->toDateString();
         } else {
-            $turnoSlug = 'tarde';
+            $etiqueta = 'tarde';
             $fechaRef = $ahora->toDateString();
         }
 
-        // Mapear nombres de turnos -> id (cache estática en memoria PHP)
-        static $turnoMap = null;
-        if ($turnoMap === null) {
-            // crea un mapa: 'manana' => id, 'tarde' => id, 'noche' => id
-            $turnoMap = Turno::pluck('id', 'nombre')
-                ->mapWithKeys(fn($id, $nombre) => [Str::slug($nombre, '') => $id])
-                ->all();
-        }
-        $turnoId = $turnoMap[$turnoSlug] ?? null;
+        // Resolver turno_id por nombre (admite “mañana” y “manana”)
+        $turnoId = Turno::where(function ($q) use ($etiqueta) {
+            if ($etiqueta === 'manana') {
+                $q->where('nombre', 'like', 'mañana%')
+                    ->orWhere('nombre', 'like', 'manana%');
+            } else {
+                $q->where('nombre', 'like', $etiqueta . '%');
+            }
+        })
+            ->value('id');
 
-        // Búsqueda exacta del día y turno (sin JOINs ni slug)
+        // Buscar asignación exacta de ese día y turno (sin slug, sin join)
         $asig = AsignacionTurno::query()
             ->where('user_id', $this->id)
             ->whereDate('fecha', $fechaRef)
@@ -284,7 +286,7 @@ class User extends Authenticatable
             return (int) $asig->obra_id;
         }
 
-        // Fallback: última asignación reciente con obra en los últimos 2 días
+        // Fallback: última asignación con obra en los últimos 2 días
         $asigReciente = AsignacionTurno::query()
             ->where('user_id', $this->id)
             ->whereNotNull('obra_id')
