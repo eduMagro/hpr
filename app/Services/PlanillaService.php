@@ -8,6 +8,7 @@ use App\Models\Elemento;
 use App\Models\OrdenPlanilla;
 use App\Models\Paquete;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 
 class PlanillaService
 {
@@ -79,5 +80,49 @@ class PlanillaService
                 'message' => $e->getMessage(),
             ];
         }
+    }
+
+    public function completarTodasPlanillas(?array $planillaIds = null): array
+    {
+        $ok = 0;
+        $fail = 0;
+        $omitidasPorFecha = 0;
+        $errores = [];
+
+        $fechaLimite = Carbon::now()->subDays(5)->startOfDay(); // hoy - 5 días
+
+        $query = Planilla::query()
+            ->where('estado', 'pendiente')   // ✅ solo pendientes
+            ->orderBy('id');
+
+        // Si pasas IDs, limita a esos (pero siguen siendo "pendientes")
+        if ($planillaIds && count($planillaIds)) {
+            $query->whereIn('id', $planillaIds);
+        }
+
+        $query->chunkById(100, function ($planillas) use (&$ok, &$fail, &$omitidasPorFecha, &$errores, $fechaLimite) {
+            foreach ($planillas as $p) {
+
+                $res = $this->completarPlanilla($p->id);
+
+                if ($res['success']) {
+                    $ok++;
+                } else {
+                    $fail++;
+                    $errores[] = [
+                        'planilla_id' => $p->id,
+                        'error'       => $res['message'] ?? 'Error desconocido',
+                    ];
+                }
+            }
+        });
+
+        return [
+            'success'          => $fail === 0,
+            'procesadas_ok'    => $ok,
+            'omitidas_fecha'   => $omitidasPorFecha,
+            'fallidas'         => $fail,
+            'errores'          => $errores,
+        ];
     }
 }
