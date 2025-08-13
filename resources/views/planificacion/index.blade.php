@@ -46,6 +46,7 @@
                 // para update por drag&drop: PUT /planificacion/{id}
                 'updateItem' => url('/planificacion/__ID__'),
                 'totales' => url('/planificacion/totales'), // GET ?fecha=YYYY-MM-DD
+                'salidasCreate' => route('salidas.create'),
             ],
             'camiones' => $camiones ?? [],
             // si quieres precargar eventos/resources por servidor, podrías añadirlos aquí:

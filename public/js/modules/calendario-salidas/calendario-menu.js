@@ -173,6 +173,37 @@ async function asignarCodigoSalida(salidaId, codigoActual = "", calendar) {
         Swal.fire("❌", "Ocurrió un error al guardar el código.", "error");
     }
 }
+// util pequeña para normalizar IDs
+function normalizarIds(input) {
+    if (!input) return [];
+    // admite Set, Array, string "1,2,3"
+    if (typeof input === "string") {
+        return input
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+    }
+    const arr = Array.from(input);
+    return arr
+        .map((x) => (typeof x === "object" && x?.id != null ? x.id : x)) // por si vienen objetos
+        .map(String)
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
+export function salidasCreate(planillasIds /*, calendar */) {
+    const base = window?.AppSalidas?.routes?.salidasCreate;
+    if (!base) {
+        alert("No se encontró la ruta de salidas.create");
+        return;
+    }
+
+    const ids = Array.from(new Set(normalizarIds(planillasIds)));
+    const qs = ids.length
+        ? "?planillas=" + encodeURIComponent(ids.join(","))
+        : "";
+    window.location.href = base + qs;
+}
 
 export function attachEventoContextMenu(info, calendar) {
     // Limpia cualquier menú al montar/redibujar
@@ -208,6 +239,11 @@ export function attachEventoContextMenu(info, calendar) {
                     label: "Crear salida",
                     icon: "🚚",
                     onClick: () => crearSalida(planillasIds, calendar),
+                },
+                {
+                    label: "Ver Planillas de Agrupación",
+                    icon: "🧾",
+                    onClick: () => salidasCreate(planillasIds, calendar),
                 },
             ];
         } else if (tipo === "salida") {

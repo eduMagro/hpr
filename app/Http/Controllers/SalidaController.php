@@ -95,7 +95,6 @@ class SalidaController extends Controller
         return view('salidas.index', compact('salidasPorMes', 'salidas', 'resumenMensual', 'paquetes'));
     }
 
-
     public function show($id)
     {
         // Obtener la salida con su ID
@@ -162,7 +161,7 @@ class SalidaController extends Controller
     {
         try {
             // 🔹 Buscar el movimiento
-            $movimiento = \App\Models\Movimiento::findOrFail($movimientoId);
+            $movimiento = Movimiento::findOrFail($movimientoId);
 
             // Validar que efectivamente es tipo salida
             if ($movimiento->tipo !== 'salida') {
@@ -180,7 +179,7 @@ class SalidaController extends Controller
 
             // 🔹 Actualizar la salida asociada
             if ($movimiento->salida_id) {
-                $salida = \App\Models\Salida::find($movimiento->salida_id);
+                $salida = Salida::find($movimiento->salida_id);
                 if ($salida) {
                     $salida->estado = 'completada';
                     $salida->save();
@@ -198,7 +197,6 @@ class SalidaController extends Controller
             ], 500);
         }
     }
-
 
     public function create(Request $request)
     {
