@@ -43,7 +43,9 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\DepartamentoController;
 use App\Http\Controllers\SeccionController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\ClaveSeccionController;
+use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
 
 Route::get('/', [PageController::class, 'index'])
@@ -229,7 +231,13 @@ Route::middleware('auth')->group(function () {
         ->name('planillas.completar');
     Route::get('/planificacion/index', [PlanificacionController::class, 'index'])->name('planificacion.index');
     Route::get('/planificacion/totales', [PlanificacionController::class, 'getTotalesAjax']);
-
+    Route::post('/planillas/completar-todas', function (PlanillaService $svc) {
+        $resultado = $svc->completarTodasPlanillas(); // llama al service
+        return back()->with(
+            $resultado['success'] ? 'success' : 'error',
+            "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}"
+        );
+    })->name('planillas.completarTodas');
     // === EMPRESAS TRANSPORTE ===
     Route::resource('empresas-transporte', EmpresaTransporteController::class)
         ->middleware('acceso.seccion:empresas-transporte.index');

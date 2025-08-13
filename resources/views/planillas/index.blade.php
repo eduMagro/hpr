@@ -17,6 +17,14 @@
                 </form>
 
             </form>
+            <form action="{{ route('planillas.completarTodas') }}" method="POST"
+                onsubmit="return confirm('¿Completar todas las planillas pendientes?');">
+                @csrf
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                    Completar todas las planillas
+                </button>
+            </form>
+
 
         </div>
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
@@ -313,8 +321,7 @@
                                             </button>
 
                                             <!-- Botón Completar -->
-                                            <button 
-                                                @click="completarPlanilla({{ $planilla->id }})"
+                                            <button @click="completarPlanilla({{ $planilla->id }})"
                                                 class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                                                 title="Completar Planilla">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
@@ -460,51 +467,53 @@
                 });
         }
     </script>
-<script>
-   async function completarPlanilla(planillaId) {
-    Swal.fire({
-        title: '¿Completar planilla?',
-        text: "Esta acción marcará la planilla, sus etiquetas y elementos como completados y la eliminará de la cola.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sí, completar',
-        cancelButtonText: 'Cancelar'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                const res = await fetch('/planillas/completar', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ id: planillaId })
-                });
+    <script>
+        async function completarPlanilla(planillaId) {
+            Swal.fire({
+                title: '¿Completar planilla?',
+                text: "Esta acción marcará la planilla, sus etiquetas y elementos como completados y la eliminará de la cola.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, completar',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const res = await fetch('/planillas/completar', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                    .getAttribute('content')
+                            },
+                            body: JSON.stringify({
+                                id: planillaId
+                            })
+                        });
 
-                const data = await res.json();
+                        const data = await res.json();
 
-                if (data.success) {
-                    Swal.fire({
-                        title: '¡Completada!',
-                        text: data.message,
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    }).then(() => {
-                        // Refrescar la tabla o la página
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire('Error', data.message || 'Error al completar la planilla', 'error');
+                        if (data.success) {
+                            Swal.fire({
+                                title: '¡Completada!',
+                                text: data.message,
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            }).then(() => {
+                                // Refrescar la tabla o la página
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', data.message || 'Error al completar la planilla', 'error');
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        Swal.fire('Error', 'Error de conexión al completar la planilla', 'error');
+                    }
                 }
-            } catch (error) {
-                console.error(error);
-                Swal.fire('Error', 'Error de conexión al completar la planilla', 'error');
-            }
+            });
         }
-    });
-}
-
-</script>
+    </script>
 </x-app-layout>

@@ -1274,4 +1274,14 @@ class PlanillaController extends Controller
             'message' => $resultado['message'] ?? 'Error desconocido',
         ], 422);
     }
+
+    public function completarTodas(PlanillaService $svc)
+    {
+        $resultado = $svc->completarTodasPlanillas();
+
+        return back()->with(
+            $resultado['success'] ? 'success' : 'error',
+            "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}"
+        );
+    }
 }
