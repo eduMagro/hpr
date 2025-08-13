@@ -249,23 +249,30 @@ class User extends Authenticatable
         $ahora = Carbon::now();
         $hora = (int) $ahora->format('H');
 
-        // Determinar turno y fecha de referencia
+        // Determinar turno y fecha de referencia (noche cuenta para el día anterior si es <06h)
         if ($hora >= 22 || $hora < 6) {
-            $turno = 'noche';
-            $fechaRef = ($hora < 6) ? $ahora->copy()->subDay()->toDateString()
-                : $ahora->toDateString();
+            $slugTurno = 'noche';
+            $fechaRef = ($hora < 6) ? $ahora->copy()->subDay()->toDateString() : $ahora->toDateString();
         } elseif ($hora < 14) {
-            $turno = 'manana';
+            $slugTurno = 'manana';
             $fechaRef = $ahora->toDateString();
         } else {
-            $turno = 'tarde';
+            $slugTurno = 'tarde';
             $fechaRef = $ahora->toDateString();
         }
 
-        // Buscar asignación exacta
-        $asig = AsignacionTurno::where('user_id', $this->id)
+        // Para coincidir también por nombre con tilde
+        $nombreTurno = $slugTurno === 'manana' ? 'mañana' : $slugTurno;
+
+        // Buscar asignación del turno del día (usando turno_id vía relación)
+        $asig = AsignacionTurno::query()
+            ->where('user_id', $this->id)
             ->whereDate('fecha', $fechaRef)
-            ->where('nombre', $turno)
+            ->whereHas('turno', function ($q) use ($slugTurno, $nombreTurno) {
+                $q->where('slug', $slugTurno)
+                    ->orWhere('nombre', 'like', $nombreTurno . '%');
+            })
+            ->whereNotNull('obra_id')
             ->latest('id')
             ->first();
 
@@ -273,8 +280,10 @@ class User extends Authenticatable
             return (int) $asig->obra_id;
         }
 
-        // Fallback: última asignación reciente
-        $asigReciente = AsignacionTurno::where('user_id', $this->id)
+        // Fallback: última asignación reciente con obra en los últimos 2 días
+        $asigReciente = AsignacionTurno::query()
+            ->where('user_id', $this->id)
+            ->whereNotNull('obra_id')
             ->whereDate('fecha', '>=', Carbon::now()->subDays(2)->toDateString())
             ->orderByDesc('fecha')
             ->latest('id')
