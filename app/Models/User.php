@@ -265,7 +265,7 @@ class User extends Authenticatable
         // Buscar asignación exacta
         $asig = AsignacionTurno::where('user_id', $this->id)
             ->whereDate('fecha', $fechaRef)
-            ->where('turno', $turno)
+            ->where('nombre', $turno)
             ->latest('id')
             ->first();
 
