@@ -94,7 +94,7 @@
                                         <li>
                                             {{ $asig->user->name }}
                                             <span class="text-gray-500 text-xs">
-                                                ({{ ucfirst($asig->turno->nombre) }})
+                                                ({{ ucfirst(data_get($asig, 'turno.nombre', 'Sin turno')) }})
                                             </span>
                                         </li>
                                     @endforeach
