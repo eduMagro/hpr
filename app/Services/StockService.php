@@ -35,7 +35,6 @@ class StockService
         $necesarioPorDiametro = $this->getNecesarioPorDiametro($obraIds);   // 🔎 filtrado por obra si aplica
         $comparativa          = $this->getComparativa($stockData, $pedidosPorDiametro, $necesarioPorDiametro);
 
-        // ... resto tal cual
         $consumosMensuales = $this->obtenerConsumosMensuales();
         $consumoOrigen     = $this->getConsumoTotalOrigen();
         $resumenReposicion = $this->getResumenReposicion($consumosMensuales['consumos']);
@@ -89,25 +88,42 @@ class StockService
     {
         $productos = Producto::with('productoBase')
             ->where('estado', 'almacenado')
-            ->when($obraIds, fn($q) => $q->whereIn('obra_id', $obraIds)) // 👈 filtro por obra
-            ->get();
+            ->when($obraIds, fn($q) => $q->whereIn('obra_id', $obraIds))
+            ->get()
+            ->filter(fn($p) => $p->productoBase);
 
         $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
-        return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($productos) {
-            $grupo = $productos->filter(fn($p) => intval($p->productoBase->diametro) === $diametro);
-            $encarretado = $grupo->where('productoBase.tipo', 'encarretado')->sum('peso_inicial');
-            $barras = $grupo->where('productoBase.tipo', 'barra');
-            $barrasPorLongitud = $barras->groupBy(fn($p) => $p->productoBase->longitud)
-                ->map(fn($g) => $g->sum('peso_inicial'));
-            $barrasTotal = $barrasPorLongitud->sum();
-            return [$diametro => [
-                'encarretado'  => $encarretado,
-                'barras'       => $barrasPorLongitud,
-                'barras_total' => $barrasTotal,
-                'total'        => $barrasTotal + $encarretado,
-            ]];
-        });
+        $res = [];
+        foreach ($diametrosFijos as $d) {
+            $res[$d] = [
+                'encarretado'  => 0.0,
+                'barras'       => [12 => 0.0, 14 => 0.0, 15 => 0.0, 16 => 0.0],
+                'barras_total' => 0.0,
+                'total'        => 0.0,
+            ];
+        }
+
+        foreach ($productos as $p) {
+            $pb = $p->productoBase;
+            $d  = (int)$pb->diametro;
+            if (!isset($res[$d])) continue;
+
+            if ($pb->tipo === 'encarretado') {
+                $res[$d]['encarretado'] += (float)$p->peso_inicial;
+            } elseif ($pb->tipo === 'barra') {
+                $L = (int)($pb->longitud ?? 12);
+                if (!isset($res[$d]['barras'][$L])) $res[$d]['barras'][$L] = 0.0;
+                $res[$d]['barras'][$L] += (float)$p->peso_inicial;
+            }
+        }
+
+        foreach ($res as $d => $x) {
+            $res[$d]['barras_total'] = array_sum($x['barras']);
+            $res[$d]['total']        = $x['encarretado'] + $res[$d]['barras_total'];
+        }
+
+        return collect($res);
     }
 
 
@@ -115,75 +131,140 @@ class StockService
     {
         $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
-        $elementosPendientes = Elemento::with('maquina', 'planilla')
+        $elementos = Elemento::with(['maquina', 'planilla'])
             ->where('estado', 'pendiente')
-            ->when($obraIds, function ($q) use ($obraIds) {
-                $q->whereHas('planilla', fn($p) => $p->whereIn('obra_id', $obraIds));
-            })
+            ->when($obraIds, fn($q) => $q->whereHas('planilla', fn($p) => $p->whereIn('obra_id', $obraIds)))
             ->get()
-            ->filter(fn($e) => $e->maquina && $e->maquina->tipo && $e->diametro)
-            ->groupBy(fn($e) => $e->maquina->tipo_material . '-' . intval($e->diametro))
-            ->map(fn($group) => $group->sum('peso'));
+            ->filter(fn($e) => $e->maquina && $e->maquina->tipo_material && $e->diametro);
 
-        return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($elementosPendientes) {
-            $encarretado = $elementosPendientes["encarretado-$diametro"] ?? 0;
-            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
-            $barrasPorLongitud[12] = $elementosPendientes["barra-$diametro"] ?? 0;
-            $barrasTotal = $barrasPorLongitud->sum();
+        // Estructura base como arrays
+        $res = [];
+        foreach ($diametrosFijos as $d) {
+            $res[$d] = [
+                'encarretado'  => 0.0,
+                'barras'       => [12 => 0.0, 14 => 0.0, 15 => 0.0, 16 => 0.0], // sin info de L, quedarán en 0
+                'barras_total' => 0.0,
+                'total'        => 0.0,
+            ];
+        }
 
-            return [$diametro => [
-                'encarretado'  => $encarretado,
-                'barras'       => $barrasPorLongitud,
-                'barras_total' => $barrasTotal,
-                'total'        => $barrasTotal + $encarretado,
-            ]];
-        });
+        foreach ($elementos as $e) {
+            $d = (int) $e->diametro;
+            if (!isset($res[$d])) continue;
+
+            $peso = (float) ($e->peso ?? 0);
+            $tipo = $e->maquina->tipo_material; // 'barra' | 'encarretado'
+
+            if ($tipo === 'encarretado') {
+                $res[$d]['encarretado'] += $peso;
+            } else {
+                // No conocemos longitud base -> sumamos al TOTAL de barras
+                $res[$d]['barras_total'] += $peso;
+            }
+        }
+
+        // Recalcular totales (las claves por L quedan para coherencia visual)
+        foreach ($res as $d => $x) {
+            $res[$d]['total'] = $res[$d]['encarretado'] + $res[$d]['barras_total'];
+        }
+
+        return collect($res);
     }
+
 
     private function getPedidosPorDiametro(?array $obraIds = null)
     {
         $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
 
-        $pedidosPendientes = Pedido::with('productos')
-            ->where('estado', 'pendiente')
-            ->when($obraIds, fn($q) => $q->whereIn('obra_id', $obraIds))
-            ->get()
-            ->flatMap(fn($pedido) => $pedido->productos->map(fn($p) => [
-                'tipo'     => $p->tipo,
-                'diametro' => $p->diametro,
-                'cantidad' => $p->pivot->cantidad,
-            ]))
-            ->groupBy(fn($i) => "{$i['tipo']}-{$i['diametro']}")
-            ->map(fn($g) => collect($g)->sum('cantidad'));
+        $rows = DB::table('pedido_productos as pp')
+            ->join('pedidos as p', 'p.id', '=', 'pp.pedido_id')
+            ->join('productos_base as pb', 'pb.id', '=', 'pp.producto_base_id')
+            ->when($obraIds, fn($q) => $q->whereIn('p.obra_id', $obraIds))
+            ->where('p.estado', 'pendiente')
+            ->groupBy('pb.tipo', 'pb.diametro', 'pb.longitud')
+            ->select('pb.tipo', 'pb.diametro', 'pb.longitud', DB::raw('SUM(pp.cantidad) as total'))
+            ->get();
 
-        return collect($diametrosFijos)->mapWithKeys(function ($diametro) use ($pedidosPendientes) {
-            $encarretado = $pedidosPendientes["encarretado-$diametro"] ?? 0;
-            $barrasPorLongitud = collect([12, 14, 15, 16])->mapWithKeys(fn($l) => [$l => 0]);
-            $barrasPorLongitud[12] = $pedidosPendientes["barra-$diametro"] ?? 0;
-            $barrasTotal = $barrasPorLongitud->sum();
+        // Inicializa como ARRAYS (no Collection)
+        $res = [];
+        foreach ($diametrosFijos as $d) {
+            $res[$d] = [
+                'encarretado'  => 0.0,
+                'barras'       => [12 => 0.0, 14 => 0.0, 15 => 0.0, 16 => 0.0],
+                'barras_total' => 0.0,
+                'total'        => 0.0,
+            ];
+        }
 
-            return [$diametro => [
-                'encarretado'  => $encarretado,
-                'barras'       => $barrasPorLongitud,
-                'barras_total' => $barrasTotal,
-                'total'        => $encarretado + $barrasTotal,
-            ]];
-        });
+        foreach ($rows as $r) {
+            $d = (int)$r->diametro;
+            if (!isset($res[$d])) continue;
+
+            if ($r->tipo === 'encarretado') {
+                $res[$d]['encarretado'] += (float)$r->total;
+            } elseif ($r->tipo === 'barra') {
+                $L = (int)($r->longitud ?? 12);
+                if (!isset($res[$d]['barras'][$L])) $res[$d]['barras'][$L] = 0.0;
+                $res[$d]['barras'][$L] += (float)$r->total;
+            }
+        }
+
+        // Totales
+        foreach ($res as $d => $x) {
+            $res[$d]['barras_total'] = array_sum($x['barras']);
+            $res[$d]['total']        = $x['encarretado'] + $res[$d]['barras_total'];
+        }
+
+        // Devuelve como Collection si lo prefieres:
+        return collect($res);
     }
+
     private function getComparativa($stockData, $pedidosPendientes, $necesarioPorDiametro)
     {
         $comparativa = [];
+
         foreach ($stockData as $diametro => $data) {
+
+            // ---- global por tipo (como ya tienes) ----
             foreach (['barra', 'encarretado'] as $tipo) {
-                $pendiente = ($tipo === 'barra') ? $necesarioPorDiametro[$diametro]['barras_total'] : $necesarioPorDiametro[$diametro]['encarretado'];
-                $pedido = ($tipo === 'barra') ? $pedidosPendientes[$diametro]['barras_total'] : $pedidosPendientes[$diametro]['encarretado'];
-                $disponible = $tipo === 'barra' ? $data['barras_total'] : $data['encarretado'];
+                $pendiente = $tipo === 'barra'
+                    ? $necesarioPorDiametro[$diametro]['barras_total']
+                    : $necesarioPorDiametro[$diametro]['encarretado'];
+
+                $pedido = $tipo === 'barra'
+                    ? $pedidosPendientes[$diametro]['barras_total']
+                    : $pedidosPendientes[$diametro]['encarretado'];
+
+                $disponible = $tipo === 'barra'
+                    ? $data['barras_total']
+                    : $data['encarretado'];
+
                 $diferencia = $disponible + $pedido - $pendiente;
+
                 $comparativa["{$tipo}-{$diametro}"] = compact('tipo', 'diametro', 'pendiente', 'pedido', 'disponible', 'diferencia');
             }
+
+            // ---- opcional: detalle por longitud en barras ----
+            foreach ($data['barras'] as $L => $dispL) {
+                $pendL  = $necesarioPorDiametro[$diametro]['barras'][$L] ?? 0;
+                $pedL   = $pedidosPendientes[$diametro]['barras'][$L] ?? 0;
+                $difL   = $dispL + $pedL - $pendL;
+
+                $comparativa["barra-{$diametro}-{$L}"] = [
+                    'tipo'       => 'barra',
+                    'diametro'   => $diametro,
+                    'longitud'   => (int)$L,
+                    'pendiente'  => $pendL,
+                    'pedido'     => $pedL,
+                    'disponible' => $dispL,
+                    'diferencia' => $difL,
+                ];
+            }
         }
+
         return $comparativa;
     }
+
 
     // ======================= Nuevos helpers =======================
 
