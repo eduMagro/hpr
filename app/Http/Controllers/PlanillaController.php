@@ -240,7 +240,7 @@ class PlanillaController extends Controller
 
     private function aplicarOrdenamiento($query, Request $request)
     {
-        $sortBy = $request->input('sort', 'fecha_estimada_entrega');
+        $sortBy = $request->input('sort', 'created_at');
         $order  = $request->input('order', 'desc');
 
         $columnasPermitidas = [
