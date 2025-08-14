@@ -455,7 +455,7 @@ class EntradaController extends Controller
 
             // Determinar estado de la línea
             $estado = match (true) {
-                $pesoRecepcionado >= $pivot->cantidad * 0.9 => 'completado',
+                $pesoRecepcionado >= $pivot->cantidad * 0.8 => 'completado',
                 $pesoRecepcionado > 0 => 'parcial',
                 default => 'pendiente',
             };

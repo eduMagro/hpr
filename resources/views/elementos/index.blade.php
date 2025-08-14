@@ -98,53 +98,34 @@
     <div class="w-full p-4 sm:p-2">
         <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
-        @php
-            function ordenarColumnaElemento($columna, $titulo)
-            {
-                $currentSort = request('sort_by');
-                $currentOrder = request('order');
-                $isSorted = $currentSort === $columna;
-                $nextOrder = $isSorted && $currentOrder === 'asc' ? 'desc' : 'asc';
-                $icon = $isSorted ? ($currentOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down') : 'fas fa-sort';
-                $url = request()->fullUrlWithQuery(['sort_by' => $columna, 'order' => $nextOrder]);
-
-                return '<a href="' .
-                    $url .
-                    '" class="text-white text-decoration-none">' .
-                    $titulo .
-                    ' <i class="' .
-                    $icon .
-                    '"></i></a>';
-            }
-        @endphp
-
         <!-- Tabla de elementos con scroll horizontal -->
         <div class="w-full overflow-x-auto bg-white shadow-lg rounded-lg">
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-10">
                     <tr class="text-center text-xs uppercase">
-                        <th class="p-2 border">{!! ordenarColumnaElemento('id', 'ID') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('codigo', 'Código Elemento') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('codigo_planilla', 'Planilla') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('etiqueta', 'Etiqueta') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('subetiqueta', 'SubEtiqueta') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('maquina', 'Maq. 1') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('maquina_2', 'Maq. 2') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('maquina3', 'Maq. 3') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('producto1', 'M. Prima 1') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('producto2', 'M. Prima 2') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('producto3', 'M. Prima 3') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('figura', 'Figura') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('peso', 'Peso (kg)') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('diametro', 'Diámetro (mm)') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('longitud', 'Longitud (m)') !!}</th>
-                        <th class="p-2 border">{!! ordenarColumnaElemento('estado', 'Estado') !!}</th>
+                        <th class="p-2 border">{!! $ordenables['id'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['codigo'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['codigo_planilla'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['etiqueta'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['subetiqueta'] !!}</th>
+                        <th class="p-2 border">Dimensiones</th>
+                        <th class="p-2 border">{!! $ordenables['maquina'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['maquina_2'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['maquina3'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['producto1'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['producto2'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['producto3'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['figura'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['peso'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['diametro'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['longitud'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['estado'] !!}</th>
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('elementos.index') }}">
-                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura', 'peso', 'diametro', 'longitud'] as $campo)
+                            @foreach (['id', 'codigo', 'codigo_planilla', 'etiqueta', 'subetiqueta', 'dimensiones', 'maquina', 'maquina_2', 'maquina3', 'producto1', 'producto2', 'producto3', 'figura', 'peso', 'diametro', 'longitud'] as $campo)
                                 <th class="p-1 border">
                                     <x-tabla.input name="{{ $campo }}" value="{{ request($campo) }}" />
                                 </th>
@@ -236,6 +217,13 @@
                                 </template>
                                 <input x-show="editando" type="text" x-model="elemento.subetiquetas"
                                     class="form-control form-control-sm">
+                            </td>
+
+                            <!-- DIMENSIONES -->
+                            <td class="px-1 py-3 text-center border">
+
+                                <span> {{ $elemento->dimensiones ?? 'N/A' }}</span>
+
                             </td>
 
                             <!-- MAQUINA 1 -->

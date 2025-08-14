@@ -245,6 +245,11 @@ export function attachEventoContextMenu(info, calendar) {
                     icon: "🧾",
                     onClick: () => salidasCreate(planillasIds, calendar),
                 },
+                {
+                    label: "Cambiar fechas de entrega",
+                    icon: "🗓️",
+                    onClick: () => cambiarFechasEntrega(planillasIds, calendar),
+                },
             ];
         } else if (tipo === "salida") {
             items = [

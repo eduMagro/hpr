@@ -203,7 +203,8 @@ class ElementoController extends Controller
         $query = $this->aplicarOrdenamientoElementos($query, $request);
 
         // Paginación
-        $elementos = $query->paginate(10)->appends($request->query());
+        $perPage = $request->input('per_page', 10);
+        $elementos = $query->paginate($perPage)->appends($request->except('page'));
 
         // Asegurar relación etiqueta
         $elementos->getCollection()->transform(function ($elemento) {

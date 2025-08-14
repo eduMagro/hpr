@@ -494,17 +494,6 @@ class PlanillaController extends Controller
     }
 
     //------------------------------------------------------------------------------------ IMPORT()
-    private function colIndexToLetters(int $index): string
-    {
-        $letters = '';
-        $index++; // a 1-based
-        while ($index > 0) {
-            $mod = ($index - 1) % 26;
-            $letters = chr(65 + $mod) . $letters;
-            $index = intdiv($index - 1, 26);
-        }
-        return $letters;
-    }
 
     /**
      * Valida si una cadena es numérica válida en XML de Excel (punto decimal y notación científica).
@@ -599,20 +588,36 @@ class PlanillaController extends Controller
 
         return $rows;
     }
-    private function assertNumeric($value, string $campo, int $excelRow, string $codigoPlanilla): float|int
+    private function assertNumeric($valor, $campo, $excelRow, $codigoPlanilla, &$advertencias = [])
     {
-        if ($value === null || $value === '') {
-            throw new Exception("Fila {$excelRow} (Excel), Planilla {$codigoPlanilla}, columna '{$campo}' → valor vacío; se esperaba numérico");
+        if ($valor === null || $valor === '') return 0;
+
+        $raw = trim((string)$valor);
+
+        // Normaliza: "1.234,56" -> "1234.56", "1,23" -> "1.23"
+        if (strpos($raw, ',') !== false && strpos($raw, '.') !== false) {
+            $norm = str_replace('.', '', $raw);
+            $norm = str_replace(',', '.', $norm);
+        } elseif (strpos($raw, ',') !== false) {
+            $norm = str_replace(',', '.', $raw);
+        } else {
+            $norm = $raw;
         }
 
-        $str = is_string($value) ? trim($value) : (string)$value;
-
-        // Enteros o decimales con punto o coma (no corregimos nada, solo validamos)
-        if (!preg_match('/^-?\d+([.,]\d+)?$/', $str)) {
-            throw new Exception("Fila {$excelRow} (Excel), Planilla {$codigoPlanilla}, columna '{$campo}' → valor '{$value}' no es numérico");
+        if (!preg_match('/^-?\d+(\.\d+)?$/', $norm)) {
+            $advertencias[] = "⚠️ Fila omitida (planilla {$codigoPlanilla}, Excel {$excelRow}): {$campo}='{$valor}' no es numérico.";
+            return false;
         }
 
-        return (float) str_replace(',', '.', $str);
+        $num = (float)$norm;
+
+        // Regla: barras no puede ser negativo
+        if ($campo === 'barras' && $num < 0) {
+            $advertencias[] = "⚠️ Fila omitida (planilla {$codigoPlanilla}, Excel {$excelRow}): {$campo} negativo ('{$valor}').";
+            return false;
+        }
+
+        return $num;
     }
 
     /**
@@ -670,6 +675,9 @@ class PlanillaController extends Controller
                 ->with('abort', 'No tienes los permisos necesarios.');
         }
 
+        // ⚠️ Contexto para warnings numéricos
+        $__numCtx = ['planilla' => 'N/D', 'excel_row' => 0, 'campo' => 'N/D', 'valor' => null];
+
         // 2) Validación del archivo -----------------------------------------------------
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
@@ -679,7 +687,7 @@ class PlanillaController extends Controller
             'file.mimes'    => 'Solo se permiten archivos .xlsx o .xls',
         ]);
 
-        // Activar trazas de SQL para capturar la última query si algo peta
+        // Activar trazas SQL
         DB::enableQueryLog();
 
         DB::beginTransaction();
@@ -691,22 +699,28 @@ class PlanillaController extends Controller
             $planillasOmitidas   = [];
             $advertencias        = [];
             $file = $request->file('file');
+            $DmPermitido = [5, 8, 10, 12, 16, 20, 25, 32];
+            // NO lanzar excepción en avisos de no-numérico: solo añadir advertencia y continuar
+            set_error_handler(function ($sev, $msg, $file, $line) use (&$advertencias, &$__numCtx) {
+                if ($sev === E_WARNING && str_contains($msg, 'A non-numeric value encountered')) {
+                    $advertencias[] = "⚠️ Valor no numérico detectado; se omitió la fila. "
+                        . "Planilla {$__numCtx['planilla']}, Fila {$__numCtx['excel_row']}, Campo '{$__numCtx['campo']}', Valor '" . (string)($__numCtx['valor']) . "'";
+                    return true; // ✅ warning manejado: NO propagar, NO lanzar
+                }
+                return false; // deja pasar otros warnings/errores al manejador por defecto
+            });
 
-            // 🔎 Escaneo de XML para localizar celdas numéricas inválidas (antes de que PhpSpreadsheet reviente)
+            // Escaneo XML previo (detectar celdas mal tipadas)
             $invalids = $this->scanXlsxForInvalidNumeric($file->getRealPath());
             if (!empty($invalids)) {
-                // compón un mensaje amigable
-                $detalles = collect($invalids)
-                    ->map(fn($i) => "{$i['cell']} → '{$i['value']}'")
-                    ->implode(', ');
+                $detalles = collect($invalids)->map(fn($i) => "{$i['cell']} → '{$i['value']}'")->implode(', ');
                 throw new \Exception("El Excel contiene celdas marcadas como numéricas con valor inválido: {$detalles}. Corrige esas celdas (pon número válido o cambia el tipo de celda a Texto) y vuelve a importar.");
             }
 
-
-            // ⬇️ Nueva lectura con fila-controlada
+            // Lectura con fila-controlada
             $firstSheet = $this->leerPrimeraHojaConFila($file);
 
-            // quitamos cabecera, filtramos vacías y REINDEXAMOS
+            // quitar cabecera, filtrar vacías, reindexar
             $body         = array_slice($firstSheet, 1);
             $filteredData = array_values(array_filter($body, fn($row) => array_filter($row)));
 
@@ -714,9 +728,9 @@ class PlanillaController extends Controller
                 throw new \Exception('El archivo está vacío o no contiene filas válidas.');
             }
 
-            // ANOTAR Nº DE FILA DE EXCEL (cabecera en fila 1 → +2)
+            // anotar nº de fila de Excel (cabecera = 1 ⇒ +2)
             foreach ($filteredData as $i => &$row) {
-                $row['_xl_row'] = $i + 2; // fila real en Excel
+                $row['_xl_row'] = $i + 2;
             }
             unset($row);
 
@@ -730,7 +744,7 @@ class PlanillaController extends Controller
             $nombreObra    = trim($primerRow[3] ?? 'Obra sin nombre');
 
             if (!$codigoCliente || !$codigoObra) {
-                throw new Exception('Faltan códigos de cliente u obra en el archivo.');
+                throw new \Exception('Faltan códigos de cliente u obra en el archivo.');
             }
 
             $cliente = Cliente::firstOrCreate(
@@ -744,7 +758,7 @@ class PlanillaController extends Controller
             );
 
             /* -------------------------------------------------- */
-            /* Agrupar filas por código de planilla               */
+            /* Agrupar por código de planilla                     */
             /* -------------------------------------------------- */
             $planillas = [];
             foreach ($filteredData as $row) {
@@ -759,20 +773,19 @@ class PlanillaController extends Controller
             /* ================================================== */
             foreach ($planillas as $codigoPlanilla => $rows) {
 
-                // Omitir duplicados
                 if (Planilla::where('codigo', $codigoPlanilla)->exists()) {
                     $planillasOmitidas[] = $codigoPlanilla;
                     continue;
                 }
 
-                /* ------------ Validar y calcular peso_total ------------- */
+                // Calcular peso_total con validación explícita
                 $pesoTotal = 0;
                 foreach ($rows as $r) {
-                    $excelRow  = $r['_xl_row'] ?? 0;
-                    $pesoTotal += $this->assertNumeric($r[34] ?? null, 'peso', $excelRow, $codigoPlanilla); // col 34
+                    $excelRow = $r['_xl_row'] ?? 0;
+                    $pesoTotal += $this->assertNumeric($r[34] ?? null, 'peso', $excelRow, $codigoPlanilla, $advertencias);
                 }
 
-                /* ------------ Crear planilla (con safeCreate) ----------- */
+                // Crear planilla
                 $planilla = $this->safeCreate(Planilla::class, [
                     'users_id'               => auth()->id(),
                     'cliente_id'             => $cliente->id,
@@ -791,16 +804,14 @@ class PlanillaController extends Controller
                 $planillasImportadas++;
                 $maquinasUsadas = [];
 
-                /* ----------- Agrupar filas por nº de etiqueta ----------- */
+                // Agrupar por nº de etiqueta
                 $etiquetas = [];
                 foreach ($rows as $row) {
                     $numEtiqueta = $row[21] ?? null;
                     if ($numEtiqueta) $etiquetas[$numEtiqueta][] = $row;
                 }
 
-                /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-                /* Procesar cada etiqueta → sub-etiquetas → elementos       */
-                /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+                // Procesar etiquetas → sub-etiquetas → elementos
                 foreach ($etiquetas as $filasEtiqueta) {
                     $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
 
@@ -815,7 +826,7 @@ class PlanillaController extends Controller
 
                     $contadorSub = 1;
 
-                    /* === Agrupar por máquina dentro de la etiqueta === */
+                    // Agrupar por máquina
                     $gruposPorMaquina = [];
                     foreach ($filasEtiqueta as $row) {
                         $excelRow       = $row['_xl_row'] ?? 0;
@@ -827,35 +838,53 @@ class PlanillaController extends Controller
                         $barras         = $row[32] ?? null;
                         $ensamblado     = $row[4]  ?? null;
 
-                        $maquina_id = $this->asignarMaquina(
-                            $diametro,
-                            $longitud,
-                            $figura,
-                            $doblesPorBarra,
-                            $barras,
-                            $ensamblado,
-                            $planilla->id
-                        );
 
-                        if (!$maquina_id) {
+                        // Normaliza por si viene con coma o espacios
+                        $rawDiametro = $row[25] ?? null;
+                        $diametroStr = is_string($rawDiametro) ? trim($rawDiametro) : $rawDiametro;
+                        $diametroNum = is_null($diametroStr) ? null : (float) str_replace(',', '.', $diametroStr);
+                        $diametroInt = is_null($diametroNum) ? null : (int) round($diametroNum);
+
+                        // ⛔ Si no es permitido, lanzamos advertencia y forzamos máquina nula
+                        if (is_null($diametroInt) || !in_array($diametroInt, $DmPermitido, true)) {
                             $advertencias[] = sprintf(
-                                "Sin máquina compatible (planilla %s) → diámetro:%s | dimensiones:%s (fila %d)",
+                                "Diámetro no admitido (planilla %s) → diámetro:%s (fila %d)",
                                 $codigoPlanilla,
                                 $row[25] ?? 'N/A',
-                                $row[47] ?? 'N/A',
                                 $excelRow
                             );
-                            $maquina_id = null;
+                            $maquina_id = null;   // evita que pase desapercibido
+                        } else {
+                            // Solo si es permitido, calculamos máquina
+                            $maquina_id = $this->asignarMaquina(
+                                $diametroInt,
+                                $longitud,
+                                $figura,
+                                $doblesPorBarra,
+                                $barras,
+                                $ensamblado,
+                                $planilla->id
+                            );
+                            if (!$maquina_id) {
+                                $advertencias[] = sprintf(
+                                    "Sin máquina compatible (planilla %s) → diámetro:%s | dimensiones:%s (fila %d)",
+                                    $codigoPlanilla,
+                                    $row[25] ?? 'N/A',
+                                    $row[47] ?? 'N/A',
+                                    $excelRow
+                                );
+                                $maquina_id = null;
+                            }
                         }
+
+
+
 
                         $gruposPorMaquina[$maquina_id][] = $row;
-
-                        if ($maquina_id !== null) {
-                            $maquinasUsadas[$maquina_id] = true;
-                        }
+                        if ($maquina_id !== null) $maquinasUsadas[$maquina_id] = true;
                     }
 
-                    /* === Crear sub-etiquetas y elementos === */
+                    // Crear sub-etiquetas y elementos
                     foreach ($gruposPorMaquina as $maquina_id => $filasMaquina) {
                         $codigoSub = sprintf('%s.%02d', $codigoPadre, $contadorSub++);
 
@@ -869,7 +898,7 @@ class PlanillaController extends Controller
                             'excel_row' => $filasMaquina[0]['_xl_row'] ?? 0,
                         ]);
 
-                        // Agrupar filas iguales para sumar peso/barras
+                        // Agrupar filas iguales
                         $agrupados = [];
                         foreach ($filasMaquina as $row) {
                             $clave = implode('|', [
@@ -883,27 +912,41 @@ class PlanillaController extends Controller
                             ]);
                             $agrupados[$clave]['row'] = $row;
 
-                            // Validar ANTES de sumar
                             $excelRow = $row['_xl_row'] ?? 0;
+
+                            // contexto para warnings
+                            $__numCtx['planilla']  = $codigoPlanilla;
+                            $__numCtx['excel_row'] = $excelRow;
+
+                            $__numCtx['campo'] = 'peso';
+                            $__numCtx['valor'] = $row[34] ?? null;
                             $pesoNum  = $this->assertNumeric($row[34] ?? null, 'peso',   $excelRow, $codigoPlanilla);
+
+                            $__numCtx['campo'] = 'barras';
+                            $__numCtx['valor'] = $row[32] ?? null;
                             $bNum     = $this->assertNumeric($row[32] ?? null, 'barras', $excelRow, $codigoPlanilla);
 
                             $agrupados[$clave]['peso']   = ($agrupados[$clave]['peso']   ?? 0) + $pesoNum;
                             $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int) $bNum;
                         }
 
-                        // Crear los elementos
                         foreach ($agrupados as $item) {
                             $row      = $item['row'];
                             $excelRow = $row['_xl_row'] ?? 0;
 
-                            // Validaciones finales de numéricos de Elemento
-                            $diametroNum = $this->assertNumeric($row[25] ?? null, 'diametro',     $excelRow, $codigoPlanilla);
-                            $longNum     = $this->assertNumeric($row[27] ?? null, 'longitud',     $excelRow, $codigoPlanilla);
-                            $doblesNum   = $this->assertNumeric($row[33] ?? 0,    'dobles_barra', $excelRow, $codigoPlanilla);
-                            $barrasNum   = $this->assertNumeric($item['barras'],  'barras',       $excelRow, $codigoPlanilla);
-                            $pesoNum     = $this->assertNumeric($item['peso'],    'peso',         $excelRow, $codigoPlanilla);
+                            // Validar todos los campos críticos
+                            $diametroNum = $this->assertNumeric($row[25] ?? null, 'diametro', $excelRow, $codigoPlanilla, $advertencias);
+                            $longNum     = $this->assertNumeric($row[27] ?? null, 'longitud', $excelRow, $codigoPlanilla, $advertencias);
+                            $doblesNum   = $this->assertNumeric($row[33] ?? 0,    'dobles_barra', $excelRow, $codigoPlanilla, $advertencias);
+                            $barrasNum   = $this->assertNumeric($item['barras'],  'barras', $excelRow, $codigoPlanilla, $advertencias);
+                            $pesoNum     = $this->assertNumeric($item['peso'],    'peso', $excelRow, $codigoPlanilla, $advertencias);
 
+                            // ⛔ Si alguno es false → saltamos fila
+                            if ($diametroNum === false || $longNum === false || $doblesNum === false || $barrasNum === false || $pesoNum === false) {
+                                continue;
+                            }
+
+                            // ✅ Solo si todo es válido, creamos el elemento
                             $tiempos = $this->calcularTiemposElemento($row);
 
                             $this->safeCreate(Elemento::class, [
@@ -929,10 +972,12 @@ class PlanillaController extends Controller
                             ]);
                         }
 
-                        // Actualizar peso-marca de la sub-etiqueta
+
+                        // Actualizar peso/marca de la sub-etiqueta
                         $subEtiqueta->update([
                             'peso'  => $subEtiqueta->elementos()->sum('peso'),
                             'marca' => $subEtiqueta->elementos()
+                                ->whereNotNull('marca')
                                 ->select('marca', DB::raw('COUNT(*) as total'))
                                 ->groupBy('marca')
                                 ->orderByDesc('total')
@@ -944,7 +989,7 @@ class PlanillaController extends Controller
                 /* -------------------------------------------------- */
                 /*  Crear orden_planillas una sola vez por máquina    */
                 /* -------------------------------------------------- */
-                foreach (array_keys($maquinasUsadas) as $maquina_id) {
+                foreach (array_keys($maquinasUsadas ?? []) as $maquina_id) {
                     OrdenPlanilla::firstOrCreate(
                         ['planilla_id' => $planilla->id, 'maquina_id' => $maquina_id],
                         ['posicion'    => (OrdenPlanilla::where('maquina_id', $maquina_id)->max('posicion') ?? 0) + 1]
@@ -955,10 +1000,9 @@ class PlanillaController extends Controller
                 /*  Tiempo total planilla                             */
                 /* -------------------------------------------------- */
                 $elementos   = $planilla->elementos;
-                $tiempoTotal = $elementos->sum('tiempo_fabricacion')
-                    + $elementos->count() * 1200; // 20 min/elemento
+                $tiempoTotal = $elementos->sum('tiempo_fabricacion') + $elementos->count() * 1200;
                 $planilla->update(['tiempo_fabricacion' => $tiempoTotal]);
-            }
+            } // fin foreach planillas
 
             /* ------------------------------------------------------ */
             /*  Fin: commit + mensaje                                 */
@@ -966,10 +1010,10 @@ class PlanillaController extends Controller
             DB::commit();
 
             $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s).";
-            if ($planillasOmitidas) {
+            if (!empty($planillasOmitidas)) {
                 $mensaje .= ' ⚠️ Omitidas: ' . implode(', ', $planillasOmitidas) . '.';
             }
-            if ($advertencias) {
+            if (!empty($advertencias)) {
                 $mensaje .= ' ⚠️ ' . implode('⚠️', $advertencias);
             }
 
@@ -980,7 +1024,6 @@ class PlanillaController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            // última query por si no pasó por safeCreate()
             $log = DB::getQueryLog();
             $last = $log ? $log[array_key_last($log)] : null;
 
@@ -992,8 +1035,12 @@ class PlanillaController extends Controller
             ]);
 
             return back()->with('error', class_basename($e) . ': ' . $e->getMessage());
+        } finally {
+            // ✅ Siempre se restaura el handler, pase lo que pase
+            restore_error_handler();
         }
     }
+
 
     public function reimportar(Request $request, Planilla $planilla)
     {
@@ -1077,28 +1124,57 @@ class PlanillaController extends Controller
 
                 // Agrupar por máquina
                 $gruposPorMaquina = [];
+                $permitidos = [5, 8, 10, 12, 16, 20, 25, 32];
+
                 foreach ($filasEtiqueta as $row) {
-                    $diam   = $row[25] ?? 0;
-                    $lon    = $row[27] ?? 0;
-                    $fig    = $row[26] ?? null;
-                    $dobles = $row[33] ?? 0;
-                    $barras = $row[32] ?? 0;
-                    $ensamb = $row[4]  ?? null;
+                    $excelRow = $row['_xl_row'] ?? 0;
 
-                    $maquinaId = $this->asignarMaquina(
-                        $diam,
-                        $lon,
-                        $fig,
-                        $dobles,
-                        $barras,
-                        $ensamb,
-                        $planilla->id
-                    );
+                    // --- Normalizaciones ---
+                    $diamRaw = $row[25] ?? null;
+                    $diamStr = is_string($diamRaw) ? trim($diamRaw) : $diamRaw;
+                    $diamNum = is_null($diamStr) ? null : (float) str_replace(',', '.', (string) $diamStr);
+                    $diamInt = is_null($diamNum) ? null : (int) round($diamNum);
 
-                    if (!$maquinaId) {
-                        $advertencias[] = "Fila {$row[21]} sin máquina compatible.";
-                        continue;
+                    $lon     = $row[27] ?? 0;
+                    $fig     = $row[26] ?? null;
+                    $dobles  = $row[33] ?? 0;
+                    $barras  = $row[32] ?? 0;
+                    $ensamb  = $row[4]  ?? null;
+
+                    // --- Filtro de diámetros no admitidos ---
+                    if (is_null($diamInt) || !in_array($diamInt, $permitidos, true)) {
+                        $advertencias[] = sprintf(
+                            "Diámetro no admitido (planilla %s) → diámetro:%s (fila Excel %d, fila %s)",
+                            $planilla->codigo,
+                            $row[25] ?? 'N/A',
+                            $excelRow,
+                            $row[21] ?? 'N/A'
+                        );
+                        $maquinaId = null; // lo agrupamos sin máquina para que no se pierda el elemento
+                    } else {
+                        // Sólo si es permitido calculamos máquina
+                        $maquinaId = $this->asignarMaquina(
+                            $diamInt,   // usamos ya el int normalizado
+                            $lon,
+                            $fig,
+                            $dobles,
+                            $barras,
+                            $ensamb,
+                            $planilla->id
+                        );
+                        if (!$maquinaId) {
+                            $advertencias[] = sprintf(
+                                "Sin máquina compatible (planilla %s) → diámetro:%s | dimensiones:%s (fila Excel %d, fila %s)",
+                                $planilla->codigo,
+                                $row[25] ?? 'N/A',
+                                $row[47] ?? 'N/A',
+                                $excelRow,
+                                $row[21] ?? 'N/A'
+                            );
+                        }
                     }
+
+                    // Siempre agrupamos (aunque $maquinaId sea null) para que se creen elementos sin máquina
                     $gruposPorMaquina[$maquinaId][] = $row;
                 }
 
@@ -1417,7 +1493,6 @@ class PlanillaController extends Controller
             ], 500);
         }
     }
-
     //------------------------------------------------------------------------------------ DESTROY()
     // Eliminar una planilla y sus elementos asociados
     public function destroy($id)
