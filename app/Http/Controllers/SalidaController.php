@@ -798,10 +798,10 @@ class SalidaController extends Controller
         if (!$quedanPaquetes) {
             $salida->delete();
             return redirect()->route('planificacion.index')
-                ->with('success', '✅ Paquete quitado y salida eliminada porque no quedaban más paquetes.');
+                ->with('success', 'Paquete quitado y salida eliminada porque no quedaban más paquetes.');
         }
 
-        return back()->with('success', '✅ Paquete quitado correctamente.');
+        return back()->with('success', 'Paquete quitado correctamente.');
     }
 
     public function destroy($id)

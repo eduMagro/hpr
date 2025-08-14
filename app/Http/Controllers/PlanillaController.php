@@ -1009,7 +1009,7 @@ class PlanillaController extends Controller
             /* ------------------------------------------------------ */
             DB::commit();
 
-            $mensaje = "✅ Se importaron {$planillasImportadas} planilla(s).";
+            $mensaje = "Se importaron {$planillasImportadas} planilla(s).";
             if (!empty($planillasOmitidas)) {
                 $mensaje .= ' ⚠️ Omitidas: ' . implode(', ', $planillasOmitidas) . '.';
             }
@@ -1589,5 +1589,111 @@ class PlanillaController extends Controller
             $resultado['success'] ? 'success' : 'error',
             "Procesadas OK: {$resultado['procesadas_ok']} | Omitidas por fecha: {$resultado['omitidas_fecha']} | Fallidas: {$resultado['fallidas']}"
         );
+    }
+
+    public function informacionMasiva(Request $request)
+    {
+        try {
+            $ids = collect(explode(',', (string) $request->query('ids', '')))
+                ->map(fn($x) => (int) trim($x))
+                ->filter();
+
+            Log::info('[informacionMasiva] ids=', $ids->toArray());
+
+            if ($ids->isEmpty()) {
+                return response()->json(['planillas' => []]);
+            }
+
+            // No incluimos codigo_limpio en el select porque es un accessor
+            $planillas = Planilla::query()
+                ->whereIn('id', $ids->all())
+                ->select(['id', 'codigo', 'fecha_estimada_entrega', 'obra_id'])
+                ->with(['obra:id,cod_obra,obra'])
+                ->get();
+
+            $resultado = $planillas->map(function ($p) {
+                // Fecha robusta (aunque sea string en DB)
+                $fecha = null;
+                if (!empty($p->fecha_estimada_entrega)) {
+                    try {
+                        $fecha = \Carbon\Carbon::parse($p->fecha_estimada_entrega)->format('Y-m-d');
+                    } catch (\Throwable $e) {
+                        // deja null si no se puede parsear
+                    }
+                }
+
+                // Mapear obra usando los nombres reales
+                $obra = null;
+                if ($p->relationLoaded('obra') && $p->obra) {
+                    $obra = [
+                        'codigo' => $p->obra->cod_obra ?? null,
+                        'nombre' => $p->obra->obra ?? null,
+                    ];
+                }
+
+                return [
+                    'id'                         => $p->id,
+                    // Usamos accessor codigo_limpio
+                    'codigo'                     => $p->codigo_limpio ?? ('Planilla ' . $p->id),
+                    'fecha_estimada_entrega'     => $fecha,
+                    'obra'                       => $obra,
+                ];
+            });
+
+            return response()->json(['planillas' => $resultado]);
+        } catch (\Throwable $e) {
+            Log::error('[informacionMasiva] 500: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            return response()->json(['message' => 'Error interno'], 500);
+        }
+    }
+
+    public function actualizarFechasMasiva(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'planillas' => ['required', 'array', 'min:1'],
+                'planillas.*.id' => ['required', 'integer', 'exists:planillas,id'],
+                'planillas.*.fecha_estimada_entrega' => ['nullable', 'date_format:Y-m-d'],
+            ]);
+
+            Log::info('[Planillas actualizarFechasMasiva] payload=', $data['planillas']);
+
+            DB::transaction(function () use ($data) {
+                foreach ($data['planillas'] as $fila) {
+                    // 🚫 Si la fecha es null, saltamos esta planilla
+                    if (empty($fila['fecha_estimada_entrega'])) {
+                        continue;
+                    }
+
+                    $planilla = Planilla::find($fila['id']);
+                    $planilla->fecha_estimada_entrega = Carbon::createFromFormat('Y-m-d', $fila['fecha_estimada_entrega'])->startOfDay();
+                    $planilla->save();
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Fechas de entrega actualizadas correctamente.',
+            ]);
+        } catch (ValidationException $ve) {
+            Log::warning('[Planillas actualizarFechasMasiva] validation:', $ve->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Validación fallida',
+                'errors'  => $ve->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('[Planillas actualizarFechasMasiva] error: ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno',
+            ], 500);
+        }
     }
 }

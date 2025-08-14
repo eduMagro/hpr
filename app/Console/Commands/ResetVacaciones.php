@@ -25,6 +25,6 @@ class ResetVacaciones extends Command
         // Actualiza todos los usuarios con los días completos de vacaciones
         User::query()->update(['dias_vacaciones' => $totalDiasVacaciones]);
 
-        $this->info("✅ Se han restablecido las vacaciones de todos los usuarios a {$totalDiasVacaciones} días.");
+        $this->info("Se han restablecido las vacaciones de todos los usuarios a {$totalDiasVacaciones} días.");
     }
 }

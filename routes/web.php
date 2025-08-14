@@ -156,7 +156,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/fichar', [AsignacionTurnoController::class, 'fichar'])->name('fichar');
     Route::post('/generar-turnos', function (Request $request) {
         Artisan::call('turnos:generar-anuales');
-        return back()->with('success', '✅ Turnos generados correctamente.');
+        return back()->with('success', 'Turnos generados correctamente.');
     })->name('generar-turnos');
     Route::post('/profile/generar-turnos/{user}', [ProfileController::class, 'generarTurnos'])->name('profile.generar.turnos');
     Route::post('/festivos/editar', [VacacionesController::class, 'moverFestivo'])->name('festivos.mover');
@@ -201,6 +201,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])->name('elementosEtiquetas');
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])
         ->where('id', '.*');
+    Route::get('/planillas/informacion', [PlanillaController::class, 'informacionMasiva'])
+        ->name('planillas.informacionMasiva');
+
+    Route::put('/planillas/fechas', [PlanillaController::class, 'actualizarFechasMasiva'])
+        ->name('planillas.actualizarFechasMasiva');
     Route::post('/paquetes/tamaño', function (Request $request) {
         $paquete = App\Models\Paquete::where('codigo', $request->codigo)->first();
 

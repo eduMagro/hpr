@@ -500,8 +500,8 @@
                 title: '¿Colocar paquete aquí?',
                 html: `Coordenadas: <b>${x1},${y1}</b> hasta <b>${x2},${y2}</b>`,
                 showCancelButton: true,
-                confirmButtonText: '✅ Confirmar',
-                cancelButtonText: '❌ Cancelar'
+                confirmButtonText: 'Confirmar',
+                cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
                     guardarLocalizacionPaquete(codigoActual, x1, y1, x2, y2);

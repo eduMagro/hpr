@@ -188,8 +188,8 @@
                                     $puntual = \Carbon\Carbon::parse($realEntrada)->lte(
                                         \Carbon\Carbon::parse($esperadaEntrada),
                                     )
-                                        ? '✅ Puntual'
-                                        : '❌ Tarde';
+                                        ? '✅'
+                                        : '❌';
                                 } elseif ($esperadaEntrada && !$realEntrada) {
                                     $puntual = '⚠️ No fichó';
                                 }

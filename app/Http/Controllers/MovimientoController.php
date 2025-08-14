@@ -634,7 +634,7 @@ class MovimientoController extends Controller
             // flujo clásico (redirect + flashes → los recoge tu <x-alerts>)
             return back()->with('success', $msg);
         } catch (\Exception $e) {
-            Log::error('❌ Error al registrar movimiento: ' . $e->getMessage());
+            Log::error('Error al registrar movimiento: ' . $e->getMessage());
 
             // Mensaje de error personalizado si existe
             $mensajeError = $e->getMessage() ?: 'Hubo un problema al registrar el movimiento.';
