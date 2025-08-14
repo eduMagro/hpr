@@ -22,6 +22,7 @@
                             <th class="p-2 border">Sol 2</th>
                             <th class="p-2 border">{!! $ordenables['numero_etiqueta'] ?? 'Número de Etiqueta' !!}</th>
                             <th class="p-2 border">{!! $ordenables['nombre'] ?? 'Nombre' !!}</th>
+                            <th class="p-2 border">Marca</th>
                             <th class="p-2 border">{!! $ordenables['peso'] ?? 'Peso (kg)' !!}</th>
                             <th class="p-2 border">Inicio Fabricación</th>
                             <th class="p-2 border">Final Fabricación</th>
@@ -62,6 +63,9 @@
                                 </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="nombre" value="{{ request('nombre') }}" />
+                                </th>
+                                <th class="p-1 border">
+
                                 </th>
                                 <th class="p-1 border"></th> {{-- Peso --}}
                                 <th class="p-1 border">
@@ -216,6 +220,14 @@
                                         <span x-text="etiqueta.nombre"></span>
                                     </template>
                                     <input x-show="editando" type="text" x-model="etiqueta.nombre"
+                                        class="form-control form-control-sm" @click.stop>
+                                </td>
+                                <!-- Marca -->
+                                <td class="p-2 text-center border">
+                                    <template x-if="!editando">
+                                        <span x-text="etiqueta.marca"></span>
+                                    </template>
+                                    <input x-show="editando" type="text" x-model="etiqueta.marca"
                                         class="form-control form-control-sm" @click.stop>
                                 </td>
 

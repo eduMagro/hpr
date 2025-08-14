@@ -13,6 +13,7 @@ use App\Models\Cliente;
 use Illuminate\Support\Facades\DB;
 use App\Imports\PlanillaImport;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
@@ -22,6 +23,8 @@ use Carbon\Carbon;
 use App\Services\AsignacionMaquinaIAService;
 use App\Models\OrdenPlanilla;
 use App\Services\PlanillaService;
+use ZipArchive;
+use DOMDocument;
 
 class PlanillaController extends Controller
 {
@@ -491,6 +494,173 @@ class PlanillaController extends Controller
     }
 
     //------------------------------------------------------------------------------------ IMPORT()
+    private function colIndexToLetters(int $index): string
+    {
+        $letters = '';
+        $index++; // a 1-based
+        while ($index > 0) {
+            $mod = ($index - 1) % 26;
+            $letters = chr(65 + $mod) . $letters;
+            $index = intdiv($index - 1, 26);
+        }
+        return $letters;
+    }
+
+    /**
+     * Valida si una cadena es numérica válida en XML de Excel (punto decimal y notación científica).
+     */
+    private function isNumericXmlValue(?string $v): bool
+    {
+        if ($v === null || $v === '') return true; // vacío se permite
+        // número con punto opcional y exponente opcional. Excel en XML usa '.' como decimal.
+        return (bool) preg_match('/^-?\d+(\.\d+)?([Ee][+-]?\d+)?$/', trim($v));
+    }
+
+    /**
+     * Escanea xl/worksheets/sheet1.xml y devuelve celdas marcadas como numéricas con valor inválido.
+     * Devuelve array de ['cell' => 'C27', 'value' => '12,3a'].
+     */
+    private function scanXlsxForInvalidNumeric(string $xlsxPath, int $maxFindings = 5): array
+    {
+        $bad = [];
+        $zip = new ZipArchive();
+        if ($zip->open($xlsxPath) !== true) {
+            return $bad; // no pudimos abrir; preferimos no bloquear
+        }
+
+        // Solo primera hoja: sheet1.xml
+        $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        if ($xml === false) {
+            $zip->close();
+            return $bad;
+        }
+
+        $dom = new DOMDocument();
+        $dom->loadXML($xml, LIBXML_NOERROR | LIBXML_NOWARNING);
+
+        $cNodes = $dom->getElementsByTagName('c'); // c = cell
+        foreach ($cNodes as $c) {
+            /** @var DOMElement $c */
+            $tAttr = $c->getAttribute('t'); // tipo
+            $rAttr = $c->getAttribute('r'); // dirección (ej. C27)
+
+            // Solo revisamos celdas numéricas: t=="n" o sin t (numérico por defecto)
+            if ($tAttr === '' || $tAttr === 'n') {
+                $vNode = $c->getElementsByTagName('v')->item(0);
+                $val = $vNode ? $vNode->textContent : '';
+
+                if (!$this->isNumericXmlValue($val)) {
+                    $bad[] = [
+                        'cell'  => $rAttr ?: '(sin ref)',
+                        'value' => $val,
+                    ];
+                    if (count($bad) >= $maxFindings) break;
+                }
+            }
+        }
+
+        $zip->close();
+        return $bad;
+    }
+    private function leerPrimeraHojaConFila(\Illuminate\Http\UploadedFile $file): array
+    {
+        // Crea reader tolerante y solo datos (sin estilos/formulas)
+        $reader = IOFactory::createReaderForFile($file->getRealPath());
+
+        // Si es Xlsx/Xls, estos métodos existen; si no, no pasa nada
+        if (method_exists($reader, 'setReadDataOnly')) {
+            $reader->setReadDataOnly(true);
+        }
+        if (method_exists($reader, 'setReadEmptyCells')) {
+            $reader->setReadEmptyCells(false);
+        }
+
+        $spreadsheet = $reader->load($file->getRealPath());
+        $sheet = $spreadsheet->getSheet(0);
+
+        $rows = [];
+        foreach ($sheet->getRowIterator(1) as $row) {
+            $rowIndex = $row->getRowIndex(); // nº de fila real en Excel (1-based)
+            try {
+                $cellIt = $row->getCellIterator();
+                $cellIt->setIterateOnlyExistingCells(false); // incluye vacías
+
+                $rowData = [];
+                foreach ($cellIt as $cell) {
+                    // getFormattedValue evita algunos casteos agresivos
+                    $rowData[] = $cell ? $cell->getFormattedValue() : null;
+                }
+                $rows[] = $rowData;
+            } catch (\Throwable $e) {
+                // Aquí capturamos exactamente la fila que revienta al leer
+                throw new \Exception("Error leyendo Excel en fila {$rowIndex}: " . $e->getMessage());
+            }
+        }
+
+        return $rows;
+    }
+    private function assertNumeric($value, string $campo, int $excelRow, string $codigoPlanilla): float|int
+    {
+        if ($value === null || $value === '') {
+            throw new Exception("Fila {$excelRow} (Excel), Planilla {$codigoPlanilla}, columna '{$campo}' → valor vacío; se esperaba numérico");
+        }
+
+        $str = is_string($value) ? trim($value) : (string)$value;
+
+        // Enteros o decimales con punto o coma (no corregimos nada, solo validamos)
+        if (!preg_match('/^-?\d+([.,]\d+)?$/', $str)) {
+            throw new Exception("Fila {$excelRow} (Excel), Planilla {$codigoPlanilla}, columna '{$campo}' → valor '{$value}' no es numérico");
+        }
+
+        return (float) str_replace(',', '.', $str);
+    }
+
+    /**
+     * Detecta valores que "parecen" numéricos por nombre de campo, pero contienen caracteres no numéricos.
+     */
+    private function suspectFields(array $attrs): array
+    {
+        $suspects = [];
+        foreach ($attrs as $k => $v) {
+            if (is_string($v) && preg_match('/(peso|long|diam|barra|posicion|tiempo|id|cantidad|total|codigo)/i', $k)) {
+                if (preg_match('/[^\d.,-]/', $v)) {
+                    $suspects[] = "{$k}='{$v}'";
+                }
+            }
+        }
+        return $suspects;
+    }
+
+    /**
+     * Crea un modelo y si la BD revienta (NUMERIC inválido, etc.),
+     * re-lanza la excepción con contexto (planilla, fila Excel, attrs, últimos SQL).
+     */
+    private function safeCreate(string $modelClass, array $attrs, array $ctx)
+    {
+        try {
+            return $modelClass::create($attrs);
+        } catch (\Throwable $e) {
+            $planilla = $ctx['planilla']  ?? 'N/D';
+            $excelRow = $ctx['excel_row'] ?? 'N/D';
+            $suspects = $this->suspectFields($attrs);
+
+            // Última query registrada
+            $log = DB::getQueryLog();
+            $last = $log ? $log[array_key_last($log)] : null;
+
+            Log::error("[IMPORT] Error creando {$modelClass}", [
+                'planilla'   => $planilla,
+                'excel_row'  => $excelRow,
+                'attrs'      => $attrs,
+                'suspects'   => $suspects,
+                'error'      => $e->getMessage(),
+                'last_query' => $last,
+            ]);
+
+            $susStr = $suspects ? (' | Sospechosos: ' . implode(', ', $suspects)) : '';
+            throw new Exception("Fila {$excelRow} (Excel), Planilla {$planilla}: error al crear {$modelClass} → {$e->getMessage()}{$susStr}");
+        }
+    }
 
     public function import(Request $request)
     {
@@ -509,6 +679,9 @@ class PlanillaController extends Controller
             'file.mimes'    => 'Solo se permiten archivos .xlsx o .xls',
         ]);
 
+        // Activar trazas de SQL para capturar la última query si algo peta
+        DB::enableQueryLog();
+
         DB::beginTransaction();
         try {
             /* -------------------------------------------------- */
@@ -517,14 +690,35 @@ class PlanillaController extends Controller
             $planillasImportadas = 0;
             $planillasOmitidas   = [];
             $advertencias        = [];
+            $file = $request->file('file');
 
-            $file         = $request->file('file');
-            $firstSheet   = Excel::toArray([], $file)[0] ?? [];
-            $filteredData = array_filter(array_slice($firstSheet, 1), fn($row) => array_filter($row));
+            // 🔎 Escaneo de XML para localizar celdas numéricas inválidas (antes de que PhpSpreadsheet reviente)
+            $invalids = $this->scanXlsxForInvalidNumeric($file->getRealPath());
+            if (!empty($invalids)) {
+                // compón un mensaje amigable
+                $detalles = collect($invalids)
+                    ->map(fn($i) => "{$i['cell']} → '{$i['value']}'")
+                    ->implode(', ');
+                throw new \Exception("El Excel contiene celdas marcadas como numéricas con valor inválido: {$detalles}. Corrige esas celdas (pon número válido o cambia el tipo de celda a Texto) y vuelve a importar.");
+            }
+
+
+            // ⬇️ Nueva lectura con fila-controlada
+            $firstSheet = $this->leerPrimeraHojaConFila($file);
+
+            // quitamos cabecera, filtramos vacías y REINDEXAMOS
+            $body         = array_slice($firstSheet, 1);
+            $filteredData = array_values(array_filter($body, fn($row) => array_filter($row)));
 
             if (!$filteredData) {
-                throw new Exception('El archivo está vacío o no contiene filas válidas.');
+                throw new \Exception('El archivo está vacío o no contiene filas válidas.');
             }
+
+            // ANOTAR Nº DE FILA DE EXCEL (cabecera en fila 1 → +2)
+            foreach ($filteredData as $i => &$row) {
+                $row['_xl_row'] = $i + 2; // fila real en Excel
+            }
+            unset($row);
 
             /* -------------------------------------------------- */
             /* Datos fijos (cliente y obra)                       */
@@ -557,7 +751,9 @@ class PlanillaController extends Controller
                 $codigoPlanilla = $row[10] ?? 'Sin código';
                 $planillas[$codigoPlanilla][] = $row;
             }
+
             $fechaEntrega = now()->addDays(7)->setTime(10, 0, 0);
+
             /* ================================================== */
             /* Bucle principal : una iteración por planilla       */
             /* ================================================== */
@@ -569,22 +765,31 @@ class PlanillaController extends Controller
                     continue;
                 }
 
-                /* ------------ Crear planilla ----------------- */
-                $pesoTotal = array_sum(array_column($rows, 34));
-                $planilla  = Planilla::create([
-                    'users_id'              => auth()->id(),
-                    'cliente_id'            => $cliente->id,
-                    'obra_id'               => $obra->id,
-                    'seccion'               => $rows[0][7]  ?? null,
-                    'descripcion'           => $rows[0][12] ?? null,
-                    'ensamblado'            => $rows[0][4]  ?? null,
-                    'codigo'                => $codigoPlanilla,
-                    'peso_total'            => $pesoTotal,
+                /* ------------ Validar y calcular peso_total ------------- */
+                $pesoTotal = 0;
+                foreach ($rows as $r) {
+                    $excelRow  = $r['_xl_row'] ?? 0;
+                    $pesoTotal += $this->assertNumeric($r[34] ?? null, 'peso', $excelRow, $codigoPlanilla); // col 34
+                }
+
+                /* ------------ Crear planilla (con safeCreate) ----------- */
+                $planilla = $this->safeCreate(Planilla::class, [
+                    'users_id'               => auth()->id(),
+                    'cliente_id'             => $cliente->id,
+                    'obra_id'                => $obra->id,
+                    'seccion'                => $rows[0][7]  ?? null,
+                    'descripcion'            => $rows[0][12] ?? null,
+                    'ensamblado'             => $rows[0][4]  ?? null,
+                    'codigo'                 => $codigoPlanilla,
+                    'peso_total'             => $pesoTotal,
                     'fecha_estimada_entrega' => $fechaEntrega,
+                ], [
+                    'planilla'  => $codigoPlanilla,
+                    'excel_row' => $rows[0]['_xl_row'] ?? 0,
                 ]);
 
                 $planillasImportadas++;
-                $maquinasUsadas = [];   // ← aquí guardaremos las máquinas detectadas
+                $maquinasUsadas = [];
 
                 /* ----------- Agrupar filas por nº de etiqueta ----------- */
                 $etiquetas = [];
@@ -596,26 +801,25 @@ class PlanillaController extends Controller
                 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
                 /* Procesar cada etiqueta → sub-etiquetas → elementos       */
                 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+                /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+                /* Procesar cada etiqueta → SOLO sub-etiquetas               */
+                /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
                 foreach ($etiquetas as $filasEtiqueta) {
-                    $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
-                    $etiquetaPadre = Etiqueta::create([
-                        'codigo'      => $codigoPadre,
-                        'planilla_id' => $planilla->id,
-                        'nombre'      => $filasEtiqueta[0][22] ?? 'Sin nombre',
-                    ]);
-
-                    /* Sufijo para sub-etiquetas .01, .02, … */
+                    // 1) Código base compartido por todas las subetiquetas de esta “etiqueta lógica”
+                    $codigoBase = Etiqueta::generarCodigoEtiqueta();
                     $contadorSub = 1;
 
                     /* === Agrupar por máquina dentro de la etiqueta === */
                     $gruposPorMaquina = [];
                     foreach ($filasEtiqueta as $row) {
-                        $diametro        = $row[25] ?? 0;
-                        $longitud        = $row[27] ?? 0;
-                        $figura          = $row[26] ?? null;
-                        $doblesPorBarra  = $row[33] ?? 0;
-                        $barras          = $row[32] ?? 0;
-                        $ensamblado      = $row[4]  ?? null;
+                        $excelRow       = $row['_xl_row'] ?? 0;
+
+                        $diametro       = $row[25] ?? null;
+                        $longitud       = $row[27] ?? null;
+                        $figura         = $row[26] ?? null;
+                        $doblesPorBarra = $row[33] ?? null;
+                        $barras         = $row[32] ?? null;
+                        $ensamblado     = $row[4]  ?? null;
 
                         $maquina_id = $this->asignarMaquina(
                             $diametro,
@@ -627,37 +831,34 @@ class PlanillaController extends Controller
                             $planilla->id
                         );
 
-                        // Si no hay máquina compatible, igualmente se importa con maquina_id = null
-                        // Si no hay máquina compatible, igualmente se importa con maquina_id = null
                         if (!$maquina_id) {
                             $advertencias[] = sprintf(
-                                "Sin máquina compatible (planilla %s) → diámetro:%s | dimensiones:%s",
+                                "Sin máquina compatible (planilla %s) → diámetro:%s | dimensiones:%s (fila %d)",
                                 $codigoPlanilla,
-                                $row[25] ?? 'N/A', // diámetro
-                                $row[47] ?? 'N/A'  // dimensiones
+                                $row[25] ?? 'N/A',
+                                $row[47] ?? 'N/A',
+                                $excelRow
                             );
                             $maquina_id = null;
                         }
 
-
-                        // Registrar la fila en el grupo (usando null como clave si no hay máquina)
                         $gruposPorMaquina[$maquina_id][] = $row;
-
-                        // Registrar la máquina solo si existe
-                        if ($maquina_id !== null) {
-                            $maquinasUsadas[$maquina_id] = true;
-                        }
+                        if ($maquina_id !== null) $maquinasUsadas[$maquina_id] = true;
                     }
 
-                    /* === Crear sub-etiquetas y elementos === */
+                    /* === Crear SOLO sub-etiquetas y elementos === */
                     foreach ($gruposPorMaquina as $maquina_id => $filasMaquina) {
-                        $codigoSub = sprintf('%s.%02d', $codigoPadre, $contadorSub++);
+                        // Formato .01, .02 ... (si prefieres "1.1" dímelo y lo cambio)
+                        $codigoSub = sprintf('%s.%02d', $codigoBase, $contadorSub++);
 
-                        $subEtiqueta = Etiqueta::create([
-                            'codigo'          => $codigoPadre,
+                        $subEtiqueta = $this->safeCreate(Etiqueta::class, [
+                            'codigo'          => $codigoBase,                   // todas comparten el mismo código
+                            'etiqueta_sub_id' => $codigoSub,                    // ← ya NO hay padre (nunca será NULL)
                             'planilla_id'     => $planilla->id,
                             'nombre'          => $filasMaquina[0][22] ?? 'Sin nombre',
-                            'etiqueta_sub_id' => $codigoSub,
+                        ], [
+                            'planilla'  => $codigoPlanilla,
+                            'excel_row' => $filasMaquina[0]['_xl_row'] ?? 0,
                         ]);
 
                         // Agrupar filas iguales para sumar peso/barras
@@ -672,50 +873,67 @@ class PlanillaController extends Controller
                                 $row[33] ?? 0,
                                 $row[47] ?? ''
                             ]);
-                            $agrupados[$clave]['row']    = $row;
-                            $agrupados[$clave]['peso']   = ($agrupados[$clave]['peso']   ?? 0) + (float)($row[34] ?? 0);
-                            $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int)($row[32] ?? 0);
+                            $agrupados[$clave]['row'] = $row;
+
+                            $excelRow = $row['_xl_row'] ?? 0;
+                            $pesoNum  = $this->assertNumeric($row[34] ?? null, 'peso',   $excelRow, $codigoPlanilla);
+                            $bNum     = $this->assertNumeric($row[32] ?? null, 'barras', $excelRow, $codigoPlanilla);
+
+                            $agrupados[$clave]['peso']   = ($agrupados[$clave]['peso']   ?? 0) + $pesoNum;
+                            $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int) $bNum;
                         }
 
-                        // Crear los elementos
+                        // Crear los elementos vinculados a la sub-etiqueta
                         foreach ($agrupados as $item) {
-                            $row     = $item['row'];
-                            $tiempos = $this->calcularTiemposElemento($row);
-                            if ($maquina_id === '' || $maquina_id === false) {
-                                $maquina_id = null;
-                            }
+                            $row      = $item['row'];
+                            $excelRow = $row['_xl_row'] ?? 0;
 
-                            Elemento::create([
+                            $diametroNum = $this->assertNumeric($row[25] ?? null, 'diametro',     $excelRow, $codigoPlanilla);
+                            $longNum     = $this->assertNumeric($row[27] ?? null, 'longitud',     $excelRow, $codigoPlanilla);
+                            $doblesNum   = $this->assertNumeric($row[33] ?? 0,    'dobles_barra', $excelRow, $codigoPlanilla);
+                            $barrasNum   = $this->assertNumeric($item['barras'],  'barras',       $excelRow, $codigoPlanilla);
+                            $pesoNum     = $this->assertNumeric($item['peso'],    'peso',         $excelRow, $codigoPlanilla);
+
+                            $tiempos = $this->calcularTiemposElemento($row);
+
+                            $this->safeCreate(Elemento::class, [
                                 'codigo'             => Elemento::generarCodigo(),
                                 'planilla_id'        => $planilla->id,
                                 'etiqueta_id'        => $subEtiqueta->id,
-                                'etiqueta_sub_id'    => $codigoSub,
+                                'etiqueta_sub_id'    => $codigoSub, // por si lo guardas también en elementos
                                 'maquina_id'         => $maquina_id ?: null,
                                 'figura'             => $row[26] ?: null,
                                 'fila'               => $row[21] ?: null,
-                                'marca'              => $row[23] ?: null,
+                                'marca'              => isset($row[23]) ? trim((string)$row[23]) : null,
                                 'etiqueta'           => $row[30] ?: null,
-                                'diametro'           => $row[25] ?: null,
-                                'longitud'           => $row[27] ?: null,
-                                'barras'             => $item['barras'] ?: null,
-                                'dobles_barra'       => $row[33] ?? 0,
-                                'peso'               => $item['peso'] ?: null,
+                                'diametro'           => $diametroNum,
+                                'longitud'           => $longNum,
+                                'barras'             => (int) $barrasNum,
+                                'dobles_barra'       => (int) $doblesNum,
+                                'peso'               => $pesoNum,
                                 'dimensiones'        => $row[47] ?? null,
                                 'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
+                            ], [
+                                'planilla'  => $codigoPlanilla,
+                                'excel_row' => $excelRow,
                             ]);
                         }
 
-                        // Actualizar peso-marca de la sub-etiqueta
+                        // Actualizar peso/marca de la sub-etiqueta (modo de marcas, ignorando NULL)
                         $subEtiqueta->update([
                             'peso'  => $subEtiqueta->elementos()->sum('peso'),
                             'marca' => $subEtiqueta->elementos()
+                                ->whereNotNull('marca')
                                 ->select('marca', DB::raw('COUNT(*) as total'))
                                 ->groupBy('marca')
                                 ->orderByDesc('total')
                                 ->value('marca'),
                         ]);
                     }
+
+                    // 🔚 IMPORTANTE: ya NO hay etiqueta padre que actualizar aquí
                 }
+
 
                 /* -------------------------------------------------- */
                 /*  Crear orden_planillas una sola vez por máquina    */
@@ -730,8 +948,8 @@ class PlanillaController extends Controller
                 /* -------------------------------------------------- */
                 /*  Tiempo total planilla                             */
                 /* -------------------------------------------------- */
-                $elementos      = $planilla->elementos;
-                $tiempoTotal    = $elementos->sum('tiempo_fabricacion')
+                $elementos   = $planilla->elementos;
+                $tiempoTotal = $elementos->sum('tiempo_fabricacion')
                     + $elementos->count() * 1200; // 20 min/elemento
                 $planilla->update(['tiempo_fabricacion' => $tiempoTotal]);
             }
@@ -755,11 +973,18 @@ class PlanillaController extends Controller
             return back()->withErrors($e->errors())->withInput();
         } catch (\Throwable $e) {
             DB::rollBack();
+
+            // última query por si no pasó por safeCreate()
+            $log = DB::getQueryLog();
+            $last = $log ? $log[array_key_last($log)] : null;
+
             Log::error('❌ Error al importar planillas', [
-                'mensaje' => $e->getMessage(),
-                'linea'   => $e->getLine(),
-                'archivo' => $e->getFile(),
+                'mensaje'    => $e->getMessage(),
+                'linea'      => $e->getLine(),
+                'archivo'    => $e->getFile(),
+                'last_query' => $last,
             ]);
+
             return back()->with('error', class_basename($e) . ': ' . $e->getMessage());
         }
     }

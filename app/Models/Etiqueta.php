@@ -27,6 +27,7 @@ class Etiqueta extends Model
         'ensamblador1',
         'ensamblador2',
         'nombre',
+        'marca',
         'paquete_id',
         'numero_etiqueta',
         'peso',

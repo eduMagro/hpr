@@ -34,6 +34,7 @@
                 <thead class="bg-blue-500 text-white text-4">
                     <tr class="text-center text-xs uppercase">
 
+                        <th class="p-2 border">ID</th>
                         <th class="p-2 border">{!! $ordenables['codigo'] !!}</th>
                         <th class="p-2 border">Codigo Cliente</th>
                         <th class="p-2 border">Cliente</th>
@@ -57,6 +58,9 @@
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('planillas.index') }}">
 
+                            <th class="p-1 border">
+
+                            </th>
                             <th class="p-1 border">
                                 <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
                             </th>
@@ -141,6 +145,12 @@
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs leading-none uppercase">
 
 
+                            <!-- ID -->
+                            <td class="p-2 text-center border">
+
+                                <span x-text="planilla.id"></span>
+
+                            </td>
                             <!-- Código -->
                             <td class="p-2 text-center border">
                                 <template x-if="!editando">
