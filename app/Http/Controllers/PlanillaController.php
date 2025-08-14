@@ -801,12 +801,18 @@ class PlanillaController extends Controller
                 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
                 /* Procesar cada etiqueta → sub-etiquetas → elementos       */
                 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-                /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-                /* Procesar cada etiqueta → SOLO sub-etiquetas               */
-                /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
                 foreach ($etiquetas as $filasEtiqueta) {
-                    // 1) Código base compartido por todas las subetiquetas de esta “etiqueta lógica”
-                    $codigoBase = Etiqueta::generarCodigoEtiqueta();
+                    $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
+
+                    $etiquetaPadre = $this->safeCreate(Etiqueta::class, [
+                        'codigo'      => $codigoPadre,
+                        'planilla_id' => $planilla->id,
+                        'nombre'      => $filasEtiqueta[0][22] ?? 'Sin nombre',
+                    ], [
+                        'planilla'  => $codigoPlanilla,
+                        'excel_row' => $filasEtiqueta[0]['_xl_row'] ?? 0,
+                    ]);
+
                     $contadorSub = 1;
 
                     /* === Agrupar por máquina dentro de la etiqueta === */
@@ -843,19 +849,21 @@ class PlanillaController extends Controller
                         }
 
                         $gruposPorMaquina[$maquina_id][] = $row;
-                        if ($maquina_id !== null) $maquinasUsadas[$maquina_id] = true;
+
+                        if ($maquina_id !== null) {
+                            $maquinasUsadas[$maquina_id] = true;
+                        }
                     }
 
-                    /* === Crear SOLO sub-etiquetas y elementos === */
+                    /* === Crear sub-etiquetas y elementos === */
                     foreach ($gruposPorMaquina as $maquina_id => $filasMaquina) {
-                        // Formato .01, .02 ... (si prefieres "1.1" dímelo y lo cambio)
-                        $codigoSub = sprintf('%s.%02d', $codigoBase, $contadorSub++);
+                        $codigoSub = sprintf('%s.%02d', $codigoPadre, $contadorSub++);
 
                         $subEtiqueta = $this->safeCreate(Etiqueta::class, [
-                            'codigo'          => $codigoBase,                   // todas comparten el mismo código
-                            'etiqueta_sub_id' => $codigoSub,                    // ← ya NO hay padre (nunca será NULL)
+                            'codigo'          => $codigoPadre,
                             'planilla_id'     => $planilla->id,
                             'nombre'          => $filasMaquina[0][22] ?? 'Sin nombre',
+                            'etiqueta_sub_id' => $codigoSub,
                         ], [
                             'planilla'  => $codigoPlanilla,
                             'excel_row' => $filasMaquina[0]['_xl_row'] ?? 0,
@@ -875,6 +883,7 @@ class PlanillaController extends Controller
                             ]);
                             $agrupados[$clave]['row'] = $row;
 
+                            // Validar ANTES de sumar
                             $excelRow = $row['_xl_row'] ?? 0;
                             $pesoNum  = $this->assertNumeric($row[34] ?? null, 'peso',   $excelRow, $codigoPlanilla);
                             $bNum     = $this->assertNumeric($row[32] ?? null, 'barras', $excelRow, $codigoPlanilla);
@@ -883,11 +892,12 @@ class PlanillaController extends Controller
                             $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int) $bNum;
                         }
 
-                        // Crear los elementos vinculados a la sub-etiqueta
+                        // Crear los elementos
                         foreach ($agrupados as $item) {
                             $row      = $item['row'];
                             $excelRow = $row['_xl_row'] ?? 0;
 
+                            // Validaciones finales de numéricos de Elemento
                             $diametroNum = $this->assertNumeric($row[25] ?? null, 'diametro',     $excelRow, $codigoPlanilla);
                             $longNum     = $this->assertNumeric($row[27] ?? null, 'longitud',     $excelRow, $codigoPlanilla);
                             $doblesNum   = $this->assertNumeric($row[33] ?? 0,    'dobles_barra', $excelRow, $codigoPlanilla);
@@ -900,11 +910,11 @@ class PlanillaController extends Controller
                                 'codigo'             => Elemento::generarCodigo(),
                                 'planilla_id'        => $planilla->id,
                                 'etiqueta_id'        => $subEtiqueta->id,
-                                'etiqueta_sub_id'    => $codigoSub, // por si lo guardas también en elementos
+                                'etiqueta_sub_id'    => $codigoSub,
                                 'maquina_id'         => $maquina_id ?: null,
                                 'figura'             => $row[26] ?: null,
                                 'fila'               => $row[21] ?: null,
-                                'marca'              => isset($row[23]) ? trim((string)$row[23]) : null,
+                                'marca'              => $row[23] ?: null,
                                 'etiqueta'           => $row[30] ?: null,
                                 'diametro'           => $diametroNum,
                                 'longitud'           => $longNum,
@@ -919,21 +929,17 @@ class PlanillaController extends Controller
                             ]);
                         }
 
-                        // Actualizar peso/marca de la sub-etiqueta (modo de marcas, ignorando NULL)
+                        // Actualizar peso-marca de la sub-etiqueta
                         $subEtiqueta->update([
                             'peso'  => $subEtiqueta->elementos()->sum('peso'),
                             'marca' => $subEtiqueta->elementos()
-                                ->whereNotNull('marca')
                                 ->select('marca', DB::raw('COUNT(*) as total'))
                                 ->groupBy('marca')
                                 ->orderByDesc('total')
                                 ->value('marca'),
                         ]);
                     }
-
-                    // 🔚 IMPORTANTE: ya NO hay etiqueta padre que actualizar aquí
                 }
-
 
                 /* -------------------------------------------------- */
                 /*  Crear orden_planillas una sola vez por máquina    */
