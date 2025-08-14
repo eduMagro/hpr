@@ -25,6 +25,8 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 
+
+
 class EtiquetaController extends Controller
 {
     private function aplicarFiltros($query, Request $request)
@@ -675,6 +677,7 @@ class EtiquetaController extends Controller
                     $etiqueta->fecha_finalizacion_soldadura = now();
                     $etiqueta->estado = 'completada';
                     $etiqueta->save();
+
                     break;
                 // -------------------------------------------- ESTADO COMPLETADA --------------------------------------------
                 case 'completada':

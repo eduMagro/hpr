@@ -14,6 +14,7 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+use App\Services\PlanillaColaService;
 
 class PaqueteController extends Controller
 {
@@ -299,7 +300,8 @@ class PaqueteController extends Controller
 
             $codigo = Paquete::generarCodigo(); // ← Aquí generas el código
             $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal, $codigo); // ← Se lo pasas
-
+            (new PlanillaColaService)
+                ->retirarPlanillaDeColaSiNoQuedanEtiquetasEnMaquina($planilla, $maquina);
 
             // Crear movimiento de paquete pendiente
             Movimiento::create([

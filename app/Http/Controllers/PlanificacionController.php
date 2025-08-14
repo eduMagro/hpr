@@ -248,7 +248,16 @@ class PlanificacionController extends Controller
 
             // 👉 Color según estado
             $todasCompletadas = $grupo->every(fn($p) => $p->estado === 'completada');
-            $color = $todasCompletadas ? '#22c55e' : '#9CA3AF';
+            $alMenosUnaFabricando = $grupo->contains(fn($p) => $p->estado === 'fabricando');
+
+            if ($todasCompletadas) {
+                $color = '#22c55e'; // verde
+            } elseif ($alMenosUnaFabricando) {
+                $color = '#facc15'; // amarillo
+            } else {
+                $color = '#9CA3AF'; // gris
+            }
+
 
             // Antes del return de cada evento, obtén todas las salidas relacionadas con esas planillas
             // 👉 Buscar primero los paquetes asociados a esas planillas
