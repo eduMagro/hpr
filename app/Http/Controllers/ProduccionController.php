@@ -558,7 +558,7 @@ class ProduccionController extends Controller
 
                 try {
                     if (!$agrupadasIndex->has($clave)) {
-                        Log::debug('EVT G1: clave no encontrada, continuo', ['clave' => $clave]);
+
                         continue;
                     }
 
@@ -567,7 +567,7 @@ class ProduccionController extends Controller
                     $grupo    = Arr::get($data, 'elementos');
 
                     if (!$planilla || !$planilla->fecha_estimada_entrega) {
-                        Log::debug('EVT G2: planilla sin fecha_entrega, salto', ['planillaId' => $planillaId]);
+
                         continue;
                     }
 
@@ -575,10 +575,6 @@ class ProduccionController extends Controller
                     $duracionSegundos = max($grupoCount * 20 * 60, 60);
                     $fechaInicio      = $inicioCola->copy();
 
-                    Log::debug('EVT H: antes generar tramos', [
-                        'duracionSegundos' => $duracionSegundos,
-                        'inicio' => $fechaInicio->toIso8601String(),
-                    ]);
 
                     $tramos = $this->generarTramosLaborales($fechaInicio, $duracionSegundos, $festivosSet);
 
@@ -592,10 +588,6 @@ class ProduccionController extends Controller
                         ? $ultimoTramo['end']->copy()
                         : Carbon::parse($ultimoTramo['end']);
 
-                    Log::debug('EVT I: tramos OK', [
-                        'num_tramos' => count($tramos),
-                        'fin_real' => $fechaFinReal->toIso8601String(),
-                    ]);
 
                     // Progreso
                     $progreso = null;
@@ -692,11 +684,7 @@ class ProduccionController extends Controller
      */
     private function generarTramosLaborales(Carbon $inicio, int $durSeg, array $festivosSet): array
     {
-        Log::debug('TRAMOS T0: entrar', [
-            'inicio'   => $inicio->toIso8601String(),
-            'durSeg'   => $durSeg,
-            'festivos' => count($festivosSet),
-        ]);
+
 
         $tramos   = [];
         $restante = max(0, (int) $durSeg);
@@ -704,7 +692,6 @@ class ProduccionController extends Controller
         // Si el inicio cae en no laborable -> al siguiente laborable 00:00
         if ($this->esNoLaborable($inicio, $festivosSet)) {
             $inicio = $this->siguienteLaborableInicio($inicio, $festivosSet);
-            Log::debug('TRAMOS T1: inicio ajustado a laborable', ['inicio' => $inicio->toIso8601String()]);
         }
 
         $cursor  = $inicio->copy();
@@ -723,7 +710,7 @@ class ProduccionController extends Controller
             // Saltar no laborables completos
             if ($this->esNoLaborable($cursor, $festivosSet)) {
                 $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
-                Log::debug('TRAMOS T2: salto no laborable', ['cursor' => $cursor->toIso8601String()]);
+
                 continue;
             }
 
@@ -760,11 +747,10 @@ class ProduccionController extends Controller
             $tsCursor = (int) $cursor->getTimestamp();
             if ($restante > 0 && $tsCursor >= $tsLimite) {
                 $cursor = $this->siguienteLaborableInicio($cursor, $festivosSet);
-                Log::debug('TRAMOS T5: fin de día alcanzado, salto a próximo laborable', ['cursor' => $cursor->toIso8601String()]);
             }
         }
 
-        Log::debug('TRAMOS T9: salir', ['tramos' => count($tramos)]);
+
         return $tramos;
     }
 
