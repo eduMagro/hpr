@@ -715,7 +715,8 @@ class PlanillaController extends Controller
             $invalids = $this->scanXlsxForInvalidNumeric($file->getRealPath());
             if (!empty($invalids)) {
                 $detalles = collect($invalids)->map(fn($i) => "{$i['cell']} → '{$i['value']}'")->implode(', ');
-                throw new \Exception("El Excel contiene celdas marcadas como numéricas con valor inválido: {$detalles}. Corrige esas celdas (pon número válido o cambia el tipo de celda a Texto) y vuelve a importar.");
+                $nombreArchivo = $file->getClientOriginalName();
+                throw new \Exception("{$nombreArchivo} - El Excel contiene celdas marcadas como numéricas con valor inválido: {$detalles}. Corrige esas celdas (pon número válido o cambia el tipo de celda a Texto) y vuelve a importar.");
             }
 
             // Lectura con fila-controlada
