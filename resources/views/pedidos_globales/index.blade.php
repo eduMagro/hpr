@@ -15,6 +15,7 @@
                     <tr class="text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                         <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
                         <th class="p-2 border">{!! $ordenables['cantidad_total'] ?? 'Cantidad Total' !!}</th>
                         <th class="p-2 border">Cantidad Restante</th>
                         <th class="p-2 border">Progreso</th>
@@ -30,6 +31,10 @@
 
                             <th class="p-1 border">
                                 <x-tabla.input name="fabricante" type="text" :value="request('fabricante')"
+                                    class="w-full text-xs" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="distribuidor" type="text" :value="request('distribuidor')"
                                     class="w-full text-xs" />
                             </th>
 
@@ -86,6 +91,18 @@
                                     @foreach ($fabricantes as $fab)
                                         <option value="{{ $fab->id }}">
                                             {{ $fab->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <!-- Distribuidor -->
+                            <td class="p-2 border">
+                                <template x-if="!editando">
+                                    <span x-text="pedido.distribuidor?.nombre ?? 'N/A'"></span>
+                                </template>
+                                <select x-show="editando" x-model="pedido.distribuidor_id" class="form-input w-full">
+                                    <option value="">Selecciona</option>
+                                    @foreach ($distribuidores as $dist)
+                                        <option value="{{ $dist->id }}">{{ $dist->nombre }}</option>
                                     @endforeach
                                 </select>
                             </td>
@@ -181,6 +198,15 @@
                         <option value="">-- Seleccionar --</option>
                         @foreach ($fabricantes as $fabricante)
                             <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="distribuidor_id" class="block text-sm font-medium text-gray-700">Distribuidor</label>
+                    <select name="distribuidor_id" class="form-select w-full">
+                        <option value="">-- Seleccionar --</option>
+                        @foreach ($distribuidores as $distribuidor)
+                            <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}</option>
                         @endforeach
                     </select>
                 </div>

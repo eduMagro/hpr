@@ -26,4 +26,8 @@ class Distribuidor extends Model
     {
         return $this->hasMany(Producto::class);
     }
+    public function pedidosGlobalesComoDistribuidor()
+    {
+        return $this->hasMany(PedidoGlobal::class, 'distribuidor_id');
+    }
 }

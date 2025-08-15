@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Distribuidor;
 use App\Models\PedidoGlobal;
 use App\Models\Fabricante;
 use Illuminate\Http\Request;
@@ -28,6 +29,11 @@ class PedidoGlobalController extends Controller
                 $q->where('nombre', 'like', '%' . $request->fabricante . '%');
             });
         }
+        if ($request->filled('distribuidor')) {
+            $query->whereHas('distribuidor', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->distribuidor . '%');
+            });
+        }
 
         $sortBy = $request->input('sort', 'codigo');
         $order = $request->input('order', 'desc');
@@ -46,6 +52,9 @@ class PedidoGlobalController extends Controller
         if ($request->filled('fabricante')) {
             $filtros[] = 'Fabricante: <strong>' . $request->fabricante . '</strong>';
         }
+        if ($request->filled('distribuidor')) {
+            $filtros[] = 'Distribuidor: <strong>' . $request->distribuidor . '</strong>';
+        }
 
         if ($request->filled('estado')) {
             $filtros[] = 'Estado: <strong>' . ucfirst($request->estado) . '</strong>';
@@ -55,6 +64,7 @@ class PedidoGlobalController extends Controller
             $sorts = [
                 'codigo' => 'Código',
                 'fabricante' => 'Fabricante',
+                'distribuidor' => 'Distribuidor',
                 'cantidad_total' => 'Cantidad total',
                 'estado' => 'Estado',
             ];
@@ -87,7 +97,7 @@ class PedidoGlobalController extends Controller
 
     public function index(Request $request)
     {
-        $query = PedidoGlobal::with(['fabricante', 'pedidos']);
+        $query = PedidoGlobal::with(['fabricante', 'distribuidor', 'pedidos']);
 
         // Aplicar filtros
         $this->aplicarFiltrosPedidosGlobales($query, $request);
@@ -100,13 +110,15 @@ class PedidoGlobalController extends Controller
         $ordenables = [
             'codigo' => $this->getOrdenamientoPedidosGlobales('codigo', 'Código'),
             'fabricante' => $this->getOrdenamientoPedidosGlobales('fabricante', 'Fabricante'),
+            'distribuidor' => $this->getOrdenamientoPedidosGlobales('distribuidor', 'Distribuidor'),
             'cantidad_total' => $this->getOrdenamientoPedidosGlobales('cantidad_total', 'Cantidad total'),
             'estado' => $this->getOrdenamientoPedidosGlobales('estado', 'Estado'),
         ];
 
         $fabricantes = Fabricante::select('id', 'nombre')->get();
+        $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
-        return view('pedidos_globales.index', compact('pedidosGlobales', 'filtrosActivos', 'ordenables', 'fabricantes'));
+        return view('pedidos_globales.index', compact('pedidosGlobales', 'filtrosActivos', 'ordenables', 'fabricantes', 'distribuidores'));
     }
 
     // Mostrar formulario de creación
@@ -123,6 +135,7 @@ class PedidoGlobalController extends Controller
             $validated = $request->validate([
                 'cantidad_total' => 'required|numeric|min:0',
                 'fabricante_id' => 'nullable|exists:fabricantes,id',
+                'distribuidor_id' => 'nullable|exists:distribuidores,id',
             ]);
 
             // Crear nuevo pedido global
@@ -130,6 +143,7 @@ class PedidoGlobalController extends Controller
             $pedidoGlobal->codigo = PedidoGlobal::generarCodigo();
             $pedidoGlobal->cantidad_total = $validated['cantidad_total'];
             $pedidoGlobal->fabricante_id = $validated['fabricante_id'];
+            $pedidoGlobal->distribuidor_id = $validated['distribuidor_id'] ?? null; // Asignar distribuidor si existe
             $pedidoGlobal->estado = 'pendiente';
             $pedidoGlobal->save();
 

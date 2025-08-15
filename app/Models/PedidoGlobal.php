@@ -75,6 +75,10 @@ class PedidoGlobal extends Model
     {
         return $this->belongsTo(Fabricante::class, 'fabricante_id');
     }
+    public function distribuidor()
+    {
+        return $this->belongsTo(Distribuidor::class, 'distribuidor_id');
+    }
 
     // Accesor para calcular la cantidad restante
     public function getCantidadRestanteAttribute()
