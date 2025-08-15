@@ -174,42 +174,49 @@ class PlanificacionController extends Controller
     private function getEventosSalidas(Carbon $startDate, Carbon $endDate)
     {
         $salidas = Salida::with([
-            'salidaClientes.obra:id,obra',
+            // añade cod_obra aquí 👇
+            'salidaClientes.obra:id,obra,cod_obra',
             'salidaClientes.cliente:id,empresa',
             'paquetes.planilla.user',
-            'empresaTransporte:id,nombre'
-        ])->whereBetween('fecha_salida', [$startDate, $endDate])->get();
+            'empresaTransporte:id,nombre',
+            'camion:id,modelo', // si usas $salida->camion->modelo
+        ])
+            ->whereBetween('fecha_salida', [$startDate, $endDate])
+            ->get();
 
         return $salidas->flatMap(function ($salida) {
-            $empresa = optional($salida->empresaTransporte)->nombre;
-            $camion = optional($salida->camion)->modelo;
-            $pesoTotal = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
+            $empresa    = optional($salida->empresaTransporte)->nombre;
+            $camion     = optional($salida->camion)->modelo;
+            $pesoTotal  = round($salida->paquetes->sum(fn($p) => optional($p->planilla)->peso_total ?? 0), 0);
             $fechaInicio = Carbon::parse($salida->fecha_salida);
-            $fechaFin = $fechaInicio->copy()->addHours(3);
-            $color = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
+            $fechaFin   = $fechaInicio->copy()->addHours(3);
+            $color      = $salida->estado === 'completada' ? '#4CAF50' : '#3B82F6';
 
             return $salida->salidaClientes->map(function ($relacion) use ($salida, $empresa, $camion, $pesoTotal, $fechaInicio, $fechaFin, $color) {
                 $obra = $relacion->obra;
+
                 return [
-                    'title' => "{$salida->codigo_salida} - {$obra->obra} - {$pesoTotal} kg",
-                    'id' => $salida->id . '-' . $obra->id,
-                    'start' => $fechaInicio->toDateTimeString(),
-                    'end' => $fechaFin->toDateTimeString(),
-                    'resourceId' => (string) $obra->id,
-                    'tipo' => 'salida',
+                    'title'        => "{$salida->codigo_salida} - {$obra->obra} - {$pesoTotal} kg",
+                    'id'           => $salida->id . '-' . $obra->id,
+                    'start'        => $fechaInicio->toDateTimeString(),
+                    'end'          => $fechaFin->toDateTimeString(),
+                    'resourceId'   => (string) $obra->id,
+                    'tipo'         => 'salida',
                     'backgroundColor' => $color,
-                    'borderColor' => $color,
+                    'borderColor'     => $color,
                     'extendedProps' => [
-                        'cod_obra' => $obra->cod_obra,
-                        'empresa' => $empresa,
-                        'camion' => $camion,
-                        'tipo' => 'salida',
-                        'comentario' => $salida->comentario,
+                        'tipo'         => 'salida',
+                        'cod_obra'     => $obra->cod_obra,   // <- ahora sí existe
+                        'nombre_obra'  => $obra->obra,       // <- para buscar por nombre
+                        'empresa'      => $empresa,
+                        'camion'       => $camion,
+                        'comentario'   => $salida->comentario,
                     ],
                 ];
             });
         });
     }
+
     /**
      * Obtiene los eventos de planillas agrupados por obra y día.
      * @param Carbon $startDate
