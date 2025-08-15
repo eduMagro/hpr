@@ -1060,6 +1060,7 @@ class PlanillaController extends Controller
             $last = $log ? $log[array_key_last($log)] : null;
 
             Log::error('❌ Error al importar planillas', [
+                'archivo'  => $nombreArchivo,
                 'mensaje'    => $e->getMessage(),
                 'linea'      => $e->getLine(),
                 'archivo'    => $e->getFile(),
@@ -1098,17 +1099,40 @@ class PlanillaController extends Controller
             $file         = $request->file('archivo');
             $importedData = Excel::toArray([], $file);
             $firstSheet   = $importedData[0] ?? [];
+            $nombreArchivo = $file->getClientOriginalName();
 
             if (empty($firstSheet)) {
-                throw new \Exception('El archivo está vacío o no contiene datos válidos.');
+                throw new \Exception("{$nombreArchivo} - El archivo está vacío o no contiene datos válidos.");
             }
 
             // Separar cabecera y filas
             $headers      = $firstSheet[0] ?? [];
-            $rows         = array_filter(array_slice($firstSheet, 1), fn($r) => array_filter($r));
+            $filasErrorPesoOmitidas = 0;
+            $filasAvInvalidas       = 0;
+
+            $rows = array_values(array_filter(array_slice($firstSheet, 1), function ($row) use (&$filasErrorPesoOmitidas, &$filasAvInvalidas) {
+                if (!array_filter($row)) return false;
+
+                // Columna AD (29)
+                $colAD = $row[29] ?? '';
+                if (stripos($colAD, 'error de peso') !== false) {
+                    $filasErrorPesoOmitidas++;
+                    return false;
+                }
+
+                // Columna AV (47)
+                $colAV = trim((string)($row[47] ?? ''));
+                if ($colAV === '' || str_starts_with($colAV, ';')) {
+                    $filasAvInvalidas++;
+                    return false;
+                }
+
+                return true;
+            }));
+
 
             if (!$rows) {
-                throw new \Exception('El archivo no tiene filas de datos.');
+                throw new \Exception("{$nombreArchivo} - El archivo no tiene filas de datos.");
             }
 
             /* ─────────────────────────────
@@ -1297,17 +1321,25 @@ class PlanillaController extends Controller
             if ($advertencias) {
                 $msg .= ' ⚠️ ' . implode(' | ', $advertencias);
             }
+            if ($filasErrorPesoOmitidas > 0) {
+                $msg .= " ⚠️ Filas omitidas por 'error de peso': {$filasErrorPesoOmitidas}.";
+            }
+            if ($filasAvInvalidas > 0) {
+                $msg .= " ⚠️ Filas omitidas por columna AV vacía o inválida: {$filasAvInvalidas}.";
+            }
 
             return back()->with('success', $msg);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('❌ Error al reimportar planilla', [
                 'planilla' => $planilla->codigo,
+                'archivo'  => $nombreArchivo,
                 'msg'      => $e->getMessage(),
                 'line'     => $e->getLine(),
                 'file'     => $e->getFile(),
                 'trace'    => $e->getTraceAsString(),
             ]);
+
             return back()->with('error', $e->getMessage());
         }
     }
