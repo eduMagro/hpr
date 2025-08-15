@@ -200,6 +200,7 @@ class PlanificacionController extends Controller
                     'backgroundColor' => $color,
                     'borderColor' => $color,
                     'extendedProps' => [
+                        'cod_obra' => $obra->cod_obra,
                         'empresa' => $empresa,
                         'camion' => $camion,
                         'tipo' => 'salida',
@@ -228,7 +229,10 @@ class PlanificacionController extends Controller
             return $p->obra_id . '|' . Carbon::parse($p->getRawOriginal('fecha_estimada_entrega'))->toDateString();
         })->map(function ($grupo) {
             $obraId = $grupo->first()->obra_id;
-            $nombreObra = optional($grupo->first()->obra)->obra ?? 'Obra desconocida';
+            $obra = $grupo->first()->obra;
+            $nombreObra = optional($obra)->obra ?? 'Obra desconocida';
+            $codObra = optional($obra)->cod_obra ?? 'Código desconocido';
+
 
             $fechaInicio = Carbon::parse($grupo->first()->getRawOriginal('fecha_estimada_entrega'))->setTime(6, 0, 0);
 
@@ -269,7 +273,7 @@ class PlanificacionController extends Controller
             })->get();
 
             return [
-                'title' => $nombreObra,
+                'title' => $codObra . ' - ' . $nombreObra,
                 'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
                 'start' => $fechaInicio->toIso8601String(),
                 'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
@@ -280,6 +284,8 @@ class PlanificacionController extends Controller
                 'tipo' => 'planilla',
                 'extendedProps' => [
                     'tipo' => 'planilla',
+                    'cod_obra' => $codObra,
+                    'nombre_obra'  => $nombreObra,
                     'pesoTotal' => $grupo->sum(fn($p) => $p->peso_total ?? 0),
                     'longitudTotal' => $grupo->flatMap->elementos->sum(fn($e) => ($e->longitud ?? 0) * ($e->barras ?? 0)),
                     'planillas_ids' => $planillasIds,

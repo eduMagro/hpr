@@ -7,8 +7,30 @@
         <!-- Contenedor del Calendario -->
         <div class="w-full bg-white">
             <div class="mb-6 flex flex-col md:flex-row gap-4 justify-center">
+                <!-- Filtro por código de obra -->
+                <div class="flex items-center gap-2">
+                    <label for="filtro-obra" class="text-sm text-gray-700">Filtrar por:</label>
+                    <input id="filtro-obra" type="text" placeholder="Código de obra"
+                        class="border rounded px-2 py-1 text-sm w-32" autocomplete="off" />
+                    <input id="filtro-nombre-obra" type="text" placeholder="Nombre de obra"
+                        class="border rounded px-2 py-1 text-sm w-64" autocomplete="off" />
+
+                    {{-- ♻️ Botón reset --}}
+                    <button type="button"
+                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
+                        id="btn-reset-filtros" title="Restablecer filtros">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M4 4v5h.582M20 20v-5h-.581M4.582 9A7.5 7.5 0 0112 4.5a7.5 7.5 0 016.418 3.418M19.418 15A7.5 7.5 0 0112 19.5a7.5 7.5 0 01-6.418-3.418" />
+                        </svg>
+                    </button>
+
+                </div>
+
                 <!-- Resumen Semanal -->
                 <div class="max-w-sm bg-blue-50 border border-blue-200 rounded-md p-3 shadow-sm text-sm">
+
                     <h3 class="text-base font-semibold text-blue-700 mb-1 text-center">
                         Resumen semanal <span id="resumen-semanal-fecha" class="text-gray-600 text-sm"></span>
                     </h3>

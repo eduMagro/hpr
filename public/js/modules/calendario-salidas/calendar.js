@@ -213,10 +213,49 @@ export function crearCalendario() {
                 return { html };
             },
 
-            eventDidMount: (info) => {
-                configurarTooltipsYMenus(info, calendar);
-                attachEventoContextMenu(info, calendar); // ← menú SOLO aquí
-                safeUpdateSize?.();
+            eventDidMount: function (info) {
+                // lee filtros actuales (código y nombre)
+                const fCod = (
+                    document.getElementById("filtro-obra")?.value || ""
+                )
+                    .trim()
+                    .toLowerCase();
+                const fNom = (
+                    document.getElementById("filtro-nombre-obra")?.value || ""
+                )
+                    .trim()
+                    .toLowerCase();
+
+                // aplica solo si hay algún filtro
+                if (fCod || fNom) {
+                    const cod = (info.event.extendedProps?.cod_obra || "")
+                        .toString()
+                        .toLowerCase();
+                    // usa extendedProps.nombre_obra; si no llega, cae a title
+                    const nom = (
+                        info.event.extendedProps?.nombre_obra ||
+                        info.event.title ||
+                        ""
+                    )
+                        .toString()
+                        .toLowerCase();
+
+                    const coincide =
+                        (fCod && cod.includes(fCod)) ||
+                        (fNom && nom.includes(fNom));
+
+                    if (coincide) {
+                        info.el.classList.add("evento-filtrado");
+                    }
+                }
+
+                // tooltips + menú contextual
+                if (typeof configurarTooltipsYMenus === "function") {
+                    configurarTooltipsYMenus(info, calendar);
+                }
+                if (typeof attachEventoContextMenu === "function") {
+                    attachEventoContextMenu(info, calendar);
+                }
             },
 
             // eventClick: (info) => {
