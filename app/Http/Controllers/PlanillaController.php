@@ -700,6 +700,7 @@ class PlanillaController extends Controller
             $planillasOmitidas   = [];
             $advertencias        = [];
             $file = $request->file('file');
+            $nombreArchivo = $file->getClientOriginalName();
             $DmPermitido = [5, 8, 10, 12, 16, 20, 25, 32];
             // NO lanzar excepción en avisos de no-numérico: solo añadir advertencia y continuar
             set_error_handler(function ($sev, $msg, $file, $line) use (&$advertencias, &$__numCtx) {
@@ -715,21 +716,44 @@ class PlanillaController extends Controller
             $invalids = $this->scanXlsxForInvalidNumeric($file->getRealPath());
             if (!empty($invalids)) {
                 $detalles = collect($invalids)->map(fn($i) => "{$i['cell']} → '{$i['value']}'")->implode(', ');
-                $nombreArchivo = $file->getClientOriginalName();
+
                 throw new \Exception("{$nombreArchivo} - El Excel contiene celdas marcadas como numéricas con valor inválido: {$detalles}. Corrige esas celdas (pon número válido o cambia el tipo de celda a Texto) y vuelve a importar.");
             }
 
             // Lectura con fila-controlada
             $firstSheet = $this->leerPrimeraHojaConFila($file);
 
-            // quitar cabecera, filtrar vacías, reindexar
-            $body         = array_slice($firstSheet, 1);
-            $filteredData = array_values(array_filter($body, fn($row) => array_filter($row)));
+            // CON ESTE CODIGO QUITAMOS LAS FILAS QUE PONE ERROR DE PESO EN LA COLUMNA AD
+            $body = array_slice($firstSheet, 1);
+
+            $filasErrorPesoOmitidas = 0;
+            $filasAvInvalidas       = 0;
+
+            $filteredData = array_values(array_filter($body, function ($row) use (&$filasErrorPesoOmitidas, &$filasAvInvalidas) {
+                if (!array_filter($row)) return false;
+
+                // Columna AD = 29
+                $colAD = $row[29] ?? '';
+                if (stripos($colAD, 'error de peso') !== false) {
+                    $filasErrorPesoOmitidas++;
+                    return false;
+                }
+
+                // Columna AV = 47
+                $colAV = trim((string)($row[47] ?? ''));
+                if ($colAV === '' || str_starts_with($colAV, ';')) {
+                    $filasAvInvalidas++;
+                    return false;
+                }
+
+                return true;
+            }));
+
 
             if (!$filteredData) {
-                throw new \Exception('El archivo está vacío o no contiene filas válidas.');
-            }
 
+                throw new \Exception("{$nombreArchivo} - El archivo está vacío o no contiene filas válidas.");
+            }
             // anotar nº de fila de Excel (cabecera = 1 ⇒ +2)
             foreach ($filteredData as $i => &$row) {
                 $row['_xl_row'] = $i + 2;
@@ -1017,6 +1041,12 @@ class PlanillaController extends Controller
             }
             if (!empty($advertencias)) {
                 $mensaje .= ' ⚠️ ' . implode('⚠️', $advertencias);
+            }
+            if ($filasErrorPesoOmitidas > 0) {
+                $mensaje .= " ⚠️ Filas omitidas por 'error de peso': {$filasErrorPesoOmitidas}.";
+            }
+            if ($filasAvInvalidas > 0) {
+                $mensaje .= " ⚠️ Filas omitidas por columna AV vacía o inválida: {$filasAvInvalidas}.";
             }
 
             return redirect()->route('planillas.index')->with('success', $mensaje);
