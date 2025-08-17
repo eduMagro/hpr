@@ -71,6 +71,7 @@ class VerificarAccesoSeccion
             'vacaciones.solicitar',
             'salidas.actualizarEstado',
             'usuarios.editarSubirImagen',
+            'usuarios.imagen',
 
         ];
 
