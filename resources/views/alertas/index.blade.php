@@ -21,20 +21,19 @@
                     <button @click="mostrarModal = false"
                         class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">✖</button>
                     <h2 class="text-lg font-semibold mb-4">📢 Enviar Mensaje</h2>
-                    <form method="POST" action="{{ route('alertas.store') }}" enctype="multipart/form-data" x-data="{ cargando: false }"
-                        @submit="cargando = true">
+                    <form method="POST" action="{{ route('alertas.store') }}" enctype="multipart/form-data"
+                        x-data="{ cargando: false }" @submit="cargando = true">
                         @csrf
                         <div class="mb-4">
                             <label for="mensaje" class="block text-sm font-semibold">Mensaje:</label>
                             <textarea id="mensaje" name="mensaje" rows="3"
                                 class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
                         </div>
-<div class="mb-4">
-    <label for="imagen" class="block text-sm font-semibold">Imagen (opcional):</label>
-    <input type="file" id="imagen" name="imagen"
-           class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
-           accept="image/*">
-</div>
+                        <div class="mb-4">
+                            <label for="imagen" class="block text-sm font-semibold">Imagen (opcional):</label>
+                            <input type="file" id="imagen" name="imagen"
+                                class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" accept="image/*">
+                        </div>
 
                         @if (auth()->user()->rol === 'oficina')
                             <div class="mb-4">
@@ -186,7 +185,7 @@
             <table class="w-full min-w-[1000px] border border-gray-300 rounded-lg">
                 <thead class="bg-blue-500 text-white text-4">
                     <tr class="text-center text-xs uppercase">
-                      
+
                         <th class="p-2 border">{!! $ordenablesAlertas['user_id_1'] !!}</th>
                         <th class="p-2 border">{!! $ordenablesAlertas['user_id_2'] !!}</th>
                         <th class="p-2 border">{!! $ordenablesAlertas['destino'] !!}</th>
@@ -199,7 +198,7 @@
                     <tr class="text-center text-xs uppercase">
                         <form method="GET" action="{{ route('alertas.index') }}">
                             {{-- mantenemos paginación actual --}}
-                           
+
                             <th class="p-1 border">
                                 <x-tabla.input name="emisor" value="{{ request('emisor') }}" />
                             </th>
@@ -215,15 +214,10 @@
                             <th class="p-1 border">
                                 <x-tabla.input name="mensaje" value="{{ request('mensaje') }}" />
                             </th>
-<th class="p-1 border">
-    <x-tabla.select
-        name="tipo"
-        :options="$tiposAlerta"
-        :selected="request('tipo')"
-        empty="-- Todos --"
-        class="text-xs"
-    />
-</th>
+                            <th class="p-1 border">
+                                <x-tabla.select name="tipo" :options="$tiposAlerta" :selected="request('tipo')" empty="-- Todos --"
+                                    class="text-xs" />
+                            </th>
 
 
 
@@ -242,7 +236,7 @@
                     @forelse ($todasLasAlertas as $alerta)
                         <tr
                             class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 text-xs leading-none uppercase">
-                           
+
                             <td class="p-2 text-center border">{{ $alerta->usuario1?->nombre_completo ?? '—' }}</td>
                             <td class="p-2 text-center border">
                                 {{ $alerta->usuario2?->nombre_completo ?? '—' }}
@@ -371,7 +365,7 @@
                 data.append('_token', '{{ csrf_token() }}');
                 data.append('alerta_ids[]', id);
 
-                fetch("{{ route('alertas.marcarLeidas') }}", {
+                fetch("{{ route('alertas.verMarcarLeidas') }}", {
                         method: 'POST',
                         body: data
                     })

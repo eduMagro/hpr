@@ -61,6 +61,7 @@ class VerificarAccesoSeccion
         $permitidosOperarioRutas = [
             'vacaciones.solicitar',
             'salidas.actualizarEstado',
+
             // puedes añadir más rutas sueltas aquí si lo necesitas
         ];
 
