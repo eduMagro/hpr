@@ -60,14 +60,21 @@
                                 </tr>
                                 <tr>
                                     <td style="padding: 6px 0;">
-                                        <strong>Fecha de entrega:</strong>
-                                        {{ \Carbon\Carbon::parse($pedido->fecha_entrega)->format('d/m/Y') }}
+                                        <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra ?? 'N/A' }}<br>
+                                        <strong>Dirección:</strong>
+                                        {{ $pedido->obra->direccion ?? 'No disponible' }}<br>
+
+                                        @if ($pedido->obra->latitud && $pedido->obra->longitud)
+                                            <strong>Ubicación:</strong>
+                                            <a href="https://www.google.com/maps/search/?api=1&query={{ $pedido->obra->latitud }},{{ $pedido->obra->longitud }}"
+                                                target="_blank" style="color: #2563eb; text-decoration: underline;">
+                                                Ver en Google Maps
+                                            </a>
+                                        @else
+                                            <strong>Ubicación:</strong> Coordenadas no disponibles
+                                        @endif
                                     </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 6px 0;">
-                                        <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra ?? 'N/A' }}
-                                    </td>
+
                                 </tr>
                             </table>
 
@@ -81,8 +88,11 @@
                                         </th>
                                         <th style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">
                                             Cantidad (kg)</th>
+                                        <th style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">Fecha
+                                            entrega</th>
                                     </tr>
                                 </thead>
+
                                 <tbody>
                                     @foreach ($pedido->productos as $producto)
                                         <tr style="background-color: #f9fafb;">
@@ -95,8 +105,12 @@
                                             <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">
                                                 {{ number_format($producto->pivot->cantidad, 2, ',', '.') }}
                                             </td>
+                                            <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">
+                                                {{ \Carbon\Carbon::parse($producto->pivot->fecha_estimada_entrega)->format('d/m/Y') }}
+                                            </td>
                                         </tr>
                                     @endforeach
+
                                 </tbody>
                             </table>
 

@@ -145,8 +145,11 @@ class PedidoController extends Controller
         }
 
         if ($request->filled('fecha_entrega')) {
-            $query->whereDate('fecha_entrega', $request->fecha_entrega);
+            $query->whereHas('productos', function ($q) use ($request) {
+                $q->whereDate('pedido_productos.fecha_estimada_entrega', $request->fecha_entrega);
+            });
         }
+
 
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
