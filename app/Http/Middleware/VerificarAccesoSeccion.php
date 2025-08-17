@@ -22,7 +22,8 @@ class VerificarAccesoSeccion
         if (in_array($user->email, [
             'eduardo.magro@pacoreyes.com',
             'sebastian.duran@pacoreyes.com',
-            'juanjose.dorado@pacoreyes.com'
+            'juanjose.dorado@pacoreyes.com',
+            'josemanuel.amuedo@pacoreyes.com',
         ])) {
             return $next($request);
         }
