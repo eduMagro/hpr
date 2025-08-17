@@ -269,7 +269,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::controller(PoliticaController::class)->group(function () {
         Route::get('/politica-privacidad', 'mostrarPrivacidad')->name('politica.privacidad');
         Route::get('/politica-cookies', 'mostrarCookies')->name('politica.cookies');
-        Route::post('/aceptar-politicas', 'aceptar')->name('politicas.aceptar');
+        Route::post('/aceptar-politicas', 'aceptar')->name('politicas.crearAceptar');
     });
     Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
 

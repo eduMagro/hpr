@@ -40,9 +40,17 @@
                         @endforeach
 
 
+
                     </div>
 
                 </div>
+
+            </div>
+            <div class="mt-8 text-center">
+                <a href="#" onclick="document.getElementById('modal-politicas').classList.remove('hidden')"
+                    class="text-sm text-blue-600 hover:underline">
+                    Políticas de privacidad y cookies
+                </a>
             </div>
         </div>
 
@@ -151,19 +159,23 @@
                 </div>
 
                 <!-- Checkboxes -->
-                <form method="POST" action="{{ route('politicas.aceptar') }}" class="space-y-4 mt-6">
+                <form method="POST" action="{{ route('politicas.crearAceptar') }}" class="space-y-4 mt-6">
                     @csrf
 
                     <div class="flex items-start space-x-2">
-                        <input type="checkbox" id="acepta_privacidad" name="acepta_privacidad" required class="mt-1">
-                        <label for="acepta_privacidad" class="text-sm text-gray-700">He leído y acepto la Política de
-                            Privacidad</label>
+                        <input type="checkbox" id="acepta_privacidad" name="acepta_privacidad"
+                            {{ auth()->user()->acepta_politica_privacidad ? 'checked' : '' }} required class="mt-1">
+                        <label for="acepta_privacidad" class="text-sm text-gray-700">
+                            He leído y acepto la Política de Privacidad
+                        </label>
                     </div>
 
                     <div class="flex items-start space-x-2">
-                        <input type="checkbox" id="acepta_cookies" name="acepta_cookies" required class="mt-1">
-                        <label for="acepta_cookies" class="text-sm text-gray-700">He leído y acepto la Política de
-                            Cookies</label>
+                        <input type="checkbox" id="acepta_cookies" name="acepta_cookies"
+                            {{ auth()->user()->acepta_politica_cookies ? 'checked' : '' }} required class="mt-1">
+                        <label for="acepta_cookies" class="text-sm text-gray-700">
+                            He leído y acepto la Política de Cookies
+                        </label>
                     </div>
 
                     <input type="hidden" name="ip_usuario" value="{{ request()->ip() }}">
