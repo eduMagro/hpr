@@ -664,19 +664,25 @@ class PedidoController extends Controller
                 return back()->withErrors(['fabricante_id' => 'Solo puedes seleccionar uno: fabricante o distribuidor.'])->withInput();
             }
 
-            // 🧾 Buscar pedido global (si hay fabricante)
             $pedidoGlobal = null;
+
             if ($request->fabricante_id) {
                 $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
                     ->whereIn('estado', ['pendiente', 'en curso'])
                     ->orderByRaw("FIELD(estado, 'en curso', 'pendiente')")
                     ->first();
-
-                if ($pedidoGlobal && $pedidoGlobal->estado === 'pendiente') {
-                    $pedidoGlobal->estado = 'en curso';
-                    $pedidoGlobal->save();
-                }
+            } elseif ($request->distribuidor_id) {
+                $pedidoGlobal = PedidoGlobal::where('distribuidor_id', $request->distribuidor_id)
+                    ->whereIn('estado', ['pendiente', 'en curso'])
+                    ->orderByRaw("FIELD(estado, 'en curso', 'pendiente')")
+                    ->first();
             }
+
+            if ($pedidoGlobal && $pedidoGlobal->estado === 'pendiente') {
+                $pedidoGlobal->estado = 'en curso';
+                $pedidoGlobal->save();
+            }
+
 
             // 📝 Crear pedido principal
             $pedido = Pedido::create([

@@ -126,7 +126,7 @@
                             <!-- Progreso (solo lectura) -->
                             <td class="p-2 border">
                                 <div class="w-full bg-gray-200 rounded-full h-4">
-                                    <div class="bg-blue-600 h-4 rounded-full text-white text-[10px] text-center"
+                                    <div class="bg-green-400 h-4 text-white rounded-full text-[10px] text-center"
                                         style="width: {{ $pedido->progreso }}%">
                                         {{ $pedido->progreso }}%
                                     </div>

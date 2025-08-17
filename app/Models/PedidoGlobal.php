@@ -94,8 +94,8 @@ class PedidoGlobal extends Model
     public function entradas()
     {
         return $this->hasManyThrough(
-            \App\Models\Entrada::class,   // Modelo destino
-            \App\Models\Pedido::class,    // Modelo intermedio
+            Entrada::class,   // Modelo destino
+            Pedido::class,    // Modelo intermedio
             'pedido_global_id',           // Foreign key en pedidos
             'pedido_id',                  // Foreign key en entradas
             'id',                         // Local key en pedido_global
@@ -110,6 +110,12 @@ class PedidoGlobal extends Model
             return 0;
         }
 
-        return round(($this->cantidad_acumulada / $this->cantidad_total) * 100, 2);
+        $acumulado = Pedido::where(function ($q) {
+            $q->where('pedido_global_id', $this->id)
+                ->orWhere('fabricante_id', $this->fabricante_id)
+                ->orWhere('distribuidor_id', $this->distribuidor_id);
+        })->sum('peso_total');
+
+        return round(($acumulado / $this->cantidad_total) * 100, 2);
     }
 }
