@@ -110,11 +110,7 @@ class PedidoGlobal extends Model
             return 0;
         }
 
-        $acumulado = Pedido::where(function ($q) {
-            $q->where('pedido_global_id', $this->id)
-                ->orWhere('fabricante_id', $this->fabricante_id)
-                ->orWhere('distribuidor_id', $this->distribuidor_id);
-        })->sum('peso_total');
+        $acumulado = $this->pedidos()->sum('peso_total');
 
         return round(($acumulado / $this->cantidad_total) * 100, 2);
     }
