@@ -17,7 +17,7 @@
 @endphp
 
 {{-- Filtro por fechas dentro del componente --}}
-<form method="GET" action="{{ route('estadisticas.consumo-maquinas') }}#consumo-maquinas"
+<form method="GET" action="{{ route('estadisticas.verConsumo-maquinas') }}#consumo-maquinas"
     class="mb-4 flex flex-wrap items-end gap-4 text-sm">
 
     <div>
@@ -52,7 +52,7 @@
         </button>
 
         <!-- Botón reset -->
-        <a href="{{ route('estadisticas.consumo-maquinas') }}#consumo-maquinas"
+        <a href="{{ route('estadisticas.verConsumo-maquinas') }}#consumo-maquinas"
             class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs flex items-center justify-center"
             title="Restablecer filtros">
 

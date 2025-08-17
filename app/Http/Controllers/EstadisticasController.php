@@ -219,7 +219,7 @@ class EstadisticasController extends Controller
     public function index()
     {
         // Por si alguien entra en /estadisticas sin sub-ruta
-        return redirect()->route('estadisticas.stock');
+        return redirect()->route('estadisticas.verStock');
     }
 
     // ---------------------------------------------------------------- Funciones para calcular peso suministrado a obras

@@ -29,10 +29,10 @@
             class="absolute z-30 mt-0 w-1/2 bg-white border {{ $colores['borde'] }} rounded-b-lg shadow-xl overflow-hidden divide-y {{ $colores['borde'] }}"
             x-cloak>
             @foreach ([
-        'estadisticas.stock' => '📦 Stock',
-        'estadisticas.obras' => '🏗️ Peso Obras',
-        'estadisticas.tecnicosDespiece' => '👷 Técnicos de Despiece',
-        'estadisticas.consumo-maquinas' => '⚙️ Consumo Máquinas',
+        'estadisticas.verStock' => '📦 Stock',
+        'estadisticas.verObras' => '🏗️ Peso Obras',
+        'estadisticas.verTecnicosDespiece' => '👷 Técnicos de Despiece',
+        'estadisticas.verConsumo-maquinas' => '⚙️ Consumo Máquinas',
     ] as $ruta => $titulo)
                 <a href="{{ route($ruta) }}"
                     class="block px-2 py-3 text-sm font-medium transition 
@@ -48,10 +48,10 @@
     <!-- Menú escritorio -->
     <div class="hidden sm:flex w-full mb-4">
         @foreach ([
-        'estadisticas.stock' => '📦 Stock',
-        'estadisticas.obras' => '🏗️ Peso Obras',
-        'estadisticas.tecnicosDespiece' => '👷 Técnicos de Despiece',
-        'estadisticas.consumo-maquinas' => '⚙️ Consumo Máquinas',
+        'estadisticas.verStock' => '📦 Stock',
+        'estadisticas.verObras' => '🏗️ Peso Obras',
+        'estadisticas.verTecnicosDespiece' => '👷 Técnicos de Despiece',
+        'estadisticas.verConsumo-maquinas' => '⚙️ Consumo Máquinas',
     ] as $ruta => $titulo)
             <a href="{{ route($ruta) }}"
                 class="flex-1 text-center px-4 py-2 font-semibold transition
