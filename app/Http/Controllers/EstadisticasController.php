@@ -66,7 +66,7 @@ class EstadisticasController extends Controller
             return $redir;
         }
 
-        $modo = $request->input('modo', 'dia'); // puede ser: dia, mes, anio, origen
+        $modo = $request->input('modo', 'mes'); // puede ser: dia, mes, anio, origen
 
         $pesoPorUsuario       = $this->getPesoPorPlanillero(); // total acumulado
         $pesoAgrupado         = $this->getPesoPorPlanilleroAgrupado($modo);
