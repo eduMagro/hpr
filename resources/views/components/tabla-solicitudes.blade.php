@@ -20,7 +20,7 @@
                         <td class="px-4 py-2">{{ $solicitud->fecha_inicio }}</td>
                         <td class="px-4 py-2">{{ $solicitud->fecha_fin }}</td>
                         <td class="px-4 py-2">
-                            <form action="{{ route('vacaciones.aprobar', $solicitud->id) }}" method="POST"
+                            <form action="{{ route('vacaciones.editarAprobar', $solicitud->id) }}" method="POST"
                                 class="inline">
                                 @csrf
                                 <button type="submit"
@@ -28,7 +28,7 @@
                                     ✅ Aprobar
                                 </button>
                             </form>
-                            <form action="{{ route('vacaciones.denegar', $solicitud->id) }}" method="POST"
+                            <form action="{{ route('vacaciones.editarDenegar', $solicitud->id) }}" method="POST"
                                 class="inline ml-2">
                                 @csrf
                                 <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">

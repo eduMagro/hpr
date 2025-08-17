@@ -169,21 +169,20 @@
 
 
                 eventDrop: async function(info) {
-                    const planillaId = info.event.id.replace('planilla-', '');
+                    const planillaId = info.event.id.split('-')[1];
                     const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
 
                     const maquinaOrigenId = info.oldResource?.id ?? info.event.getResources()[0]?.id;
                     const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
-                    const maquinaId = info.newResource?.id ?? info.event.getResources()[0]
-                        ?.id; // ⚠️ Aquí definimos máquina
-                    /* 1️⃣  Solo permitimos mover dentro de la misma máquina */
+
+                    // 1️⃣ Solo permitimos mover dentro de la misma máquina
                     if (maquinaOrigenId !== maquinaDestinoId) {
                         alert('Solo puedes reordenar dentro de la misma máquina.');
                         info.revert();
                         return;
                     }
 
-                    // 👉 Confirmación con SweetAlert2
+                    // 2️⃣ Confirmación con SweetAlert2
                     const resultado = await Swal.fire({
                         title: '¿Reordenar planilla?',
                         html: `¿Quieres reordenar la planilla <strong>${codigoPlanilla}</strong>?`,
@@ -199,20 +198,22 @@
                         info.revert();
                         return;
                     }
-                    /* 3️⃣  Calcular la nueva posición (1, 2, 3, …) dentro de la máquina */
+
+                    // 3️⃣ Calcular nueva posición en la máquina
                     const eventosOrdenados = calendar.getEvents()
                         .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
                         .sort((a, b) => a.start - b.start);
 
-                    const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) +
-                        1; // +1 porque el índice arranca en 0
+                    const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
 
-                    /* 4️⃣  Llamar al backend */
+                    // 4️⃣ Llamada al backend
                     try {
                         const res = await fetch('/planillas/reordenar', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
                                 'X-CSRF-TOKEN': document.querySelector(
                                     'meta[name="csrf-token"]').content
                             },
@@ -223,21 +224,30 @@
                             })
                         });
 
-                        const data = await res.json();
-                        if (!res.ok || !data.success) {
-                            throw new Error(data.message || 'Error al reordenar');
+                        const text = await res.text();
+                        let data;
+
+                        try {
+                            data = JSON.parse(text);
+                        } catch (jsonError) {
+                            throw new Error('❌ El servidor no devolvió JSON válido:\n\n' + text);
                         }
 
-                        // ✅ 5️⃣ Reemplazar los eventos en el calendario sin recargar
-                        calendar.removeAllEvents();
-                        calendar.addEventSource(data
-                            .eventos); // 👈 aquí vienen ordenados desde tu backend
+                        if (!res.ok || !data.success) {
+                            throw new Error(data.message || '❌ Error al reordenar');
+                        }
 
+                        calendar.removeAllEvents();
+                        calendar.addEventSource(data.eventos);
 
                     } catch (e) {
-                        // Si algo falla, revertimos el drag & drop y mostramos mensaje
-                        console.error(e);
-                        alert(e.message || 'No se pudo reordenar la planilla.');
+                        console.error('Error en respuesta:', e);
+                        Swal.fire({
+                            title: 'Error',
+                            html: `<pre style="white-space:pre-wrap;text-align:left;">${e.message}</pre>`,
+                            icon: 'error'
+                        });
+
                         info.revert();
                     }
                 },
@@ -247,13 +257,13 @@
                     const tooltip = document.createElement('div');
                     tooltip.className = 'fc-tooltip';
                     tooltip.innerHTML = `
-        <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
-            <strong>${info.event.title}</strong><br>
-            Obra: ${props.obra}<br>
-            Estado producción: ${props.estado}<br>
-            Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
-            Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>
-        </div>`;
+                    <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
+                        <strong>${info.event.title}</strong><br>
+                        Obra: ${props.obra}<br>
+                        Estado producción: ${props.estado}<br>
+                        Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
+                        Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>
+                    </div>`;
                     tooltip.style.position = 'absolute';
                     tooltip.style.zIndex = 9999;
                     tooltip.style.display = 'none';
@@ -394,6 +404,7 @@
                     });
 
                     const text = await res.text();
+
                     if (!res.ok) throw new Error(text);
 
                     const data = JSON.parse(text);
@@ -419,8 +430,12 @@
                     }
 
                 } catch (e) {
-                    console.error('Respuesta no válida:', e);
-                    alert(`❌ Error: ${e.message}`);
+                    console.error('Error en respuesta:', e);
+                    Swal.fire({
+                        title: 'Error',
+                        html: `<pre style="white-space:pre-wrap;text-align:left;">${e.message}</pre>`,
+                        icon: 'error'
+                    });
                 }
             });
         });

@@ -21,7 +21,7 @@
 
     <script>
         function actualizarResumenAsistencia() {
-            fetch("{{ route('users.resumen-asistencia', ['user' => $user->id]) }}")
+            fetch("{{ route('users.verResumen-asistencia', ['user' => $user->id]) }}")
                 .then(response => {
                     if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                     return response.json();
@@ -314,7 +314,7 @@
                     localStorage.setItem('ultimaVistaCalendario', calendar.view.type);
                 },
 
-                events: '{{ route('users.eventos-turnos', $user->id) }}'
+                events: '{{ route('users.verEventos-turnos', $user->id) }}'
             });
 
             // // ✅ Función para actualizar solo fichajes

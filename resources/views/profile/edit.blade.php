@@ -66,7 +66,7 @@
                         </div>
 
                         <form id="form-despedir-usuario" method="POST"
-                            action="{{ route('usuarios.despedir', $user) }}">
+                            action="{{ route('usuarios.editarDespedir', $user) }}">
                             @csrf
                             <button type="button" onclick="confirmarDespido()"
                                 class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded mt-3">

@@ -4,19 +4,31 @@
     <div class="w-full px-6 py-4">
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
             <!-- Formulario de importación -->
-            <form method="POST" action="{{ route('planillas.import') }}" enctype="multipart/form-data"
-                x-data="{ cargando: false }" x-on:submit="cargando = true" class="form-cargando flex items-center gap-2">
+            <!-- Formulario de importación -->
+            <form method="POST" action="{{ route('planillas.crearImport') }}" enctype="multipart/form-data"
+                x-data="{ cargando: false }" x-on:submit="cargando = true" x-init="$watch('cargando', value => document.body.style.cursor = value ? 'wait' : 'default')"
+                class="form-cargando flex items-center gap-2 relative">
+
                 @csrf
 
                 {{-- Campo de archivo --}}
                 <x-tabla.input type="file" name="file" id="file" class="file:mr-2" />
 
-                {{-- Botón importar --}}
-                <form x-data="{ cargando: false }" @submit="cargando = true">
-                    <x-boton-submit texto="Importar" color="blue" :cargando="true" />
-                </form>
+                {{-- Botón --}}
+                <x-boton-submit texto="Importar" color="blue" />
 
+                {{-- Overlay bloqueante --}}
+                <div x-show="cargando" x-transition.opacity class="fixed inset-0 bg-black/0 z-50" style="cursor: wait"
+                    x-cloak></div>
             </form>
+
+            <style>
+                .cursor-espera * {
+                    cursor: wait !important;
+                    pointer-events: none !important;
+                }
+            </style>
+
             <form action="{{ route('planillas.completarTodas') }}" method="POST"
                 onsubmit="return confirm('¿Completar todas las planillas pendientes?');">
                 @csrf

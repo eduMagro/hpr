@@ -141,7 +141,7 @@
     </table>
     @isset($esVistaPrevia)
         <div style="position: absolute; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px;">
-            <form action="{{ route('pedidos.enviarCorreo', $pedido->id) }}" method="POST">
+            <form action="{{ route('pedidos.crearEnviarCorreo', $pedido->id) }}" method="POST">
                 @csrf
                 <!-- CC input aquí || DESCOMENTAR SI QUIERES ELEGIR LOS CC MANUALMENTE-->
                 {{-- <div style="margin-bottom: 12px;">

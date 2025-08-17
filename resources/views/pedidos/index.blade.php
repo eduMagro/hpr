@@ -144,7 +144,7 @@
 
                                                 @if ($estado === 'activo')
                                                     <form method="POST"
-                                                        action="{{ route('pedidos.lineas.desactivar', [$pedido->id, $linea['id']]) }}">
+                                                        action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea['id']]) }}">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit"
@@ -154,7 +154,7 @@
                                                     </form>
                                                 @else
                                                     <form method="POST"
-                                                        action="{{ route('pedidos.lineas.activar', [$pedido->id, $linea['id']]) }}">
+                                                        action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
                                                         @csrf
                                                         @method('PUT')
                                                         <button type="submit"
@@ -353,7 +353,7 @@
                                     </div>
                                     <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
                                     <div class="mt-2">
-                                        <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
+                                        <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}"
                                             class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
                                             Recepcionar
                                         </a>
@@ -500,14 +500,14 @@
         function confirmarActivacion(pedidoId, productoId) {
             if (!confirm('¿Estás seguro de activar esta línea?')) return;
 
-            enviarFormularioDinamico('pedidos.lineas.activar', 'PUT', pedidoId,
+            enviarFormularioDinamico('pedidos.lineas.editarActivar', 'PUT', pedidoId,
                 productoId);
         }
 
         function confirmarDesactivacion(pedidoId, productoId) {
             if (!confirm('¿Estás seguro de desactivar esta línea?')) return;
 
-            enviarFormularioDinamico('pedidos.lineas.desactivar', 'DELETE', pedidoId,
+            enviarFormularioDinamico('pedidos.lineas.editarDesactivar', 'DELETE', pedidoId,
                 productoId);
         }
 

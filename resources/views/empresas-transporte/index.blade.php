@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="title">Transporte - {{ config('app.name') }}</x-slot>
- <x-menu.salidas />
+    <x-menu.salidas />
 
     <div x-data="{ openEmpresaModal: false, openCamionModal: false }" class="container mx-auto p-6">
 
@@ -186,8 +186,8 @@
                     }
 
                     // Envía la actualización al servidor vía fetch (ajusta la URL y el método según tu API)
-                    fetch('/update-field', {
-                            method: 'POST', // o PUT según la configuración de tu ruta
+                    fetch("{{ route('empresas-transporte.editarField') }}", {
+                            method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',
@@ -202,28 +202,33 @@
                         })
                         .then(response => response.json())
                         .then(data => {
+                            console.log('Respuesta del backend:', data);
                             if (data.success) {
-                                console.log(
-                                    `Campo ${field} del registro ${id} actualizado correctamente.`
-                                );
-                                document.addEventListener("DOMContentLoaded", function() {
-                                    Swal.fire({
-                                        icon: 'success',
-                                        text: '{{ session('success') }}',
-                                        confirmButtonColor: '#28a745'
-                                    }).then(() => {
-                                        window.location
-                                    .reload(); // Recarga la página tras el mensaje
-                                    });
+                                Swal.fire({
+                                    icon: 'success',
+                                    text: data.message ||
+                                        'Campo actualizado correctamente.',
+                                    confirmButtonColor: '#28a745'
+                                }).then(() => {
+                                    window.location.reload(); // ✅ CORRECTO
                                 });
                             } else {
-                                console.error('Error al actualizar:', data.error);
-                                // Aquí podrías notificar al usuario mediante SweetAlert u otra herramienta.
+                                console.error('Error al actualizar:', data.error ||
+                                    'Respuesta sin éxito');
+                                Swal.fire({
+                                    icon: 'error',
+                                    text: data.error || 'Error al actualizar el campo.',
+                                });
                             }
                         })
                         .catch(error => {
                             console.error('Error en la solicitud:', error);
+                            Swal.fire({
+                                icon: 'error',
+                                text: 'Error en la solicitud. Revisa la consola.',
+                            });
                         });
+
                 });
             });
         });

@@ -70,8 +70,8 @@
                 'totales' => url('/planificacion/totales'), // GET ?fecha=YYYY-MM-DD
                 'salidasCreate' => route('salidas.create'),
                 // 📅 nuevas rutas para cambiar fechas de entrega
-                'informacionPlanillas' => route('planillas.informacionMasiva'), // GET ?ids=1,2,3
-                'actualizarFechasPlanillas' => route('planillas.actualizarFechasMasiva'), // PUT JSON
+                'informacionPlanillas' => route('planillas.editarInformacionMasiva'), // GET ?ids=1,2,3
+                'actualizarFechasPlanillas' => route('planillas.editarActualizarFechasMasiva'), // PUT JSON
             ],
             'camiones' => $camiones ?? [],
             // si quieres precargar eventos/resources por servidor, podrías añadirlos aquí:
@@ -101,7 +101,7 @@
 
         // 3) Asegura que routes existe y añade solo la nueva clave
         window.AppSalidas.routes = window.AppSalidas.routes || {};
-        window.AppSalidas.routes.codigoSage = @json(route('salidas.codigoSage', ['salida' => '__ID__']));
+        window.AppSalidas.routes.codigoSage = @json(route('salidas.editarCodigoSage', ['salida' => '__ID__']));
 
         // (opcional) deja activado el nuevo menú sin romper nada
         window.AppSalidas.useNewMenu = true;

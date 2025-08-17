@@ -15,7 +15,7 @@
                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition cursor-pointer">
                 ➕ Nueva Ubicación
             </a>
-            <a href="{{ route('ubicaciones.inventario') }}"
+            <a href="{{ route('ubicaciones.verInventario') }}"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow transition cursor-pointer">
                 📦 Inventario
             </a>

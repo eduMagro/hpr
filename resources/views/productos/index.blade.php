@@ -20,7 +20,7 @@
                 <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
                     <h2 class="text-xl font-semibold mb-4">Generar y exportar códigos</h2>
 
-                    <form action="{{ route('productos.generar.exportar') }}" method="POST" class="space-y-4">
+                    <form action="{{ route('productos.generar.crearExportar') }}" method="POST" class="space-y-4">
                         @csrf
 
                         <div>
@@ -269,8 +269,8 @@
                                         </a>
 
                                         {{-- ② Icono compacto --}}
-                                        <a href="{{ route('productos.consumir', $producto->id) }}"
-                                            data-consumir="{{ route('productos.consumir', $producto->id) }}"
+                                        <a href="{{ route('productos.editarConsumir', $producto->id) }}"
+                                            data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
                                             class="btn-consumir w-6 h-6 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center"
                                             title="Consumir">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
@@ -413,8 +413,8 @@
                                         Mover
                                     </a>
 
-                                    <a href="{{ route('productos.consumir', $producto->id) }}"
-                                        data-consumir="{{ route('productos.consumir', $producto->id) }}"
+                                    <a href="{{ route('productos.editarConsumir', $producto->id) }}"
+                                        data-consumir="{{ route('productos.editarConsumir', $producto->id) }}"
                                         class="btn-consumir flex-1 bg-red-500 hover:bg-red-600 text-white text-center text-sm font-semibold py-2 px-2 rounded shadow">
                                         Consumir
                                     </a>

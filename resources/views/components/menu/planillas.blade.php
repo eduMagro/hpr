@@ -1,7 +1,7 @@
 @php
     // 🔗 Aquí defines todos los enlaces una sola vez
     $links = [
-        ['route' => 'produccion.maquinas', 'label' => 'Planificación Planillas'],
+        ['route' => 'produccion.verMaquinas', 'label' => 'Planificación Planillas'],
         ['route' => 'planillas.index', 'label' => '📄 Planillas'],
         ['route' => 'paquetes.index', 'label' => '📦 Paquetes'],
         ['route' => 'etiquetas.index', 'label' => '🏷️ Etiquetas'],

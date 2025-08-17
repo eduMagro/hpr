@@ -285,7 +285,7 @@ class ProductoController extends Controller
         return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial'));
     }
 
-    public function generarYExportar(Request $request)
+    public function GenerarYExportar(Request $request)
     {
         $cantidad = intval($request->input('cantidad', 1));
         $anio = now()->format('y'); // Año en dos dígitos

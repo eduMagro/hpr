@@ -48,7 +48,7 @@
                                     class="text-blue-500 hover:underline ml-2">
                                     Ver
                                 </button>
-                                <form action="{{ route('salidas.quitarPaquete', [$salida->id, $paquete->id]) }}"
+                                <form action="{{ route('salidas.editarQuitarPaquete', [$salida->id, $paquete->id]) }}"
                                     method="POST" class="ml-4">
                                     @csrf
                                     @method('DELETE')

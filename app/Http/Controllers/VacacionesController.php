@@ -12,6 +12,9 @@ use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class VacacionesController extends Controller
 {
@@ -156,30 +159,77 @@ class VacacionesController extends Controller
     }
     public function store(Request $request)
     {
-        $request->validate([
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio'
-        ]);
-
-        VacacionesSolicitud::create([
-            'user_id' => auth()->id(),
-            'fecha_inicio' => $request->fecha_inicio,
-            'fecha_fin' => $request->fecha_fin,
-            'estado' => 'pendiente'
-        ]);
-        $rrhh = User::where('email', 'josemanuel.amuedo@pacoreyes.com')->first();
-        if ($rrhh) {
-            Alerta::create([
-                'user_id_1' => auth()->id(),
-                'destinatario_id' => $rrhh->id,
-                'mensaje' => auth()->user()->name . ' ha solicitado vacaciones del ' .
-                    $request->fecha_inicio . ' al ' . $request->fecha_fin,
-                    'tipo'            => 'vacaciones',
-                'created_at' => now(),
-                'updated_at' => now()
+        try {
+            // 1) Validación (si falla lanza ValidationException con 422 automáticamente)
+            $validated = $request->validate([
+                'fecha_inicio' => 'required|date',
+                'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
             ]);
+
+            // 2) Crear la solicitud dentro de una transacción
+            $solicitud = DB::transaction(function () use ($validated) {
+                return \App\Models\VacacionesSolicitud::create([
+                    'user_id'      => auth()->id(),
+                    'fecha_inicio' => $validated['fecha_inicio'],
+                    'fecha_fin'    => $validated['fecha_fin'],
+                    'estado'       => 'pendiente',
+                ]);
+            });
+
+            // 3) Intentar crear la alerta a RRHH fuera de la transacción
+            $alertaEnviada = false;
+            try {
+                $rrhh = \App\Models\User::where('email', 'josemanuel.amuedo@pacoreyes.com')->first();
+
+                if ($rrhh) {
+                    \App\Models\Alerta::create([
+                        'user_id_1'      => auth()->id(),
+                        'destinatario_id' => $rrhh->id,
+                        'mensaje'        => auth()->user()->name . ' ha solicitado vacaciones del ' .
+                            $validated['fecha_inicio'] . ' al ' . $validated['fecha_fin'],
+                        'tipo'           => 'vacaciones',
+                        'created_at'     => now(),
+                        'updated_at'     => now(),
+                    ]);
+                    $alertaEnviada = true;
+                } else {
+                    Log::warning('RRHH no encontrado para alerta de vacaciones.', [
+                        'email_rrhh' => 'josemanuel.amuedo@pacoreyes.com',
+                        'user_id'    => auth()->id(),
+                        'solicitud_id' => $solicitud->id ?? null,
+                    ]);
+                }
+            } catch (Throwable $e) {
+                // No rompemos la solicitud si falla la alerta
+                Log::warning('Fallo creando la alerta de RRHH para vacaciones.', [
+                    'error'        => $e->getMessage(),
+                    'user_id'      => auth()->id(),
+                    'solicitud_id' => $solicitud->id ?? null,
+                ]);
+            }
+
+            // 4) Respuesta OK
+            return response()->json([
+                'success'        => 'Solicitud registrada correctamente.',
+                'solicitud_id'   => $solicitud->id,
+                'alerta_enviada' => $alertaEnviada,
+            ], 201);
+        } catch (ValidationException $e) {
+            // Dejamos que Laravel responda 422 con los errores de validación
+            throw $e;
+        } catch (Throwable $e) {
+            // Cualquier otro error inesperado
+            Log::error('Error al registrar la solicitud de vacaciones.', [
+                'error'   => $e->getMessage(),
+                'trace'   => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+                'payload' => $request->only(['fecha_inicio', 'fecha_fin']),
+            ]);
+
+            return response()->json([
+                'error' => 'No se pudo registrar la solicitud. Inténtalo de nuevo más tarde.',
+            ], 500);
         }
-        return response()->json(['success' => 'Solicitud registrada correctamente.']);
     }
     public function aprobar($id)
     {

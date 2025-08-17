@@ -84,7 +84,7 @@
 
                             <th class="p-1 border"></th>
 
-                            <x-tabla.botones-filtro ruta="users.index" rutaExportar="usuarios.exportar" />
+                            <x-tabla.botones-filtro ruta="users.index" rutaExportar="users.verExportar" />
 
                         </form>
                     </tr>
@@ -401,21 +401,21 @@
                                 })
                                 .then(data => {
                                     if (data.success) {
-                                        Swal.fire("✅ Solicitud enviada", data.success,
+                                        Swal.fire("Solicitud enviada", data.success,
                                             "success").then(() => location.reload());
                                     } else {
-                                        Swal.fire("❌ Error", data.error ||
+                                        Swal.fire("Error", data.error ||
                                             "Error inesperado", "error");
                                     }
                                 })
                                 .catch(err => {
-                                    Swal.fire("❌ Error", err.message, "error");
+                                    Swal.fire("Error", err.message, "error");
                                 });
                         }
                     });
                 },
                 editable: false,
-                events: '{{ route('users.eventos-turnos', $user->id) }}'
+                events: '{{ route('users.verEventos-turnos', $user->id) }}'
             });
 
             calendar.render();
@@ -510,7 +510,7 @@
 
 
         function guardarCambios(usuario) {
-            fetch(`{{ route('usuarios.actualizar', '') }}/${usuario.id}`, {
+            fetch(`{{ route('usuarios.updateActualizar', '') }}/${usuario.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

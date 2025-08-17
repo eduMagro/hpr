@@ -23,8 +23,8 @@
         ['route' => 'register', 'label' => '📋 Registrar Usuario'],
         ['route' => 'vacaciones.index', 'label' => '🌴 Vacaciones'],
         ['route' => 'asignaciones-turnos.index', 'label' => '⏱️ Registros Entrada y Salida'],
-        ['route' => 'produccion.trabajadores', 'label' => '⏱️ Planificación Trabajadores'],
-        ['route' => 'produccion.trabajadoresObra', 'label' => '⏱️ Planificación Trabajadores OBRA'],
+        ['route' => 'produccion.verTrabajadores', 'label' => '⏱️ Planificación Trabajadores'],
+        ['route' => 'produccion.verTrabajadoresObra', 'label' => '⏱️ Planificación Trabajadores OBRA'],
     ];
 @endphp
 

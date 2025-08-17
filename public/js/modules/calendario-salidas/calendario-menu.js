@@ -85,7 +85,7 @@ async function crearSalida(planillasIds, calendar) {
         );
         const data = await res.json();
         await Swal.fire(
-            data.success ? "✅" : "⚠️",
+            data.success ? "" : "",
             data.message ||
                 (data.success ? "Salida creada" : "No se pudo crear"),
             data.success ? "success" : "warning"
@@ -96,7 +96,7 @@ async function crearSalida(planillasIds, calendar) {
         }
     } catch (err) {
         console.error(err);
-        Swal.fire("❌", "Hubo un problema al crear la salida.", "error");
+        Swal.fire("", "Hubo un problema al crear la salida.", "error");
     }
 }
 
@@ -127,7 +127,7 @@ async function comentarSalida(salidaId, comentarioActual, calendar) {
         });
         const data = await res.json();
         await Swal.fire(
-            data.success ? "✅" : "⚠️",
+            data.success ? "" : "⚠️",
             data.message ||
                 (data.success ? "Comentario guardado" : "No se pudo guardar"),
             data.success ? "success" : "warning"
@@ -135,7 +135,7 @@ async function comentarSalida(salidaId, comentarioActual, calendar) {
         if (data.success && calendar) calendar.refetchEvents();
     } catch (err) {
         console.error(err);
-        Swal.fire("❌", "Ocurrió un error al guardar", "error");
+        Swal.fire("", "Ocurrió un error al guardar", "error");
     }
 }
 
@@ -186,7 +186,7 @@ async function asignarCodigoSalida(salidaId, codigoActual = "", calendar) {
         }
         const data = await res.json().catch(() => ({}));
         await Swal.fire(
-            data.success ? "✅" : "⚠️",
+            data.success ? "" : "⚠️",
             data.message ||
                 (data.success ? "Código SAGE asignado" : "No se pudo asignar"),
             data.success ? "success" : "warning"
@@ -197,7 +197,7 @@ async function asignarCodigoSalida(salidaId, codigoActual = "", calendar) {
         }
     } catch (err) {
         console.error(err);
-        Swal.fire("❌", "Ocurrió un error al guardar el código.", "error");
+        Swal.fire("", "Ocurrió un error al guardar el código.", "error");
     }
 }
 

@@ -758,10 +758,23 @@ class ProduccionController extends Controller
     public function reordenarPlanillas(Request $request)
     {
         $request->validate([
-            'id'            => 'required|integer|exists:planillas,id',
-            'maquina_id'    => 'required|integer|exists:maquinas,id',
+            'id'             => 'required|integer|exists:planillas,id',
+            'maquina_id'     => 'required|integer|exists:maquinas,id',
             'nueva_posicion' => 'required|integer|min:1',
+        ], [
+            'id.required'             => 'El ID de la planilla es obligatorio.',
+            'id.integer'              => 'El ID de la planilla debe ser un número entero.',
+            'id.exists'               => 'La planilla seleccionada no existe en la base de datos.',
+
+            'maquina_id.required'     => 'Debes indicar la máquina.',
+            'maquina_id.integer'      => 'El ID de la máquina debe ser un número entero.',
+            'maquina_id.exists'       => 'La máquina seleccionada no existe en la base de datos.',
+
+            'nueva_posicion.required' => 'Debes indicar la nueva posición.',
+            'nueva_posicion.integer'  => 'La nueva posición debe ser un número entero.',
+            'nueva_posicion.min'      => 'La posición mínima válida es 1.',
         ]);
+
 
         try {
             DB::transaction(function () use ($request) {
@@ -866,12 +879,18 @@ class ProduccionController extends Controller
 
             return response()->json([
                 'success' => true,
-                'eventos' => $planillasEventos
+                'message' => 'Planilla reordenada correctamente.',
+                'eventos' => $planillasEventos,
             ]);
         } catch (\Exception $e) {
+            Log::error('Error al reordenar planilla: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'user_id' => auth()->id(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Error: ' . $e->getMessage(),
             ], 422);
         }
     }

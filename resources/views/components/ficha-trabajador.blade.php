@@ -17,7 +17,7 @@
             @endif
 
             <!-- Botón cambiar foto sobre la imagen -->
-            <form method="POST" action="{{ route('usuario.subirImagen') }}" enctype="multipart/form-data"
+            <form method="POST" action="{{ route('usuario.editarSubirImagen') }}" enctype="multipart/form-data"
                 class="absolute bottom-0 right-0">
                 @csrf
                 <label

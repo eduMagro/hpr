@@ -17,46 +17,68 @@ class VerificarAccesoSeccion
     {
         $user = Auth::user();
         if (!$user) abort(403, 'No autenticado.');
-        // ✅ Acceso total para Eduardo
-        if ($user->email === 'eduardo.magro@pacoreyes.com' || $user->email === 'sebastian.duran@pacoreyes.com' || $user->email === 'juanjose.dorado@pacoreyes.com') {
+
+        // ✅ Acceso total para admins
+        if (in_array($user->email, [
+            'eduardo.magro@pacoreyes.com',
+            // 'sebastian.duran@pacoreyes.com',
+            'juanjose.dorado@pacoreyes.com'
+        ])) {
             return $next($request);
         }
+
         $rutaActual = $request->route()->getName(); // ej: departamentos.edit
-        // ✅ Permitir acceso libre a la ruta de perfil
+
+        // ✅ Permitir acceso libre al perfil
         if (in_array($rutaActual, ['perfil.show', 'perfil.index'])) {
             return $next($request);
         }
 
-        $seccionBase = Str::before($rutaActual, '.'); // ej: departamentos
-
+        $seccionBase = Str::before($rutaActual, '.');
         $esOperario = $user->rol === 'operario';
-        $esOficina = $user->rol === 'oficina';
+        $esOficina  = $user->rol === 'oficina';
 
         $departamentoAdmin = Departamento::where('nombre', 'Administrador')->first();
         $sinUsuariosAdmin = !$departamentoAdmin || !$departamentoAdmin->usuarios()->exists();
-
         $sinSeccionesAsignadas = Seccion::whereDoesntHave('departamentos')->count() === Seccion::count();
-        //Si aun no hemos denominado administrados o no hay secciones asignadas a ningun departamento tendremos acceso a todo, porque estara en desarrollo la app.
+
+        // Si aún no hay configuración de permisos, permitir todo
         if ($sinUsuariosAdmin || $sinSeccionesAsignadas) {
             return $next($request);
         }
-        // Log::info('✅ Ruta actual: ' . $rutaActual);
-        // Log::info('✅ Usuario: ' . $user->name . ' | Rol: ' . $user->rol);
 
-        // Permitir solo ciertas rutas a operarios
-        $permitidosOperario = ['maquinas.', 'productos.', 'users.', 'alertas.', 'entradas.', 'pedidos.', 'movimientos.'];
+        // ✅ Permitir solo rutas concretas a operarios
+        $permitidosOperarioPrefix = [
+            'maquinas.',
+            'productos.',
+            'users.',
+            'alertas.',
+            'entradas.',
+            'pedidos.',
+            'movimientos.'
+        ];
 
-        if ($esOperario && !Str::startsWith($rutaActual, $permitidosOperario)) {
+        $permitidosOperarioRutas = [
+            'vacaciones.solicitar',
+            'salidas.actualizarEstado',
+            // puedes añadir más rutas sueltas aquí si lo necesitas
+        ];
+
+        if (
+            $esOperario &&
+            !Str::startsWith($rutaActual, $permitidosOperarioPrefix) &&
+            !in_array($rutaActual, $permitidosOperarioRutas)
+        ) {
             Log::info('🚫 Ruta denegada para operario: ' . $rutaActual);
             abort(403, 'Operario sin acceso.');
         }
 
 
         if ($esOficina) {
-            $rutaCompleta = $request->route()->getName(); // ej: usuarios.edit
-            $accion = Str::afterLast($rutaCompleta, '.'); // ej: 'edit', 'index', 'create', 'destroy'
+            $accion = Str::afterLast($rutaActual, '.');
+            $accion = strtolower($accion);
 
-            $seccionBase = Str::before($rutaCompleta, '.');
+            $seccionBase = Str::before($rutaActual, '.');
 
             $seccion = Seccion::whereRaw('LOWER(ruta) LIKE ?', [strtolower($seccionBase) . '.%'])->first();
             if (!$seccion) abort(403, 'Sección no registrada.');
@@ -66,25 +88,62 @@ class VerificarAccesoSeccion
                 ->get();
 
             if ($permisos->isEmpty()) {
-                // Dentro de acceso.seccion, antes de abortar:
-                Log::debug('permiso a chequear', [
-                    'permiso' => $permisos,
-                    'route'   => $request->route()->getName(),
+                Log::debug('Sin permisos asignados para la sección', [
+                    'user' => $user->email,
+                    'seccion' => $seccion->ruta,
+                    'ruta' => $rutaActual,
                 ]);
                 abort(403, 'No tienes permisos asignados para esta sección.');
             }
 
+            /**
+             * Clasificación automática de acciones según el nombre de la ruta:
+             * - puede_ver:     'index', 'show' o empieza por 'ver'
+             * - puede_crear:   'create', 'store' o empieza por 'crear'
+             * - puede_editar:  'edit', 'update', 'destroy' o empieza por 'editar'
+             */
+
             $autorizado = false;
-            $accionesVer    = ['index', 'show'];
-            $accionesCrear  = ['create', 'store'];
-            $accionesEditar = ['edit', 'update', 'destroy', 'consumir', 'duplicar', 'liberar']; // ← añade aquí
+
             foreach ($permisos as $permiso) {
-                if (in_array($accion, $accionesVer)   && $permiso->puede_ver)    $autorizado = true;
-                if (in_array($accion, $accionesCrear) && $permiso->puede_crear)  $autorizado = true;
-                if (in_array($accion, $accionesEditar) && $permiso->puede_editar) $autorizado = true;
+                if (
+                    in_array($accion, ['index', 'show']) ||
+                    Str::startsWith($accion, 'ver')
+                ) {
+                    if ($permiso->puede_ver) {
+                        $autorizado = true;
+                        break;
+                    }
+                }
+
+                if (
+                    in_array($accion, ['create', 'store']) ||
+                    Str::startsWith($accion, 'crear')
+                ) {
+                    if ($permiso->puede_crear) {
+                        $autorizado = true;
+                        break;
+                    }
+                }
+
+                if (
+                    in_array($accion, ['edit', 'update', 'destroy']) ||
+                    Str::startsWith($accion, 'editar')
+                ) {
+                    if ($permiso->puede_editar) {
+                        $autorizado = true;
+                        break;
+                    }
+                }
             }
 
             if (!$autorizado) {
+                Log::warning('❌ Acción no autorizada', [
+                    'user' => $user->email,
+                    'ruta' => $rutaActual,
+                    'accion' => $accion,
+                    'seccion' => $seccionBase
+                ]);
                 abort(403, 'No tienes permisos suficientes para esta acción.');
             }
         }
