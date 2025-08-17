@@ -21,7 +21,7 @@ class VerificarAccesoSeccion
         // ✅ Acceso total para admins
         if (in_array($user->email, [
             'eduardo.magro@pacoreyes.com',
-            // 'sebastian.duran@pacoreyes.com',
+            'sebastian.duran@pacoreyes.com',
             'juanjose.dorado@pacoreyes.com'
         ])) {
             return $next($request);
@@ -55,7 +55,8 @@ class VerificarAccesoSeccion
             'alertas.',
             'entradas.',
             'pedidos.',
-            'movimientos.'
+            'movimientos.',
+            'politicas.'
         ];
 
         $permitidosOperarioRutas = [

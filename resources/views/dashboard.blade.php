@@ -151,7 +151,7 @@
                 </div>
 
                 <!-- Checkboxes -->
-                <form method="POST" action="{{ route('aceptar.politicas') }}" class="space-y-4 mt-6">
+                <form method="POST" action="{{ route('politicas.aceptar') }}" class="space-y-4 mt-6">
                     @csrf
 
                     <div class="flex items-start space-x-2">
