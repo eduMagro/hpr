@@ -112,7 +112,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/users/{user}/eventos-turnos', [ProfileController::class, 'eventosTurnos'])->name('users.verEventos-turnos');
     Route::post('/usuarios/{user}/cerrar-sesiones', [ProfileController::class, 'cerrarSesionesDeUsuario'])->name('usuarios.cerrarSesiones');
     Route::post('/usuarios/{user}/despedir', [ProfileController::class, 'despedirUsuario'])->name('usuarios.editarDespedir');
-    Route::post('/usuario/subir-imagen', [ProfileController::class, 'subirImagen'])->name('usuario.editarSubirImagen');
+    Route::post('/usuario/subir-imagen', [ProfileController::class, 'subirImagen'])->name('usuarios.editarSubirImagen');
     Route::get('/perfil/imagen/{nombre}', function ($nombre) {
         $path = storage_path("app/public/perfiles/{$nombre}");
 
