@@ -126,9 +126,8 @@ class EntradaController extends Controller
             $fabricantes = Fabricante::select('id', 'nombre')->get();
             $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
-            // Obtener las entradas paginadas, ordenadas por fecha de creación
-            $entradas = $query->orderBy('created_at', 'desc')->paginate(10);
-
+            $perPage = $request->input('per_page', 10);
+            $entradas = $query->paginate($perPage)->appends($request->all());
             // Devolver la vista con las entradas
             return view('entradas.index', compact('entradas', 'fabricantes', 'filtrosActivos'));
         } catch (ValidationException $e) {
