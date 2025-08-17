@@ -78,6 +78,110 @@ class EstadisticasController extends Controller
         ));
     }
 
+    private function getPesoPorPlanillero()
+    {
+        return Planilla::where('estado', 'pendiente')
+            ->with('user:id,name,primer_apellido,segundo_apellido')          // ⬅️  cargamos todo lo que necesita el accessor
+            ->select('users_id', DB::raw('SUM(peso_total) AS peso_importado'))
+            ->groupBy('users_id')
+            ->get()
+            ->map(function ($planilla) {
+                return (object) [
+                    'users_id'       => $planilla->users_id,
+                    'nombre_completo' => optional($planilla->user)->nombre_completo, // accessor
+                    'peso_importado' => $planilla->peso_importado,
+                ];
+            });
+    }
+
+    private function getPesoPorPlanilleroAgrupado(string $modo = 'mes')
+    {
+        $query = Planilla::query()
+            ->where('estado', 'pendiente')
+            ->with('user:id,name,primer_apellido,segundo_apellido');
+
+        $hoy = now();
+
+        switch ($modo) {
+            case 'dia':
+                // Últimos 7 días (ajusta a lo que necesites)
+                $filtroInicio = $hoy->copy()->startOfDay()->subDays(6);
+                $filtroFin    = $hoy->copy()->endOfDay();
+                $campoFecha   = DB::raw('DATE(created_at) AS periodo');
+                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
+
+                $rangos = collect(CarbonPeriod::create($filtroInicio, '1 day', $filtroFin))
+                    ->map(fn($f) => $f->format('Y-m-d'));
+                $groupBy = ['users_id', 'periodo'];
+                break;
+
+            case 'mes':
+                // Mes actual por día
+                $filtroInicio = $hoy->copy()->startOfMonth();
+                $filtroFin    = $hoy->copy()->endOfMonth();
+                $campoFecha   = DB::raw('DATE(created_at) AS periodo');
+                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
+
+                $rangos = collect(CarbonPeriod::create($filtroInicio, '1 day', $filtroFin))
+                    ->map(fn($f) => $f->format('Y-m-d'));
+                $groupBy = ['users_id', 'periodo'];
+                break;
+
+            case 'anio':
+                // Año actual por mes
+                $filtroInicio = $hoy->copy()->startOfYear();
+                $filtroFin    = $hoy->copy()->endOfYear();
+                // Ojo con el formato: debe casar con labels
+                $campoFecha   = DB::raw('DATE_FORMAT(created_at, "%Y-%m") AS periodo');
+                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
+
+                $rangos = collect(CarbonPeriod::create($filtroInicio, '1 month', $filtroFin))
+                    ->map(fn($f) => $f->format('Y-m'));
+                $groupBy = ['users_id', 'periodo'];
+                break;
+
+            case 'origen':
+            default:
+                // Un único periodo "origen" (ejemplo)
+                $campoFecha = DB::raw('"origen" AS periodo');
+                $rangos     = collect(['origen']);
+                $groupBy    = ['users_id', 'periodo'];
+                break;
+        }
+
+        $datos = $query->select('users_id', $campoFecha, DB::raw('SUM(peso_total) AS peso_importado'))
+            ->groupBy(...$groupBy)
+            ->orderBy('periodo', 'asc')
+            ->get();
+
+        // Saca lista única de usuarios presentes en los datos
+        $planilleros = $datos->pluck('user')->filter()->unique('id')->values();
+
+        // Construcción de series (con acumulado)
+        $series = $planilleros->map(function ($usuario) use ($datos, $rangos) {
+            // Filtra los registros de este usuario y los indexa por 'periodo'
+            $datosUsuario = $datos->where('users_id', $usuario->id)->keyBy('periodo');
+
+            $acumulado = 0;
+            $data = $rangos->map(function ($periodo) use (&$acumulado, $datosUsuario) {
+                $fila = $datosUsuario->get($periodo);
+                $peso = $fila ? (float) $fila->peso_importado : 0.0;
+                $acumulado += $peso;
+                return $acumulado;
+            });
+
+            return [
+                'name' => $usuario->nombre_completo,
+                'data' => $data->toArray(),
+            ];
+        });
+
+        return [
+            'labels' => $rangos->toArray(),
+            'series' => $series->toArray(),
+        ];
+    }
+
     /* ─────────────────────── Panel CONSUMO MÁQUINAS ───────────────── */
 
     public function consumoMaquinas(Request $request)
@@ -137,92 +241,6 @@ class EstadisticasController extends Controller
                 return $salidaPaquete->paquete->peso;
             });
         });
-    }
-
-    // ---------------------------------------------------------------- Estadisticas de planilleros
-    private function getPesoPorPlanillero()
-    {
-        return Planilla::where('estado', 'pendiente')
-            ->with('user:id,name,primer_apellido,segundo_apellido')          // ⬅️  cargamos todo lo que necesita el accessor
-            ->select('users_id', DB::raw('SUM(peso_total) AS peso_importado'))
-            ->groupBy('users_id')
-            ->get()
-            ->map(function ($planilla) {
-                return (object) [
-                    'users_id'       => $planilla->users_id,
-                    'nombre_completo' => optional($planilla->user)->nombre_completo, // accessor
-                    'peso_importado' => $planilla->peso_importado,
-                ];
-            });
-    }
-
-    private function getPesoPorPlanilleroAgrupado($modo = 'mes')
-    {
-        $query = Planilla::where('estado', 'pendiente')
-            ->with('user:id,name,primer_apellido,segundo_apellido');
-
-        switch ($modo) {
-            case 'mes':
-                $campoFecha = DB::raw('DATE(created_at) AS periodo'); // ahora por día
-                $filtroInicio = now()->startOfMonth();
-                $filtroFin = now()->endOfMonth();
-                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
-
-                $rangos = collect(CarbonPeriod::create($filtroInicio, '1 day', $filtroFin))
-                    ->map(fn($fecha) => $fecha->format('Y-m-d'));
-
-                $groupBy = ['users_id', 'periodo'];
-                break;
-
-
-            case 'anio':
-                $campoFecha = DB::raw('DATE_FORMAT(created_at, "%Y-%m") AS periodo');
-                $filtroInicio = now()->startOfYear();
-                $filtroFin = now()->endOfYear();
-                $query->whereBetween('created_at', [$filtroInicio, $filtroFin]);
-
-                $rangos = collect(CarbonPeriod::create($filtroInicio, '1 month', $filtroFin))
-                    ->map(fn($fecha) => $fecha->format('Y-m'));
-
-                $groupBy = ['users_id', 'periodo'];
-                break;
-
-            case 'origen':
-            default:
-                $campoFecha = DB::raw('"origen" AS periodo');
-                $rangos = collect(['origen']);
-                $groupBy = ['users_id'];
-                break;
-        }
-
-        $datos = $query->select('users_id', $campoFecha, DB::raw('SUM(peso_total) as peso_importado'))
-            ->groupBy(...$groupBy)
-            ->orderBy('periodo', 'asc')
-            ->get();
-
-        $planilleros = $datos->pluck('user')->unique('id')->filter()->values();
-
-        $series = $planilleros->map(function ($usuario) use ($datos, $rangos) {
-            $datosUsuario = $datos->where('users_id', $usuario->id)->keyBy('periodo');
-
-            $acumulado = 0;
-            $data = $rangos->map(function ($periodo) use (&$acumulado, $datosUsuario) {
-                $peso = $datosUsuario[$periodo]->peso_importado ?? 0;
-                $acumulado += $peso;
-                return $acumulado;
-            });
-
-            return [
-                'name' => $usuario->nombre_completo,
-                'data' => $data->toArray(),
-            ];
-        });
-
-
-        return [
-            'labels' => $rangos->toArray(),
-            'series' => $series->toArray(),
-        ];
     }
 
     // ---------------------------------------------------------------- consumo de materia prima / maquina
