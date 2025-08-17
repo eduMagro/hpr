@@ -121,8 +121,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         }
 
         return response()->file($path); // envía con Content-Type correcto
-    })->name('perfil.imagen');
-    Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('perfil.show');
+    })->name('usuarios.imagen');
+    Route::get('/mi-perfil/{user}', [PerfilController::class, 'show'])->name('usuarios.show');
     Route::resource('vacaciones', VacacionesController::class);
     Route::post('/vacaciones/solicitar', [VacacionesController::class, 'store'])->name('vacaciones.solicitar');
     Route::post('/vacaciones/{id}/aprobar', [VacacionesController::class, 'aprobar'])->name('vacaciones.editarAprobar');
@@ -235,7 +235,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === OBRAS ===
     Route::resource('obras', ObraController::class);
     Route::post('/obras/actualizar-tipo', [ObraController::class, 'updateTipo'])->name('obras.updateTipo');
-    Route::get('/asignaciones-turno/eventos-obra', [ProduccionController::class, 'eventosObra'])->name('asignaciones-turno.eventosObra');
+    Route::get('/asignaciones-turno/eventos-obra', [ProduccionController::class, 'eventosObra'])->name('asignaciones-turnos.verEventosObra');
 
     // === NOMINAS Y FISCALIDAD ===
     Route::resource('empresas', EmpresaController::class);
@@ -269,7 +269,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::controller(PoliticaController::class)->group(function () {
         Route::get('/politica-privacidad', 'mostrarPrivacidad')->name('politica.privacidad');
         Route::get('/politica-cookies', 'mostrarCookies')->name('politica.cookies');
-        Route::post('/aceptar-politicas', 'aceptar')->name('politicas.crearAceptar');
+        Route::post('/aceptar-politicas', 'aceptar')->name('politicas.aceptar');
     });
     Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
 

@@ -75,7 +75,7 @@ class User extends Authenticatable
     public function getRutaImagenAttribute()
     {
         return $this->imagen
-            ? route('perfil.imagen', $this->imagen)
+            ? route('usuarios.imagen', $this->imagen)
             : null;
     }
 

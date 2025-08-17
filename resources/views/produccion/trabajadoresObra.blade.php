@@ -277,10 +277,10 @@
                     });
                 },
                 events: {
-                    url: '{{ route('asignaciones-turno.eventosObra') }}',
+                    url: '{{ route('asignaciones-turnos.verEventosObra') }}',
                     method: 'GET',
                     failure: function() {
-                        Swal.fire('❌ Error al cargar eventos');
+                        Swal.fire('Error al cargar eventos');
                     }
                 },
                 eventClick(info) {

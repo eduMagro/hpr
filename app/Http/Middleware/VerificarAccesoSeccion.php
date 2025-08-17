@@ -27,10 +27,18 @@ class VerificarAccesoSeccion
             return $next($request);
         }
 
-        $rutaActual = $request->route()->getName(); // ej: departamentos.edit
+        $rutaActual = $request->route()?->getName() ?? '';
+        // ✅ Rutas públicas siempre accesibles
+        $rutasLibres = [
+            'politica.privacidad',
+            'politica.cookies',
+            'politicas.aceptar',
+            'ayuda.index',
+            'usuarios.show',
+            'usuarios.index',
+        ];
 
-        // ✅ Permitir acceso libre al perfil
-        if (in_array($rutaActual, ['perfil.show', 'perfil.index'])) {
+        if (in_array($rutaActual, $rutasLibres)) {
             return $next($request);
         }
 
@@ -63,9 +71,7 @@ class VerificarAccesoSeccion
             'vacaciones.solicitar',
             'salidas.actualizarEstado',
             'usuarios.editarSubirImagen',
-            'perfil.imagen',
 
-            // puedes añadir más rutas sueltas aquí si lo necesitas
         ];
 
         if (
