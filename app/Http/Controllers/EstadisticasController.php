@@ -101,8 +101,8 @@ class EstadisticasController extends Controller
     private function getPesoPorPlanilleroAgrupado(string $modo = 'mes')
     {
         $query = Planilla::query()
-            ->where('estado', 'pendiente')
             ->with('user:id,name,primer_apellido,segundo_apellido');
+
 
         $hoy = now();
         switch ($modo) {
