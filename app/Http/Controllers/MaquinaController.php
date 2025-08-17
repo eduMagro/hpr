@@ -54,7 +54,7 @@ class MaquinaController extends Controller
 
 
             if (!$asignacion) {
-                abort(403, 'No tienes ningún turno hoy.');
+                abort(403, 'No has fichado entrada');
             }
 
             $maquinaId = $asignacion->maquina_id;

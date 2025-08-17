@@ -29,11 +29,11 @@
                             <textarea id="mensaje" name="mensaje" rows="3"
                                 class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" required>{{ old('mensaje') }}</textarea>
                         </div>
-                        <div class="mb-4">
+                        {{-- <div class="mb-4">
                             <label for="imagen" class="block text-sm font-semibold">Imagen (opcional):</label>
                             <input type="file" id="imagen" name="imagen"
                                 class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" accept="image/*">
-                        </div>
+                        </div> --}}
 
                         @if (auth()->user()->rol === 'oficina')
                             <div class="mb-4">
