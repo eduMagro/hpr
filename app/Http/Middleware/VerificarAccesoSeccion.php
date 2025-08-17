@@ -62,6 +62,7 @@ class VerificarAccesoSeccion
             'vacaciones.solicitar',
             'salidas.actualizarEstado',
             'usuarios.editarSubirImagen',
+            'perfil.imagen',
 
             // puedes añadir más rutas sueltas aquí si lo necesitas
         ];
