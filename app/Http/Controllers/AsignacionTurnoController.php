@@ -899,6 +899,8 @@ class AsignacionTurnoController extends Controller
 
     public function destroy(Request $request)
     {
+        Log::debug('Request completo', $request->all());
+
         try {
             $request->validate([
                 'fecha_inicio' => 'required|date',
