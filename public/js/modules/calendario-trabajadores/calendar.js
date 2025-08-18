@@ -3,31 +3,45 @@ import { openCellMenu } from "./menu/cellMenu.js";
 import { openFestivoMenu } from "./menu/festivoMenu.js";
 import { openWorkerMenu } from "./menu/workerMenu.js";
 
+function getVistaValida(claveLocalStorage, vistasPermitidas, vistaDefault) {
+    const vista = localStorage.getItem(claveLocalStorage);
+    return vistasPermitidas.includes(vista) ? vista : vistaDefault;
+}
+
 export function initCalendar(domEl) {
     const { maquinas, eventos } = DATA();
 
-    const fechaGuardada = localStorage.getItem("fechaCalendario");
+    const VISTA_KEY = "vistaObras";
+    const FECHA_KEY = "fechaObras";
+
     const calendar = new FullCalendar.Calendar(domEl, {
         schedulerLicenseKey: "CC-Attribution-NonCommercial-NoDerivatives",
         locale: "es",
-        initialView:
-            localStorage.getItem("vistaObras") || "resourceTimelineWeek",
-        initialDate: localStorage.getItem("fechaObras") || undefined,
+        initialView: getVistaValida(
+            VISTA_KEY,
+            ["resourceTimelineDay", "resourceTimelineWeek"],
+            "resourceTimelineWeek"
+        ),
+        initialDate: localStorage.getItem(FECHA_KEY) || undefined,
         selectable: true,
         unselectAuto: true,
-        datesSet: function (info) {
+        datesSet(info) {
+            // Guardar vista y fecha válidas en localStorage
             localStorage.setItem("vistaObras", info.view.type);
             localStorage.setItem("fechaObras", info.startStr);
 
-            // Mostrar botón solo en vista semanal
+            // Mostrar botón solo en vista semanal (si el botón existe)
             const btn = document.getElementById("btnRepetirSemana");
-            if (info.view.type === "resourceTimelineWeek") {
-                btn.classList.remove("hidden");
-                btn.dataset.fecha = info.startStr;
-            } else {
-                btn.classList.add("hidden");
+            if (btn) {
+                if (info.view.type === "resourceTimelineWeek") {
+                    btn.classList.remove("hidden");
+                    btn.dataset.fecha = info.startStr;
+                } else {
+                    btn.classList.add("hidden");
+                }
             }
         },
+
         displayEventEnd: true,
         eventMinHeight: 30,
         firstDay: 1,
@@ -82,7 +96,6 @@ export function initCalendar(domEl) {
         events: eventos,
         resourceAreaColumns: [{ field: "title", headerContent: "Máquinas" }],
 
-        // mover evento: festivo → mueve fecha; trabajador → actualizar puesto/turno
         eventDrop: async (info) => {
             const e = info.event;
             const props = e.extendedProps || {};
@@ -158,12 +171,10 @@ export function initCalendar(domEl) {
             }
         },
 
-        // manejar context menu por tipo
         eventDidMount(info) {
             const e = info.event;
             const props = e.extendedProps || {};
 
-            // tooltip solo trabajadores
             if (props.foto && !props.es_festivo) {
                 const content = `<img src="${props.foto}" class="w-18 h-18 rounded-full object-cover ring-2 ring-blue-400 shadow-lg">`;
                 tippy(info.el, {
@@ -192,7 +203,6 @@ export function initCalendar(domEl) {
             });
         },
 
-        // click izquierdo → users.show (trabajador)
         eventClick(info) {
             const e = info.event;
             const props = e.extendedProps || {};
@@ -204,7 +214,6 @@ export function initCalendar(domEl) {
             }
         },
 
-        // render contenido
         eventContent(arg) {
             const p = arg.event.extendedProps;
             if (p?.es_festivo) {
@@ -235,12 +244,11 @@ export function initCalendar(domEl) {
 
     calendar.render();
 
-    // menú contextual en celdas (no eventos)
     const root = calendar.el;
     if (!root._ctxMenuBound) {
         root._ctxMenuBound = true;
         root.addEventListener("contextmenu", (ev) => {
-            if (ev.target.closest(".fc-event")) return; // ignorar si es evento
+            if (ev.target.closest(".fc-event")) return;
             ev.preventDefault();
             const dateEl = ev.target.closest("[data-date]");
             if (!dateEl) return;
