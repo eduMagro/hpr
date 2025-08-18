@@ -37,6 +37,7 @@ class VerificarAccesoSeccion
             'ayuda.index',
             'usuarios.show',
             'usuarios.index',
+            'nominas.crearDescargarMes',
         ];
 
         if (in_array($rutaActual, $rutasLibres)) {
