@@ -88,7 +88,7 @@
     @if (auth()->check() && auth()->id() === $user->id)
         <div class="mt-6 border-t pt-6">
             <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>
-            <form action="{{ route('nominas.descargarMes') }}" method="GET"
+            <form action="{{ route('nominas.crearDescargarMes') }}" method="GET"
                 class="flex flex-wrap items-center gap-3 max-w-md"
                 onsubmit="this.querySelector('button').disabled = true;">
                 @csrf
