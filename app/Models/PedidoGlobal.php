@@ -16,7 +16,7 @@ class PedidoGlobal extends Model
     protected $fillable = [
         'codigo',
         'descripcion',
-        'cantidad_total',
+        'peso_total',
         'fabricante_id',
         'estado'
     ];

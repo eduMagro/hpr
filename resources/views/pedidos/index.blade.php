@@ -110,12 +110,14 @@
                             {{-- Filas de las líneas del pedido --}}
                             @foreach ($pedido->lineas as $linea)
                                 @php
-                                    $estadoLinea = $linea['estado'];
+                                    $estadoLinea = strtolower(trim($linea['estado']));
                                     $claseFondo = match ($estadoLinea) {
                                         'completado' => 'bg-green-100',
                                         'activo' => 'bg-yellow-100',
+                                        'cancelado' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
                                         default => 'even:bg-gray-50 odd:bg-white',
                                     };
+                                    $esCancelado = $estadoLinea === 'cancelado';
                                 @endphp
 
                                 <tr class="text-xs {{ $claseFondo }}">
@@ -139,7 +141,9 @@
                                     <td class="border px-2 py-1 text-center">
                                         <div class="flex flex-col items-center gap-1">
                                             {{-- Botones en línea --}}
-                                            <div class="flex items-center justify-center gap-1">
+                                            <div class="flex items-center justify-center gap-1"
+                                                @if ($esCancelado) style="pointer-events: none; opacity: 0.5;" @endif>
+
                                                 @php $estado = $linea['estado']; @endphp
 
                                                 @if ($estado === 'activo')
@@ -163,6 +167,30 @@
                                                         </button>
                                                     </form>
                                                 @endif
+                                                @if ($esCancelado)
+                                                    <button disabled
+                                                        class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-50 cursor-not-allowed">
+                                                        Cancelado
+                                                    </button>
+                                                @else
+                                                    {{-- Botón cancelar --}}
+                                                    <form method="POST"
+                                                        action="{{ route('pedidos.lineas.editarCancelar', [$pedido->id, $linea['id']]) }}"
+                                                        class="form-cancelar-linea hidden"
+                                                        data-pedido-id="{{ $pedido->id }}"
+                                                        data-linea-id="{{ $linea['id'] }}">
+                                                        @csrf
+                                                        @method('PUT')
+                                                    </form>
+
+                                                    <button type="button"
+                                                        onclick="confirmarCancelacionLinea({{ $pedido->id }}, {{ $linea['id'] }})"
+                                                        class="bg-gray-500 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                        Cancelar
+                                                    </button>
+                                                @endif
+
+
                                             </div>
                                         </div>
                                     </td>
@@ -593,5 +621,29 @@
             });
         }
     </script>
-
+    <script>
+        function confirmarCancelacionLinea(pedidoId, lineaId) {
+            Swal.fire({
+                title: '¿Cancelar línea?',
+                text: "Esta acción no se puede deshacer.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#6b7280',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, cancelar',
+                cancelButtonText: 'Volver',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formulario = document.querySelector(
+                        `.form-cancelar-linea[data-pedido-id="${pedidoId}"][data-linea-id="${lineaId}"]`
+                    );
+                    if (formulario) {
+                        formulario.submit();
+                    } else {
+                        console.error("No se encontró el formulario para cancelar la línea.");
+                    }
+                }
+            });
+        }
+    </script>
 </x-app-layout>

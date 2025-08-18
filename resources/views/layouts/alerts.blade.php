@@ -70,6 +70,18 @@
         });
     </script>
 @endif
+@if (session('info'))
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            Swal.fire({
+                icon: 'info',
+                title: 'Información',
+                text: @json(session('info')),
+                confirmButtonColor: '#3B82F6' // azul Tailwind
+            });
+        });
+    </script>
+@endif
 
 @if (session('warnings'))
     <script>

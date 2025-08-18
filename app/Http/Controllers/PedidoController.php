@@ -642,6 +642,55 @@ class PedidoController extends Controller
 
         return redirect()->back()->with('success', 'Producto desactivado correctamente.');
     }
+    public function cancelarLinea($pedidoId, $lineaId)
+    {
+        $pedido = Pedido::findOrFail($pedidoId);
+        $linea = PedidoProducto::findOrFail($lineaId);
+
+        if ($linea->pedido_id !== $pedido->id) {
+            abort(403, 'La línea no pertenece a este pedido.');
+        }
+
+        if (trim(strtolower($linea->estado)) === 'cancelado') {
+            return redirect()->back()->with('info', 'La línea ya estaba cancelada.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $linea->estado = 'cancelado';
+            $linea->save();
+
+            $cantidad = $linea->cantidad ?? 0;
+
+            // Restar peso solo al pedido individual
+            $pedido->peso_total = max(0, $pedido->peso_total - $cantidad);
+            $pedido->save();
+
+            // ✅ Verificamos si todas las líneas están canceladas → cancelar el pedido también
+            $lineasActivas = PedidoProducto::where('pedido_id', $pedido->id)
+                ->where('estado', '!=', 'cancelado')
+                ->count();
+
+            if ($lineasActivas === 0) {
+                $pedido->estado = 'cancelado';
+                $pedido->save();
+            }
+
+            DB::commit();
+            return back()->with('success', 'Línea cancelada y pesos actualizados.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Error al cancelar línea de pedido', [
+                'pedido_id' => $pedidoId,
+                'linea_id' => $lineaId,
+                'mensaje' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Error al cancelar la línea. Consulta con administración.');
+        }
+    }
+
 
     public function store(Request $request)
     {

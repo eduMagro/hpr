@@ -83,7 +83,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Desactivar una línea concreta del pedido
     Route::delete('/pedidos/{pedido}/lineas/{linea}/desactivar', [PedidoController::class, 'desactivar'])->name('pedidos.lineas.editarDesactivar');
 
+
     // === LINEAS DEL PEDIDO ===
+    Route::put('/pedidos/{pedido}/lineas/{linea}/cancelar', [PedidoController::class, 'cancelarLinea'])->name('pedidos.lineas.editarCancelar');
 
     // === PRODUCTOS Y UBICACIONES ===
     Route::resource('fabricantes', FabricanteController::class);
