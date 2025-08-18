@@ -127,12 +127,10 @@ export function crearCalendario() {
                 week: "Semana",
                 month: "Mes",
             },
-
             /* ▼ muy importante en timeline con muchos recursos/eventos */
             progressiveEventRendering: true,
             expandRows: true,
             height: "auto", // ok, pero recalcamos con updateSize()
-
             events: (info, success, failure) => {
                 const vt =
                     (info.view && info.view.type) ||
@@ -147,13 +145,11 @@ export function crearCalendario() {
                     "resourceTimelineDay";
                 dataResources(vt, info).then(success).catch(failure);
             },
-
             headerToolbar: {
                 left: "prev,next today",
                 center: "title",
                 right: "resourceTimelineDay,resourceTimelineWeek,dayGridMonth",
             },
-
             datesSet: (info) => {
                 try {
                     const fecha = calcularFechaCentral(info);
@@ -177,42 +173,59 @@ export function crearCalendario() {
                     console.error("Error en datesSet:", e);
                 }
             },
-
             eventContent: (arg) => {
                 const bg = arg.event.backgroundColor || "#9CA3AF";
                 const p = arg.event.extendedProps || {};
+
                 let html = `
-          <div style="background-color:${bg};color:#fff;" class="rounded px-2 py-1 text-xs font-semibold">
-            ${arg.event.title}
-        `;
+        <div style="background-color:${bg}; color:#fff;" class="rounded p-4 text-sm leading-snug font-medium space-y-1">
+            <div class="text-sm text-black font-semibold mb-2">${arg.event.title}</div>
+    `;
+
                 if (p.tipo === "planilla") {
-                    if (p.pesoTotal != null) {
-                        html += `<br><span class="text-[10px] font-normal">🧱 ${Number(
-                            p.pesoTotal
-                        ).toLocaleString()} kg</span>`;
+                    html += `<table class="w-full text-sm font-normal">`;
+
+                    if (p.pesoTotal != null || p.longitudTotal != null) {
+                        html += `<tr class="py-2">`;
+                        if (p.pesoTotal != null) {
+                            html += `<td class="pr-4 py-2"><span class="text-base font-semibold">${Number(
+                                p.pesoTotal
+                            ).toLocaleString()} kg</span></td>`;
+                        }
+                        if (p.longitudTotal != null) {
+                            html += `<td class="py-2"><span class="text-base font-semibold">${Number(
+                                p.longitudTotal
+                            ).toLocaleString()} m</span></td>`;
+                        }
+                        html += `</tr>`;
                     }
-                    if (p.longitudTotal != null) {
-                        html += `<br><span class="text-[10px] font-normal">📏 ${Number(
-                            p.longitudTotal
-                        ).toLocaleString()} m</span>`;
-                    }
-                    if (p.diametroMedio != null) {
-                        html += `<br><span class="text-[10px] font-normal">⌀ ${p.diametroMedio} mm</span>`;
-                    }
+
                     if (
-                        p.tieneSalidas &&
-                        Array.isArray(p.salidas_codigos) &&
-                        p.salidas_codigos.length > 0
+                        p.diametroMedio != null ||
+                        (p.tieneSalidas &&
+                            Array.isArray(p.salidas_codigos) &&
+                            p.salidas_codigos.length > 0)
                     ) {
-                        html += `<div class="mt-1 text-[10px] font-normal bg-yellow-400 text-black rounded px-1 py-0.5 inline-block">
-              🔗 Salidas: ${p.salidas_codigos.join(", ")}
-            </div>`;
+                        html += `<tr class="py-1">`;
+                        if (p.diametroMedio != null) {
+                            html += `<td class="pr-4 py-2">⌀ <span class="text-base font-semibold">${p.diametroMedio} mm</span></td>`;
+                        }
+                        if (p.salidas_codigos.length > 0) {
+                            html += `<td class="py-2">
+                    <span class="text-black bg-yellow-400 rounded px-2 py-1 inline-block text-xs font-semibold">
+                        Salidas: ${p.salidas_codigos.join(", ")}
+                    </span>
+                </td>`;
+                        }
+                        html += `</tr>`;
                     }
+
+                    html += `</table>`;
                 }
+
                 html += `</div>`;
                 return { html };
             },
-
             eventDidMount: function (info) {
                 // lee filtros actuales (código y nombre)
                 const fCod = (

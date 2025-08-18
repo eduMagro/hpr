@@ -26,13 +26,24 @@ class PlanificacionController extends Controller
         $salidasEventos = $this->getEventosSalidas($startDate, $endDate);
         $planillasEventos = $this->getEventosPlanillas($startDate, $endDate);
         $resumenEventos = $this->getEventosResumen($planillasEventos['planillas'], $viewType);
-
         $eventos = collect()
-            ->concat(Festivo::eventosCalendario())         // array o Collection, concat acepta ambos
-            ->concat($salidasEventos)                      // puede ser Collection o array
-            ->concat($planillasEventos['eventos'])         // idem
-            ->concat($resumenEventos)                      // idem
-            ->values();                                    // reindexa
+            ->concat($planillasEventos['eventos'])
+            ->concat($salidasEventos)
+            ->concat($resumenEventos)
+            ->concat(Festivo::eventosCalendario())
+            ->sortBy([
+                // Orden por tipo: planilla (0), salida (1), resumen (2), festivo (3)
+                fn($e) => match ($e['tipo'] ?? $e['extendedProps']['tipo'] ?? '') {
+                    'planilla' => 0,
+                    'salida' => 1,
+                    'resumen' => 2,
+                    'festivo' => 3,
+                    default => 99,
+                },
+                // Orden secundario: por cod_obra si existe
+                fn($e) => $e['extendedProps']['cod_obra'] ?? '',
+            ])
+            ->values();
 
         // Resources
         $resources = $this->getResources($eventos);
@@ -164,9 +175,9 @@ class PlanificacionController extends Controller
         // ------------------- SELECCIÓN SEGÚN VISTA -------------------
         $eventosResumen = collect();
 
-        if ($viewType === 'resourceTimelineDay' || $viewType === 'resourceTimelineWeek') {
-            $eventosResumen = $eventosResumen->merge($resumenEventosDia);
-        }
+
+        $eventosResumen = $eventosResumen->merge($resumenEventosDia);
+
 
         return $eventosResumen;
     }
@@ -282,10 +293,11 @@ class PlanificacionController extends Controller
             return [
                 'title' => $codObra . ' - ' . $nombreObra,
                 'id' => 'planillas-' . $obraId . '-' . md5($fechaInicio),
-                'start' => $fechaInicio->toIso8601String(),
-                'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
-                'resourceId' => (string) $obraId,
-                'allDay' => false,
+                // 'start' => $fechaInicio->toIso8601String(),
+                // 'end' => $fechaInicio->copy()->addHours(2)->toIso8601String(),
+                'start' => $fechaInicio->toDateString(), // 👈 solo la fecha
+                'end' => $fechaInicio->copy()->addDay()->toDateString(), // 👈 fecha siguiente
+                'allDay' => true, // 👈 esto es CLAVE para dayGridMonth
                 'backgroundColor' => $color,
                 'borderColor' => $color,
                 'tipo' => 'planilla',
