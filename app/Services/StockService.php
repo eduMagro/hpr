@@ -180,7 +180,7 @@ class StockService
             ->join('pedidos as p', 'p.id', '=', 'pp.pedido_id')
             ->join('productos_base as pb', 'pb.id', '=', 'pp.producto_base_id')
             ->when($obraIds, fn($q) => $q->whereIn('p.obra_id', $obraIds))
-            ->where('p.estado', 'pendiente')
+            ->where('pp.estado', 'pendiente')
             ->groupBy('pb.tipo', 'pb.diametro', 'pb.longitud')
             ->select('pb.tipo', 'pb.diametro', 'pb.longitud', DB::raw('SUM(pp.cantidad) as total'))
             ->get();
