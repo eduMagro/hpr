@@ -16,7 +16,7 @@ class PedidoGlobal extends Model
     protected $fillable = [
         'codigo',
         'descripcion',
-        'peso_total',
+        'cantidad_total',
         'fabricante_id',
         'estado'
     ];
@@ -56,7 +56,7 @@ class PedidoGlobal extends Model
     }
     public function actualizarEstadoSegunProgreso()
     {
-        $pesoAcumulado = $this->pedidos()->sum('peso_total');
+        $pesoAcumulado = $this->pedidos()->sum('cantidad_recepcionada');
 
         if ($pesoAcumulado >= $this->cantidad_total) {
             $this->estado = self::ESTADO_COMPLETADO;
@@ -83,12 +83,17 @@ class PedidoGlobal extends Model
     // Accesor para calcular la cantidad restante
     public function getCantidadRestanteAttribute()
     {
-        // Sumar el peso_total de todos los pedidos asociados a este pedido global
-        $cantidadPedida = $this->pedidos()->sum('peso_total');
+        // Sumar la cantidad de todas las líneas de pedido (pedidoProductos) de los pedidos hijos
+        $cantidadPedida = $this->pedidos()
+            ->with('pedidoProductos') // usamos la relación correcta
+            ->get()
+            ->flatMap->pedidoProductos
+            ->sum('cantidad_recepcionada');
 
-        // Restar a la cantidad_total del pedido global
         return max(0, $this->cantidad_total - $cantidadPedida);
     }
+
+
 
 
     public function entradas()
@@ -110,7 +115,12 @@ class PedidoGlobal extends Model
             return 0;
         }
 
-        $acumulado = $this->pedidos()->sum('peso_total');
+        // Sumar la cantidad recepcionada de todas las líneas de pedido (pedidoProductos)
+        $acumulado = $this->pedidos()
+            ->with('pedidoProductos')
+            ->get()
+            ->flatMap->pedidoProductos
+            ->sum('cantidad_recepcionada');
 
         return round(($acumulado / $this->cantidad_total) * 100, 2);
     }
