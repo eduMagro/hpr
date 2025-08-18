@@ -5,28 +5,28 @@ import { openWorkerMenu } from "./menu/workerMenu.js";
 
 export function initCalendar(domEl) {
     const { maquinas, eventos } = DATA();
-    let vistaGuardada = localStorage.getItem("ultimaVistaCalendario");
-    if (!vistasValidas.includes(vistaGuardada))
-        vistaGuardada = "resourceTimelineDay";
+
     const fechaGuardada = localStorage.getItem("fechaCalendario");
     const calendar = new FullCalendar.Calendar(domEl, {
         schedulerLicenseKey: "CC-Attribution-NonCommercial-NoDerivatives",
         locale: "es",
         initialView:
-            localStorage.getItem("ultimaVistaCalendario") ||
-            "resourceTimelineDay",
-        initialDate: localStorage.getItem("fechaCalendario") || undefined,
+            localStorage.getItem("vistaObras") || "resourceTimelineWeek",
+        initialDate: localStorage.getItem("fechaObras") || undefined,
         selectable: true,
         unselectAuto: true,
-        datesSet(info) {
-            let fechaActual = info.startStr;
-            if (calendar.view.type === "dayGridMonth") {
-                const middleDate = new Date(info.start);
-                middleDate.setDate(middleDate.getDate() + 15);
-                fechaActual = middleDate.toISOString().split("T")[0];
+        datesSet: function (info) {
+            localStorage.setItem("vistaObras", info.view.type);
+            localStorage.setItem("fechaObras", info.startStr);
+
+            // Mostrar botón solo en vista semanal
+            const btn = document.getElementById("btnRepetirSemana");
+            if (info.view.type === "resourceTimelineWeek") {
+                btn.classList.remove("hidden");
+                btn.dataset.fecha = info.startStr;
+            } else {
+                btn.classList.add("hidden");
             }
-            localStorage.setItem("fechaCalendario", fechaActual);
-            localStorage.setItem("ultimaVistaCalendario", calendar.view.type);
         },
         displayEventEnd: true,
         eventMinHeight: 30,

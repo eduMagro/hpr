@@ -85,24 +85,38 @@
     </div>
 
     {{-- 📥 Descargar nóminas --}}
+    {{-- Descargar mis nóminas --}}
     @if (auth()->check() && auth()->id() === $user->id)
-        <div class="mt-6 border-t pt-6">
-            <h3 class="text-lg font-semibold text-gray-700 mb-2">📥 Descargar mis nóminas</h3>
+        <div x-data="{ cargando: false }" class="mt-6 border-t pt-6 relative">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Descargar mis nóminas</h3>
+
+            {{-- Overlay de carga --}}
+            <div x-show="cargando" class="fixed inset-0 bg-white bg-opacity-70 z-50 flex items-center justify-center"
+                style="backdrop-filter: blur(2px);" x-transition>
+                <svg class="w-12 h-12 text-green-600 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                        stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+            </div>
+
             <form action="{{ route('nominas.crearDescargarMes') }}" method="GET"
-                class="flex flex-wrap items-center gap-3 max-w-md"
+                class="flex flex-wrap items-center gap-3 max-w-md" @submit="cargando = true"
                 onsubmit="this.querySelector('button').disabled = true;">
                 @csrf
 
                 <input type="month" name="mes_anio" id="mes_anio" required
-                    class="flex-1 border-gray-300 rounded-md shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50">
+                    class="flex-1 rounded-md border border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-green-500 focus:ring-2 focus:ring-green-300 transition">
 
                 <button type="submit"
                     class="inline-flex items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
-           bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2
-           focus:ring-green-500 focus:ring-offset-2 transition">
+                       bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2
+                       focus:ring-green-500 focus:ring-offset-2 transition">
                     📥 Descargar
                 </button>
             </form>
         </div>
     @endif
+
 </div>
