@@ -201,7 +201,7 @@ class ElementoController extends Controller
 
         $query = $this->aplicarFiltros($query, $request);
         $query = $this->aplicarOrdenamientoElementos($query, $request);
-
+        $totalPesoFiltrado = (clone $query)->sum('peso');
         // Paginación
         $perPage = $request->input('per_page', 10);
         $elementos = $query->paginate($perPage)->appends($request->except('page'));
@@ -235,7 +235,7 @@ class ElementoController extends Controller
             'estado' => $this->getOrdenamiento('estado', 'Estado'),
         ];
 
-        return view('elementos.index', compact('elementos', 'maquinas', 'ordenables'));
+        return view('elementos.index', compact('elementos', 'maquinas', 'ordenables', 'totalPesoFiltrado'));
     }
 
     public function dividirElemento(Request $request)

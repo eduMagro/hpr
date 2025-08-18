@@ -437,7 +437,6 @@ class SalidaController extends Controller
 
                 $mensaje = 'Los siguientes paquetes ya están asociados a una salida: ' . implode(', ', $paquetesInfo);
 
-
                 return response()->json([
                     'success' => false,
                     'message' => $mensaje
@@ -494,7 +493,7 @@ class SalidaController extends Controller
                 }
             }
             if (!empty($pivotData)) {
-                \DB::table('salida_cliente')->insert(array_values($pivotData));
+                DB::table('salida_cliente')->insert(array_values($pivotData));
             }
 
             return response()->json([
@@ -504,7 +503,7 @@ class SalidaController extends Controller
                 'codigo_salida' => $codigo_salida
             ]);
         } catch (\Exception $e) {
-            \Log::info('hola');
+            Log::error('Error al crear salida desde calendario: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Error al crear la salida: ' . $e->getMessage()

@@ -64,7 +64,8 @@
                 text: @json(session('success')),
                 confirmButtonColor: '#28a745'
             }).then(() => {
-                window.location.reload(); // Recarga la página tras el mensaje
+                console.console.log('Operación exitosa:', @json(session('success')));
+                // Recarga la página tras el mensaje
             });
         });
     </script>
