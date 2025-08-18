@@ -91,19 +91,21 @@
             <h3 class="text-lg font-semibold text-gray-700 mb-2">Descargar mis nóminas</h3>
 
             <form action="{{ route('nominas.crearDescargarMes') }}" method="GET"
-                class="flex flex-wrap items-center gap-3 max-w-md" x-data="{ desactivado: false }" @submit="desactivado = true">
+                class="flex flex-col sm:flex-row sm:items-center gap-3 max-w-md" x-data="{ desactivado: false }"
+                @submit="desactivado = true">
                 @csrf
 
                 <input type="month" name="mes_anio" id="mes_anio" required
-                    class="flex-1 rounded-md border border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-green-500 focus:ring-2 focus:ring-green-300 transition">
+                    class="sm:flex-1 w-full sm:w-auto rounded-md border border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-green-500 focus:ring-2 focus:ring-green-300 transition">
 
                 <button type="submit" :disabled="desactivado"
-                    class="inline-flex items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
+                    class="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
            bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2
            focus:ring-green-500 focus:ring-offset-2 transition disabled:opacity-50 disabled:cursor-not-allowed">
                     📥 Descargar
                 </button>
             </form>
+
 
         </div>
     @endif
