@@ -265,9 +265,10 @@
                                 <template x-if="!editando">
                                     <span x-text="planilla.peso_total_kg"></span>
                                 </template>
-                                <input x-show="editando" type="text" x-model="planilla.peso_total_kg"
+                                <input x-show="editando" type="text" x-model="planilla.peso_total"
                                     class="form-control form-control-sm">
                             </td>
+
 
                             <!-- Estado -->
                             <td class="p-2 text-center border">

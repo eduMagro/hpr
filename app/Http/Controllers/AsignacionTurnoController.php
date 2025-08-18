@@ -1032,6 +1032,7 @@ class AsignacionTurnoController extends Controller
 
         return response()->json(['success' => true]);
     }
+
     public function updateObra(Request $request, $id)
     {
         $request->validate([
@@ -1061,6 +1062,7 @@ class AsignacionTurnoController extends Controller
 
         return response()->json(['success' => true]);
     }
+
     public function repetirSemana(Request $request)
     {
         $request->validate([

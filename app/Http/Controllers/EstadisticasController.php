@@ -96,8 +96,6 @@ class EstadisticasController extends Controller
         })->values();
     }
 
-
-
     private function getPesoPorPlanilleroAgrupado(string $modo = 'mes')
     {
         $query = Planilla::query()
