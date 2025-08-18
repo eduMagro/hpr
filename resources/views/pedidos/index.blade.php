@@ -118,7 +118,9 @@
                                         default => 'even:bg-gray-50 odd:bg-white',
                                     };
                                     $esCancelado = $estadoLinea === 'cancelado';
+                                    $esCompletado = $estadoLinea === 'completado';
                                 @endphp
+
 
                                 <tr class="text-xs {{ $claseFondo }}">
                                     <td class="border px-2 py-1">{{ $pedido->codigo }}</td>
@@ -144,36 +146,39 @@
                                             <div class="flex items-center justify-center gap-1"
                                                 @if ($esCancelado) style="pointer-events: none; opacity: 0.5;" @endif>
 
-                                                @php $estado = $linea['estado']; @endphp
+                                                @php $estado = strtolower(trim($linea['estado'])); @endphp
 
-                                                @if ($estado === 'activo')
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea['id']]) }}">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit"
-                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                            Desactivar
-                                                        </button>
-                                                    </form>
-                                                @else
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <button type="submit"
-                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                            Activar
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                                @if ($esCancelado)
+                                                @if ($esCompletado)
+                                                    {{-- Solo botón Recepcionar --}}
+                                                @elseif ($esCancelado)
                                                     <button disabled
                                                         class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-50 cursor-not-allowed">
                                                         Cancelado
                                                     </button>
-                                                @else
-                                                    {{-- Botón cancelar --}}
+                                                @elseif ($estado === 'activo')
+                                                    {{-- Solo botón Desactivar --}}
+                                                    <form method="POST"
+                                                        action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea['id']]) }}">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" title="Desactivar línea"
+                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                            Desactivar
+                                                        </button>
+                                                    </form>
+                                                @elseif ($estado === 'pendiente')
+                                                    {{-- Botón Activar --}}
+                                                    <form method="POST"
+                                                        action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
+                                                        @csrf
+                                                        @method('PUT')
+                                                        <button type="submit" title="Activar línea"
+                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                            Activar
+                                                        </button>
+                                                    </form>
+
+                                                    {{-- Botón Cancelar (SweetAlert) --}}
                                                     <form method="POST"
                                                         action="{{ route('pedidos.lineas.editarCancelar', [$pedido->id, $linea['id']]) }}"
                                                         class="form-cancelar-linea hidden"
@@ -189,7 +194,6 @@
                                                         Cancelar
                                                     </button>
                                                 @endif
-
 
                                             </div>
                                         </div>
