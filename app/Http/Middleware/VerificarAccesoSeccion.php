@@ -73,6 +73,7 @@ class VerificarAccesoSeccion
             'salidas.actualizarEstado',
             'usuarios.editarSubirImagen',
             'usuarios.imagen',
+            'nominas.descargarMes',
 
         ];
 

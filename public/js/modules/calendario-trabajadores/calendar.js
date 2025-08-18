@@ -5,7 +5,10 @@ import { openWorkerMenu } from "./menu/workerMenu.js";
 
 export function initCalendar(domEl) {
     const { maquinas, eventos } = DATA();
-
+    let vistaGuardada = localStorage.getItem("ultimaVistaCalendario");
+    if (!vistasValidas.includes(vistaGuardada))
+        vistaGuardada = "resourceTimelineDay";
+    const fechaGuardada = localStorage.getItem("fechaCalendario");
     const calendar = new FullCalendar.Calendar(domEl, {
         schedulerLicenseKey: "CC-Attribution-NonCommercial-NoDerivatives",
         locale: "es",
