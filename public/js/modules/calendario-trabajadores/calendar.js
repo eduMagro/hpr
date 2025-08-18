@@ -41,7 +41,6 @@ export function initCalendar(domEl) {
                 }
             }
         },
-
         displayEventEnd: true,
         eventMinHeight: 30,
         firstDay: 1,
