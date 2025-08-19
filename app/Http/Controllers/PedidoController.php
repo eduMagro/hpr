@@ -793,7 +793,7 @@ class PedidoController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            Log::error('❌ Error al crear pedido: ' . $e->getMessage(), [
+            Log::error('Error al crear pedido: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
 

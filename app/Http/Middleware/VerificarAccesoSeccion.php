@@ -72,7 +72,7 @@ class VerificarAccesoSeccion
 
         $permitidosOperarioRutas = [
             'vacaciones.solicitar',
-            'salidas.actualizarEstado',
+            'salidas.editarActualizarEstado',
             'usuarios.editarSubirImagen',
             'usuarios.imagen',
             'nominas.crearDescargarMes',

@@ -81,7 +81,7 @@
 
     {{-- 🟢 COMPLETADOS --}}
     <div class="bg-green-200 border border-green-300 rounded-lg p-4 mt-6" id="contenedor-movimientos-completados">
-        <h3 class="text-base sm:text-lg font-bold text-green-800 mb-3">✅ Movimientos Completados Recientemente</h3>
+        <h3 class="text-base sm:text-lg font-bold text-green-800 mb-3">Movimientos Completados Recientemente</h3>
 
         @if ($movimientosCompletados->isEmpty())
             <p class="text-gray-600 text-sm">No hay movimientos completados.</p>
@@ -172,7 +172,7 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.success) {
-                            Swal.fire('✅', data.message, 'success');
+                            Swal.fire('', data.message, 'success');
                             // 👉 Recargar la página o quitar el elemento de la lista
                             setTimeout(() => location.reload(), 1000);
                         } else {
@@ -181,7 +181,7 @@
                     })
                     .catch(err => {
                         console.error(err);
-                        Swal.fire('❌', 'Hubo un error al completar la salida.', 'error');
+                        Swal.fire('', 'Hubo un error al completar la salida.', 'error');
                     });
             }
         });

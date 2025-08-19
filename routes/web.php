@@ -226,7 +226,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === SALIDAS Y ESCANEO ===
     Route::resource('salidas', SalidaController::class);
     Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaController::class, 'quitarPaquete'])->name('salidas.editarQuitarPaquete');
-    Route::put('/salidas/{salida}/actualizar-estado', [SalidaController::class, 'actualizarEstado']);
+    Route::put('/salidas/{salida}/actualizar-estado', [SalidaController::class, 'editarActualizarEstado']);
     Route::post('/actualizar-fecha-salida', [SalidaController::class, 'actualizarFechaSalida']);
     Route::post('/escaneo', [SalidaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
     Route::get('/salidas/export/{mes}', [SalidaController::class, 'export'])->name('salidas.export');
