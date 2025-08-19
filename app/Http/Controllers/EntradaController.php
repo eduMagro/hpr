@@ -275,7 +275,7 @@ class EntradaController extends Controller
                 'otros.string'         => 'El campo "otros" debe ser una cadena de texto.',
                 'otros.max'            => 'El campo "otros" no puede tener más de 255 caracteres.',
             ]);
-            Log::info('📝 Datos recibidos', $request->all());
+
 
             $productoBase = ProductoBase::findOrFail($request->producto_base_id);
             $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
@@ -285,10 +285,7 @@ class EntradaController extends Controller
             $pedidoProductoId = null;
 
             if ($request->filled('pedido_id')) {
-                Log::info('📦 Intentando vincular pedido_id al crear entrada', [
-                    'pedido_id' => $request->pedido_id,
-                    'producto_base_id' => $request->producto_base_id,
-                ]);
+
                 $pedidoProducto = DB::table('pedido_productos')
                     ->where('pedido_id', $request->pedido_id)
                     ->where('producto_base_id', $request->producto_base_id)

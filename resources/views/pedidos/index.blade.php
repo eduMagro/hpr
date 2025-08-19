@@ -16,6 +16,7 @@
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
                             <th class="px-2 py-2 border">Producto</th>
+                            <th class="p-2 border">Cantidad Pedida</th>
                             <th class="p-2 border">Cantidad Recepcionada</th>
                             <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fecha_entrega'] ?? 'F. Entrega' !!}</th>
@@ -59,6 +60,9 @@
                                             value="{{ request('producto_longitud') }}" placeholder="L"
                                             class="bg-white text-gray-800 border border-gray-300 rounded text-[10px] text-center w-14 h-6" />
                                     </div>
+                                </th>
+                                <th class="p-1 border">
+
                                 </th>
                                 <th class="p-1 border">
 
@@ -133,6 +137,9 @@
                                         @if ($linea['tipo'] === 'barra' && $linea['longitud'] !== '—')
                                             x {{ $linea['longitud'] }} m
                                         @endif
+                                    </td>
+                                    <td class="border px-2 py-1">
+                                        {{ number_format($linea['cantidad'] ?? 0, 2, ',', '.') }} kg
                                     </td>
                                     <td class="border px-2 py-1">
                                         {{ number_format($linea['cantidad_recepcionada'] ?? 0, 2, ',', '.') }} kg
