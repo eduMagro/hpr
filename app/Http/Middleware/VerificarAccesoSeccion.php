@@ -38,7 +38,8 @@ class VerificarAccesoSeccion
             'usuarios.show',
             'usuarios.index',
             'nominas.crearDescargarMes',
-            'turno.cambiarMaquina'
+            'turno.cambiarMaquina',
+            'salida.completarDesdeMovimiento'
         ];
 
         if (in_array($rutaActual, $rutasLibres)) {
