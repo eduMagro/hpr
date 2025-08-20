@@ -796,12 +796,36 @@ class EtiquetaController extends Controller
 
                 // 3️⃣  Insertamos el movimiento en SU propia transacción
                 DB::transaction(function () use ($productoBase, $maquina) {
-                    $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
-                    Log::info('✅ Movimiento de recarga creado', [
+                    $existe = Movimiento::where('producto_base_id', $productoBase->id)
+                        ->where('maquina_destino', $maquina->id)
+                        ->where('tipo', 'recarga')
+                        ->where('estado', 'pendiente')
+                        ->exists();
+                    Log::info('Verificando existencia de movimiento de recarga', [
                         'producto_base_id' => $productoBase->id,
                         'maquina_id'       => $maquina->id,
+                        'existe'           => $existe,
                     ]);
+                    if (!$existe) {
+                        // 2️⃣  Deshacemos TODA la transacción principal
+                        DB::rollBack();
+
+                        // 3️⃣  Insertamos el movimiento en SU propia transacción
+                        DB::transaction(function () use ($productoBase, $maquina) {
+                            $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
+                            Log::info('✅ Movimiento de recarga creado', [
+                                'producto_base_id' => $productoBase->id,
+                                'maquina_id'       => $maquina->id,
+                            ]);
+                        });
+                    } else {
+                        Log::info('⚠️ Movimiento ya existente. No se crea otro.', [
+                            'producto_base_id' => $productoBase->id,
+                            'maquina_id'       => $maquina->id,
+                        ]);
+                    }
                 });
+
 
                 // 4️⃣  Respondemos y detenemos la ejecución
                 return new JsonResponse([

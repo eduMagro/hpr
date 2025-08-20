@@ -88,7 +88,7 @@ class PedidoGlobal extends Model
             ->with('pedidoProductos') // usamos la relación correcta
             ->get()
             ->flatMap->pedidoProductos
-            ->sum('cantidad_recepcionada');
+            ->sum('cantidad');
 
         return max(0, $this->cantidad_total - $cantidadPedida);
     }
@@ -120,7 +120,7 @@ class PedidoGlobal extends Model
             ->with('pedidoProductos')
             ->get()
             ->flatMap->pedidoProductos
-            ->sum('cantidad_recepcionada');
+            ->sum('cantidad');
 
         return round(($acumulado / $this->cantidad_total) * 100, 2);
     }
