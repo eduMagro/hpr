@@ -123,8 +123,9 @@
                 <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
             </div>
         @empty
-            <div class="col-span-2 text-center py-4 text-gray-600">
-                No hay etiquetas disponibles para esta máquina.
+            <div
+                class="col-span-2 text-center mt-6 p-6 text-gray-800 text-lg font-semibold bg-yellow-100 border border-yellow-300 rounded-xl shadow-sm">
+                No hay planillas en la cola de trabajo.
             </div>
         @endforelse
     </div>
@@ -291,13 +292,12 @@
                                 html: data.errors?.length ?
                                     `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
               ${data.errors.map(err => `
-                          <li>
-                              <b>#${err.id}</b>: ${err.error}<br>
-                              <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
-                          </li>
-                      `).join('')}
-           </ul>` :
-                                    '',
+                                                          <li>
+                                                              <b>#${err.id}</b>: ${err.error}<br>
+                                                              <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                                                          </li>
+                                                      `).join('')}
+           </ul>` : '',
                             }).then(() => {
                                 if (data.success) location.reload();
                             });

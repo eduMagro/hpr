@@ -24,7 +24,7 @@ use Exception;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
-use App\Services\PlanillaService;
+use App\Services\CompletarLoteService;
 
 
 class EtiquetaController extends Controller
@@ -217,6 +217,7 @@ class EtiquetaController extends Controller
 
         return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
     }
+
 
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
@@ -709,7 +710,6 @@ class EtiquetaController extends Controller
             ], 500);
         }
     }
-
     private function actualizarElementosYConsumos($elementosEnMaquina, $maquina, &$etiqueta, &$warnings, &$numeroElementosCompletadosEnMaquina, $enOtrasMaquinas, &$productosAfectados, &$planilla)
     {
 
@@ -796,36 +796,12 @@ class EtiquetaController extends Controller
 
                 // 3️⃣  Insertamos el movimiento en SU propia transacción
                 DB::transaction(function () use ($productoBase, $maquina) {
-                    $existe = Movimiento::where('producto_base_id', $productoBase->id)
-                        ->where('maquina_destino', $maquina->id)
-                        ->where('tipo', 'recarga')
-                        ->where('estado', 'pendiente')
-                        ->exists();
-                    Log::info('Verificando existencia de movimiento de recarga', [
+                    $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
+                    Log::info('✅ Movimiento de recarga creado', [
                         'producto_base_id' => $productoBase->id,
                         'maquina_id'       => $maquina->id,
-                        'existe'           => $existe,
                     ]);
-                    if (!$existe) {
-                        // 2️⃣  Deshacemos TODA la transacción principal
-                        DB::rollBack();
-
-                        // 3️⃣  Insertamos el movimiento en SU propia transacción
-                        DB::transaction(function () use ($productoBase, $maquina) {
-                            $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
-                            Log::info('✅ Movimiento de recarga creado', [
-                                'producto_base_id' => $productoBase->id,
-                                'maquina_id'       => $maquina->id,
-                            ]);
-                        });
-                    } else {
-                        Log::info('⚠️ Movimiento ya existente. No se crea otro.', [
-                            'producto_base_id' => $productoBase->id,
-                            'maquina_id'       => $maquina->id,
-                        ]);
-                    }
                 });
-
 
                 // 4️⃣  Respondemos y detenemos la ejecución
                 return new JsonResponse([
@@ -978,7 +954,6 @@ class EtiquetaController extends Controller
 
         return true;
     }
-
     protected function generarMovimientoRecargaMateriaPrima(
         ProductoBase $productoBase,
         Maquina $maquina,
@@ -1112,7 +1087,6 @@ class EtiquetaController extends Controller
             ], 500);
         }
     }
-
     public function destroy($id)
     {
         try {
@@ -1183,6 +1157,9 @@ class EtiquetaController extends Controller
                     if (!$planilla) {
                         throw new \Exception("La etiqueta no tiene planilla asociada.");
                     }
+                    if (in_array($etiqueta->estado, ['completada', 'fabricada'])) {
+                        throw new \Exception("La etiqueta {$etiqueta->codigo} ya está completada.");
+                    }
 
                     // Obtener elementos de esta etiqueta para la máquina actual
                     $elementosEnMaquina = $etiqueta->elementos->where('maquina_id', $maquinaId);
@@ -1243,66 +1220,13 @@ class EtiquetaController extends Controller
         }
     }
 
-    public function completarLote(Request $request)
+    public function completarLote(Request $request, CompletarLoteService $service)
     {
-        $completadas = 0;
-        $errors = [];
-        $planillasARevisar = [];
+        $etiquetas = (array) $request->input('etiquetas', []);
+        $maquinaId = (int) $request->input('maquina_id');
 
-        foreach ($request->etiquetas as $etiquetaSubId) {
-            try {
-                $res = $this->actualizarEtiqueta($request, $etiquetaSubId, $request->maquina_id);
-                Log::info("Etiqueta {$etiquetaSubId} completada con éxito.");
-                $data = $res->getData(true);
-                Log::info("Respuesta de completarLote: ", $data);
+        $res = $service->completarLote($etiquetas, $maquinaId);
 
-                $completadas++;
-
-                // 📌 Añadir planilla a revisar si no está ya en la lista
-                $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
-
-
-                if ($etiqueta && $etiqueta->planilla_id && !in_array($etiqueta->planilla_id, $planillasARevisar)) {
-                    $planillasARevisar[] = $etiqueta->planilla_id;
-                }
-                Log::info("Planilla a revisar: " . json_encode($planillasARevisar));
-                $errors[] = [
-                    'id' => $etiquetaSubId,
-                    'error' => $data['error'] ?? 'Error desconocido'
-                ];
-            } catch (\Throwable $e) {
-                $errors[] = [
-                    'id' => $etiquetaSubId,
-                    'error' => $e->getMessage()
-                ];
-            }
-        }
-
-        // ✅ Comprobar si esas planillas ya están completadas
-        $completadasPlanillas = [];
-        foreach ($planillasARevisar as $planillaId) {
-            $etiquetasPendientes = Etiqueta::where('planilla_id', $planillaId)
-                ->where('estado', '!=', 'adsjfklasd')
-                ->exists();
-
-
-
-            $res = app(PlanillaService::class)->completarPlanilla($planillaId);
-
-            if ($res['success']) {
-                $completadasPlanillas[] = $planillaId;
-            } else {
-                $errors[] = [
-                    'planilla' => $planillaId,
-                    'error' => $res['message']
-                ];
-            }
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => "Se completaron {$completadas} etiquetas y " . count($completadasPlanillas) . " planillas.",
-            'errors' => $errors
-        ]);
+        return response()->json($res);
     }
 }

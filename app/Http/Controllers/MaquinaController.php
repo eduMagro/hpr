@@ -241,9 +241,16 @@ class MaquinaController extends Controller
         });
 
         $planillaActiva = null;
+
         foreach ($elementosPorPlanilla as $grupo) {
             $planilla = $grupo->first()->planilla;
 
+            // ⚠️ Solo continuar si la planilla sigue en la cola de esta máquina
+            if (!$ordenManual->has($planilla->id)) {
+                continue;
+            }
+
+            // Si es ensambladora con carcasa, aplicar la lógica especial
             if (
                 str_contains(strtolower($maquina->tipo), 'ensambladora') &&
                 str_contains(strtolower($planilla->ensamblado), 'carcasas')
@@ -252,11 +259,14 @@ class MaquinaController extends Controller
                     fn($e) =>
                     $e->maquina_id == $maquina->id || $e->maquina_id_2 == $maquina->id
                 );
+
+                if (!$tieneRelacionCorrecta) continue;
             }
 
             $planillaActiva = $planilla;
             break;
         }
+
 
         $elementosMaquina = $planillaActiva ? $elementosMaquina->where('planilla_id', $planillaActiva->id) : collect();
 
