@@ -1121,8 +1121,6 @@ class EtiquetaController extends Controller
             $etiquetaSubIds = $request->input('etiquetas');
             $maquinaId = $request->input('maquina_id');
 
-            $compañero = auth()->user()->compañeroDeTurno();
-            // Validaciones iniciales
             if (!is_array($etiquetaSubIds) || empty($etiquetaSubIds)) {
                 return response()->json([
                     'success' => false,
@@ -1143,57 +1141,32 @@ class EtiquetaController extends Controller
                 ], 422);
             }
 
+            $maquina = Maquina::findOrFail($maquinaId);
             $fabricadas = 0;
+            $warnings = [];
             $errors = [];
 
             foreach ($etiquetaSubIds as $subId) {
                 try {
-                    DB::beginTransaction();
-
                     $etiqueta = Etiqueta::where('etiqueta_sub_id', $subId)->firstOrFail();
-                    $maquina = Maquina::findOrFail($maquinaId);
-                    $planilla = $etiqueta->planilla;
 
-                    if (!$planilla) {
-                        throw new \Exception("La etiqueta no tiene planilla asociada.");
-                    }
                     if (in_array($etiqueta->estado, ['completada', 'fabricada'])) {
                         throw new \Exception("La etiqueta {$etiqueta->codigo} ya está completada.");
                     }
 
-                    // Obtener elementos de esta etiqueta para la máquina actual
-                    $elementosEnMaquina = $etiqueta->elementos->where('maquina_id', $maquinaId);
+                    $resultado = $this->verificarYPrepararFabricacion($etiqueta, $maquina);
 
-
-                    // Marcar elementos como "fabricando"
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->update([
-                            'estado' => 'fabricando',
-
-                            'fecha_inicio' => $elemento->fecha_inicio ?? now(),
-                        ]);
+                    if ($resultado === true) {
+                        $fabricadas++;
+                    } else {
+                        // No se detiene el flujo
+                        $fabricadas++;
+                        $warnings[] = [
+                            'id'    => $subId,
+                            'error' => $resultado['error'] ?? 'Error desconocido.',
+                        ];
                     }
-
-                    // Marcar la planilla como "fabricando" si aún no lo está
-                    if (is_null($planilla->fecha_inicio)) {
-                        $planilla->update([
-                            'fecha_inicio' => now(),
-                            'estado' => 'fabricando',
-                        ]);
-                    }
-
-                    // Marcar etiqueta como "fabricando"
-                    $etiqueta->update([
-                        'estado' => 'fabricando',
-                        'operario1_id' => auth()->id(),
-                        'operario2_id' => optional($compañero)->id,
-                        'fecha_inicio' => $etiqueta->fecha_inicio ?? now(),
-                    ]);
-
-                    DB::commit();
-                    $fabricadas++;
                 } catch (\Throwable $e) {
-                    DB::rollBack();
                     $errors[] = [
                         'id' => $subId,
                         'error' => $e->getMessage(),
@@ -1202,12 +1175,15 @@ class EtiquetaController extends Controller
                 }
             }
 
+            $mensaje = $fabricadas > 0
+                ? "Empezamos a fabricar {$fabricadas} etiqueta(s)."
+                : "No se pudo preparar ninguna etiqueta.";
+
             return response()->json([
                 'success' => $fabricadas > 0,
-                'message' => $fabricadas > 0
-                    ? "Vamos a fabricar {$fabricadas} etiquetas."
-                    : "No se pudo fabricar ninguna etiqueta.",
-                'errors' => $errors,
+                'message' => $mensaje,
+                'errors'  => $errors,
+                'warnings' => $warnings,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -1220,9 +1196,137 @@ class EtiquetaController extends Controller
         }
     }
 
+
+    public function verificarYPrepararFabricacion(Etiqueta $etiqueta, Maquina $maquina): bool|array
+    {
+        DB::beginTransaction();
+
+        try {
+            $elementosEnMaquina = $etiqueta->elementos->where('maquina_id', $maquina->id);
+
+            if ($elementosEnMaquina->isEmpty()) {
+                throw new \Exception("La etiqueta no tiene elementos asignados a la máquina {$maquina->nombre}.");
+            }
+
+            $operario1 = Auth::id();
+            $operario2 = auth()->user()->compañeroDeTurno()?->id;
+
+            foreach ($elementosEnMaquina as $elemento) {
+                $elemento->update([
+                    'estado'       => 'fabricando',
+                    'fecha_inicio' => $elemento->fecha_inicio ?? now(),
+                    'users_id'     => $operario1,
+                    'users_id_2'   => $operario2,
+                ]);
+            }
+
+            $diametrosConPesos = $elementosEnMaquina
+                ->groupBy(fn($e) => (float) $e->diametro)
+                ->map(fn($grupo) => $grupo->sum('peso'));
+
+            $faltantes = [];
+
+            foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
+                $productos = $maquina->productos()
+                    ->whereHas(
+                        'productoBase',
+                        fn($q) => $q
+                            ->where('diametro', $diametro)
+                            ->where('tipo', $maquina->tipo_material)
+                    )
+                    ->with('productoBase')
+                    ->orderBy('peso_stock')
+                    ->get();
+
+                $stockDisponible = $productos->sum('peso_stock');
+
+                if ($stockDisponible < $pesoNecesarioTotal) {
+                    $faltantes[] = $diametro;
+                    $this->avisarGruistaRecarga($diametro, $maquina, $etiqueta->codigo);
+                }
+            }
+
+            // Estado planilla y etiqueta
+            $planilla = $etiqueta->planilla;
+
+            if (!$planilla) {
+                throw new \Exception("La etiqueta no tiene una planilla asociada.");
+            }
+
+            if (is_null($planilla->fecha_inicio)) {
+                $planilla->update([
+                    'fecha_inicio' => now(),
+                    'estado'       => 'fabricando',
+                ]);
+            }
+
+            $etiqueta->update([
+                'estado'        => 'fabricando',
+                'operario1_id'  => $operario1,
+                'operario2_id'  => $operario2,
+                'fecha_inicio'  => $etiqueta->fecha_inicio ?? now(),
+            ]);
+
+            DB::commit();
+
+            if (!empty($faltantes)) {
+                return [
+                    'success' => false,
+                    'error'   => 'Falta stock para Ø' . implode(', Ø', $faltantes)
+                        . ". Se han solicitado recargas automáticamente.",
+                ];
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return [
+                'success' => false,
+                'error'   => $e->getMessage(),
+            ];
+        }
+    }
+
+    private function avisarGruistaRecarga(float $diametro, Maquina $maquina, string $codigoEtiqueta): void
+    {
+        $productoBase = ProductoBase::where('diametro', $diametro)
+            ->where('tipo', $maquina->tipo_material)
+            ->first();
+
+        if (!$productoBase) {
+            Log::warning("ProductoBase no encontrado para Ø{$diametro} y tipo {$maquina->tipo_material}");
+            return;
+        }
+
+        $yaExiste = Movimiento::where('tipo', 'Recarga materia prima')
+            ->where('producto_base_id', $productoBase->id)
+            ->where('maquina_destino', $maquina->id)
+            ->where('estado', 'pendiente')
+            ->exists();
+
+        if (!$yaExiste) {
+            Movimiento::create([
+                'tipo'               => 'Recarga materia prima',
+                'producto_base_id'   => $productoBase->id,
+                'maquina_destino'    => $maquina->id,
+                'estado'             => 'pendiente',
+                'prioridad'          => 1,
+                'descripcion'        => "Recarga solicitada automática",
+                'fecha_solicitud'    => now(),
+                'solicitado_por'     => Auth::id(),
+            ]);
+
+            Log::info("✅ Movimiento de recarga creado para Ø{$diametro} en {$maquina->nombre}");
+        } else {
+            Log::info("⏭️ Movimiento ya existente para Ø{$diametro} en {$maquina->nombre}");
+        }
+    }
+
+
     public function completarLote(Request $request, CompletarLoteService $service)
     {
         $etiquetas = (array) $request->input('etiquetas', []);
+
         $maquinaId = (int) $request->input('maquina_id');
 
         $res = $service->completarLote($etiquetas, $maquinaId);

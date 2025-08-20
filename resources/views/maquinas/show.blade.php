@@ -40,7 +40,8 @@
 
                 @include('components.maquinas.modales.grua.modales-grua')
             @elseif ($maquina->tipo === 'cortadora_manual')
-                <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :materiaPrima="$materiaPrima" />
+                <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
+                    :productosBaseCompatibles="$productosBaseCompatibles" />
             @else
                 <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados" :productosBaseCompatibles="$productosBaseCompatibles" />
 

@@ -797,8 +797,37 @@ class PlanillaController extends Controller
             /* ================================================== */
             /* Bucle principal : una iteración por planilla       */
             /* ================================================== */
+            $clientesCache = [];
+            $obrasCache    = [];
+
             foreach ($planillas as $codigoPlanilla => $rows) {
 
+                // Detectar cliente y obra para esta planilla
+                $codigoCliente = trim($rows[0][0] ?? '');
+                $nombreCliente = trim($rows[0][1] ?? 'Cliente sin nombre');
+                $codigoObra    = trim($rows[0][2] ?? '');
+                $nombreObra    = trim($rows[0][3] ?? 'Obra sin nombre');
+
+                if (!$codigoCliente || !$codigoObra) {
+                    $advertencias[] = "⚠️ Planilla {$codigoPlanilla}: falta código de cliente u obra. Se omitió.";
+                    $planillasOmitidas[] = $codigoPlanilla;
+                    continue;
+                }
+
+                // Obtener o crear cliente (con caché)
+                $cliente = $clientesCache[$codigoCliente] ??= Cliente::firstOrCreate(
+                    ['codigo' => $codigoCliente],
+                    ['empresa' => $nombreCliente]
+                );
+
+                // Obtener o crear obra (con caché)
+                $obraKey = "{$codigoCliente}-{$codigoObra}";
+                $obra = $obrasCache[$obraKey] ??= Obra::firstOrCreate(
+                    ['cod_obra' => $codigoObra, 'cliente_id' => $cliente->id],
+                    ['obra' => $nombreObra]
+                );
+
+                // Saltar si ya existe la planilla
                 if (Planilla::where('codigo', $codigoPlanilla)->exists()) {
                     $planillasOmitidas[] = $codigoPlanilla;
                     continue;
@@ -821,7 +850,7 @@ class PlanillaController extends Controller
                     'ensamblado'             => $rows[0][4]  ?? null,
                     'codigo'                 => $codigoPlanilla,
                     'peso_total'             => $pesoTotal,
-                    'fecha_estimada_entrega' => $fechaEntrega,
+                    'fecha_estimada_entrega' => now()->addDays(7)->setTime(10, 0, 0),
                 ], [
                     'planilla'  => $codigoPlanilla,
                     'excel_row' => $rows[0]['_xl_row'] ?? 0,

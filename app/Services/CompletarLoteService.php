@@ -6,6 +6,7 @@ use App\Models\Etiqueta;
 use App\Models\Elemento;
 use App\Models\Planilla;
 use App\Models\Movimiento;
+use App\Models\Paquete;
 use App\Models\OrdenPlanilla;
 use App\Models\Maquina;
 use App\Models\ProductoBase;
@@ -20,18 +21,16 @@ class CompletarLoteService
         $completadas = 0;
         $errors = [];
         $planillasARevisar = [];
+        $algunaFalló = false;
 
         foreach ($etiquetas as $identificador) {
             try {
                 $etiqueta = Etiqueta::where('codigo', $identificador)
                     ->orWhere('etiqueta_sub_id', $identificador)
                     ->firstOrFail();
+
                 if (in_array($etiqueta->estado, ['completada', 'fabricada'])) {
                     throw new \Exception("La etiqueta {$etiqueta->codigo} ya fue completada.");
-                }
-                $planilla = $etiqueta->planilla;
-                if ($planilla && !in_array($planilla->id, $planillasARevisar)) {
-                    $planillasARevisar[] = $planilla->id;
                 }
 
                 $maquina = Maquina::findOrFail($maquinaId);
@@ -49,14 +48,35 @@ class CompletarLoteService
 
                 DB::beginTransaction();
 
-                $res = $this->actualizarElementosYConsumos($elementosEnMaquina, $maquina, $etiqueta, $warnings, $numeroCompletados, $enOtrasMaquinas, $productosAfectados, $planilla);
+                $res = $this->actualizarElementosYConsumos(
+                    $elementosEnMaquina,
+                    $maquina,
+                    $etiqueta,
+                    $warnings,
+                    $numeroCompletados,
+                    $enOtrasMaquinas,
+                    $productosAfectados,
+                    $planilla
+                );
 
                 if ($res !== true) {
                     throw new \Exception($res['error'] ?? 'Error al completar etiqueta');
                 }
 
-                DB::commit();
-                $completadas++;
+                if ($numeroCompletados > 0) {
+                    DB::commit();
+                    $this->empaquetarEtiqueta($etiqueta);
+                    $completadas++;
+
+                    $planilla = $etiqueta->planilla;
+                    if ($planilla && !in_array($planilla->id, $planillasARevisar)) {
+                        $planillasARevisar[] = $planilla->id;
+                    }
+                } else {
+                    DB::rollBack();
+                    throw new \Exception("No se pudo completar la etiqueta {$etiqueta->codigo} porque no se fabricó ningún elemento.");
+                }
+
                 Log::info("Etiqueta {$etiqueta->codigo} completada con éxito.");
             } catch (\Throwable $e) {
                 DB::rollBack();
@@ -66,10 +86,20 @@ class CompletarLoteService
                     'error' => $e->getMessage(),
                     'line' => $e->getLine(),
                 ];
+                $algunaFalló = true;
             }
         }
 
-        // Cierre de planillas
+        // 🛑 Si falló al menos una etiqueta, NO tocar la orden de planillas
+        if ($algunaFalló) {
+            return [
+                'success' => false,
+                'message' => "Solo se completaron {$completadas} etiquetas. Al menos una falló.",
+                'errors' => $errors,
+            ];
+        }
+
+        // ✅ Cierre de planillas solo si todas fueron correctas
         $completadasPlanillas = [];
         foreach ($planillasARevisar as $pid) {
             $res = $this->finalizarPlanillaSiCorresponde($pid, $maquinaId);
@@ -89,6 +119,7 @@ class CompletarLoteService
             'planillas_cerradas' => $completadasPlanillas,
         ];
     }
+
 
     // Copiar aquí tu método actualizarElementosYConsumos completo (sin cambios)
     private function actualizarElementosYConsumos($elementosEnMaquina, $maquina, &$etiqueta, &$warnings, &$numeroElementosCompletadosEnMaquina, $enOtrasMaquinas, &$productosAfectados, &$planilla)
@@ -120,11 +151,9 @@ class CompletarLoteService
                 ->get();
 
             if ($productosPorDiametro->isEmpty()) {
-                return response()->json([
-                    'success' => false,
-                    'error' => "No se encontraron materias primas para el diámetro {$diametro}.",
-                ], 400);
+                throw new \Exception("No se encontraron materias primas para el diámetro {$diametro}.");
             }
+
 
             $consumos[$diametro] = [];
             foreach ($productosPorDiametro as $producto) {
@@ -172,32 +201,11 @@ class CompletarLoteService
 
                 DB::rollBack();
 
-                // ✅ 3️⃣ Comprobar si ya existe movimiento pendiente de recarga
-                $existe = Movimiento::where('tipo', 'Recarga materia prima')
-                    ->where('producto_base_id', $productoBase->id)
-                    ->where('maquina_destino', $maquina->id)
-                    ->where('estado', 'pendiente')
-                    ->exists();
+                // Encapsulamos el aviso al gruista
+                $this->avisarGruistaRecarga($productoBase, $maquina);
 
-                if (!$existe) {
-                    DB::transaction(function () use ($productoBase, $maquina) {
-                        $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
-                        Log::info('✅ Movimiento de recarga creado', [
-                            'producto_base_id' => $productoBase->id,
-                            'maquina_id'       => $maquina->id,
-                        ]);
-                    });
-                } else {
-                    Log::info('⏭️ Movimiento de recarga ya existente. No se duplicó.', [
-                        'producto_base_id' => $productoBase->id,
-                        'maquina_id'       => $maquina->id,
-                    ]);
-                }
-
-                return [
-                    'success' => false,
-                    'error'   => "No hay suficiente materia prima para Ø{$diametro} mm en {$maquina->nombre}. Ya se ha solicitado recarga.",
-                ];
+                // ❌ Lanzamos excepción para detener el proceso
+                throw new \Exception("No hay suficiente materia prima para Ø{$diametro} mm en {$maquina->nombre}. Se ha solicitado recarga al gruista.");
             }
         }
 
@@ -349,10 +357,26 @@ class CompletarLoteService
             throw new \Exception('No se pudo registrar la solicitud de recarga de materia prima.');
         }
     }
+    private function avisarGruistaRecarga(ProductoBase $productoBase, Maquina $maquina): void
+    {
+        $yaExiste = Movimiento::where('tipo', 'Recarga materia prima')
+            ->where('producto_base_id', $productoBase->id)
+            ->where('maquina_destino', $maquina->id)
+            ->where('estado', 'pendiente')
+            ->exists();
+
+        if ($yaExiste) {
+            Log::info("⏭️ Movimiento de recarga ya existente para Ø{$productoBase->diametro} en {$maquina->nombre}");
+            return;
+        }
+
+        $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
+        Log::info("✅ Se solicitó recarga de Ø{$productoBase->diametro} en {$maquina->nombre}");
+    }
 
     public function finalizarPlanillaSiCorresponde($planillaId, $maquinaId)
     {
-        $planilla = Planilla::find($planillaId);
+        $planilla = Planilla::with('etiquetas')->find($planillaId);
 
         if (!$planilla) {
             return [
@@ -361,43 +385,68 @@ class CompletarLoteService
             ];
         }
 
-        $todasEtiquetasCompletadas = $planilla->etiquetas()
-            ->where('estado', '!=', 'completada')
-            ->doesntExist();
+        $todasEtiquetasCompletadas = $planilla->etiquetas
+            ->every(fn($etq) => $etq->estado === 'completada');
 
-        if ($todasEtiquetasCompletadas) {
-            $planilla->update([
-                'estado' => 'completada',
-                'fecha_finalizacion' => now(),
-            ]);
-        } else {
-            // Mantener estado actual (fabricando o lo que tenga)
+        try {
+            DB::transaction(function () use ($planilla, $maquinaId, $todasEtiquetasCompletadas) {
+
+                // Eliminar orden y reordenar
+                OrdenPlanilla::where('planilla_id', $planilla->id)
+                    ->where('maquina_id', $maquinaId)
+                    ->delete();
+
+                $restantes = OrdenPlanilla::where('maquina_id', $maquinaId)
+                    ->orderBy('posicion')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($restantes as $index => $orden) {
+                    $orden->posicion = $index;
+                    if (!$orden->save()) {
+                        throw new \Exception("No se pudo actualizar la posición de la orden de planilla ID {$orden->id}");
+                    }
+                }
+            });
+
+            return [
+                'success' => true,
+                'message' => $todasEtiquetasCompletadas
+                    ? 'Planilla completada y empaquetada. Cola actualizada.'
+                    : 'Planilla en proceso. Cola actualizada.',
+            ];
+        } catch (\Exception $e) {
+            Log::error("Error al finalizar planilla {$planillaId}: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+
+    public function empaquetarEtiqueta(Etiqueta $etiqueta): void
+    {
+        $codigoPaquete = Paquete::generarCodigo();
+
+        $paquete = Paquete::create([
+            'codigo'      => $codigoPaquete,
+            'planilla_id' => $etiqueta->planilla_id,
+            'peso'        => $etiqueta->peso ?? 0,
+        ]);
+
+        if (!$paquete || !$paquete->exists) {
+            Log::error("No se pudo crear el paquete para la etiqueta {$etiqueta->codigo}");
+            throw new \Exception("No se pudo crear el paquete para la etiqueta {$etiqueta->codigo}");
         }
 
-        // ⚙️ Siempre actualizar ordenplanillas (eliminar y reordenar)
-        DB::transaction(function () use ($planillaId, $maquinaId) {
-            // 1. Eliminar la planilla actual de la cola
-            OrdenPlanilla::where('planilla_id', $planillaId)
-                ->where('maquina_id', $maquinaId)
-                ->delete();
+        $etiqueta->paquete_id = $paquete->id;
 
-            // 2. Reordenar posiciones
-            $restantes = OrdenPlanilla::where('maquina_id', $maquinaId)
-                ->orderBy('posicion')
-                ->lockForUpdate()
-                ->get();
+        if (!$etiqueta->save()) {
+            Log::error("❌ No se pudo actualizar la etiqueta {$etiqueta->codigo} con el paquete asignado.");
+            throw new \Exception("No se pudo actualizar la etiqueta {$etiqueta->codigo} con el paquete asignado.");
+        }
 
-            foreach ($restantes as $index => $orden) {
-                $orden->posicion = $index;
-                $orden->save();
-            }
-        });
-
-        return [
-            'success' => true,
-            'message' => $todasEtiquetasCompletadas
-                ? 'Planilla completada y cola actualizada.'
-                : 'Planilla en proceso, pero cola actualizada.',
-        ];
+        Log::info("✅ Etiqueta {$etiqueta->codigo} completada y asignada al paquete {$codigoPaquete}");
     }
 }

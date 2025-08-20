@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Termwind\Components\Dd;
 
 class MovimientoController extends Controller
 {
@@ -377,11 +378,21 @@ class MovimientoController extends Controller
 
                         $descripcion = "Se solicita materia prima del tipo {$tipo} (Ø{$diametro}, {$longitud} mm) en la máquina {$nombreMaquina}";
 
+                        $yaExiste = Movimiento::where('tipo', 'Recarga materia prima')
+                            ->where('producto_base_id', $productoBase->id)
+                            ->where('maquina_destino', $request->maquina_id)
+                            ->where('estado', 'pendiente')
+                            ->exists();
+
+                        if ($yaExiste) {
+                            throw new \Exception("Ya existe una solicitud pendiente..");
+                        }
+
                         Movimiento::create([
                             'tipo'              => 'Recarga materia prima',
                             'maquina_origen'    => null,
                             'maquina_destino'   => $request->maquina_id,
-                            'producto_id'       => $request->producto_id, // puede ser null
+                            'producto_id'       => null, // puede ser null
                             'producto_base_id'  => $productoBase->id,
                             'estado'            => 'pendiente',
                             'descripcion'       => $descripcion,
@@ -389,6 +400,7 @@ class MovimientoController extends Controller
                             'fecha_solicitud'   => now(),
                             'solicitado_por'    => auth()->id(),
                         ]);
+
 
                         break;
 
@@ -423,7 +435,7 @@ class MovimientoController extends Controller
         } catch (\Exception $e) {
             Log::error('Error al registrar movimiento: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'Hubo un problema al registrar el movimiento. Inténtalo de nuevo.');
+            return redirect()->back()->with('error', 'No se ha podido crear el movimiento.');
         }
     }
 
