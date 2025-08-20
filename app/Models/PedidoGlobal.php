@@ -56,7 +56,7 @@ class PedidoGlobal extends Model
     }
     public function actualizarEstadoSegunProgreso()
     {
-        $pesoAcumulado = $this->pedidos()->sum('cantidad_recepcionada');
+        $pesoAcumulado = $this->pedidos()->sum('peso_total');
 
         if ($pesoAcumulado >= $this->cantidad_total) {
             $this->estado = self::ESTADO_COMPLETADO;
