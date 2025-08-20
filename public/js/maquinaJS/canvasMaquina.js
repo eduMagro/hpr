@@ -17,10 +17,19 @@ const minSlotHeight = 50;
 // =======================
 function crearSVG(width, height) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", width);
-    svg.setAttribute("height", height);
+    // ❌ fuera tamaño fijo en px
+    // svg.setAttribute("width", width);
+    // svg.setAttribute("height", height);
+
+    // ✅ tamaño lógico + escalado al contenedor
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svg.style.background = "#fe7f09"; // 🟧 fondo naranja
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.style.width = "100%";
+    svg.style.height = "70%";
+    svg.style.display = "block";
+    svg.style.background = "#fe7f09";
+    svg.style.shapeRendering = "geometricPrecision";
+    svg.style.textRendering = "optimizeLegibility";
     return svg;
 }
 
