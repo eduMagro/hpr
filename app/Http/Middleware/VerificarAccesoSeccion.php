@@ -29,6 +29,7 @@ class VerificarAccesoSeccion
         }
 
         $rutaActual = $request->route()?->getName() ?? '';
+
         // ✅ Rutas públicas siempre accesibles
         $rutasLibres = [
             'politica.privacidad',
@@ -62,6 +63,9 @@ class VerificarAccesoSeccion
         // ✅ Permitir solo rutas concretas a operarios
         $permitidosOperarioPrefix = [
             'maquinas.',
+            'maquinas.fabricarLote',
+            'maquinas.completarLote',
+            'etiquetas.',
             'productos.',
             'users.',
             'alertas.',

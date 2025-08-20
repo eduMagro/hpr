@@ -24,7 +24,7 @@ use Exception;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
-
+use App\Services\PlanillaService;
 
 
 class EtiquetaController extends Controller
@@ -217,7 +217,6 @@ class EtiquetaController extends Controller
 
         return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
     }
-
 
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
@@ -710,6 +709,7 @@ class EtiquetaController extends Controller
             ], 500);
         }
     }
+
     private function actualizarElementosYConsumos($elementosEnMaquina, $maquina, &$etiqueta, &$warnings, &$numeroElementosCompletadosEnMaquina, $enOtrasMaquinas, &$productosAfectados, &$planilla)
     {
 
@@ -954,6 +954,7 @@ class EtiquetaController extends Controller
 
         return true;
     }
+
     protected function generarMovimientoRecargaMateriaPrima(
         ProductoBase $productoBase,
         Maquina $maquina,
@@ -1087,6 +1088,7 @@ class EtiquetaController extends Controller
             ], 500);
         }
     }
+
     public function destroy($id)
     {
         try {
@@ -1111,5 +1113,172 @@ class EtiquetaController extends Controller
                 'message' => 'Error al eliminar la etiqueta. Intente nuevamente. ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    //METODOS PROVISIONALES
+
+    public function fabricarLote(Request $request)
+    {
+        try {
+            $etiquetaSubIds = $request->input('etiquetas');
+            $maquinaId = $request->input('maquina_id');
+
+            $compañero = auth()->user()->compañeroDeTurno();
+            // Validaciones iniciales
+            if (!is_array($etiquetaSubIds) || empty($etiquetaSubIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se proporcionaron etiquetas válidas.',
+                    'errors' => [
+                        ['id' => null, 'error' => 'El parámetro "etiquetas" debe ser un array no vacío.']
+                    ],
+                ], 422);
+            }
+
+            if (!$maquinaId || !is_numeric($maquinaId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se proporcionó una máquina válida.',
+                    'errors' => [
+                        ['id' => null, 'error' => 'El parámetro "maquina_id" es obligatorio y debe ser numérico.']
+                    ],
+                ], 422);
+            }
+
+            $fabricadas = 0;
+            $errors = [];
+
+            foreach ($etiquetaSubIds as $subId) {
+                try {
+                    DB::beginTransaction();
+
+                    $etiqueta = Etiqueta::where('etiqueta_sub_id', $subId)->firstOrFail();
+                    $maquina = Maquina::findOrFail($maquinaId);
+                    $planilla = $etiqueta->planilla;
+
+                    if (!$planilla) {
+                        throw new \Exception("La etiqueta no tiene planilla asociada.");
+                    }
+
+                    // Obtener elementos de esta etiqueta para la máquina actual
+                    $elementosEnMaquina = $etiqueta->elementos->where('maquina_id', $maquinaId);
+
+
+                    // Marcar elementos como "fabricando"
+                    foreach ($elementosEnMaquina as $elemento) {
+                        $elemento->update([
+                            'estado' => 'fabricando',
+
+                            'fecha_inicio' => $elemento->fecha_inicio ?? now(),
+                        ]);
+                    }
+
+                    // Marcar la planilla como "fabricando" si aún no lo está
+                    if (is_null($planilla->fecha_inicio)) {
+                        $planilla->update([
+                            'fecha_inicio' => now(),
+                            'estado' => 'fabricando',
+                        ]);
+                    }
+
+                    // Marcar etiqueta como "fabricando"
+                    $etiqueta->update([
+                        'estado' => 'fabricando',
+                        'operario1_id' => auth()->id(),
+                        'operario2_id' => optional($compañero)->id,
+                        'fecha_inicio' => $etiqueta->fecha_inicio ?? now(),
+                    ]);
+
+                    DB::commit();
+                    $fabricadas++;
+                } catch (\Throwable $e) {
+                    DB::rollBack();
+                    $errors[] = [
+                        'id' => $subId,
+                        'error' => $e->getMessage(),
+                        'line' => $e->getLine(),
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => $fabricadas > 0,
+                'message' => $fabricadas > 0
+                    ? "Vamos a fabricar {$fabricadas} etiquetas."
+                    : "No se pudo fabricar ninguna etiqueta.",
+                'errors' => $errors,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ocurrió un error inesperado al fabricar las etiquetas.',
+                'errors' => [
+                    ['id' => null, 'error' => $e->getMessage(), 'line' => $e->getLine()]
+                ],
+            ], 500);
+        }
+    }
+
+    public function completarLote(Request $request)
+    {
+        $completadas = 0;
+        $errors = [];
+        $planillasARevisar = [];
+
+        foreach ($request->etiquetas as $etiquetaSubId) {
+            try {
+                $res = $this->actualizarEtiqueta($request, $etiquetaSubId, $request->maquina_id);
+                Log::info("Etiqueta {$etiquetaSubId} completada con éxito.");
+                $data = $res->getData(true);
+                Log::info("Respuesta de completarLote: ", $data);
+
+                $completadas++;
+
+                // 📌 Añadir planilla a revisar si no está ya en la lista
+                $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+
+
+                if ($etiqueta && $etiqueta->planilla_id && !in_array($etiqueta->planilla_id, $planillasARevisar)) {
+                    $planillasARevisar[] = $etiqueta->planilla_id;
+                }
+                Log::info("Planilla a revisar: " . json_encode($planillasARevisar));
+                $errors[] = [
+                    'id' => $etiquetaSubId,
+                    'error' => $data['error'] ?? 'Error desconocido'
+                ];
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'id' => $etiquetaSubId,
+                    'error' => $e->getMessage()
+                ];
+            }
+        }
+
+        // ✅ Comprobar si esas planillas ya están completadas
+        $completadasPlanillas = [];
+        foreach ($planillasARevisar as $planillaId) {
+            $etiquetasPendientes = Etiqueta::where('planilla_id', $planillaId)
+                ->where('estado', '!=', 'adsjfklasd')
+                ->exists();
+
+
+
+            $res = app(PlanillaService::class)->completarPlanilla($planillaId);
+
+            if ($res['success']) {
+                $completadasPlanillas[] = $planillaId;
+            } else {
+                $errors[] = [
+                    'planilla' => $planillaId,
+                    'error' => $res['message']
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se completaron {$completadas} etiquetas y " . count($completadasPlanillas) . " planillas.",
+            'errors' => $errors
+        ]);
     }
 }

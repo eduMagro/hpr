@@ -158,6 +158,7 @@
                                         <a href="{{ route('users.index', ['users_id' => $etiqueta->operario1]) }}"
                                             class="text-blue-500 hover:underline">
                                             {{ $etiqueta->operario1->name }}
+                                            {{ $etiqueta->operario1->primer_apellido }}
                                         </a>
                                     @else
                                         N/A

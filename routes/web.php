@@ -181,6 +181,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/subetiquetas/crear', [ElementoController::class, 'crearSubEtiqueta'])->name('subetiquetas.crear');
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])->name('elementosEtiquetas');
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*');
+    // RUTAS PROVISIONALES
+    Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');
+    Route::post('/etiquetas/completar-lote', [EtiquetaController::class, 'completarLote'])->name('maquinas.completarLote');
+
+
     Route::get('/planillas/informacion', [PlanillaController::class, 'informacionMasiva'])->name('planillas.editarInformacionMasiva');
 
     Route::put('/planillas/fechas', [PlanillaController::class, 'actualizarFechasMasiva'])->name('planillas.editarActualizarFechasMasiva');

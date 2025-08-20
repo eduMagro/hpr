@@ -133,14 +133,25 @@
     <div class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-2 md:sticky md:top-4">
         <div class="flex flex-col gap-4">
             <!-- Input de lectura de QR -->
+            <div x-data="accionesLote()" class="mt-2 space-y-2">
+                <button @click="procesar('fabricar')" :disabled="cargando"
+                    class="w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50">
+                    <span x-show="!cargando">Empezar a Fabricar</span>
+                    <span x-show="cargando">Procesando…</span>
+                </button>
 
+                <button @click="procesar('completar')" :disabled="cargando"
+                    class="w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50">
+                    <span x-show="!cargando">Completar Fabricación</span>
+                    <span x-show="cargando">Procesando…</span>
+                </button>
+            </div>
 
             <input type="text" id="procesoEtiqueta" placeholder="ESCANEA ETIQUETA" autofocus
                 class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;" />
 
             <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
-
 
             <script>
                 document.addEventListener("DOMContentLoaded", function() {
@@ -240,7 +251,67 @@
             }
         </script>
 
+        <script>
+            function accionesLote() {
+                return {
+                    cargando: false,
 
+                    async procesar(accion) {
+                        this.cargando = true;
+
+                        const datos = document.getElementById('datos-lote')?.dataset.lote;
+                        const maquinaId = document.getElementById('maquina-info')?.dataset.maquinaId;
+
+                        if (!datos || !maquinaId) {
+                            this.cargando = false;
+                            Swal.fire("Error", "No se encontraron datos del lote o de la máquina.", "error");
+                            return;
+                        }
+
+                        const etiquetas = JSON.parse(datos);
+
+                        try {
+                            const response = await fetch(`/etiquetas/${accion}-lote`, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    maquina_id: maquinaId,
+                                    etiquetas: etiquetas
+                                })
+                            });
+
+                            const data = await response.json();
+
+                            Swal.fire({
+                                icon: data.success ? 'success' : 'error',
+                                title: data.message || 'Resultado del proceso',
+                                html: data.errors?.length ?
+                                    `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
+              ${data.errors.map(err => `
+                          <li>
+                              <b>#${err.id}</b>: ${err.error}<br>
+                              <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                          </li>
+                      `).join('')}
+           </ul>` :
+                                    '',
+                            }).then(() => {
+                                if (data.success) location.reload();
+                            });
+
+
+                        } catch (e) {
+                            Swal.fire("Error", e.message, "error");
+                        } finally {
+                            this.cargando = false;
+                        }
+                    }
+                }
+            }
+        </script>
     </div>
     <!-- --------------------------------------------------------------- MODALES --------------------------------------------------------------- -->
     <x-maquinas.modales.cambio-maquina :maquina="$maquina" :maquinas="$maquinas" />

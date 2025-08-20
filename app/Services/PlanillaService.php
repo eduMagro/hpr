@@ -9,6 +9,7 @@ use App\Models\OrdenPlanilla;
 use App\Models\Paquete;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class PlanillaService
 {
@@ -19,7 +20,7 @@ class PlanillaService
 
                 // ✅ Generar el código de paquete
                 $codigoPaquete = Paquete::generarCodigo();
-
+                Log::info("Entrando a completar planilla {$planillaId} con código {$codigoPaquete}");
                 // ✅ Calcular el peso total de las etiquetas de la planilla
                 $pesoTotal = Etiqueta::where('planilla_id', $planillaId)->sum('peso');
 
@@ -48,6 +49,8 @@ class PlanillaService
                 // ✅ Marcar todos sus elementos como completados
                 Elemento::where('planilla_id', $planillaId)->update(['estado' => 'completado']);
 
+
+
                 // ✅ Reajustar colas
                 $ordenes = OrdenPlanilla::lockForUpdate()
                     ->where('planilla_id', $planillaId)
@@ -55,18 +58,26 @@ class PlanillaService
 
                 $porMaquina = $ordenes->groupBy('maquina_id');
 
+                Log::info("Ajustando cola para planilla {$planillaId}");
+
                 foreach ($porMaquina as $maquinaId => $ordenesDeMaquina) {
+                    Log::info("Maquina {$maquinaId} - ordenes: " . $ordenesDeMaquina->count());
+
                     $posiciones = $ordenesDeMaquina->pluck('posicion')->sort()->values();
 
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
-                        ->where('planilla_id', $planillaId)
-                        ->delete();
-
                     foreach ($posiciones as $pos) {
+                        Log::info("Decrementando posiciones mayores a {$pos} en máquina {$maquinaId}");
+
                         OrdenPlanilla::where('maquina_id', $maquinaId)
                             ->where('posicion', '>', $pos)
                             ->decrement('posicion');
                     }
+
+                    Log::info("Eliminando orden de planilla {$planillaId} en máquina {$maquinaId}");
+
+                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->where('planilla_id', $planillaId)
+                        ->delete();
                 }
             });
 

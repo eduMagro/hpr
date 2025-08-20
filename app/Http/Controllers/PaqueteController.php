@@ -30,7 +30,7 @@ class PaqueteController extends Controller
         if ($request->filled('planilla')) {
             $input = $request->planilla;
             $query->whereHas('planilla', function ($q) use ($input) {
-                $q->where('codigo_limpio', 'like', "%{$input}%");
+                $q->where('codigo', 'like', "%{$input}%");
             });
         }
 

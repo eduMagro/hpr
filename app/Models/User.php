@@ -97,6 +97,28 @@ class User extends Authenticatable
         return trim("{$this->name} {$this->primer_apellido} {$this->segundo_apellido}");
     }
 
+    // En app/Models/User.php
+
+    public function compañeroDeTurno()
+    {
+        // Obtener la asignación de hoy del usuario autenticado
+        $asignacion = $this->asignacionesTurnos()
+            ->whereDate('fecha', now()->toDateString())
+            ->first();
+
+        if (!$asignacion) {
+            return null;
+        }
+
+        // Buscar un compañero distinto con misma asignación
+        return User::whereHas('asignacionesTurnos', function ($query) use ($asignacion) {
+            $query->whereDate('fecha', now()->toDateString())
+                ->where('maquina_id', $asignacion->maquina_id)
+                ->where('turno_id', $asignacion->turno_id);
+        })
+            ->where('id', '!=', $this->id) // Excluirse a sí mismo
+            ->first(); // Solo uno
+    }
 
     // Relación: Un usuario tiene muchas entradas
     public function entradas()
