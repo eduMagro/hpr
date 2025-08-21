@@ -1,23 +1,41 @@
-@component('mail::message')
-# Salida completada
+<!DOCTYPE html>
+<html lang="es">
 
-Se ha completado la salida **{{ $salida->codigo }}**.
+<head>
+    <meta charset="UTF-8">
+    <title>Salida completada</title>
+</head>
 
-@isset($salida->obra)
-- **Obra:** {{ $salida->obra->nombre }}
-@endisset
+<body style="font-family: Arial, sans-serif; background-color: #f7f7f7; padding: 20px;">
+    <div
+        style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+        <h2 style="color: #333;">✅ Salida completada</h2>
 
-- **Fecha:** {{ $salida->updated_at->format('d/m/Y H:i') }}
-- **Responsable:** {{ $salida->usuario->nombre_completo ?? 'N/A' }}
 
-@if($salida->comentarios)
-> _{{ $salida->comentarios }}_
-@endif
+        <p>Se ha completado la salida <strong>{{ $salida->codigo_salida ?? 'N/A' }}</strong>.</p>
 
-@component('mail::button', ['url' => route('salidas.show', $salida->id)])
-Ver salida
-@endcomponent
+        @isset($salida->obra)
+            <p><strong>Obra:</strong> {{ $salida->obra->obra }}</p>
+        @endisset
 
-Gracias,<br>
-{{ config('app.name') }}
-@endcomponent
+        <p><strong>Fecha:</strong> {{ $salida->updated_at->format('d/m/Y H:i') }}</p>
+        <p><strong>Responsable:</strong> {{ $salida->usuario->nombre_completo ?? 'N/A' }}</p>
+
+        @if ($salida->comentario)
+            <blockquote style="border-left: 4px solid #ccc; padding-left: 10px; color: #555;">
+                {{ $salida->comentario }}
+            </blockquote>
+        @endif
+
+        <p style="margin-top: 30px;">
+            <a href="{{ route('salidas.show', $salida->id) }}"
+                style="display: inline-block; padding: 10px 20px; background-color: #4a90e2; color: white; text-decoration: none; border-radius: 5px;">
+                Ver salida
+            </a>
+        </p>
+
+        <p style="margin-top: 40px;">Gracias,<br>{{ config('app.name') }}</p>
+    </div>
+</body>
+
+</html>

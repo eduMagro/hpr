@@ -190,9 +190,10 @@ class SalidaController extends Controller
                 }
             }
             if (isset($salida)) {
-                Mail::to(['eduardo.magro@pacoreyes.com', 'admin@tudominio.com'])
+                Mail::to(['eduardo.magro@pacoreyes.com'])
                     ->send(new SalidaCompletadaTrazabilidadEnviadaMailable($salida));
             }
+
 
             return response()->json([
                 'success' => true,
