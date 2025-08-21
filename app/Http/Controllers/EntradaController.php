@@ -375,34 +375,35 @@ class EntradaController extends Controller
 
         try {
             $validated = $request->validate([
-                'codigo_sage'  => 'nullable|string|max:50',
+                'codigo_sage' => 'nullable|string|max:50',
             ]);
 
             $entrada->update($validated);
 
-            // ✅ Marcar línea de pedido como facturada
+            // ✅ Marcar línea de pedido como facturado o volver a completado
             if ($entrada->pedidoProducto) {
-                Log::info('facturado');
+                $nuevoEstado = $entrada->codigo_sage ? 'facturado' : 'completado';
+
+                Log::info("Línea de pedido actualizada a estado: $nuevoEstado");
+
                 $entrada->pedidoProducto->update([
-                    'estado' => 'facturado',
+                    'estado' => $nuevoEstado,
                 ]);
             }
 
             DB::commit();
 
-            // 🔁 Si viene de fetch (JSON)
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Entrada actualizada correctamente y línea de pedido facturada.',
+                    'message' => 'Entrada actualizada correctamente.',
                     'data'    => $entrada->fresh()
                 ]);
             }
 
-            // Navegación tradicional
             return redirect()
                 ->route('entradas.index')
-                ->with('success', 'Entrada actualizada correctamente y línea de pedido facturada.');
+                ->with('success', 'Entrada actualizada correctamente.');
         } catch (ValidationException $e) {
             DB::rollBack();
 
@@ -429,6 +430,7 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
     public function subirPdf(Request $request)
     {
         $request->validate([
