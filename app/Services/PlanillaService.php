@@ -208,6 +208,7 @@ class PlanillaService
 
                 // Si ya no quedan más subetiquetas pendientes, marcamos la planilla como completada
                 $subetiquetasPendientes = Etiqueta::where('planilla_id', $planillaId)
+                    ->whereNotNull('etiqueta_sub_id')
                     ->where('estado', '!=', 'completada')
                     ->exists();
 
