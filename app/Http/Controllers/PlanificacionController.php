@@ -13,6 +13,8 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\AlertaService;
+use App\Models\Departamento;
 
 class PlanificacionController extends Controller
 {
@@ -207,7 +209,7 @@ class PlanificacionController extends Controller
                 $obra = $relacion->obra;
 
                 return [
-                    'title'        => "{$salida->codigo_salida} - {$obra->obra} - {$pesoTotal} kg",
+                    'title'        => "{$salida->codigo_salida} - {$salida->codigo_sage} - {$obra->obra} - {$pesoTotal} kg",
                     'id'           => $salida->id . '-' . $obra->id,
                     'start'        => $fechaInicio->toDateTimeString(),
                     'end'          => $fechaFin->toDateTimeString(),
@@ -382,8 +384,30 @@ class PlanificacionController extends Controller
             $salida->fecha_salida = $fecha;
             $salida->save();
 
+            // ✅ Solo enviar alerta si la salida tiene código SAGE
+            if (!is_null($salida->codigo_sage)) {
+                $alertaService = app(AlertaService::class);
+                $emisorId = auth()->id();
+
+                $usuariosAdmin = User::whereHas('departamentos', function ($q) {
+                    $q->where('nombre', 'Administración');
+                })->get();
+
+                foreach ($usuariosAdmin as $usuario) {
+                    $alertaService->crearAlerta(
+                        emisorId: $emisorId,
+                        destinatarioId: $usuario->id,
+                        mensaje: 'Se ha actualizado una salida (' . $salida->codigo_sage . ')',
+                        tipo: 'cambios en salida',
+                    );
+                }
+            } else {
+                Log::info('📭 No se envió alerta: salida sin código SAGE');
+            }
+
             return response()->json(['success' => true, 'modelo' => 'salida']);
         }
+
 
         if ($request->tipo === 'planilla') {
             Log::info('🛠 Actualizando planillas', [

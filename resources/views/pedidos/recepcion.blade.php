@@ -81,6 +81,7 @@
             style="display:none;">
             @csrf
             <input type="hidden" name="pedido_id" value="{{ $pedido->id }}">
+            <input type="hidden" name="pedido_producto_id" id="pedido_producto_id_input" value="{{ $linea?->id }}">
             <input type="hidden" name="producto_base_id" value="{{ $producto->id }}">
             <input type="hidden" name="cantidad_paquetes" id="cantidad_paquetes_input">
             <input type="hidden" name="codigo" id="codigo_input">
@@ -306,6 +307,7 @@
 
                 // ✅ Enviar
                 console.log('✅ Enviando formulario...');
+
                 document.getElementById('recepcionForm').submit();
 
             } catch (e) {

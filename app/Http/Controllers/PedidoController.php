@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Services\StockService;
 use App\Models\AsignacionTurno;
+use App\Services\AlertaService;
 
 class PedidoController extends Controller
 {
@@ -321,14 +322,27 @@ class PedidoController extends Controller
             ->get()
             ->unique('producto_base_id')
             ->keyBy('producto_base_id');
+        $linea = PedidoProducto::where('pedido_id', $pedido->id)
+            ->where('producto_base_id', $productoBase->id)
+            ->where('estado', '!=', 'completado')
+            ->orderBy('fecha_estimada_entrega')
+            ->first();
 
         // ✅ Devolver vista con producto base específico
-        return view('pedidos.recepcion', compact('pedido', 'productoBase', 'ubicaciones', 'ultimos', 'requiereFabricanteManual', 'fabricantes', 'ultimoFabricante'));
+        return view('pedidos.recepcion', compact('pedido', 'productoBase', 'ubicaciones', 'ultimos', 'requiereFabricanteManual', 'fabricantes', 'ultimoFabricante', 'linea'));
     }
 
     public function procesarRecepcion(Request $request, $id)
     {
         try {
+            Log::debug('📥 Datos recibidos en procesarRecepcion()', [
+                'pedido_id_param'         => $id,
+                'pedido_producto_id'      => $request->pedido_producto_id,
+                'producto_base_id'        => $request->producto_base_id,
+                'codigo'                  => $request->codigo,
+                'peso'                    => $request->peso,
+                'ubicacion_id'            => $request->ubicacion_id,
+            ]);
             $pedido = Pedido::with('productos')->findOrFail($id);
 
             if (in_array($pedido->estado, ['completado', 'cancelado'])) {
@@ -401,13 +415,19 @@ class PedidoController extends Controller
             }
 
             $ubicacion = Ubicacion::findOrFail($request->ubicacion_id);
+            Log::debug('🔍 Buscando línea de pedido...', [
+                'pedido_producto_id' => $request->pedido_producto_id,
+            ]);
 
-            // Buscar línea de pedido pendiente
-            $pedidoProducto = PedidoProducto::where('pedido_id', $pedido->id)
-                ->where('producto_base_id', $request->producto_base_id)
-                ->where('estado', '!=', 'completado')
-                ->orderBy('fecha_estimada_entrega')
-                ->first();
+            $pedidoProducto = PedidoProducto::findOrFail($request->pedido_producto_id);
+            if ($pedidoProducto->pedido_id !== $pedido->id) {
+                return redirect()->back()->with('error', 'La línea de pedido no pertenece al pedido actual.');
+            }
+            Log::debug('✅ Línea de pedido encontrada', [
+                'pedido_producto_id' => $pedidoProducto->id,
+                'pedido_id_en_linea' => $pedidoProducto->pedido_id,
+                'esperado_pedido_id' => $pedido->id,
+            ]);
 
             // Buscar o crear entrada abierta
             $entrada = Entrada::where('pedido_id', $pedido->id)
@@ -425,7 +445,34 @@ class PedidoController extends Controller
                 $entrada->otros              = 'Entrada generada desde recepción de pedido';
                 $entrada->save();
             }
+            // 🔔 Enviar alerta a Administración si hay fabricante
+            if ($entrada) {
 
+                $alertaService = app(AlertaService::class);
+                $emisorId = auth()->id();
+
+                $fabricante = $entrada->pedido->fabricante->nombre ?? 'Desconocido';
+                $pedidoCodigo = $entrada->pedido->codigo ?? $entrada->pedido->id ?? '—';
+
+                $usuariosAdmin = User::whereHas('departamentos', function ($q) {
+                    $q->where('nombre', 'Administración');
+                })->get();
+
+                foreach ($usuariosAdmin as $usuario) {
+                    $alertaService->crearAlerta(
+                        emisorId: $emisorId,
+                        destinatarioId: $usuario->id,
+                        mensaje: "Camión de ($fabricante) recibido. Pedido $pedidoCodigo. Linea de pedido ($pedidoProducto?->id)",
+                        tipo: 'Entrada material',
+                    );
+                }
+            } else {
+                Log::warning("❌ No se creó la alerta. Pedido o fabricante no disponibles", [
+                    'entrada_id' => $entrada->id ?? null,
+                    'pedido' => $entrada->pedido->id ?? null,
+                    'fabricante' => optional(optional($entrada->pedido)->fabricante)->nombre ?? null
+                ]);
+            }
             // Fabricante: si el pedido no tiene fabricante definido, usamos el que venga del formulario
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
 
@@ -475,6 +522,13 @@ class PedidoController extends Controller
 
             return redirect()->back()->with('success', 'Producto(s) recepcionado(s) correctamente.');
         } catch (\Exception $e) {
+            Log::error('❌ Error en procesarRecepcion()', [
+                'error' => $e->getMessage(),
+                'linea' => $e->getLine(),
+                'file'  => $e->getFile(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error: ' . $e->getMessage());

@@ -609,7 +609,7 @@ class SalidaController extends Controller
             ], 500);
         }
     }
-    public function actualizarCodigoSage(Request $request, \App\Models\Salida $salida)
+    public function actualizarCodigoSage(Request $request, Salida $salida)
     {
         $request->validate([
             'codigo' => 'required|string|max:255',

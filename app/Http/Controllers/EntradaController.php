@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use App\Services\AlertaService;
 
 class EntradaController extends Controller
 {
@@ -428,8 +429,6 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
-
-
 
     public function cerrar($id)
     {
