@@ -374,12 +374,18 @@ class EntradaController extends Controller
 
         try {
             $validated = $request->validate([
-
                 'codigo_sage'  => 'nullable|string|max:50',
-
             ]);
 
             $entrada->update($validated);
+
+            // ✅ Marcar línea de pedido como facturada
+            if ($entrada->pedidoProducto) {
+                Log::info('facturado');
+                $entrada->pedidoProducto->update([
+                    'estado' => 'facturado',
+                ]);
+            }
 
             DB::commit();
 
@@ -387,7 +393,7 @@ class EntradaController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Entrada actualizada correctamente.',
+                    'message' => 'Entrada actualizada correctamente y línea de pedido facturada.',
                     'data'    => $entrada->fresh()
                 ]);
             }
@@ -395,7 +401,7 @@ class EntradaController extends Controller
             // Navegación tradicional
             return redirect()
                 ->route('entradas.index')
-                ->with('success', 'Entrada actualizada correctamente.');
+                ->with('success', 'Entrada actualizada correctamente y línea de pedido facturada.');
         } catch (ValidationException $e) {
             DB::rollBack();
 
@@ -422,6 +428,7 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
 
 
     public function cerrar($id)

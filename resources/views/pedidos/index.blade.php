@@ -127,6 +127,7 @@
                                 @php
                                     $estadoLinea = strtolower(trim($linea['estado']));
                                     $claseFondo = match ($estadoLinea) {
+                                        'facturado' => 'bg-green-500',
                                         'completado' => 'bg-green-100',
                                         'activo' => 'bg-yellow-100',
                                         'cancelado' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
@@ -134,16 +135,15 @@
                                     };
                                     $esCancelado = $estadoLinea === 'cancelado';
                                     $esCompletado = $estadoLinea === 'completado';
+                                    $esFacturado = $estadoLinea === 'facturado';
                                 @endphp
 
 
                                 <tr class="text-xs {{ $claseFondo }}">
 
                                     <td class="border px-2 py-1 text-center">
-                                        <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea['id']]) }}"
-                                            class="text-blue-600 hover:underline">
-                                            {{ $linea['id'] }}
-                                        </a>
+
+                                        <span class="font-semibold"> {{ $linea['id'] }}</span>
                                     </td>
 
                                     <td class="border px-2 py-1 text-center align-middle">
@@ -186,7 +186,9 @@
                                                 @php $estado = strtolower(trim($linea['estado'])); @endphp
 
                                                 @if ($esCompletado)
-                                                    {{-- Solo botón Recepcionar --}}
+                                                    {{-- --}}
+                                                @elseif ($esFacturado)
+                                                    {{-- --}}
                                                 @elseif ($esCancelado)
                                                     <button disabled
                                                         class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-50 cursor-not-allowed">
