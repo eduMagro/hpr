@@ -378,12 +378,16 @@ class EntradaController extends Controller
                 'codigo_sage' => 'nullable|string|max:50',
             ]);
 
+            // ✅ Solo permitir edición de codigo_sage si la línea está completada
+            if ($entrada->pedidoProducto && $entrada->pedidoProducto->estado !== 'completado') {
+                throw new \Exception("Solo se puede editar el código SAGE si la línea está en estado 'completado'.");
+            }
+
             $entrada->update($validated);
 
-            // ✅ Marcar línea de pedido como facturado o volver a completado
+            // ✅ Cambiar estado de línea según si hay código_sage o no
             if ($entrada->pedidoProducto) {
                 $nuevoEstado = $entrada->codigo_sage ? 'facturado' : 'completado';
-
                 Log::info("Línea de pedido actualizada a estado: $nuevoEstado");
 
                 $entrada->pedidoProducto->update([
@@ -430,6 +434,7 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+
 
     public function subirPdf(Request $request)
     {
