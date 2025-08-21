@@ -97,43 +97,52 @@ class PlanillaService
     {
         $ok = 0;
         $fail = 0;
-        $omitidasPorFecha = 0;
         $errores = [];
 
-        $fechaLimite = Carbon::now()->subDays(5)->startOfDay(); // hoy - 5 días
+        $hoy = Carbon::today();
 
-        $query = Planilla::query()
-            ->where('estado', 'pendiente')   // ✅ solo pendientes
-            ->orderBy('id');
-
-        // Si pasas IDs, limita a esos (pero siguen siendo "pendientes")
-        if ($planillaIds && count($planillaIds)) {
-            $query->whereIn('id', $planillaIds);
+        // Base: solo pendientes (y opcionalmente acotadas por IDs)
+        $base = Planilla::query()->where('estado', 'pendiente');
+        if (!empty($planillaIds)) {
+            $base->whereIn('id', $planillaIds);
         }
 
-        $query->chunkById(100, function ($planillas) use (&$ok, &$fail, &$omitidasPorFecha, &$errores, $fechaLimite) {
-            foreach ($planillas as $p) {
+        // Métrica: cuántas omitimos por fecha (futuras o sin fecha)
+        $omitidasPorFecha = (clone $base)
+            ->where(function ($q) use ($hoy) {
+                $q->whereNull('fecha_estimada_entrega')
+                    ->orWhereDate('fecha_estimada_entrega', '>', $hoy);
+            })
+            ->count();
 
+        // Candidatas a procesar: con fecha <= hoy
+        $query = (clone $base)
+            ->whereNotNull('fecha_estimada_entrega')
+            ->whereDate('fecha_estimada_entrega', '<=', $hoy)
+            ->orderBy('id');
+
+        $query->chunkById(100, function ($planillas) use (&$ok, &$fail, &$errores) {
+            foreach ($planillas as $p) {
                 $res = $this->completarPlanilla($p->id);
 
-                if ($res['success']) {
+                if (is_array($res) && !empty($res['success'])) {
                     $ok++;
                 } else {
                     $fail++;
                     $errores[] = [
                         'planilla_id' => $p->id,
-                        'error'       => $res['message'] ?? 'Error desconocido',
+                        'error'       => is_array($res) ? ($res['message'] ?? 'Error desconocido') : 'Respuesta inválida',
                     ];
                 }
             }
         });
 
         return [
-            'success'          => $fail === 0,
-            'procesadas_ok'    => $ok,
-            'omitidas_fecha'   => $omitidasPorFecha,
-            'fallidas'         => $fail,
-            'errores'          => $errores,
+            'success'         => $fail === 0,
+            'procesadas_ok'   => $ok,
+            'omitidas_fecha'  => $omitidasPorFecha,
+            'fallidas'        => $fail,
+            'errores'         => $errores,
         ];
     }
 }
