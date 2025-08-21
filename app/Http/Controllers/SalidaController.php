@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Log;
+use App\Mail\SalidaCompletadaTrazabilidadEnviadaMailable;
+
+
+use Illuminate\Support\Facades\Mail;
 
 class SalidaController extends Controller
 {
@@ -185,12 +189,21 @@ class SalidaController extends Controller
                     $salida->save();
                 }
             }
+            if (isset($salida)) {
+                Mail::to(['eduardo.magro@pacoreyes.com', 'admin@tudominio.com'])
+                    ->send(new SalidaCompletadaTrazabilidadEnviadaMailable($salida));
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Movimiento y salida marcados como completados.'
             ]);
         } catch (\Exception $e) {
+            Log::error('❌ Error en completarDesdeMovimiento(): ' . $e->getMessage(), [
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Error al completar la salida: ' . $e->getMessage()
