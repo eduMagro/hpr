@@ -3,7 +3,6 @@
     <x-menu.materiales />
 
     <div class="px-4 py-6">
-
         @if (auth()->user()->rol === 'oficina')
             <!-- Tabla pedidos  -->
             <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
@@ -11,6 +10,8 @@
                 <table class="w-full border-collapse text-sm text-center">
                     <thead class="bg-blue-500 text-white text-10">
                         <tr class="text-center text-xs uppercase">
+
+                            <th class="p-2 border">ID LINEA</th>
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
@@ -26,6 +27,11 @@
 
                         <tr class="text-center text-xs uppercase">
                             <form method="GET" action="{{ route('pedidos.index') }}">
+
+                                <th class="p-1 border">
+                                    <x-tabla.input name="id" type="text" :value="request('id')"
+                                        class="w-full text-xs" />
+                                </th>
                                 <th class="p-1 border">
                                     <x-tabla.input name="codigo" type="text" :value="request('codigo')"
                                         class="w-full text-xs" />
@@ -97,11 +103,16 @@
                         @forelse ($pedidos as $pedido)
                             {{-- Fila principal del pedido --}}
                             <tr class="bg-gray-100 text-xs font-bold uppercase">
-                                <td colspan="10" class="text-left px-3 py-2">
-                                    <span class="text-blue-600">Pedido:</span> {{ $pedido->codigo }} |
+                                <td colspan="12" class="text-left px-3 py-2">
+                                    <span class="text-blue-600">Pedido:</span> {{ $pedido->codigo }}
+                                    |
                                     <span class="text-blue-600">Peso Total: </span> {{ $pedido->peso_total_formateado }}
                                     |
-                                    <span class="text-blue-600">Estado: </span>{{ $pedido->estado }} |
+                                    <span class="text-blue-600">Precio Ref: </span>
+                                    {{ $pedido->pedidoGlobal?->precio_referencia_euro ?? 'N/A' }}
+                                    |
+                                    <span class="text-blue-600">Estado: </span>{{ $pedido->estado }}
+                                    |
                                     <span class="text-blue-600">Fecha Pedido:
                                     </span>{{ $pedido->fecha_pedido_formateada }}
                                     <span class="float-right">
@@ -127,7 +138,26 @@
 
 
                                 <tr class="text-xs {{ $claseFondo }}">
-                                    <td class="border px-2 py-1">{{ $pedido->codigo }}</td>
+
+                                    <td class="border px-2 py-1 text-center">
+                                        <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea['id']]) }}"
+                                            class="text-blue-600 hover:underline">
+                                            {{ $linea['id'] }}
+                                        </a>
+                                    </td>
+
+                                    <td class="border px-2 py-1 text-center align-middle">
+                                        <div class="inline-flex flex-col items-center gap-1">
+                                            <span class="font-semibold">{{ $pedido->codigo }}</span>
+
+                                            @if (!empty($linea['id']))
+                                                <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea['id']]) }}"
+                                                    class="text-blue-600 hover:underline text-[11px]">
+                                                    Ver entradas
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </td>
                                     <td class="border px-2 py-1">{{ $pedido->pedidoGlobal?->codigo ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
@@ -299,8 +329,8 @@
                                     <select name="obra_id" id="obra_id"
                                         class="w-full border border-gray-300 rounded px-3 py-2" required>
                                         <option value="">Seleccionar obra</option>
-                                        @foreach ($obrasActivas as $obra)
-                                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                        @foreach ($navesHpr as $nave)
+                                            <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
                                         @endforeach
                                     </select>
                                 </div>

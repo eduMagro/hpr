@@ -108,10 +108,17 @@ class PedidoController extends Controller
 
     public function aplicarFiltrosPedidos($query, Request $request)
     {
+        if ($request->filled('pedido_producto_id')) {
+            $query->whereHas('pedidoProductos', function ($q) use ($request) {
+                $q->where('id', $request->pedido_producto_id);
+            });
+        }
+
         // Filtra por id
         if ($request->filled('pedido_id')) {
             $query->where('id', $request->pedido_id);
         }
+
         if ($request->filled('codigo')) {
             $query->where('codigo', 'like', '%' . $request->codigo . '%');
         }
@@ -222,7 +229,11 @@ class PedidoController extends Controller
             ? Obra::where('cliente_id', $idClienteHpr)->orderBy('obra')->get()
             : collect();
 
-        $obrasActivas = Obra::where('estado', 'activa')->orderBy('obra')->get();
+        $navesHpr = Obra::whereHas('cliente', function ($q) {
+            $q->where('empresa', 'like', '%HIERROS PACO REYES%');
+        })
+            ->orderBy('obra')
+            ->get();
 
         // ===== Filtro para el cálculo del StockService =====
         $obraIdSeleccionada = $request->input('obra_id_hpr');        // id concreto (string o null)
@@ -237,7 +248,7 @@ class PedidoController extends Controller
 
         return view('pedidos.index', array_merge([
             'pedidos'        => $pedidos,
-            'obrasActivas'   => $obrasActivas,
+            'navesHpr'       => $navesHpr,
             'fabricantes'    => $fabricantes,
             'filtrosActivos' => $filtrosActivos,
             'ordenables'     => $ordenables,

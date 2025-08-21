@@ -28,6 +28,12 @@ class EntradaController extends Controller
     //------------------------------------------------------------------------------------ FILTROS
     public function aplicarFiltrosEntradas($query, Request $request)
     {
+        if ($request->filled('pedido_producto_id')) {
+            $query->whereHas('productos', function ($q) use ($request) {
+                $q->where('pedido_producto_id', $request->pedido_producto_id);
+            });
+        }
+
         if ($request->filled('albaran')) {
             $query->where('albaran', 'like', '%' . $request->albaran . '%');
         }

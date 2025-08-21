@@ -16,6 +16,7 @@
                         <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                         <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                         <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['precio_referencia'] ?? 'Precio Ref.' !!}</th>
                         <th class="p-2 border">{!! $ordenables['cantidad_total'] ?? 'Cantidad Total' !!}</th>
                         <th class="p-2 border">Cantidad Restante</th>
                         <th class="p-2 border">Progreso</th>
@@ -38,6 +39,7 @@
                                     class="w-full text-xs" />
                             </th>
 
+                            <th class="p-1 border"></th>
                             <th class="p-1 border"></th>
                             <th class="p-1 border"></th>
                             <th class="p-1 border"></th>
@@ -94,6 +96,7 @@
                                     @endforeach
                                 </select>
                             </td>
+
                             <!-- Distribuidor -->
                             <td class="p-2 border">
                                 <template x-if="!editando">
@@ -106,6 +109,18 @@
                                     @endforeach
                                 </select>
                             </td>
+
+                            <!-- Precio Referencia -->
+                            <td class="p-2 border">
+                                <template x-if="!editando">
+                                    <span x-text="pedido.precio_referencia_euro ?? 'N/A'"></span>
+                                </template>
+
+                                <input x-show="editando" x-model="pedido.precio_referencia" type="number"
+                                    step="0.01" min="0" placeholder="Ej: 6,40"
+                                    class="form-input w-full text-right" />
+                            </td>
+
 
                             <!-- Cantidad total -->
                             <td class="p-2 border">

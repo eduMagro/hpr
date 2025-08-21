@@ -111,6 +111,7 @@ class PedidoGlobalController extends Controller
             'codigo' => $this->getOrdenamientoPedidosGlobales('codigo', 'Código'),
             'fabricante' => $this->getOrdenamientoPedidosGlobales('fabricante', 'Fabricante'),
             'distribuidor' => $this->getOrdenamientoPedidosGlobales('distribuidor', 'Distribuidor'),
+            'precio_referencia' => $this->getOrdenamientoPedidosGlobales('precio_referencia', 'Precio Ref.'),
             'cantidad_total' => $this->getOrdenamientoPedidosGlobales('cantidad_total', 'Cantidad total'),
             'estado' => $this->getOrdenamientoPedidosGlobales('estado', 'Estado'),
         ];
@@ -196,11 +197,13 @@ class PedidoGlobalController extends Controller
     public function update(Request $request, $id)
     {
         try {
+
             // Validar los datos
             $request->validate([
                 'cantidad_total' => 'required|numeric|min:0',
                 'fabricante_id' => 'nullable|exists:fabricantes,id',
                 'estado' => 'required|string|in:pendiente,en curso,completado,cancelado',
+                'precio_referencia' => 'nullable|numeric|min:0|max:9999999999.9999',
             ], [
                 'cantidad_total.required' => 'La cantidad total es obligatoria.',
                 'cantidad_total.numeric' => 'La cantidad debe ser un número.',
@@ -211,6 +214,10 @@ class PedidoGlobalController extends Controller
                 'estado.required' => 'El estado es obligatorio.',
                 'estado.string' => 'El estado debe ser una cadena de texto.',
                 'estado.in' => 'El estado debe ser: pendiente, en curso, completado o cancelado.',
+
+                'precio_referencia.numeric' => 'El precio debe ser un número válido.',
+                'precio_referencia.min' => 'El precio no puede ser negativo.',
+                'precio_referencia.max' => 'El precio es demasiado alto.',
             ]);
 
             // Buscar el pedido global
@@ -221,9 +228,10 @@ class PedidoGlobalController extends Controller
 
             // Actualizar campos
             $resultado = $pedido->update([
-                'cantidad_total' => $request->cantidad_total,
-                'fabricante_id' => $request->fabricante_id,
-                'estado' => $request->estado,
+                'cantidad_total'      => $request->cantidad_total,
+                'fabricante_id'       => $request->fabricante_id,
+                'estado'              => $request->estado,
+                'precio_referencia'   => $request->precio_referencia,
             ]);
 
             if (!$resultado) {

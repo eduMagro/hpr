@@ -8,7 +8,7 @@
             <table class="w-full border text-sm text-center">
                 <thead class="bg-blue-600 text-white uppercase text-xs">
                     <tr>
-                        <th class="px-3 py-2 border">ID</th>
+                        <th class="px-3 py-2 border">ID Linea</th>
                         <th class="px-3 py-2 border">{!! $ordenables['albaran'] ?? 'Albarán' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['codigo_sage'] ?? 'Código SAGE' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['pedido_codigo'] ?? 'Pedido Compra' !!}</th>
@@ -69,8 +69,14 @@
                             @keydown.enter.stop="guardarEntrada(fila); editando = false"
                             :class="{ 'bg-yellow-100': editando }"
                             class="border-b hover:bg-blue-50 text-sm text-center">
+
                             <!-- ID -->
-                            <td class="px-3 py-2">{{ $entrada->id }}</td>
+                            <td class="px-3 py-2 text-center">
+                                <a href="{{ route('pedidos.index', ['pedido_producto_id' => $entrada->pedido_producto_id]) }}"
+                                    class="text-blue-600 hover:underline">
+                                    {{ $entrada->pedido_producto_id }}
+                                </a>
+                            </td>
 
                             <!-- Albarán -->
                             <td class="px-3 py-2">

@@ -236,7 +236,12 @@ class CompletarLoteService
         }
 
         // ✅ Lógica de "TALLER" y "CARCASAS"
-        $ensambladoText = strtolower($etiqueta->planilla->ensamblado ?? '');
+
+        $planilla = $etiqueta->planilla;
+        $ensambladoText = strtolower($planilla->ensamblado ?? '');
+        if (!$planilla) {
+            throw new \Exception("La etiqueta {$etiqueta->codigo} no tiene planilla asociada.");
+        }
 
         if (str_contains($ensambladoText, 'taller')) {
             // Verificar si todos los elementos de la etiqueta están en estado "completado"

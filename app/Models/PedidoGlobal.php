@@ -17,15 +17,27 @@ class PedidoGlobal extends Model
         'codigo',
         'descripcion',
         'cantidad_total',
+        'precio_referencia',
         'fabricante_id',
-        'estado'
-    ];
+        'estado',
 
+    ];
+    protected $appends = ['precio_referencia_euro'];
+
+    protected $casts = [
+
+        'precio_referencia' => 'decimal:2',
+    ];
     const ESTADO_PENDIENTE = 'pendiente';
     const ESTADO_EN_CURSO = 'en curso';
     const ESTADO_COMPLETADO = 'completado';
     const ESTADO_CANCELADO = 'cancelado';
+    public function getPrecioReferenciaEuroAttribute(): ?string
+    {
+        if ($this->precio_referencia === null) return null;
 
+        return number_format($this->precio_referencia, 2, ',', '') . ' €';
+    }
     public static function generarCodigo()
     {
         $año = now()->format('y');
