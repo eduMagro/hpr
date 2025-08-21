@@ -24,6 +24,7 @@ use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Storage;
 
+
 class EntradaController extends Controller
 {
     //------------------------------------------------------------------------------------ FILTROS
@@ -378,9 +379,14 @@ class EntradaController extends Controller
                 'codigo_sage' => 'nullable|string|max:50',
             ]);
 
-            // ✅ Solo permitir edición de codigo_sage si la línea está completada
-            if ($entrada->pedidoProducto && $entrada->pedidoProducto->estado !== 'completado') {
-                throw new \Exception("Solo se puede editar el código SAGE si la línea está en estado 'completado'.");
+
+
+            $estado = $entrada->pedidoProducto->estado ?? null;
+
+            if (!in_array($estado, ['completado', 'facturado'])) {
+                throw ValidationException::withMessages([
+                    'codigo_sage' => "Solo se puede editar el código SAGE si la línea está en estado 'completado' o 'facturado'."
+                ]);
             }
 
             $entrada->update($validated);
@@ -426,7 +432,7 @@ class EntradaController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Ocurrió un error en el servidor',
+                    'message' => 'Ocurrió un error en el servidor' . $e,
                     'error'   => $e->getMessage()
                 ], 500);
             }
