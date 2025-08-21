@@ -115,27 +115,33 @@ class PlanillaService
             })
             ->count();
 
-        // Candidatas a procesar: con fecha <= hoy
-        $query = (clone $base)
+        // Planillas candidatas
+        $planillas = (clone $base)
             ->whereNotNull('fecha_estimada_entrega')
             ->whereDate('fecha_estimada_entrega', '<=', $hoy)
-            ->orderBy('id');
+            ->get();
 
-        $query->chunkById(100, function ($planillas) use (&$ok, &$fail, &$errores) {
-            foreach ($planillas as $p) {
-                $res = $this->completarPlanilla($p->id);
+        foreach ($planillas as $planilla) {
+            $subetiquetas = Etiqueta::where('planilla_id', $planilla->id)
+                ->whereNotNull('etiqueta_sub_id')
+                ->distinct()
+                ->pluck('etiqueta_sub_id');
 
-                if (is_array($res) && !empty($res['success'])) {
+            foreach ($subetiquetas as $subId) {
+                $res = $this->completarSubetiqueta($subId);
+
+                if ($res['success']) {
                     $ok++;
                 } else {
                     $fail++;
                     $errores[] = [
-                        'planilla_id' => $p->id,
-                        'error'       => is_array($res) ? ($res['message'] ?? 'Error desconocido') : 'Respuesta inválida',
+                        'etiqueta_sub_id' => $subId,
+                        'planilla_id'     => $planilla->id,
+                        'error'           => $res['message'] ?? 'Error desconocido',
                     ];
                 }
             }
-        });
+        }
 
         return [
             'success'         => $fail === 0,
@@ -144,5 +150,81 @@ class PlanillaService
             'fallidas'        => $fail,
             'errores'         => $errores,
         ];
+    }
+
+    public function completarSubetiqueta(string $etiquetaSubId): array
+    {
+        try {
+            DB::transaction(function () use ($etiquetaSubId) {
+                $etiquetas = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->get();
+
+                if ($etiquetas->isEmpty()) {
+                    throw new \Exception("No se encontraron etiquetas para la subetiqueta $etiquetaSubId");
+                }
+
+                $planillaId = $etiquetas->first()->planilla_id;
+                $pesoTotal = $etiquetas->sum('peso');
+
+                $codigoPaquete = Paquete::generarCodigo();
+
+                $paquete = Paquete::create([
+                    'codigo'          => $codigoPaquete,
+                    'planilla_id'     => $planillaId,
+                    'etiqueta_sub_id' => $etiquetaSubId,
+                    'peso'            => $pesoTotal,
+                    'estado'          => 'completado',
+                ]);
+
+                // Actualizar etiquetas
+                Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->update([
+                    'estado'     => 'completada',
+                    'paquete_id' => $paquete->id,
+                ]);
+
+                // Actualizar elementos
+                Elemento::where('etiqueta_sub_id', $etiquetaSubId)->update([
+                    'estado' => 'completado',
+                ]);
+
+                // Eliminar orden de la planilla en cada máquina
+                $ordenes = OrdenPlanilla::lockForUpdate()
+                    ->where('planilla_id', $planillaId)
+                    ->get()
+                    ->groupBy('maquina_id');
+
+                foreach ($ordenes as $maquinaId => $ordenesMaquina) {
+                    $posiciones = $ordenesMaquina->pluck('posicion')->sort()->values();
+
+                    foreach ($posiciones as $pos) {
+                        OrdenPlanilla::where('maquina_id', $maquinaId)
+                            ->where('posicion', '>', $pos)
+                            ->decrement('posicion');
+                    }
+
+                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->where('planilla_id', $planillaId)
+                        ->delete();
+                }
+
+                // Si ya no quedan más subetiquetas pendientes, marcamos la planilla como completada
+                $subetiquetasPendientes = Etiqueta::where('planilla_id', $planillaId)
+                    ->where('estado', '!=', 'completada')
+                    ->exists();
+
+                if (!$subetiquetasPendientes) {
+                    Planilla::where('id', $planillaId)->update(['estado' => 'completada']);
+                }
+            });
+
+            return [
+                'success' => true,
+                'message' => "Subetiqueta $etiquetaSubId completada.",
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+        }
     }
 }
