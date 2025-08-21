@@ -21,8 +21,8 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Validator;
-use App\Services\AlertaService;
+use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Storage;
 
 class EntradaController extends Controller
 {
@@ -429,7 +429,49 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error: ' . $e->getMessage());
         }
     }
+    public function subirPdf(Request $request)
+    {
+        $request->validate([
+            'entrada_id'   => 'required|exists:entradas,id',
+            'albaran_pdf'  => 'required|file|mimes:pdf|max:5120', // Máx. 5MB
+        ], [
+            'albaran_pdf.required' => 'Debes seleccionar un archivo PDF.',
+            'albaran_pdf.mimes'    => 'El archivo debe ser un PDF.',
+            'albaran_pdf.max'      => 'El archivo no puede superar los 5MB.',
+        ]);
 
+        $entrada = Entrada::findOrFail($request->entrada_id);
+
+        // Borrar archivo anterior si existía
+        if ($entrada->pdf_albaran) {
+            Storage::disk('private')->delete("albaranes_entrada/{$entrada->pdf_albaran}");
+        }
+
+        // Guardar nuevo archivo
+        $nombreArchivo = 'albaran_' . $entrada->id . '_' . time() . '.pdf';
+        $request->file('albaran_pdf')->storeAs('albaranes_entrada', $nombreArchivo, 'private');
+
+        // Guardar nombre en la base de datos
+        $entrada->pdf_albaran = $nombreArchivo;
+        $entrada->save();
+
+        return redirect()->back()->with('success', 'PDF del albarán subido correctamente.');
+    }
+
+    public function descargarPdf($id)
+    {
+        $entrada = Entrada::findOrFail($id);
+        $ruta = "albaranes_entrada/{$entrada->pdf_albaran}";
+
+        if (!$entrada->pdf_albaran || !Storage::disk('private')->exists($ruta)) {
+            abort(404, 'PDF no encontrado.');
+        }
+
+        return response()->file(Storage::disk('private')->path($ruta), [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="Albaran_' . $entrada->id . '.pdf"',
+        ]);
+    }
     public function cerrar($id)
     {
         DB::transaction(function () use ($id) {

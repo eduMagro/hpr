@@ -66,6 +66,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // === ENTRADAS Y PEDIDOS ===
     Route::resource('entradas', EntradaController::class);
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
+    Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
+        ->name('entradas.crearImportarAlbaranPdf');
+    Route::get('/entradas/pdf/{id}', [EntradaController::class, 'descargarPdf'])->name('entradas.crearDescargarPdf');
 
     Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);

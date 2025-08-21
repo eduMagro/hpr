@@ -8,7 +8,7 @@
             <table class="w-full border text-sm text-center">
                 <thead class="bg-blue-600 text-white uppercase text-xs">
                     <tr>
-                        <th class="px-3 py-2 border">ID Linea</th>
+                        <th class="px-3 py-2 border">ID Linea Pedido</th>
                         <th class="px-3 py-2 border">{!! $ordenables['albaran'] ?? 'Albarán' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['codigo_sage'] ?? 'Código SAGE' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['pedido_codigo'] ?? 'Pedido Compra' !!}</th>
@@ -17,6 +17,7 @@
                         <th class="px-3 py-2 border">Peso Total</th>
                         <th class="px-3 py-2 border">Estado</th>
                         <th class="px-3 py-2 border">{!! $ordenables['usuario'] ?? 'Usuario' !!}</th>
+                        <th class="px-3 py-2 border">PDF Adjunto</th>
                         <th class="px-3 py-2 border">Acciones</th>
                     </tr>
                     <tr>
@@ -36,7 +37,6 @@
                             </th>
 
                             <th class="border p-1"></th>
-
                             <th class="border p-1"></th>
                             <th class="border p-1"></th>
                             <th class="border p-1"></th>
@@ -45,6 +45,7 @@
                                 <x-tabla.input name="usuario" :value="request('usuario')" class="text-xs w-full" />
                             </th>
 
+                            <th class="border p-1"></th>
 
                             <x-tabla.botones-filtro ruta="entradas.index" />
 
@@ -139,6 +140,17 @@
 
                             <!-- Usuario -->
                             <td class="px-3 py-2">{{ $entrada->user->nombre_completo ?? 'N/A' }}</td>
+                            {{-- PDF adjunto --}}
+                            <td class="px-3 py-2">
+                                @if ($entrada->pdf_albaran)
+                                    <a href="{{ route('entradas.crearDescargarPdf', $entrada->id) }}" target="_blank"
+                                        class="text-green-600 font-semibold hover:underline">
+                                        {{ $entrada->pdf_albaran }}
+                                    </a>
+                                @else
+                                    <span class="text-red-500">No</span>
+                                @endif
+                            </td>
 
                             <!-- Acciones -->
                             <td class="px-2 py-2 border text-xs font-bold">
@@ -152,6 +164,17 @@
                                     <!-- Botones normales cuando NO editando -->
                                     <template x-if="!editando">
                                         <div class="flex items-center space-x-2">
+                                            <!-- Botón de adjuntar albarán -->
+                                            <button @click="$dispatch('abrir-modal-adjuntar', { entradaId: fila.id })"
+                                                class="w-6 h-6 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center justify-center"
+                                                title="Adjuntar albarán PDF">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l7.07-7.07a4 4 0 00-5.657-5.657L6.343 11.343a6 6 0 008.485 8.485l.707-.707" />
+                                                </svg>
+                                            </button>
+
                                             <button @click="editando = true" type="button"
                                                 class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
                                                 title="Editar">
@@ -193,6 +216,31 @@
             </div>
         </div>
     </div>
+    <div x-data="{ mostrar: false, entradaId: null }" @abrir-modal-adjuntar.window="mostrar = true; entradaId = $event.detail.entradaId"
+        x-show="mostrar" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        style="display: none;" x-cloak>
+        <div class="bg-white p-6 rounded shadow-lg w-full max-w-lg">
+            <h2 class="text-lg font-semibold mb-4">Adjuntar albarán en PDF</h2>
+            <form method="POST" action="{{ route('entradas.crearImportarAlbaranPdf') }}"
+                enctype="multipart/form-data">
+
+                @csrf
+                <input type="hidden" name="entrada_id" :value="entradaId">
+                <div class="mb-4">
+                    <label for="albaran_pdf" class="block text-sm font-medium text-gray-700 mb-1">Archivo PDF:</label>
+                    <input type="file" name="albaran_pdf" accept="application/pdf" required
+                        class="w-full border rounded px-3 py-2 text-sm">
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" @click="mostrar = false"
+                        class="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded">Cancelar</button>
+                    <button type="submit"
+                        class="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded">Adjuntar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="{{ asset('js/imprimirQrAndroid.js') }}"></script>
     <script>
         function guardarEntrada(fila) {
