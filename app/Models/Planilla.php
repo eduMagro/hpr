@@ -88,12 +88,10 @@ class Planilla extends Model
         return $this->hasMany(Etiqueta::class, 'planilla_id');
     }
 
-
     public function elementos()
     {
         return $this->hasMany(Elemento::class, 'planilla_id');
     }
-
 
     /**
      * Relación con la tabla 'users'

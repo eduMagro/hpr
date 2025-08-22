@@ -16,6 +16,7 @@ class Paquete extends Model
         'planilla_id',
         'peso'
     ];
+
     public static function generarCodigo()
     {
         $year = now()->format('y');

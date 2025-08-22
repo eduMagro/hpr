@@ -91,8 +91,8 @@ async function crearSalida(planillasIds, calendar) {
             data.success ? "success" : "warning"
         );
         if (data.success && calendar) {
-            calendar.refetchEvents();
-            calendar.refetchResources?.();
+            // calendar.refetchEvents();
+            // calendar.refetchResources?.();
         }
     } catch (err) {
         console.error(err);

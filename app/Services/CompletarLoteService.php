@@ -326,7 +326,31 @@ class CompletarLoteService
                 }
             }
         }
+        // ✅ Si todos los elementos de la planilla están completados, actualizar la planilla
+        $todosElementosPlanillaCompletos = $planilla->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
+        if ($todosElementosPlanillaCompletos) {
+            $planilla->fecha_finalizacion = now();
+            $planilla->estado = 'completada';
+            $planilla->save();
 
+            DB::transaction(function () use ($planilla, $maquina) {
+                // 1. Eliminar el registro de esa planilla en esta máquina
+                OrdenPlanilla::where('planilla_id', $planilla->id)
+                    ->where('maquina_id', $maquina->id)
+                    ->delete();
+
+                // 2. Reordenar las posiciones de las planillas restantes en esta máquina
+                $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
+                    ->orderBy('posicion')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($ordenes as $index => $orden) {
+                    $orden->posicion = $index;
+                    $orden->save();
+                }
+            });
+        }
         return true;
     }
 

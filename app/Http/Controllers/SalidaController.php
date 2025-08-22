@@ -18,6 +18,9 @@ use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Log;
 use App\Mail\SalidaCompletadaTrazabilidadEnviadaMailable;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\File;
 
 
 use Illuminate\Support\Facades\Mail;
@@ -164,10 +167,8 @@ class SalidaController extends Controller
     public function completarDesdeMovimiento($movimientoId)
     {
         try {
-            // 🔹 Buscar el movimiento
             $movimiento = Movimiento::findOrFail($movimientoId);
 
-            // Validar que efectivamente es tipo salida
             if ($movimiento->tipo !== 'salida') {
                 return response()->json([
                     'success' => false,
@@ -175,29 +176,36 @@ class SalidaController extends Controller
                 ], 422);
             }
 
-            // 🔹 Actualizar el movimiento
-            $movimiento->estado = 'completado';
-            $movimiento->fecha_ejecucion = now();
-            $movimiento->ejecutado_por = auth()->id();
-            $movimiento->save();
 
-            // 🔹 Actualizar la salida asociada
-            if ($movimiento->salida_id) {
-                $salida = Salida::find($movimiento->salida_id);
-                if ($salida) {
-                    $salida->estado = 'completada';
-                    $salida->save();
-                }
+
+            $salida = Salida::with([
+                'clientes',
+                'paquetes.etiquetas.planilla.obra',
+                'paquetes.etiquetas.planilla.elementos', // <-- esta es la clave
+                'paquetes.etiquetas.planilla.elementos.producto.productoBase',
+                'paquetes.etiquetas.planilla.elementos.producto'
+            ])->find($movimiento->salida_id);
+
+
+            if (!$salida) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró la salida asociada.'
+                ], 404);
             }
-            if (isset($salida)) {
-                Mail::to(['eduardo.magro@pacoreyes.com'])
-                    ->send(new SalidaCompletadaTrazabilidadEnviadaMailable($salida));
-            }
 
 
+            $this->generarYEnviarTrazabilidad($salida);
+            $salida->estado = 'completada';
+            $salida->save();
+            $movimiento->update([
+                'estado' => 'completado',
+                'fecha_ejecucion' => now(),
+                'ejecutado_por' => auth()->id()
+            ]);
             return response()->json([
                 'success' => true,
-                'message' => 'Movimiento y salida marcados como completados.'
+                'message' => 'Movimiento y salida completados. Email enviado.'
             ]);
         } catch (\Exception $e) {
             Log::error('❌ Error en completarDesdeMovimiento(): ' . $e->getMessage(), [
@@ -211,6 +219,100 @@ class SalidaController extends Controller
             ], 500);
         }
     }
+    private function generarYEnviarTrazabilidad(Salida $salida)
+    {
+        try {
+            $etiquetas = $salida->paquetes->flatMap->etiquetas;
+            $etiquetasPorObra = $etiquetas->groupBy(fn($etiqueta) => optional($etiqueta->planilla?->obra)->id);
+
+            foreach ($salida->clientes as $cliente) {
+                $clienteNombre = Str::slug($cliente->empresa ?? 'sin_cliente');
+
+                foreach ($etiquetasPorObra as $obraId => $grupoEtiquetas) {
+                    $obra = optional($grupoEtiquetas->first()?->planilla?->obra);
+                    if (!$obra) continue;
+
+                    $obraNombre = Str::slug($obra->obra ?? 'obra_desconocida');
+                    $obraCodigo = $obra->cod_obra ?? 'sin_codigo';
+
+                    $planillaIds = $grupoEtiquetas->pluck('planilla.id')->filter()->unique();
+
+                    $planillas = Planilla::with('elementos.producto.productoBase', 'elementos.producto')
+                        ->whereIn('id', $planillaIds)
+                        ->get();
+
+
+                    // 🔁 Ahora sí puedes recorrer sus elementos
+                    $elementos = $planillas
+                        ->flatMap(fn($planilla) => $planilla->elementos)
+                        ->filter(fn($e) => $e->producto && $e->producto->productoBase)
+                        ->values();
+
+                    Log::debug('📦 Planillas cargadas', [
+                        'ids' => $planillas->pluck('id'),
+                        'elementos_totales' => $planillas->flatMap->elementos->count(),
+                        'productos_null' => $planillas->flatMap->elementos->filter(fn($e) => is_null($e->producto))->count(),
+                        'producto_base_null' => $planillas->flatMap->elementos->filter(fn($e) => optional($e->producto)->productoBase === null)->count(),
+                    ]);
+
+                    $datosPorDiametro = $elementos
+                        ->groupBy(fn($e) => $e->producto->productoBase->diametro ?? 'N/A')
+                        ->map(fn($grupo) => $grupo->groupBy(fn($e) => $e->producto->n_colada ?? 'Desconocida'));
+
+                    Log::debug('🎯 DEBUG TRAZABILIDAD', [
+                        'cliente_id' => $cliente->id,
+                        'obra_id' => $obra->id ?? null,
+                        'planillas' => $planillas->pluck('id'),
+                        'elementos_count' => $elementos->count(),
+                        'datosPorDiametro' => $datosPorDiametro->toArray(),
+                    ]);
+
+                    $año = now()->year;
+                    $rutaRelativa = "private/trazabilidad_{$año}/{$clienteNombre}/{$obraNombre}";
+                    $rutaCompleta = storage_path("app/{$rutaRelativa}");
+
+                    // Crear carpeta si no existe
+                    if (!File::exists($rutaCompleta)) {
+                        File::makeDirectory($rutaCompleta, 0755, true, true);
+                    }
+
+                    $codigoLimpio = str_replace('/', '-', $salida->codigo_salida);
+                    $nombreArchivo = "trazabilidad_salida_{$codigoLimpio}_obra_{$obraCodigo}.pdf";
+
+
+                    // Generar y guardar PDF
+                    $pdf = Pdf::loadView('pdfs.trazabilidad-pdf', [
+                        'salida' => $salida,
+                        'obra' => $obra,
+                        'cliente' => $cliente,
+                        'datosPorDiametro' => $datosPorDiametro,
+                    ]);
+                    $pdf->save("{$rutaCompleta}/{$nombreArchivo}");
+
+                    // Enviar email con adjunto
+                    Mail::send('emails.salidas.salida-completada-trazabilidad-enviada', [
+                        'salida' => $salida,
+                        'obra' => $obra,
+                        'cliente' => $cliente,
+                    ], function ($message) use ($salida, $rutaCompleta, $nombreArchivo) {
+                        $message->to(['eduardo.magro@pacoreyes.com'])
+                            ->subject('Salida completada')
+                            ->attach("{$rutaCompleta}/{$nombreArchivo}");
+                    });
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('❌ Error en generarYEnviarTrazabilidad(): ' . $e->getMessage(), [
+                'salida_id' => $salida->id,
+                'codigo_salida' => $salida->codigo_salida,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw new \RuntimeException("No se pudo generar o enviar la trazabilidad para la salida {$salida->codigo_salida}.");
+        }
+    }
+
 
     public function create(Request $request)
     {

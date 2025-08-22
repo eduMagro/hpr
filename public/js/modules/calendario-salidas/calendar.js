@@ -314,8 +314,8 @@ export function crearCalendario() {
                         return r.json();
                     })
                     .then(() => {
-                        calendar.refetchEvents();
-                        calendar.refetchResources();
+                        // calendar.refetchEvents();
+                        // calendar.refetchResources();
                         /* ▼ asegurar que se vea al terminar */
                         safeUpdateSize();
                     })

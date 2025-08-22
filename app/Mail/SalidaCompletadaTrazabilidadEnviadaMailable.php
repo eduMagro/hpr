@@ -20,7 +20,13 @@ class SalidaCompletadaTrazabilidadEnviadaMailable extends Mailable
 
     public function build()
     {
+        $pdfPath = storage_path("app/public/trazabilidad/salida_{$this->salida->id}.pdf");
+
         return $this->subject('Salida completada')
-            ->view('emails.salidas.salida-completada-trazabilidad-enviada');
+            ->view('emails.salidas.salida-completada-trazabilidad-enviada')
+            ->attach($pdfPath, [
+                'as' => 'trazabilidad.pdf',
+                'mime' => 'application/pdf',
+            ]);
     }
 }

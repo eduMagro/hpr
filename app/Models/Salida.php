@@ -61,10 +61,15 @@ class Salida extends Model
     {
         return $this->hasMany(SalidaCliente::class);
     }
+    public function clientes()
+    {
+        return $this->belongsToMany(Cliente::class, 'salida_cliente', 'salida_id', 'cliente_id');
+    }
     public function obras()
     {
         return $this->belongsToMany(Obra::class, 'salida_cliente', 'salida_id', 'obra_id');
     }
+
     public function movimientos()
     {
         return $this->hasMany(Movimiento::class);
