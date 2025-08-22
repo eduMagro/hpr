@@ -226,13 +226,21 @@ class PedidoController extends Controller
             ->orderByRaw("CASE WHEN empresa = ? THEN 0 ELSE 1 END", [$nombreCliente])
             ->value('id');
 
+        // 🔹 Obras de HPR
         $obrasHpr = $idClienteHpr
             ? Obra::where('cliente_id', $idClienteHpr)->orderBy('obra')->get()
             : collect();
 
+        // 🔹 Naves (igual que obrasHpr pero filtrando por nombre de cliente)
         $navesHpr = Obra::whereHas('cliente', function ($q) {
             $q->where('empresa', 'like', '%HIERROS PACO REYES%');
         })
+            ->orderBy('obra')
+            ->get();
+
+        // 🔹 Obras activas que NO sean del cliente HPR
+        $obrasExternas = Obra::where('estado', 'activa')
+            ->where('cliente_id', '!=', $idClienteHpr)
             ->orderBy('obra')
             ->get();
 
@@ -256,6 +264,7 @@ class PedidoController extends Controller
             'distribuidores' => $distribuidores,
             'pedidosGlobales' => $pedidosGlobales,
             'obrasHpr'       => $obrasHpr,
+            'obrasExternas'       => $obrasExternas,
             'idClienteHpr'   => $idClienteHpr,
             'solo_hpr'       => $soloHpr,
             'obra_id_hpr'    => $obraIdSeleccionada,
@@ -759,20 +768,45 @@ class PedidoController extends Controller
 
     public function store(Request $request)
     {
+        Log::debug('Contenido completo del request al crear pedido:', $request->all());
+
         try {
+            // Validación básica
             $request->validate([
-                'seleccionados'    => 'required|array',
-                'obra_id'          => 'required|exists:obras,id',
-                'fabricante_id'    => 'nullable|exists:fabricantes,id',
-                'distribuidor_id'  => 'nullable|exists:distribuidores,id',
+                'seleccionados'     => 'required|array',
+                'obra_id_hpr'       => 'nullable|exists:obras,id',
+                'obra_id_externa'   => 'nullable|exists:obras,id',
+                'obra_manual'       => 'nullable|string|max:255',
+                'fabricante_id'     => 'nullable|exists:fabricantes,id',
+                'distribuidor_id'   => 'nullable|exists:distribuidores,id',
             ], [
-                'seleccionados.required' => 'Selecciona al menos un producto para generar el pedido.',
-                'obra_id.required'       => 'Debes indicar la obra a la que se destina el pedido.',
-                'obra_id.exists'         => 'La obra seleccionada no existe.',
-                'fabricante_id.exists'   => 'El fabricante seleccionado no es válido.',
-                'distribuidor_id.exists' => 'El distribuidor seleccionado no es válido.',
+                'seleccionados.required'     => 'Selecciona al menos un producto para generar el pedido.',
+                'obra_id_hpr.exists'         => 'La nave seleccionada no existe.',
+                'obra_id_externa.exists'     => 'La obra externa seleccionada no existe.',
+                'fabricante_id.exists'       => 'El fabricante seleccionado no es válido.',
+                'distribuidor_id.exists'     => 'El distribuidor seleccionado no es válido.',
             ]);
 
+            // Validar exclusividad de lugar de entrega
+            $hayObraHpr     = $request->filled('obra_id_hpr');
+            $hayObraExterna = $request->filled('obra_id_externa');
+            $hayObraManual  = $request->filled('obra_manual');
+
+            $totalObrasMarcadas = (int) $hayObraHpr + (int) $hayObraExterna + (int) $hayObraManual;
+
+            if ($totalObrasMarcadas > 1) {
+                return back()->withErrors([
+                    'obra_manual' => 'Solo puedes seleccionar una opción: nave, obra externa o introducirla manualmente.',
+                ])->withInput();
+            }
+
+            if ($totalObrasMarcadas === 0) {
+                return back()->withErrors([
+                    'obra_manual' => 'Debes seleccionar una obra o escribir el lugar de entrega.',
+                ])->withInput();
+            }
+
+            // Validar proveedor
             if (!$request->fabricante_id && !$request->distribuidor_id) {
                 return back()->withErrors(['fabricante_id' => 'Debes seleccionar un fabricante o un distribuidor.'])->withInput();
             }
@@ -781,6 +815,7 @@ class PedidoController extends Controller
                 return back()->withErrors(['fabricante_id' => 'Solo puedes seleccionar uno: fabricante o distribuidor.'])->withInput();
             }
 
+            // Buscar pedido global relacionado
             $pedidoGlobal = null;
 
             if ($request->fabricante_id) {
@@ -800,25 +835,27 @@ class PedidoController extends Controller
                 $pedidoGlobal->save();
             }
 
-
             // 📝 Crear pedido principal
+            $obraId = $request->obra_id_hpr ?: $request->obra_id_externa;
+
             $pedido = Pedido::create([
                 'codigo'           => Pedido::generarCodigo(),
                 'pedido_global_id' => $pedidoGlobal->id ?? null,
                 'estado'           => 'pendiente',
                 'fabricante_id'    => $request->fabricante_id,
                 'distribuidor_id'  => $request->distribuidor_id,
-                'obra_id'          => $request->obra_id,
+                'obra_id'          => $obraId,
+                'obra_manual'      => $request->obra_manual,
                 'fecha_pedido'     => now(),
             ]);
 
+            // 🔄 Procesar productos
             $pesoTotal = 0;
 
-            // 🔄 Procesar cada producto seleccionado
             foreach ($request->seleccionados as $clave) {
                 $tipo     = $request->input("detalles.$clave.tipo");
                 $diametro = $request->input("detalles.$clave.diametro");
-                $longitud = $request->input("detalles.$clave.longitud"); // si se usa
+                $longitud = $request->input("detalles.$clave.longitud");
 
                 $productoBase = ProductoBase::where('tipo', $tipo)
                     ->where('diametro', $diametro)
@@ -827,7 +864,6 @@ class PedidoController extends Controller
 
                 if (!$productoBase) continue;
 
-                // 👇 CAMBIO AQUÍ: buscamos con la clave "redondo-16", no con ID
                 $subproductos = data_get($request->input('productos'), $clave, []);
 
                 foreach ($subproductos as $index => $camion) {
@@ -867,6 +903,7 @@ class PedidoController extends Controller
             return back()->withInput()->with('error', $msg);
         }
     }
+
 
     public function show($id)
     {

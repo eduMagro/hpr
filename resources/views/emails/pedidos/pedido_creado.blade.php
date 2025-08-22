@@ -60,22 +60,28 @@
                                 </tr>
                                 <tr>
                                     <td style="padding: 6px 0;">
-                                        <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra ?? 'N/A' }}<br>
-                                        <strong>Dirección:</strong>
-                                        {{ $pedido->obra->direccion ?? 'No disponible' }}<br>
+                                        @if ($pedido->obra)
+                                            <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra }}<br>
+                                            <strong>Dirección:</strong>
+                                            {{ $pedido->obra->direccion ?? 'No disponible' }}<br>
 
-                                        @if ($pedido->obra->latitud && $pedido->obra->longitud)
-                                            <strong>Ubicación:</strong>
-                                            <a href="https://www.google.com/maps/search/?api=1&query={{ $pedido->obra->latitud }},{{ $pedido->obra->longitud }}"
-                                                target="_blank" style="color: #2563eb; text-decoration: underline;">
-                                                Ver en Google Maps
-                                            </a>
+                                            @if ($pedido->obra->latitud && $pedido->obra->longitud)
+                                                <strong>Ubicación:</strong>
+                                                <a href="https://www.google.com/maps/search/?api=1&query={{ $pedido->obra->latitud }},{{ $pedido->obra->longitud }}"
+                                                    target="_blank" style="color: #2563eb; text-decoration: underline;">
+                                                    Ver en Google Maps
+                                                </a>
+                                            @else
+                                                <strong>Ubicación:</strong> Coordenadas no disponibles
+                                            @endif
+                                        @elseif ($pedido->obra_manual)
+                                            <strong>Lugar de entrega:</strong> {{ $pedido->obra_manual }}
                                         @else
-                                            <strong>Ubicación:</strong> Coordenadas no disponibles
+                                            <strong>Lugar de entrega:</strong> No especificado
                                         @endif
                                     </td>
-
                                 </tr>
+
                             </table>
 
 

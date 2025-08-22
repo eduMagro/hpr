@@ -113,13 +113,18 @@
                                     |
                                     <span class="text-blue-600">Estado: </span>{{ $pedido->estado }}
                                     |
-                                    <span class="text-blue-600">Fecha Pedido:
-                                    </span>{{ $pedido->fecha_pedido_formateada }}
+                                    <span class="text-blue-600">Fecha Pedido:</span>
+                                    {{ $pedido->fecha_pedido_formateada }}
+                                    |
+                                    <span class="text-blue-600">Lugar de Entrega:</span>
+                                    {{ $pedido->obra->obra ?? ($pedido->obra_manual ?? 'No especificado') }}
+
                                     <span class="float-right">
                                         <x-tabla.boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />
                                     </span>
                                 </td>
                             </tr>
+
 
 
                             {{-- Filas de las líneas del pedido --}}
@@ -324,18 +329,53 @@
                                 </div>
 
                                 {{-- Campo de lugar de entrega --}}
+                                {{-- Campo de lugar de entrega: solo se puede seleccionar uno --}}
                                 <div class="text-left">
-                                    <label for="obra_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
                                         Lugar de Entrega:
                                     </label>
-                                    <select name="obra_id" id="obra_id"
-                                        class="w-full border border-gray-300 rounded px-3 py-2" required>
-                                        <option value="">Seleccionar obra</option>
-                                        @foreach ($navesHpr as $nave)
-                                            <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
-                                        @endforeach
-                                    </select>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {{-- Select para naves HPR --}}
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Naves de Hierros Paco
+                                                Reyes</label>
+                                            <select name="obra_id_hpr" id="obra_id_hpr"
+                                                class="w-full border border-gray-300 rounded px-3 py-2"
+                                                onchange="limpiarObraManual()">
+                                                <option value="">Seleccionar nave</option>
+                                                @foreach ($navesHpr as $nave)
+                                                    <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        {{-- Select para obras externas --}}
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Obras Externas
+                                                (activas)</label>
+                                            <select name="obra_id_externa" id="obra_id_externa"
+                                                class="w-full border border-gray-300 rounded px-3 py-2"
+                                                onchange="limpiarObraManual()">
+                                                <option value="">Seleccionar obra externa</option>
+                                                @foreach ($obrasExternas as $obra)
+                                                    <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        {{-- Input de obra manual --}}
+                                        <div>
+                                            <label class="block text-xs text-gray-500 mb-1">Otra ubicación (texto
+                                                libre)</label>
+                                            <input type="text" name="obra_manual" id="obra_manual"
+                                                class="w-full border border-gray-300 rounded px-3 py-2"
+                                                placeholder="Escribir dirección manualmente"
+                                                oninput="limpiarSelectsObra()" value="{{ old('obra_manual') }}">
+                                        </div>
+                                    </div>
                                 </div>
+
 
                                 <table
                                     class="w-full border-collapse text-sm text-center shadow-xl overflow-hidden rounded-lg border border-gray-300">
@@ -483,6 +523,17 @@
 
     </div>
     <script>
+        function limpiarObraManual() {
+            document.getElementById('obra_manual').value = '';
+        }
+
+        function limpiarSelectsObra() {
+            document.getElementById('obra_id_hpr').selectedIndex = 0;
+            document.getElementById('obra_id_externa').selectedIndex = 0;
+        }
+    </script>
+
+    <script>
         function mostrarConfirmacion() {
             const checkboxes = document.querySelectorAll(
                 'input[type="checkbox"]:checked');
@@ -513,7 +564,7 @@
             <td class="border px-2 py-1">
                 <div class="flex flex-col gap-2">
                     <input type="number" class="peso-total w-full px-2 py-1 border rounded"
-                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="12500" min="12500"
+                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="500" min="2500"
                            onchange="generarFechasPorPeso(this, '${clave}')">
                     <div class="fechas-camion flex flex-col gap-1" id="${fechasId}" data-producto-id="${clave}">
                         <!-- Fechas se insertarán aquí -->

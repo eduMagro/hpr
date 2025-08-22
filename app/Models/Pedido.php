@@ -15,6 +15,7 @@ class Pedido extends Model
         'fabricante_id',
         'distribuidor_id',
         'obra_id',
+        'obra_manual',
         'peso_total',
         'fecha_pedido',
         'fecha_entrega',
