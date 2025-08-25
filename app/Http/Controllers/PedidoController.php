@@ -443,20 +443,24 @@ class PedidoController extends Controller
                 ->where('estado', 'abierto')
                 ->first();
 
+            $entradaRecienCreada = false;
+
             if (!$entrada) {
                 $entrada = new Entrada();
                 $entrada->pedido_id          = $pedido->id;
-                $entrada->pedido_producto_id = $pedidoProducto?->id; // ✅ Asignación directa
+                $entrada->pedido_producto_id = $pedidoProducto?->id;
                 $entrada->albaran            = $this->generarCodigoAlbaran();
                 $entrada->usuario_id         = auth()->id();
                 $entrada->peso_total         = 0;
                 $entrada->estado             = 'abierto';
                 $entrada->otros              = 'Entrada generada desde recepción de pedido';
                 $entrada->save();
-            }
-            // 🔔 Enviar alerta a Administración si hay fabricante
-            if ($entrada) {
 
+                $entradaRecienCreada = true;
+            }
+
+            // 🔔 Enviar alerta a Administración **solo si se acaba de crear la entrada**
+            if ($entradaRecienCreada) {
                 $alertaService = app(AlertaService::class);
                 $emisorId = auth()->id();
 
@@ -475,13 +479,8 @@ class PedidoController extends Controller
                         tipo: 'Entrada material',
                     );
                 }
-            } else {
-                Log::warning("❌ No se creó la alerta. Pedido o fabricante no disponibles", [
-                    'entrada_id' => $entrada->id ?? null,
-                    'pedido' => $entrada->pedido->id ?? null,
-                    'fabricante' => optional(optional($entrada->pedido)->fabricante)->nombre ?? null
-                ]);
             }
+
             // Fabricante: si el pedido no tiene fabricante definido, usamos el que venga del formulario
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
 
