@@ -909,24 +909,12 @@ class PedidoController extends Controller
     {
         $pedido = Pedido::with(['productos', 'fabricante', 'obra'])->findOrFail($id);
 
-        // puedes comentar esto si no se usa en la vista directamente
-        $mailable = new PedidoCreado(
-            $pedido,
-            'compras@pacoreyes.com',
-            'Pedidos - Hierros Paco Reyes',
-            [
-                'sebastian.duran@pacoreyes.com',
-                'indiana.tirado@pacoreyes.com',
-                'alberto.mayo@pacoreyes.com',
-                'josemanuel.amuedo@pacoreyes.com',
-            ]
-        );
-
         return view('emails.pedidos.pedido_creado', [
             'pedido' => $pedido,
-            'esVistaPrevia' => true,
+            'esVistaPrevia' => true, // <- IMPORTANTE para que aparezcan los botones
         ]);
     }
+
 
     public function enviarCorreo($id, Request $request)
     {
@@ -940,20 +928,25 @@ class PedidoController extends Controller
         }
 
         // 📌 Correos en copia
-        $ccEmails = ['eduardo.magro@pacoreyes.com'];
+        $ccEmails = [
+            'sebastian.duran@pacoreyes.com',
+            'manuel.reyes@pacoreyes.com',
+            'anagracia.aroca@pacoreyes.com',
+            'indiana.tirado@pacoreyes.com',
+            'josemanuel.amuedo@pacoreyes.com',
+        ];
 
-        // 📧 Dirección de respuesta dinámica
-        $replyToEmail = auth()->user()->email ?? 'noreply@pacoreyes.com';
-        $replyToName  = auth()->user()->name  ?? 'Usuario no identificado';
+        $fromAddress = config('mail.from.address');                 // p.ej. info@pacoreyes.eu
+        $fromName    = config('mail.from.name', 'Hierros Paco Reyes');
 
         // ✉️ Preparar el Mailable
         $mailable = new PedidoCreado(
             $pedido,
-            'compras@pacoreyes.com',      // From visible
-            $contacto['nombre'],          // Nombre del remitente visible
-            $ccEmails,                    // CC
-            $replyToEmail,                // Respuestas a
-            $replyToName
+            $fromAddress,        // From visible
+            $fromName,           // Nombre del remitente visible
+            $ccEmails,           // CC
+            $fromAddress,        // Reply-To email -> al correo de la app
+            $fromName            // Reply-To name
         );
 
         // 🚀 Enviar

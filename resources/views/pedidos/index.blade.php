@@ -125,8 +125,6 @@
                                 </td>
                             </tr>
 
-
-
                             {{-- Filas de las líneas del pedido --}}
                             @foreach ($pedido->lineas as $linea)
                                 @php

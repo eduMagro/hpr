@@ -4,221 +4,229 @@
 <head>
     <meta charset="UTF-8">
     <title>Confirmación de pedido</title>
+    <style>
+        @page {
+            margin: 24px;
+        }
+
+        html,
+        body {
+            background: #fff;
+            font-family: DejaVu Sans, sans-serif;
+            color: #111827;
+        }
+
+        .wrap {
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .card {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .hdr {
+            background: #1f2937;
+            color: #fff;
+            padding: 18px 24px;
+        }
+
+        .hdr h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #CE1F23;
+        }
+
+        .hdr p {
+            margin: 6px 0 0;
+            color: #d1d5db;
+            font-size: 12px;
+        }
+
+        .body {
+            padding: 24px;
+        }
+
+        h2,
+        h3 {
+            margin: 0 0 10px;
+            color: #1f2937;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        th,
+        td {
+            border: 1px solid #e5e7eb;
+            padding: 10px;
+        }
+
+        thead th {
+            background: #374151;
+            color: #fff;
+            text-align: left;
+        }
+
+        .muted {
+            color: #6b7280;
+            font-size: 12px;
+            margin-top: 16px;
+        }
+
+        .ftr {
+            background: #111827;
+            color: #9ca3af;
+            text-align: center;
+            padding: 16px 24px;
+            font-size: 12px;
+        }
+    </style>
 </head>
 
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: 'Segoe UI', sans-serif;">
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f5; padding: 40px 0;">
-        <tr>
-            <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0"
-                    style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 0 15px rgba(0,0,0,0.08);">
-                    <!-- Header -->
-                    <tr style="background-color: #1f2937;">
-                        <td style="padding: 20px 30px;">
-                            <table cellpadding="0" cellspacing="0" border="0">
-                                <tr>
-                                    <td style="vertical-align: middle; padding-right: 12px;">
-                                        <img src="{{ config('app.url') . '/imagenes/ico/android-chrome-192x192.png' }}"
-                                            alt="Logo Hierros Paco Reyes" width="40" height="40"
-                                            style="border-radius: 6px;">
-                                    </td>
-                                    <td style="vertical-align: middle;">
-                                        <h1 style="color: #CE1F23; font-size: 24px; margin: 0;">Hierros Paco Reyes</h1>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <!-- Párrafo independiente alineado completamente a la izquierda -->
-                            <p style="color: #d1d5db; font-size: 14px; margin: 10px 0 0; padding-left: 0;">
-                                Especialistas en ferrallado industrial
-                            </p>
-                        </td>
-                    </tr>
-
-
-                    <!-- Body -->
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="hdr">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%">
                     <tr>
-                        <td style="padding: 30px;">
-                            <h2 style="color: #1f2937; font-size: 20px; margin-bottom: 10px;">📦 Confirmación de pedido
-                            </h2>
-                            @php
-                                $proveedorNombre =
-                                    $pedido->fabricante->nombre ?? ($pedido->distribuidor->nombre ?? 'Proveedor');
-                            @endphp
+                        <td style="vertical-align:middle; padding-right:12px; width:48px;">
 
-                            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-                                Estimado proveedor, {{ $proveedorNombre }}<br>
-                                Le informamos que se ha generado un nuevo pedido a fecha
-                                {{ $pedido->created_at->format('d/m/Y') }}
-                                con los siguientes datos:
-                            </p>
-
-                            <table style="width: 100%; font-size: 15px; color: #111827; margin-bottom: 24px;">
-                                <tr>
-                                    <td style="padding: 6px 0;"><strong>Código:</strong> {{ $pedido->codigo }}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 6px 0;">
-                                        @if ($pedido->obra)
-                                            <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra }}<br>
-                                            <strong>Dirección:</strong>
-                                            {{ $pedido->obra->direccion ?? 'No disponible' }}<br>
-
-                                            @if ($pedido->obra->latitud && $pedido->obra->longitud)
-                                                <strong>Ubicación:</strong>
-                                                <a href="https://www.google.com/maps/search/?api=1&query={{ $pedido->obra->latitud }},{{ $pedido->obra->longitud }}"
-                                                    target="_blank" style="color: #2563eb; text-decoration: underline;">
-                                                    Ver en Google Maps
-                                                </a>
-                                            @else
-                                                <strong>Ubicación:</strong> Coordenadas no disponibles
-                                            @endif
-                                        @elseif ($pedido->obra_manual)
-                                            <strong>Lugar de entrega:</strong> {{ $pedido->obra_manual }}
-                                        @else
-                                            <strong>Lugar de entrega:</strong> No especificado
-                                        @endif
-                                    </td>
-                                </tr>
-
-                            </table>
-
-
-                            <h3 style="color: #1f2937; margin-bottom: 8px;">📋 Productos solicitados:</h3>
-
-                            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                                <thead>
-                                    <tr style="background-color: #374151; color: #ffffff;">
-                                        <th style="padding: 10px; border: 1px solid #e5e7eb; text-align: left;">Producto
-                                        </th>
-                                        <th style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">
-                                            Cantidad (kg)</th>
-                                        <th style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">Fecha
-                                            entrega</th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    @foreach ($pedido->productos as $producto)
-                                        <tr style="background-color: #f9fafb;">
-                                            <td style="padding: 10px; border: 1px solid #e5e7eb;">
-                                                {{ ucfirst($producto->tipo) }} - {{ $producto->diametro }} mm
-                                                @if (!empty($producto->longitud))
-                                                    / {{ $producto->longitud }} m
-                                                @endif
-                                            </td>
-                                            <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">
-                                                {{ number_format($producto->pivot->cantidad, 2, ',', '.') }}
-                                            </td>
-                                            <td style="padding: 10px; border: 1px solid #e5e7eb; text-align: right;">
-                                                {{ \Carbon\Carbon::parse($producto->pivot->fecha_estimada_entrega)->format('d/m/Y') }}
-                                            </td>
-                                        </tr>
-                                    @endforeach
-
-                                </tbody>
-                            </table>
-
-                            <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
-                                Por favor, confirme la recepción de este pedido respondiendo a este correo.
-                                Si tiene cualquier duda, no dude en contactar con nuestro departamento de compras
-                                (<a href="mailto:compras@pacoreyes.com"
-                                    style="color: #6b7280;">compras@pacoreyes.com</a>).
-                            </p>
+                            <img src="{{ public_path('imagenes/ico/android-chrome-192x192.png') }}" alt="Logo"
+                                width="40" height="40" style="border-radius:6px;">
 
                         </td>
-                    </tr>
-
-                    <!-- Footer -->
-                    <tr style="background-color: #111827;">
-                        <td style="padding: 20px 30px; text-align: center;">
-                            <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                                © {{ date('Y') }} Hierros Paco Reyes · Todos los derechos reservados
-                            </p>
-                            <p style="color: #9ca3af; font-size: 12px; margin: 5px 0 0;">
-                                Este mensaje ha sido generado automáticamente.
-                            </p>
+                        <td style="vertical-align:middle;">
+                            <h1>Hierros Paco Reyes</h1>
+                            <p>Especialistas en ferrallado industrial</p>
                         </td>
                     </tr>
                 </table>
-            </td>
-        </tr>
-    </table>
-    @isset($esVistaPrevia)
-        <div style="position: absolute; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px;">
-            <form action="{{ route('pedidos.crearEnviarCorreo', $pedido->id) }}" method="POST">
+            </div>
+
+            <div class="body">
+                @php
+                    $proveedorNombre = $pedido->fabricante->nombre ?? ($pedido->distribuidor->nombre ?? 'Proveedor');
+                @endphp
+
+                <h2>Confirmación de pedido</h2>
+                <p style="font-size:14px; color:#374151; margin-bottom:16px;">
+                    Estimado proveedor, {{ $proveedorNombre }}.<br>
+                    Le informamos que se ha generado un nuevo pedido a fecha {{ $pedido->created_at->format('d/m/Y') }}
+                    con los siguientes datos:
+                </p>
+
+                <table style="border:0; margin-bottom:10px;">
+                    <tr>
+                        <td style="border:0; padding:4px 0;"><strong>Código:</strong> {{ $pedido->codigo }}</td>
+                    </tr>
+                    <tr>
+                        <td style="border:0; padding:4px 0;">
+                            @if ($pedido->obra)
+                                <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra }}<br>
+                                <strong>Dirección:</strong> {{ $pedido->obra->direccion ?? 'No disponible' }}<br>
+                                <strong>Ubicación:</strong>
+                                @if ($pedido->obra->latitud && $pedido->obra->longitud)
+                                    {{ $pedido->obra->latitud }}, {{ $pedido->obra->longitud }}
+                                @else
+                                    Coordenadas no disponibles
+                                @endif
+                            @elseif ($pedido->obra_manual)
+                                <strong>Lugar de entrega:</strong> {{ $pedido->obra_manual }}
+                            @else
+                                <strong>Lugar de entrega:</strong> No especificado
+                            @endif
+                        </td>
+                    </tr>
+                </table>
+
+                <h3>Productos solicitados</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th style="text-align:right;">Cantidad (kg)</th>
+                            <th style="text-align:right;">Fecha entrega</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($pedido->productos as $producto)
+                            <tr>
+                                <td>
+                                    {{ ucfirst($producto->tipo) }} - {{ $producto->diametro }} mm
+                                    @if (!empty($producto->longitud))
+                                        / {{ $producto->longitud }} m
+                                    @endif
+                                </td>
+                                <td style="text-align:right;">
+                                    {{ number_format($producto->pivot->cantidad, 2, ',', '.') }}
+                                </td>
+                                <td style="text-align:right;">
+                                    {{ \Carbon\Carbon::parse($producto->pivot->fecha_estimada_entrega)->format('d/m/Y') }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+
+                <p class="muted">
+                    Por favor, confirme la recepción de este pedido respondiendo a este correo.
+                    Si tiene cualquier duda, contacte con Compras (info@pacoreyes.eu).
+                </p>
+            </div>
+
+            <div class="ftr">
+                © {{ date('Y') }} Hierros Paco Reyes · Todos los derechos reservados<br>
+                Este documento ha sido generado automáticamente.
+            </div>
+        </div>
+    </div>
+    {{-- Botones solo en PREVISUALIZACIÓN --}}
+    @if (isset($esVistaPrevia) && $esVistaPrevia === true)
+        <div style="position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px;">
+            <form action="{{ route('pedidos.crearEnviarCorreo', $pedido->id) }}" method="POST" style="margin:0;">
                 @csrf
-                <!-- CC input aquí || DESCOMENTAR SI QUIERES ELEGIR LOS CC MANUALMENTE-->
-                {{-- <div style="margin-bottom: 12px;">
-                    <label for="cc" style="font-weight: 600; color: #374151;">Enviar también a (CC):</label><br>
-                    <input type="text" name="cc" id="cc"
-                        placeholder="correo1@ejemplo.com, correo2@ejemplo.com"
-                        style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #d1d5db; margin-top: 6px;">
-                </div> --}}
                 <button type="submit"
-                    style="
-                    background-color: #2563eb;
-                    color: #fff;
-                    padding: 10px 18px;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    font-weight: 600;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
-                    transition: background-color 0.3s, box-shadow 0.3s;
-                "
-                    onmouseover="this.style.backgroundColor='#1d4ed8'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.2)'"
-                    onmouseout="this.style.backgroundColor='#2563eb'; this.style.boxShadow='0 2px 5px rgba(0,0,0,0.15)'">
+                    style="background-color:#2563eb;color:#fff;padding:10px 18px;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;box-shadow:0 2px 5px rgba(0,0,0,0.15);">
                     ✉️ Enviar correo al proveedor
                 </button>
             </form>
 
             <form id="formCancelarPedido" action="{{ route('pedidos.destroy', $pedido->id) }}" method="POST"
-                style="margin: 0;">
+                style="margin:0;">
                 @csrf
                 @method('DELETE')
                 <button type="button" id="btnCancelar"
-                    style="
-                        background-color: #f3f4f6;
-                        color: #374151;
-                        padding: 10px 18px;
-                        border: none;
-                        border-radius: 6px;
-                        font-size: 14px;
-                        font-weight: 600;
-                        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                        transition: all 0.3s ease;"
-                    onmouseover="this.style.backgroundColor='#e5e7eb'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'"
-                    onmouseout="this.style.backgroundColor='#f3f4f6'; this.style.boxShadow='0 2px 5px rgba(0,0,0,0.1)'">
+                    style="background-color:#f3f4f6;color:#374151;padding:10px 18px;border:none;border-radius:6px;font-size:14px;font-weight:600;box-shadow:0 2px 5px rgba(0,0,0,0.1);">
                     ❌ Cancelar y eliminar pedido
                 </button>
             </form>
-
         </div>
-    @endisset
+
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            document.getElementById('btnCancelar')?.addEventListener('click', function() {
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: 'El pedido será eliminado permanentemente.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((r) => r.isConfirmed && document.getElementById('formCancelarPedido').submit());
+            });
+        </script>
+    @endif
 
 </body>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
-    document.getElementById('btnCancelar').addEventListener('click', function() {
-        Swal.fire({
-            title: '¿Estás seguro?',
-            text: "El pedido será eliminado permanentemente.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                document.getElementById('formCancelarPedido').submit();
-            }
-        });
-    });
-</script>
 
 </html>

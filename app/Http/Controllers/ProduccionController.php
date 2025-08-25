@@ -761,37 +761,25 @@ class ProduccionController extends Controller
             'id'             => 'required|integer|exists:planillas,id',
             'maquina_id'     => 'required|integer|exists:maquinas,id',
             'nueva_posicion' => 'required|integer|min:1',
-        ], [
-            'id.required'             => 'El ID de la planilla es obligatorio.',
-            'id.integer'              => 'El ID de la planilla debe ser un número entero.',
-            'id.exists'               => 'La planilla seleccionada no existe en la base de datos.',
-
-            'maquina_id.required'     => 'Debes indicar la máquina.',
-            'maquina_id.integer'      => 'El ID de la máquina debe ser un número entero.',
-            'maquina_id.exists'       => 'La máquina seleccionada no existe en la base de datos.',
-
-            'nueva_posicion.required' => 'Debes indicar la nueva posición.',
-            'nueva_posicion.integer'  => 'La nueva posición debe ser un número entero.',
-            'nueva_posicion.min'      => 'La posición mínima válida es 1.',
         ]);
-
 
         try {
             DB::transaction(function () use ($request) {
+                $planillaId = $request->id;
+                $maquinaNueva = $request->maquina_id;
+                $posNueva = $request->nueva_posicion;
 
-                // 1️⃣ Fila exacta planilla+máquina
-                $orden = OrdenPlanilla::lockForUpdate()
-                    ->where('planilla_id', $request->id)
-                    ->where('maquina_id', $request->maquina_id)
-                    ->firstOrFail();
+                // 🧠 Buscar orden actual de esa planilla (en cualquier máquina)
+                $ordenActual = OrdenPlanilla::lockForUpdate()
+                    ->where('planilla_id', $planillaId)
+                    ->first();
 
-                $maquinaId = $orden->maquina_id;
-                $posActual = $orden->posicion;
-                $posNueva  = $request->nueva_posicion;
+                $maquinaAnterior = $ordenActual?->maquina_id;
+                $posAnterior = $ordenActual?->posicion;
 
-                // 2️⃣ Regla posición-1
+                // 🚫 Verificación si se quiere poner en posición 1
                 if ($posNueva == 1) {
-                    $planillaPos1 = OrdenPlanilla::where('maquina_id', $maquinaId)
+                    $planillaPos1 = OrdenPlanilla::where('maquina_id', $maquinaNueva)
                         ->where('posicion', 1)
                         ->first()?->planilla;
 
@@ -800,32 +788,58 @@ class ProduccionController extends Controller
                     }
                 }
 
-                // 3️⃣ Límites y nada-que-hacer
-                $maxPos = OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion');
-                $posNueva = min($posNueva, $maxPos);
-                if ($posNueva == $posActual) {
-                    return; // no hay cambios
+                // 🔄 Reasignar elementos a la nueva máquina
+                Elemento::where('planilla_id', $planillaId)
+                    ->update(['maquina_id' => $maquinaNueva]);
+
+                // ✅ Crear o recuperar fila en nueva máquina
+                $ordenNuevo = OrdenPlanilla::firstOrCreate(
+                    ['planilla_id' => $planillaId, 'maquina_id' => $maquinaNueva],
+                    ['posicion' => 9999] // temporal
+                );
+
+                $posActual = $ordenNuevo->posicion;
+
+                // 🧹 Si cambió de máquina...
+                if ($maquinaAnterior && $maquinaAnterior != $maquinaNueva) {
+                    // ✅ Si la planilla estaba en posición 1 → reorganizar
+                    if ($posAnterior == 1) {
+                        OrdenPlanilla::where('maquina_id', $maquinaAnterior)
+                            ->where('posicion', '>', 1)
+                            ->decrement('posicion');
+                    }
+
+                    // ✅ Eliminar fila anterior
+                    OrdenPlanilla::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maquinaAnterior)
+                        ->delete();
                 }
 
-                // 4️⃣ Reacomodo
+                // 📌 Calcular límite superior
+                $maxPos = OrdenPlanilla::where('maquina_id', $maquinaNueva)->max('posicion');
+                $posNueva = min($posNueva, $maxPos);
+
+                if ($posNueva == $posActual) return;
+
+                // 🔁 Reacomodo
                 if ($posNueva < $posActual) {
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                    OrdenPlanilla::where('maquina_id', $maquinaNueva)
                         ->whereBetween('posicion', [$posNueva, $posActual - 1])
                         ->increment('posicion');
                 } else {
-                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                    OrdenPlanilla::where('maquina_id', $maquinaNueva)
                         ->whereBetween('posicion', [$posActual + 1, $posNueva])
                         ->decrement('posicion');
                 }
 
-                // 5️⃣ Actualiza la fila correcta
-                $orden->update(['posicion' => $posNueva]);
+                // ✅ Actualiza posición final
+                $ordenNuevo->update(['posicion' => $posNueva]);
             });
 
-            // ✅ 🔥 Después de reordenar, generamos eventos actualizados
+
+            // 🔄 Recalcular eventos
             $maquinas = Maquina::whereNotNull('tipo')->orderBy('id')->get();
 
-            // Calcular colas iniciales
             $colasMaquinas = [];
             foreach ($maquinas as $m) {
                 $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
@@ -838,19 +852,16 @@ class ProduccionController extends Controller
                     : Carbon::now();
             }
 
-            // Ordenes actuales
             $ordenes = OrdenPlanilla::orderBy('posicion')
                 ->get()
                 ->groupBy('maquina_id')
                 ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
 
-            // Elementos activos
             $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
                 ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
                 ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
                 ->get();
 
-            // Agrupar elementos
             $planillasAgrupadas = $elementos->groupBy(function ($e) {
                 $tipo = optional($e->maquina)->tipo;
                 $maquinaId = match ($tipo) {
@@ -874,7 +885,6 @@ class ProduccionController extends Controller
                 ];
             })->filter(fn($data) => !is_null($data['maquina_id']));
 
-            // ✅ Generar eventos actualizados
             $planillasEventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
 
             return response()->json([
@@ -894,6 +904,7 @@ class ProduccionController extends Controller
             ], 422);
         }
     }
+
 
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
     public function trabajadoresObra()

@@ -60,6 +60,7 @@
 
     </div>
 
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
@@ -67,6 +68,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
+        function eliminarTooltips() {
+            document.querySelectorAll('.fc-tooltip').forEach(el => el.remove());
+        }
         document.addEventListener('DOMContentLoaded', function() {
             const maquinas = @json($resources);
 
@@ -167,32 +171,27 @@
                     }
                 },
 
-
                 eventDrop: async function(info) {
+                    eliminarTooltips();
                     const planillaId = info.event.id.split('-')[1];
                     const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
 
                     const maquinaOrigenId = info.oldResource?.id ?? info.event.getResources()[0]?.id;
                     const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
 
-                    // 1️⃣ Solo permitimos mover dentro de la misma máquina
-                    if (maquinaOrigenId !== maquinaDestinoId) {
-                        alert('Solo puedes reordenar dentro de la misma máquina.');
-                        info.revert();
-                        return;
-                    }
 
                     // 2️⃣ Confirmación con SweetAlert2
                     const resultado = await Swal.fire({
-                        title: '¿Reordenar planilla?',
-                        html: `¿Quieres reordenar la planilla <strong>${codigoPlanilla}</strong>?`,
+                        title: '¿Mover planilla?',
+                        html: `¿Quieres mover la planilla <strong>${codigoPlanilla}</strong> a la máquina <strong>${info.newResource.title}</strong>?<br><small>Esto también moverá todos sus elementos a dicha máquina.</small>`,
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonColor: '#3085d6',
                         cancelButtonColor: '#d33',
-                        confirmButtonText: 'Sí, reordenar',
+                        confirmButtonText: 'Sí, mover',
                         cancelButtonText: 'Cancelar'
                     });
+
 
                     if (!resultado.isConfirmed) {
                         info.revert();
@@ -247,7 +246,7 @@
                             html: `<pre style="white-space:pre-wrap;text-align:left;">${e.message}</pre>`,
                             icon: 'error'
                         });
-
+                        eliminarTooltips();
                         info.revert();
                     }
                 },
