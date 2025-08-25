@@ -483,19 +483,27 @@ class ProduccionController extends Controller
             ->sortBy('planilla.fecha_inicio')
             ->first();
 
+        $fechaInicioBruta = $planillaMasAntigua?->planilla?->fecha_inicio;
+
+        $fechaCarbon = null;
+        try {
+            $fechaCarbon = is_string($fechaInicioBruta)
+                ? Carbon::createFromFormat('d/m/Y H:i', $fechaInicioBruta)
+                : $fechaInicioBruta;
+        } catch (\Exception $e) {
+            Log::error('❌ Error al convertir fecha_inicio', [
+                'valor' => $fechaInicioBruta,
+                'error' => $e->getMessage()
+            ]);
+        }
+
         Log::debug('📌 Planilla más antigua entre las anteriores:', [
             'id' => $planillaMasAntigua?->planilla?->id,
             'codigo' => $planillaMasAntigua?->planilla?->codigo ?? null,
-            'fecha_inicio' => $planillaMasAntigua?->planilla?->fecha_inicio?->toDateTimeString(),
+            'fecha_inicio' => optional($fechaCarbon)->toDateTimeString(),
         ]);
 
-        $fechaInicioCalendario = optional(
-            $planillaMasAntigua?->planilla?->fecha_inicio
-        )->toDateString() ?? now()->toDateString();
-
-        Log::debug('📅 Fecha final usada para initialDate:', [
-            'fechaInicioCalendario' => $fechaInicioCalendario,
-        ]);
+        $fechaInicioCalendario = $fechaCarbon?->toDateString() ?? now()->toDateString();
 
         return view('produccion.maquinas', [
             'maquinas' => $maquinas,
