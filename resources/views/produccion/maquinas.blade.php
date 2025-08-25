@@ -29,10 +29,22 @@
             <input type="date" id="fechaFin" class="border rounded px-2 py-1 ml-1"
                 value="{{ now()->toDateString() }}">
         </label>
+
+        <label class="text-sm">
+            Turno:
+            <select id="turnoFiltro" class="border rounded text-sm px-2 py-1 ml-1">
+                <option value="">Todos</option>
+                <option value="mañana">Mañana</option>
+                <option value="tarde">Tarde</option>
+                <option value="noche">Noche</option>
+            </select>
+        </label>
+
         <button id="filtrarFechas"
             class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm">
             Aplicar Filtro
         </button>
+
         <p id="rango-aplicado" class="text-sm text-gray-600 mt-2 px-4"></p>
     </div>
 
@@ -60,7 +72,6 @@
 
     </div>
 
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
@@ -68,9 +79,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        function eliminarTooltips() {
-            document.querySelectorAll('.fc-tooltip').forEach(el => el.remove());
-        }
         document.addEventListener('DOMContentLoaded', function() {
             const maquinas = @json($resources);
 
@@ -99,6 +107,8 @@
                         },
                         buttonText: '1 día'
                     },
+
+                    // 👉 NUEVA vista de 5 días con horas
                     resourceTimelineFiveDay: {
                         type: 'resourceTimeline',
                         duration: {
@@ -130,7 +140,7 @@
                 },
                 locale: 'es',
                 timeZone: 'Europe/Madrid',
-                initialDate: '{{ $fechaInicioCalendario }}',
+                initialDate: new Date(),
                 resourceAreaHeaderContent: 'Máquinas',
                 resources: maquinas,
                 events: planillas,
@@ -168,42 +178,36 @@
                         };
                     }
                 },
-
                 eventDrop: async function(info) {
-                    eliminarTooltips();
                     const planillaId = info.event.id.split('-')[1];
                     const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
 
                     const maquinaOrigenId = info.oldResource?.id ?? info.event.getResources()[0]?.id;
                     const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
 
-
-                    // 2️⃣ Confirmación con SweetAlert2
                     const resultado = await Swal.fire({
-                        title: '¿Mover planilla?',
-                        html: `¿Quieres mover la planilla <strong>${codigoPlanilla}</strong> a la máquina <strong>${info.newResource.title}</strong>?<br><small>Esto también moverá todos sus elementos a dicha máquina.</small>`,
+                        title: '¿Reordenar planilla?',
+                        html: `¿Quieres mover la planilla <strong>${codigoPlanilla}</strong> ${maquinaOrigenId !== maquinaDestinoId ? 'a otra máquina' : 'en la misma máquina'}?`,
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonColor: '#3085d6',
                         cancelButtonColor: '#d33',
-                        confirmButtonText: 'Sí, mover',
+                        confirmButtonText: 'Sí, reordenar',
                         cancelButtonText: 'Cancelar'
                     });
-
 
                     if (!resultado.isConfirmed) {
                         info.revert();
                         return;
                     }
 
-                    // 3️⃣ Calcular nueva posición en la máquina
+                    // Calcular nueva posición según orden cronológico en la nueva máquina
                     const eventosOrdenados = calendar.getEvents()
                         .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
                         .sort((a, b) => a.start - b.start);
 
                     const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
 
-                    // 4️⃣ Llamada al backend
                     try {
                         const res = await fetch('/planillas/reordenar', {
                             method: 'POST',
@@ -217,6 +221,7 @@
                             body: JSON.stringify({
                                 id: planillaId,
                                 maquina_id: maquinaDestinoId,
+                                maquina_origen_id: maquinaOrigenId,
                                 nueva_posicion: nuevaPosicion
                             })
                         });
@@ -233,9 +238,14 @@
                         if (!res.ok || !data.success) {
                             throw new Error(data.message || '❌ Error al reordenar');
                         }
-
+                        // 🧹 Eliminar tooltips
+                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                         calendar.removeAllEvents();
-                        calendar.addEventSource(data.eventos);
+
+                        const resEventos = await fetch('/planillas/eventos');
+                        const nuevosEventos = await resEventos.json();
+
+                        calendar.addEventSource(nuevosEventos);
 
                     } catch (e) {
                         console.error('Error en respuesta:', e);
@@ -244,10 +254,11 @@
                             html: `<pre style="white-space:pre-wrap;text-align:left;">${e.message}</pre>`,
                             icon: 'error'
                         });
-                        eliminarTooltips();
+
                         info.revert();
                     }
                 },
+
                 eventDidMount: function(info) {
                     const props = info.event.extendedProps;
 
@@ -290,10 +301,10 @@
 
             const cargaMaquinaTurno = @json($cargaPorMaquinaTurno);
             const datosOriginales = @json($cargaPorMaquinaTurnoConFechas);
-            console.log(datosOriginales);
 
             const charts = {};
 
+            // crea los charts inicialmente (sin filtro de turno)
             Object.entries(cargaMaquinaTurno).forEach(([maquinaId, turnos]) => {
                 const ctx = document.getElementById(`grafico-maquina-${maquinaId}`).getContext('2d');
                 const labels = ["Mañana", "Tarde", "Noche"];
@@ -343,35 +354,53 @@
                 });
             });
 
-            document.getElementById('rango-aplicado').textContent =
-                `Mostrando datos desde ${document.getElementById('fechaInicio').value} hasta ${document.getElementById('fechaFin').value}`;
+            const $desde = document.getElementById('fechaInicio');
+            const $hasta = document.getElementById('fechaFin');
+            const $turno = document.getElementById('turnoFiltro');
+            const $rango = document.getElementById('rango-aplicado');
+
+            // texto inicial
+            $rango.textContent =
+                `Mostrando datos desde ${$desde.value} hasta ${$hasta.value} · Turno: ${$turno.value ? $turno.options[$turno.selectedIndex].text : 'Todos'}`;
 
             document.getElementById('filtrarFechas').addEventListener('click', () => {
-                const desde = new Date(document.getElementById('fechaInicio').value);
-                const hasta = new Date(document.getElementById('fechaFin').value);
+                const desde = new Date($desde.value);
+                const hasta = new Date($hasta.value);
+                hasta.setHours(23, 59, 59, 999); // incluir día completo
+                const turnoSel = ($turno.value || '').toLowerCase(); // '', 'mañana', 'tarde', 'noche'
 
-                document.getElementById('rango-aplicado').textContent =
-                    `Mostrando datos desde ${document.getElementById('fechaInicio').value} hasta ${document.getElementById('fechaFin').value}`;
+                // actualizar texto rango aplicado
+                $rango.textContent =
+                    `Mostrando datos desde ${$desde.value} hasta ${$hasta.value} · Turno: ${turnoSel ? (turnoSel.charAt(0).toUpperCase()+turnoSel.slice(1)) : 'Todos'}`;
 
                 Object.entries(datosOriginales).forEach(([maquinaId, turnos]) => {
-                    const labels = ["Mañana", "Tarde", "Noche"];
+                    // Si hay turno seleccionado, solo usamos ese; si no, usamos los tres
+                    const etiquetas = turnoSel ? [turnoSel] : ['mañana', 'tarde', 'noche'];
 
-                    const esperado = labels.map(t =>
-                        (turnos[t.toLowerCase()] || []).filter(e => {
-                            const fecha = new Date(e.fecha);
-                            return fecha >= desde && fecha <= hasta;
-                        }).reduce((suma, e) => suma + e.peso, 0)
+                    const esperado = etiquetas.map(t =>
+                        (turnos[t] || [])
+                        .filter(e => {
+                            const f = new Date(e.fecha);
+                            return f >= desde && f <= hasta;
+                        })
+                        .reduce((suma, e) => suma + (Number(e.peso) || 0), 0)
                     );
 
-                    const fabricado = labels.map(t =>
-                        (turnos[t.toLowerCase()] || []).filter(e => {
-                            const fecha = new Date(e.fecha);
-                            return fecha >= desde && fecha <= hasta && (e.estado
-                                ?.toLowerCase() === 'fabricado');
-                        }).reduce((suma, e) => suma + e.peso, 0)
+                    const fabricado = etiquetas.map(t =>
+                        (turnos[t] || [])
+                        .filter(e => {
+                            const f = new Date(e.fecha);
+                            const estado = (e.estado || '').toLowerCase();
+                            return f >= desde && f <= hasta && estado === 'fabricado';
+                        })
+                        .reduce((suma, e) => suma + (Number(e.peso) || 0), 0)
                     );
 
                     if (charts[maquinaId]) {
+                        // Cambiamos labels si se ha elegido un solo turno
+                        charts[maquinaId].data.labels = etiquetas.map(s => s.charAt(0)
+                        .toUpperCase() + s.slice(1));
+
                         charts[maquinaId].data.datasets[0].data = esperado;
                         charts[maquinaId].data.datasets[1].data = fabricado;
                         charts[maquinaId].update();

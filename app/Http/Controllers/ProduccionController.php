@@ -333,13 +333,19 @@ class ProduccionController extends Controller
     }
 
     //---------------------------------------------------------- MAQUINAS
-    public function maquinas()
+    public function maquinas(Request $request)
     {
+        // 🔹 Filtros del formulario (opcionales)
+        $fechaInicio = $request->input('fechaInicio'); // 'YYYY-MM-DD'
+        $fechaFin    = $request->input('fechaFin');    // 'YYYY-MM-DD'
+        $turnoFiltro = $request->input('turno');       // 'mañana' | 'tarde' | 'noche' | null
+
         // 🔹 1. MÁQUINAS DISPONIBLES
         $maquinas = Maquina::whereNotNull('tipo')
             ->orderBy('obra_id')   // primero ordena por obra
             ->orderBy('id')        // luego por id dentro de cada obra
             ->get();
+
         $coloresPorObra = [
             1 => '#1d4ed8', // azul
             2 => '#16a34a', // verde
@@ -368,13 +374,13 @@ class ProduccionController extends Controller
             ];
         });
 
-        // 🔹 2. ELEMENTOS ACTIVOS
+        // 🔹 2. ELEMENTOS ACTIVOS (para eventos del calendario)
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
             ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
             ->get();
 
-        // Agrupamos primero por planilla + máquina
+        // Agrupamos primero por planilla + máquina "real" (según tipo)
         $planillasAgrupadas = $elementos->groupBy(function ($e) {
             $tipo = optional($e->maquina)->tipo;
             $maquinaId = match ($tipo) {
@@ -392,13 +398,13 @@ class ProduccionController extends Controller
                 default        => $primerElemento->maquina_id,
             };
             return [
-                'planilla' => $primerElemento->planilla,
-                'elementos' => $grupo,
+                'planilla'   => $primerElemento->planilla,
+                'elementos'  => $grupo,
                 'maquina_id' => $maquinaId,
             ];
         })->filter(fn($data) => !is_null($data['maquina_id']));
 
-        // 🔹 Calcular colas iniciales de cada máquina
+        // 🔹 3. Calcular colas iniciales de cada máquina
         $colasMaquinas = [];
         foreach ($maquinas as $m) {
             $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
@@ -411,72 +417,30 @@ class ProduccionController extends Controller
                 : Carbon::now();
         }
 
-        // 🔹 Obtener ordenes desde la tabla orden_planillas
+        // 🔹 4. Obtener ordenes desde la tabla orden_planillas
         $ordenes = OrdenPlanilla::orderBy('posicion')
             ->get()
             ->groupBy('maquina_id')
             ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
 
-
-
-        // ✅ Generar eventos a partir de los datos calculados
+        // 🔹 5. Generar eventos del calendario
         try {
             $planillasEventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
         } catch (\Throwable $e) {
             Log::error('❌ generarEventosMaquinas', ['msg' => $e->getMessage(), 'file' => $e->getFile() . ':' . $e->getLine()]);
-            abort(500, $e->getMessage()); // te lo pinta en el navegador
+            abort(500, $e->getMessage());
         }
 
-
-        // ✅ Resto de cálculos de gráficas y tabla
+        // 🔹 6. Cálculos de gráficas (modularizado con filtros por fecha y turno)
         $erroresPlanillas = [];
-        $turnosDefinidos = Turno::all();
-        $cargaPorMaquinaTurnoConFechas = [];
-        $elementosParaGraficas = Elemento::with(['planilla', 'planilla.obra'])
-            ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando', 'completada']))
-            ->get();
+        [$cargaPorMaquinaTurno, $cargaPorMaquinaTurnoConFechas] =
+            $this->calcularCargaPorMaquinaTurno($maquinas, $fechaInicio, $fechaFin, $turnoFiltro);
 
-        foreach ($elementosParaGraficas as $e) {
-            $planilla = $e->planilla;
-            $maquinaId = $e->maquina_id;
-            if (!$planilla || !$maquinaId) continue;
-
-            $inicioPlanilla = $planilla->fecha_inicio_estimada ?? $planilla->created_at;
-            $tiempoEnSegundos = is_numeric($e->tiempo_fabricacion) ? (float) $e->tiempo_fabricacion : 0;
-            $fechaEstimada = Carbon::parse($inicioPlanilla)->addSeconds($tiempoEnSegundos);
-            $horaEstimada = $fechaEstimada->format('H:i');
-
-            $turnoDetectado = $turnosDefinidos->first(fn($t) => $horaEstimada >= $t->hora_entrada && $horaEstimada < $t->hora_salida);
-            $nombreTurno = $turnoDetectado->nombre ?? 'mañana';
-
-            $cargaPorMaquinaTurnoConFechas[$maquinaId][$nombreTurno][] = [
-                'peso' => $e->peso,
-                'estado' => $e->estado,
-                'fecha' => $fechaEstimada->toDateString(),
-            ];
-        }
-
-        $turnos = ['mañana', 'tarde', 'noche'];
-        $cargaPorMaquinaTurno = [];
-        foreach ($maquinas as $maquina) {
-            $cargaPorMaquinaTurno[$maquina->id] = array_fill_keys($turnos, ['esperado' => 0, 'fabricado' => 0]);
-            foreach ($turnos as $turno) {
-                $items = $cargaPorMaquinaTurnoConFechas[$maquina->id][$turno] ?? [];
-                foreach ($items as $dato) {
-                    $cargaPorMaquinaTurno[$maquina->id][$turno]['esperado'] += $dato['peso'];
-                    if ($dato['estado'] === 'fabricado') {
-                        $cargaPorMaquinaTurno[$maquina->id][$turno]['fabricado'] += $dato['peso'];
-                    }
-                }
-            }
-        }
-
+        // 🔹 7. Fecha de inicio del calendario (la más antigua en fabricación)
         $planillasEnFabricacion = OrdenPlanilla::where('posicion', 1)
             ->whereHas('planilla', fn($q) => $q->where('estado', 'fabricando'))
             ->with('planilla')
             ->get();
-
-        Log::debug('🔍 Planillas en posición 1 y estado fabricando:', $planillasEnFabricacion->toArray());
 
         $planillaMasAntigua = $planillasEnFabricacion
             ->filter(fn($op) => $op->planilla && $op->planilla->fecha_inicio)
@@ -497,25 +461,118 @@ class ProduccionController extends Controller
             ]);
         }
 
-        Log::debug('📌 Planilla más antigua entre las anteriores:', [
-            'id' => $planillaMasAntigua?->planilla?->id,
-            'codigo' => $planillaMasAntigua?->planilla?->codigo ?? null,
-            'fecha_inicio' => optional($fechaCarbon)->toDateTimeString(),
-        ]);
-
         $fechaInicioCalendario = $fechaCarbon?->toDateString() ?? now()->toDateString();
+        $turnosLista = Turno::orderBy('hora_entrada')->pluck('nombre'); // ej.: mañana, tarde, noche
 
         return view('produccion.maquinas', [
-            'maquinas' => $maquinas,
-            'planillasEventos' => $planillasEventos,
-            'cargaPorMaquinaTurno' => $cargaPorMaquinaTurno,
-            'erroresPlanillas' => $erroresPlanillas,
-            'cargaPorMaquinaTurnoConFechas' => $cargaPorMaquinaTurnoConFechas,
-            'resources' => $resources,
-            'fechaInicioCalendario' => $fechaInicioCalendario,
+            'maquinas'                         => $maquinas,
+            'planillasEventos'                 => $planillasEventos,
+            'cargaPorMaquinaTurno'             => $cargaPorMaquinaTurno,
+            'erroresPlanillas'                 => $erroresPlanillas,
+            'cargaPorMaquinaTurnoConFechas'    => $cargaPorMaquinaTurnoConFechas,
+            'resources'                        => $resources,
+            'fechaInicioCalendario'            => $fechaInicioCalendario,
+            'turnosLista'         => $turnosLista,
+            // Devolvemos también los filtros para reflejarlos en la vista/JS
+            'filtro_fecha_inicio'              => $fechaInicio,
+            'filtro_fecha_fin'                 => $fechaFin,
+            'filtro_turno'                     => $turnoFiltro,
         ]);
     }
 
+    /**
+     * Calcula la carga (esperado vs fabricado) por máquina y turno.
+     * Aplica filtros por fecha (YYYY-MM-DD) y por turno ('mañana'|'tarde'|'noche').
+     */
+    private function calcularCargaPorMaquinaTurno($maquinas, ?string $fechaInicio = null, ?string $fechaFin = null, ?string $turnoFiltro = null): array
+    {
+        $turnosDefinidos = Turno::all(); // Debe tener nombre,hora_entrada,hora_salida (HH:MM)
+        $cargaPorMaquinaTurnoConFechas = [];
+
+        // Helper: resuelve la máquina "real" del elemento según tipo
+        $resolverMaquinaElemento = function (Elemento $e) {
+            $tipo = optional($e->maquina)->tipo;
+            return match ($tipo) {
+                'ensambladora' => $e->maquina_id_2,
+                'soldadora'    => $e->maquina_id_3 ?? $e->maquina_id,
+                default        => $e->maquina_id,
+            };
+        };
+
+        // Helper: comprobar si una hora pertenece al turno (incluye turnos nocturnos que cruzan medianoche)
+        $estaEnTurno = function (string $horaHHmm, $turno) {
+            $h = $horaHHmm;
+            $ini = $turno->hora_entrada; // 'HH:MM'
+            $fin = $turno->hora_salida;  // 'HH:MM'
+            if ($fin >= $ini) {
+                // turno normal dentro del mismo día
+                return ($h >= $ini && $h < $fin);
+            }
+            // turno nocturno (ej. 22:00–06:00)
+            return ($h >= $ini || $h < $fin);
+        };
+
+        // Cargamos elementos de planillas en estados relevantes
+        $elementosQuery = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
+            ->whereHas(
+                'planilla',
+                fn($q) =>
+                $q->whereIn('estado', ['pendiente', 'fabricando', 'completada'])
+            );
+
+        $elementos = $elementosQuery->get();
+
+        foreach ($elementos as $e) {
+            $planilla  = $e->planilla;
+            $maquinaId = $resolverMaquinaElemento($e);
+            if (!$planilla || !$maquinaId) continue;
+
+            // Estimación de fecha/hora en que se fabrica este elemento
+            $inicioPlanilla   = $planilla->fecha_inicio_estimada ?? $planilla->created_at;
+            $tiempoEnSegundos = is_numeric($e->tiempo_fabricacion) ? (float) $e->tiempo_fabricacion : 0;
+            $fechaEstimada    = Carbon::parse($inicioPlanilla)->addSeconds($tiempoEnSegundos);
+            $fechaYmd         = $fechaEstimada->toDateString(); // 'YYYY-MM-DD'
+            $horaEstimada     = $fechaEstimada->format('H:i');
+
+            // Filtro por rango de fechas (si viene)
+            if ($fechaInicio && $fechaYmd < $fechaInicio) continue;
+            if ($fechaFin    && $fechaYmd > $fechaFin)       continue;
+
+            // Detectar turno por hora (con soporte a nocturnos)
+            $turnoDetectado = $turnosDefinidos->first(fn($t) => $estaEnTurno($horaEstimada, $t));
+            $nombreTurno = $turnoDetectado->nombre ?? 'mañana';
+
+            // Filtro por turno (si viene)
+            if ($turnoFiltro && $nombreTurno !== $turnoFiltro) continue;
+
+            $cargaPorMaquinaTurnoConFechas[$maquinaId][$nombreTurno][] = [
+                'peso'   => $e->peso,
+                'estado' => $e->estado,
+                'fecha'  => $fechaYmd,
+            ];
+        }
+
+        // Acumular esperado vs fabricado por máquina y turno
+        $turnos = ['mañana', 'tarde', 'noche'];
+        $cargaPorMaquinaTurno = [];
+        foreach ($maquinas as $maquina) {
+            $cargaPorMaquinaTurno[$maquina->id] = array_fill_keys($turnos, ['esperado' => 0, 'fabricado' => 0]);
+            foreach ($turnos as $turno) {
+                // Si hay filtro de turno, evitamos acumular en otros turnos
+                if ($turnoFiltro && $turno !== $turnoFiltro) continue;
+
+                $items = $cargaPorMaquinaTurnoConFechas[$maquina->id][$turno] ?? [];
+                foreach ($items as $dato) {
+                    $cargaPorMaquinaTurno[$maquina->id][$turno]['esperado'] += $dato['peso'];
+                    if ($dato['estado'] === 'fabricado') {
+                        $cargaPorMaquinaTurno[$maquina->id][$turno]['fabricado'] += $dato['peso'];
+                    }
+                }
+            }
+        }
+
+        return [$cargaPorMaquinaTurno, $cargaPorMaquinaTurnoConFechas];
+    }
     //---------------------------------------------------------- GENERAR EVENTOS MAQUINAS
     private function generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas)
     {
@@ -602,7 +659,8 @@ class ProduccionController extends Controller
                     }
 
                     $grupoCount       = $grupo instanceof Collection ? $grupo->count() : (is_countable($grupo) ? count($grupo) : 0);
-                    $duracionSegundos = max($grupoCount * 20 * 60, 60);
+                    $duracionSegundos = max($grupoCount * 20 * 60, 3600); // mínimo 1 hora
+
                     $fechaInicio      = $inicioCola->copy();
 
 
@@ -788,104 +846,102 @@ class ProduccionController extends Controller
     public function reordenarPlanillas(Request $request)
     {
         $request->validate([
-            'id'             => 'required|integer|exists:planillas,id',
-            'maquina_id'     => 'required|integer|exists:maquinas,id',
-            'nueva_posicion' => 'required|integer|min:1',
+            'id'                => 'required|integer|exists:planillas,id',
+            'maquina_id'        => 'required|integer|exists:maquinas,id',
+            'maquina_origen_id' => 'required|integer|exists:maquinas,id',
+            'nueva_posicion'    => 'required|integer|min:1',
         ]);
 
         try {
             DB::transaction(function () use ($request) {
-                $planillaId = $request->id;
-                $maquinaNueva = $request->maquina_id;
-                $posNueva = $request->nueva_posicion;
+                $planillaId       = (int) $request->id;
+                $maquinaNueva     = (int) $request->maquina_id;
+                $maquinaAnterior  = (int) $request->maquina_origen_id;
+                $posNueva         = (int) $request->nueva_posicion;
 
-                // 🧠 Buscar orden actual de esa planilla (en cualquier máquina)
                 $ordenActual = OrdenPlanilla::lockForUpdate()
                     ->where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maquinaAnterior)
                     ->first();
 
-                $maquinaAnterior = $ordenActual?->maquina_id;
-                $posAnterior = $ordenActual?->posicion;
-
-                // 🚫 Verificación si se quiere poner en posición 1
-                if ($posNueva == 1) {
-                    $planillaPos1 = OrdenPlanilla::where('maquina_id', $maquinaNueva)
-                        ->where('posicion', 1)
-                        ->first()?->planilla;
-
-                    if ($planillaPos1 && $planillaPos1->estado === 'fabricando') {
-                        throw new \Exception('No se puede ocupar la posición 1: hay una planilla fabricando.');
-                    }
+                if (!$ordenActual) {
+                    throw new \Exception("No se encontró el registro actual de orden de la planilla en la máquina de origen.");
                 }
 
-                // 🔄 Reasignar elementos a la nueva máquina
-                Elemento::where('planilla_id', $planillaId)
-                    ->update(['maquina_id' => $maquinaNueva]);
+                $maquinaAnterior = $ordenActual->maquina_id;
+                $posAnterior     = $ordenActual->posicion;
 
-                // ✅ Crear o recuperar fila en nueva máquina
-                $ordenNuevo = OrdenPlanilla::firstOrCreate(
-                    ['planilla_id' => $planillaId, 'maquina_id' => $maquinaNueva],
-                    ['posicion' => 9999] // temporal
-                );
+                if ($maquinaAnterior !== $maquinaNueva) {
+                    // Reordenar la antigua máquina (subir todo lo que estaba detrás)
+                    OrdenPlanilla::where('maquina_id', $maquinaAnterior)
+                        ->where('posicion', '>', $posAnterior)
+                        ->decrement('posicion');
 
-                $posActual = $ordenNuevo->posicion;
+                    // Eliminar la fila de la máquina anterior
+                    $ordenActual->delete();
 
-                // 🧹 Si cambió de máquina...
-                if ($maquinaAnterior && $maquinaAnterior != $maquinaNueva) {
-                    // ✅ Si la planilla estaba en posición 1 → reorganizar
-                    if ($posAnterior == 1) {
-                        OrdenPlanilla::where('maquina_id', $maquinaAnterior)
-                            ->where('posicion', '>', 1)
+                    // Actualizar los elementos de la planilla a la nueva máquina
+                    Elemento::where('planilla_id', $planillaId)
+                        ->update(['maquina_id' => $maquinaNueva]);
+
+                    // Comprobar si ya existe la planilla en la máquina nueva
+                    $ordenDestino = OrdenPlanilla::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maquinaNueva)
+                        ->first();
+
+                    if (!$ordenDestino) {
+                        // Insertar al final
+                        $maxPos = OrdenPlanilla::where('maquina_id', $maquinaNueva)->max('posicion') ?? 0;
+                        $ordenDestino = OrdenPlanilla::create([
+                            'planilla_id' => $planillaId,
+                            'maquina_id'  => $maquinaNueva,
+                            'posicion'    => $maxPos + 1,
+                        ]);
+                    }
+
+                    $ordenActual = $ordenDestino;
+                }
+
+                // Reordenar dentro de la máquina actual (nueva o la misma)
+                $posActual = $ordenActual->posicion;
+
+                if ($posNueva !== $posActual) {
+                    if ($posNueva < $posActual) {
+                        OrdenPlanilla::where('maquina_id', $maquinaNueva)
+                            ->whereBetween('posicion', [$posNueva, $posActual - 1])
+                            ->increment('posicion');
+                    } else {
+                        OrdenPlanilla::where('maquina_id', $maquinaNueva)
+                            ->whereBetween('posicion', [$posActual + 1, $posNueva])
                             ->decrement('posicion');
                     }
 
-                    // ✅ Eliminar fila anterior
-                    OrdenPlanilla::where('planilla_id', $planillaId)
-                        ->where('maquina_id', $maquinaAnterior)
-                        ->delete();
+                    $ordenActual->update(['posicion' => $posNueva]);
                 }
-
-                // 📌 Calcular límite superior
-                $maxPos = OrdenPlanilla::where('maquina_id', $maquinaNueva)->max('posicion');
-                $posNueva = min($posNueva, $maxPos);
-
-                if ($posNueva == $posActual) return;
-
-                // 🔁 Reacomodo
-                if ($posNueva < $posActual) {
-                    OrdenPlanilla::where('maquina_id', $maquinaNueva)
-                        ->whereBetween('posicion', [$posNueva, $posActual - 1])
-                        ->increment('posicion');
-                } else {
-                    OrdenPlanilla::where('maquina_id', $maquinaNueva)
-                        ->whereBetween('posicion', [$posActual + 1, $posNueva])
-                        ->decrement('posicion');
-                }
-
-                // ✅ Actualiza posición final
-                $ordenNuevo->update(['posicion' => $posNueva]);
             });
 
+            // Puedes aquí devolver nuevos eventos si quieres recargar el calendario
+            return response()->json(['success' => true, 'message' => 'Planilla reordenada correctamente.']);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al reordenar planilla: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'user_id' => auth()->id(),
+            ]);
 
-            // 🔄 Recalcular eventos
-            $maquinas = Maquina::whereNotNull('tipo')->orderBy('id')->get();
-
-            $colasMaquinas = [];
-            foreach ($maquinas as $m) {
-                $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
-                    ->where('estado', 'fabricando')
-                    ->orderByDesc('fecha_inicio')
-                    ->first();
-
-                $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
-                    ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
-                    : Carbon::now();
-            }
-
-            $ordenes = OrdenPlanilla::orderBy('posicion')
-                ->get()
-                ->groupBy('maquina_id')
-                ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+    public function eventosPlanillas()
+    {
+        try {
+            // 🔄 Cargar datos igual que en maquinas()
+            $maquinas = Maquina::whereNotNull('tipo')
+                ->orderBy('obra_id')
+                ->orderBy('id')
+                ->get();
 
             $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
                 ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
@@ -915,25 +971,32 @@ class ProduccionController extends Controller
                 ];
             })->filter(fn($data) => !is_null($data['maquina_id']));
 
-            $planillasEventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
+            $colasMaquinas = [];
+            foreach ($maquinas as $m) {
+                $ultimaPlanillaFabricando = Planilla::whereHas('elementos', fn($q) => $q->where('maquina_id', $m->id))
+                    ->where('estado', 'fabricando')
+                    ->orderByDesc('fecha_inicio')
+                    ->first();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Planilla reordenada correctamente.',
-                'eventos' => $planillasEventos,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error al reordenar planilla: ' . $e->getMessage(), [
-                'request' => $request->all(),
-                'user_id' => auth()->id(),
-            ]);
+                $colasMaquinas[$m->id] = optional($ultimaPlanillaFabricando)->fecha_inicio
+                    ? toCarbon($ultimaPlanillaFabricando->fecha_inicio)
+                    : now();
+            }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage(),
-            ], 422);
+            $ordenes = OrdenPlanilla::orderBy('posicion')
+                ->get()
+                ->groupBy('maquina_id')
+                ->map(fn($ordenesMaquina) => $ordenesMaquina->pluck('planilla_id')->all());
+
+            $eventos = $this->generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas);
+
+            return response()->json($eventos);
+        } catch (\Throwable $e) {
+            Log::error('❌ Error al cargar eventos planillas', ['err' => $e->getMessage()]);
+            return response()->json([], 500);
         }
     }
+
 
 
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
