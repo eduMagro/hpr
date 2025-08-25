@@ -476,16 +476,26 @@ class ProduccionController extends Controller
             ->with('planilla')
             ->get();
 
+        Log::debug('🔍 Planillas en posición 1 y estado fabricando:', $planillasEnFabricacion->toArray());
+
         $planillaMasAntigua = $planillasEnFabricacion
             ->filter(fn($op) => $op->planilla && $op->planilla->fecha_inicio)
             ->sortBy('planilla.fecha_inicio')
             ->first();
 
+        Log::debug('📌 Planilla más antigua entre las anteriores:', [
+            'id' => $planillaMasAntigua?->planilla?->id,
+            'codigo' => $planillaMasAntigua?->planilla?->codigo ?? null,
+            'fecha_inicio' => $planillaMasAntigua?->planilla?->fecha_inicio?->toDateTimeString(),
+        ]);
+
         $fechaInicioCalendario = optional(
             $planillaMasAntigua?->planilla?->fecha_inicio
         )->toDateString() ?? now()->toDateString();
 
-
+        Log::debug('📅 Fecha final usada para initialDate:', [
+            'fechaInicioCalendario' => $fechaInicioCalendario,
+        ]);
 
         return view('produccion.maquinas', [
             'maquinas' => $maquinas,
