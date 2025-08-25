@@ -21,7 +21,9 @@ class Planilla extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'fecha_estimada_entrega' => 'datetime',
+        'fecha_inicio' => 'datetime',
     ];
+
 
     /**
      * Los atributos que son asignables masivamente.
