@@ -481,9 +481,10 @@ class ProduccionController extends Controller
             ->sortBy('planilla.fecha_inicio')
             ->first();
 
-        $fechaInicioCalendario = $planillaMasAntigua
-            ? Carbon::parse($planillaMasAntigua->planilla->fecha_inicio)->toIso8601String() // incluye hora
-            : now()->toIso8601String();
+        $fechaInicioCalendario = optional(
+            $planillaMasAntigua?->planilla?->fecha_inicio
+        )->toDateString() ?? now()->toDateString();
+
 
 
         return view('produccion.maquinas', [
