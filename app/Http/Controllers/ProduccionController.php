@@ -471,18 +471,20 @@ class ProduccionController extends Controller
             }
         }
 
-        // Obtener todas las planillas en posición 1 que estén fabricando
         $planillasEnFabricacion = OrdenPlanilla::where('posicion', 1)
             ->whereHas('planilla', fn($q) => $q->where('estado', 'fabricando'))
             ->with('planilla')
             ->get();
 
-        // Obtener la más antigua
-        $fechaInicio = $planillasEnFabricacion
+        $planillaMasAntigua = $planillasEnFabricacion
             ->filter(fn($op) => $op->planilla && $op->planilla->fecha_inicio)
             ->sortBy('planilla.fecha_inicio')
-            ->first()
-            ?->planilla->fecha_inicio ?? now();
+            ->first();
+
+        $fechaInicioCalendario = $planillaMasAntigua
+            ? Carbon::parse($planillaMasAntigua->planilla->fecha_inicio)->toIso8601String() // incluye hora
+            : now()->toIso8601String();
+
 
         return view('produccion.maquinas', [
             'maquinas' => $maquinas,
