@@ -493,7 +493,7 @@ class ProduccionController extends Controller
             'erroresPlanillas' => $erroresPlanillas,
             'cargaPorMaquinaTurnoConFechas' => $cargaPorMaquinaTurnoConFechas,
             'resources' => $resources,
-            'fechaInicioCalendario' => Carbon::parse($fechaInicio)->toDateString(),
+            'fechaInicioCalendario' => Carbon::parse($fechaInicioCalendario)->toDateString(),
         ]);
     }
 
