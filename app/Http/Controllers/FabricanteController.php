@@ -85,19 +85,15 @@ class FabricanteController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Fabricante $fabricante)
     {
         try {
-            $fabricante = Fabricante::findOrFail($id);
-
-            // Normalizar campos vacíos
             $request->merge([
                 'nif'      => $request->nif ?: null,
                 'telefono' => $request->telefono ?: null,
                 'email'    => $request->email ?: null,
             ]);
 
-            // Validación
             $validatedData = $request->validate([
                 'nombre'   => 'required|string|max:255',
                 'nif'      => 'nullable|string|max:50',
@@ -125,11 +121,6 @@ class FabricanteController extends Controller
                 'message' => 'Fabricante actualizado correctamente',
                 'data'    => $fabricante->fresh()
             ], 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Fabricante no encontrado'
-            ], 404);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -143,7 +134,6 @@ class FabricanteController extends Controller
             ], 500);
         }
     }
-
 
 
     /**

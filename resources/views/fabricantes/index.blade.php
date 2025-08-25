@@ -8,7 +8,7 @@
             <div class="flex justify-between mb-6">
                 <button @click="openProveedorModal = true"
                     class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    ➕ Añadir Proveedor
+                    ➕ Añadir Fabricante
                 </button>
             </div>
 
@@ -86,7 +86,7 @@
                             editando = false;
                           }
                         }"
-                                @keydown.enter.stop="guardarCambios(fabricante); editando = false"
+                                @keydown.enter.stop="guardarCambiosFabricante(fabricante); editando = false"
                                 :class="{ 'bg-yellow-100': editando }"
                                 class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
 
@@ -139,51 +139,6 @@
             </div>
         </div>
 
-        {{-- Lógica de guardado --}}
-        <script>
-            function guardarCambios(fabricante) {
-                fetch(`/fabricantes/${fabricante.id}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify(fabricante)
-                    })
-                    .then(async response => {
-                        const contentType = response.headers.get('content-type');
-                        let data = {};
-
-                        if (contentType?.includes('application/json')) {
-                            data = await response.json();
-                        } else {
-                            const text = await response.text();
-                            throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 100));
-                        }
-
-                        if (!response.ok || !data.success) {
-                            let errorMsg = data.message || "Error inesperado.";
-                            if (data.errors) {
-                                errorMsg = Object.values(data.errors).flat().join("<br>");
-                            }
-                            Swal.fire({
-                                icon: "error",
-                                title: "Error al actualizar",
-                                html: errorMsg,
-                                confirmButtonText: "OK"
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        Swal.fire({
-                            icon: "error",
-                            title: "Error de conexión",
-                            text: error.message || "No se pudo actualizar.",
-                            confirmButtonText: "OK"
-                        });
-                    });
-            }
-        </script>
         <div x-data="{ openDistribuidorModal: false }" class="container mx-auto p-4">
             <!-- Botón para abrir el modal de añadir empresa -->
             <div class="flex justify-between mb-6">
@@ -267,7 +222,7 @@
                             editando = false;
                           }
                         }"
-                                @keydown.enter.stop="guardarCambios(distribuidor); editando = false"
+                                @keydown.enter.stop="guardarCambiosDistribuidor(distribuidor); editando = false"
                                 :class="{ 'bg-yellow-100': editando }"
                                 class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
 
@@ -320,9 +275,63 @@
             </div>
         </div>
 
-        {{-- Lógica de guardado --}}
+        {{-- PARA FABRICANTES --}}
         <script>
-            function guardarCambios(distribuidor) {
+            function guardarCambiosFabricante(fabricante) {
+                fetch(`/fabricantes/${fabricante.id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify(fabricante)
+                    })
+                    .then(async response => {
+                        const contentType = response.headers.get('content-type');
+                        let data = {};
+
+                        if (contentType?.includes('application/json')) {
+                            data = await response.json();
+                        } else {
+                            const text = await response.text();
+                            throw new Error("Respuesta inesperada del servidor: " + text.slice(0, 100));
+                        }
+
+                        if (!response.ok || !data.success) {
+                            let errorMsg = data.message || "Error inesperado.";
+                            if (data.errors) {
+                                errorMsg = Object.values(data.errors).flat().join("<br>");
+                            }
+                            Swal.fire({
+                                icon: "error",
+                                title: "Error al actualizar fabricante",
+                                html: errorMsg,
+                                confirmButtonText: "OK"
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: "success",
+                                title: "Fabricante actualizado",
+                                text: data.message,
+                                timer: 1200,
+                                showConfirmButton: false
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error de conexión",
+                            text: error.message || "No se pudo actualizar.",
+                            confirmButtonText: "OK"
+                        });
+                    });
+            }
+        </script>
+
+        {{-- PARA DISTRIBUIDORES --}}
+        <script>
+            function guardarCambiosDistribuidor(distribuidor) {
                 fetch(`/distribuidores/${distribuidor.id}`, {
                         method: 'PUT',
                         headers: {
@@ -349,9 +358,17 @@
                             }
                             Swal.fire({
                                 icon: "error",
-                                title: "Error al actualizar",
+                                title: "Error al actualizar distribuidor",
                                 html: errorMsg,
                                 confirmButtonText: "OK"
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: "success",
+                                title: "Distribuidor actualizado",
+                                text: data.message,
+                                timer: 1200,
+                                showConfirmButton: false
                             });
                         }
                     })
@@ -365,4 +382,5 @@
                     });
             }
         </script>
+
 </x-app-layout>

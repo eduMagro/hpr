@@ -82,7 +82,7 @@ class DistribuidorController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            $fabricante = Distribuidor::findOrFail($id);
+            $distribuidor = Distribuidor::findOrFail($id);
 
             // Normalizar campos vacíos
             $request->merge([
@@ -98,7 +98,7 @@ class DistribuidorController extends Controller
                 'telefono' => 'nullable|string|max:30',
                 'email'    => 'nullable|email|max:100',
             ], [
-                'nombre.required' => 'El nombre del fabricante es obligatorio.',
+                'nombre.required' => 'El nombre del distribuidor es obligatorio.',
                 'nombre.string'   => 'El nombre debe ser una cadena de texto.',
                 'nombre.max'      => 'El nombre no debe superar los 255 caracteres.',
 
@@ -112,17 +112,17 @@ class DistribuidorController extends Controller
                 'email.max'       => 'El correo no debe superar los 100 caracteres.',
             ]);
 
-            $fabricante->update($validatedData);
+            $distribuidor->update($validatedData);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Fabricante actualizado correctamente',
-                'data'    => $fabricante->fresh()
+                'message' => 'Distribuidor actualizado correctamente',
+                'data'    => $distribuidor->fresh()
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Fabricante no encontrado'
+                'message' => 'Distribuidor no encontrado'
             ], 404);
         } catch (ValidationException $e) {
             return response()->json([
@@ -133,10 +133,11 @@ class DistribuidorController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar el fabricante: ' . $e->getMessage()
+                'message' => 'Error al actualizar el distribuidor: ' . $e->getMessage()
             ], 500);
         }
     }
+
 
 
     /**
