@@ -17,10 +17,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
-
 use Illuminate\Support\Collection;
 use Illuminate\Support\Arr;
-
 use App\Models\Festivo;
 use Throwable;
 
@@ -473,16 +471,27 @@ class ProduccionController extends Controller
             }
         }
 
+        // Obtener todas las planillas en posición 1 que estén fabricando
+        $planillasEnFabricacion = OrdenPlanilla::where('posicion', 1)
+            ->whereHas('planilla', fn($q) => $q->where('estado', 'fabricando'))
+            ->with('planilla')
+            ->get();
 
+        // Obtener la más antigua
+        $fechaInicio = $planillasEnFabricacion
+            ->filter(fn($op) => $op->planilla && $op->planilla->fecha_inicio)
+            ->sortBy('planilla.fecha_inicio')
+            ->first()
+            ?->planilla->fecha_inicio ?? now();
 
         return view('produccion.maquinas', [
             'maquinas' => $maquinas,
             'planillasEventos' => $planillasEventos,
-
             'cargaPorMaquinaTurno' => $cargaPorMaquinaTurno,
             'erroresPlanillas' => $erroresPlanillas,
             'cargaPorMaquinaTurnoConFechas' => $cargaPorMaquinaTurnoConFechas,
             'resources' => $resources,
+            'fechaInicioCalendario' => Carbon::parse($fechaInicio)->toDateString(),
         ]);
     }
 

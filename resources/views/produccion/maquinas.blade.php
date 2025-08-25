@@ -99,8 +99,6 @@
                         },
                         buttonText: '1 día'
                     },
-
-                    // 👉 NUEVA vista de 5 días con horas
                     resourceTimelineFiveDay: {
                         type: 'resourceTimeline',
                         duration: {
@@ -132,7 +130,7 @@
                 },
                 locale: 'es',
                 timeZone: 'Europe/Madrid',
-                initialDate: new Date(),
+                initialDate: '{{ $fechaInicioCalendario }}',
                 resourceAreaHeaderContent: 'Máquinas',
                 resources: maquinas,
                 events: planillas,

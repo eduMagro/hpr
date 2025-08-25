@@ -150,7 +150,7 @@
     <div class="mt-6 flex justify-center">
         {{ $registrosMaquina->links('vendor.pagination.bootstrap-5') }}
     </div>
-    <!-- Modal de edición -->
+
     <!-- Modal de edición -->
     <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 justify-center items-center">
         <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
