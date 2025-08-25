@@ -132,11 +132,21 @@
                             @if ($pedido->obra)
                                 <strong>Lugar de entrega:</strong> {{ $pedido->obra->obra }}<br>
                                 <strong>Dirección:</strong> {{ $pedido->obra->direccion ?? 'No disponible' }}<br>
-                                <strong>Ubicación:</strong>
-                                @if ($pedido->obra->latitud && $pedido->obra->longitud)
-                                    {{ $pedido->obra->latitud }}, {{ $pedido->obra->longitud }}
+
+                                @if ($pedido->obra && $pedido->obra->latitud && $pedido->obra->longitud)
+                                    @php
+                                        // Asegura separador decimal con punto, no coma
+                                        $lat = number_format((float) $pedido->obra->latitud, 6, '.', '');
+                                        $lng = number_format((float) $pedido->obra->longitud, 6, '.', '');
+                                        $mapsUrl = "https://www.google.com/maps/search/?api=1&query={$lat},{$lng}";
+                                    @endphp
+
+                                    <strong>Ubicación:</strong>
+                                    <a href="{{ $mapsUrl }}" style="color:#2563eb; text-decoration: underline;">
+                                        Ver en Google Maps
+                                    </a>
                                 @else
-                                    Coordenadas no disponibles
+                                    <strong>Ubicación:</strong> Coordenadas no disponibles
                                 @endif
                             @elseif ($pedido->obra_manual)
                                 <strong>Lugar de entrega:</strong> {{ $pedido->obra_manual }}
