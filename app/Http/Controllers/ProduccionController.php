@@ -431,10 +431,10 @@ class ProduccionController extends Controller
             abort(500, $e->getMessage());
         }
 
-        // 🔹 6. Cálculos de gráficas (modularizado con filtros por fecha y turno)
-        $erroresPlanillas = [];
-        [$cargaPorMaquinaTurno, $cargaPorMaquinaTurnoConFechas] =
-            $this->calcularCargaPorMaquinaTurno($maquinas, $fechaInicio, $fechaFin, $turnoFiltro);
+        // 🔹 Planificado vs Real (con filtros opcionales que ya recoges por Request si quieres)
+        [$cargaTurnoResumen, $planDetallado, $realDetallado] =
+            $this->calcularPlanificadoYRealPorTurno($maquinas, $fechaInicio ?? null, $fechaFin ?? null, $turnoFiltro ?? null);
+
 
         // 🔹 7. Fecha de inicio del calendario (la más antigua en fabricación)
         $planillasEnFabricacion = OrdenPlanilla::where('posicion', 1)
@@ -467,9 +467,9 @@ class ProduccionController extends Controller
         return view('produccion.maquinas', [
             'maquinas'                         => $maquinas,
             'planillasEventos'                 => $planillasEventos,
-            'cargaPorMaquinaTurno'             => $cargaPorMaquinaTurno,
-            'erroresPlanillas'                 => $erroresPlanillas,
-            'cargaPorMaquinaTurnoConFechas'    => $cargaPorMaquinaTurnoConFechas,
+            'cargaTurnoResumen' => $cargaTurnoResumen, // { maquina_id: { turno: {planificado,real} } }
+            'planDetallado'     => $planDetallado,     // { maquina_id: { turno: [ {peso,fecha} ] } }
+            'realDetallado'     => $realDetallado,     // { maquina_id: { turno: [ {peso,fecha} ] } }
             'resources'                        => $resources,
             'fechaInicioCalendario'            => $fechaInicioCalendario,
             'turnosLista'         => $turnosLista,
@@ -480,16 +480,21 @@ class ProduccionController extends Controller
         ]);
     }
 
-    /**
-     * Calcula la carga (esperado vs fabricado) por máquina y turno.
-     * Aplica filtros por fecha (YYYY-MM-DD) y por turno ('mañana'|'tarde'|'noche').
-     */
-    private function calcularCargaPorMaquinaTurno($maquinas, ?string $fechaInicio = null, ?string $fechaFin = null, ?string $turnoFiltro = null): array
-    {
-        $turnosDefinidos = Turno::all(); // Debe tener nombre,hora_entrada,hora_salida (HH:MM)
-        $cargaPorMaquinaTurnoConFechas = [];
 
-        // Helper: resuelve la máquina "real" del elemento según tipo
+    /**
+     * Calcula por máquina y turno:
+     *  - Planificado: por hora estimada de fin (inicio estimado o created_at + tiempo_fabricacion)
+     *  - Real: por hora real de fin (fecha_fin/fecha_fin_real); si no hay, intenta fallbacks
+     *
+     * Devuelve:
+     *  - planResumido[mq][turno] = {planificado, real}
+     *  - planDetalladoConFechas[mq][turno] = [ {peso, fecha} ]  (planificado, para filtrar en cliente)
+     *  - realDetalladoConFechas[mq][turno] = [ {peso, fecha} ]  (real, para filtrar en cliente)
+     */
+    private function calcularPlanificadoYRealPorTurno($maquinas, ?string $fechaInicio = null, ?string $fechaFin = null, ?string $turnoFiltro = null): array
+    {
+        $turnosDefinidos = Turno::all(); // nombre, hora_entrada, hora_salida (HH:MM)
+
         $resolverMaquinaElemento = function (Elemento $e) {
             $tipo = optional($e->maquina)->tipo;
             return match ($tipo) {
@@ -499,80 +504,100 @@ class ProduccionController extends Controller
             };
         };
 
-        // Helper: comprobar si una hora pertenece al turno (incluye turnos nocturnos que cruzan medianoche)
         $estaEnTurno = function (string $horaHHmm, $turno) {
-            $h = $horaHHmm;
             $ini = $turno->hora_entrada; // 'HH:MM'
             $fin = $turno->hora_salida;  // 'HH:MM'
             if ($fin >= $ini) {
-                // turno normal dentro del mismo día
-                return ($h >= $ini && $h < $fin);
+                return ($horaHHmm >= $ini && $horaHHmm < $fin);
             }
-            // turno nocturno (ej. 22:00–06:00)
-            return ($h >= $ini || $h < $fin);
+            // nocturno (22:00–06:00)
+            return ($horaHHmm >= $ini || $horaHHmm < $fin);
         };
 
-        // Cargamos elementos de planillas en estados relevantes
-        $elementosQuery = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
-            ->whereHas(
-                'planilla',
-                fn($q) =>
-                $q->whereIn('estado', ['pendiente', 'fabricando', 'completada'])
-            );
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
+            ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando', 'completada']))
+            ->get();
 
-        $elementos = $elementosQuery->get();
+        // estructuras de salida
+        $planDetalladoConFechas = []; // por máquina-turno (planificado)
+        $realDetalladoConFechas = []; // por máquina-turno (real)
 
         foreach ($elementos as $e) {
             $planilla  = $e->planilla;
-            $maquinaId = $resolverMaquinaElemento($e);
-            if (!$planilla || !$maquinaId) continue;
+            $mqId      = $resolverMaquinaElemento($e);
+            if (!$planilla || !$mqId) continue;
 
-            // Estimación de fecha/hora en que se fabrica este elemento
-            $inicioPlanilla   = $planilla->fecha_inicio_estimada ?? $planilla->created_at;
-            $tiempoEnSegundos = is_numeric($e->tiempo_fabricacion) ? (float) $e->tiempo_fabricacion : 0;
-            $fechaEstimada    = Carbon::parse($inicioPlanilla)->addSeconds($tiempoEnSegundos);
-            $fechaYmd         = $fechaEstimada->toDateString(); // 'YYYY-MM-DD'
-            $horaEstimada     = $fechaEstimada->format('H:i');
+            $peso = (float) ($e->peso ?? 0);
 
-            // Filtro por rango de fechas (si viene)
-            if ($fechaInicio && $fechaYmd < $fechaInicio) continue;
-            if ($fechaFin    && $fechaYmd > $fechaFin)       continue;
+            // -------- PLANIFICADO --------
+            $inicioPlan = $planilla->fecha_inicio_estimada ?? $planilla->created_at;
+            $secs = is_numeric($e->tiempo_fabricacion) ? (float) $e->tiempo_fabricacion : 0;
+            $finPlanificado = \Carbon\Carbon::parse($inicioPlan)->addSeconds($secs);
+            $horaPlan = $finPlanificado->format('H:i');
 
-            // Detectar turno por hora (con soporte a nocturnos)
-            $turnoDetectado = $turnosDefinidos->first(fn($t) => $estaEnTurno($horaEstimada, $t));
-            $nombreTurno = $turnoDetectado->nombre ?? 'mañana';
+            // Primero ajustamos la fecha si es turno nocturno
+            $turnoTmp = $turnosDefinidos->first(fn($t) => $estaEnTurno($horaPlan, $t));
+            $fechaPlan = $finPlanificado->toDateString();
 
-            // Filtro por turno (si viene)
-            if ($turnoFiltro && $nombreTurno !== $turnoFiltro) continue;
+            if ($turnoTmp && $turnoTmp->hora_salida < $turnoTmp->hora_entrada && $horaPlan < $turnoTmp->hora_salida) {
+                $fechaPlan = \Carbon\Carbon::parse($fechaPlan)->subDay()->toDateString();
+            }
 
-            $cargaPorMaquinaTurnoConFechas[$maquinaId][$nombreTurno][] = [
-                'peso'   => $e->peso,
-                'estado' => $e->estado,
-                'fecha'  => $fechaYmd,
-            ];
-        }
+            $turnoPlan = optional($turnoTmp)->nombre ?? 'mañana';
 
-        // Acumular esperado vs fabricado por máquina y turno
-        $turnos = ['mañana', 'tarde', 'noche'];
-        $cargaPorMaquinaTurno = [];
-        foreach ($maquinas as $maquina) {
-            $cargaPorMaquinaTurno[$maquina->id] = array_fill_keys($turnos, ['esperado' => 0, 'fabricado' => 0]);
-            foreach ($turnos as $turno) {
-                // Si hay filtro de turno, evitamos acumular en otros turnos
-                if ($turnoFiltro && $turno !== $turnoFiltro) continue;
+            if ((!$fechaInicio || $fechaPlan >= $fechaInicio) && (!$fechaFin || $fechaPlan <= $fechaFin)) {
+                if (!$turnoFiltro || $turnoFiltro === $turnoPlan) {
+                    $planDetalladoConFechas[$mqId][$turnoPlan][] = ['peso' => $peso, 'fecha' => $fechaPlan];
+                }
+            }
 
-                $items = $cargaPorMaquinaTurnoConFechas[$maquina->id][$turno] ?? [];
-                foreach ($items as $dato) {
-                    $cargaPorMaquinaTurno[$maquina->id][$turno]['esperado'] += $dato['peso'];
-                    if ($dato['estado'] === 'fabricado') {
-                        $cargaPorMaquinaTurno[$maquina->id][$turno]['fabricado'] += $dato['peso'];
+
+            // -------- REAL --------
+            $finReal = $e->fecha_fin
+                ?? $e->fecha_fin_real
+                ?? ($e->estado === 'fabricado' ? $e->updated_at : null);
+
+            if ($finReal) {
+                $finRealC = $finReal instanceof \Carbon\Carbon ? $finReal : \Carbon\Carbon::parse($finReal);
+                $horaReal = $finRealC->format('H:i');
+                $fechaReal = $finRealC->toDateString();
+
+                $turnoTmp = $turnosDefinidos->first(fn($t) => $estaEnTurno($horaReal, $t));
+                if ($turnoTmp && $turnoTmp->hora_salida < $turnoTmp->hora_entrada && $horaReal < $turnoTmp->hora_salida) {
+                    $fechaReal = \Carbon\Carbon::parse($fechaReal)->subDay()->toDateString();
+                }
+
+                $turnoReal = optional($turnoTmp)->nombre ?? 'mañana';
+
+                if ((!$fechaInicio || $fechaReal >= $fechaInicio) && (!$fechaFin || $fechaReal <= $fechaFin)) {
+                    if (!$turnoFiltro || $turnoFiltro === $turnoReal) {
+                        $realDetalladoConFechas[$mqId][$turnoReal][] = ['peso' => $peso, 'fecha' => $fechaReal];
                     }
                 }
             }
         }
 
-        return [$cargaPorMaquinaTurno, $cargaPorMaquinaTurnoConFechas];
+        // acumular por turno
+        $turnos = ['mañana', 'tarde', 'noche'];
+        $planResumido = [];
+        foreach ($maquinas as $m) {
+            $planResumido[$m->id] = [];
+            foreach ($turnos as $t) {
+                if ($turnoFiltro && $turnoFiltro !== $t) continue;
+
+                $planificados = $planDetalladoConFechas[$m->id][$t] ?? [];
+                $reales       = $realDetalladoConFechas[$m->id][$t] ?? [];
+
+                $planResumido[$m->id][$t] = [
+                    'planificado' => array_sum(array_column($planificados, 'peso')),
+                    'real'        => array_sum(array_column($reales, 'peso')),
+                ];
+            }
+        }
+
+        return [$planResumido, $planDetalladoConFechas, $realDetalladoConFechas];
     }
+
     //---------------------------------------------------------- GENERAR EVENTOS MAQUINAS
     private function generarEventosMaquinas($planillasAgrupadas, $ordenes, $colasMaquinas)
     {

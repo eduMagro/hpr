@@ -55,7 +55,6 @@
                     <h3 class="text-sm font-semibold">{{ $maquina->nombre }}</h3>
                     <select data-id="{{ $maquina->id }}" data-nombre="{{ $maquina->nombre }}"
                         class="estado-maquina border rounded text-sm px-2 py-1">
-
                         <option value="activa" {{ $maquina->estado === 'activa' ? 'selected' : '' }}>🟢 Activa</option>
                         <option value="averiada" {{ $maquina->estado === 'averiada' ? 'selected' : '' }}>🔴 Averiada
                         </option>
@@ -64,14 +63,18 @@
                         <option value="pausa" {{ $maquina->estado === 'pausa' ? 'selected' : '' }}>⏸️ Pausa</option>
                     </select>
                 </div>
-
-                <canvas id="grafico-maquina-{{ $maquina->id }}" width="280" height="200"
-                    class="mx-auto"></canvas>
-            </div>
+                <canvas id="grafico-maquina-{{ $maquina->id }}" class="mx-auto h-[180px]"></canvas>
+            </div> {{-- <- CIERRA aquí la tarjeta --}}
         @endforeach
-
     </div>
 
+
+    <style>
+        canvas {
+            height: 180px !important;
+            max-height: 180px !important;
+        }
+    </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
@@ -81,15 +84,16 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const maquinas = @json($resources);
-
             const planillas = @json($planillasEventos);
+            const cargaTurnoResumen = @json($cargaTurnoResumen);
+            const planDetallado = @json($planDetallado);
+            const realDetallado = @json($realDetallado);
 
+            // ------- FullCalendar -------
             const calendar = new FullCalendar.Calendar(document.getElementById('calendario'), {
                 schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
                 initialView: 'resourceTimelineFiveDay',
-                /* 👇 Aquí definimos la vista de 5 días */
                 views: {
-                    // Vista de 1 día (la de siempre)
                     resourceTimelineDay: {
                         type: 'resourceTimeline',
                         duration: {
@@ -107,22 +111,16 @@
                         },
                         buttonText: '1 día'
                     },
-
-                    // 👉 NUEVA vista de 5 días con horas
                     resourceTimelineFiveDay: {
                         type: 'resourceTimeline',
                         duration: {
                             days: 15
-                        }, // muestra 5 días
+                        }, // si quieres realmente 5 días, cambia a { days: 5 }
                         slotDuration: {
                             hours: 1
-                        }, // cada columna = 1 hora
+                        },
                         slotMinTime: '00:00:00',
                         slotMaxTime: '24:00:00',
-
-                        /* Etiquetamos la cabecera en dos filas:
-                           - fila 1: “lun 24 jun”
-                           - fila 2: “08:00”, “09:00”…                */
                         slotLabelFormat: [{
                                 weekday: 'short',
                                 day: 'numeric',
@@ -134,7 +132,6 @@
                                 hour12: false
                             }
                         ],
-
                         buttonText: '5 días'
                     }
                 },
@@ -156,32 +153,31 @@
                 },
                 eventContent: function(arg) {
                     const progreso = arg.event.extendedProps.progreso;
-                    const color = '#3b82f6'; // siempre azul
 
                     if (typeof progreso === 'number') {
                         return {
                             html: `
-                <div class="w-full px-1 py-0.5 text-xs font-semibold text-white">
-                    <div class="mb-0.5 truncate" title="${arg.event.title}">${arg.event.title}</div>
-                    <div class="w-full h-2 bg-gray-300 rounded overflow-hidden">
-                        <div class="h-2 bg-blue-500 rounded" style="width: ${progreso}%; min-width: 1px;"></div>
-                    </div>
-                </div>`
-                        };
-                    } else {
-                        return {
-                            html: `<div class="truncate w-full text-xs font-semibold text-white px-2 py-1 rounded"
-                     style="background-color: ${arg.event.backgroundColor};"
-                     title="${arg.event.title}">
-                     ${arg.event.title}
-                </div>`
+                        <div class="w-full px-1 py-0.5 text-xs font-semibold text-white">
+                            <div class="mb-0.5 truncate" title="${arg.event.title}">${arg.event.title}</div>
+                            <div class="w-full h-2 bg-gray-300 rounded overflow-hidden">
+                                <div class="h-2 bg-blue-500 rounded" style="width: ${progreso}%; min-width: 1px;"></div>
+                            </div>
+                        </div>`
                         };
                     }
+
+                    return {
+                        html: `
+                    <div class="truncate w-full text-xs font-semibold text-white px-2 py-1 rounded"
+                         style="background-color: ${arg.event.backgroundColor};"
+                         title="${arg.event.title}">
+                        ${arg.event.title}
+                    </div>`
+                    };
                 },
                 eventDrop: async function(info) {
                     const planillaId = info.event.id.split('-')[1];
                     const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
-
                     const maquinaOrigenId = info.oldResource?.id ?? info.event.getResources()[0]?.id;
                     const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
 
@@ -228,23 +224,20 @@
 
                         const text = await res.text();
                         let data;
-
                         try {
                             data = JSON.parse(text);
                         } catch (jsonError) {
                             throw new Error('❌ El servidor no devolvió JSON válido:\n\n' + text);
                         }
 
-                        if (!res.ok || !data.success) {
-                            throw new Error(data.message || '❌ Error al reordenar');
-                        }
-                        // 🧹 Eliminar tooltips
+                        if (!res.ok || !data.success) throw new Error(data.message ||
+                            '❌ Error al reordenar');
+
+                        // Refrescar eventos
                         document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                         calendar.removeAllEvents();
-
                         const resEventos = await fetch('/planillas/eventos');
                         const nuevosEventos = await resEventos.json();
-
                         calendar.addEventSource(nuevosEventos);
 
                     } catch (e) {
@@ -254,28 +247,24 @@
                             html: `<pre style="white-space:pre-wrap;text-align:left;">${e.message}</pre>`,
                             icon: 'error'
                         });
-
                         info.revert();
                     }
                 },
-
                 eventDidMount: function(info) {
                     const props = info.event.extendedProps;
-
                     const tooltip = document.createElement('div');
                     tooltip.className = 'fc-tooltip';
                     tooltip.innerHTML = `
-                    <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
-                        <strong>${info.event.title}</strong><br>
-                        Obra: ${props.obra}<br>
-                        Estado producción: ${props.estado}<br>
-                        Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
-                        Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>
-                    </div>`;
+                <div class="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-md max-w-xs">
+                    <strong>${info.event.title}</strong><br>
+                    Obra: ${props.obra}<br>
+                    Estado producción: ${props.estado}<br>
+                    Fin programado: <span class="text-yellow-300">${props.fin_programado}</span><br>
+                    Fecha estimada entrega: <span class="text-green-300">${props.fecha_entrega}</span>
+                </div>`;
                     tooltip.style.position = 'absolute';
                     tooltip.style.zIndex = 9999;
                     tooltip.style.display = 'none';
-
                     document.body.appendChild(tooltip);
 
                     info.el.addEventListener('mouseenter', function(e) {
@@ -283,48 +272,55 @@
                         tooltip.style.top = e.pageY + 10 + 'px';
                         tooltip.style.display = 'block';
                     });
-
                     info.el.addEventListener('mousemove', function(e) {
                         tooltip.style.left = e.pageX + 10 + 'px';
                         tooltip.style.top = e.pageY + 10 + 'px';
                     });
-
                     info.el.addEventListener('mouseleave', function() {
                         tooltip.style.display = 'none';
                     });
                 }
-
             });
 
             calendar.render();
             window.calendar = calendar;
 
-            const cargaMaquinaTurno = @json($cargaPorMaquinaTurno);
-            const datosOriginales = @json($cargaPorMaquinaTurnoConFechas);
-
+            // ------- Charts (Planificado vs Real) -------
             const charts = {};
+            const $desde = document.getElementById('fechaInicio');
+            const $hasta = document.getElementById('fechaFin');
+            const $turno = document.getElementById('turnoFiltro');
+            const $rango = document.getElementById('rango-aplicado');
 
-            // crea los charts inicialmente (sin filtro de turno)
-            Object.entries(cargaMaquinaTurno).forEach(([maquinaId, turnos]) => {
-                const ctx = document.getElementById(`grafico-maquina-${maquinaId}`).getContext('2d');
+            const parseDate = (val) => {
+                if (!val) return null;
+                const d = new Date(val);
+                return isNaN(d.getTime()) ? null : d;
+            };
+
+            // Crear charts iniciales
+            Object.entries(cargaTurnoResumen).forEach(([maquinaId, turnos]) => {
+                const canvas = document.getElementById(`grafico-maquina-${maquinaId}`);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
                 const labels = ["Mañana", "Tarde", "Noche"];
-                const esperado = labels.map(t => turnos[t.toLowerCase()].esperado);
-                const fabricado = labels.map(t => turnos[t.toLowerCase()].fabricado);
+                const planificado = labels.map(t => (turnos[t.toLowerCase()]?.planificado ?? 0));
+                const real = labels.map(t => (turnos[t.toLowerCase()]?.real ?? 0));
 
                 charts[maquinaId] = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: labels,
+                        labels,
                         datasets: [{
-                                label: 'Esperado (kg)',
-                                data: esperado,
+                                label: 'Planificado (kg)',
+                                data: planificado,
                                 backgroundColor: 'rgba(255, 159, 64, 0.6)',
                                 borderColor: 'rgba(255, 159, 64, 1)',
                                 borderWidth: 1
                             },
                             {
-                                label: 'Fabricado (kg)',
-                                data: fabricado,
+                                label: 'Real (kg)',
+                                data: real,
                                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
                                 borderColor: 'rgba(75, 192, 192, 1)',
                                 borderWidth: 1
@@ -333,6 +329,7 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: {
                             legend: {
                                 position: 'top'
@@ -354,61 +351,76 @@
                 });
             });
 
-            const $desde = document.getElementById('fechaInicio');
-            const $hasta = document.getElementById('fechaFin');
-            const $turno = document.getElementById('turnoFiltro');
-            const $rango = document.getElementById('rango-aplicado');
-
-            // texto inicial
-            $rango.textContent =
-                `Mostrando datos desde ${$desde.value} hasta ${$hasta.value} · Turno: ${$turno.value ? $turno.options[$turno.selectedIndex].text : 'Todos'}`;
-
-            document.getElementById('filtrarFechas').addEventListener('click', () => {
-                const desde = new Date($desde.value);
-                const hasta = new Date($hasta.value);
-                hasta.setHours(23, 59, 59, 999); // incluir día completo
-                const turnoSel = ($turno.value || '').toLowerCase(); // '', 'mañana', 'tarde', 'noche'
-
-                // actualizar texto rango aplicado
+            // Texto inicial del rango
+            const pintarTextoRango = () => {
+                const turnoTxt = $turno?.value ?
+                    $turno.options[$turno.selectedIndex].text :
+                    'Todos';
                 $rango.textContent =
-                    `Mostrando datos desde ${$desde.value} hasta ${$hasta.value} · Turno: ${turnoSel ? (turnoSel.charAt(0).toUpperCase()+turnoSel.slice(1)) : 'Todos'}`;
+                    `Mostrando datos desde ${$desde.value} hasta ${$hasta.value} · Turno: ${turnoTxt}`;
+            };
+            pintarTextoRango();
 
-                Object.entries(datosOriginales).forEach(([maquinaId, turnos]) => {
-                    // Si hay turno seleccionado, solo usamos ese; si no, usamos los tres
+            // Función única para aplicar filtro (por botón o por cambios)
+            const aplicarFiltro = (ev) => {
+                ev?.preventDefault?.();
+
+                const desde = parseDate($desde.value);
+                const hasta = parseDate($hasta.value);
+                if (!desde || !hasta) {
+                    $rango.textContent = 'Selecciona un rango de fechas válido.';
+                    return;
+                }
+                // incluir día completo
+                hasta.setHours(23, 59, 59, 999);
+
+                const turnoSel = ($turno?.value || '').toLowerCase(); // '', 'mañana','tarde','noche'
+                pintarTextoRango();
+
+                Object.entries(planDetallado).forEach(([maquinaId, turnosPlan]) => {
                     const etiquetas = turnoSel ? [turnoSel] : ['mañana', 'tarde', 'noche'];
 
-                    const esperado = etiquetas.map(t =>
-                        (turnos[t] || [])
+                    const planificado = etiquetas.map(t =>
+                        (turnosPlan[t] || [])
                         .filter(e => {
-                            const f = new Date(e.fecha);
-                            return f >= desde && f <= hasta;
+                            const f = parseDate(e.fecha);
+                            return f && f >= desde && f <= hasta;
                         })
                         .reduce((suma, e) => suma + (Number(e.peso) || 0), 0)
                     );
 
-                    const fabricado = etiquetas.map(t =>
-                        (turnos[t] || [])
+                    const turnosReal = realDetallado[maquinaId] || {};
+                    const real = etiquetas.map(t =>
+                        (turnosReal[t] || [])
                         .filter(e => {
-                            const f = new Date(e.fecha);
-                            const estado = (e.estado || '').toLowerCase();
-                            return f >= desde && f <= hasta && estado === 'fabricado';
+                            const f = parseDate(e.fecha);
+                            return f && f >= desde && f <= hasta;
                         })
                         .reduce((suma, e) => suma + (Number(e.peso) || 0), 0)
                     );
 
                     if (charts[maquinaId]) {
-                        // Cambiamos labels si se ha elegido un solo turno
-                        charts[maquinaId].data.labels = etiquetas.map(s => s.charAt(0)
-                        .toUpperCase() + s.slice(1));
-
-                        charts[maquinaId].data.datasets[0].data = esperado;
-                        charts[maquinaId].data.datasets[1].data = fabricado;
+                        charts[maquinaId].data.labels = etiquetas.map(s => s.charAt(0).toUpperCase() + s
+                            .slice(1));
+                        charts[maquinaId].data.datasets[0].data = planificado;
+                        charts[maquinaId].data.datasets[1].data = real;
                         charts[maquinaId].update();
                     }
                 });
+            };
+
+            // Click en botón
+            document.getElementById('filtrarFechas').addEventListener('click', aplicarFiltro);
+
+            // Reactividad instantánea (sin pulsar botón)
+            ['change', 'input'].forEach(evt => {
+                $desde.addEventListener(evt, aplicarFiltro);
+                $hasta.addEventListener(evt, aplicarFiltro);
+                $turno?.addEventListener(evt, aplicarFiltro);
             });
-        });
+        }); // <-- cierre correcto de DOMContentLoaded
     </script>
+
     <script>
         document.querySelectorAll('.estado-maquina').forEach(select => {
             select.addEventListener('change', async function() {
