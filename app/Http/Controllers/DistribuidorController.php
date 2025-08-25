@@ -142,8 +142,11 @@ class DistribuidorController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Distribuidor $distribuidor)
+    public function destroy($id)
     {
-        //
+        $distribuidor = Distribuidor::findOrFail($id);
+        $distribuidor->delete();
+
+        return redirect()->route('fabricantes.index')->with('success', 'Distribuidor eliminado correctamente.');
     }
 }
