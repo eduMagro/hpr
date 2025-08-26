@@ -217,6 +217,7 @@ class PedidoController extends Controller
             'fecha_pedido'   => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
             'fecha_entrega'  => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Entrega'),
             'estado'         => $this->getOrdenamientoPedidos('estado', 'Estado'),
+            'created_by'     => $this->getOrdenamientoPedidos('created_by', 'Creado por'),
         ];
 
         // ===== Cargar obras de HPR para el <select> =====
@@ -846,6 +847,7 @@ class PedidoController extends Controller
                 'obra_id'          => $obraId,
                 'obra_manual'      => $request->obra_manual,
                 'fecha_pedido'     => now(),
+                'created_by'     => auth()->id(),
             ]);
 
             // 🔄 Procesar productos

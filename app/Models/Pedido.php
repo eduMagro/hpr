@@ -21,12 +21,23 @@ class Pedido extends Model
         'fecha_entrega',
         'estado',
         'observaciones',
+        'created_by',
+        'updated_by',
     ];
     protected $casts = [
         'fecha_pedido' => 'date',
         'fecha_entrega' => 'date',
     ];
     protected $appends = ['fecha_pedido_formateada', 'fecha_entrega_formateada', 'peso_total_formateado'];
+    public function creador()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function actualizador()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 
     public function getFechaCreacionFormateadaAttribute()
     {

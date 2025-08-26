@@ -22,6 +22,7 @@
                             <th class="p-2 border">{!! $ordenables['fecha_pedido'] ?? 'F. Pedido' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fecha_entrega'] ?? 'F. Entrega' !!}</th>
                             <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['created_by'] ?? 'Creado por' !!}</th>
                             <th class="p-2 border">Acciones</th>
                         </tr>
 
@@ -93,6 +94,9 @@
                                     ]" :selected="request('estado')" empty="Todos"
                                         class="w-full text-xs" />
                                 </th>
+                                <th class="p-1 border">
+
+                                </th>
                                 <x-tabla.botones-filtro ruta="pedidos.index" />
                             </form>
                         </tr>
@@ -103,7 +107,7 @@
                         @forelse ($pedidos as $pedido)
                             {{-- Fila principal del pedido --}}
                             <tr class="bg-gray-100 text-xs font-bold uppercase">
-                                <td colspan="12" class="text-left px-3 py-2">
+                                <td colspan="13" class="text-left px-3 py-2">
                                     <span class="text-blue-600">Pedido:</span> {{ $pedido->codigo }}
                                     |
                                     <span class="text-blue-600">Peso Total: </span> {{ $pedido->peso_total_formateado }}
@@ -180,6 +184,8 @@
                                     <td class="border px-2 py-1">{{ $pedido->fecha_pedido_formateada ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $linea['fecha_estimada_entrega'] }}</td>
                                     <td class="border px-2 py-1 capitalize">{{ $linea['estado'] }}</td>
+                                    <td class="border px-2 py-1 capitalize">{{ $pedido->creador->name ?? '—' }}
+                                    </td>
                                     <td class="border px-2 py-1 text-center">
                                         <div class="flex flex-col items-center gap-1">
                                             {{-- Botones en línea --}}
@@ -245,7 +251,7 @@
 
                         @empty
                             <tr>
-                                <td colspan="12" class="py-4 text-gray-500">No hay pedidos registrados.</td>
+                                <td colspan="13" class="py-4 text-gray-500">No hay pedidos registrados.</td>
                             </tr>
                         @endforelse
                     </tbody>

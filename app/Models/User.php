@@ -319,4 +319,14 @@ class User extends Authenticatable
 
         return $asigReciente?->obra_id ?: null;
     }
+
+    public function pedidosCreados()
+    {
+        return $this->hasMany(Pedido::class, 'created_by');
+    }
+
+    public function pedidosActualizados()
+    {
+        return $this->hasMany(Pedido::class, 'updated_by');
+    }
 }

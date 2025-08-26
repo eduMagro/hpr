@@ -10,6 +10,7 @@ use App\Models\Seccion;
 use App\Models\Departamento;
 use App\Models\PermisoAcceso;
 use Illuminate\Support\Facades\Log;
+use App\Models\Empresa;
 
 class VerificarAccesoSeccion
 {
@@ -31,6 +32,37 @@ class VerificarAccesoSeccion
         }
 
         $rutaActual = $request->route()?->getName() ?? '';
+        $geReyesTejeroId = Empresa::where('empresa', 'G.E Reyes Tejero')->value('id');
+
+        // ⛔️ RESTRICCIÓN ESPECIAL: usuarios de "G.E Reyes Tejero"
+        if ($geReyesTejeroId && (int)$user->empresa_id === (int)$geReyesTejeroId) {
+
+            // Solo permitimos /mi-perfil/{user} (route name: usuarios.show) y que sea SU propio id
+            if ($rutaActual === 'usuarios.show') {
+                // El parámetro puede venir como modelo o como id
+                $routeUser = $request->route('user');
+                $routeUserId = is_object($routeUser)
+                    ? ($routeUser->id ?? null)
+                    : (is_numeric($routeUser) ? (int)$routeUser : null);
+
+                if ((int)$routeUserId === (int)$user->id) {
+                    return $next($request);
+                }
+
+                Log::warning('❌ Intento de ver perfil ajeno por usuario G.E Reyes Tejero', [
+                    'auth_user_id' => $user->id,
+                    'route_user_id' => $routeUserId,
+                    'ruta' => $rutaActual,
+                ]);
+                abort(403, 'Solo puedes acceder a tu propio perfil.');
+            }
+
+            Log::info('🚫 Ruta denegada a usuario de G.E Reyes Tejero', [
+                'user' => $user->email,
+                'ruta' => $rutaActual,
+            ]);
+            abort(403, 'Acceso restringido: solo tu perfil.');
+        }
 
         // ✅ Rutas públicas siempre accesibles
         $rutasLibres = [
