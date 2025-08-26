@@ -137,12 +137,14 @@
                 },
                 locale: 'es',
                 timeZone: 'Europe/Madrid',
-                initialDate: new Date(),
+                initialDate: "{{ $initialDate }}",
                 resourceAreaHeaderContent: 'Máquinas',
                 resources: maquinas,
                 events: planillas,
                 resourceAreaWidth: '220px',
                 height: 'auto',
+                slotWidth: 80, // ancho de columna en píxeles
+                eventMinWidth: 80, // alternativa a usar CSS
                 editable: true,
                 eventResizableFromStart: false,
                 eventDurationEditable: false,
@@ -151,6 +153,17 @@
                     center: 'title',
                     right: 'resourceTimelineDay,resourceTimelineFiveDay'
                 },
+                eventClick: function(info) {
+                    const ids = info.event.extendedProps.elementos_id;
+
+                    if (!ids || ids.length === 0) return;
+
+                    const url = new URL(window.location.origin + '/elementos');
+                    url.searchParams.set('id', ids.join(','));
+
+                    window.open(url.toString(), '_blank');
+                },
+
                 eventContent: function(arg) {
                     const progreso = arg.event.extendedProps.progreso;
 
@@ -197,12 +210,18 @@
                         return;
                     }
 
-                    // Calcular nueva posición según orden cronológico en la nueva máquina
                     const eventosOrdenados = calendar.getEvents()
                         .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
                         .sort((a, b) => a.start - b.start);
 
                     const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
+
+                    const payload = {
+                        id: planillaId,
+                        maquina_id: maquinaDestinoId,
+                        maquina_origen_id: maquinaOrigenId,
+                        nueva_posicion: nuevaPosicion
+                    };
 
                     try {
                         const res = await fetch('/planillas/reordenar', {
@@ -214,40 +233,106 @@
                                 'X-CSRF-TOKEN': document.querySelector(
                                     'meta[name="csrf-token"]').content
                             },
-                            body: JSON.stringify({
-                                id: planillaId,
-                                maquina_id: maquinaDestinoId,
-                                maquina_origen_id: maquinaOrigenId,
-                                nueva_posicion: nuevaPosicion
-                            })
+                            body: JSON.stringify(payload)
                         });
 
                         const text = await res.text();
-                        let data;
-                        try {
-                            data = JSON.parse(text);
-                        } catch (jsonError) {
-                            throw new Error('❌ El servidor no devolvió JSON válido:\n\n' + text);
+                        let data = JSON.parse(text);
+
+                        if (!res.ok || !data.success) throw {
+                            response: {
+                                data
+                            }
+                        };
+
+                        await recargarEventosCalendario();
+
+                    } catch (e) {
+                        const data = e.response?.data;
+
+                        if (data?.requiresConfirmation) {
+                            const diametros = data.diametros.join(', ');
+                            const cantidad = data.diametros
+                                .length; // número real de diámetros fuera de rango
+
+                            const confirmacion = await Swal.fire({
+                                title: 'Elementos fuera de rango',
+                                html: `Hay <strong>${cantidad}</strong> ${cantidad === 1 ? 'elemento' : 'elementos'} con diámetros incompatibles: <strong>${diametros}</strong>.<br><br>¿Quieres mover solo los elementos compatibles?`,
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonText: 'Sí, mover válidos',
+                                cancelButtonText: 'Cancelar',
+                            });
+
+                            if (confirmacion.isConfirmed) {
+                                try {
+                                    await fetch('/planillas/reordenar', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-Requested-With': 'XMLHttpRequest',
+                                            'X-CSRF-TOKEN': document.querySelector(
+                                                'meta[name="csrf-token"]').content
+                                        },
+                                        body: JSON.stringify({
+                                            ...payload,
+                                            forzar_movimiento: true,
+                                            elementos_id: data.elementos
+                                        })
+                                    });
+
+                                    await recargarEventosCalendario();
+
+                                    await Swal.fire({
+                                        icon: 'success',
+                                        title: 'Movimiento parcial realizado',
+                                        text: 'Se movieron solo los elementos compatibles.',
+                                        timer: 2000,
+                                        showConfirmButton: false,
+                                    });
+
+                                } catch (errorFinal) {
+                                    await mostrarError('Error al mover elementos', errorFinal.response
+                                        ?.data?.message || errorFinal.message);
+                                    info.revert();
+                                }
+                            } else {
+                                await mostrarInfo('Movimiento cancelado',
+                                    'No se realizó ningún cambio.');
+                                info.revert();
+                            }
+
+                        } else {
+                            await mostrarError('Error inesperado', data?.message ?? e.message);
+                            info.revert();
                         }
+                    }
 
-                        if (!res.ok || !data.success) throw new Error(data.message ||
-                            '❌ Error al reordenar');
-
-                        // Refrescar eventos
+                    async function recargarEventosCalendario() {
                         document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
                         calendar.removeAllEvents();
                         const resEventos = await fetch('/planillas/eventos');
                         const nuevosEventos = await resEventos.json();
                         calendar.addEventSource(nuevosEventos);
+                    }
 
-                    } catch (e) {
-                        console.error('Error en respuesta:', e);
-                        Swal.fire({
-                            title: 'Error',
-                            html: `<pre style="white-space:pre-wrap;text-align:left;">${e.message}</pre>`,
-                            icon: 'error'
+                    async function mostrarError(titulo, mensaje) {
+                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+                        await Swal.fire({
+                            icon: 'error',
+                            title: titulo,
+                            text: mensaje,
                         });
-                        info.revert();
+                    }
+
+                    async function mostrarInfo(titulo, mensaje) {
+                        document.querySelectorAll('.fc-tooltip').forEach(t => t.remove());
+                        await Swal.fire({
+                            icon: 'info',
+                            title: titulo,
+                            text: mensaje,
+                        });
                     }
                 },
                 eventDidMount: function(info) {
@@ -483,6 +568,10 @@
         .fc-tooltip {
             pointer-events: none;
             transition: opacity 0.1s ease-in-out;
+        }
+
+        .fc-event {
+            min-width: 50px !important;
         }
     </style>
 </x-app-layout>

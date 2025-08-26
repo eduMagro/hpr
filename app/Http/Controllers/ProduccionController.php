@@ -464,6 +464,8 @@ class ProduccionController extends Controller
         $fechaInicioCalendario = $fechaCarbon?->toDateString() ?? now()->toDateString();
         $turnosLista = Turno::orderBy('hora_entrada')->pluck('nombre'); // ej.: mañana, tarde, noche
 
+        $initialDate = $this->calcularInitialDate();
+
         return view('produccion.maquinas', [
             'maquinas'                         => $maquinas,
             'planillasEventos'                 => $planillasEventos,
@@ -477,10 +479,41 @@ class ProduccionController extends Controller
             'filtro_fecha_inicio'              => $fechaInicio,
             'filtro_fecha_fin'                 => $fechaFin,
             'filtro_turno'                     => $turnoFiltro,
+            'initialDate'                     => $initialDate,
         ]);
     }
+    private function calcularInitialDate(): string
+    {
+        $planillasPrimeraPos = OrdenPlanilla::with(['planilla:id,estado,fecha_inicio'])
+            ->where('posicion', 1)
+            ->get()
+            ->pluck('planilla')
+            ->filter();
 
+        $fabricando = $planillasPrimeraPos->filter(
+            fn($p) => strcasecmp((string)$p->estado, 'fabricando') === 0
+        );
 
+        if ($fabricando->isNotEmpty()) {
+            $minFecha = $fabricando
+                ->pluck('fecha_inicio')
+                ->filter()
+                ->min();
+
+            if ($minFecha) {
+                try {
+                    // ⚡ Forzar formato europeo: "d/m/Y H:i"
+                    return Carbon::createFromFormat('d/m/Y H:i', $minFecha)
+                        ->toDateTimeString(); // "YYYY-MM-DD HH:MM:SS"
+                } catch (\Exception $e) {
+                    // Si falla, como fallback intentamos parsear normal (YYYY-MM-DD HH:MM:SS)
+                    return Carbon::parse($minFecha)->toDateTimeString();
+                }
+            }
+        }
+
+        return now()->toDateString();
+    }
     /**
      * Calcula por máquina y turno:
      *  - Planificado: por hora estimada de fin (inicio estimado o created_at + tiempo_fabricacion)
@@ -742,14 +775,16 @@ class ProduccionController extends Controller
                             'end'             => $tEnd->toIso8601String(),
                             'resourceId'      => $maquinaId,
                             'backgroundColor' => $backgroundColor,
-                            'extendedProps'   => [
-                                'obra'            => optional($planilla->obra)->obra ?? '—',
-                                'estado'          => $planilla->estado,
-                                'duracion_horas'  => round($duracionSegundos / 3600, 2),
-                                'progreso'        => $progreso,
-                                'fecha_entrega'   => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
-                                'fin_programado'  => $fechaFinReal->format('d/m/Y H:i'),
+                            'extendedProps' => [
+                                'obra'           => optional($planilla->obra)->obra ?? '—',
+                                'estado'         => $planilla->estado,
+                                'duracion_horas' => round($duracionSegundos / 3600, 2),
+                                'progreso'       => $progreso,
+                                'fecha_entrega'  => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
+                                'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
+                                'elementos_id'   => $grupo instanceof Collection ? $grupo->pluck('id')->values()->all() : [],
                             ],
+
                         ]);
                     }
 
@@ -876,6 +911,28 @@ class ProduccionController extends Controller
             'maquina_origen_id' => 'required|integer|exists:maquinas,id',
             'nueva_posicion'    => 'required|integer|min:1',
         ]);
+        $elementosFueraRango = $this->obtenerElementosFueraDeRango($request->id, $request->maquina_id);
+
+        // Si hay elementos fuera de rango y no se ha confirmado el movimiento parcial aún
+        if (!$request->boolean('forzar_movimiento')) {
+            if ($elementosFueraRango->isNotEmpty()) {
+                $elementosDentroRango = $this->obtenerElementosDentroDeRango($request->id, $request->maquina_id);
+
+                if ($elementosDentroRango->isNotEmpty()) {
+                    // Hay mezcla → preguntar si quiere mover los válidos
+                    return response()->json([
+                        'success' => false,
+                        'requiresConfirmation' => true,
+                        'message' => 'Algunos elementos tienen un diámetro incompatible con la máquina destino. ¿Quieres mover solo los que son compatibles?',
+                        'diametros' => $elementosFueraRango->pluck('diametro')->unique()->values(),
+                        'elementos' => $elementosDentroRango->pluck('id'), // los que SÍ se pueden mover
+                    ], 422);
+                } else {
+                    // Todos están fuera de rango → error directo
+                    throw new \Exception("No se puede mover la planilla porque todos sus elementos están fuera del rango de la máquina destino.");
+                }
+            }
+        }
 
         try {
             DB::transaction(function () use ($request) {
@@ -883,6 +940,34 @@ class ProduccionController extends Controller
                 $maquinaNueva     = (int) $request->maquina_id;
                 $maquinaAnterior  = (int) $request->maquina_origen_id;
                 $posNueva         = (int) $request->nueva_posicion;
+
+                if ($request->filled('elementos_id')) {
+                    // ⚠ Movimiento parcial
+                    $idsAMover = $request->input('elementos_id');
+
+                    // Mover solo esos elementos
+                    Elemento::whereIn('id', $idsAMover)
+                        ->update(['maquina_id' => $maquinaNueva]);
+
+                    // Mantener orden_planillas en la máquina de origen (NO borrar)
+
+                    // Crear nuevo orden en la máquina destino si no existe
+                    $existeDestino = OrdenPlanilla::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maquinaNueva)
+                        ->exists();
+
+                    if (!$existeDestino) {
+                        $maxPos = OrdenPlanilla::where('maquina_id', $maquinaNueva)->max('posicion') ?? 0;
+                        OrdenPlanilla::create([
+                            'planilla_id' => $planillaId,
+                            'maquina_id'  => $maquinaNueva,
+                            'posicion'    => $maxPos + 1,
+                        ]);
+                    }
+
+                    // 👇 No reordenamos dentro de la misma máquina si es movimiento parcial
+                    return;
+                }
 
                 $ordenActual = OrdenPlanilla::lockForUpdate()
                     ->where('planilla_id', $planillaId)
@@ -897,6 +982,8 @@ class ProduccionController extends Controller
                 $posAnterior     = $ordenActual->posicion;
 
                 if ($maquinaAnterior !== $maquinaNueva) {
+                    // ✅ Comprobamos si los elementos son compatibles con la máquina nueva
+                    $this->verificarDiametrosPermitidos($planillaId, $maquinaNueva);
                     // Reordenar la antigua máquina (subir todo lo que estaba detrás)
                     OrdenPlanilla::where('maquina_id', $maquinaAnterior)
                         ->where('posicion', '>', $posAnterior)
@@ -959,6 +1046,50 @@ class ProduccionController extends Controller
             ], 422);
         }
     }
+    private function obtenerElementosFueraDeRango(int $planillaId, int $maquinaId): Collection
+    {
+        $maquina = Maquina::findOrFail($maquinaId);
+        $min = $maquina->diametro_min ?? 0;
+        $max = $maquina->diametro_max ?? 999;
+
+        return Elemento::where('planilla_id', $planillaId)
+            ->where(function ($q) use ($min, $max) {
+                $q->where('diametro', '<', $min)
+                    ->orWhere('diametro', '>', $max);
+            })
+            ->get();
+    }
+    private function obtenerElementosDentroDeRango(int $planillaId, int $maquinaId): Collection
+    {
+        $maquina = Maquina::findOrFail($maquinaId);
+        $min = $maquina->diametro_min ?? 0;
+        $max = $maquina->diametro_max ?? 999;
+
+        return Elemento::where('planilla_id', $planillaId)
+            ->whereBetween('diametro', [$min, $max])
+            ->get();
+    }
+
+    private function verificarDiametrosPermitidos(int $planillaId, int $maquinaId): void
+    {
+        $maquina = Maquina::findOrFail($maquinaId);
+        $min = $maquina->diametro_min ?? 0;
+        $max = $maquina->diametro_max ?? 999;
+
+        $diametrosInvalidos = Elemento::where('planilla_id', $planillaId)
+            ->where(function ($q) use ($min, $max) {
+                $q->where('diametro', '<', $min)
+                    ->orWhere('diametro', '>', $max);
+            })
+            ->pluck('diametro')
+            ->unique()
+            ->values();
+
+        if ($diametrosInvalidos->isNotEmpty()) {
+            throw new \Exception("No se puede mover esta planilla a la máquina seleccionada. Diámetros fuera de rango: " . $diametrosInvalidos->implode(', '));
+        }
+    }
+
     public function eventosPlanillas()
     {
         try {

@@ -42,6 +42,11 @@ class ElementoController extends Controller
                 $query->where($column, 'like', "%{$request->$requestKey}%");
             }
         }
+        if ($ids = request('id')) {
+            // Permitir múltiples IDs separados por coma
+            $idsArray = explode(',', $ids);
+            $query->whereIn('id', $idsArray);
+        }
 
         // 📅 Filtrado por rango de fechas
         if ($request->has('fecha_inicio') && $request->fecha_inicio) {

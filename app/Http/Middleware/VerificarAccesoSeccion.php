@@ -25,6 +25,7 @@ class VerificarAccesoSeccion
             'juanjose.dorado@pacoreyes.com',
             'josemanuel.amuedo@pacoreyes.com',
             'manuel.reyes@pacoreyes.com',
+            'alvarofaces@gruporeyestejero.com',
         ])) {
             return $next($request);
         }
