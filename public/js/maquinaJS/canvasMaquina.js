@@ -14,14 +14,19 @@ const minSlotHeight = 50;
 
 // “recrecimiento” (en UNIDADES de las dimensiones, no en píxeles)
 const OVERLAP_GROW_UNITS = 5;
-// Tamaños de texto
-const SIZE_MAIN_TEXT = 14; // "Ø... | ... | x..."
-const SIZE_ID_TEXT = 12; // "#id"
-const SIZE_DIM_TEXT = 12; // números de las cotas rojas
 
-// Separaciones para cotas (por si subes el tamaño)
-const DIM_LINE_OFFSET = 12; // antes 8: distancia de la cota a la figura
-const DIM_LABEL_LIFT = 6; // antes 4: cuánto sube el número respecto a la línea de cota
+// tamaños de texto y separación de cotas
+const SIZE_MAIN_TEXT = 14;
+const SIZE_ID_TEXT = 12;
+const SIZE_DIM_TEXT = 12;
+const DIM_LINE_OFFSET = 12;
+const DIM_LABEL_LIFT = 6;
+
+// 🔹 separación mínima del texto respecto a la figura y paso de alejamiento
+const LABEL_CLEARANCE = 3; // px de margen extra
+const LABEL_STEP = 4; // cuánto alejar si aún toca
+const MAIN_ABOVE_GAP = 8; // salto base del texto grande por encima de la figura
+const ID_BELOW_GAP = 12; // salto base del #id por debajo de la figura
 
 // =======================
 // Helpers SVG
@@ -80,7 +85,7 @@ function agregarPath(svg, puntos, color = FIGURE_LINE_COLOR, ancho = 2) {
 }
 
 // =======================
-// Modelo geométrico existente
+// Geometría base
 // =======================
 function extraerDimensiones(dimensiones) {
     const tokens = dimensiones.split(/\s+/).filter((t) => t.length > 0);
@@ -105,7 +110,6 @@ function extraerDimensiones(dimensiones) {
     }
     return dims;
 }
-
 function computePathPoints(dims) {
     let points = [],
         currentX = 0,
@@ -136,7 +140,6 @@ function computePathPoints(dims) {
     });
     return points;
 }
-
 function computeLineSegments(dims) {
     let segments = [],
         currentX = 0,
@@ -144,8 +147,8 @@ function computeLineSegments(dims) {
         currentAngle = 0;
     dims.forEach((d) => {
         if (d.type === "line") {
-            let start = { x: currentX, y: currentY };
-            let end = {
+            const start = { x: currentX, y: currentY };
+            const end = {
                 x:
                     currentX +
                     d.length * Math.cos((currentAngle * Math.PI) / 180),
@@ -176,29 +179,25 @@ function computeLineSegments(dims) {
 }
 
 // =======================
-// NUEVO: Preproceso para alargar el tramo anterior
-// cuando la nueva línea iría por encima de otra previa
+// Preproceso solapes (alarga tramo anterior)
 // =======================
 function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
     const out = dims.map((d) => ({ ...d }));
 
     let cx = 0,
         cy = 0,
-        ang = 0; // cursor de dibujo
-    const prevSegs = []; // segmentos ya consolidados (tras ajustes)
-    let lastLineDir = null; // dirección (unitaria) de la última línea
-    let lastLineIdxInPrevSegs = -1; // índice en prevSegs de la última línea
-    let lastLineIdxInDims = -1; // índice en 'out' de la última línea
+        ang = 0;
+    const prevSegs = [];
+    let lastLineDir = null;
+    let lastLineIdxInPrevSegs = -1;
+    let lastLineIdxInDims = -1;
 
     const EPS = 1e-7;
-
-    // Utilidades
     const deg2rad = (d) => (d * Math.PI) / 180;
     const isHorizontal = (a) => Math.abs(Math.sin(deg2rad(a))) < 1e-12;
     const overlap1D = (a1, b1, a2, b2) =>
         Math.min(b1, b2) - Math.max(a1, a2) > EPS;
 
-    // Recorremos y vamos ajustando en caliente
     for (let i = 0; i < out.length; i++) {
         const d = out[i];
 
@@ -219,9 +218,6 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
             continue;
         }
 
-        // d.type === "line"
-        // Mientras el nuevo tramo solape a algún tramo previo paralelo en la MISMA línea,
-        // alargamos la línea anterior (la ortogonal) en +grow y actualizamos el cursor.
         const tryResolve = () => {
             const dir = {
                 x: Math.cos(deg2rad(ang)),
@@ -241,7 +237,6 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
                             Math.max(s.x1, s.x2)
                         )
                     ) {
-                        // solapa: alargamos la línea anterior
                         if (
                             lastLineDir &&
                             lastLineIdxInPrevSegs >= 0 &&
@@ -250,12 +245,10 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
                             out[lastLineIdxInDims].length += grow;
                             cx += lastLineDir.x * grow;
                             cy += lastLineDir.y * grow;
-
-                            // actualizamos el segmento previo
                             const ps = prevSegs[lastLineIdxInPrevSegs];
                             ps.x2 += lastLineDir.x * grow;
                             ps.y2 += lastLineDir.y * grow;
-                            return true; // hemos resuelto una vez, volver a comprobar
+                            return true;
                         }
                     }
                 } else if (!horiz && !s.horiz && Math.abs(cx - s.x) < EPS) {
@@ -275,7 +268,6 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
                             out[lastLineIdxInDims].length += grow;
                             cx += lastLineDir.x * grow;
                             cy += lastLineDir.y * grow;
-
                             const ps = prevSegs[lastLineIdxInPrevSegs];
                             ps.x2 += lastLineDir.x * grow;
                             ps.y2 += lastLineDir.y * grow;
@@ -284,42 +276,55 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
                     }
                 }
             }
-            return false; // no había solape
+            return false;
         };
 
-        // Repite hasta que el tramo actual deje de solapar
-        while (tryResolve()) {
-            /* vacío */
-        }
+        while (tryResolve()) {}
 
-        // Consolidamos el tramo actual con la geometría ya corregida
         const dir = { x: Math.cos(deg2rad(ang)), y: Math.sin(deg2rad(ang)) };
         const nx = cx + out[i].length * dir.x;
         const ny = cy + out[i].length * dir.y;
-
         const horiz = isHorizontal(ang);
-        prevSegs.push({
-            x1: cx,
-            y1: cy,
-            x2: nx,
-            y2: ny,
-            horiz,
-            y: cy,
-            x: cx,
-        });
+        prevSegs.push({ x1: cx, y1: cy, x2: nx, y2: ny, horiz, y: cy, x: cx });
 
         lastLineDir = dir;
         lastLineIdxInPrevSegs = prevSegs.length - 1;
-
-        // Localiza en 'out' el índice de la última línea (yo mismo)
         lastLineIdxInDims = i;
 
-        // avanza el cursor
         cx = nx;
         cy = ny;
     }
 
     return out;
+}
+
+// =======================
+// Rotación si H>W
+// =======================
+function rotatePoint(p, cx, cy, deg) {
+    const rad = (deg * Math.PI) / 180;
+    const c = Math.cos(rad),
+        s = Math.sin(rad);
+    const dx = p.x - cx,
+        dy = p.y - cy;
+    return { x: cx + dx * c - dy * s, y: cy + dx * s + dy * c };
+}
+
+// =======================
+// Helpers extra (evitar solapes de textos)
+// =======================
+function approxTextBox(text, size) {
+    const w = text.length * size * 0.55;
+    const h = size;
+    return { w, h };
+}
+function rectsOverlap(a, b, m = 0) {
+    return !(
+        a.right + m < b.left ||
+        a.left - m > b.right ||
+        a.bottom + m < b.top ||
+        a.top - m > b.bottom
+    );
 }
 
 // =======================
@@ -353,9 +358,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const centerX = marginX + col * cellWidth + cellWidth / 2;
             const centerY = marginY + fila * cellHeight + cellHeight / 2;
 
-            // 1) dims originales
+            // 1) dims ajustadas
             const dimsRaw = extraerDimensiones(elemento.dimensiones || "");
-            // 2) dims ajustadas (aquí es donde alargamos 25→30, 106→111, …)
             const dims = ajustarLongitudesParaEvitarSolapes(
                 dimsRaw,
                 OVERLAP_GROW_UNITS
@@ -365,73 +369,212 @@ document.addEventListener("DOMContentLoaded", () => {
             const diametro = elemento.diametro ?? "N/A";
             const peso = elemento.peso ?? "N/A";
 
-            // textos
-            agregarTexto(
-                svg,
-                centerX,
-                centerY - cellHeight / 3 + 12,
-                `Ø${diametro} | ${peso} | x${barras}`,
-                BARS_TEXT_COLOR,
-                SIZE_MAIN_TEXT,
-                "middle"
-            );
-            agregarTexto(
-                svg,
-                centerX,
-                centerY + cellHeight / 4 - 8,
-                `#${elemento.id}`,
-                ELEMENT_TEXT_COLOR,
-                SIZE_ID_TEXT,
-                "middle"
+            // ---------- FIGURA con rotación automática ----------
+            const ptsModel = computePathPoints(dims);
+
+            // bbox original
+            let minX = Math.min(...ptsModel.map((p) => p.x));
+            let maxX = Math.max(...ptsModel.map((p) => p.x));
+            let minY = Math.min(...ptsModel.map((p) => p.y));
+            let maxY = Math.max(...ptsModel.map((p) => p.y));
+            const cxModel = (minX + maxX) / 2;
+            const cyModel = (minY + maxY) / 2;
+
+            const needsRotate = maxY - minY > maxX - minX;
+            const rotDeg = needsRotate ? -90 : 0;
+
+            const ptsRot = ptsModel.map((p) =>
+                rotatePoint(p, cxModel, cyModel, rotDeg)
             );
 
-            // FIGURA
-            const puntos = computePathPoints(dims);
-            let minX = Math.min(...puntos.map((p) => p.x));
-            let maxX = Math.max(...puntos.map((p) => p.x));
-            let minY = Math.min(...puntos.map((p) => p.y));
-            let maxY = Math.max(...puntos.map((p) => p.y));
+            // bbox tras rotación (para escalar y centrar)
+            minX = Math.min(...ptsRot.map((p) => p.x));
+            maxX = Math.max(...ptsRot.map((p) => p.x));
+            minY = Math.min(...ptsRot.map((p) => p.y));
+            maxY = Math.max(...ptsRot.map((p) => p.y));
             const figW = Math.max(1, maxX - minX);
             const figH = Math.max(1, maxY - minY);
+
             const scale = Math.min(
                 (cellWidth * 0.8) / figW,
                 (cellHeight * 0.6) / figH
             );
+            const midX = (minX + maxX) / 2;
+            const midY = (minY + maxY) / 2;
 
-            const pts = puntos.map((pt) => ({
-                x: centerX + (pt.x - (minX + maxX) / 2) * scale,
-                y: centerY + (pt.y - (minY + maxY) / 2) * scale,
+            // path final en SVG
+            const pts = ptsRot.map((pt) => ({
+                x: centerX + (pt.x - midX) * scale,
+                y: centerY + (pt.y - midY) * scale,
             }));
             agregarPath(svg, pts, FIGURE_LINE_COLOR, 2);
 
-            // COTAS (se recalculan con las longitudes ya ajustadas → verás 30, 111, …)
-            const segs = computeLineSegments(dims);
-            segs.forEach((s) => {
+            // bbox figura en SVG
+            const figMinX = Math.min(...pts.map((p) => p.x));
+            const figMaxX = Math.max(...pts.map((p) => p.x));
+            const figMinY = Math.min(...pts.map((p) => p.y));
+            const figMaxY = Math.max(...pts.map((p) => p.y));
+            const figBox = {
+                left: figMinX,
+                right: figMaxX,
+                top: figMinY,
+                bottom: figMaxY,
+            };
+
+            // ---------- COTAS (muestra valor ORIGINAL y evita pisar figura) ----------
+            const segsModelAdj = computeLineSegments(dims);
+            const segsModelOrig = computeLineSegments(dimsRaw);
+
+            const placedBoxes = []; // guardamos las cajas ya usadas por etiquetas
+
+            segsModelAdj.forEach((s, idx) => {
+                const s1 = rotatePoint(s.start, cxModel, cyModel, rotDeg);
+                const s2 = rotatePoint(s.end, cxModel, cyModel, rotDeg);
+
                 const p1 = {
-                    x: centerX + (s.start.x - (minX + maxX) / 2) * scale,
-                    y: centerY + (s.start.y - (minY + maxY) / 2) * scale,
+                    x: centerX + (s1.x - midX) * scale,
+                    y: centerY + (s1.y - midY) * scale,
                 };
                 const p2 = {
-                    x: centerX + (s.end.x - (minX + maxX) / 2) * scale,
-                    y: centerY + (s.end.y - (minY + maxY) / 2) * scale,
+                    x: centerX + (s2.x - midX) * scale,
+                    y: centerY + (s2.y - midY) * scale,
                 };
-                const ux = (p2.y - p1.y) / Math.hypot(p2.x - p1.x, p2.y - p1.y);
-                const uy =
-                    -(p2.x - p1.x) / Math.hypot(p2.x - p1.x, p2.y - p1.y);
-                const o = DIM_LINE_OFFSET;
-                const q1 = { x: p1.x + ux * o, y: p1.y + uy * o };
-                const q2 = { x: p2.x + ux * o, y: p2.y + uy * o };
 
-                // agregarLinea(svg, q1.x, q1.y, q2.x, q2.y, LINEA_COTA_COLOR, 1);
-                agregarTexto(
-                    svg,
-                    (q1.x + q2.x) / 2,
-                    (q1.y + q2.y) / 2 - DIM_LABEL_LIFT,
-                    s.length.toString(),
-                    VALOR_COTA_COLOR,
-                    SIZE_DIM_TEXT
-                );
+                const L = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+                let nx = (p2.y - p1.y) / L;
+                let ny = -(p2.x - p1.x) / L;
+
+                // normal hacia fuera
+                const mx = (p1.x + p2.x) / 2,
+                    my = (p1.y + p2.y) / 2;
+                if ((mx - centerX) * nx + (my - centerY) * ny < 0) {
+                    nx = -nx;
+                    ny = -ny;
+                }
+
+                let off = DIM_LINE_OFFSET;
+                const label = (
+                    segsModelOrig[idx]?.length ?? s.length
+                ).toString();
+                const { w: tw, h: th } = approxTextBox(label, SIZE_DIM_TEXT);
+
+                while (true) {
+                    const lx = mx + nx * off;
+                    const ly = my + ny * off - DIM_LABEL_LIFT;
+                    const labelBox = {
+                        left: lx - tw / 2,
+                        right: lx + tw / 2,
+                        top: ly - th / 2,
+                        bottom: ly + th / 2,
+                    };
+                    const collideFigure = rectsOverlap(
+                        figBox,
+                        labelBox,
+                        LABEL_CLEARANCE
+                    );
+                    const collideOthers = placedBoxes.some((b) =>
+                        rectsOverlap(b, labelBox, LABEL_CLEARANCE)
+                    );
+                    if (!collideFigure && !collideOthers) {
+                        agregarTexto(
+                            svg,
+                            lx,
+                            ly,
+                            label,
+                            VALOR_COTA_COLOR,
+                            SIZE_DIM_TEXT
+                        );
+                        placedBoxes.push(labelBox);
+                        break;
+                    }
+                    off += LABEL_STEP;
+                }
             });
+            // ---------- FIN COTAS ----------
+
+            // === COLOCACIÓN DE TEXTOS SIN PISAR ===
+            // Texto principal (arriba de la figura)
+            const mainText = `Ø${diametro} | ${peso} | x${barras}`;
+            {
+                const { w, h } = approxTextBox(mainText, SIZE_MAIN_TEXT);
+                let lx = centerX;
+                let ly = figBox.top - MAIN_ABOVE_GAP;
+                let tries = 0;
+                while (true) {
+                    const box = {
+                        left: lx - w / 2,
+                        right: lx + w / 2,
+                        top: ly - h / 2,
+                        bottom: ly + h / 2,
+                    };
+                    const collideFig = rectsOverlap(
+                        figBox,
+                        box,
+                        LABEL_CLEARANCE
+                    );
+                    const collideCotas = placedBoxes.some((b) =>
+                        rectsOverlap(b, box, LABEL_CLEARANCE)
+                    );
+                    if (!collideFig && !collideCotas) {
+                        agregarTexto(
+                            svg,
+                            lx,
+                            ly,
+                            mainText,
+                            BARS_TEXT_COLOR,
+                            SIZE_MAIN_TEXT,
+                            "middle"
+                        );
+                        placedBoxes.push(box);
+                        break;
+                    }
+                    ly -= LABEL_STEP; // subimos
+                    tries++;
+                    if (tries > 100) break; // evitamos bucles raros
+                }
+            }
+
+            // Texto ID (abajo de la figura)
+            {
+                const idText = `#${elemento.id}`;
+                const { w, h } = approxTextBox(idText, SIZE_ID_TEXT);
+                let lx = centerX;
+                let ly = figBox.bottom + ID_BELOW_GAP;
+                let tries = 0;
+                while (true) {
+                    const box = {
+                        left: lx - w / 2,
+                        right: lx + w / 2,
+                        top: ly - h / 2,
+                        bottom: ly + h / 2,
+                    };
+                    const collideFig = rectsOverlap(
+                        figBox,
+                        box,
+                        LABEL_CLEARANCE
+                    );
+                    const collideCotas = placedBoxes.some((b) =>
+                        rectsOverlap(b, box, LABEL_CLEARANCE)
+                    );
+                    if (!collideFig && !collideCotas) {
+                        agregarTexto(
+                            svg,
+                            lx,
+                            ly,
+                            idText,
+                            ELEMENT_TEXT_COLOR,
+                            SIZE_ID_TEXT,
+                            "middle"
+                        );
+                        placedBoxes.push(box);
+                        break;
+                    }
+                    ly += LABEL_STEP; // bajamos
+                    tries++;
+                    if (tries > 100) break;
+                }
+            }
+            // === FIN COLOCACIÓN TEXTOS ===
         });
 
         contenedor.innerHTML = "";
