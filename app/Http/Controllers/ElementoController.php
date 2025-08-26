@@ -42,11 +42,16 @@ class ElementoController extends Controller
                 $query->where($column, 'like', "%{$request->$requestKey}%");
             }
         }
-        if ($ids = request('id')) {
-            // Permitir múltiples IDs separados por coma
-            $idsArray = explode(',', $ids);
-            $query->whereIn('id', $idsArray);
+        if ($request->filled('codigo')) {
+            $codigos = explode(',', $request->codigo);
+            if (count($codigos) > 1) {
+                $query->whereIn('codigo', $codigos);
+            } else {
+                $query->where('codigo', 'like', '%' . $codigos[0] . '%');
+            }
         }
+
+
 
         // 📅 Filtrado por rango de fechas
         if ($request->has('fecha_inicio') && $request->fecha_inicio) {
@@ -63,9 +68,7 @@ class ElementoController extends Controller
                 $q->where('codigo', 'like', "%{$input}%");
             });
         }
-        if ($request->filled('codigo')) {
-            $query->where('codigo', 'like', '%' . $request->codigo . '%');
-        }
+
 
         // Etiqueta
         if ($request->has('etiqueta') && $request->etiqueta) {

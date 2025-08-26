@@ -782,7 +782,7 @@ class ProduccionController extends Controller
                                 'progreso'       => $progreso,
                                 'fecha_entrega'  => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
                                 'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
-                                'elementos_id'   => $grupo instanceof Collection ? $grupo->pluck('id')->values()->all() : [],
+                                'codigos_elementos' => $grupo->pluck('codigo')->all(),
                             ],
 
                         ]);

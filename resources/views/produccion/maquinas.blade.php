@@ -154,16 +154,24 @@
                     right: 'resourceTimelineDay,resourceTimelineFiveDay'
                 },
                 eventClick: function(info) {
-                    const ids = info.event.extendedProps.elementos_id;
+                    const codigos = info.event.extendedProps.codigos_elementos;
 
-                    if (!ids || ids.length === 0) return;
+                    if (!Array.isArray(codigos) || codigos.length === 0) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Sin elementos',
+                            text: 'Este evento no tiene elementos asociados.',
+                        });
+                        return;
+                    }
 
-                    const url = new URL(window.location.origin + '/elementos');
-                    url.searchParams.set('id', ids.join(','));
+                    // Generar URL con filtro por códigos
+                    const queryString = 'codigo=' + codigos.join(',');
+                    const url = `/elementos?${queryString}`;
 
-                    window.open(url.toString(), '_blank');
+                    // Redirigir
+                    window.location.href = url;
                 },
-
                 eventContent: function(arg) {
                     const progreso = arg.event.extendedProps.progreso;
 
