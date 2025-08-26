@@ -72,6 +72,30 @@ function agregarTexto(
     txt.textContent = texto;
     svg.appendChild(txt);
 }
+function agregarTextoClickable(
+    svg,
+    x,
+    y,
+    texto,
+    color = "blue",
+    size = 12,
+    anchor = "middle",
+    onClick = null
+) {
+    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    txt.setAttribute("x", x);
+    txt.setAttribute("y", y);
+    txt.setAttribute("fill", color);
+    txt.setAttribute("font-size", size);
+    txt.setAttribute("text-anchor", anchor);
+    txt.setAttribute("alignment-baseline", "middle");
+    txt.style.cursor = "pointer";
+    txt.textContent = texto;
+    if (onClick) txt.addEventListener("click", onClick);
+    svg.appendChild(txt);
+    return txt;
+}
+
 function agregarPath(svg, puntos, color = FIGURE_LINE_COLOR, ancho = 2) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     let d = `M ${puntos[0].x} ${puntos[0].y}`;
@@ -534,9 +558,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            // Texto ID (abajo de la figura)
             {
-                const idText = `#${elemento.id}`;
+                const idText = `${elemento.codigo ?? elemento.id}`;
                 const { w, h } = approxTextBox(idText, SIZE_ID_TEXT);
                 let lx = centerX;
                 let ly = figBox.bottom + ID_BELOW_GAP;
@@ -557,19 +580,20 @@ document.addEventListener("DOMContentLoaded", () => {
                         rectsOverlap(b, box, LABEL_CLEARANCE)
                     );
                     if (!collideFig && !collideCotas) {
-                        agregarTexto(
+                        agregarTextoClickable(
                             svg,
                             lx,
                             ly,
                             idText,
                             ELEMENT_TEXT_COLOR,
                             SIZE_ID_TEXT,
-                            "middle"
+                            "middle",
+                            () => abrirModalDividirElemento(elemento.id, idText)
                         );
                         placedBoxes.push(box);
                         break;
                     }
-                    ly += LABEL_STEP; // bajamos
+                    ly += LABEL_STEP; // bajamos si choca
                     tries++;
                     if (tries > 100) break;
                 }
@@ -581,3 +605,53 @@ document.addEventListener("DOMContentLoaded", () => {
         contenedor.appendChild(svg);
     });
 });
+
+function abrirModalDividirElemento(elementoId, etiqueta = "") {
+    const modal = document.getElementById("modalDividirElemento");
+    const input = document.getElementById("dividir_elemento_id");
+    const form = document.getElementById("formDividirElemento");
+
+    if (!modal || !input || !form) return;
+
+    input.value = elementoId;
+    if (window.rutaDividirElemento)
+        form.setAttribute("action", window.rutaDividirElemento);
+
+    modal.classList.remove("hidden");
+}
+
+// Si ya tienes esta función, puedes dejar la tuya; esta versión hace POST por fetch y muestra feedback
+async function enviarDivision() {
+    const form = document.getElementById("formDividirElemento");
+    const url = form.getAttribute("action") || window.rutaDividirElemento;
+    const fd = new FormData(form);
+
+    try {
+        const token =
+            fd.get("_token") ||
+            document
+                .querySelector('meta[name="csrf-token"]')
+                ?.getAttribute("content");
+        const res = await fetch(url, {
+            method: "POST",
+            headers: token ? { "X-CSRF-TOKEN": token } : {},
+            body: fd,
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success)
+            throw new Error(data.message || "Error al dividir");
+
+        // OK
+        form.reset();
+        document
+            .getElementById("modalDividirElemento")
+            ?.classList.add("hidden");
+        if (window.Swal) Swal.fire("Hecho", data.message, "success");
+        else alert(data.message);
+
+        // TODO opcional: refrescar la lista/dibujo si quieres ver cambios sin recargar
+    } catch (e) {
+        if (window.Swal) Swal.fire("Error", e.message || "Error", "error");
+        else alert(e.message || "Error");
+    }
+}

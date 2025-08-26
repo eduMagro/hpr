@@ -56,6 +56,7 @@
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
         <script>
             window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
+            window.rutaDividirElemento = "{{ route('elementos.dividir') }}";
         </script>
 
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>

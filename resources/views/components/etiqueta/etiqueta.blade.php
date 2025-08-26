@@ -25,7 +25,7 @@
         </h2>
 
         <h3 class="text-lg font-semibold text-gray-900">
-            {{-- <span class="text-blue-700">{{ $etiqueta->etiqueta_sub_id }}</span> --}}
+            <span class="text-blue-700">{{ $etiqueta->etiqueta_sub_id }}</span>
             {{ $etiqueta->nombre ?? 'Sin nombre' }} -
             <span>Cal:B500SD</span> -
             {{ $etiqueta->peso_kg ?? 'N/A' }}

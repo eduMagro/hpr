@@ -93,6 +93,7 @@
                         <option value="" disabled selected>Selecciona un rol</option>
                         <option value="operario">Operario</option>
                         <option value="oficina">Oficina</option>
+                        <option value="visitante">Transportista</option>
                         <option value="visitante">Visitante</option>
                     </select>
                     <x-input-error :messages="$errors->get('rol')" class="{{ $errorClass }}" />

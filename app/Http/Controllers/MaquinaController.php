@@ -372,11 +372,20 @@ class MaquinaController extends Controller
 
         $etiquetasData = $elementosMaquina->filter(fn($e) => !empty($e->etiqueta_sub_id))
             ->groupBy('etiqueta_sub_id')
+            ->sortBy(function ($grupo, $subId) {
+                // prefijo + sufijo numérico con padding
+                if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
+                    return sprintf('%s-%010d', $m[1], (int) $m[2]);
+                }
+                return $subId . '-0000000000';
+            })
             ->map(fn($grupo, $subId) => [
-                'codigo' => (string) $subId,
-                'elementos' => $grupo->pluck('id')->toArray(),
-                'pesoTotal' => $grupo->sum('peso'),
-            ])->values();
+                'codigo'     => (string) $subId,
+                'elementos'  => $grupo->pluck('id')->toArray(),
+                'pesoTotal'  => $grupo->sum('peso'),
+            ])
+            ->values();
+
 
         // ---------------------------------------------------------------
         // 10) Agrupar visualmente los elementos filtrados por subetiqueta
@@ -400,13 +409,22 @@ class MaquinaController extends Controller
             return !debeSerExcluido($e);
         });
 
-        $elementosAgrupados = $elementosFiltrados->groupBy('etiqueta_sub_id');
+        $elementosAgrupados = $elementosFiltrados
+            ->groupBy('etiqueta_sub_id')
+            ->sortBy(function ($grupo, $subId) {
+                if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
+                    return sprintf('%s-%010d', $m[1], (int) $m[2]);
+                }
+                return $subId . '-0000000000';
+            });
+
 
         $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
             'etiqueta' => $grupo->first()->etiquetaRelacion,
             'planilla' => $grupo->first()->planilla,
             'elementos' => $grupo->map(fn($e) => [
                 'id' => $e->id,
+                'codigo'     => $e->codigo,
                 'dimensiones' => $e->dimensiones,
                 'estado' => $e->estado,
                 'peso' => $e->peso_kg,
