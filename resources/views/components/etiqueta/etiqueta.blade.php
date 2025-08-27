@@ -4,8 +4,13 @@
     'maquinaTipo', // Tipo de la máquina ("ensambladora" u otro)
 ])
 
-<div id="etiqueta-{{ $etiqueta->etiqueta_sub_id }}"
-    style="background-color: #fe7f09; border: 1px solid black; width: 100%;" class="border shadow-xl mt-4">
+@php
+    $safeSubId = str_replace('.', '-', $etiqueta->etiqueta_sub_id);
+    $estado = strtolower($etiqueta->estado ?? 'pendiente');
+@endphp
+
+<div class="proceso" id="etiqueta-{{ $safeSubId }}" data-estado="{{ $estado }}"
+    style="background-color:#fe7f09;border:1px solid black;width:100%;" class="border shadow-xl mt-4">
     <div class="relative"><!-- Botón de impresión -->
         <button onclick="imprimirEtiquetas(['{{ $etiqueta->etiqueta_sub_id }}'])"
             class="absolute top-2 right-2 text-blue-800 hover:text-blue-900 no-print" title="Imprimir esta etiqueta">

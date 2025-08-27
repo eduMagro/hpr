@@ -259,40 +259,50 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     function scrollToNextDiv(currentEtiquetaId) {
-        const safeId = currentEtiquetaId.replace(/\./g, "-");
-        const currentDiv = document.getElementById(`etiqueta-${safeId}`);
+        // Intenta seleccionar usando CSS.escape (más seguro que reemplazar solo '.')
+        const currentSelector = `#etiqueta-${CSS.escape(currentEtiquetaId)}`;
+        const currentDiv = document.querySelector(currentSelector);
+
         const allDivs = Array.from(document.querySelectorAll(".proceso"));
 
-        let siguienteDiv = null;
+        // Helpers
+        const limpiar = (txt) =>
+            (txt || "")
+                .normalize("NFD")
+                .replace(/\p{Diacritic}/gu, "") // quita acentos
+                .trim()
+                .toLowerCase();
 
-        if (currentDiv) {
-            // Si existe, buscamos el siguiente div a partir del actual
-            const indexActual = allDivs.indexOf(currentDiv);
-            for (let i = indexActual + 1; i < allDivs.length; i++) {
-                const div = allDivs[i];
-                const estadoSpan = div.querySelector('[id^="estado-"]');
-                if (
-                    estadoSpan &&
-                    estadoSpan.innerText.trim().toLowerCase() !== "completada"
-                ) {
-                    siguienteDiv = div;
-                    break;
-                }
-            }
-        } else {
-            // Si NO existe el div actual, buscamos el primer div disponible que no esté completado
-            for (let i = 0; i < allDivs.length; i++) {
-                const div = allDivs[i];
-                const estadoSpan = div.querySelector('[id^="estado-"]');
-                if (
-                    estadoSpan &&
-                    estadoSpan.innerText.trim().toLowerCase() !== "completada"
-                ) {
-                    siguienteDiv = div;
-                    break;
-                }
-            }
-        }
+        const leerEstado = (div) => {
+            // Prioriza data-estado si existe
+            const deData = div.dataset?.estado;
+            if (deData) return limpiar(deData);
+
+            // Fallback al span que empiece por estado-
+            const estadoSpan = div.querySelector('[id^="estado-"]');
+            return limpiar(
+                estadoSpan?.textContent || estadoSpan?.innerText || ""
+            );
+        };
+
+        const ES_COMPLETADA = new Set([
+            "completada",
+            "completado",
+            "finalizada",
+            "finalizado",
+            "terminada",
+            "terminado",
+            "hecha",
+            "hecho",
+        ]);
+
+        const estaCompletada = (div) => ES_COMPLETADA.has(leerEstado(div));
+
+        // Construye el listado de búsqueda: desde el actual o desde el principio
+        const idx = currentDiv ? allDivs.indexOf(currentDiv) : -1;
+        const colaBusqueda = idx >= 0 ? allDivs.slice(idx + 1) : allDivs;
+
+        const siguienteDiv = colaBusqueda.find((div) => !estaCompletada(div));
 
         if (siguienteDiv) {
             siguienteDiv.scrollIntoView({
@@ -300,8 +310,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 block: "center",
             });
         } else {
+            // Debug útil para saber qué estados está leyendo realmente
             console.info(
-                "Última etiqueta alcanzada, no hay más para hacer scroll."
+                "Estados vistos:",
+                allDivs.map((d, i) => ({ i, id: d.id, estado: leerEstado(d) }))
             );
             Swal.fire({
                 icon: "success",

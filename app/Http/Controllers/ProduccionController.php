@@ -378,7 +378,6 @@ class ProduccionController extends Controller
         // 🔹 2. ELEMENTOS ACTIVOS (para eventos del calendario)
         $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
-            ->where(fn($q) => $q->whereNull('estado')->orWhere('estado', '<>', 'fabricado'))
             ->get();
 
         // Agrupamos primero por planilla + máquina "real" (según tipo)
@@ -738,13 +737,15 @@ class ProduccionController extends Controller
 
                     // Progreso
                     $progreso = null;
+
                     if ($primeraId !== null && $primeraId === $planilla->id) {
+
                         if ($grupo instanceof Collection) {
                             $completados = $grupo->where('estado', 'fabricado')->count();
                             $total       = $grupo->count();
                         } else {
                             $completados = 0;
-                            $total       = $grupoCount;
+                            $total       = $grupoCount; // ya calculado antes
                         }
                         $progreso = $total > 0 ? round(($completados / $total) * 100) : 0;
                     }

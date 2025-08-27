@@ -22,11 +22,11 @@ const SIZE_DIM_TEXT = 12;
 const DIM_LINE_OFFSET = 12;
 const DIM_LABEL_LIFT = 6;
 
-// 🔹 separación mínima del texto respecto a la figura y paso de alejamiento
-const LABEL_CLEARANCE = 3; // px de margen extra
-const LABEL_STEP = 4; // cuánto alejar si aún toca
-const MAIN_ABOVE_GAP = 8; // salto base del texto grande por encima de la figura
-const ID_BELOW_GAP = 12; // salto base del #id por debajo de la figura
+// separación mínima del texto respecto a la figura y paso de alejamiento
+const LABEL_CLEARANCE = 3; // px
+const LABEL_STEP = 4; // px
+const MAIN_ABOVE_GAP = 8;
+const ID_BELOW_GAP = 12;
 
 // =======================
 // Helpers SVG
@@ -42,16 +42,6 @@ function crearSVG(width, height) {
     svg.style.shapeRendering = "geometricPrecision";
     svg.style.textRendering = "optimizeLegibility";
     return svg;
-}
-function agregarLinea(svg, x1, y1, x2, y2, color = "black", ancho = 2) {
-    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    line.setAttribute("x1", x1);
-    line.setAttribute("y1", y1);
-    line.setAttribute("x2", x2);
-    line.setAttribute("y2", y2);
-    line.setAttribute("stroke", color);
-    line.setAttribute("stroke-width", ancho);
-    svg.appendChild(line);
 }
 function agregarTexto(
     svg,
@@ -69,6 +59,7 @@ function agregarTexto(
     txt.setAttribute("font-size", size);
     txt.setAttribute("text-anchor", anchor);
     txt.setAttribute("alignment-baseline", "middle");
+    txt.style.pointerEvents = "none"; // no intercepta clics sobre la figura
     txt.textContent = texto;
     svg.appendChild(txt);
 }
@@ -95,17 +86,24 @@ function agregarTextoClickable(
     svg.appendChild(txt);
     return txt;
 }
-
-function agregarPath(svg, puntos, color = FIGURE_LINE_COLOR, ancho = 2) {
+function agregarCirculo(svg, cx, cy, r, color = FIGURE_LINE_COLOR, ancho = 2) {
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", cx);
+    c.setAttribute("cy", cy);
+    c.setAttribute("r", r);
+    c.setAttribute("stroke", color);
+    c.setAttribute("stroke-width", ancho);
+    c.setAttribute("fill", "none");
+    svg.appendChild(c);
+}
+function agregarPathD(svg, d, color = FIGURE_LINE_COLOR, ancho = 2) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    let d = `M ${puntos[0].x} ${puntos[0].y}`;
-    for (let i = 1; i < puntos.length; i++)
-        d += ` L ${puntos[i].x} ${puntos[i].y}`;
     path.setAttribute("d", d);
     path.setAttribute("stroke", color);
     path.setAttribute("fill", "none");
     path.setAttribute("stroke-width", ancho);
     svg.appendChild(path);
+    return path;
 }
 
 // =======================
@@ -203,18 +201,207 @@ function computeLineSegments(dims) {
 }
 
 // =======================
+// Helpers (evitar solapes de textos)
+// =======================
+function approxTextBox(text, size) {
+    const w = text.length * size * 0.55;
+    const h = size;
+    return { w, h };
+}
+function rectsOverlap(a, b, m = 0) {
+    return !(
+        a.right + m < b.left ||
+        a.left - m > b.right ||
+        a.bottom + m < b.top ||
+        a.top - m > b.bottom
+    );
+}
+function clampXInside(cx, w, left, right) {
+    const half = w / 2;
+    return Math.max(left + half, Math.min(right - half, cx));
+}
+
+// =======================
+// Colocación de texto principal (Ø, kg, xN)
+// =======================
+function placeMainLabel({
+    svg,
+    text,
+    figBox,
+    centerX,
+    centerY,
+    placedBoxes,
+    safeLeft,
+    safeRight,
+    safeTop,
+    safeBottom,
+    baseSize = SIZE_MAIN_TEXT,
+    minSize = 10,
+    gapTop = MAIN_ABOVE_GAP,
+    gapBottom = MAIN_ABOVE_GAP,
+    gapSide = 6,
+}) {
+    const clearance = LABEL_CLEARANCE;
+    const step = LABEL_STEP;
+    const mkBox = (lx, ly, w, h) => ({
+        left: lx - w / 2,
+        right: lx + w / 2,
+        top: ly - h / 2,
+        bottom: ly + h / 2,
+    });
+    const ok = (box) =>
+        box.left >= safeLeft &&
+        box.right <= safeRight &&
+        box.top >= safeTop &&
+        box.bottom <= safeBottom &&
+        !rectsOverlap(figBox, box, clearance) &&
+        !placedBoxes.some((b) => rectsOverlap(b, box, clearance));
+
+    // A) Arriba
+    {
+        let size = baseSize;
+        let { w, h } = approxTextBox(text, size);
+        let ly = figBox.top - gapTop;
+        let tries = 0;
+        while (ly - h / 2 >= safeTop) {
+            let lx = clampXInside(centerX, w, safeLeft, safeRight);
+            const box = mkBox(lx, ly, w, h);
+            if (ok(box)) {
+                agregarTexto(
+                    svg,
+                    lx,
+                    ly,
+                    text,
+                    BARS_TEXT_COLOR,
+                    size,
+                    "middle"
+                );
+                placedBoxes.push(box);
+                return;
+            }
+            ly -= step;
+            tries++;
+            if (tries > 200) break;
+        }
+    }
+    // B) Abajo
+    {
+        let size = baseSize;
+        let { w, h } = approxTextBox(text, size);
+        let ly = figBox.bottom + gapBottom;
+        let tries = 0;
+        while (ly + h / 2 <= safeBottom) {
+            let lx = clampXInside(centerX, w, safeLeft, safeRight);
+            const box = mkBox(lx, ly, w, h);
+            if (ok(box)) {
+                agregarTexto(
+                    svg,
+                    lx,
+                    ly,
+                    text,
+                    BARS_TEXT_COLOR,
+                    size,
+                    "middle"
+                );
+                placedBoxes.push(box);
+                return;
+            }
+            ly += step;
+            tries++;
+            if (tries > 200) break;
+        }
+    }
+    // C) Lados (izq/der) reduciendo tamaño si hace falta
+    const trySide = (side) => {
+        let size = baseSize;
+        while (size >= minSize) {
+            const { w, h } = approxTextBox(text, size);
+            const ly = Math.max(
+                safeTop + h / 2,
+                Math.min(centerY, safeBottom - h / 2)
+            );
+            let lx;
+            if (side === "left") {
+                lx = Math.min(figBox.left - gapSide - w / 2, safeRight - w / 2);
+                lx = Math.max(lx, safeLeft + w / 2);
+                const box = mkBox(lx, ly, w, h);
+                if (box.right <= figBox.left - LABEL_CLEARANCE && ok(box)) {
+                    agregarTexto(
+                        svg,
+                        lx,
+                        ly,
+                        text,
+                        BARS_TEXT_COLOR,
+                        size,
+                        "middle"
+                    );
+                    placedBoxes.push(box);
+                    return true;
+                }
+            } else {
+                lx = Math.max(figBox.right + gapSide + w / 2, safeLeft + w / 2);
+                lx = Math.min(lx, safeRight - w / 2);
+                const box = mkBox(lx, ly, w, h);
+                if (box.left >= figBox.right + LABEL_CLEARANCE && ok(box)) {
+                    agregarTexto(
+                        svg,
+                        lx,
+                        ly,
+                        text,
+                        BARS_TEXT_COLOR,
+                        size,
+                        "middle"
+                    );
+                    placedBoxes.push(box);
+                    return true;
+                }
+            }
+            size -= 1;
+        }
+        return false;
+    };
+    if (trySide("left")) return;
+    if (trySide("right")) return;
+
+    // D) Fallback: abajo centrado reduciendo tamaño
+    {
+        let size = baseSize;
+        let ly = Math.min(safeBottom - size / 2, figBox.bottom + gapBottom);
+        while (size >= minSize) {
+            const { w, h } = approxTextBox(text, size);
+            let lx = clampXInside(centerX, w, safeLeft, safeRight);
+            const box = mkBox(lx, ly, w, h);
+            if (ok(box)) {
+                agregarTexto(
+                    svg,
+                    lx,
+                    ly,
+                    text,
+                    BARS_TEXT_COLOR,
+                    size,
+                    "middle"
+                );
+                placedBoxes.push(box);
+                return;
+            }
+            size -= 1;
+            ly = Math.min(safeBottom - size / 2, figBox.bottom + gapBottom);
+        }
+    }
+}
+
+// =======================
 // Preproceso solapes (alarga tramo anterior)
 // =======================
 function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
     const out = dims.map((d) => ({ ...d }));
-
     let cx = 0,
         cy = 0,
         ang = 0;
     const prevSegs = [];
-    let lastLineDir = null;
-    let lastLineIdxInPrevSegs = -1;
-    let lastLineIdxInDims = -1;
+    let lastLineDir = null,
+        lastLineIdxInPrevSegs = -1,
+        lastLineIdxInDims = -1;
 
     const EPS = 1e-7;
     const deg2rad = (d) => (d * Math.PI) / 180;
@@ -335,20 +522,102 @@ function rotatePoint(p, cx, cy, deg) {
 }
 
 // =======================
-// Helpers extra (evitar solapes de textos)
+// Path SVG con rectas + arcos
 // =======================
-function approxTextBox(text, size) {
-    const w = text.length * size * 0.55;
-    const h = size;
-    return { w, h };
-}
-function rectsOverlap(a, b, m = 0) {
-    return !(
-        a.right + m < b.left ||
-        a.left - m > b.right ||
-        a.bottom + m < b.top ||
-        a.top - m > b.bottom
-    );
+function buildSvgPathFromDims(
+    dims,
+    cxModel,
+    cyModel,
+    rotDeg,
+    scale,
+    midX,
+    midY,
+    centerX,
+    centerY
+) {
+    let dStr = "";
+    let x = 0,
+        y = 0,
+        ang = 0;
+    let started = false;
+
+    const map = (px, py) => {
+        const p = rotatePoint({ x: px, y: py }, cxModel, cyModel, rotDeg);
+        return {
+            x: centerX + (p.x - midX) * scale,
+            y: centerY + (p.y - midY) * scale,
+        };
+    };
+
+    const moveIfNeeded = () => {
+        if (!started) {
+            const m = map(x, y);
+            dStr += `M ${m.x} ${m.y}`;
+            started = true;
+        }
+    };
+
+    dims.forEach((d) => {
+        if (d.type === "turn") {
+            ang += d.angle;
+            return;
+        }
+
+        if (d.type === "line") {
+            const nx = x + d.length * Math.cos((ang * Math.PI) / 180);
+            const ny = y + d.length * Math.sin((ang * Math.PI) / 180);
+            moveIfNeeded();
+            const p = map(nx, ny);
+            dStr += ` L ${p.x} ${p.y}`;
+            x = nx;
+            y = ny;
+            return;
+        }
+
+        if (d.type === "arc") {
+            const cx = x + d.radius * Math.cos(((ang + 90) * Math.PI) / 180);
+            const cy = y + d.radius * Math.sin(((ang + 90) * Math.PI) / 180);
+
+            const start = Math.atan2(y - cy, x - cx);
+            const end = start + (d.arcAngle * Math.PI) / 180;
+
+            const ex = cx + d.radius * Math.cos(end);
+            const ey = cy + d.radius * Math.sin(end);
+
+            const absAng = Math.abs(d.arcAngle) % 360;
+            if (absAng < 1e-6 || Math.abs(d.arcAngle) >= 359.9) {
+                // círculo completo → 2 semicircunferencias
+                moveIfNeeded();
+                const midAng = start + Math.sign(d.arcAngle) * Math.PI;
+                const mx = cx + d.radius * Math.cos(midAng);
+                const my = cy + d.radius * Math.sin(midAng);
+
+                const pMid = map(mx, my);
+                const pEnd = map(x, y); // vuelve al inicio
+                const R = d.radius * scale;
+                const sweep = d.arcAngle >= 0 ? 1 : 0;
+
+                dStr += ` A ${R} ${R} 0 1 ${sweep} ${pMid.x} ${pMid.y}`;
+                dStr += ` A ${R} ${R} 0 1 ${sweep} ${pEnd.x} ${pEnd.y}`;
+
+                ang += d.arcAngle; // coherencia si hay más tramos
+                return;
+            }
+
+            moveIfNeeded();
+            const pEnd = map(ex, ey);
+            const R = d.radius * scale;
+            const largeArc = absAng > 180 ? 1 : 0;
+            const sweep = d.arcAngle >= 0 ? 1 : 0;
+            dStr += ` A ${R} ${R} 0 ${largeArc} ${sweep} ${pEnd.x} ${pEnd.y}`;
+
+            x = ex;
+            y = ey;
+            ang += d.arcAngle;
+        }
+    });
+
+    return dStr || "M 0 0";
 }
 
 // =======================
@@ -382,6 +651,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const centerX = marginX + col * cellWidth + cellWidth / 2;
             const centerY = marginY + fila * cellHeight + cellHeight / 2;
 
+            // Límites seguros para texto
+            const safeLeft = 0,
+                safeRight = ancho,
+                safeTop = 0,
+                safeBottom = alto;
+
             // 1) dims ajustadas
             const dimsRaw = extraerDimensiones(elemento.dimensiones || "");
             const dims = ajustarLongitudesParaEvitarSolapes(
@@ -407,11 +682,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const needsRotate = maxY - minY > maxX - minX;
             const rotDeg = needsRotate ? -90 : 0;
 
+            // bbox tras rotación (para escalar y centrar)
             const ptsRot = ptsModel.map((p) =>
                 rotatePoint(p, cxModel, cyModel, rotDeg)
             );
-
-            // bbox tras rotación (para escalar y centrar)
             minX = Math.min(...ptsRot.map((p) => p.x));
             maxX = Math.max(...ptsRot.map((p) => p.x));
             minY = Math.min(...ptsRot.map((p) => p.y));
@@ -426,18 +700,54 @@ document.addEventListener("DOMContentLoaded", () => {
             const midX = (minX + maxX) / 2;
             const midY = (minY + maxY) / 2;
 
-            // path final en SVG
-            const pts = ptsRot.map((pt) => ({
+            // Path combinado (rectas + arcos)
+            const dPath = buildSvgPathFromDims(
+                dims,
+                cxModel,
+                cyModel,
+                rotDeg,
+                scale,
+                midX,
+                midY,
+                centerX,
+                centerY
+            );
+            const pathEl = agregarPathD(svg, dPath, FIGURE_LINE_COLOR, 2);
+
+            // 👉 La figura es clicable para dividir
+            const etiquetaClick = `${elemento.codigo ?? elemento.id}`;
+            pathEl.style.cursor = "pointer";
+            pathEl.setAttribute("tabindex", "0");
+            pathEl.setAttribute("role", "button");
+            pathEl.setAttribute(
+                "aria-label",
+                `Dividir elemento ${etiquetaClick}`
+            );
+            pathEl.addEventListener("click", () =>
+                abrirModalDividirElemento(elemento.id, etiquetaClick)
+            );
+            pathEl.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    abrirModalDividirElemento(elemento.id, etiquetaClick);
+                }
+            });
+            pathEl.addEventListener("mouseenter", () =>
+                pathEl.setAttribute("stroke-width", 3)
+            );
+            pathEl.addEventListener("mouseleave", () =>
+                pathEl.setAttribute("stroke-width", 2)
+            );
+
+            // bbox figura en SVG (para evitar solapes de textos)
+            const ptsSvg = ptsRot.map((pt) => ({
                 x: centerX + (pt.x - midX) * scale,
                 y: centerY + (pt.y - midY) * scale,
             }));
-            agregarPath(svg, pts, FIGURE_LINE_COLOR, 2);
-
-            // bbox figura en SVG
-            const figMinX = Math.min(...pts.map((p) => p.x));
-            const figMaxX = Math.max(...pts.map((p) => p.x));
-            const figMinY = Math.min(...pts.map((p) => p.y));
-            const figMaxY = Math.max(...pts.map((p) => p.y));
+            const figMinX = Math.min(...ptsSvg.map((p) => p.x));
+            const figMaxX = Math.max(...ptsSvg.map((p) => p.x));
+            const figMinY = Math.min(...ptsSvg.map((p) => p.y));
+            const figMaxY = Math.max(...ptsSvg.map((p) => p.y));
             const figBox = {
                 left: figMinX,
                 right: figMaxX,
@@ -445,11 +755,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 bottom: figMaxY,
             };
 
-            // ---------- COTAS (muestra valor ORIGINAL y evita pisar figura) ----------
+            // ---------- COTAS (solo texto, valor ORIGINAL, evitando pisar figura) ----------
             const segsModelAdj = computeLineSegments(dims);
             const segsModelOrig = computeLineSegments(dimsRaw);
 
-            const placedBoxes = []; // guardamos las cajas ya usadas por etiquetas
+            const placedBoxes = [];
 
             segsModelAdj.forEach((s, idx) => {
                 const s1 = rotatePoint(s.start, cxModel, cyModel, rotDeg);
@@ -468,7 +778,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 let nx = (p2.y - p1.y) / L;
                 let ny = -(p2.x - p1.x) / L;
 
-                // normal hacia fuera
                 const mx = (p1.x + p2.x) / 2,
                     my = (p1.y + p2.y) / 2;
                 if ((mx - centerX) * nx + (my - centerY) * ny < 0) {
@@ -514,91 +823,72 @@ document.addEventListener("DOMContentLoaded", () => {
                     off += LABEL_STEP;
                 }
             });
-            // ---------- FIN COTAS ----------
 
-            // === COLOCACIÓN DE TEXTOS SIN PISAR ===
-            // Texto principal (arriba de la figura)
+            // === TEXTO PRINCIPAL (Ø, peso, xN) ===
             const mainText = `Ø${diametro} | ${peso} | x${barras}`;
-            {
-                const { w, h } = approxTextBox(mainText, SIZE_MAIN_TEXT);
-                let lx = centerX;
-                let ly = figBox.top - MAIN_ABOVE_GAP;
-                let tries = 0;
-                while (true) {
-                    const box = {
-                        left: lx - w / 2,
-                        right: lx + w / 2,
-                        top: ly - h / 2,
-                        bottom: ly + h / 2,
-                    };
-                    const collideFig = rectsOverlap(
-                        figBox,
-                        box,
-                        LABEL_CLEARANCE
-                    );
-                    const collideCotas = placedBoxes.some((b) =>
-                        rectsOverlap(b, box, LABEL_CLEARANCE)
-                    );
-                    if (!collideFig && !collideCotas) {
-                        agregarTexto(
-                            svg,
-                            lx,
-                            ly,
-                            mainText,
-                            BARS_TEXT_COLOR,
-                            SIZE_MAIN_TEXT,
-                            "middle"
-                        );
-                        placedBoxes.push(box);
-                        break;
-                    }
-                    ly -= LABEL_STEP; // subimos
-                    tries++;
-                    if (tries > 100) break; // evitamos bucles raros
-                }
-            }
+            placeMainLabel({
+                svg,
+                text: mainText,
+                figBox,
+                centerX,
+                centerY,
+                placedBoxes,
+                safeLeft,
+                safeRight,
+                safeTop,
+                safeBottom,
+                baseSize: SIZE_MAIN_TEXT,
+                minSize: 10,
+                gapTop: MAIN_ABOVE_GAP,
+                gapBottom: MAIN_ABOVE_GAP,
+                gapSide: 8,
+            });
 
-            {
-                const idText = `${elemento.codigo ?? elemento.id}`;
-                const { w, h } = approxTextBox(idText, SIZE_ID_TEXT);
-                let lx = centerX;
-                let ly = figBox.bottom + ID_BELOW_GAP;
-                let tries = 0;
-                while (true) {
-                    const box = {
-                        left: lx - w / 2,
-                        right: lx + w / 2,
-                        top: ly - h / 2,
-                        bottom: ly + h / 2,
-                    };
-                    const collideFig = rectsOverlap(
-                        figBox,
-                        box,
-                        LABEL_CLEARANCE
-                    );
-                    const collideCotas = placedBoxes.some((b) =>
-                        rectsOverlap(b, box, LABEL_CLEARANCE)
-                    );
-                    if (!collideFig && !collideCotas) {
-                        agregarTextoClickable(
-                            svg,
-                            lx,
-                            ly,
-                            idText,
-                            ELEMENT_TEXT_COLOR,
-                            SIZE_ID_TEXT,
-                            "middle",
-                            () => abrirModalDividirElemento(elemento.id, idText)
-                        );
-                        placedBoxes.push(box);
-                        break;
-                    }
-                    ly += LABEL_STEP; // bajamos si choca
-                    tries++;
-                    if (tries > 100) break;
-                }
-            }
-            // === FIN COLOCACIÓN TEXTOS ===
+            // // === Código/ID informativo (no clicable) debajo si cabe ===
+            // {
+            //     const idText = `${elemento.codigo ?? elemento.id}`;
+            //     const { w, h } = approxTextBox(idText, SIZE_ID_TEXT);
+            //     let lx = centerX;
+            //     let ly = figBox.bottom + ID_BELOW_GAP;
+            //     let tries = 0;
+            //     while (true) {
+            //         const box = {
+            //             left: lx - w / 2,
+            //             right: lx + w / 2,
+            //             top: ly - h / 2,
+            //             bottom: ly + h / 2,
+            //         };
+            //         const collideFig = rectsOverlap(
+            //             figBox,
+            //             box,
+            //             LABEL_CLEARANCE
+            //         );
+            //         const collideCotas = placedBoxes.some((b) =>
+            //             rectsOverlap(b, box, LABEL_CLEARANCE)
+            //         );
+            //         const inside =
+            //             box.left >= 0 &&
+            //             box.right <= ancho &&
+            //             box.top >= 0 &&
+            //             box.bottom <= alto;
+            //         if (!collideFig && !collideCotas && inside) {
+            //             agregarTexto(
+            //                 svg,
+            //                 lx,
+            //                 ly,
+            //                 idText,
+            //                 ELEMENT_TEXT_COLOR,
+            //                 SIZE_ID_TEXT,
+            //                 "middle"
+            //             );
+            //             placedBoxes.push(box);
+            //             break;
+            //         }
+            //         ly += LABEL_STEP;
+            //         tries++;
+            //         if (tries > 100) break;
+            //     }
+            // }
         });
 
         contenedor.innerHTML = "";
@@ -610,22 +900,17 @@ function abrirModalDividirElemento(elementoId, etiqueta = "") {
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
     const form = document.getElementById("formDividirElemento");
-
     if (!modal || !input || !form) return;
-
     input.value = elementoId;
     if (window.rutaDividirElemento)
         form.setAttribute("action", window.rutaDividirElemento);
-
     modal.classList.remove("hidden");
 }
 
-// Si ya tienes esta función, puedes dejar la tuya; esta versión hace POST por fetch y muestra feedback
 async function enviarDivision() {
     const form = document.getElementById("formDividirElemento");
     const url = form.getAttribute("action") || window.rutaDividirElemento;
     const fd = new FormData(form);
-
     try {
         const token =
             fd.get("_token") ||
@@ -640,16 +925,12 @@ async function enviarDivision() {
         const data = await res.json();
         if (!res.ok || !data.success)
             throw new Error(data.message || "Error al dividir");
-
-        // OK
         form.reset();
         document
             .getElementById("modalDividirElemento")
             ?.classList.add("hidden");
         if (window.Swal) Swal.fire("Hecho", data.message, "success");
         else alert(data.message);
-
-        // TODO opcional: refrescar la lista/dibujo si quieres ver cambios sin recargar
     } catch (e) {
         if (window.Swal) Swal.fire("Error", e.message || "Error", "error");
         else alert(e.message || "Error");

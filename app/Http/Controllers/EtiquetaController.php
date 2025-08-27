@@ -230,6 +230,10 @@ class EtiquetaController extends Controller
             $etiqueta = Etiqueta::with('elementos.planilla')->where('etiqueta_sub_id', $id)->firstOrFail();
             $planilla_id = $etiqueta->planilla_id;
             $planilla = Planilla::find($planilla_id);
+
+            $operario1 = Auth::id();
+            $operario2 = auth()->user()->compañeroDeTurno()?->id;
+
             // Convertir el campo ensamblado a minúsculas para facilitar comparaciones
             $ensambladoText = strtolower($planilla->ensamblado);
             // Se obtiene la máquina actual (por ejemplo, de tipo ensambladora o soldadora según corresponda)
@@ -273,8 +277,8 @@ class EtiquetaController extends Controller
 
                     // Actualizar el estado de los elementos en la máquina a "fabricando" y asignamos usuarios
                     foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->users_id = Auth::id();
-                        $elemento->users_id_2 = session()->get('compañero_id', null);
+                        $elemento->users_id =  $operario1;
+                        $elemento->users_id_2 =  $operario2;
                         $elemento->estado = "fabricando";
                         $elemento->save();
                     }
@@ -412,8 +416,8 @@ class EtiquetaController extends Controller
 
 
                     $etiqueta->estado = "fabricando";
-                    $etiqueta->operario1_id = Auth::id();
-                    $etiqueta->operario2_id = session()->get('compañero_id', null);
+                    $etiqueta->operario1_id =  $operario1;
+                    $etiqueta->operario2_id =  $operario2;
                     $etiqueta->fecha_inicio = now();
                     $etiqueta->save();
                     break;
@@ -460,15 +464,15 @@ class EtiquetaController extends Controller
                         // Si la máquina es de tipo ensambladora, se inicia la fase de ensamblado:
                         $etiqueta->fecha_inicio_ensamblado = now();
                         $etiqueta->estado = 'ensamblando';
-                        $etiqueta->ensamblador1_id = Auth::id();
-                        $etiqueta->ensamblador2_id = session()->get('compañero_id', null);
+                        $etiqueta->ensamblador1_id =  $operario1;
+                        $etiqueta->ensamblador2_id =  $operario2;
                         $etiqueta->save();
                     } elseif ($maquina->tipo === 'soldadora') {
                         // Si la máquina es de tipo soldadora, se inicia la fase de soldadura:
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'soldando';
-                        $etiqueta->soldador1_id = Auth::id();
-                        $etiqueta->soldador2_id = session()->get('compañero_id', null);
+                        $etiqueta->soldador1_id =  $operario1;
+                        $etiqueta->soldador2_id =  $operario2;
                         $etiqueta->save();
                     } else {
                         // Verificamos si ya todos los elementos en la máquina han sido completados
@@ -527,8 +531,8 @@ class EtiquetaController extends Controller
                         // Si la máquina es de tipo soldadora, se inicia la fase de soldadura:
                         $etiqueta->fecha_inicio_soldadura = now();
                         $etiqueta->estado = 'soldando';
-                        $etiqueta->soldador1 = Auth::id();
-                        $etiqueta->soldador2 = session()->get('compañero_id', null);
+                        $etiqueta->soldador1 =  $operario1;
+                        $etiqueta->soldador2 =  $operario2;
                         $etiqueta->save();
                     } else {
                         // Opcional: Si la máquina no es de los tipos esperados, se puede registrar un warning o dejar el estado sin cambios.
@@ -542,8 +546,8 @@ class EtiquetaController extends Controller
                     foreach ($elementosEnMaquina as $elemento) {
                         Log::info("Entra en el condicional para completar elementos");
                         $elemento->estado = "completado";
-                        $elemento->users_id = Auth::id();
-                        $elemento->users_id_2 = session()->get('compañero_id', null);
+                        $elemento->users_id =  $operario1;
+                        $elemento->users_id_2 =  $operario2;
                         $elemento->save();
                     }
                     $elementosEtiquetaCompletos = $etiqueta->elementos()
@@ -909,24 +913,59 @@ class EtiquetaController extends Controller
             }
         } else {
 
-            // Verificar si todos los elementos de la etiqueta están en estado "completado"
-            $elementosEtiquetaCompletos = $etiqueta->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
-
-            if ($elementosEtiquetaCompletos) {
-                $etiqueta->estado = 'completada';
-                $etiqueta->fecha_finalizacion = now();
-                $etiqueta->save();
-            } else {
-                // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
-                if ($enOtrasMaquinas) {
-                    $etiqueta->estado = 'parcialmente_completada';
+            // 🧠 Regla especial: si el nombre de la etiqueta contiene "pates"
+            if (Str::of($etiqueta->nombre ?? '')->lower()->contains('pates')) {
+                DB::transaction(function () use ($etiqueta, $maquina) {
+                    // 1) Marcar etiqueta como "fabricada" y cerrar fecha
+                    $etiqueta->estado = 'fabricada';
+                    $etiqueta->fecha_finalizacion = now();
                     $etiqueta->save();
+
+                    // 2) Buscar una máquina tipo "dobladora_manual"
+                    $dobladora = Maquina::where('tipo', 'dobladora manual')
+                        // si quieres priorizar la misma obra:
+                        ->when($maquina->obra_id, fn($q) => $q->where('obra_id', $maquina->obra_id))
+                        ->orderBy('id')
+                        ->first();
+
+                    if ($dobladora) {
+                        // 3) Asignar maquina_id_2 a TODOS los elementos de esa etiqueta en ESTA máquina
+                        Elemento::where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id)
+                            ->where('maquina_id', $maquina->id)
+                            ->update(['maquina_id_2' => $dobladora->id]);
+                    } else {
+                        Log::warning('No hay dobladora_manual para asignar maquina_id_2', [
+                            'maquina_origen_id' => $maquina->id,
+                            'etiqueta_sub_id'   => $etiqueta->etiqueta_sub_id,
+                        ]);
+                    }
+                });
+            } else {
+                // ✅ Lógica normal que ya tenías
+                // Verificar si todos los elementos de la etiqueta están en estado "fabricado"
+                $elementosEtiquetaCompletos = $etiqueta->elementos()
+                    ->where('estado', '!=', 'fabricado')
+                    ->doesntExist();
+
+                if ($elementosEtiquetaCompletos) {
+                    $etiqueta->estado = 'completada';
+                    $etiqueta->fecha_finalizacion = now();
+                    $etiqueta->save();
+                } else {
+                    // Si la etiqueta tiene elementos en otras máquinas, marcamos como parcialmente completada
+                    if ($enOtrasMaquinas) {
+                        $etiqueta->estado = 'parcialmente_completada';
+                        $etiqueta->save();
+                    }
                 }
             }
         }
 
         // ✅ Si todos los elementos de la planilla están completados, actualizar la planilla
-        $todosElementosPlanillaCompletos = $planilla->elementos()->where('estado', '!=', 'fabricado')->doesntExist();
+        $todosElementosPlanillaCompletos = $planilla->elementos()
+            ->where('estado', '!=', 'fabricado')
+            ->doesntExist();
+
         if ($todosElementosPlanillaCompletos) {
             $planilla->fecha_finalizacion = now();
             $planilla->estado = 'completada';
@@ -938,7 +977,7 @@ class EtiquetaController extends Controller
                     ->where('maquina_id', $maquina->id)
                     ->delete();
 
-                // 2. Reordenar las posiciones de las planillas restantes en esta máquina
+                // 2. Reordenar posiciones restantes
                 $ordenes = OrdenPlanilla::where('maquina_id', $maquina->id)
                     ->orderBy('posicion')
                     ->lockForUpdate()
@@ -950,7 +989,6 @@ class EtiquetaController extends Controller
                 }
             });
         }
-
 
         return true;
     }
