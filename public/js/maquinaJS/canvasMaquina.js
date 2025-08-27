@@ -109,6 +109,7 @@ function agregarPathD(svg, d, color = FIGURE_LINE_COLOR, ancho = 2) {
 // =======================
 // Geometría base
 // =======================
+
 function extraerDimensiones(dimensiones) {
     const tokens = dimensiones.split(/\s+/).filter((t) => t.length > 0);
     const dims = [];
@@ -161,6 +162,54 @@ function computePathPoints(dims) {
         }
     });
     return points;
+}
+// Agrupa por paralelismo (ángulo módulo 180°) y por longitud ORIGINAL.
+// Devuelve un único segmento representativo por grupo.
+function agruparSegmentosPorParalelismoYLargo(
+    segsAdjIndexed,
+    segsModelOrig,
+    { tolLenAbs = 1e-6, tolLenRel = 1e-6, tolAng = 1e-3 } = {}
+) {
+    const unicos = [];
+
+    // Ángulo normalizado en [0, π)
+    const angNorm = (dx, dy) => {
+        let a = Math.atan2(dy, dx) % Math.PI;
+        if (a < 0) a += Math.PI;
+        return a;
+    };
+
+    for (const s of segsAdjIndexed) {
+        const dx = s.end.x - s.start.x;
+        const dy = s.end.y - s.start.y;
+        const ang = angNorm(dx, dy);
+
+        // Longitud ORIGINAL (la sumada tras quitar 0°)
+        const lenOrig = segsModelOrig[s._origIdx]?.length ?? Math.hypot(dx, dy);
+        if (lenOrig < 1e-12) continue;
+
+        const existe = unicos.some((u) => {
+            const u_dx = u.end.x - u.start.x;
+            const u_dy = u.end.y - u.start.y;
+            const u_ang = u._ang;
+            const u_lenOrig =
+                segsModelOrig[u._origIdx]?.length ?? Math.hypot(u_dx, u_dy);
+
+            const angDiff = Math.abs(ang - u_ang);
+            const lenDiff = Math.abs(lenOrig - u_lenOrig);
+            const lenTol = Math.max(
+                tolLenAbs,
+                tolLenRel * Math.max(lenOrig, u_lenOrig)
+            );
+
+            return angDiff < tolAng && lenDiff <= lenTol;
+        });
+
+        if (!existe) {
+            unicos.push({ ...s, _ang: ang });
+        }
+    }
+    return unicos;
 }
 function computeLineSegments(dims) {
     let segments = [],
@@ -219,6 +268,55 @@ function rectsOverlap(a, b, m = 0) {
 function clampXInside(cx, w, left, right) {
     const half = w / 2;
     return Math.max(left + half, Math.min(right - half, cx));
+}
+// Une rectas consecutivas ignorando turn(0°).
+// - Acumula todas las "line" mientras no aparezca un giro ≠ 0° ni un arco.
+// - Al encontrar turn ≠ 0° o arc, vuelca el acumulado y continúa.
+function combinarRectasConCeros(dims, tol = 1e-9) {
+    const out = [];
+    let accLen = 0; // acumulador de longitud recta actual
+
+    const flush = () => {
+        if (accLen > tol) {
+            out.push({ type: "line", length: accLen });
+            accLen = 0;
+        }
+    };
+
+    for (let i = 0; i < dims.length; i++) {
+        const d = dims[i];
+
+        if (d.type === "line") {
+            accLen += d.length;
+            continue;
+        }
+
+        if (d.type === "turn") {
+            if (Math.abs(d.angle) < tol) {
+                // giro 0° → no cambia dirección, seguir acumulando
+                continue;
+            }
+            // giro real → cerrar recta acumulada y guardar el giro
+            flush();
+            out.push(d);
+            continue;
+        }
+
+        if (d.type === "arc") {
+            // los arcos cortan la recta
+            flush();
+            out.push(d);
+            continue;
+        }
+
+        // por si aparece algo no contemplado
+        flush();
+        out.push(d);
+    }
+
+    // fin: volcar lo que quede
+    flush();
+    return out;
 }
 
 // =======================
@@ -658,9 +756,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 safeBottom = alto;
 
             // 1) dims ajustadas
+            // 1) dims normalizadas (une rectas separadas por 0°)
+            // 1) dims normalizadas (une rectas separadas por 0°)
             const dimsRaw = extraerDimensiones(elemento.dimensiones || "");
+            const dimsNoZero = combinarRectasConCeros(dimsRaw);
             const dims = ajustarLongitudesParaEvitarSolapes(
-                dimsRaw,
+                dimsNoZero,
                 OVERLAP_GROW_UNITS
             );
 
@@ -757,11 +858,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // ---------- COTAS (solo texto, valor ORIGINAL, evitando pisar figura) ----------
             const segsModelAdj = computeLineSegments(dims);
-            const segsModelOrig = computeLineSegments(dimsRaw);
+            const segsModelOrig = computeLineSegments(dimsNoZero); // ← etiquetas con SUMA
 
+            const segsAdjIndexed = segsModelAdj.map((s, i) => ({
+                ...s,
+                _origIdx: i,
+            }));
+
+            const segsUnicos = agruparSegmentosPorParalelismoYLargo(
+                segsAdjIndexed,
+                segsModelOrig
+            );
             const placedBoxes = [];
 
-            segsModelAdj.forEach((s, idx) => {
+            segsUnicos.forEach((s) => {
                 const s1 = rotatePoint(s.start, cxModel, cyModel, rotDeg);
                 const s2 = rotatePoint(s.end, cxModel, cyModel, rotDeg);
 
@@ -786,8 +896,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 let off = DIM_LINE_OFFSET;
+                // 🧠 etiqueta desde el segmento ORIGINAL correspondiente
                 const label = (
-                    segsModelOrig[idx]?.length ?? s.length
+                    segsModelOrig[s._origIdx]?.length ?? s.length
                 ).toString();
                 const { w: tw, h: th } = approxTextBox(label, SIZE_DIM_TEXT);
 
