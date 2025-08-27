@@ -821,10 +821,9 @@ class PlanillaController extends Controller
                 );
 
                 // Obtener o crear obra (con caché)
-                $obraKey = "{$codigoCliente}-{$codigoObra}";
-                $obra = $obrasCache[$obraKey] ??= Obra::firstOrCreate(
-                    ['cod_obra' => $codigoObra, 'cliente_id' => $cliente->id],
-                    ['obra' => $nombreObra]
+                $obra = $obrasCache[$codigoObra] ??= Obra::firstOrCreate(
+                    ['cod_obra' => $codigoObra],
+                    ['cliente_id' => $cliente->id, 'obra' => $nombreObra]
                 );
 
                 // Saltar si ya existe la planilla

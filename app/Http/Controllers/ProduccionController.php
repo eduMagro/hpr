@@ -342,6 +342,7 @@ class ProduccionController extends Controller
 
         // 🔹 1. MÁQUINAS DISPONIBLES
         $maquinas = Maquina::whereNotNull('tipo')
+            ->where('tipo', '<>', 'grua')
             ->orderBy('obra_id')   // primero ordena por obra
             ->orderBy('id')        // luego por id dentro de cada obra
             ->get();
