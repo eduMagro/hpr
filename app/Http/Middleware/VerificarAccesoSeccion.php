@@ -32,7 +32,7 @@ class VerificarAccesoSeccion
         }
 
         $rutaActual = $request->route()?->getName() ?? '';
-        $geReyesTejeroId = Empresa::where('empresa', 'G.E Reyes Tejero')->value('id');
+        $geReyesTejeroId = Empresa::where('nombre', 'G.E Reyes Tejero')->value('id');
 
         // ⛔️ RESTRICCIÓN ESPECIAL: usuarios de "G.E Reyes Tejero"
         if ($geReyesTejeroId && (int)$user->empresa_id === (int)$geReyesTejeroId) {
