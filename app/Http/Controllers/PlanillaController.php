@@ -26,121 +26,16 @@ use App\Services\PlanillaService;
 use ZipArchive;
 use DOMDocument;
 use App\Services\ColaPlanillasService;
+use App\Services\AsignarMaquinaService;
 
 class PlanillaController extends Controller
 {
-    public function asignarMaquina($diametro, $longitud, $figura, $doblesPorBarra, $barras, $ensamblado, $planillaId)
+    private AsignarMaquinaService $asignador;
+
+    public function __construct(AsignarMaquinaService $asignador)
     {
-        $estribo = $doblesPorBarra >= 4 && $diametro < 20;
-        $maquinas = collect();
-        $diametrosPlanilla = Elemento::where('planilla_id', $planillaId)->distinct()->pluck('diametro')->toArray();
-        $maquinaForzada = null;
-
-        // ✅ 0. CASO BLOQUEANTE: Diámetro 32
-        if ($diametro == 32) {
-            return Maquina::where('codigo', 'CM')->value('id');
-        }
-
-        // ⚙️ 1. Si ya hay máquina en esta planilla (sin contar estribos y diámetro 32)
-        $maquinaUsada = Elemento::where('planilla_id', $planillaId)
-            ->whereNotNull('maquina_id')
-            ->where('diametro', '!=', 32)
-            ->where(function ($q) {
-                $q->where('dobles_barra', '<', 5)->orWhere('diametro', '>=', 20);
-            })
-            ->value('maquina_id');
-
-        if ($maquinaUsada) {
-            $pesoMaquinaUsada = Elemento::where('maquina_id', $maquinaUsada)->sum('peso');
-            $elementosMaquinaUsada = Elemento::where('maquina_id', $maquinaUsada)->count();
-
-            $indiceCargaUsada = ($pesoMaquinaUsada * 0.6) + ($elementosMaquinaUsada * 0.4);
-
-            // Si la carga está dentro de límites, se mantiene
-            if ($indiceCargaUsada < 9000) { // Umbral a ajustar según tu realidad
-                return $maquinaUsada;
-            }
-
-            // Si está saturada, NO se fuerza su uso, se continúa al reparto
-        }
-
-
-        // 🎯 2. Si hay varios diámetros, se fuerza máquina según el mayor (solo si no es 32)
-        if (count($diametrosPlanilla) > 1) {
-            $maxDiametro = max($diametrosPlanilla);
-            if ($maxDiametro <= 12) {
-                $maquinaForzada = ['PS12', 'F12'];
-            } elseif ($maxDiametro <= 16) {
-                $maquinaForzada = ['MS16'];
-            } elseif ($maxDiametro <= 20) {
-                $maquinaForzada = ['MSR20'];
-            } elseif ($maxDiametro <= 25) {
-                $maquinaForzada = ['SL28'];
-            } elseif ($maxDiametro >= 32) {
-                $maquinaForzada = ['CM'];
-            }
-        }
-
-        // 🛠️ 3. Asignación lógica según tipo
-        if ($diametro == 5) {
-            $maquinas = Maquina::where('codigo', 'ID5')->get();
-        } elseif ($estribo) {
-            if ($diametro == 8) {
-                $maquinas = Maquina::where('codigo', 'PS12')->get();
-            } elseif (in_array($diametro, [10, 12])) {
-                $maquinas = Maquina::whereIn('codigo', ['F12', 'PS12'])->get();
-            } elseif ($diametro == 16) {
-                $maquinas = Maquina::whereIn('codigo', ['PS12', 'F12', 'MS16'])->get();
-            }
-        } elseif (!$estribo && $diametro >= 10 && $diametro <= 16) {
-            $maquinas = Maquina::where('codigo', 'MS16')->get();
-        } elseif (!$estribo && $diametro >= 8 && $diametro <= 25) {
-            $codigos = [];
-
-            if ($diametro <= 20) {
-                $codigos[] = 'MSR20';
-            }
-
-            if ($diametro >= 12) {
-                $codigos[] = 'SL28';
-            }
-
-            $maquinas = Maquina::whereIn('codigo', $codigos)->get();
-        } else {
-            $maquinas = Maquina::where('codigo', 'MANUAL')->get();
-        }
-
-        // ❌ Verificación adicional: evitar máquinas que no soportan el diámetro
-        $maquinas = $maquinas->filter(function ($m) use ($diametro) {
-            return is_null($m->diametro_max) || $diametro <= $m->diametro_max;
-        });
-
-        if ($maquinas->isEmpty()) {
-            Log::warning("❌ No se encontraron máquinas compatibles para diámetro $diametro.");
-            return null;
-        }
-
-        // ⚖️ 4. Elegir la menos cargada (peso total)
-        $maquinaSeleccionada = null;
-        $indiceMinimo = PHP_INT_MAX;
-
-        foreach ($maquinas as $maquina) {
-            $pesoActual = Elemento::where('maquina_id', $maquina->id)->sum('peso');
-            $elementosActuales = Elemento::where('maquina_id', $maquina->id)->count();
-
-            // Cálculo del índice ponderado
-            $indiceCarga = ($pesoActual * 0.6) + ($elementosActuales * 0.4);
-
-            if ($indiceCarga < $indiceMinimo) {
-                $indiceMinimo = $indiceCarga;
-                $maquinaSeleccionada = $maquina;
-            }
-        }
-
-
-        return $maquinaSeleccionada?->id ?? null;
+        $this->asignador = $asignador;
     }
-
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
@@ -856,7 +751,6 @@ class PlanillaController extends Controller
                 ]);
 
                 $planillasImportadas++;
-                $maquinasUsadas = [];
 
                 // Agrupar por nº de etiqueta
                 $etiquetas = [];
@@ -865,7 +759,7 @@ class PlanillaController extends Controller
                     if ($numEtiqueta) $etiquetas[$numEtiqueta][] = $row;
                 }
 
-                // Procesar etiquetas → sub-etiquetas → elementos
+                // Procesar etiquetas → sub-etiquetas → elementos (SIN agrupar por máquina)
                 foreach ($etiquetas as $filasEtiqueta) {
                     $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
 
@@ -878,185 +772,150 @@ class PlanillaController extends Controller
                         'excel_row' => $filasEtiqueta[0]['_xl_row'] ?? 0,
                     ]);
 
-                    $contadorSub = 1;
+                    // 1 sub-etiqueta por grupo (si quieres mantener varias, puedes partir por marca/fila/etc.)
+                    $codigoSub = sprintf('%s.%02d', $codigoPadre, 1);
 
-                    // Agrupar por máquina
-                    $gruposPorMaquina = [];
+                    $subEtiqueta = $this->safeCreate(Etiqueta::class, [
+                        'codigo'          => $codigoPadre,
+                        'planilla_id'     => $planilla->id,
+                        'nombre'          => $filasEtiqueta[0][22] ?? 'Sin nombre',
+                        'etiqueta_sub_id' => $codigoSub,
+                    ], [
+                        'planilla'  => $codigoPlanilla,
+                        'excel_row' => $filasEtiqueta[0]['_xl_row'] ?? 0,
+                    ]);
+
+                    // Agrupar filas “iguales” para sumar barras/peso (tu lógica original)
+                    $agrupados = [];
                     foreach ($filasEtiqueta as $row) {
-                        $excelRow       = $row['_xl_row'] ?? 0;
+                        if (!array_filter($row)) continue;
 
-                        $diametro       = $row[25] ?? null;
-                        $longitud       = $row[27] ?? null;
-                        $figura         = $row[26] ?? null;
-                        $doblesPorBarra = $row[33] ?? null;
-                        $barras         = $row[32] ?? null;
-                        $ensamblado     = $row[4]  ?? null;
+                        $excelRow = $row['_xl_row'] ?? 0;
 
+                        // contexto para warnings
+                        $__numCtx['planilla']  = $codigoPlanilla;
+                        $__numCtx['excel_row'] = $excelRow;
 
-                        // Normaliza por si viene con coma o espacios
-                        $rawDiametro = $row[25] ?? null;
-                        $diametroStr = is_string($rawDiametro) ? trim($rawDiametro) : $rawDiametro;
-                        $diametroNum = is_null($diametroStr) ? null : (float) str_replace(',', '.', $diametroStr);
-                        $diametroInt = is_null($diametroNum) ? null : (int) round($diametroNum);
+                        // clave de agregación
+                        $clave = implode('|', [
+                            $row[26],           // figura
+                            $row[21],           // fila
+                            $row[23],           // marca
+                            $row[25],           // diametro
+                            $row[27],           // longitud
+                            $row[33] ?? 0,      // dobles_por_barra
+                            $row[47] ?? ''      // dimensiones
+                        ]);
 
-                        // ⛔ Si no es permitido, lanzamos advertencia y forzamos máquina nula
-                        if (is_null($diametroInt) || !in_array($diametroInt, $DmPermitido, true)) {
+                        // valida y acumula
+                        $__numCtx['campo'] = 'peso';
+                        $__numCtx['valor'] = $row[34] ?? null;
+                        $pesoNum  = $this->assertNumeric($row[34] ?? null, 'peso',   $excelRow, $codigoPlanilla, $advertencias);
+
+                        $__numCtx['campo'] = 'barras';
+                        $__numCtx['valor'] = $row[32] ?? null;
+                        $bNum     = $this->assertNumeric($row[32] ?? null, 'barras', $excelRow, $codigoPlanilla, $advertencias);
+
+                        if ($pesoNum === false || $bNum === false) {
+                            continue; // fila inválida
+                        }
+
+                        $agrupados[$clave]['row']   = $row;
+                        $agrupados[$clave]['peso']  = ($agrupados[$clave]['peso']  ?? 0) + $pesoNum;
+                        $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int)$bNum;
+                    }
+
+                    // Crear elementos (maquina_id = null). La asignación real se hace después.
+                    foreach ($agrupados as $item) {
+                        $row      = $item['row'];
+                        $excelRow = $row['_xl_row'] ?? 0;
+
+                        $diametroNum = $this->assertNumeric($row[25] ?? null, 'diametro', $excelRow, $codigoPlanilla, $advertencias);
+                        $longNum     = $this->assertNumeric($row[27] ?? null, 'longitud', $excelRow, $codigoPlanilla, $advertencias);
+                        $doblesNum   = $this->assertNumeric($row[33] ?? 0,    'dobles_barra', $excelRow, $codigoPlanilla, $advertencias);
+                        $barrasNum   = $this->assertNumeric($item['barras'],  'barras', $excelRow, $codigoPlanilla, $advertencias);
+                        $pesoNum     = $this->assertNumeric($item['peso'],    'peso', $excelRow, $codigoPlanilla, $advertencias);
+
+                        if ($diametroNum === false || $longNum === false || $doblesNum === false || $barrasNum === false || $pesoNum === false) {
+                            continue;
+                        }
+
+                        // si el diámetro no está permitido, solo advertimos y no creamos
+                        $DmPermitido = [5, 8, 10, 12, 16, 20, 25, 32];
+                        if (!in_array((int)$diametroNum, $DmPermitido, true)) {
                             $advertencias[] = sprintf(
                                 "Diámetro no admitido (planilla %s) → diámetro:%s (fila %d)",
                                 $codigoPlanilla,
                                 $row[25] ?? 'N/A',
                                 $excelRow
                             );
-                            $maquina_id = null;   // evita que pase desapercibido
-                        } else {
-                            // Solo si es permitido, calculamos máquina
-                            $maquina_id = $this->asignarMaquina(
-                                $diametroInt,
-                                $longitud,
-                                $figura,
-                                $doblesPorBarra,
-                                $barras,
-                                $ensamblado,
-                                $planilla->id
-                            );
-                            if (!$maquina_id) {
-                                $advertencias[] = sprintf(
-                                    "Sin máquina compatible (planilla %s) → diámetro:%s | dimensiones:%s (fila %d)",
-                                    $codigoPlanilla,
-                                    $row[25] ?? 'N/A',
-                                    $row[47] ?? 'N/A',
-                                    $excelRow
-                                );
-                                $maquina_id = null;
-                            }
+                            continue;
                         }
 
+                        $tiempos = $this->calcularTiemposElemento($row);
 
-
-
-                        $gruposPorMaquina[$maquina_id][] = $row;
-                        if ($maquina_id !== null) $maquinasUsadas[$maquina_id] = true;
-                    }
-
-                    // Crear sub-etiquetas y elementos
-                    foreach ($gruposPorMaquina as $maquina_id => $filasMaquina) {
-                        $codigoSub = sprintf('%s.%02d', $codigoPadre, $contadorSub++);
-
-                        $subEtiqueta = $this->safeCreate(Etiqueta::class, [
-                            'codigo'          => $codigoPadre,
-                            'planilla_id'     => $planilla->id,
-                            'nombre'          => $filasMaquina[0][22] ?? 'Sin nombre',
-                            'etiqueta_sub_id' => $codigoSub,
+                        $this->safeCreate(Elemento::class, [
+                            'codigo'             => Elemento::generarCodigo(),
+                            'planilla_id'        => $planilla->id,
+                            'etiqueta_id'        => $subEtiqueta->id,
+                            'etiqueta_sub_id'    => $codigoSub,
+                            'maquina_id'         => null, // 🔴 se asignará luego por el service
+                            'figura'             => $row[26] ?: null,
+                            'fila'               => $row[21] ?: null,
+                            'marca'              => $row[23] ?: null,
+                            'etiqueta'           => $row[30] ?: null,
+                            'diametro'           => $diametroNum,
+                            'longitud'           => $longNum,
+                            'barras'             => (int)$barrasNum,
+                            'dobles_barra'       => (int)$doblesNum,
+                            'peso'               => $pesoNum,
+                            'dimensiones'        => $row[47] ?? null,
+                            'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
                         ], [
                             'planilla'  => $codigoPlanilla,
-                            'excel_row' => $filasMaquina[0]['_xl_row'] ?? 0,
-                        ]);
-
-                        // Agrupar filas iguales
-                        $agrupados = [];
-                        foreach ($filasMaquina as $row) {
-                            $clave = implode('|', [
-                                $row[26],
-                                $row[21],
-                                $row[23],
-                                $row[25],
-                                $row[27],
-                                $row[33] ?? 0,
-                                $row[47] ?? ''
-                            ]);
-                            $agrupados[$clave]['row'] = $row;
-
-                            $excelRow = $row['_xl_row'] ?? 0;
-
-                            // contexto para warnings
-                            $__numCtx['planilla']  = $codigoPlanilla;
-                            $__numCtx['excel_row'] = $excelRow;
-
-                            $__numCtx['campo'] = 'peso';
-                            $__numCtx['valor'] = $row[34] ?? null;
-                            $pesoNum  = $this->assertNumeric($row[34] ?? null, 'peso',   $excelRow, $codigoPlanilla);
-
-                            $__numCtx['campo'] = 'barras';
-                            $__numCtx['valor'] = $row[32] ?? null;
-                            $bNum     = $this->assertNumeric($row[32] ?? null, 'barras', $excelRow, $codigoPlanilla);
-
-                            $agrupados[$clave]['peso']   = ($agrupados[$clave]['peso']   ?? 0) + $pesoNum;
-                            $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int) $bNum;
-                        }
-
-                        foreach ($agrupados as $item) {
-                            $row      = $item['row'];
-                            $excelRow = $row['_xl_row'] ?? 0;
-
-                            // Validar todos los campos críticos
-                            $diametroNum = $this->assertNumeric($row[25] ?? null, 'diametro', $excelRow, $codigoPlanilla, $advertencias);
-                            $longNum     = $this->assertNumeric($row[27] ?? null, 'longitud', $excelRow, $codigoPlanilla, $advertencias);
-                            $doblesNum   = $this->assertNumeric($row[33] ?? 0,    'dobles_barra', $excelRow, $codigoPlanilla, $advertencias);
-                            $barrasNum   = $this->assertNumeric($item['barras'],  'barras', $excelRow, $codigoPlanilla, $advertencias);
-                            $pesoNum     = $this->assertNumeric($item['peso'],    'peso', $excelRow, $codigoPlanilla, $advertencias);
-
-                            // ⛔ Si alguno es false → saltamos fila
-                            if ($diametroNum === false || $longNum === false || $doblesNum === false || $barrasNum === false || $pesoNum === false) {
-                                continue;
-                            }
-
-                            // ✅ Solo si todo es válido, creamos el elemento
-                            $tiempos = $this->calcularTiemposElemento($row);
-
-                            $this->safeCreate(Elemento::class, [
-                                'codigo'             => Elemento::generarCodigo(),
-                                'planilla_id'        => $planilla->id,
-                                'etiqueta_id'        => $subEtiqueta->id,
-                                'etiqueta_sub_id'    => $codigoSub,
-                                'maquina_id'         => $maquina_id ?: null,
-                                'figura'             => $row[26] ?: null,
-                                'fila'               => $row[21] ?: null,
-                                'marca'              => $row[23] ?: null,
-                                'etiqueta'           => $row[30] ?: null,
-                                'diametro'           => $diametroNum,
-                                'longitud'           => $longNum,
-                                'barras'             => (int) $barrasNum,
-                                'dobles_barra'       => (int) $doblesNum,
-                                'peso'               => $pesoNum,
-                                'dimensiones'        => $row[47] ?? null,
-                                'tiempo_fabricacion' => $tiempos['tiempo_fabricacion'],
-                            ], [
-                                'planilla'  => $codigoPlanilla,
-                                'excel_row' => $excelRow,
-                            ]);
-                        }
-
-
-                        // Actualizar peso/marca de la sub-etiqueta
-                        $subEtiqueta->update([
-                            'peso'  => $subEtiqueta->elementos()->sum('peso'),
-                            'marca' => $subEtiqueta->elementos()
-                                ->whereNotNull('marca')
-                                ->select('marca', DB::raw('COUNT(*) as total'))
-                                ->groupBy('marca')
-                                ->orderByDesc('total')
-                                ->value('marca'),
+                            'excel_row' => $excelRow,
                         ]);
                     }
+
+                    // Actualizar peso/marca de la sub-etiqueta
+                    $subEtiqueta->update([
+                        'peso'  => $subEtiqueta->elementos()->sum('peso'),
+                        'marca' => $subEtiqueta->elementos()
+                            ->whereNotNull('marca')
+                            ->select('marca', DB::raw('COUNT(*) as total'))
+                            ->groupBy('marca')
+                            ->orderByDesc('total')
+                            ->value('marca'),
+                    ]);
                 }
 
-                /* -------------------------------------------------- */
-                /*  Crear orden_planillas una sola vez por máquina    */
-                /* -------------------------------------------------- */
-                foreach (array_keys($maquinasUsadas ?? []) as $maquina_id) {
+                // ✅ Repartir máquinas AHORA para esta planilla
+                $this->asignador->repartirPlanilla($planilla->id);
+
+                // ✅ Crear orden_planillas por cada máquina realmente usada
+                $maquinasUsadas = Elemento::where('planilla_id', $planilla->id)
+                    ->whereNotNull('maquina_id')
+                    ->distinct()
+                    ->pluck('maquina_id')
+                    ->all();
+
+                foreach ($maquinasUsadas as $maquina_id) {
                     OrdenPlanilla::firstOrCreate(
                         ['planilla_id' => $planilla->id, 'maquina_id' => $maquina_id],
                         ['posicion'    => (OrdenPlanilla::where('maquina_id', $maquina_id)->max('posicion') ?? 0) + 1]
                     );
                 }
 
-                /* -------------------------------------------------- */
-                /*  Tiempo total planilla                             */
-                /* -------------------------------------------------- */
+                // Tiempo total planilla
                 $elementos   = $planilla->elementos;
                 $tiempoTotal = $elementos->sum('tiempo_fabricacion') + $elementos->count() * 1200;
                 $planilla->update(['tiempo_fabricacion' => $tiempoTotal]);
-            } // fin foreach planillas
+            }  // fin foreach planillas
+
+            // ✅ Repartir automáticamente las máquinas de todas las planillas importadas
+            foreach (Planilla::whereIn('codigo', array_keys($planillas))->get() as $planilla) {
+                $this->asignador->repartirPlanilla($planilla->id);
+            }
 
             /* ------------------------------------------------------ */
             /*  Fin: commit + mensaje                                 */

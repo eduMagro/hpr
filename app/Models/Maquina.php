@@ -26,6 +26,7 @@ class Maquina extends Model
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'tiene_carro' => 'boolean',
     ];
 
     public function usuarios()
@@ -57,5 +58,10 @@ class Maquina extends Model
     public function obra()
     {
         return $this->belongsTo(Obra::class);
+    }
+
+    public static function naveA()
+    {
+        return self::whereHas('obra', fn($q) => $q->where('obra', 'Nave A'));
     }
 }

@@ -376,33 +376,55 @@ class ProduccionController extends Controller
         });
 
         // 🔹 2. ELEMENTOS ACTIVOS (para eventos del calendario)
-        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina'])
+        $elementos = Elemento::with(['planilla', 'planilla.obra', 'maquina', 'maquina_2', 'maquina_3'])
             ->whereHas('planilla', fn($q) => $q->whereIn('estado', ['pendiente', 'fabricando']))
             ->get();
+        $maquinaReal = function ($e) {
+            $tipo1 = optional($e->maquina)->tipo;      // según maquina_id
+            $tipo2 = optional($e->maquina_2)->tipo;    // según maquina_id_2
+            $tipo3 = optional($e->maquina_3)->tipo;    // según maquina_id_3
 
-        // Agrupamos primero por planilla + máquina "real" (según tipo)
-        $planillasAgrupadas = $elementos->groupBy(function ($e) {
-            $tipo = optional($e->maquina)->tipo;
-            $maquinaId = match ($tipo) {
-                'ensambladora' => $e->maquina_id_2,
-                'soldadora'    => $e->maquina_id_3 ?? $e->maquina_id,
-                default        => $e->maquina_id,
-            };
-            return $e->planilla_id . '-' . $maquinaId;
-        })->map(function ($grupo) {
-            $primerElemento = $grupo->first();
-            $tipo = optional($primerElemento->maquina)->tipo;
-            $maquinaId = match ($tipo) {
-                'ensambladora' => $primerElemento->maquina_id_2,
-                'soldadora'    => $primerElemento->maquina_id_3 ?? $primerElemento->maquina_id,
-                default        => $primerElemento->maquina_id,
-            };
-            return [
-                'planilla'   => $primerElemento->planilla,
-                'elementos'  => $grupo,
-                'maquina_id' => $maquinaId,
-            ];
-        })->filter(fn($data) => !is_null($data['maquina_id']));
+            // Ensambladora: planificamos en la maquina_id_2
+            if ($tipo1 === 'ensambladora') {
+                return $e->maquina_id_2;
+            }
+
+            // Soldadora: prioriza maquina_id_3 si existe
+            if ($tipo1 === 'soldadora') {
+                return $e->maquina_id_3 ?? $e->maquina_id;
+            }
+
+            // Dobladora manual en primaria
+            if ($tipo1 === 'dobladora manual') {
+                return $e->maquina_id;
+            }
+
+            // Dobladora manual en secundaria (ej. etiquetas "pates" que derivamos a dobladora)
+            if ($tipo2 === 'dobladora manual') {
+                return $e->maquina_id_2;
+            }
+
+            // Caso general
+            return $e->maquina_id;
+        };
+
+        $planillasAgrupadas = $elementos
+            ->groupBy(function ($e) use ($maquinaReal) {
+                $maquinaId = $maquinaReal($e);
+                return $e->planilla_id . '-' . $maquinaId;
+            })
+            ->map(function ($grupo) use ($maquinaReal) {
+                $primero   = $grupo->first();
+                $maquinaId = $maquinaReal($primero);
+
+                return [
+                    'planilla'   => $primero->planilla,
+                    'elementos'  => $grupo,
+                    'maquina_id' => $maquinaId,
+                ];
+            })
+            ->filter(fn($data) => !is_null($data['maquina_id']));
+
 
         // 🔹 3. Calcular colas iniciales de cada máquina
         $colasMaquinas = [];

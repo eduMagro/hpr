@@ -13,7 +13,7 @@ const gapSpacing = 25;
 const minSlotHeight = 50;
 
 // “recrecimiento” (en UNIDADES de las dimensiones, no en píxeles)
-const OVERLAP_GROW_UNITS = 5;
+const OVERLAP_GROW_UNITS = 1;
 
 // tamaños de texto y separación de cotas
 const SIZE_MAIN_TEXT = 14;

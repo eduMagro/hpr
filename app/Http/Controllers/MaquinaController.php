@@ -131,9 +131,7 @@ class MaquinaController extends Controller
 
     public function show($id)
     {
-        // ---------------------------------------------------------------
-        // 1) Cargar la máquina con relaciones necesarias precargadas
-        // ---------------------------------------------------------------
+        // 0) Cargar la máquina y activar tareas auxiliares
         $maquina = Maquina::with([
             'elementos.planilla',
             'elementos.etiquetaRelacion',
@@ -144,236 +142,59 @@ class MaquinaController extends Controller
             'productos'
         ])->findOrFail($id);
 
-        // 👉 Antes de cargar la vista, ejecutamos el método auxiliar
         $this->activarMovimientosSalidasHoy();
-        // ---------------------------------------------------------------
-        // 2) Buscar la ubicación vinculada al código de la máquina
-        // ---------------------------------------------------------------
-        $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
-        $maquinas = Maquina::orderBy('nombre')->get();
 
-        // ---------------------------------------------------------------
-        // 3) Obtener productos base compatibles según tipo y diámetro
-        // ---------------------------------------------------------------
-        $productosBaseCompatibles = ProductoBase::where('tipo', $maquina->tipo_material)
-            ->whereBetween('diametro', [$maquina->diametro_min, $maquina->diametro_max])
-            ->orderBy('diametro')
-            ->get();
+        // 1) Contexto base común (ubicación, usuarios, combos, etc.)
+        $base = $this->cargarContextoBase($maquina);
 
-        // ---------------------------------------------------------------
-        // 4) Obtener usuario autenticado y compañero de sesión (si existe)
-        // ---------------------------------------------------------------
-        $usuario1 = auth()->user();
-        $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
+        // 2) Branch por tipo de máquina
+        if ($this->esGrua($maquina)) {
+            // ------- MÁQUINA TIPO GRÚA -------
+            $grua = $this->cargarContextoGrua($maquina);
 
-        $usuario2 = null;
-        if (Session::has('compañero_id')) {
-            $usuario2 = User::find(Session::get('compañero_id'));
-            if ($usuario2) {
-                $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
-            }
+            // variables neutras para la vista
+            $elementosMaquina          = collect();
+            $pesosElementos            = [];
+            $etiquetasData             = collect();
+            $elementosReempaquetados   = session('elementos_reempaquetados', []);
+            $elementosAgrupados        = collect();
+            $elementosAgrupadosScript  = collect();
+
+            return view('maquinas.show', array_merge($base, $grua, compact(
+                'maquina',
+                'elementosMaquina',
+                'pesosElementos',
+                'etiquetasData',
+                'elementosReempaquetados',
+                'elementosAgrupados',
+                'elementosAgrupadosScript',
+            )));
         }
 
-        // ---------------------------------------------------------------
-        // 5) Obtener todos los elementos asignados a la máquina
-        // ---------------------------------------------------------------
-        $elementosMaquina = $maquina->elementos()->with('subetiquetas')->get();
-
-        // ---------------------------------------------------------------
-        // 6) Si es grúa, obtener movimientos asociados
-        // ---------------------------------------------------------------
-        if (stripos($maquina->tipo, 'grua') !== false) {
-            $ubicacionesDisponiblesPorProductoBase = [];
-
-            $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion', 'pedido.fabricante', 'productoBase'])
-                ->where('estado', 'pendiente')
-                ->orderBy('prioridad', 'asc')
+        // ------- MÁQUINA NORMAL (PRIMERA) O SEGUNDA -------
+        if ($this->esSegundaMaquina($maquina)) {
+            // SEGUNDA: elementos con maquina_id_2 = esta máquina
+            $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2'])
+                ->where('maquina_id_2', $maquina->id)
                 ->get();
-
-            $movimientosCompletados = Movimiento::with(['solicitadoPor', 'ejecutadoPor', 'producto.ubicacion', 'productoBase'])
-                ->where('estado', 'completado')
-                ->where('ejecutado_por', auth()->id())
-                ->orderBy('updated_at', 'desc')
-                ->take(20)
-                ->get();
-
-            $pedidosActivos = Pedido::where('estado', 'activo')->orderBy('updated_at', 'desc')->get();
-
-            foreach ($movimientosPendientes as $mov) {
-                if ($mov->producto_base_id) {
-                    $productosCompatibles = Producto::with('ubicacion')
-                        ->where('producto_base_id', $mov->producto_base_id)
-                        ->where('estado', 'almacenado')
-                        ->get();
-
-                    $ubicaciones = $productosCompatibles->filter(fn($p) => $p->ubicacion)
-                        ->map(fn($p) => [
-                            'id' => $p->ubicacion->id,
-                            'nombre' => $p->ubicacion->nombre,
-                            'producto_id' => $p->id,
-                            'codigo' => $p->codigo,
-                        ])->unique('id')->values()->toArray();
-
-                    $ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] = $ubicaciones;
-                }
-            }
         } else {
-            $movimientosPendientes = collect();
-            $movimientosCompletados = collect();
-            $ubicacionesDisponiblesPorProductoBase = [];
-            $pedidosActivos = collect();
-        }
-
-        // ---------------------------------------------------------------
-        // 7) Seleccionar la primera planilla activa con elementos pendientes
-        // ---------------------------------------------------------------
-        // 7️⃣ Agrupar elementos por planilla_id
-        $elementosPorPlanilla = $elementosMaquina->groupBy('planilla_id');
-
-        // 🧠 Obtener las posiciones desde la relación planillas_orden
-        $ordenManual = OrdenPlanilla::where('maquina_id', $maquina->id)
-            ->get()
-            ->pluck('posicion', 'planilla_id'); // [planilla_id => posicion]
-        // dd($ordenManual);
-        // 🔁 Ordenar los grupos de elementos usando ese orden manual
-        $elementosPorPlanilla = $elementosPorPlanilla->sortBy(function ($grupo, $planillaId) use ($ordenManual) {
-            return $ordenManual[$planillaId] ?? PHP_INT_MAX; // Si no hay orden, lo manda al final
-        });
-
-        $planillaActiva = null;
-
-        foreach ($elementosPorPlanilla as $grupo) {
-            $planilla = $grupo->first()->planilla;
-
-            // ⚠️ Solo continuar si la planilla sigue en la cola de esta máquina
-            if (!$ordenManual->has($planilla->id)) {
-                continue;
-            }
-
-            // Si es ensambladora con carcasa, aplicar la lógica especial
-            if (
-                str_contains(strtolower($maquina->tipo), 'ensambladora') &&
-                str_contains(strtolower($planilla->ensamblado), 'carcasas')
-            ) {
-                $tieneRelacionCorrecta = $grupo->contains(
-                    fn($e) =>
-                    $e->maquina_id == $maquina->id || $e->maquina_id_2 == $maquina->id
-                );
-
-                if (!$tieneRelacionCorrecta) continue;
-            }
-
-            $planillaActiva = $planilla;
-            break;
-        }
-
-
-        $elementosMaquina = $planillaActiva ? $elementosMaquina->where('planilla_id', $planillaActiva->id) : collect();
-
-        // ---------------------------------------------------------------
-        // 8) Si es ensambladora, incluir elementos relacionados de otras máquinas
-        // ---------------------------------------------------------------
-        if (
-            stripos($maquina->tipo, 'ensambladora') !== false &&
-            $planillaActiva &&
-            str_contains(strtolower(trim($planillaActiva->ensamblado)), 'carcasas')
-        ) {
-            // 1. Añadir estribos que vienen de otras máquinas (maquina_id_2 = ensambladora actual)
-            $elementosExtra = Elemento::where('maquina_id_2', $maquina->id)
-                ->where('maquina_id', '!=', $maquina->id)
+            // PRIMERA: elementos con maquina_id = esta máquina
+            // (si tienes relation $maquina->elementos ya lo filtra; lo dejo explícito para claridad)
+            $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina'])
+                ->where('maquina_id', $maquina->id)
                 ->get();
-
-            $elementosMaquina = $elementosMaquina->merge($elementosExtra);
-
-            // 2. Obtener las bases de subetiquetas de los estribos (ej: ETQ-25-001.02 → etq-25-001)
-            $bases = $elementosExtra->pluck('etiqueta_sub_id')
-                ->map(fn($id) => strtolower(preg_replace('/[\.\-]\d+$/', '', $id)))
-                ->unique()
-                ->values()
-                ->all();
-
-            // 3. Buscar elementos de diámetro 5 que coincidan con esas bases
-            $elementosFinales = Elemento::where(function ($query) use ($bases) {
-                foreach ($bases as $base) {
-                    $query->orWhere('etiqueta_sub_id', 'like', "$base-%")
-                        ->orWhere('etiqueta_sub_id', 'like', "$base.%");
-                }
-            })
-                ->where('diametro', 5.00)
-                ->whereHas('maquina', fn($q) => $q->where('tipo', 'like', '%ensambladora%'))
-                ->get();
-
-            // 4. Añadirlos si no estaban ya
-            $idsExistentes = $elementosMaquina->pluck('id')->toArray();
-            $elementosFinalesFiltrados = $elementosFinales->filter(fn($e) => !in_array($e->id, $idsExistentes));
-            $elementosMaquina = $elementosMaquina->merge($elementosFinalesFiltrados);
-
-            // 5. Fusión de subetiquetas: asignar a todos los de misma base la subetiqueta más significativa
-            $agrupadasPorBase = $elementosMaquina->groupBy(function ($e) {
-                return preg_replace('/[\.\-]\d+$/', '', $e->etiqueta_sub_id);
-            });
-
-            foreach ($agrupadasPorBase as $base => $grupo) {
-                // Cargar etiquetas del grupo
-                $etiquetas = Etiqueta::whereIn('id', $grupo->pluck('etiqueta_id')->unique())->get();
-
-                // Buscar la que tiene tiempos
-                $etiquetaConTiempos = $etiquetas->first(function ($etq) {
-                    return $etq->fecha_inicio || $etq->fecha_finalizacion;
-                });
-
-                if (!$etiquetaConTiempos) continue;
-
-                $subIdCorrecto = $etiquetaConTiempos->etiqueta_sub_id;
-                $etiquetaIdCorrecto = $etiquetaConTiempos->id;
-
-                foreach ($grupo as $elemento) {
-                    if (
-                        $elemento->etiqueta_id !== $etiquetaIdCorrecto &&
-                        $elemento->etiqueta_sub_id !== $subIdCorrecto
-                    ) {
-                        $etiquetaAntigua = Etiqueta::find($elemento->etiqueta_id);
-
-                        $elemento->etiqueta_id = $etiquetaIdCorrecto;
-                        $elemento->etiqueta_sub_id = $subIdCorrecto;
-                        $elemento->save();
-
-                        // Si la antigua etiqueta ya no tiene elementos, eliminarla
-                        if (
-                            $etiquetaAntigua &&
-                            !Elemento::where('etiqueta_id', $etiquetaAntigua->id)->exists()
-                        ) {
-                            $etiquetaAntigua->delete();
-                        }
-                    }
-                }
-            }
-
-
-
-            // 6. 🔴 FILTRAR: solo estribos o ensambladora con base válida
-            $elementosMaquina = $elementosMaquina->filter(function ($e) use ($bases) {
-                if (!$e->maquina) return true;
-
-                $tipo = strtolower($e->maquina->tipo);
-                $baseElemento = strtolower(preg_replace('/[\.\-]\d+$/', '', $e->etiqueta_sub_id));
-
-                return str_contains($tipo, 'estribadora') ||
-                    ($e->diametro == 5.00 && str_contains($tipo, 'ensambladora') && in_array($baseElemento, $bases));
-            });
         }
 
+        // 3) Seleccionar planilla activa según orden manual (OrdenPlanilla)
+        [$planillaActiva, $elementosMaquina] = $this->aplicarColaPlanillas($maquina, $elementosMaquina);
 
+        // 4) Empaquetados visuales + datasets que usas en canvas/tabla
+        $pesosElementos  = $elementosMaquina->map(fn($e) => ['id' => $e->id, 'peso' => $e->peso])->values()->toArray();
 
-        // ---------------------------------------------------------------
-        // 9) Calcular pesos por elemento y agrupar etiquetas
-        // ---------------------------------------------------------------
-        $pesosElementos = $elementosMaquina->map(fn($e) => ['id' => $e->id, 'peso' => $e->peso])->values()->toArray();
-
-        $etiquetasData = $elementosMaquina->filter(fn($e) => !empty($e->etiqueta_sub_id))
+        $etiquetasData = $elementosMaquina
+            ->filter(fn($e) => !empty($e->etiqueta_sub_id))
             ->groupBy('etiqueta_sub_id')
             ->sortBy(function ($grupo, $subId) {
-                // prefijo + sufijo numérico con padding
                 if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
                     return sprintf('%s-%010d', $m[1], (int) $m[2]);
                 }
@@ -386,30 +207,8 @@ class MaquinaController extends Controller
             ])
             ->values();
 
-
-        // ---------------------------------------------------------------
-        // 10) Agrupar visualmente los elementos filtrados por subetiqueta
-        // ---------------------------------------------------------------
-        $elementosReempaquetados = Session::get('elementos_reempaquetados', []);
-        $idsReempaquetados = collect($elementosReempaquetados);
-
-        function debeSerExcluido($e)
-        {
-            return $e->estado === 'fabricado' && !is_null(optional($e->etiquetaRelacion)->paquete_id);
-        }
-
-
-        $elementosFiltrados = $elementosMaquina->filter(function ($e) use ($maquina) {
-            if (stripos($maquina->tipo, 'ensambladora') !== false) {
-                return $e->maquina_id_2 == $maquina->id || $e->maquina_id == $maquina->id || $e->planilla_id == optional($e->planilla)->id;
-            }
-            if (stripos($maquina->nombre, 'soldadora') !== false) {
-                return !debeSerExcluido($e) && $e->maquina_id_3 == $maquina->id && strtolower(optional($e->etiquetaRelacion)->estado ?? '') === 'soldando';
-            }
-            return !debeSerExcluido($e);
-        });
-
-        $elementosAgrupados = $elementosFiltrados
+        $elementosReempaquetados = session('elementos_reempaquetados', []);
+        $elementosAgrupados = $elementosMaquina
             ->groupBy('etiqueta_sub_id')
             ->sortBy(function ($grupo, $subId) {
                 if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
@@ -418,54 +217,175 @@ class MaquinaController extends Controller
                 return $subId . '-0000000000';
             });
 
-
         $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
-            'etiqueta' => $grupo->first()->etiquetaRelacion,
-            'planilla' => $grupo->first()->planilla,
-            'elementos' => $grupo->map(fn($e) => [
-                'id' => $e->id,
+            'etiqueta'   => $grupo->first()->etiquetaRelacion,
+            'planilla'   => $grupo->first()->planilla,
+            'elementos'  => $grupo->map(fn($e) => [
+                'id'         => $e->id,
                 'codigo'     => $e->codigo,
                 'dimensiones' => $e->dimensiones,
-                'estado' => $e->estado,
-                'peso' => $e->peso_kg,
-                'diametro' => $e->diametro_mm,
-                'longitud' => $e->longitud_cm,
-                'barras' => $e->barras,
-                'figura' => $e->figura,
+                'estado'     => $e->estado,
+                'peso'       => $e->peso_kg,
+                'diametro'   => $e->diametro_mm,
+                'longitud'   => $e->longitud_cm,
+                'barras'     => $e->barras,
+                'figura'     => $e->figura,
             ])->values(),
         ])->values();
 
-        // ---------------------------------------------------------------
-        // 11) Calcular el turno que tiene el usuario autenticado hoy
-        // ---------------------------------------------------------------
+        // 5) Turno hoy del usuario
         $turnoHoy = AsignacionTurno::where('user_id', auth()->id())
             ->whereDate('fecha', now())
-            ->with('maquina') // si quieres info adicional de la máquina
+            ->with('maquina')
             ->first();
 
-        // ---------------------------------------------------------------
-        // 11) Retornar vista con todos los datos precargados
-        // ---------------------------------------------------------------
-        return view('maquinas.show', compact(
+        // 6) variables “grúa” vacías para mantener la vista estable
+        $movimientosPendientes = collect();
+        $movimientosCompletados = collect();
+        $ubicacionesDisponiblesPorProductoBase = [];
+        $pedidosActivos = collect();
+
+        return view('maquinas.show', array_merge($base, compact(
             'maquina',
-            'ubicacion',
-            'usuario1',
-            'usuario2',
             'elementosMaquina',
             'pesosElementos',
             'etiquetasData',
             'elementosReempaquetados',
-            'maquinas',
             'movimientosPendientes',
             'movimientosCompletados',
             'ubicacionesDisponiblesPorProductoBase',
-            'productosBaseCompatibles',
             'pedidosActivos',
             'elementosAgrupados',
             'elementosAgrupadosScript',
             'turnoHoy'
-        ));
+        )));
     }
+
+    /* =========================
+   HELPERS PRIVADOS
+   ========================= */
+
+    private function esGrua(Maquina $m): bool
+    {
+        return stripos((string)$m->tipo, 'grua') !== false || stripos((string)$m->nombre, 'grua') !== false;
+    }
+
+    // Si tienes un campo explícito para “segunda” úsalo aquí.
+    // Por defecto asumo “segunda” = máquinas que trabajan como post-proceso, p.ej. ensambladora.
+    private function esSegundaMaquina(Maquina $m): bool
+    {
+        $tipo = strtolower((string)$m->tipo);
+
+        return str_contains($tipo, 'ensambladora')
+            || str_contains($tipo, 'dobladora manual')   // 👈 añade esto
+            || (property_exists($m, 'orden') && (int)$m->orden === 2);
+    }
+
+
+    private function cargarContextoBase(Maquina $maquina): array
+    {
+        $ubicacion = Ubicacion::where('descripcion', 'like', "%{$maquina->codigo}%")->first();
+        $maquinas  = Maquina::orderBy('nombre')->get();
+
+        $productosBaseCompatibles = ProductoBase::where('tipo', $maquina->tipo_material)
+            ->whereBetween('diametro', [$maquina->diametro_min, $maquina->diametro_max])
+            ->orderBy('diametro')
+            ->get();
+
+        $usuario1 = auth()->user();
+        $usuario1->name = html_entity_decode($usuario1->name, ENT_QUOTES, 'UTF-8');
+
+        $usuario2 = null;
+        if (Session::has('compañero_id')) {
+            $usuario2 = User::find(Session::get('compañero_id'));
+            if ($usuario2) $usuario2->name = html_entity_decode($usuario2->name, ENT_QUOTES, 'UTF-8');
+        }
+
+        // ✅ turnoHoy común a todos los flujos (incluida grúa)
+        $turnoHoy = AsignacionTurno::where('user_id', auth()->id())
+            ->whereDate('fecha', now())
+            ->with('maquina')
+            ->first();
+
+        return compact('ubicacion', 'maquinas', 'productosBaseCompatibles', 'usuario1', 'usuario2', 'turnoHoy');
+    }
+
+
+    private function cargarContextoGrua(Maquina $maquina): array
+    {
+        $ubicacionesDisponiblesPorProductoBase = [];
+
+        $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion', 'pedido.fabricante', 'productoBase'])
+            ->where('estado', 'pendiente')
+            ->orderBy('prioridad', 'asc')
+            ->get();
+
+        $movimientosCompletados = Movimiento::with(['solicitadoPor', 'ejecutadoPor', 'producto.ubicacion', 'productoBase'])
+            ->where('estado', 'completado')
+            ->where('ejecutado_por', auth()->id())
+            ->orderBy('updated_at', 'desc')
+            ->take(20)
+            ->get();
+
+        $pedidosActivos = Pedido::where('estado', 'activo')->orderBy('updated_at', 'desc')->get();
+
+        foreach ($movimientosPendientes as $mov) {
+            if ($mov->producto_base_id) {
+                $productosCompatibles = Producto::with('ubicacion')
+                    ->where('producto_base_id', $mov->producto_base_id)
+                    ->where('estado', 'almacenado')
+                    ->get();
+
+                $ubicaciones = $productosCompatibles->filter(fn($p) => $p->ubicacion)
+                    ->map(fn($p) => [
+                        'id'         => $p->ubicacion->id,
+                        'nombre'     => $p->ubicacion->nombre,
+                        'producto_id' => $p->id,
+                        'codigo'     => $p->codigo,
+                    ])->unique('id')->values()->toArray();
+
+                $ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] = $ubicaciones;
+            }
+        }
+
+        return compact('movimientosPendientes', 'movimientosCompletados', 'ubicacionesDisponiblesPorProductoBase', 'pedidosActivos');
+    }
+
+    /**
+     * Devuelve [planillaActiva, elementosFiltradosAPlanillaActiva]
+     * según el orden manual (OrdenPlanilla) de esta máquina.
+     */
+    private function aplicarColaPlanillas(Maquina $maquina, \Illuminate\Support\Collection $elementos)
+    {
+        // Agrupar por planilla
+        $elementosPorPlanilla = $elementos->groupBy('planilla_id');
+
+        // Orden manual
+        $ordenManual = OrdenPlanilla::where('maquina_id', $maquina->id)
+            ->get()
+            ->pluck('posicion', 'planilla_id'); // [planilla_id => posicion]
+
+        $elementosPorPlanilla = $elementosPorPlanilla->sortBy(function ($grupo, $planillaId) use ($ordenManual) {
+            return $ordenManual[$planillaId] ?? PHP_INT_MAX;
+        });
+
+        $planillaActiva = null;
+        foreach ($elementosPorPlanilla as $grupo) {
+            $planilla = $grupo->first()->planilla;
+            if (!$planilla || !$ordenManual->has($planilla->id)) {
+                continue;
+            }
+            $planillaActiva = $planilla;
+            break;
+        }
+
+        $elementosFiltrados = $planillaActiva
+            ? $elementos->where('planilla_id', $planillaActiva->id)->values()
+            : collect();
+
+        return [$planillaActiva, $elementosFiltrados];
+    }
+
     private function activarMovimientosSalidasHoy(): void
     {
         // 👉 Fecha actual (sin hora)

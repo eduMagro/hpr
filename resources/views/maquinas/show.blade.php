@@ -39,11 +39,15 @@
                 <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :movimientosCompletados="$movimientosCompletados" :ubicacionesDisponiblesPorProductoBase="$ubicacionesDisponiblesPorProductoBase" />
 
                 @include('components.maquinas.modales.grua.modales-grua')
-            @elseif ($maquina->tipo === 'cortadora_manual')
+            @elseif ($maquina->tipo === 'dobladora manual')
+                <x-maquinas.tipo.tipo-dobladora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
+                    :productosBaseCompatibles="$productosBaseCompatibles" />
+            @elseif ($maquina->tipo === 'cortadora manual')
                 <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
                     :productosBaseCompatibles="$productosBaseCompatibles" />
             @else
-                <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados" :productosBaseCompatibles="$productosBaseCompatibles" />
+                <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
+                    :productosBaseCompatibles="$productosBaseCompatibles" />
 
                 @include('components.maquinas.modales.normal.modales-normal')
             @endif
@@ -57,6 +61,10 @@
         <script>
             window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
             window.rutaDividirElemento = "{{ route('elementos.dividir') }}";
+            window.etiquetasData = @json($etiquetasData);
+            window.pesosElementos = @json($pesosElementos);
+            window.maquinaId = @json($maquina->id);
+            window.ubicacionId = @json(optional($ubicacion)->id);
         </script>
 
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>

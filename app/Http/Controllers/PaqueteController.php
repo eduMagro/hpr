@@ -211,7 +211,7 @@ class PaqueteController extends Controller
 
     public function store(Request $request)
     {
-        // Validación de entrada
+        // 1) Validación
         $request->validate([
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|string',
@@ -219,7 +219,7 @@ class PaqueteController extends Controller
             'maquina_id' => 'required|integer|exists:maquinas,id'
         ]);
 
-        // Verificar la integridad de los items (completitud y asignación previa)
+        // 2) Verificación previa
         $warnings = $this->verificarItems($request->items, $request->input('maquina_id'));
         if ($warnings !== null && !$request->boolean('confirmar')) {
             return response()->json([
@@ -231,7 +231,7 @@ class PaqueteController extends Controller
         try {
             DB::beginTransaction();
 
-            // Separar items según su tipo
+            // 3) Separar items
             $etiquetasSubIds = collect($request->items)
                 ->where('type', 'etiqueta')
                 ->pluck('id')
@@ -242,12 +242,9 @@ class PaqueteController extends Controller
                 ->pluck('id')
                 ->toArray();
 
-            // Obtener los elementos de etiquetas (por sub_id) y elementos directos
             $elementosDesdeEtiquetas = Elemento::whereIn('etiqueta_sub_id', $etiquetasSubIds)->get();
-            $elementosDirectos = Elemento::whereIn('id', $elementosIds)->get();
-
-            // Unir todos los elementos
-            $todosElementos = $elementosDesdeEtiquetas->merge($elementosDirectos);
+            $elementosDirectos       = Elemento::whereIn('id', $elementosIds)->get();
+            $todosElementos          = $elementosDesdeEtiquetas->merge($elementosDirectos);
 
             if ($todosElementos->isEmpty()) {
                 DB::rollBack();
@@ -257,12 +254,11 @@ class PaqueteController extends Controller
                 ], 400);
             }
 
-            // Obtener la máquina
-            $maquinaId = $request->input('maquina_id');
-            $maquina = Maquina::findOrFail($maquinaId);
+            // 4) Máquina y planilla
+            $maquinaId     = $request->input('maquina_id');
+            $maquina       = Maquina::findOrFail($maquinaId);
             $codigoMaquina = $maquina->codigo;
 
-            // Obtener la planilla
             $planilla = $todosElementos->first()->planilla ?? null;
             if (!$planilla) {
                 DB::rollBack();
@@ -273,61 +269,119 @@ class PaqueteController extends Controller
             }
             $codigo_planilla = $planilla->codigo_limpio;
 
-            // Calcular peso total
+            // 5) Peso total
             $pesoTotal = $todosElementos->sum('peso');
             if ($pesoTotal > 1300) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => "El peso total del paquete ($pesoTotal kg) supera el límite permitido de 1200 kg."
+                    'message' => "El peso total del paquete ({$pesoTotal} kg) supera el límite permitido de 1300 kg."
                 ], 400);
             }
 
-            // Obtener la ubicación
+            // 6) Ubicación
             if (stripos($maquina->nombre, 'idea 5') !== false) {
                 $ubicacion = Ubicacion::where('descripcion', 'LIKE', '%Sector Final%')->first();
             } else {
-                $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%$codigoMaquina%")->first();
+                $ubicacion = Ubicacion::where('descripcion', 'LIKE', "%{$codigoMaquina}%")->first();
             }
 
             if (!$ubicacion) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
-                    'message' => "No se encontró una ubicación con el nombre de la máquina: $codigoMaquina."
+                    'message' => "No se encontró una ubicación con el nombre de la máquina: {$codigoMaquina}."
                 ], 400);
             }
 
-            $codigo = Paquete::generarCodigo(); // ← Aquí generas el código
-            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal, $codigo); // ← Se lo pasas
+            // 7) ⬅️ Capturamos los paquetes ANTERIORES de esas subetiquetas (antes de reasignar)
+            $paquetesPrevios = DB::table('etiquetas')
+                ->whereIn('etiqueta_sub_id', $etiquetasSubIds)
+                ->whereNotNull('paquete_id')
+                ->pluck('paquete_id')
+                ->unique()
+                ->values()
+                ->all();
+
+            // 8) Crear paquete NUEVO
+            $codigo  = Paquete::generarCodigo();
+            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal, $codigo);
+
+            // 9) Reasignar etiquetas al NUEVO paquete
+            $this->asignarEtiquetasAPaquete($etiquetasSubIds, $paquete->id);
+
+            // 10) Check de seguridad: ¿el nuevo paquete quedó vacío?
+            $etiquetasAsignadasNuevo = DB::table('etiquetas')
+                ->where('paquete_id', $paquete->id)
+                ->count();
+
+            if ((int)$etiquetasAsignadasNuevo === 0) {
+                Log::info('Paquete nuevo eliminado por quedar sin etiquetas asignadas', [
+                    'paquete_id'  => $paquete->id,
+                    'planilla_id' => $planilla->id,
+                    'maquina_id'  => $maquina->id,
+                    'items_input' => $etiquetasSubIds,
+                ]);
+
+                $paquete->delete();
+                DB::rollBack();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se reasignó ninguna etiqueta al nuevo paquete.'
+                ], 400);
+            }
+
+            // 11) ✅ Borrar paquetes ANTERIORES que hayan quedado vacíos tras la reasignación
+            foreach ($paquetesPrevios as $paqueteAnteriorId) {
+                // por seguridad, evita tocar el recién creado (no debería estar en la lista)
+                if ((int)$paqueteAnteriorId === (int)$paquete->id) {
+                    continue;
+                }
+
+                $restantes = DB::table('etiquetas')
+                    ->where('paquete_id', $paqueteAnteriorId)
+                    ->count();
+
+                if ((int)$restantes === 0) {
+                    Paquete::where('id', $paqueteAnteriorId)->delete();
+                    Log::info('Paquete anterior eliminado por quedar vacío', [
+                        'paquete_id'  => $paqueteAnteriorId,
+                        'nuevo_id'    => $paquete->id,
+                        'planilla_id' => $planilla->id,
+                    ]);
+                }
+            }
+
+            // 12) Retirar de la cola de ESTA máquina si ya no quedan etiquetas en ESTA máquina
             (new PlanillaColaService)
                 ->retirarPlanillaDeColaSiNoQuedanEtiquetasEnMaquina($planilla, $maquina);
 
-            // Crear movimiento de paquete pendiente
-            Movimiento::create([
-                'tipo' => 'Bajada de paquete',
-                'paquete_id'         => $paquete->id,
-                'solicitado_por'         => auth()->id(),
-                'descripcion'        => "Se solicita bajar del carro el paquete {$paquete->codigo} de la máquina {$maquina->nombre}",
-                'ubicacion_origen'   => $ubicacion->id,
-                'maquina_origen'     => $maquina->id,
-                'estado'             => 'pendiente',
-                'prioridad'          => 3,
-                'fecha_solicitud'    => now(),
-            ]);
+            // 13) Movimiento solo si tiene carro
+            if ($maquina->tiene_carro) {
+                Movimiento::create([
+                    'tipo'             => 'Bajada de paquete',
+                    'paquete_id'       => $paquete->id,
+                    'solicitado_por'   => auth()->id(),
+                    'descripcion'      => "Se solicita bajar del carro el paquete {$paquete->codigo} de la máquina {$maquina->nombre}",
+                    'ubicacion_origen' => $ubicacion->id,
+                    'maquina_origen'   => $maquina->id,
+                    'estado'           => 'pendiente',
+                    'prioridad'        => 3,
+                    'fecha_solicitud'  => now(),
+                ]);
+            }
 
-            // Asignar los elementos al paquete
-            $this->asignarEtiquetasAPaquete($etiquetasSubIds, $paquete->id);
-
+            // 14) Sesión de reempaquetados
             session(['elementos_reempaquetados' => $todosElementos->pluck('id')->toArray()]);
 
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'message' => 'Paquete creado correctamente.',
-                'paquete_id' => $paquete->id,
-                'codigo_paquete' => $codigo,
+                'success'         => true,
+                'message'         => 'Paquete creado correctamente.',
+                'paquete_id'      => $paquete->id,
+                'codigo_paquete'  => $codigo,
                 'codigo_planilla' => $codigo_planilla,
             ], 201);
         } catch (Exception $e) {
@@ -340,6 +394,7 @@ class PaqueteController extends Controller
             ], 500);
         }
     }
+
 
     private function verificarItems($items, $maquinaId)
     {
