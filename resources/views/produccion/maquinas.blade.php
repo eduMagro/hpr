@@ -201,7 +201,7 @@
                     const codigoPlanilla = info.event.extendedProps.codigo ?? info.event.title;
                     const maquinaOrigenId = info.oldResource?.id ?? info.event.getResources()[0]?.id;
                     const maquinaDestinoId = info.newResource?.id ?? info.event.getResources()[0]?.id;
-
+                    const elementosId = info.event.extendedProps.elementos_id || [];
                     const resultado = await Swal.fire({
                         title: '¿Reordenar planilla?',
                         html: `¿Quieres mover la planilla <strong>${codigoPlanilla}</strong> ${maquinaOrigenId !== maquinaDestinoId ? 'a otra máquina' : 'en la misma máquina'}?`,
@@ -221,14 +221,15 @@
                     const eventosOrdenados = calendar.getEvents()
                         .filter(ev => ev.getResources().some(r => r.id == maquinaDestinoId))
                         .sort((a, b) => a.start - b.start);
-
                     const nuevaPosicion = eventosOrdenados.findIndex(ev => ev.id === info.event.id) + 1;
-
+                    const mismaMaquina = String(maquinaOrigenId) === String(maquinaDestinoId);
                     const payload = {
                         id: planillaId,
                         maquina_id: maquinaDestinoId,
                         maquina_origen_id: maquinaOrigenId,
-                        nueva_posicion: nuevaPosicion
+                        misma_maquina: mismaMaquina, // 👈 nuevo
+                        nueva_posicion: nuevaPosicion,
+                        elementos_id: elementosId, // 👈 subset del evento
                     };
 
                     try {

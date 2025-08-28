@@ -270,7 +270,21 @@ class EtiquetaController extends Controller
                 $diametrosConPesos[$diametro] += $peso;
             }
             // Convertir los diámetros requeridos a enteros
+            // 2) Diámetros requeridos (normalizados)
             $diametrosRequeridos = array_map('intval', array_keys($diametrosConPesos));
+            \Log::info("🔍 Diametros requeridos", $diametrosRequeridos);
+
+            // Si por alguna razón no hay diametros (p.ej. diametro null en elementos), intenta derivarlos
+            if (empty($diametrosRequeridos)) {
+                $derivados = $elementosEnMaquina->pluck('diametro')
+                    ->filter(fn($d) => $d !== null && $d !== '')
+                    ->map(fn($d) => (int) round((float) $d))
+                    ->unique()
+                    ->values()
+                    ->all();
+                $diametrosRequeridos = $derivados;
+                \Log::info('🔄 Diametros requeridos derivados de elementos', $diametrosRequeridos);
+            }
             // -------------------------------------------- ESTADO PENDIENTE --------------------------------------------
             switch ($etiqueta->estado) {
                 case 'pendiente':
@@ -282,6 +296,9 @@ class EtiquetaController extends Controller
                         $elemento->estado = "fabricando";
                         $elemento->save();
                     }
+                    // Log diametros requeridos y productos antes de filtrar
+                    Log::info("🔍 Diametros requeridos", $diametrosRequeridos);
+                    Log::info("📦 Productos totales en máquina {$maquina->id}", $maquina->productos()->with('productoBase')->get()->toArray());
 
                     // ------- CONSUMOS
 
@@ -948,6 +965,13 @@ class EtiquetaController extends Controller
                         Elemento::where('etiqueta_sub_id', $etiqueta->etiqueta_sub_id)
                             ->where('maquina_id', $maquina->id)
                             ->update(['maquina_id_2' => $dobladora->id]);
+                        // 🔔 Generar movimiento para que el gruista lleve el paquete a la dobladora
+                        // $this->generarMovimientoEtiqueta(
+                        //     $maquina,
+                        //     $dobladora,
+                        //     (int) $etiqueta->etiqueta_sub_id,
+                        //     $etiqueta->planilla_id ?? optional($etiqueta->planilla)->id
+                        // );
 
                         // 3.b) Asegurar que la planilla aparece en la cola de la dobladora (orden_planillas)
                         $planillaId = $etiqueta->planilla_id ?? optional($etiqueta->planilla)->id;
@@ -1076,6 +1100,64 @@ class EtiquetaController extends Controller
 
         return true;
     }
+    /**
+     * Genera un movimiento "Movimiento paquete" para trasladar una subetiqueta
+     * (no requiere paquete_id aún). Deduplica por origen/destino + etiqueta_sub_id.
+     */
+    protected function generarMovimientoEtiqueta(
+        Maquina $origen,
+        Maquina $destino,
+        int $etiquetaSubId,
+        ?int $planillaId = null
+    ): void {
+        try {
+            $referencia = "etiqueta_sub {$etiquetaSubId}";
+
+            // 🛑 evitar duplicados
+            $yaExiste = Movimiento::where('tipo', 'Movimiento paquete')
+                ->where('estado', 'pendiente')
+                ->where('maquina_origen',  $origen->id)
+                ->where('maquina_destino', $destino->id)
+                ->where('descripcion', 'like', "%{$referencia}%")
+                ->lockForUpdate()
+                ->exists();
+
+            if ($yaExiste) {
+                Log::info('Movimiento paquete ya existente; no se duplica', [
+                    'origen'        => $origen->id,
+                    'destino'       => $destino->id,
+                    'etiqueta_sub'  => $etiquetaSubId,
+                    'planilla_id'   => $planillaId,
+                ]);
+                return;
+            }
+
+            Movimiento::create([
+                'tipo'             => 'Movimiento paquete',
+                'maquina_origen'   => $origen->id,
+                'maquina_destino'  => $destino->id,
+                'producto_id'      => null,
+                'producto_base_id' => null,
+                'estado'           => 'pendiente',
+                'descripcion'      => "Trasladar {$referencia}"
+                    . ($planillaId ? " (planilla {$planillaId})" : '')
+                    . " desde {$origen->nombre} hasta {$destino->nombre}.",
+                'prioridad'        => 1,
+                'fecha_solicitud'  => now(),
+                'solicitado_por'   => auth()->id(),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('Error al crear Movimiento paquete (etiqueta)', [
+                'maquina_origen'  => $origen->id,
+                'maquina_destino' => $destino->id,
+                'etiqueta_sub_id' => $etiquetaSubId,
+                'planilla_id'     => $planillaId,
+                'error'           => $e->getMessage(),
+            ]);
+            throw new \Exception('No se pudo registrar la solicitud de movimiento de paquete.');
+        }
+    }
+
     protected function generarMovimientoRecargaMateriaPrima(
         ProductoBase $productoBase,
         Maquina $maquina,

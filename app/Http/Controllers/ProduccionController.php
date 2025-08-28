@@ -806,10 +806,12 @@ class ProduccionController extends Controller
                                 'progreso'       => $progreso,
                                 'fecha_entrega'  => $fechaEntrega?->format('d/m/Y H:i') ?? '—',
                                 'fin_programado' => $fechaFinReal->format('d/m/Y H:i'),
-                                'codigos_elementos' => $grupo->pluck('codigo')->all(),
+                                'codigos_elementos' => $grupo->pluck('codigo')->values(),   // ya lo tienes
+                                'elementos_id'      => $grupo->pluck('id')->values(),       // AÑADE ESTO
                             ],
 
                         ]);
+                        // dd($planillasAgrupadas);
                     }
 
                     // Avanza cola
@@ -934,175 +936,127 @@ class ProduccionController extends Controller
             'maquina_id'        => 'required|integer|exists:maquinas,id',
             'maquina_origen_id' => 'required|integer|exists:maquinas,id',
             'nueva_posicion'    => 'required|integer|min:1',
+            'forzar_movimiento' => 'sometimes|boolean',
+            'elementos_id'      => 'sometimes|array',
+            'elementos_id.*'    => 'integer|exists:elementos,id',
         ]);
+
+        $planillaId   = (int) $request->id;
+        $maqDestino   = (int) $request->maquina_id;
+        $maqOrigen    = (int) $request->maquina_origen_id;
+        $posNueva     = (int) $request->nueva_posicion;
+        $forzar       = (bool) $request->boolean('forzar_movimiento');
+        $subsetIds    = collect($request->input('elementos_id', []))->map(fn($v) => (int)$v);
 
         Log::info("➡️ ReordenarPlanillas iniciado", [
-            'planilla_id' => $request->id,
-            'maquina_destino' => $request->maquina_id,
-            'maquina_origen' => $request->maquina_origen_id,
-            'nueva_posicion' => $request->nueva_posicion,
-            'forzar_movimiento' => $request->boolean('forzar_movimiento'),
-            'elementos_id' => $request->input('elementos_id'),
+            'planilla_id'       => $planillaId,
+            'maquina_destino'   => $maqDestino,
+            'maquina_origen'    => $maqOrigen,
+            'nueva_posicion'    => $posNueva,
+            'forzar_movimiento' => $forzar,
+            'elementos_id'      => $subsetIds->values(),
         ]);
 
-        $elementosFueraRango = $this->obtenerElementosFueraDeRango($request->id, $request->maquina_id);
-        Log::info("🔍 Elementos fuera de rango detectados", [
-            'total' => $elementosFueraRango->count(),
-            'diametros' => $elementosFueraRango->pluck('diametro')->unique()->values(),
+        // 1) MISMA MÁQUINA → sólo reordenar, NADA de validar
+        if ($maqOrigen === $maqDestino) {
+            return $this->soloReordenarEnMismaMaquina($maqDestino, $planillaId, $posNueva);
+        }
+
+        // 2) Cambio de máquina → validar SÓLO el subset del evento
+        if ($subsetIds->isEmpty()) {
+            // Sin subset no sabemos qué querías mover: mejor pedirlo
+            return response()->json([
+                'success' => false,
+                'message' => 'No se recibieron elementos del evento (elementos_id).',
+            ], 422);
+        }
+
+        $maquina = Maquina::findOrFail($maqDestino);
+        $elementos = Elemento::whereIn('id', $subsetIds)->get();
+
+        [$compatibles, $incompatibles, $diametrosIncompatibles] = $this->partirPorCompatibilidadPhp($elementos, $maquina);
+
+        Log::info("🔍 Compatibilidad subset", [
+            'compatibles'   => $compatibles->pluck('id')->values(),
+            'incompatibles' => $incompatibles->pluck('id')->values(),
+            'diametros'     => $diametrosIncompatibles->values(),
         ]);
 
-        // Si hay elementos fuera de rango y no se ha confirmado el movimiento parcial aún
-        if (!$request->boolean('forzar_movimiento')) {
-            if ($elementosFueraRango->isNotEmpty()) {
-                $elementosDentroRango = $this->obtenerElementosDentroDeRango($request->id, $request->maquina_id);
-                Log::info("✅ Comprobación de elementos dentro de rango", [
-                    'total' => $elementosDentroRango->count(),
-                    'ids'   => $elementosDentroRango->pluck('id'),
-                ]);
-
-                if ($elementosDentroRango->isNotEmpty()) {
-                    Log::warning("⚠️ Mezcla de elementos detectada: requiere confirmación parcial");
-                    return response()->json([
-                        'success' => false,
-                        'requiresConfirmation' => true,
-                        'message' => 'Algunos elementos tienen un diámetro incompatible con la máquina destino. ¿Quieres mover solo los que son compatibles?',
-                        'diametros' => $elementosFueraRango->pluck('diametro')->unique()->values(),
-                        'elementos' => $elementosDentroRango->pluck('id'),
-                    ], 422);
-                } else {
-                    Log::error("❌ Todos los elementos están fuera de rango → no se puede mover");
-                    throw new \Exception("No se puede mover la planilla porque todos sus elementos están fuera del rango de la máquina destino.");
-                }
-            }
+        if ($incompatibles->isNotEmpty() && !$forzar) {
+            Log::warning("⚠️ Mezcla detectada: requiere confirmación parcial");
+            return response()->json([
+                'success' => false,
+                'requiresConfirmation' => true,
+                'message' => 'Hay elementos con diámetros incompatibles. ¿Quieres mover sólo los compatibles?',
+                'diametros' => $diametrosIncompatibles->values(),
+                // devolvemos los que SÍ se pueden mover (como esperas en el front)
+                'elementos' => $compatibles->pluck('id')->values(),
+            ], 422);
         }
 
         try {
-            DB::transaction(function () use ($request) {
-                $planillaId       = (int) $request->id;
-                $maquinaNueva     = (int) $request->maquina_id;
-                $maquinaAnterior  = (int) $request->maquina_origen_id;
-                $posNueva         = (int) $request->nueva_posicion;
-
-                Log::info("🚀 Iniciando transacción", compact('planillaId', 'maquinaNueva', 'maquinaAnterior', 'posNueva'));
-
-                if ($request->filled('elementos_id')) {
-                    // ⚠ Movimiento parcial
-                    $idsAMover = $request->input('elementos_id');
-                    Log::info("✂️ Movimiento parcial detectado", ['ids' => $idsAMover]);
-
-                    // Mover solo esos elementos
-                    Elemento::whereIn('id', $idsAMover)
-                        ->update(['maquina_id' => $maquinaNueva]);
-                    Log::info("➡️ Elementos actualizados a la nueva máquina", ['maquina' => $maquinaNueva]);
-
-                    // Crear nuevo orden en la máquina destino si no existe
-                    $existeDestino = OrdenPlanilla::where('planilla_id', $planillaId)
-                        ->where('maquina_id', $maquinaNueva)
-                        ->exists();
-
-                    if (!$existeDestino) {
-                        $maxPos = OrdenPlanilla::where('maquina_id', $maquinaNueva)->max('posicion') ?? 0;
-                        OrdenPlanilla::create([
-                            'planilla_id' => $planillaId,
-                            'maquina_id'  => $maquinaNueva,
-                            'posicion'    => $maxPos + 1,
-                        ]);
-                        Log::info("➕ Orden creado en la máquina destino", [
-                            'planilla_id' => $planillaId,
-                            'posicion'    => $maxPos + 1,
-                        ]);
-                    }
-
-                    Log::info("✅ Movimiento parcial finalizado");
-                    return;
+            DB::transaction(function () use ($planillaId, $maqOrigen, $maqDestino, $posNueva, $compatibles, $subsetIds, $forzar) {
+                // 3) Movimiento (parcial si venía forzado)
+                if ($compatibles->isNotEmpty()) {
+                    Elemento::whereIn('id', $compatibles->pluck('id'))->update(['maquina_id' => $maqDestino]);
+                    Log::info("➡️ Elementos actualizados a máquina destino", [
+                        'destino' => $maqDestino,
+                        'ids'     => $compatibles->pluck('id')->values(),
+                    ]);
+                } else {
+                    // No hay ninguno compatible
+                    throw new \Exception('No se pudo mover ningún elemento compatible a la máquina destino.');
                 }
 
-                $ordenActual = OrdenPlanilla::lockForUpdate()
-                    ->where('planilla_id', $planillaId)
-                    ->where('maquina_id', $maquinaAnterior)
+                // 4) Gestionar colas (sacar de origen, meter en destino si hace falta)
+                // Si ya existe orden en destino, lo usamos; si no, lo creamos al final y luego reordenamos.
+                $ordenDestino = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maqDestino)
                     ->first();
 
-                if (!$ordenActual) {
-                    Log::error("❌ No se encontró orden en la máquina de origen", ['maquina_id' => $maquinaAnterior]);
-                    throw new \Exception("No se encontró el registro actual de orden de la planilla en la máquina de origen.");
+                if (!$ordenDestino) {
+                    $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maqDestino)->max('posicion') ?? 0);
+                    $ordenDestino = OrdenPlanilla::create([
+                        'planilla_id' => $planillaId,
+                        'maquina_id'  => $maqDestino,
+                        'posicion'    => $maxPos + 1,
+                    ]);
+                    Log::info("➕ Orden creado en máquina destino", ['posicion' => $maxPos + 1]);
                 }
 
-                $posAnterior = $ordenActual->posicion;
-                Log::info("📌 Orden actual localizado", [
-                    'maquina' => $maquinaAnterior,
-                    'posicion' => $posAnterior,
-                ]);
+                // En el origen, si no quedan elementos (o si tu regla es sacarla siempre en cambio de máquina):
+                // aquí puedes decidir si eliminar el orden de origen o no.
+                // Si deseas mantener una sola cola por planilla, elimina del origen:
+                $ordenOrigen = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maqOrigen)
+                    ->first();
+                if ($ordenOrigen) {
+                    // comprueba si aún quedan elementos en origen (opcional)
+                    $quedanEnOrigen = Elemento::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maqOrigen)
+                        ->exists();
 
-                if ($maquinaAnterior !== $maquinaNueva) {
-                    Log::info("🔄 Cambio de máquina detectado", ['from' => $maquinaAnterior, 'to' => $maquinaNueva]);
-
-                    // ✅ Verificar compatibilidad
-                    $this->verificarDiametrosPermitidos($planillaId, $maquinaNueva);
-
-                    // Reordenar máquina origen
-                    OrdenPlanilla::where('maquina_id', $maquinaAnterior)
-                        ->where('posicion', '>', $posAnterior)
-                        ->decrement('posicion');
-                    Log::info("📉 Posiciones reordenadas en máquina origen");
-
-                    $ordenActual->delete();
-                    Log::info("🗑️ Orden eliminado de máquina origen");
-
-                    // Actualizar elementos a la nueva máquina
-                    Elemento::where('planilla_id', $planillaId)
-                        ->update(['maquina_id' => $maquinaNueva]);
-                    Log::info("➡️ Elementos movidos a nueva máquina");
-
-                    // Crear orden en la nueva máquina si no existe
-                    $ordenDestino = OrdenPlanilla::where('planilla_id', $planillaId)
-                        ->where('maquina_id', $maquinaNueva)
-                        ->first();
-
-                    if (!$ordenDestino) {
-                        $maxPos = OrdenPlanilla::where('maquina_id', $maquinaNueva)->max('posicion') ?? 0;
-                        $ordenDestino = OrdenPlanilla::create([
-                            'planilla_id' => $planillaId,
-                            'maquina_id'  => $maquinaNueva,
-                            'posicion'    => $maxPos + 1,
-                        ]);
-                        Log::info("➕ Orden creado en máquina nueva", ['posicion' => $maxPos + 1]);
-                    }
-
-                    $ordenActual = $ordenDestino;
-                }
-
-                // Reordenar posiciones dentro de la misma máquina
-                $posActual = $ordenActual->posicion;
-                Log::info("🔧 Reordenando posiciones en máquina", [
-                    'posActual' => $posActual,
-                    'posNueva' => $posNueva,
-                ]);
-
-                if ($posNueva !== $posActual) {
-                    if ($posNueva < $posActual) {
-                        OrdenPlanilla::where('maquina_id', $maquinaNueva)
-                            ->whereBetween('posicion', [$posNueva, $posActual - 1])
-                            ->increment('posicion');
-                        Log::info("⬆️ Posiciones incrementadas", ['range' => [$posNueva, $posActual - 1]]);
-                    } else {
-                        OrdenPlanilla::where('maquina_id', $maquinaNueva)
-                            ->whereBetween('posicion', [$posActual + 1, $posNueva])
+                    if (!$quedanEnOrigen) {
+                        $posAnterior = $ordenOrigen->posicion;
+                        OrdenPlanilla::where('maquina_id', $maqOrigen)
+                            ->where('posicion', '>', $posAnterior)
                             ->decrement('posicion');
-                        Log::info("⬇️ Posiciones decrementadas", ['range' => [$posActual + 1, $posNueva]]);
+                        $ordenOrigen->delete();
+                        Log::info("🗑️ Orden eliminado de máquina origen y posiciones recompactadas", [
+                            'maquina' => $maqOrigen,
+                            'pos'     => $posAnterior,
+                        ]);
                     }
-
-                    $ordenActual->update(['posicion' => $posNueva]);
-                    Log::info("✅ Posición actualizada", ['posicion' => $posNueva]);
-                    $cola = OrdenPlanilla::where('maquina_id', $maquinaNueva)
-                        ->orderBy('posicion')
-                        ->get(['planilla_id', 'posicion'])
-                        ->toArray();
-                    Log::info("🧾 Cola máquina {$maquinaNueva}", ['cola' => $cola]);
                 }
+
+                // 5) Reordenar en destino a la posición deseada
+                $this->reordenarPosicionEnMaquina($maqDestino, $planillaId, $posNueva);
             });
 
-
-            return response()->json(['success' => true, 'message' => 'Planilla reordenada correctamente.']);
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Planilla reordenada correctamente.',
+            ]);
         } catch (\Exception $e) {
             Log::error('❌ Error al reordenar planilla: ' . $e->getMessage(), [
                 'request' => $request->all(),
@@ -1116,49 +1070,115 @@ class ProduccionController extends Controller
         }
     }
 
-    private function obtenerElementosFueraDeRango(int $planillaId, int $maquinaId): Collection
+    /** Reordena sólo en la misma máquina, sin validar nada */
+    private function soloReordenarEnMismaMaquina(int $maquinaId, int $planillaId, int $posNueva)
     {
-        $maquina = Maquina::findOrFail($maquinaId);
-        $min = $maquina->diametro_min ?? 0;
-        $max = $maquina->diametro_max ?? 999;
+        try {
+            DB::transaction(function () use ($maquinaId, $planillaId, $posNueva) {
+                $ordenActual = OrdenPlanilla::lockForUpdate()
+                    ->where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maquinaId)
+                    ->first();
 
-        return Elemento::where('planilla_id', $planillaId)
-            ->where(function ($q) use ($min, $max) {
-                $q->where('diametro', '<', $min)
-                    ->orWhere('diametro', '>', $max);
-            })
-            ->get();
-    }
-    private function obtenerElementosDentroDeRango(int $planillaId, int $maquinaId): Collection
-    {
-        $maquina = Maquina::findOrFail($maquinaId);
-        $min = $maquina->diametro_min ?? 0;
-        $max = $maquina->diametro_max ?? 999;
+                if (!$ordenActual) {
+                    // Si no hay orden en esa máquina, lo creamos al final
+                    $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0);
+                    $ordenActual = OrdenPlanilla::create([
+                        'planilla_id' => $planillaId,
+                        'maquina_id'  => $maquinaId,
+                        'posicion'    => $maxPos + 1,
+                    ]);
+                }
 
-        return Elemento::where('planilla_id', $planillaId)
-            ->whereBetween('diametro', [$min, $max])
-            ->get();
-    }
+                $posActual = (int) $ordenActual->posicion;
+                if ($posNueva === $posActual) return;
 
-    private function verificarDiametrosPermitidos(int $planillaId, int $maquinaId): void
-    {
-        $maquina = Maquina::findOrFail($maquinaId);
-        $min = $maquina->diametro_min ?? 0;
-        $max = $maquina->diametro_max ?? 999;
+                if ($posNueva < $posActual) {
+                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->whereBetween('posicion', [$posNueva, $posActual - 1])
+                        ->increment('posicion');
+                } else {
+                    OrdenPlanilla::where('maquina_id', $maquinaId)
+                        ->whereBetween('posicion', [$posActual + 1, $posNueva])
+                        ->decrement('posicion');
+                }
 
-        $diametrosInvalidos = Elemento::where('planilla_id', $planillaId)
-            ->where(function ($q) use ($min, $max) {
-                $q->where('diametro', '<', $min)
-                    ->orWhere('diametro', '>', $max);
-            })
-            ->pluck('diametro')
-            ->unique()
-            ->values();
+                $ordenActual->update(['posicion' => $posNueva]);
+                Log::info("✅ Reordenado en misma máquina", [
+                    'maquina'  => $maquinaId,
+                    'posicion' => $posNueva
+                ]);
+            });
 
-        if ($diametrosInvalidos->isNotEmpty()) {
-            throw new \Exception("No se puede mover esta planilla a la máquina seleccionada. Diámetros fuera de rango: " . $diametrosInvalidos->implode(', '));
+            return response()->json(['success' => true, 'message' => 'Reordenado en la misma máquina.']);
+        } catch (\Throwable $e) {
+            Log::error('❌ Error reordenar en misma máquina: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 422);
         }
     }
+
+    /** Reordena la posición de la planilla en una máquina dada */
+    private function reordenarPosicionEnMaquina(int $maquinaId, int $planillaId, int $posNueva): void
+    {
+        $orden = OrdenPlanilla::lockForUpdate()
+            ->where('maquina_id', $maquinaId)
+            ->where('planilla_id', $planillaId)
+            ->first();
+
+        if (!$orden) {
+            $maxPos = (int) (OrdenPlanilla::where('maquina_id', $maquinaId)->max('posicion') ?? 0);
+            $orden = OrdenPlanilla::create([
+                'maquina_id'  => $maquinaId,
+                'planilla_id' => $planillaId,
+                'posicion'    => $maxPos + 1,
+            ]);
+        }
+
+        $posActual = (int) $orden->posicion;
+        if ($posNueva === $posActual) return;
+
+        if ($posNueva < $posActual) {
+            OrdenPlanilla::where('maquina_id', $maquinaId)
+                ->whereBetween('posicion', [$posNueva, $posActual - 1])
+                ->increment('posicion');
+        } else {
+            OrdenPlanilla::where('maquina_id', $maquinaId)
+                ->whereBetween('posicion', [$posActual + 1, $posNueva])
+                ->decrement('posicion');
+        }
+
+        $orden->update(['posicion' => $posNueva]);
+    }
+
+    /**
+     * Partir compatibilidad en PHP (numérico) para evitar problemas de casteo SQL.
+     * Devuelve [compatibles, incompatibles, diametrosIncompatibles]
+     */
+    private function partirPorCompatibilidadPhp(\Illuminate\Support\Collection $elementos, Maquina $maquina): array
+    {
+        $min = is_null($maquina->diametro_min) ? null : (float)$maquina->diametro_min;
+        $max = is_null($maquina->diametro_max) ? null : (float)$maquina->diametro_max;
+
+        $compatibles = collect();
+        $incompatibles = collect();
+        $diametrosIncompatibles = collect();
+
+        foreach ($elementos as $e) {
+            $d = (float) $e->diametro; // asegura comparación numérica
+            $okMin = is_null($min) || $d >= $min;
+            $okMax = is_null($max) || $d <= $max;
+
+            if ($okMin && $okMax) {
+                $compatibles->push($e);
+            } else {
+                $incompatibles->push($e);
+                $diametrosIncompatibles->push(number_format($d, 2));
+            }
+        }
+
+        return [$compatibles, $incompatibles, $diametrosIncompatibles->unique()];
+    }
+
 
     public function eventosPlanillas()
     {

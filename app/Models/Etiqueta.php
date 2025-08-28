@@ -67,22 +67,24 @@ class Etiqueta extends Model
         });
     }
 
-
     public static function generarCodigoSubEtiqueta(string $codigoPadre): string
     {
-        // Buscar subetiquetas cuyo código comience con el padre y punto (ETQ2506003.)
-        $existentes = self::where('codigo', 'like', $codigoPadre . '.%')
-            ->pluck('codigo') // ahora buscamos en `codigo`, no en `etiqueta_sub_id`
-            ->map(function ($codigo) {
-                $partes = explode('.', $codigo);
-                return isset($partes[1]) ? (int)$partes[1] : 0;
-            })
-            ->toArray();
+        return DB::transaction(function () use ($codigoPadre) {
+            // Prefijo de subetiquetas del padre, p.ej. "ETQ2508007."
+            $prefijo = $codigoPadre . '.';
 
-        $contador = empty($existentes) ? 1 : max($existentes) + 1;
+            // Bloqueamos fila/índice para evitar carreras y obtenemos el mayor sufijo existente
+            $maxIndice = self::where('etiqueta_sub_id', 'like', $prefijo . '%')
+                ->lockForUpdate()
+                ->select(DB::raw("MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)) as maxnum"))
+                ->value('maxnum');
 
-        return $codigoPadre . '.' . str_pad($contador, 2, '0', STR_PAD_LEFT);
+            $siguiente = ($maxIndice ? ((int)$maxIndice) : 0) + 1;
+
+            return $codigoPadre . '.' . str_pad($siguiente, 2, '0', STR_PAD_LEFT);
+        });
     }
+
 
     // Relaciones
     public function planilla()

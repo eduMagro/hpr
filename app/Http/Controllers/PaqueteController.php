@@ -357,20 +357,20 @@ class PaqueteController extends Controller
             (new PlanillaColaService)
                 ->retirarPlanillaDeColaSiNoQuedanEtiquetasEnMaquina($planilla, $maquina);
 
-            // 13) Movimiento solo si tiene carro
-            if ($maquina->tiene_carro) {
-                Movimiento::create([
-                    'tipo'             => 'Bajada de paquete',
-                    'paquete_id'       => $paquete->id,
-                    'solicitado_por'   => auth()->id(),
-                    'descripcion'      => "Se solicita bajar del carro el paquete {$paquete->codigo} de la máquina {$maquina->nombre}",
-                    'ubicacion_origen' => $ubicacion->id,
-                    'maquina_origen'   => $maquina->id,
-                    'estado'           => 'pendiente',
-                    'prioridad'        => 3,
-                    'fecha_solicitud'  => now(),
-                ]);
-            }
+            // // 13) Movimiento solo si tiene carro
+            // if ($maquina->tiene_carro) {
+            //     Movimiento::create([
+            //         'tipo'             => 'Bajada de paquete',
+            //         'paquete_id'       => $paquete->id,
+            //         'solicitado_por'   => auth()->id(),
+            //         'descripcion'      => "Se solicita bajar del carro el paquete {$paquete->codigo} de la máquina {$maquina->nombre}",
+            //         'ubicacion_origen' => $ubicacion->id,
+            //         'maquina_origen'   => $maquina->id,
+            //         'estado'           => 'pendiente',
+            //         'prioridad'        => 3,
+            //         'fecha_solicitud'  => now(),
+            //     ]);
+            // }
 
             // 14) Sesión de reempaquetados
             session(['elementos_reempaquetados' => $todosElementos->pluck('id')->toArray()]);

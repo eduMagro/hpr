@@ -597,8 +597,9 @@ class PlanillaController extends Controller
             $file = $request->file('file');
             $nombreArchivo = $file->getClientOriginalName();
             $DmPermitido = [5, 8, 10, 12, 16, 20, 25, 32];
+
             // NO lanzar excepción en avisos de no-numérico: solo añadir advertencia y continuar
-            set_error_handler(function ($sev, $msg, $file, $line) use (&$advertencias, &$__numCtx) {
+            set_error_handler(function ($sev, $msg, $fileH, $line) use (&$advertencias, &$__numCtx) {
                 if ($sev === E_WARNING && str_contains($msg, 'A non-numeric value encountered')) {
                     $advertencias[] = "⚠️ Valor no numérico detectado; se omitió la fila. "
                         . "Planilla {$__numCtx['planilla']}, Fila {$__numCtx['excel_row']}, Campo '{$__numCtx['campo']}', Valor '" . (string)($__numCtx['valor']) . "'";
@@ -611,7 +612,6 @@ class PlanillaController extends Controller
             $invalids = $this->scanXlsxForInvalidNumeric($file->getRealPath());
             if (!empty($invalids)) {
                 $detalles = collect($invalids)->map(fn($i) => "{$i['cell']} → '{$i['value']}'")->implode(', ');
-
                 throw new \Exception("{$nombreArchivo} - El Excel contiene celdas marcadas como numéricas con valor inválido: {$detalles}. Corrige esas celdas (pon número válido o cambia el tipo de celda a Texto) y vuelve a importar.");
             }
 
@@ -644,11 +644,10 @@ class PlanillaController extends Controller
                 return true;
             }));
 
-
             if (!$filteredData) {
-
                 throw new \Exception("{$nombreArchivo} - El archivo está vacío o no contiene filas válidas.");
             }
+
             // anotar nº de fila de Excel (cabecera = 1 ⇒ +2)
             foreach ($filteredData as $i => &$row) {
                 $row['_xl_row'] = $i + 2;
@@ -687,14 +686,9 @@ class PlanillaController extends Controller
                 $planillas[$codigoPlanilla][] = $row;
             }
 
-            $fechaEntrega = now()->addDays(7)->setTime(10, 0, 0);
-
             /* ================================================== */
             /* Bucle principal : una iteración por planilla       */
             /* ================================================== */
-            $clientesCache = [];
-            $obrasCache    = [];
-
             foreach ($planillas as $codigoPlanilla => $rows) {
 
                 // Detectar cliente y obra para esta planilla
@@ -709,14 +703,13 @@ class PlanillaController extends Controller
                     continue;
                 }
 
-                // Obtener o crear cliente (con caché)
-                $cliente = $clientesCache[$codigoCliente] ??= Cliente::firstOrCreate(
+                // Obtener o crear cliente/obra
+                $cliente = Cliente::firstOrCreate(
                     ['codigo' => $codigoCliente],
                     ['empresa' => $nombreCliente]
                 );
 
-                // Obtener o crear obra (con caché)
-                $obra = $obrasCache[$codigoObra] ??= Obra::firstOrCreate(
+                $obra = Obra::firstOrCreate(
                     ['cod_obra' => $codigoObra],
                     ['cliente_id' => $cliente->id, 'obra' => $nombreObra]
                 );
@@ -752,17 +745,22 @@ class PlanillaController extends Controller
 
                 $planillasImportadas++;
 
-                // Agrupar por nº de etiqueta
-                $etiquetas = [];
+                // Agrupar por nº de etiqueta (número en Excel)
+                $etiquetasExcel = [];
                 foreach ($rows as $row) {
-                    $numEtiqueta = $row[21] ?? null;
-                    if ($numEtiqueta) $etiquetas[$numEtiqueta][] = $row;
+                    $numEtiqueta = $row[21] ?? null; // nº de etiqueta en el Excel
+                    if ($numEtiqueta) $etiquetasExcel[$numEtiqueta][] = $row;
                 }
 
-                // Procesar etiquetas → sub-etiquetas → elementos (SIN agrupar por máquina)
-                foreach ($etiquetas as $filasEtiqueta) {
-                    $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
+                // Guardaremos los padres para la fase 2 (crear subetiquetas por máquina)
+                $etiquetasPadreCreadas = []; // [numEtiquetaExcel => ['padre' => Etiqueta, 'codigoPadre' => string]]
 
+                // ========================= FASE 1 =========================
+                // Crear ETIQUETA PADRE y ELEMENTOS (sin subetiqueta aún)
+                foreach ($etiquetasExcel as $numEtiquetaExcel => $filasEtiqueta) {
+
+                    // Crear etiqueta PADRE
+                    $codigoPadre   = Etiqueta::generarCodigoEtiqueta();
                     $etiquetaPadre = $this->safeCreate(Etiqueta::class, [
                         'codigo'      => $codigoPadre,
                         'planilla_id' => $planilla->id,
@@ -772,20 +770,12 @@ class PlanillaController extends Controller
                         'excel_row' => $filasEtiqueta[0]['_xl_row'] ?? 0,
                     ]);
 
-                    // 1 sub-etiqueta por grupo (si quieres mantener varias, puedes partir por marca/fila/etc.)
-                    $codigoSub = sprintf('%s.%02d', $codigoPadre, 1);
+                    $etiquetasPadreCreadas[$numEtiquetaExcel] = [
+                        'padre'       => $etiquetaPadre,
+                        'codigoPadre' => $codigoPadre,
+                    ];
 
-                    $subEtiqueta = $this->safeCreate(Etiqueta::class, [
-                        'codigo'          => $codigoPadre,
-                        'planilla_id'     => $planilla->id,
-                        'nombre'          => $filasEtiqueta[0][22] ?? 'Sin nombre',
-                        'etiqueta_sub_id' => $codigoSub,
-                    ], [
-                        'planilla'  => $codigoPlanilla,
-                        'excel_row' => $filasEtiqueta[0]['_xl_row'] ?? 0,
-                    ]);
-
-                    // Agrupar filas “iguales” para sumar barras/peso (tu lógica original)
+                    // Agrupar filas “iguales” para sumar barras/peso
                     $agrupados = [];
                     foreach ($filasEtiqueta as $row) {
                         if (!array_filter($row)) continue;
@@ -799,7 +789,7 @@ class PlanillaController extends Controller
                         // clave de agregación
                         $clave = implode('|', [
                             $row[26],           // figura
-                            $row[21],           // fila
+                            $row[21],           // fila (nº etiqueta Excel)
                             $row[23],           // marca
                             $row[25],           // diametro
                             $row[27],           // longitud
@@ -820,12 +810,12 @@ class PlanillaController extends Controller
                             continue; // fila inválida
                         }
 
-                        $agrupados[$clave]['row']   = $row;
-                        $agrupados[$clave]['peso']  = ($agrupados[$clave]['peso']  ?? 0) + $pesoNum;
-                        $agrupados[$clave]['barras'] = ($agrupados[$clave]['barras'] ?? 0) + (int)$bNum;
+                        $agrupados[$clave]['row']     = $row;
+                        $agrupados[$clave]['peso']    = ($agrupados[$clave]['peso']  ?? 0) + $pesoNum;
+                        $agrupados[$clave]['barras']  = ($agrupados[$clave]['barras'] ?? 0) + (int)$bNum;
                     }
 
-                    // Crear elementos (maquina_id = null). La asignación real se hace después.
+                    // Crear elementos (maquina_id = null, etiqueta_sub_id = null por ahora)
                     foreach ($agrupados as $item) {
                         $row      = $item['row'];
                         $excelRow = $row['_xl_row'] ?? 0;
@@ -841,7 +831,6 @@ class PlanillaController extends Controller
                         }
 
                         // si el diámetro no está permitido, solo advertimos y no creamos
-                        $DmPermitido = [5, 8, 10, 12, 16, 20, 25, 32];
                         if (!in_array((int)$diametroNum, $DmPermitido, true)) {
                             $advertencias[] = sprintf(
                                 "Diámetro no admitido (planilla %s) → diámetro:%s (fila %d)",
@@ -857,9 +846,9 @@ class PlanillaController extends Controller
                         $this->safeCreate(Elemento::class, [
                             'codigo'             => Elemento::generarCodigo(),
                             'planilla_id'        => $planilla->id,
-                            'etiqueta_id'        => $subEtiqueta->id,
-                            'etiqueta_sub_id'    => $codigoSub,
-                            'maquina_id'         => null, // 🔴 se asignará luego por el service
+                            'etiqueta_id'        => $etiquetaPadre->id, // 👉 de momento al PADRE
+                            'etiqueta_sub_id'    => null,                // 👉 se asignará en FASE 2
+                            'maquina_id'         => null,                // 👉 se asignará por el service
                             'figura'             => $row[26] ?: null,
                             'fila'               => $row[21] ?: null,
                             'marca'              => $row[23] ?: null,
@@ -877,20 +866,74 @@ class PlanillaController extends Controller
                         ]);
                     }
 
-                    // Actualizar peso/marca de la sub-etiqueta
-                    $subEtiqueta->update([
-                        'peso'  => $subEtiqueta->elementos()->sum('peso'),
-                        'marca' => $subEtiqueta->elementos()
-                            ->whereNotNull('marca')
-                            ->select('marca', DB::raw('COUNT(*) as total'))
-                            ->groupBy('marca')
-                            ->orderByDesc('total')
-                            ->value('marca'),
-                    ]);
+                    // El padre aún no tiene peso; se calculará tras mover a subetiquetas (fase 2)
                 }
 
-                // ✅ Repartir máquinas AHORA para esta planilla
+                // ========================= FASE 1.5 ======================
+                // Asignar máquinas a los elementos de la planilla (usa tu service real)
                 $this->asignador->repartirPlanilla($planilla->id);
+
+                // ========================= FASE 2 =========================
+                // Por cada ETIQUETA PADRE, crear subetiquetas por máquina
+                foreach ($etiquetasPadreCreadas as $numEtiquetaExcel => $infoPadre) {
+                    /** @var \App\Models\Etiqueta $etiquetaPadre */
+                    $etiquetaPadre = $infoPadre['padre'];
+                    $codigoPadre   = $infoPadre['codigoPadre'];
+
+                    // Grupo de elementos del padre, ahora ya con maquina_id
+                    $elementosPadre = Elemento::where('planilla_id', $planilla->id)
+                        ->where('etiqueta_id', $etiquetaPadre->id)
+                        ->get();
+
+                    if ($elementosPadre->isEmpty()) {
+                        continue;
+                    }
+
+                    // Agrupar por maquina_id (null también formará grupo)
+                    $gruposPorMaquina = $elementosPadre->groupBy(function ($e) {
+                        return $e->maquina_id ?: 'sin_maquina';
+                    });
+
+                    // Crear una subetiqueta por grupo y mover los elementos
+                    foreach ($gruposPorMaquina as $maquinaKey => $grupoElems) {
+                        $codigoSub = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
+
+                        $subEtiqueta = $this->safeCreate(Etiqueta::class, [
+                            'codigo'          => $codigoPadre,     // mismo código base
+                            'planilla_id'     => $planilla->id,
+                            'nombre'          => $etiquetaPadre->nombre,
+                            'etiqueta_sub_id' => $codigoSub,
+                        ], [
+                            'planilla'  => $codigoPlanilla,
+                            'excel_row' => $grupoElems->first()?->excel_row ?? 0,
+                        ]);
+
+                        // Mover elementos del grupo a la subetiqueta recién creada
+                        Elemento::whereIn('id', $grupoElems->pluck('id'))
+                            ->update([
+                                'etiqueta_id'     => $subEtiqueta->id,
+                                'etiqueta_sub_id' => $codigoSub,
+                            ]);
+
+                        // Actualizar datos agregados de la subetiqueta
+                        $subEtiqueta->update([
+                            'peso'  => $subEtiqueta->elementos()->sum('peso'),
+                            'marca' => $subEtiqueta->elementos()
+                                ->whereNotNull('marca')
+                                ->select('marca', DB::raw('COUNT(*) as total'))
+                                ->groupBy('marca')
+                                ->orderByDesc('total')
+                                ->value('marca'),
+                        ]);
+                    }
+
+                    // (Opcional) Si quieres calcular algo en el padre (como suma de pesos de subetiquetas) puedes dejar peso=0 o sumar
+                    // Aquí lo dejamos como contenedor sin peso agregado:
+                    $etiquetaPadre->update([
+                        'peso'  => 0,
+                        'marca' => null,
+                    ]);
+                }
 
                 // ✅ Crear orden_planillas por cada máquina realmente usada
                 $maquinasUsadas = Elemento::where('planilla_id', $planilla->id)
@@ -907,15 +950,10 @@ class PlanillaController extends Controller
                 }
 
                 // Tiempo total planilla
-                $elementos   = $planilla->elementos;
+                $elementos   = $planilla->elementos()->get();
                 $tiempoTotal = $elementos->sum('tiempo_fabricacion') + $elementos->count() * 1200;
                 $planilla->update(['tiempo_fabricacion' => $tiempoTotal]);
-            }  // fin foreach planillas
-
-            // ✅ Repartir automáticamente las máquinas de todas las planillas importadas
-            foreach (Planilla::whereIn('codigo', array_keys($planillas))->get() as $planilla) {
-                $this->asignador->repartirPlanilla($planilla->id);
-            }
+            } // fin foreach planillas
 
             /* ------------------------------------------------------ */
             /*  Fin: commit + mensaje                                 */
@@ -947,11 +985,11 @@ class PlanillaController extends Controller
             $last = $log ? $log[array_key_last($log)] : null;
 
             Log::error('❌ Error al importar planillas', [
-                'archivo'  => $nombreArchivo,
-                'mensaje'    => $e->getMessage(),
-                'linea'      => $e->getLine(),
-                'archivo'    => $e->getFile(),
-                'last_query' => $last,
+                'archivo'     => $nombreArchivo ?? null,
+                'mensaje'     => $e->getMessage(),
+                'linea'       => $e->getLine(),
+                'archivo_php' => $e->getFile(),
+                'last_query'  => $last,
             ]);
 
             return back()->with('error', class_basename($e) . ': ' . $e->getMessage());
@@ -960,6 +998,7 @@ class PlanillaController extends Controller
             restore_error_handler();
         }
     }
+
 
 
     public function reimportar(Request $request, Planilla $planilla)

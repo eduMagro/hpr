@@ -480,80 +480,108 @@ class ElementoController extends Controller
     public function crearSubEtiqueta(Request $request)
     {
         $request->validate([
-            'elemento_id' => 'required|exists:elementos,id',
-            'cantidad' => 'required|integer|min:1',
-            'etiqueta_sub_id' => 'required|string',
+            'elemento_id'     => 'required|exists:elementos,id',
+            'etiqueta_sub_id' => 'required|string', // base: ETQ-25-0001.02 -> ETQ-25-0001
+            'partes'          => 'nullable|integer|min:2' // por defecto 2
         ]);
 
-        try {
-            $elemento = Elemento::findOrFail($request->elemento_id);
-            $etiquetaBase = Etiqueta::findOrFail($elemento->etiqueta_id);
+        // columnas REALES
+        $colPesoElem = 'peso'; // peso en elementos
+        $colPesoEtiq = 'peso'; // peso total almacenado en etiquetas
 
-            if ($request->cantidad > $elemento->barras) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No puedes mover más barras de las que tiene el elemento.',
-                ]);
+        return DB::transaction(function () use ($request, $colPesoElem, $colPesoEtiq) {
+            $partes = (int) ($request->partes ?? 2);
+            if ($partes !== 2) {
+                return response()->json(['success' => false, 'message' => 'Esta versión divide en 2.'], 422);
             }
 
-            // Obtener la base alfanumérica del sub_id recibido
-            $baseCodigo = explode('.', $request->etiqueta_sub_id)[0]; // ETQ-25-0001.02 → ETQ-25-0001
+            /** @var \App\Models\Elemento $elemento */
+            $elemento = \App\Models\Elemento::with('etiqueta')
+                ->lockForUpdate()
+                ->findOrFail($request->elemento_id);
 
-            // Buscar subetiquetas ya existentes con esa base
-            $subExistentes = Etiqueta::where('etiqueta_sub_id', 'like', "$baseCodigo.%")
+            $etiquetaOriginal = $elemento->etiqueta;
+
+            $pesoTotal   = (float) ($elemento->{$colPesoElem} ?? 0);
+            $barrasTotal = (int)   ($elemento->barras ?? 0);
+
+            if ($pesoTotal <= 0)  return response()->json(['success' => false, 'message' => 'El elemento no tiene peso positivo.'], 422);
+            if ($barrasTotal < 1) return response()->json(['success' => false, 'message' => 'El elemento no tiene barras.'], 422);
+
+            // 1) dividir peso (cuadrando en la segunda parte)
+            $pesoA = round($pesoTotal / 2, 3);
+            $pesoB = round($pesoTotal - $pesoA, 3);
+
+            // 2) dividir barras
+            $barrasA = intdiv($barrasTotal, 2) + ($barrasTotal % 2);
+            $barrasB = $barrasTotal - $barrasA;
+
+            // 3) actualizar elemento original (parte A)
+            $elemento->{$colPesoElem} = $pesoA;
+            $elemento->barras         = $barrasA;
+            $elemento->save();
+
+            // 4) generar sub_id para nueva subetiqueta
+            $baseCodigo = explode('.', $request->etiqueta_sub_id)[0];
+            $existentes = \App\Models\Etiqueta::where('etiqueta_sub_id', 'like', "$baseCodigo.%")
+                ->lockForUpdate()
                 ->pluck('etiqueta_sub_id')
                 ->toArray();
 
-            // Generar nuevo sub_id disponible
             $nuevoSubId = null;
-            for ($i = 1; $i <= 100; $i++) {
-                $candidato = $baseCodigo . '.' . str_pad($i, 2, '0', STR_PAD_LEFT);
-                if (!in_array($candidato, $subExistentes)) {
-                    $nuevoSubId = $candidato;
+            for ($j = 1; $j <= 500; $j++) {
+                $cand = $baseCodigo . '.' . str_pad($j, 2, '0', STR_PAD_LEFT);
+                if (!in_array($cand, $existentes)) {
+                    $nuevoSubId = $cand;
                     break;
                 }
             }
+            if (!$nuevoSubId) throw new \RuntimeException('No hay subetiqueta disponible.');
 
-            if (!$nuevoSubId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se pudo encontrar una subetiqueta disponible.',
-                ]);
-            }
-
-            // Crear nueva etiqueta
-            $nuevaEtiqueta = $etiquetaBase->replicate();
+            // 5) crear nueva subetiqueta SIN copiar peso
+            $nuevaEtiqueta = $etiquetaOriginal->replicate();
             $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
+
+            // ⚠️ Reset explícito del peso para no arrastrar el de la original
+            $nuevaEtiqueta->{$colPesoEtiq} = 0;
+            // Guardamos sin disparar lógicas raras de peso (si las hubiera)
             $nuevaEtiqueta->save();
 
-            // Crear nuevo elemento
+            // 6) crear nuevo elemento (parte B) en la subetiqueta
             $nuevoElemento = $elemento->replicate();
-            $nuevoElemento->etiqueta_id = $nuevaEtiqueta->id;
+            $nuevoElemento->etiqueta_id     = $nuevaEtiqueta->id;
             $nuevoElemento->etiqueta_sub_id = $nuevoSubId;
-            $nuevoElemento->barras = $request->cantidad;
-            $nuevoElemento->codigo = Elemento::generarCodigo(); // si usas códigos tipo EL-25-001
+            $nuevoElemento->{$colPesoElem}  = $pesoB;
+            $nuevoElemento->barras          = $barrasB;
+            $nuevoElemento->codigo          = \App\Models\Elemento::generarCodigo(); // si aplica
             $nuevoElemento->save();
 
-            // Actualizar o eliminar el elemento original
-            $elemento->barras -= $request->cantidad;
-            if ($elemento->barras <= 0) {
-                $elemento->delete();
-            } else {
-                $elemento->save();
-            }
+            // 7) ajustar pesos de etiquetas **solo con increment/decrement (sin setear)**
+            DB::table('etiquetas')
+                ->where('id', $etiquetaOriginal->id)
+                ->decrement($colPesoEtiq, $pesoB);   // ✅ RESTA en original
+
+            DB::table('etiquetas')
+                ->where('id', $nuevaEtiqueta->id)
+                ->increment($colPesoEtiq, $pesoB);   // ✅ SUMA en la nueva
+
+            // 8) devolver estado final
+            $etiquetaOriginalRefrescada = \App\Models\Etiqueta::find($etiquetaOriginal->id);
+            $nuevaEtiquetaRefrescada    = \App\Models\Etiqueta::find($nuevaEtiqueta->id);
 
             return response()->json([
                 'success' => true,
-                'message' => "Subetiqueta $nuevoSubId y nuevo elemento creados correctamente.",
+                'message' => 'Elemento partido en 2. Solo se resta en la etiqueta original y se suma en la nueva.',
+                'data' => [
+                    'elemento_original' => ['barras' => $elemento->barras, 'peso' => $elemento->{$colPesoElem}],
+                    'nuevo_elemento'    => ['barras' => $nuevoElemento->barras, 'peso' => $nuevoElemento->{$colPesoElem}],
+                    'etiqueta_original' => ['id' => $etiquetaOriginal->id, 'peso' => $etiquetaOriginalRefrescada->{$colPesoEtiq}],
+                    'subetiqueta_nueva' => ['id' => $nuevaEtiqueta->id, 'sub_id' => $nuevoSubId, 'peso' => $nuevaEtiquetaRefrescada->{$colPesoEtiq}],
+                ]
             ]);
-        } catch (\Exception $e) {
-            Log::error('Error al dividir elemento: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Error interno: ' . $e->getMessage(),
-            ], 500);
-        }
+        });
     }
+
 
     public function store(Request $request)
     {
