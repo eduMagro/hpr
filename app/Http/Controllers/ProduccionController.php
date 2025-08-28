@@ -1228,11 +1228,9 @@ class ProduccionController extends Controller
     //---------------------------------------------------------- PLANIFICACION TRABAJADORES OBRA
     public function trabajadoresObra()
     {
-        // 1. Obtener las dos empresas por nombre
         $hprServicios = Empresa::where('nombre', 'HPR Servicios en Obra S.L.')->firstOrFail();
         $hpr = Empresa::where('nombre', 'Hierros Paco Reyes S.L.')->firstOrFail();
 
-        // 2. Obtener los trabajadores de cada empresa
         $trabajadoresServicios = User::with(['asignacionesTurnos.turno', 'categoria', 'maquina'])
             ->where('empresa_id', $hprServicios->id)
             ->where('rol', 'operario')
@@ -1243,10 +1241,7 @@ class ProduccionController extends Controller
             ->where('rol', 'operario')
             ->get();
 
-        // 3. Obras activas de tipo montaje
         $obrasActivas = Obra::where('tipo', 'montaje')->get();
-
-        // 4. TODAS las obras (para usarlas donde necesites)
         $todasLasObras = Obra::orderBy('obra')->get();
 
         $resources = $obrasActivas->map(fn($obra) => [
@@ -1260,23 +1255,21 @@ class ProduccionController extends Controller
             'codigo' => '—'
         ]);
 
-        // Helper para mapear color por estado
         $colorPorEstado = function (?string $estado) {
             $estado = $estado ? mb_strtolower($estado) : null;
             return match ($estado) {
-                'vacaciones' => '#f472b6', // rosa
-                'curso'      => '#ef4444', // rojo
+                'vacaciones' => '#f472b6',
+                'curso'      => '#ef4444',
                 default      => null,
             };
         };
 
-        // 5. Generar eventos
         $eventos = [];
 
         foreach ($trabajadoresServicios as $trabajador) {
             foreach ($trabajador->asignacionesTurnos as $asignacion) {
                 $turno = $asignacion->turno;
-                if (!$turno || !$asignacion->obra_id) continue;
+                if (!$turno) continue;
 
                 $horaEntrada = $turno->hora_entrada ?? '08:00:00';
                 $horaSalida  = $turno->hora_salida ?? '16:00:00';
@@ -1288,10 +1281,10 @@ class ProduccionController extends Controller
                     'title'      => $trabajador->nombre_completo,
                     'start'      => $asignacion->fecha . 'T' . $horaEntrada,
                     'end'        => $asignacion->fecha . 'T' . $horaSalida,
-                    'resourceId' => $asignacion->obra_id ?? 'sin-obra', // 👈 aquí el cambio
+                    'resourceId' => $asignacion->obra_id ?? 'sin-obra',
                     'extendedProps' => [
                         'user_id'             => $trabajador->id,
-                        'empresa'             => 'Hierros Paco Reyes',
+                        'empresa'             => 'HPR Servicios',
                         'categoria_nombre'    => $trabajador->categoria?->nombre,
                         'especialidad_nombre' => $trabajador->maquina?->nombre,
                         'foto'                => $trabajador->ruta_imagen,
@@ -1302,7 +1295,6 @@ class ProduccionController extends Controller
                 if ($color) {
                     $evento['backgroundColor'] = $color;
                     $evento['borderColor'] = $color;
-                    // opcional: mejor contraste si es rojo
                     if ($color === '#ef4444') $evento['textColor'] = '#ffffff';
                 }
 
@@ -1313,7 +1305,7 @@ class ProduccionController extends Controller
         foreach ($trabajadoresHpr as $trabajador) {
             foreach ($trabajador->asignacionesTurnos as $asignacion) {
                 $turno = $asignacion->turno;
-                if (!$turno || !$asignacion->obra_id) continue;
+                if (!$turno || !$asignacion->obra_id) continue; // ⚠️ Solo si tiene obra
 
                 $horaEntrada = $turno->hora_entrada ?? '08:00:00';
                 $horaSalida  = $turno->hora_salida ?? '16:00:00';
@@ -1332,7 +1324,7 @@ class ProduccionController extends Controller
                         'categoria_nombre'    => $trabajador->categoria?->nombre,
                         'especialidad_nombre' => $trabajador->maquina?->nombre,
                         'foto'                => $trabajador->ruta_imagen,
-                        'estado'              => $asignacion->estado, // 👈 estado incluido
+                        'estado'              => $asignacion->estado,
                     ],
                 ];
 
@@ -1346,15 +1338,15 @@ class ProduccionController extends Controller
             }
         }
 
-        // 6. Retornar vista con todas las variables
         return view('produccion.trabajadoresObra', [
             'trabajadoresServicios' => $trabajadoresServicios,
             'trabajadoresHpr'       => $trabajadoresHpr,
             'resources'             => $resources,
             'eventos'               => $eventos,
-            'obras'                 => $todasLasObras, // todas las obras
+            'obras'                 => $todasLasObras,
         ]);
     }
+
 
     //---------------------------------------------------------- EVENTOS OBRA
     public function eventosObra(Request $request)
@@ -1366,9 +1358,11 @@ class ProduccionController extends Controller
             return response()->json(['error' => 'Faltan fechas'], 400);
         }
 
+        // ID de la empresa "HPR Servicios en Obra S.L."
+        $empresaServiciosId = Empresa::where('nombre', 'HPR Servicios en Obra S.L.')->value('id');
+
         $asignaciones = AsignacionTurno::with(['user.categoria', 'user.maquina', 'obra'])
             ->whereBetween('fecha', [$inicio, $fin])
-            // ->whereNotNull('obra_id') // ❌ quitar para incluir sin obra
             ->get();
 
         $colorPorEstado = function (?string $estado) {
@@ -1380,30 +1374,28 @@ class ProduccionController extends Controller
             };
         };
 
-        $eventos = $asignaciones->map(function ($asignacion) use ($colorPorEstado) {
-            $color = $colorPorEstado($asignacion->estado);
+        $eventos = $asignaciones
+            ->filter(function ($asignacion) use ($empresaServiciosId) {
+                return $asignacion->obra_id || $asignacion->user?->empresa_id === $empresaServiciosId;
+            })
+            ->map(function ($asignacion) use ($colorPorEstado) {
+                $color = $colorPorEstado($asignacion->estado);
 
-            $evento = [
-                'id'         => 'turno-' . $asignacion->id,
-                'title'      => $asignacion->user?->nombre_completo ?? 'Desconocido',
-                'start'      => $asignacion->fecha . 'T06:00:00',
-                'end'        => $asignacion->fecha . 'T14:00:00',
-                // 👇 si no hay obra, mandamos 'sin-obra'
-                'resourceId' => $asignacion->obra_id ?? 'sin-obra',
-                'extendedProps' => [
-                    'user_id'             => $asignacion->user_id,
-                    'estado'              => $asignacion->estado,
-                ],
-            ];
-
-            if ($color) {
-                $evento['backgroundColor'] = $color;
-                $evento['borderColor'] = $color;
-                if ($color === '#ef4444') $evento['textColor'] = '#ffffff';
-            }
-
-            return $evento;
-        })->values();
+                return [
+                    'id'         => 'turno-' . $asignacion->id,
+                    'title'      => $asignacion->user?->nombre_completo ?? 'Desconocido',
+                    'start'      => $asignacion->fecha . 'T06:00:00',
+                    'end'        => $asignacion->fecha . 'T14:00:00',
+                    'resourceId' => $asignacion->obra_id ?? 'sin-obra',
+                    'extendedProps' => [
+                        'user_id' => $asignacion->user_id,
+                        'estado'  => $asignacion->estado,
+                    ],
+                    'backgroundColor' => $color,
+                    'borderColor'     => $color,
+                    'textColor'       => $color === '#ef4444' ? '#ffffff' : null,
+                ];
+            })->values();
 
         return response()->json($eventos);
     }
