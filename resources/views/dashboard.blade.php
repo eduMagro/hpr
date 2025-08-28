@@ -8,23 +8,6 @@
                         class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 px-6 justify-items-center">
 
                         @foreach ($items as $item)
-                            @php
-                                // Filtrado por permisos del operario
-                                if (
-                                    $esOperario &&
-                                    !collect($permitidosOperario)->contains(
-                                        fn($p) => Str::startsWith($item['route'], $p),
-                                    )
-                                ) {
-                                    continue;
-                                }
-
-                                // Filtrado por departamentos si es oficina
-                                if ($esOficina && !array_intersect($departamentosUsuario, $item['departamentos'])) {
-                                    continue;
-                                }
-                            @endphp
-
                             <a href="{{ $item['route'] ? route($item['route']) : '#' }}"
                                 class="w-32 h-32 bg-white rounded-2xl shadow-md flex flex-col items-center justify-center text-center hover:shadow-xl transition duration-300 ease-in-out relative">
 

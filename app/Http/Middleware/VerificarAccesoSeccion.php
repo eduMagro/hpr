@@ -27,40 +27,31 @@ class VerificarAccesoSeccion
             'josemanuel.amuedo@pacoreyes.com',
             'manuel.reyes@pacoreyes.com',
             'alvarofaces@gruporeyestejero.com',
+            'pabloperez@gruporeyestejero.com',
         ])) {
             return $next($request);
         }
 
+        // ============================
+        // 🔎 DATOS DEL USUARIO
+        // ============================
         $rutaActual = $request->route()?->getName() ?? '';
-        $geReyesTejeroId = Empresa::where('nombre', 'G.E Reyes Tejero')->value('id');
+        $userEmpresaId = $user->empresa_id;
+        $esOperario = $user->rol === 'operario';
+        $esOficina  = $user->rol === 'oficina';
 
-        // ⛔️ RESTRICCIÓN ESPECIAL: usuarios de "G.E Reyes Tejero"
-        if ($geReyesTejeroId && (int)$user->empresa_id === (int)$geReyesTejeroId) {
-            // Rutas excepcionales permitidas para esta empresa
-            $rutasPermitidasReyesTejero = [
-                'usuarios.show',
-                // ✅ Rutas de alertas
-                'alertas.index',
-                'alertas.store',
-                'alertas.update',
-                'alertas.destroy',
-                'alertas.verMarcarLeidas',
-                'alertas.verSinLeer',
-                'ayuda.index',
-            ];
 
-            if (in_array($rutaActual, $rutasPermitidasReyesTejero)) {
-                return $next($request);
-            }
+        // 🏢 Empresas
+        $empresaReyesTejeroId = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%reyes tejero%'])->value('id');
+        $empresaHPRId         = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hierros paco reyes%'])->value('id');
+        $empresaServiciosId   = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hpr servicios%'])->value('id');
 
-            Log::info('🚫 Ruta denegada a usuario de G.E Reyes Tejero', [
-                'user' => $user->email,
-                'ruta' => $rutaActual,
-            ]);
-            abort(403, 'Acceso restringido: solo tu perfil.');
-        }
+        // ============================
+        // 🟢 EMPRESAS: HPR, HPR Servicios y G.E RT
+        // ============================
+        $empresasConAccesoCompleto = [$empresaHPRId, $empresaServiciosId];
 
-        // ✅ Rutas públicas siempre accesibles
+        // 🔓 Rutas públicas para estas empresas
         $rutasLibres = [
             'politica.privacidad',
             'politica.cookies',
@@ -70,75 +61,87 @@ class VerificarAccesoSeccion
             'usuarios.index',
             'nominas.crearDescargarMes',
             'turno.cambiarMaquina',
-            'salida.completarDesdeMovimiento'
-        ];
-
-        if (in_array($rutaActual, $rutasLibres)) {
-            return $next($request);
-        }
-
-        $seccionBase = Str::before($rutaActual, '.');
-        $esOperario = $user->rol === 'operario';
-        $esOficina  = $user->rol === 'oficina';
-
-        $departamentoAdmin = Departamento::where('nombre', 'Administrador')->first();
-        $sinUsuariosAdmin = !$departamentoAdmin || !$departamentoAdmin->usuarios()->exists();
-        $sinSeccionesAsignadas = Seccion::whereDoesntHave('departamentos')->count() === Seccion::count();
-
-        // Si aún no hay configuración de permisos, permitir todo
-        if ($sinUsuariosAdmin || $sinSeccionesAsignadas) {
-            return $next($request);
-        }
-
-        // ✅ Permitir solo rutas concretas a operarios
-        $permitidosOperarioPrefix = [
-            'maquinas.',
-            'maquinas.fabricarLote',
-            'maquinas.completarLote',
-            'etiquetas.',
-            'productos.',
-            'users.',
-            'alertas.',
-            'entradas.',
-            'pedidos.',
-            'movimientos.',
-            'politicas.'
-        ];
-
-        $permitidosOperarioRutas = [
-            'vacaciones.solicitar',
-            'salidas.editarActualizarEstado',
-            'usuarios.editarSubirImagen',
-            'usuarios.imagen',
-            'nominas.crearDescargarMes',
-
+            'salida.completarDesdeMovimiento',
+            'alertas.index',
+            'alertas.store',
+            'alertas.update',
+            'alertas.destroy',
+            'alertas.verMarcarLeidas',
+            'alertas.verSinLeer',
         ];
 
         if (
-            $esOperario &&
-            !Str::startsWith($rutaActual, $permitidosOperarioPrefix) &&
-            !in_array($rutaActual, $permitidosOperarioRutas)
+            (in_array($userEmpresaId, $empresasConAccesoCompleto) && in_array($rutaActual, $rutasLibres)) ||
+            ($userEmpresaId === $empresaReyesTejeroId && in_array($rutaActual, $rutasLibres))
         ) {
-            Log::info('🚫 Ruta denegada para operario: ' . $rutaActual);
-            abort(403, 'Operario sin acceso.');
+            return $next($request);
         }
 
 
-        if ($esOficina) {
+        // ============================
+        // 🔧 OPERARIOS (HPR y Servicios)
+        // ============================
+        if ($esOperario) {
+            $rutasPermitidas = [
+                'maquinas.',
+                'etiquetas.',
+                'productos.',
+                'users.',
+                'alertas.',
+                'entradas.',
+                'pedidos.',
+                'movimientos.',
+                'politicas.',
+                'maquinas.fabricarLote',
+                'maquinas.completarLote',
+                'vacaciones.solicitar',
+                'salidas.editarActualizarEstado',
+                'usuarios.editarSubirImagen',
+                'usuarios.imagen',
+                'nominas.crearDescargarMes',
+            ];
+
+            $permitido = collect($rutasPermitidas)->contains(function ($ruta) use ($rutaActual) {
+                return Str::startsWith($rutaActual, $ruta) || $rutaActual === $ruta;
+            });
+
+            if (!$permitido) {
+                Log::info('🚫 Ruta denegada para operario', [
+                    'user' => $user->email,
+                    'ruta' => $rutaActual,
+                ]);
+                abort(403, 'Operario sin acceso.');
+            }
+
+            Log::debug('✅ Ruta permitida para operario', [
+                'user' => $user->email,
+                'ruta' => $rutaActual,
+            ]);
+
+            return $next($request);
+        }
+
+        // ============================
+        // 🧩 OFICINA (HPR y Servicios)
+        // ============================
+        if ($esOficina && in_array($userEmpresaId, $empresasConAccesoCompleto)) {
             $accion = Str::afterLast($rutaActual, '.');
             $accion = strtolower($accion);
 
             $seccionBase = Str::before($rutaActual, '.');
 
             $seccion = Seccion::whereRaw('LOWER(ruta) LIKE ?', [strtolower($seccionBase) . '.%'])->first();
-            if (!$seccion) abort(403, 'Sección no registrada.');
+            if (!$seccion) {
+                Log::warning('❌ Ruta sin sección registrada', ['ruta' => $rutaActual]);
+                abort(403, 'Sección no registrada.');
+            }
 
             $permisos = PermisoAcceso::where('user_id', $user->id)
                 ->where('seccion_id', $seccion->id)
                 ->get();
 
             if ($permisos->isEmpty()) {
-                Log::debug('Sin permisos asignados para la sección', [
+                Log::debug('❌ Sin permisos para sección', [
                     'user' => $user->email,
                     'seccion' => $seccion->ruta,
                     'ruta' => $rutaActual,
@@ -146,44 +149,15 @@ class VerificarAccesoSeccion
                 abort(403, 'No tienes permisos asignados para esta sección.');
             }
 
-            /**
-             * Clasificación automática de acciones según el nombre de la ruta:
-             * - puede_ver:     'index', 'show' o empieza por 'ver'
-             * - puede_crear:   'create', 'store' o empieza por 'crear'
-             * - puede_editar:  'edit', 'update', 'destroy' o empieza por 'editar'
-             */
-
             $autorizado = false;
-
             foreach ($permisos as $permiso) {
                 if (
-                    in_array($accion, ['index', 'show']) ||
-                    Str::startsWith($accion, 'ver')
+                    (in_array($accion, ['index', 'show']) || Str::startsWith($accion, 'ver')) && $permiso->puede_ver
+                    || (in_array($accion, ['create', 'store']) || Str::startsWith($accion, 'crear')) && $permiso->puede_crear
+                    || (in_array($accion, ['edit', 'update', 'destroy']) || Str::startsWith($accion, 'editar')) && $permiso->puede_editar
                 ) {
-                    if ($permiso->puede_ver) {
-                        $autorizado = true;
-                        break;
-                    }
-                }
-
-                if (
-                    in_array($accion, ['create', 'store']) ||
-                    Str::startsWith($accion, 'crear')
-                ) {
-                    if ($permiso->puede_crear) {
-                        $autorizado = true;
-                        break;
-                    }
-                }
-
-                if (
-                    in_array($accion, ['edit', 'update', 'destroy']) ||
-                    Str::startsWith($accion, 'editar')
-                ) {
-                    if ($permiso->puede_editar) {
-                        $autorizado = true;
-                        break;
-                    }
+                    $autorizado = true;
+                    break;
                 }
             }
 
@@ -196,8 +170,20 @@ class VerificarAccesoSeccion
                 ]);
                 abort(403, 'No tienes permisos suficientes para esta acción.');
             }
+
+            Log::debug('✅ Acción autorizada por permisos', [
+                'user' => $user->email,
+                'ruta' => $rutaActual,
+            ]);
+
+            return $next($request);
         }
 
-        return $next($request);
+        // 🚨 Si llegó hasta aquí, denegamos por defecto
+        Log::warning('🚫 Ruta denegada por defecto (sin coincidencias)', [
+            'user' => $user->email,
+            'ruta' => $rutaActual,
+        ]);
+        abort(403, 'Acceso denegado por configuración.');
     }
 }

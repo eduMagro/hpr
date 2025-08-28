@@ -59,12 +59,12 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/exportar-usuarios', [ProfileController::class, 'exportarUsuarios'])->name('users.verExportar');
 
     // === CLIENTES Y PROVEEDORES ===
-    Route::resource('clientes', ClienteController::class);
-    Route::resource('fabricantes', FabricanteController::class);
-    Route::resource('distribuidores', DistribuidorController::class);
+    Route::resource('clientes', ClienteController::class)->names('clientes');
+    Route::resource('fabricantes', FabricanteController::class)->names('fabricantes');
+    Route::resource('distribuidores', DistribuidorController::class)->names('distribuidores');
 
     // === ENTRADAS Y PEDIDOS ===
-    Route::resource('entradas', EntradaController::class);
+    Route::resource('entradas', EntradaController::class)->names('entradas');
     Route::patch('/entradas/{id}/cerrar', [EntradaController::class, 'cerrar'])->name('entradas.cerrar');
     Route::post('/entradas/importar-albaran', [EntradaController::class, 'subirPdf'])
         ->name('entradas.crearImportarAlbaranPdf');
@@ -251,12 +251,12 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/asignaciones-turno/eventos-obra', [ProduccionController::class, 'eventosObra'])->name('asignaciones-turnos.verEventosObra');
 
     // === NOMINAS Y FISCALIDAD ===
-    Route::resource('empresas', EmpresaController::class);
+    Route::resource('empresas', EmpresaController::class)->names('empresas');
     Route::resource('nominas', NominaController::class)->except(['destroy']);
     Route::post('/generar-nominas', [NominaController::class, 'generarNominasMensuales'])->name('generar.nominas');
     Route::delete('/nominas/borrar-todas', [NominaController::class, 'borrarTodas'])->name('nominas.borrarTodas');
-    Route::resource('irpf-tramos', IrpfTramoController::class);
-    Route::resource('porcentajes-ss', SeguridadSocialController::class);
+    Route::resource('irpf-tramos', IrpfTramoController::class)->names('irpf-tramos');
+    Route::resource('porcentajes-ss', SeguridadSocialController::class)->names('porcentajes-ss');
     Route::get('/simulacion-irpf', [NominaController::class, 'formularioSimulacion'])->name('nomina.simulacion');
     Route::post('/simulacion-irpf', [NominaController::class, 'simular'])->name('nomina.simular');
     Route::get('/simulacion-inversa', [NominaController::class, 'formularioInverso'])->name('nomina.inversa');
@@ -272,7 +272,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         Route::get('consumo-maquinas', [EstadisticasController::class, 'consumoMaquinas'])->name('estadisticas.verConsumo-maquinas');
     });
 
-    Route::resource('alertas', AlertaController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('alertas', AlertaController::class)->only(['index', 'store', 'update', 'destroy'])->names('alertas');
     Route::post('/alertas/marcar-leidas', [AlertaController::class, 'marcarLeidas'])->name('alertas.verMarcarLeidas');
 
     Route::get('/alertas/sin-leer', [AlertaController::class, 'sinLeer'])->name('alertas.verSinLeer');
@@ -287,11 +287,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/ayuda', [AyudaController::class, 'index'])->name('ayuda.index');
 
     // === DEPARTAMENTOS Y SECCIONES ===
-    Route::resource('departamentos', DepartamentoController::class);
+    Route::resource('departamentos', DepartamentoController::class)->names('departamentos');
     Route::post('/departamentos/{departamento}/asignar-usuarios', [DepartamentoController::class, 'asignarUsuarios'])->name('departamentos.asignar.usuarios');
     Route::post('/departamentos/{departamento}/asignar-secciones', [DepartamentoController::class, 'asignarSecciones'])->name('departamentos.asignarSecciones');
     Route::post('/departamentos/{departamento}/permisos', [DepartamentoController::class, 'actualizarPermiso']);
-    Route::resource('secciones', SeccionController::class);
+    Route::resource('secciones', SeccionController::class)->names('secciones');
 
     // === PAPELERA ===
     Route::get('/papelera', [PapeleraController::class, 'index'])->name('papelera.index');
