@@ -963,10 +963,17 @@ class AsignacionTurnoController extends Controller
 
     public function asignarObra(Request $request)
     {
+        Log::debug('🪵 asignarObra payload:', $request->all()); // 👈 Log de entrada
+        // 👇 Forzar null si viene cadena vacía
+        if ($request->obra_id === '') {
+            $request->merge(['obra_id' => null]);
+        }
+
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
             'fecha' => 'required|date',
-            'obra_id' => 'required|exists:obras,id'
+            'obra_id' => ['nullable', 'integer', 'exists:obras,id']
+
         ]);
         $turnoMontajeId = Turno::where('nombre', 'montaje')->firstOrFail()->id;
 
@@ -1004,10 +1011,17 @@ class AsignacionTurnoController extends Controller
 
     public function asignarObraMultiple(Request $request)
     {
+        Log::debug('🪵 asignarObra multiple payload:', $request->all()); // 👈 Log de entrada
+        // 👇 Forzar null si viene cadena vacía
+        if ($request->obra_id === '') {
+            $request->merge(['obra_id' => null]);
+        }
+
         $request->validate([
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,id',
-            'obra_id' => 'required|exists:obras,id',
+            'obra_id' => ['nullable', 'integer', 'exists:obras,id'],
+
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
         ]);
@@ -1040,14 +1054,21 @@ class AsignacionTurnoController extends Controller
 
     public function updateObra(Request $request, $id)
     {
+        Log::debug('🪵 Actualizar obra
+         :', $request->all()); // 👈 Log de entrada
+        // 🛠️ Corregimos obra_id si llega como string vacío
+        if (in_array($request->obra_id, ['', 'sin-obra', 'null', null], true)) {
+            $request->merge(['obra_id' => null]);
+        }
+
+
         $request->validate([
-            'obra_id' => 'required|exists:obras,id',
+            'obra_id' => 'nullable|exists:obras,id',
             'fecha' => 'required|date',
         ]);
 
         $asignacion = AsignacionTurno::findOrFail($id);
 
-        // Verificamos si ya existe otra asignación con mismo user y nueva fecha (evitamos duplicados)
         $existeOtra = AsignacionTurno::where('user_id', $asignacion->user_id)
             ->where('fecha', $request->fecha)
             ->where('id', '!=', $asignacion->id)
@@ -1060,7 +1081,6 @@ class AsignacionTurnoController extends Controller
             ]);
         }
 
-        // Si no hay conflicto, actualizamos la asignación original
         $asignacion->obra_id = $request->obra_id;
         $asignacion->fecha = $request->fecha;
         $asignacion->save();

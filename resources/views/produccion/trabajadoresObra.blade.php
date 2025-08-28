@@ -284,14 +284,13 @@
                     }
                 },
                 eventClick(info) {
-                    // 🔴 Si se hizo clic en la X, no navegamos
-                    if (info.jsEvent.target.closest('.btn-eliminar')) {
-                        return;
-                    }
+                    if (info.jsEvent.target.closest('.btn-eliminar')) return;
 
-                    const userId = info.event.extendedProps.user_id;
+                    const userId = info.event.extendedProps?.user_id;
                     if (userId) {
                         window.location.href = "{{ route('users.show', ':id') }}".replace(':id', userId);
+                    } else {
+                        console.warn('🛑 user_id no definido en el evento:', info.event);
                     }
                 },
                 eventReceive(info) {
@@ -301,16 +300,18 @@
                 droppable: true,
                 drop: function(info) {
                     const userId = info.draggedEl.dataset.id;
-                    const obraId = info.resource?.id;
+                    const obraId = info.resource?.id === 'sin-obra' ? null : parseInt(info.resource?.id);
                     const fecha = info.dateStr;
 
-                    // Crea un evento visual provisional (con ID temporal)
+                    console.log('Obra ID enviado:', obraId); // ✅ ahora sí es el correcto
+
+                    // Evento provisional
                     const eventoTemporal = calendarioObras.addEvent({
                         id: 'temp-' + Date.now() + '-' + userId,
                         title: info.draggedEl.dataset.title,
                         start: fecha + 'T06:00:00',
                         end: fecha + 'T14:00:00',
-                        resourceId: obraId,
+                        resourceId: obraId ?? 'sin-obra',
                         extendedProps: {
                             user_id: userId,
                             provisional: true
@@ -333,7 +334,6 @@
                         .then(res => res.json())
                         .then(data => {
                             if (data.success) {
-                                // Eliminar cualquier evento existente del mismo user_id y fecha
                                 calendarioObras.getEvents().forEach(ev => {
                                     if (ev.extendedProps.user_id == data.user.id && ev.startStr
                                         .startsWith(data.fecha)) {
@@ -341,17 +341,17 @@
                                     }
                                 });
 
-                                // Añadir el evento confirmado
                                 calendarioObras.addEvent({
                                     id: 'turno-' + data.asignacion.id,
                                     title: data.user.nombre_completo,
                                     start: data.fecha + 'T06:00:00',
                                     end: data.fecha + 'T14:00:00',
-                                    resourceId: data.obra_id,
+                                    resourceId: data.obra_id ?? 'sin-obra',
                                     extendedProps: {
                                         user_id: data.user.id,
                                         categoria_nombre: data.user.categoria?.nombre,
-                                        especialidad_nombre: data.user.maquina?.nombre
+                                        especialidad_nombre: data.user.maquina?.nombre,
+                                        estado: data.asignacion.estado ?? null
                                     }
                                 });
 
@@ -375,6 +375,7 @@
                             eventoTemporal.remove();
                         });
                 },
+
                 eventDidMount(info) {
                     const foto = info.event.extendedProps.foto;
 
@@ -470,8 +471,14 @@
                 },
                 eventDrop(info) {
                     const asignacionId = info.event.id.replace('turno-', '');
-                    const nuevaObraId = info.event.getResources()[0].id;
+                    const nuevaObraId = info.event.getResources()[0]?.id ?? null; // por si viene undefined
                     const nuevaFecha = info.event.startStr.split('T')[0];
+
+                    console.log('📦 Drop asignación:', {
+                        id: asignacionId,
+                        obra_id: nuevaObraId,
+                        fecha: nuevaFecha
+                    });
 
                     fetch(`/asignaciones-turnos/${asignacionId}/update-obra`, {
                             method: 'PUT',
@@ -480,7 +487,8 @@
                                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
                             },
                             body: JSON.stringify({
-                                obra_id: nuevaObraId,
+                                obra_id: nuevaObraId === '' ? null :
+                                nuevaObraId, // ⚠️ aseguramos que no llegue string vacío
                                 fecha: nuevaFecha
                             })
                         })
@@ -490,9 +498,20 @@
                             }
                             return response.json();
                         })
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.message ?? 'Error inesperado');
+                            }
+                            console.log('✅ Asignación actualizada correctamente:', data);
+                        })
                         .catch(error => {
-                            console.error('Error:', error);
+                            console.error('❌ Error en actualización de obra:', error);
                             info.revert();
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error al actualizar',
+                                text: error.message
+                            });
                         });
                 }
             });
