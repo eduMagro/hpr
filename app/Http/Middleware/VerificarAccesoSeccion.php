@@ -46,6 +46,7 @@ class VerificarAccesoSeccion
                 'alertas.destroy',
                 'alertas.verMarcarLeidas',
                 'alertas.verSinLeer',
+                'ayuda.index',
             ];
 
             if (in_array($rutaActual, $rutasPermitidasReyesTejero)) {
