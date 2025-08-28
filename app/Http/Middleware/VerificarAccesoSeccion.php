@@ -36,25 +36,20 @@ class VerificarAccesoSeccion
 
         // ⛔️ RESTRICCIÓN ESPECIAL: usuarios de "G.E Reyes Tejero"
         if ($geReyesTejeroId && (int)$user->empresa_id === (int)$geReyesTejeroId) {
+            // Rutas excepcionales permitidas para esta empresa
+            $rutasPermitidasReyesTejero = [
+                'usuarios.show',
+                // ✅ Rutas de alertas
+                'alertas.index',
+                'alertas.store',
+                'alertas.update',
+                'alertas.destroy',
+                'alertas.verMarcarLeidas',
+                'alertas.verSinLeer',
+            ];
 
-            // Solo permitimos /mi-perfil/{user} (route name: usuarios.show) y que sea SU propio id
-            if ($rutaActual === 'usuarios.show') {
-                // El parámetro puede venir como modelo o como id
-                $routeUser = $request->route('user');
-                $routeUserId = is_object($routeUser)
-                    ? ($routeUser->id ?? null)
-                    : (is_numeric($routeUser) ? (int)$routeUser : null);
-
-                if ((int)$routeUserId === (int)$user->id) {
-                    return $next($request);
-                }
-
-                Log::warning('❌ Intento de ver perfil ajeno por usuario G.E Reyes Tejero', [
-                    'auth_user_id' => $user->id,
-                    'route_user_id' => $routeUserId,
-                    'ruta' => $rutaActual,
-                ]);
-                abort(403, 'Solo puedes acceder a tu propio perfil.');
+            if (in_array($rutaActual, $rutasPermitidasReyesTejero)) {
+                return $next($request);
             }
 
             Log::info('🚫 Ruta denegada a usuario de G.E Reyes Tejero', [
