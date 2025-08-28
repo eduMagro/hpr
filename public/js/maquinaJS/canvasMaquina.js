@@ -2,7 +2,7 @@
 // Colores y configuración
 // =======================
 const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)";
-const LINEA_COTA_COLOR = "rgba(255, 0, 0, 0.8)";
+const LINEA_COTA_COLOR = "rgba(255, 0, 0, 0.8)"; // solo para el texto de cota si lo necesitas
 const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
 const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
 const ELEMENT_TEXT_COLOR = "blue";
@@ -12,7 +12,7 @@ const marginY = 10;
 const gapSpacing = 25;
 const minSlotHeight = 50;
 
-// “recrecimiento” (en UNIDADES de las dimensiones, no en píxeles)
+// “recrecimiento” (en UNIDADES del modelo, no px)
 const OVERLAP_GROW_UNITS = 1;
 
 // tamaños de texto y separación de cotas
@@ -59,42 +59,9 @@ function agregarTexto(
     txt.setAttribute("font-size", size);
     txt.setAttribute("text-anchor", anchor);
     txt.setAttribute("alignment-baseline", "middle");
-    txt.style.pointerEvents = "none"; // no intercepta clics sobre la figura
+    txt.style.pointerEvents = "none";
     txt.textContent = texto;
     svg.appendChild(txt);
-}
-function agregarTextoClickable(
-    svg,
-    x,
-    y,
-    texto,
-    color = "blue",
-    size = 12,
-    anchor = "middle",
-    onClick = null
-) {
-    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    txt.setAttribute("x", x);
-    txt.setAttribute("y", y);
-    txt.setAttribute("fill", color);
-    txt.setAttribute("font-size", size);
-    txt.setAttribute("text-anchor", anchor);
-    txt.setAttribute("alignment-baseline", "middle");
-    txt.style.cursor = "pointer";
-    txt.textContent = texto;
-    if (onClick) txt.addEventListener("click", onClick);
-    svg.appendChild(txt);
-    return txt;
-}
-function agregarCirculo(svg, cx, cy, r, color = FIGURE_LINE_COLOR, ancho = 2) {
-    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c.setAttribute("cx", cx);
-    c.setAttribute("cy", cy);
-    c.setAttribute("r", r);
-    c.setAttribute("stroke", color);
-    c.setAttribute("stroke-width", ancho);
-    c.setAttribute("fill", "none");
-    svg.appendChild(c);
 }
 function agregarPathD(svg, d, color = FIGURE_LINE_COLOR, ancho = 2) {
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -102,6 +69,7 @@ function agregarPathD(svg, d, color = FIGURE_LINE_COLOR, ancho = 2) {
     path.setAttribute("stroke", color);
     path.setAttribute("fill", "none");
     path.setAttribute("stroke-width", ancho);
+    path.setAttribute("vector-effect", "non-scaling-stroke");
     svg.appendChild(path);
     return path;
 }
@@ -109,144 +77,80 @@ function agregarPathD(svg, d, color = FIGURE_LINE_COLOR, ancho = 2) {
 // =======================
 // Geometría base
 // =======================
-
 function extraerDimensiones(dimensiones) {
-    const tokens = dimensiones.split(/\s+/).filter((t) => t.length > 0);
+    const tokens = dimensiones.split(/\s+/).filter(Boolean);
     const dims = [];
-    let i = 0;
-    while (i < tokens.length) {
-        const token = tokens[i];
-        if (token.endsWith("r")) {
-            const radius = parseFloat(token.slice(0, -1));
+    for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        if (t.endsWith("r")) {
+            const radius = parseFloat(t.slice(0, -1));
             let arcAngle = 360;
             if (i + 1 < tokens.length && tokens[i + 1].endsWith("d")) {
-                arcAngle = parseFloat(tokens[i + 1].slice(0, -1));
-                i++;
+                arcAngle = parseFloat(tokens[++i].slice(0, -1));
             }
             dims.push({ type: "arc", radius, arcAngle });
-        } else if (token.endsWith("d")) {
-            dims.push({ type: "turn", angle: parseFloat(token.slice(0, -1)) });
+        } else if (t.endsWith("d")) {
+            dims.push({ type: "turn", angle: parseFloat(t.slice(0, -1)) });
         } else {
-            dims.push({ type: "line", length: parseFloat(token) });
+            dims.push({ type: "line", length: parseFloat(t) });
         }
-        i++;
     }
     return dims;
 }
 function computePathPoints(dims) {
-    let points = [],
-        currentX = 0,
-        currentY = 0,
-        currentAngle = 0;
-    points.push({ x: currentX, y: currentY });
+    let pts = [],
+        x = 0,
+        y = 0,
+        a = 0;
+    pts.push({ x, y });
     dims.forEach((d) => {
         if (d.type === "line") {
-            currentX += d.length * Math.cos((currentAngle * Math.PI) / 180);
-            currentY += d.length * Math.sin((currentAngle * Math.PI) / 180);
-            points.push({ x: currentX, y: currentY });
+            x += d.length * Math.cos((a * Math.PI) / 180);
+            y += d.length * Math.sin((a * Math.PI) / 180);
+            pts.push({ x, y });
         } else if (d.type === "turn") {
-            currentAngle += d.angle;
+            a += d.angle;
         } else if (d.type === "arc") {
-            const cx =
-                currentX +
-                d.radius * Math.cos(((currentAngle + 90) * Math.PI) / 180);
-            const cy =
-                currentY +
-                d.radius * Math.sin(((currentAngle + 90) * Math.PI) / 180);
-            const start = Math.atan2(currentY - cy, currentX - cx);
+            const cx = x + d.radius * Math.cos(((a + 90) * Math.PI) / 180);
+            const cy = y + d.radius * Math.sin(((a + 90) * Math.PI) / 180);
+            const start = Math.atan2(y - cy, x - cx);
             const end = start + (d.arcAngle * Math.PI) / 180;
-            currentX = cx + d.radius * Math.cos(end);
-            currentY = cy + d.radius * Math.sin(end);
-            currentAngle += d.arcAngle;
-            points.push({ x: currentX, y: currentY });
+            x = cx + d.radius * Math.cos(end);
+            y = cy + d.radius * Math.sin(end);
+            a += d.arcAngle;
+            pts.push({ x, y });
         }
     });
-    return points;
-}
-// Agrupa por paralelismo (ángulo módulo 180°) y por longitud ORIGINAL.
-// Devuelve un único segmento representativo por grupo.
-function agruparSegmentosPorParalelismoYLargo(
-    segsAdjIndexed,
-    segsModelOrig,
-    { tolLenAbs = 1e-6, tolLenRel = 1e-6, tolAng = 1e-3 } = {}
-) {
-    const unicos = [];
-
-    // Ángulo normalizado en [0, π)
-    const angNorm = (dx, dy) => {
-        let a = Math.atan2(dy, dx) % Math.PI;
-        if (a < 0) a += Math.PI;
-        return a;
-    };
-
-    for (const s of segsAdjIndexed) {
-        const dx = s.end.x - s.start.x;
-        const dy = s.end.y - s.start.y;
-        const ang = angNorm(dx, dy);
-
-        // Longitud ORIGINAL (la sumada tras quitar 0°)
-        const lenOrig = segsModelOrig[s._origIdx]?.length ?? Math.hypot(dx, dy);
-        if (lenOrig < 1e-12) continue;
-
-        const existe = unicos.some((u) => {
-            const u_dx = u.end.x - u.start.x;
-            const u_dy = u.end.y - u.start.y;
-            const u_ang = u._ang;
-            const u_lenOrig =
-                segsModelOrig[u._origIdx]?.length ?? Math.hypot(u_dx, u_dy);
-
-            const angDiff = Math.abs(ang - u_ang);
-            const lenDiff = Math.abs(lenOrig - u_lenOrig);
-            const lenTol = Math.max(
-                tolLenAbs,
-                tolLenRel * Math.max(lenOrig, u_lenOrig)
-            );
-
-            return angDiff < tolAng && lenDiff <= lenTol;
-        });
-
-        if (!existe) {
-            unicos.push({ ...s, _ang: ang });
-        }
-    }
-    return unicos;
+    return pts;
 }
 function computeLineSegments(dims) {
-    let segments = [],
-        currentX = 0,
-        currentY = 0,
-        currentAngle = 0;
+    let segs = [],
+        x = 0,
+        y = 0,
+        a = 0;
     dims.forEach((d) => {
         if (d.type === "line") {
-            const start = { x: currentX, y: currentY };
+            const start = { x, y };
             const end = {
-                x:
-                    currentX +
-                    d.length * Math.cos((currentAngle * Math.PI) / 180),
-                y:
-                    currentY +
-                    d.length * Math.sin((currentAngle * Math.PI) / 180),
+                x: x + d.length * Math.cos((a * Math.PI) / 180),
+                y: y + d.length * Math.sin((a * Math.PI) / 180),
             };
-            segments.push({ start, end, length: d.length });
-            currentX = end.x;
-            currentY = end.y;
+            segs.push({ start, end, length: d.length });
+            x = end.x;
+            y = end.y;
         } else if (d.type === "turn") {
-            currentAngle += d.angle;
+            a += d.angle;
         } else if (d.type === "arc") {
-            const cx =
-                currentX +
-                d.radius * Math.cos(((currentAngle + 90) * Math.PI) / 180);
-            const cy =
-                currentY +
-                d.radius * Math.sin(((currentAngle + 90) * Math.PI) / 180);
-            const start = Math.atan2(currentY - cy, currentX - cx);
+            const cx = x + d.radius * Math.cos(((a + 90) * Math.PI) / 180);
+            const cy = y + d.radius * Math.sin(((a + 90) * Math.PI) / 180);
+            const start = Math.atan2(y - cy, x - cx);
             const end = start + (d.arcAngle * Math.PI) / 180;
-            currentX = cx + d.radius * Math.cos(end);
-            currentY = cy + d.radius * Math.sin(end);
-            currentAngle += d.arcAngle;
+            x = cx + d.radius * Math.cos(end);
+            y = cy + d.radius * Math.sin(end);
+            a += d.arcAngle;
         }
     });
-    return segments;
+    return segs;
 }
 
 // =======================
@@ -269,54 +173,105 @@ function clampXInside(cx, w, left, right) {
     const half = w / 2;
     return Math.max(left + half, Math.min(right - half, cx));
 }
-// Une rectas consecutivas ignorando turn(0°).
-// - Acumula todas las "line" mientras no aparezca un giro ≠ 0° ni un arco.
-// - Al encontrar turn ≠ 0° o arc, vuelca el acumulado y continúa.
 function combinarRectasConCeros(dims, tol = 1e-9) {
     const out = [];
-    let accLen = 0; // acumulador de longitud recta actual
-
+    let acc = 0;
     const flush = () => {
-        if (accLen > tol) {
-            out.push({ type: "line", length: accLen });
-            accLen = 0;
+        if (acc > tol) {
+            out.push({ type: "line", length: acc });
+            acc = 0;
         }
     };
-
-    for (let i = 0; i < dims.length; i++) {
-        const d = dims[i];
-
+    for (const d of dims) {
         if (d.type === "line") {
-            accLen += d.length;
+            acc += d.length;
             continue;
         }
-
         if (d.type === "turn") {
-            if (Math.abs(d.angle) < tol) {
-                // giro 0° → no cambia dirección, seguir acumulando
-                continue;
-            }
-            // giro real → cerrar recta acumulada y guardar el giro
+            if (Math.abs(d.angle) < tol) continue;
             flush();
             out.push(d);
             continue;
         }
-
         if (d.type === "arc") {
-            // los arcos cortan la recta
             flush();
             out.push(d);
             continue;
         }
-
-        // por si aparece algo no contemplado
         flush();
         out.push(d);
     }
-
-    // fin: volcar lo que quede
     flush();
     return out;
+}
+
+// =======================
+// Formateo + agrupado robusto por dirección
+// =======================
+function formatDimLabel(value, { decimals = 0, step = null } = {}) {
+    let v = Number(value ?? 0);
+    if (step && step > 0) v = Math.round(v / step) * step;
+    return v.toFixed(decimals).replace(/\.0+$/, "");
+}
+function canonicalDir(dx, dy) {
+    const L = Math.hypot(dx, dy) || 1;
+    let ux = dx / L,
+        uy = dy / L;
+    if (uy < -1e-9 || (Math.abs(uy) <= 1e-9 && ux < 0)) {
+        ux = -ux;
+        uy = -uy;
+    }
+    return { ux, uy };
+}
+function dirKey(dx, dy, prec = 1e-2) {
+    const { ux, uy } = canonicalDir(dx, dy);
+    const qx = Math.round(ux / prec) * prec;
+    const qy = Math.round(uy / prec) * prec;
+    return `${qx}|${qy}`;
+}
+function agruparPorDireccionYEtiquetaRobusto(
+    segsAdj,
+    segsOrig,
+    { dirPrecision = 1e-2, labelFormat = { decimals: 0, step: null } } = {}
+) {
+    const buckets = new Map(); // dirección -> longitudes ORIGINALES
+    for (const s of segsOrig) {
+        const dx = s.end.x - s.start.x,
+            dy = s.end.y - s.start.y;
+        const key = dirKey(dx, dy, dirPrecision);
+        const arr = buckets.get(key) || [];
+        arr.push(s.length ?? Math.hypot(dx, dy));
+        buckets.set(key, arr);
+    }
+
+    const seen = new Set();
+    const res = [];
+    for (const s of segsAdj) {
+        const dx = s.end.x - s.start.x,
+            dy = s.end.y - s.start.y;
+        const key = dirKey(dx, dy, dirPrecision);
+        const candidates = buckets.get(key) || [];
+        const adjLen = Math.hypot(dx, dy);
+        let chosen = adjLen;
+        if (candidates.length) {
+            let best = candidates[0],
+                bestD = Math.abs(best - adjLen);
+            for (let i = 1; i < candidates.length; i++) {
+                const d = Math.abs(candidates[i] - adjLen);
+                if (d < bestD) {
+                    best = candidates[i];
+                    bestD = d;
+                }
+            }
+            chosen = best;
+        }
+        const label = formatDimLabel(chosen, labelFormat);
+        const k2 = `${key}|${label}`;
+        if (seen.has(k2)) continue;
+        seen.add(k2);
+        res.push({ ...s, _dirKey: key, _label: label, _lenChosen: chosen });
+    }
+    return res;
 }
 
 // =======================
@@ -339,8 +294,8 @@ function placeMainLabel({
     gapBottom = MAIN_ABOVE_GAP,
     gapSide = 6,
 }) {
-    const clearance = LABEL_CLEARANCE;
-    const step = LABEL_STEP;
+    const clearance = LABEL_CLEARANCE,
+        step = LABEL_STEP;
     const mkBox = (lx, ly, w, h) => ({
         left: lx - w / 2,
         right: lx + w / 2,
@@ -355,7 +310,7 @@ function placeMainLabel({
         !rectsOverlap(figBox, box, clearance) &&
         !placedBoxes.some((b) => rectsOverlap(b, box, clearance));
 
-    // A) Arriba
+    // arriba
     {
         let size = baseSize;
         let { w, h } = approxTextBox(text, size);
@@ -378,11 +333,10 @@ function placeMainLabel({
                 return;
             }
             ly -= step;
-            tries++;
-            if (tries > 200) break;
+            if (++tries > 200) break;
         }
     }
-    // B) Abajo
+    // abajo
     {
         let size = baseSize;
         let { w, h } = approxTextBox(text, size);
@@ -405,11 +359,10 @@ function placeMainLabel({
                 return;
             }
             ly += step;
-            tries++;
-            if (tries > 200) break;
+            if (++tries > 200) break;
         }
     }
-    // C) Lados (izq/der) reduciendo tamaño si hace falta
+    // laterales
     const trySide = (side) => {
         let size = baseSize;
         while (size >= minSize) {
@@ -461,14 +414,19 @@ function placeMainLabel({
     if (trySide("left")) return;
     if (trySide("right")) return;
 
-    // D) Fallback: abajo centrado reduciendo tamaño
+    // fallback
     {
         let size = baseSize;
         let ly = Math.min(safeBottom - size / 2, figBox.bottom + gapBottom);
         while (size >= minSize) {
             const { w, h } = approxTextBox(text, size);
             let lx = clampXInside(centerX, w, safeLeft, safeRight);
-            const box = mkBox(lx, ly, w, h);
+            const box = {
+                left: lx - w / 2,
+                right: lx + w / 2,
+                top: ly - h / 2,
+                bottom: ly + h / 2,
+            };
             if (ok(box)) {
                 agregarTexto(
                     svg,
@@ -496,25 +454,22 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
     let cx = 0,
         cy = 0,
         ang = 0;
-    const prevSegs = [];
-    let lastLineDir = null,
-        lastLineIdxInPrevSegs = -1,
-        lastLineIdxInDims = -1;
-
-    const EPS = 1e-7;
-    const deg2rad = (d) => (d * Math.PI) / 180;
-    const isHorizontal = (a) => Math.abs(Math.sin(deg2rad(a))) < 1e-12;
-    const overlap1D = (a1, b1, a2, b2) =>
+    const prev = [];
+    let lastDir = null,
+        lastIdxPrev = -1,
+        lastIdxDims = -1;
+    const EPS = 1e-7,
+        deg2rad = (d) => (d * Math.PI) / 180,
+        isH = (a) => Math.abs(Math.sin(deg2rad(a))) < 1e-12;
+    const overlap = (a1, b1, a2, b2) =>
         Math.min(b1, b2) - Math.max(a1, a2) > EPS;
 
     for (let i = 0; i < out.length; i++) {
         const d = out[i];
-
         if (d.type === "turn") {
             ang += d.angle;
             continue;
         }
-
         if (d.type === "arc") {
             const cx0 = cx + d.radius * Math.cos(deg2rad(ang + 90));
             const cy0 = cy + d.radius * Math.sin(deg2rad(ang + 90));
@@ -523,63 +478,53 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
             cx = cx0 + d.radius * Math.cos(end);
             cy = cy0 + d.radius * Math.sin(end);
             ang += d.arcAngle;
-            lastLineDir = null;
+            lastDir = null;
             continue;
         }
-
         const tryResolve = () => {
             const dir = {
                 x: Math.cos(deg2rad(ang)),
                 y: Math.sin(deg2rad(ang)),
             };
-            const endX = cx + out[i].length * dir.x;
-            const endY = cy + out[i].length * dir.y;
-            const horiz = isHorizontal(ang);
-
-            for (const s of prevSegs) {
+            const ex = cx + out[i].length * dir.x,
+                ey = cy + out[i].length * dir.y;
+            const horiz = isH(ang);
+            for (const s of prev) {
                 if (horiz && s.horiz && Math.abs(cy - s.y) < EPS) {
                     if (
-                        overlap1D(
-                            Math.min(cx, endX),
-                            Math.max(cx, endX),
+                        overlap(
+                            Math.min(cx, ex),
+                            Math.max(cx, ex),
                             Math.min(s.x1, s.x2),
                             Math.max(s.x1, s.x2)
                         )
                     ) {
-                        if (
-                            lastLineDir &&
-                            lastLineIdxInPrevSegs >= 0 &&
-                            lastLineIdxInDims >= 0
-                        ) {
-                            out[lastLineIdxInDims].length += grow;
-                            cx += lastLineDir.x * grow;
-                            cy += lastLineDir.y * grow;
-                            const ps = prevSegs[lastLineIdxInPrevSegs];
-                            ps.x2 += lastLineDir.x * grow;
-                            ps.y2 += lastLineDir.y * grow;
+                        if (lastDir && lastIdxPrev >= 0 && lastIdxDims >= 0) {
+                            out[lastIdxDims].length += grow;
+                            cx += lastDir.x * grow;
+                            cy += lastDir.y * grow;
+                            const ps = prev[lastIdxPrev];
+                            ps.x2 += lastDir.x * grow;
+                            ps.y2 += lastDir.y * grow;
                             return true;
                         }
                     }
                 } else if (!horiz && !s.horiz && Math.abs(cx - s.x) < EPS) {
                     if (
-                        overlap1D(
-                            Math.min(cy, endY),
-                            Math.max(cy, endY),
+                        overlap(
+                            Math.min(cy, ey),
+                            Math.max(cy, ey),
                             Math.min(s.y1, s.y2),
                             Math.max(s.y1, s.y2)
                         )
                     ) {
-                        if (
-                            lastLineDir &&
-                            lastLineIdxInPrevSegs >= 0 &&
-                            lastLineIdxInDims >= 0
-                        ) {
-                            out[lastLineIdxInDims].length += grow;
-                            cx += lastLineDir.x * grow;
-                            cy += lastLineDir.y * grow;
-                            const ps = prevSegs[lastLineIdxInPrevSegs];
-                            ps.x2 += lastLineDir.x * grow;
-                            ps.y2 += lastLineDir.y * grow;
+                        if (lastDir && lastIdxPrev >= 0 && lastIdxDims >= 0) {
+                            out[lastIdxDims].length += grow;
+                            cx += lastDir.x * grow;
+                            cy += lastDir.y * grow;
+                            const ps = prev[lastIdxPrev];
+                            ps.x2 += lastDir.x * grow;
+                            ps.y2 += lastDir.y * grow;
                             return true;
                         }
                     }
@@ -587,41 +532,33 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow = OVERLAP_GROW_UNITS) {
             }
             return false;
         };
-
         while (tryResolve()) {}
 
         const dir = { x: Math.cos(deg2rad(ang)), y: Math.sin(deg2rad(ang)) };
-        const nx = cx + out[i].length * dir.x;
-        const ny = cy + out[i].length * dir.y;
-        const horiz = isHorizontal(ang);
-        prevSegs.push({ x1: cx, y1: cy, x2: nx, y2: ny, horiz, y: cy, x: cx });
-
-        lastLineDir = dir;
-        lastLineIdxInPrevSegs = prevSegs.length - 1;
-        lastLineIdxInDims = i;
-
+        const nx = cx + out[i].length * dir.x,
+            ny = cy + out[i].length * dir.y;
+        const horiz = isH(ang);
+        prev.push({ x1: cx, y1: cy, x2: nx, y2: ny, horiz, y: cy, x: cx });
+        lastDir = dir;
+        lastIdxPrev = prev.length - 1;
+        lastIdxDims = i;
         cx = nx;
         cy = ny;
     }
-
     return out;
 }
 
 // =======================
-// Rotación si H>W
+// Rotación y path
 // =======================
 function rotatePoint(p, cx, cy, deg) {
-    const rad = (deg * Math.PI) / 180;
-    const c = Math.cos(rad),
-        s = Math.sin(rad);
+    const r = (deg * Math.PI) / 180,
+        c = Math.cos(r),
+        s = Math.sin(r);
     const dx = p.x - cx,
         dy = p.y - cy;
     return { x: cx + dx * c - dy * s, y: cy + dx * s + dy * c };
 }
-
-// =======================
-// Path SVG con rectas + arcos
-// =======================
 function buildSvgPathFromDims(
     dims,
     cxModel,
@@ -633,12 +570,11 @@ function buildSvgPathFromDims(
     centerX,
     centerY
 ) {
-    let dStr = "";
-    let x = 0,
+    let dStr = "",
+        x = 0,
         y = 0,
-        ang = 0;
-    let started = false;
-
+        ang = 0,
+        started = false;
     const map = (px, py) => {
         const p = rotatePoint({ x: px, y: py }, cxModel, cyModel, rotDeg);
         return {
@@ -646,75 +582,60 @@ function buildSvgPathFromDims(
             y: centerY + (p.y - midY) * scale,
         };
     };
-
-    const moveIfNeeded = () => {
+    const move = () => {
         if (!started) {
             const m = map(x, y);
             dStr += `M ${m.x} ${m.y}`;
             started = true;
         }
     };
-
     dims.forEach((d) => {
         if (d.type === "turn") {
             ang += d.angle;
             return;
         }
-
         if (d.type === "line") {
             const nx = x + d.length * Math.cos((ang * Math.PI) / 180);
             const ny = y + d.length * Math.sin((ang * Math.PI) / 180);
-            moveIfNeeded();
+            move();
             const p = map(nx, ny);
             dStr += ` L ${p.x} ${p.y}`;
             x = nx;
             y = ny;
             return;
         }
-
         if (d.type === "arc") {
             const cx = x + d.radius * Math.cos(((ang + 90) * Math.PI) / 180);
             const cy = y + d.radius * Math.sin(((ang + 90) * Math.PI) / 180);
-
             const start = Math.atan2(y - cy, x - cx);
             const end = start + (d.arcAngle * Math.PI) / 180;
-
             const ex = cx + d.radius * Math.cos(end);
             const ey = cy + d.radius * Math.sin(end);
-
             const absAng = Math.abs(d.arcAngle) % 360;
+            move();
             if (absAng < 1e-6 || Math.abs(d.arcAngle) >= 359.9) {
-                // círculo completo → 2 semicircunferencias
-                moveIfNeeded();
                 const midAng = start + Math.sign(d.arcAngle) * Math.PI;
                 const mx = cx + d.radius * Math.cos(midAng);
                 const my = cy + d.radius * Math.sin(midAng);
-
-                const pMid = map(mx, my);
-                const pEnd = map(x, y); // vuelve al inicio
-                const R = d.radius * scale;
-                const sweep = d.arcAngle >= 0 ? 1 : 0;
-
+                const pMid = map(mx, my),
+                    pEnd = map(x, y);
+                const R = d.radius * scale,
+                    sweep = d.arcAngle >= 0 ? 1 : 0;
                 dStr += ` A ${R} ${R} 0 1 ${sweep} ${pMid.x} ${pMid.y}`;
                 dStr += ` A ${R} ${R} 0 1 ${sweep} ${pEnd.x} ${pEnd.y}`;
-
-                ang += d.arcAngle; // coherencia si hay más tramos
+                ang += d.arcAngle;
                 return;
             }
-
-            moveIfNeeded();
             const pEnd = map(ex, ey);
-            const R = d.radius * scale;
-            const largeArc = absAng > 180 ? 1 : 0;
-            const sweep = d.arcAngle >= 0 ? 1 : 0;
+            const R = d.radius * scale,
+                largeArc = absAng > 180 ? 1 : 0,
+                sweep = d.arcAngle >= 0 ? 1 : 0;
             dStr += ` A ${R} ${R} 0 ${largeArc} ${sweep} ${pEnd.x} ${pEnd.y}`;
-
             x = ex;
             y = ey;
             ang += d.arcAngle;
         }
     });
-
     return dStr || "M 0 0";
 }
 
@@ -742,22 +663,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const cellWidth = (ancho - marginX) / columnas;
         const cellHeight = (alto - marginY) / filas;
 
-        grupo.elementos.forEach((elemento, index) => {
-            const fila = Math.floor(index / columnas);
-            const col = index % columnas;
+        grupo.elementos.forEach((elemento, idx) => {
+            const fila = Math.floor(idx / columnas);
+            const col = idx % columnas;
 
             const centerX = marginX + col * cellWidth + cellWidth / 2;
             const centerY = marginY + fila * cellHeight + cellHeight / 2;
 
-            // Límites seguros para texto
             const safeLeft = 0,
                 safeRight = ancho,
                 safeTop = 0,
                 safeBottom = alto;
 
-            // 1) dims ajustadas
-            // 1) dims normalizadas (une rectas separadas por 0°)
-            // 1) dims normalizadas (une rectas separadas por 0°)
+            // dims normalizadas + anti-solape
             const dimsRaw = extraerDimensiones(elemento.dimensiones || "");
             const dimsNoZero = combinarRectasConCeros(dimsRaw);
             const dims = ajustarLongitudesParaEvitarSolapes(
@@ -769,21 +687,18 @@ document.addEventListener("DOMContentLoaded", () => {
             const diametro = elemento.diametro ?? "N/A";
             const peso = elemento.peso ?? "N/A";
 
-            // ---------- FIGURA con rotación automática ----------
+            // Figura
             const ptsModel = computePathPoints(dims);
-
-            // bbox original
             let minX = Math.min(...ptsModel.map((p) => p.x));
             let maxX = Math.max(...ptsModel.map((p) => p.x));
             let minY = Math.min(...ptsModel.map((p) => p.y));
             let maxY = Math.max(...ptsModel.map((p) => p.y));
-            const cxModel = (minX + maxX) / 2;
-            const cyModel = (minY + maxY) / 2;
+            const cxModel = (minX + maxX) / 2,
+                cyModel = (minY + maxY) / 2;
 
             const needsRotate = maxY - minY > maxX - minX;
             const rotDeg = needsRotate ? -90 : 0;
 
-            // bbox tras rotación (para escalar y centrar)
             const ptsRot = ptsModel.map((p) =>
                 rotatePoint(p, cxModel, cyModel, rotDeg)
             );
@@ -791,17 +706,16 @@ document.addEventListener("DOMContentLoaded", () => {
             maxX = Math.max(...ptsRot.map((p) => p.x));
             minY = Math.min(...ptsRot.map((p) => p.y));
             maxY = Math.max(...ptsRot.map((p) => p.y));
-            const figW = Math.max(1, maxX - minX);
-            const figH = Math.max(1, maxY - minY);
+            const figW = Math.max(1, maxX - minX),
+                figH = Math.max(1, maxY - minY);
 
             const scale = Math.min(
                 (cellWidth * 0.8) / figW,
                 (cellHeight * 0.6) / figH
             );
-            const midX = (minX + maxX) / 2;
-            const midY = (minY + maxY) / 2;
+            const midX = (minX + maxX) / 2,
+                midY = (minY + maxY) / 2;
 
-            // Path combinado (rectas + arcos)
             const dPath = buildSvgPathFromDims(
                 dims,
                 cxModel,
@@ -815,7 +729,7 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             const pathEl = agregarPathD(svg, dPath, FIGURE_LINE_COLOR, 2);
 
-            // 👉 La figura es clicable para dividir
+            // clic para dividir
             const etiquetaClick = `${elemento.codigo ?? elemento.id}`;
             pathEl.style.cursor = "pointer";
             pathEl.setAttribute("tabindex", "0");
@@ -840,15 +754,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 pathEl.setAttribute("stroke-width", 2)
             );
 
-            // bbox figura en SVG (para evitar solapes de textos)
+            // bbox figura
             const ptsSvg = ptsRot.map((pt) => ({
                 x: centerX + (pt.x - midX) * scale,
                 y: centerY + (pt.y - midY) * scale,
             }));
-            const figMinX = Math.min(...ptsSvg.map((p) => p.x));
-            const figMaxX = Math.max(...ptsSvg.map((p) => p.x));
-            const figMinY = Math.min(...ptsSvg.map((p) => p.y));
-            const figMaxY = Math.max(...ptsSvg.map((p) => p.y));
+            const figMinX = Math.min(...ptsSvg.map((p) => p.x)),
+                figMaxX = Math.max(...ptsSvg.map((p) => p.x));
+            const figMinY = Math.min(...ptsSvg.map((p) => p.y)),
+                figMaxY = Math.max(...ptsSvg.map((p) => p.y));
             const figBox = {
                 left: figMinX,
                 right: figMaxX,
@@ -856,25 +770,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 bottom: figMaxY,
             };
 
-            // ---------- COTAS (solo texto, valor ORIGINAL, evitando pisar figura) ----------
-            const segsModelAdj = computeLineSegments(dims);
-            const segsModelOrig = computeLineSegments(dimsNoZero); // ← etiquetas con SUMA
+            // === COTAS (SOLO TEXTO + HIGHLIGHT EN EL TRAMO AL PASAR POR EL NÚMERO) ===
+            const segsAdj = computeLineSegments(dims); // recrecidos
+            const segsOrig = computeLineSegments(dimsNoZero); // originales
 
-            const segsAdjIndexed = segsModelAdj.map((s, i) => ({
-                ...s,
-                _origIdx: i,
-            }));
-
-            const segsUnicos = agruparSegmentosPorParalelismoYLargo(
-                segsAdjIndexed,
-                segsModelOrig
+            const segsUnicos = agruparPorDireccionYEtiquetaRobusto(
+                segsAdj,
+                segsOrig,
+                {
+                    dirPrecision: 1e-2, // sube a 2e-2 si aún te duplica
+                    labelFormat: { decimals: 0, step: null }, // p.ej. {decimals:0, step:5}
+                }
             );
+
             const placedBoxes = [];
 
             segsUnicos.forEach((s) => {
+                // rotar segmento ajustado al SVG
                 const s1 = rotatePoint(s.start, cxModel, cyModel, rotDeg);
                 const s2 = rotatePoint(s.end, cxModel, cyModel, rotDeg);
-
                 const p1 = {
                     x: centerX + (s1.x - midX) * scale,
                     y: centerY + (s1.y - midY) * scale,
@@ -885,8 +799,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
 
                 const L = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
-                let nx = (p2.y - p1.y) / L;
-                let ny = -(p2.x - p1.x) / L;
+                let nx = (p2.y - p1.y) / L,
+                    ny = -(p2.x - p1.x) / L;
 
                 const mx = (p1.x + p2.x) / 2,
                     my = (p1.y + p2.y) / 2;
@@ -895,44 +809,82 @@ document.addEventListener("DOMContentLoaded", () => {
                     ny = -ny;
                 }
 
-                let off = DIM_LINE_OFFSET;
-                // 🧠 etiqueta desde el segmento ORIGINAL correspondiente
-                const label = (
-                    segsModelOrig[s._origIdx]?.length ?? s.length
-                ).toString();
+                // etiqueta visible
+                const label = s._label;
                 const { w: tw, h: th } = approxTextBox(label, SIZE_DIM_TEXT);
 
+                let off = DIM_LINE_OFFSET,
+                    lx,
+                    ly,
+                    labelBox;
                 while (true) {
-                    const lx = mx + nx * off;
-                    const ly = my + ny * off - DIM_LABEL_LIFT;
-                    const labelBox = {
+                    lx = mx + nx * off;
+                    ly = my + ny * off - DIM_LABEL_LIFT;
+                    // ⚠️ aquí estaba el bug: usar 'th' (no 'h')
+                    labelBox = {
                         left: lx - tw / 2,
                         right: lx + tw / 2,
                         top: ly - th / 2,
                         bottom: ly + th / 2,
                     };
-                    const collideFigure = rectsOverlap(
+                    const collideFig = rectsOverlap(
                         figBox,
                         labelBox,
                         LABEL_CLEARANCE
                     );
-                    const collideOthers = placedBoxes.some((b) =>
+                    const collideOth = placedBoxes.some((b) =>
                         rectsOverlap(b, labelBox, LABEL_CLEARANCE)
                     );
-                    if (!collideFigure && !collideOthers) {
-                        agregarTexto(
-                            svg,
-                            lx,
-                            ly,
-                            label,
-                            VALOR_COTA_COLOR,
-                            SIZE_DIM_TEXT
-                        );
-                        placedBoxes.push(labelBox);
-                        break;
-                    }
+                    if (!collideFig && !collideOth) break;
                     off += LABEL_STEP;
                 }
+
+                // highlight del tramo real (oculto) — se muestra SOLO con el número
+                const hl = document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "line"
+                );
+                hl.setAttribute("x1", p1.x);
+                hl.setAttribute("y1", p1.y);
+                hl.setAttribute("x2", p2.x);
+                hl.setAttribute("y2", p2.y);
+                hl.setAttribute("stroke", "rgba(0,0,255,0.6)");
+                hl.setAttribute("stroke-width", "4");
+                hl.setAttribute("stroke-linecap", "round");
+                hl.setAttribute("vector-effect", "non-scaling-stroke");
+                hl.style.opacity = 0;
+                hl.style.pointerEvents = "none";
+                hl.style.transition = "opacity 120ms ease";
+                svg.appendChild(hl);
+
+                // texto de cota (interactivo)
+                const txt = document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "text"
+                );
+                txt.setAttribute("x", lx);
+                txt.setAttribute("y", ly);
+                txt.setAttribute("fill", VALOR_COTA_COLOR);
+                txt.setAttribute("font-size", SIZE_DIM_TEXT);
+                txt.setAttribute("text-anchor", "middle");
+                txt.setAttribute("alignment-baseline", "middle");
+                txt.setAttribute("tabindex", "0");
+                txt.style.cursor = "pointer";
+                txt.textContent = label;
+                svg.appendChild(txt); // encima del highlight
+
+                const onEnter = () => {
+                    hl.style.opacity = 1;
+                };
+                const onLeave = () => {
+                    hl.style.opacity = 0;
+                };
+                txt.addEventListener("mouseenter", onEnter);
+                txt.addEventListener("mouseleave", onLeave);
+                txt.addEventListener("focus", onEnter);
+                txt.addEventListener("blur", onLeave);
+
+                placedBoxes.push(labelBox);
             });
 
             // === TEXTO PRINCIPAL (Ø, peso, xN) ===
@@ -954,52 +906,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 gapBottom: MAIN_ABOVE_GAP,
                 gapSide: 8,
             });
-
-            // // === Código/ID informativo (no clicable) debajo si cabe ===
-            // {
-            //     const idText = `${elemento.codigo ?? elemento.id}`;
-            //     const { w, h } = approxTextBox(idText, SIZE_ID_TEXT);
-            //     let lx = centerX;
-            //     let ly = figBox.bottom + ID_BELOW_GAP;
-            //     let tries = 0;
-            //     while (true) {
-            //         const box = {
-            //             left: lx - w / 2,
-            //             right: lx + w / 2,
-            //             top: ly - h / 2,
-            //             bottom: ly + h / 2,
-            //         };
-            //         const collideFig = rectsOverlap(
-            //             figBox,
-            //             box,
-            //             LABEL_CLEARANCE
-            //         );
-            //         const collideCotas = placedBoxes.some((b) =>
-            //             rectsOverlap(b, box, LABEL_CLEARANCE)
-            //         );
-            //         const inside =
-            //             box.left >= 0 &&
-            //             box.right <= ancho &&
-            //             box.top >= 0 &&
-            //             box.bottom <= alto;
-            //         if (!collideFig && !collideCotas && inside) {
-            //             agregarTexto(
-            //                 svg,
-            //                 lx,
-            //                 ly,
-            //                 idText,
-            //                 ELEMENT_TEXT_COLOR,
-            //                 SIZE_ID_TEXT,
-            //                 "middle"
-            //             );
-            //             placedBoxes.push(box);
-            //             break;
-            //         }
-            //         ly += LABEL_STEP;
-            //         tries++;
-            //         if (tries > 100) break;
-            //     }
-            // }
         });
 
         contenedor.innerHTML = "";
@@ -1007,6 +913,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+// =======================
+// Modal dividir elemento
+// =======================
 function abrirModalDividirElemento(elementoId, etiqueta = "") {
     const modal = document.getElementById("modalDividirElemento");
     const input = document.getElementById("dividir_elemento_id");
@@ -1017,7 +926,6 @@ function abrirModalDividirElemento(elementoId, etiqueta = "") {
         form.setAttribute("action", window.rutaDividirElemento);
     modal.classList.remove("hidden");
 }
-
 async function enviarDivision() {
     const form = document.getElementById("formDividirElemento");
     const url = form.getAttribute("action") || window.rutaDividirElemento;

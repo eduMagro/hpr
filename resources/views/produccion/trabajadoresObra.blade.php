@@ -436,12 +436,18 @@
                     const props = arg.event.extendedProps;
                     const id = arg.event.id;
 
+                    // 👇 Texto de estado si existe
+                    const estadoTexto = props.estado ? `<div class="text-[10px] opacity-80">${props.estado}</div>` :
+                        '';
+
                     return {
                         html: `
             <div class="relative px-2 py-1 text-xs font-semibold group">
-                <span title="Eliminar" class="absolute top-0 right-0 text-red-600 hover:text-red-800 text-sm cursor-pointer btn-eliminar" data-id="${id}">X</span>
+                <span title="Eliminar" 
+                      class="absolute top-0 right-0 text-red-600 hover:text-red-800 text-sm cursor-pointer btn-eliminar" 
+                      data-id="${id}">X</span>
                 <div>${arg.event.title}</div>
-                <div class="text-[10px] opacity-80">${props.categoria_nombre ?? ''}${props.especialidad_nombre ? ' · ' + props.especialidad_nombre : ''}</div>
+                ${estadoTexto}
             </div>
         `
                     };

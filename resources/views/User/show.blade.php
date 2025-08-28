@@ -184,6 +184,7 @@
                                 <option value="{{ $turno->nombre }}">{{ ucfirst($turno->nombre) }}</option>
                             @endforeach
                             <option value="eliminarEstado">🗑 Eliminar Estado</option>
+                            <option value="curso">Realizando Cursos</option>
                             <option value="vacaciones">🏖 Vacaciones</option>
                             <option value="baja">🤒 Baja</option>
                             <option value="justificada">✅ Falta Justificada</option>

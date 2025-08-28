@@ -935,24 +935,42 @@ class ProduccionController extends Controller
             'maquina_origen_id' => 'required|integer|exists:maquinas,id',
             'nueva_posicion'    => 'required|integer|min:1',
         ]);
+
+        Log::info("➡️ ReordenarPlanillas iniciado", [
+            'planilla_id' => $request->id,
+            'maquina_destino' => $request->maquina_id,
+            'maquina_origen' => $request->maquina_origen_id,
+            'nueva_posicion' => $request->nueva_posicion,
+            'forzar_movimiento' => $request->boolean('forzar_movimiento'),
+            'elementos_id' => $request->input('elementos_id'),
+        ]);
+
         $elementosFueraRango = $this->obtenerElementosFueraDeRango($request->id, $request->maquina_id);
+        Log::info("🔍 Elementos fuera de rango detectados", [
+            'total' => $elementosFueraRango->count(),
+            'diametros' => $elementosFueraRango->pluck('diametro')->unique()->values(),
+        ]);
 
         // Si hay elementos fuera de rango y no se ha confirmado el movimiento parcial aún
         if (!$request->boolean('forzar_movimiento')) {
             if ($elementosFueraRango->isNotEmpty()) {
                 $elementosDentroRango = $this->obtenerElementosDentroDeRango($request->id, $request->maquina_id);
+                Log::info("✅ Comprobación de elementos dentro de rango", [
+                    'total' => $elementosDentroRango->count(),
+                    'ids'   => $elementosDentroRango->pluck('id'),
+                ]);
 
                 if ($elementosDentroRango->isNotEmpty()) {
-                    // Hay mezcla → preguntar si quiere mover los válidos
+                    Log::warning("⚠️ Mezcla de elementos detectada: requiere confirmación parcial");
                     return response()->json([
                         'success' => false,
                         'requiresConfirmation' => true,
                         'message' => 'Algunos elementos tienen un diámetro incompatible con la máquina destino. ¿Quieres mover solo los que son compatibles?',
                         'diametros' => $elementosFueraRango->pluck('diametro')->unique()->values(),
-                        'elementos' => $elementosDentroRango->pluck('id'), // los que SÍ se pueden mover
+                        'elementos' => $elementosDentroRango->pluck('id'),
                     ], 422);
                 } else {
-                    // Todos están fuera de rango → error directo
+                    Log::error("❌ Todos los elementos están fuera de rango → no se puede mover");
                     throw new \Exception("No se puede mover la planilla porque todos sus elementos están fuera del rango de la máquina destino.");
                 }
             }
@@ -965,15 +983,17 @@ class ProduccionController extends Controller
                 $maquinaAnterior  = (int) $request->maquina_origen_id;
                 $posNueva         = (int) $request->nueva_posicion;
 
+                Log::info("🚀 Iniciando transacción", compact('planillaId', 'maquinaNueva', 'maquinaAnterior', 'posNueva'));
+
                 if ($request->filled('elementos_id')) {
                     // ⚠ Movimiento parcial
                     $idsAMover = $request->input('elementos_id');
+                    Log::info("✂️ Movimiento parcial detectado", ['ids' => $idsAMover]);
 
                     // Mover solo esos elementos
                     Elemento::whereIn('id', $idsAMover)
                         ->update(['maquina_id' => $maquinaNueva]);
-
-                    // Mantener orden_planillas en la máquina de origen (NO borrar)
+                    Log::info("➡️ Elementos actualizados a la nueva máquina", ['maquina' => $maquinaNueva]);
 
                     // Crear nuevo orden en la máquina destino si no existe
                     $existeDestino = OrdenPlanilla::where('planilla_id', $planillaId)
@@ -987,9 +1007,13 @@ class ProduccionController extends Controller
                             'maquina_id'  => $maquinaNueva,
                             'posicion'    => $maxPos + 1,
                         ]);
+                        Log::info("➕ Orden creado en la máquina destino", [
+                            'planilla_id' => $planillaId,
+                            'posicion'    => $maxPos + 1,
+                        ]);
                     }
 
-                    // 👇 No reordenamos dentro de la misma máquina si es movimiento parcial
+                    Log::info("✅ Movimiento parcial finalizado");
                     return;
                 }
 
@@ -999,64 +1023,85 @@ class ProduccionController extends Controller
                     ->first();
 
                 if (!$ordenActual) {
+                    Log::error("❌ No se encontró orden en la máquina de origen", ['maquina_id' => $maquinaAnterior]);
                     throw new \Exception("No se encontró el registro actual de orden de la planilla en la máquina de origen.");
                 }
 
-                $maquinaAnterior = $ordenActual->maquina_id;
-                $posAnterior     = $ordenActual->posicion;
+                $posAnterior = $ordenActual->posicion;
+                Log::info("📌 Orden actual localizado", [
+                    'maquina' => $maquinaAnterior,
+                    'posicion' => $posAnterior,
+                ]);
 
                 if ($maquinaAnterior !== $maquinaNueva) {
-                    // ✅ Comprobamos si los elementos son compatibles con la máquina nueva
+                    Log::info("🔄 Cambio de máquina detectado", ['from' => $maquinaAnterior, 'to' => $maquinaNueva]);
+
+                    // ✅ Verificar compatibilidad
                     $this->verificarDiametrosPermitidos($planillaId, $maquinaNueva);
-                    // Reordenar la antigua máquina (subir todo lo que estaba detrás)
+
+                    // Reordenar máquina origen
                     OrdenPlanilla::where('maquina_id', $maquinaAnterior)
                         ->where('posicion', '>', $posAnterior)
                         ->decrement('posicion');
+                    Log::info("📉 Posiciones reordenadas en máquina origen");
 
-                    // Eliminar la fila de la máquina anterior
                     $ordenActual->delete();
+                    Log::info("🗑️ Orden eliminado de máquina origen");
 
-                    // Actualizar los elementos de la planilla a la nueva máquina
+                    // Actualizar elementos a la nueva máquina
                     Elemento::where('planilla_id', $planillaId)
                         ->update(['maquina_id' => $maquinaNueva]);
+                    Log::info("➡️ Elementos movidos a nueva máquina");
 
-                    // Comprobar si ya existe la planilla en la máquina nueva
+                    // Crear orden en la nueva máquina si no existe
                     $ordenDestino = OrdenPlanilla::where('planilla_id', $planillaId)
                         ->where('maquina_id', $maquinaNueva)
                         ->first();
 
                     if (!$ordenDestino) {
-                        // Insertar al final
                         $maxPos = OrdenPlanilla::where('maquina_id', $maquinaNueva)->max('posicion') ?? 0;
                         $ordenDestino = OrdenPlanilla::create([
                             'planilla_id' => $planillaId,
                             'maquina_id'  => $maquinaNueva,
                             'posicion'    => $maxPos + 1,
                         ]);
+                        Log::info("➕ Orden creado en máquina nueva", ['posicion' => $maxPos + 1]);
                     }
 
                     $ordenActual = $ordenDestino;
                 }
 
-                // Reordenar dentro de la máquina actual (nueva o la misma)
+                // Reordenar posiciones dentro de la misma máquina
                 $posActual = $ordenActual->posicion;
+                Log::info("🔧 Reordenando posiciones en máquina", [
+                    'posActual' => $posActual,
+                    'posNueva' => $posNueva,
+                ]);
 
                 if ($posNueva !== $posActual) {
                     if ($posNueva < $posActual) {
                         OrdenPlanilla::where('maquina_id', $maquinaNueva)
                             ->whereBetween('posicion', [$posNueva, $posActual - 1])
                             ->increment('posicion');
+                        Log::info("⬆️ Posiciones incrementadas", ['range' => [$posNueva, $posActual - 1]]);
                     } else {
                         OrdenPlanilla::where('maquina_id', $maquinaNueva)
                             ->whereBetween('posicion', [$posActual + 1, $posNueva])
                             ->decrement('posicion');
+                        Log::info("⬇️ Posiciones decrementadas", ['range' => [$posActual + 1, $posNueva]]);
                     }
 
                     $ordenActual->update(['posicion' => $posNueva]);
+                    Log::info("✅ Posición actualizada", ['posicion' => $posNueva]);
+                    $cola = OrdenPlanilla::where('maquina_id', $maquinaNueva)
+                        ->orderBy('posicion')
+                        ->get(['planilla_id', 'posicion'])
+                        ->toArray();
+                    Log::info("🧾 Cola máquina {$maquinaNueva}", ['cola' => $cola]);
                 }
             });
 
-            // Puedes aquí devolver nuevos eventos si quieres recargar el calendario
+
             return response()->json(['success' => true, 'message' => 'Planilla reordenada correctamente.']);
         } catch (\Exception $e) {
             Log::error('❌ Error al reordenar planilla: ' . $e->getMessage(), [
@@ -1070,6 +1115,7 @@ class ProduccionController extends Controller
             ], 422);
         }
     }
+
     private function obtenerElementosFueraDeRango(int $planillaId, int $maquinaId): Collection
     {
         $maquina = Maquina::findOrFail($maquinaId);
@@ -1204,10 +1250,25 @@ class ProduccionController extends Controller
         $todasLasObras = Obra::orderBy('obra')->get();
 
         $resources = $obrasActivas->map(fn($obra) => [
-            'id' => $obra->id,
-            'title' => $obra->obra,
+            'id'     => $obra->id,
+            'title'  => $obra->obra,
             'codigo' => $obra->cod_obra,
         ]);
+        $resources->prepend([
+            'id'     => 'sin-obra',
+            'title'  => 'Sin obra',
+            'codigo' => '—'
+        ]);
+
+        // Helper para mapear color por estado
+        $colorPorEstado = function (?string $estado) {
+            $estado = $estado ? mb_strtolower($estado) : null;
+            return match ($estado) {
+                'vacaciones' => '#f472b6', // rosa
+                'curso'      => '#ef4444', // rojo
+                default      => null,
+            };
+        };
 
         // 5. Generar eventos
         $eventos = [];
@@ -1220,20 +1281,32 @@ class ProduccionController extends Controller
                 $horaEntrada = $turno->hora_entrada ?? '08:00:00';
                 $horaSalida  = $turno->hora_salida ?? '16:00:00';
 
-                $eventos[] = [
-                    'id' => 'turno-' . $asignacion->id,
-                    'title' => $trabajador->nombre_completo,
-                    'start' => $asignacion->fecha . 'T' . $horaEntrada,
-                    'end' => $asignacion->fecha . 'T' . $horaSalida,
-                    'resourceId' => $asignacion->obra_id,
+                $color = $colorPorEstado($asignacion->estado);
+
+                $evento = [
+                    'id'         => 'turno-' . $asignacion->id,
+                    'title'      => $trabajador->nombre_completo,
+                    'start'      => $asignacion->fecha . 'T' . $horaEntrada,
+                    'end'        => $asignacion->fecha . 'T' . $horaSalida,
+                    'resourceId' => $asignacion->obra_id ?? 'sin-obra', // 👈 aquí el cambio
                     'extendedProps' => [
-                        'user_id' => $trabajador->id,
-                        'empresa' => 'HPR Servicios',
-                        'categoria_nombre' => $trabajador->categoria?->nombre,
+                        'user_id'             => $trabajador->id,
+                        'empresa'             => 'Hierros Paco Reyes',
+                        'categoria_nombre'    => $trabajador->categoria?->nombre,
                         'especialidad_nombre' => $trabajador->maquina?->nombre,
-                        'foto' => $trabajador->ruta_imagen,
+                        'foto'                => $trabajador->ruta_imagen,
+                        'estado'              => $asignacion->estado,
                     ],
                 ];
+
+                if ($color) {
+                    $evento['backgroundColor'] = $color;
+                    $evento['borderColor'] = $color;
+                    // opcional: mejor contraste si es rojo
+                    if ($color === '#ef4444') $evento['textColor'] = '#ffffff';
+                }
+
+                $eventos[] = $evento;
             }
         }
 
@@ -1245,37 +1318,49 @@ class ProduccionController extends Controller
                 $horaEntrada = $turno->hora_entrada ?? '08:00:00';
                 $horaSalida  = $turno->hora_salida ?? '16:00:00';
 
-                $eventos[] = [
-                    'id' => 'turno-' . $asignacion->id,
-                    'title' => $trabajador->nombre_completo,
-                    'start' => $asignacion->fecha . 'T' . $horaEntrada,
-                    'end' => $asignacion->fecha . 'T' . $horaSalida,
+                $color = $colorPorEstado($asignacion->estado);
+
+                $evento = [
+                    'id'         => 'turno-' . $asignacion->id,
+                    'title'      => $trabajador->nombre_completo,
+                    'start'      => $asignacion->fecha . 'T' . $horaEntrada,
+                    'end'        => $asignacion->fecha . 'T' . $horaSalida,
                     'resourceId' => $asignacion->obra_id,
                     'extendedProps' => [
-                        'user_id' => $trabajador->id,
-                        'empresa' => 'Hierros Paco Reyes',
-                        'categoria_nombre' => $trabajador->categoria?->nombre,
+                        'user_id'             => $trabajador->id,
+                        'empresa'             => 'Hierros Paco Reyes',
+                        'categoria_nombre'    => $trabajador->categoria?->nombre,
                         'especialidad_nombre' => $trabajador->maquina?->nombre,
-                        'foto' => $trabajador->ruta_imagen,
+                        'foto'                => $trabajador->ruta_imagen,
+                        'estado'              => $asignacion->estado, // 👈 estado incluido
                     ],
                 ];
+
+                if ($color) {
+                    $evento['backgroundColor'] = $color;
+                    $evento['borderColor'] = $color;
+                    if ($color === '#ef4444') $evento['textColor'] = '#ffffff';
+                }
+
+                $eventos[] = $evento;
             }
         }
 
         // 6. Retornar vista con todas las variables
         return view('produccion.trabajadoresObra', [
             'trabajadoresServicios' => $trabajadoresServicios,
-            'trabajadoresHpr' => $trabajadoresHpr,
-            'resources' => $resources,
-            'eventos' => $eventos,
-            'obras' => $todasLasObras, // ← esta es la nueva variable con todas las obras
+            'trabajadoresHpr'       => $trabajadoresHpr,
+            'resources'             => $resources,
+            'eventos'               => $eventos,
+            'obras'                 => $todasLasObras, // todas las obras
         ]);
     }
+
     //---------------------------------------------------------- EVENTOS OBRA
     public function eventosObra(Request $request)
     {
         $inicio = $request->query('start');
-        $fin = $request->query('end');
+        $fin    = $request->query('end');
 
         if (!$inicio || !$fin) {
             return response()->json(['error' => 'Faltan fechas'], 400);
@@ -1283,26 +1368,46 @@ class ProduccionController extends Controller
 
         $asignaciones = AsignacionTurno::with(['user.categoria', 'user.maquina', 'obra'])
             ->whereBetween('fecha', [$inicio, $fin])
-            ->whereNotNull('obra_id')
+            // ->whereNotNull('obra_id') // ❌ quitar para incluir sin obra
             ->get();
 
-        $eventos = $asignaciones->map(function ($asignacion) {
-            return [
-                'id' => 'turno-' . $asignacion->id,
-                'title' => $asignacion->user?->nombre_completo ?? 'Desconocido',
-                'start' => $asignacion->fecha . 'T06:00:00',
-                'end' => $asignacion->fecha . 'T14:00:00',
-                'resourceId' => $asignacion->obra_id,
+        $colorPorEstado = function (?string $estado) {
+            $estado = $estado ? mb_strtolower($estado) : null;
+            return match ($estado) {
+                'vacaciones' => '#f472b6',
+                'curso'      => '#ef4444',
+                default      => null,
+            };
+        };
+
+        $eventos = $asignaciones->map(function ($asignacion) use ($colorPorEstado) {
+            $color = $colorPorEstado($asignacion->estado);
+
+            $evento = [
+                'id'         => 'turno-' . $asignacion->id,
+                'title'      => $asignacion->user?->nombre_completo ?? 'Desconocido',
+                'start'      => $asignacion->fecha . 'T06:00:00',
+                'end'        => $asignacion->fecha . 'T14:00:00',
+                // 👇 si no hay obra, mandamos 'sin-obra'
+                'resourceId' => $asignacion->obra_id ?? 'sin-obra',
                 'extendedProps' => [
-                    'user_id' => $asignacion->user_id,
-                    'categoria_nombre' => $asignacion->user?->categoria?->nombre,
-                    'especialidad_nombre' => $asignacion->user?->maquina?->nombre
-                ]
+                    'user_id'             => $asignacion->user_id,
+                    'estado'              => $asignacion->estado,
+                ],
             ];
-        });
+
+            if ($color) {
+                $evento['backgroundColor'] = $color;
+                $evento['borderColor'] = $color;
+                if ($color === '#ef4444') $evento['textColor'] = '#ffffff';
+            }
+
+            return $evento;
+        })->values();
 
         return response()->json($eventos);
     }
+
 
     /**
      * Show the form for creating a new resource.

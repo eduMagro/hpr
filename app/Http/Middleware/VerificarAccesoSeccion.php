@@ -113,10 +113,7 @@ class VerificarAccesoSeccion
                 abort(403, 'Operario sin acceso.');
             }
 
-            Log::debug('✅ Ruta permitida para operario', [
-                'user' => $user->email,
-                'ruta' => $rutaActual,
-            ]);
+
 
             return $next($request);
         }

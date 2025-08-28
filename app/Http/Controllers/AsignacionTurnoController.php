@@ -968,6 +968,7 @@ class AsignacionTurnoController extends Controller
             'fecha' => 'required|date',
             'obra_id' => 'required|exists:obras,id'
         ]);
+        $turnoMontajeId = Turno::where('nombre', 'montaje')->firstOrFail()->id;
 
         // Buscar asignación de turno para ese día
         $asignacion = AsignacionTurno::where('user_id', $validated['user_id'])
@@ -980,8 +981,7 @@ class AsignacionTurnoController extends Controller
             $asignacion->user_id = $validated['user_id'];
             $asignacion->fecha = $validated['fecha'];
 
-            // Si tienes un turno por defecto, por ejemplo el de mañana (ID = 1)
-            $asignacion->turno_id = 1;
+            $asignacion->turno_id = $turnoMontajeId;
         }
 
         // Asignar o actualizar obra
@@ -1012,6 +1012,8 @@ class AsignacionTurnoController extends Controller
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
         ]);
 
+        $turnoMontajeId = Turno::where('nombre', 'montaje')->firstOrFail()->id; // 👈 AÑADIDO
+
         $fechaInicio = Carbon::parse($request->fecha_inicio);
         $fechaFin = Carbon::parse($request->fecha_fin);
 
@@ -1025,7 +1027,7 @@ class AsignacionTurnoController extends Controller
                     ],
                     [
                         'obra_id' => $request->obra_id,
-                        'turno_id' => 1 // Puedes adaptarlo si quieres que elija otro turno
+                        'turno_id' => $turnoMontajeId,
                     ]
                 );
                 $fecha->addDay();
@@ -1034,6 +1036,7 @@ class AsignacionTurnoController extends Controller
 
         return response()->json(['success' => true]);
     }
+
 
     public function updateObra(Request $request, $id)
     {
