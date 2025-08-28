@@ -38,6 +38,7 @@ class VerificarAccesoSeccion
         $rutaActual = $request->route()?->getName() ?? '';
         $userEmpresaId = $user->empresa_id;
         $esOperario = $user->rol === 'operario';
+        $esTransportista = $user->rol === 'transportista';
         $esOficina  = $user->rol === 'oficina';
 
 
@@ -91,11 +92,43 @@ class VerificarAccesoSeccion
                 'entradas.',
                 'pedidos.',
                 'movimientos.',
-                'politicas.',
                 'maquinas.fabricarLote',
                 'maquinas.completarLote',
                 'vacaciones.solicitar',
                 'salidas.editarActualizarEstado',
+                'usuarios.editarSubirImagen',
+                'usuarios.imagen',
+                'nominas.crearDescargarMes',
+            ];
+
+            $permitido = collect($rutasPermitidas)->contains(function ($ruta) use ($rutaActual) {
+                return Str::startsWith($rutaActual, $ruta) || $rutaActual === $ruta;
+            });
+
+            if (!$permitido) {
+                Log::info('🚫 Ruta denegada para operario', [
+                    'user' => $user->email,
+                    'ruta' => $rutaActual,
+                ]);
+                abort(403, 'Operario sin acceso.');
+            }
+
+            Log::debug('✅ Ruta permitida para operario', [
+                'user' => $user->email,
+                'ruta' => $rutaActual,
+            ]);
+
+            return $next($request);
+        }
+        // ============================
+        // 🔧 Transportistas (HPR y Servicios)
+        // ============================
+        if ($esTransportista) {
+            $rutasPermitidas = [
+                'users.',
+                'alertas.',
+                'vacaciones.solicitar',
+                'planificacion.index',
                 'usuarios.editarSubirImagen',
                 'usuarios.imagen',
                 'nominas.crearDescargarMes',
