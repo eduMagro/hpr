@@ -5,16 +5,16 @@ const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)";
 const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
 const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
 
-const marginX = 10;
-const marginY = 10;
+const marginX = 5;
+const marginY = 5;
 
 // “recrecimiento” (en UNIDADES del modelo, no px)
-const OVERLAP_GROW_UNITS = 1;
+const OVERLAP_GROW_UNITS = 0.6;
 
 // tamaños de texto y separación de cotas
-const SIZE_MAIN_TEXT = 14;
-const SIZE_DIM_TEXT = 12;
-const DIM_LINE_OFFSET = 12;
+const SIZE_MAIN_TEXT = 18;
+const SIZE_DIM_TEXT = 14;
+const DIM_LINE_OFFSET = 16;
 const DIM_LABEL_LIFT = 6;
 // separación de la cota respecto a la línea y cómo se desplaza si choca
 const DIM_OFFSET = 10; // px perpendicular a la línea
@@ -56,7 +56,7 @@ function agregarTexto(svg, x, y, texto, color, size, anchor) {
     txt.setAttribute("x", x);
     txt.setAttribute("y", y);
     txt.setAttribute("fill", color || "black");
-    txt.setAttribute("font-size", size || 12);
+    txt.setAttribute("font-size", size || 16);
     txt.setAttribute("text-anchor", anchor || "middle");
     txt.setAttribute("alignment-baseline", "middle");
     txt.style.pointerEvents = "none";
@@ -302,7 +302,7 @@ function placeMainLabelTopBand(params) {
         safeTop = params.safeTop,
         safeBottom = params.safeBottom;
     const baseSize = params.baseSize || SIZE_MAIN_TEXT,
-        minSize = params.minSize || 8;
+        minSize = params.minSize || 10;
     const bandHeight = params.bandHeight || TOP_BAND_HEIGHT,
         bandGap = params.bandGap || TOP_BAND_GAP,
         bandPadX = params.bandPadX || TOP_BAND_PAD_X;
@@ -388,7 +388,7 @@ function placeMainLabelSideBand(params) {
         safeBottom = params.safeBottom;
     const side = params.side || "right";
     const baseSize = params.baseSize || SIZE_MAIN_TEXT,
-        minSize = params.minSize || 8;
+        minSize = params.minSize || 10;
     const bandWidth = params.bandWidth,
         bandGap = params.bandGap || SIDE_BAND_GAP,
         bandPad = params.bandPad || SIDE_BAND_PAD;
@@ -986,7 +986,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     safeTop: safeTop,
                     safeBottom: safeBottom,
                     baseSize: SIZE_MAIN_TEXT,
-                    minSize: 8,
+                    minSize: 10,
                 });
             } else {
                 var freeLeft = figBox.left - safeLeft;
@@ -1004,7 +1004,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     safeBottom: safeBottom,
                     side: chosenSide,
                     baseSize: SIZE_MAIN_TEXT,
-                    minSize: 8,
+                    minSize: 10,
                     bandWidth: sideBandWidth,
                     bandGap: SIDE_BAND_GAP,
                     bandPad: SIDE_BAND_PAD,

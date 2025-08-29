@@ -138,8 +138,8 @@
                     await new Promise(res => {
                         new QRCode(tempQR, {
                             text: String(rawId),
-                            width: 50,
-                            height: 50
+                            width: 25,
+                            height: 25
                         });
                         setTimeout(() => {
                             // soporta librerías que crean <img> o <canvas>
@@ -190,7 +190,7 @@
           position:absolute;top:3mm;right:3mm;
           border:0.2mm solid #000;padding:1mm;background:#fff;
         }
-        .qr-box img{width:20mm;height:20mm;}
+        .qr-box img{width:10mm;height:10mm;}
         .no-print{display:none!important;}
       </style>
     `;

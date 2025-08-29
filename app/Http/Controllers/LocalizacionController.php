@@ -18,7 +18,7 @@ class LocalizacionController extends Controller
     {
         $localizaciones = Localizacion::all();
         $paquete = Paquete::with('etiquetas.elementos')->find(469);
-        $tamaño = $paquete->tamaño;
+        $tamaño = $paquete?->tamaño;
 
         $localizaciones = Localizacion::all();
         $localizacionesPaquetes = LocalizacionPaquete::with('paquete')->get();
