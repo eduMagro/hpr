@@ -22,7 +22,8 @@
 
         #grid {
             display: grid;
-            grid-template-columns: repeat(22, 1fr);
+            grid-template-columns: repeat(44, 1fr);
+
             /* no forces row height, just repeat */
             grid-auto-rows: 1fr;
             /* deja que cada celda defina su altura */
@@ -197,8 +198,9 @@
         let areaTemporal = new Set();
         const celdas = [];
         const cellsMap = {};
-        const columnas = 22;
-        const filas = 115;
+        const columnas = 44; // 22 * 2
+        const filas = 230; // 115 * 2
+
 
         for (let y = filas; y >= 1; y--) {
             for (let x = 1; x <= columnas; x++) {
@@ -441,14 +443,18 @@
                 }
 
                 // dimensiones en metros = celdas
-                const ancho = Math.max(1, Math.round(data.ancho));
-                const largo = Math.max(1, Math.round(data.longitud));
+                const ancho = Math.max(1, Math.round(data.ancho * 2));
+                const largo = Math.max(1, Math.round(data.longitud * 2));
+
 
                 Swal.fire({
                     title: 'Selecciona posición',
-                    text: `Haz click en la celda donde quieres colocar la esquina superior izquierda (${ancho}×${largo})`,
+                    html: `📦 Paquete: <b>${data.codigo}</b><br>
+           Tamaño real: <b>${(data.ancho).toFixed(2)}m × ${(data.longitud).toFixed(2)}m</b><br>
+           Celdas: <b>${ancho} × ${largo}</b>`,
                     icon: 'info'
                 });
+
 
                 // espera a que el usuario haga click en la cuadrícula
                 prepararClickParaColocar(codigo, ancho, largo);

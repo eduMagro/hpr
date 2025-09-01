@@ -198,20 +198,25 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::put('/planillas/fechas', [PlanillaController::class, 'actualizarFechasMasiva'])->name('planillas.editarActualizarFechasMasiva');
     Route::post('/paquetes/tamaño', function (Request $request) {
-        $paquete = App\Models\Paquete::where('codigo', $request->codigo)->first();
+        $etiqueta = \App\Models\Etiqueta::where('etiqueta_sub_id', $request->codigo)->first();
 
-        if (!$paquete) {
-            return response()->json(['error' => 'No encontrado'], 404);
+        if (!$etiqueta || !$etiqueta->paquete_id) {
+            return response()->json(['error' => 'Etiqueta no asociada a ningún paquete.'], 404);
         }
 
-        // devuelve directamente el accessor
+        $paquete = \App\Models\Paquete::find($etiqueta->paquete_id);
+
+        if (!$paquete) {
+            return response()->json(['error' => 'Paquete no encontrado.'], 404);
+        }
+
         return response()->json([
-            'codigo'   => $paquete->codigo,
-            'ancho'    => $paquete->tamaño['ancho'],
-            'longitud' => $paquete->tamaño['longitud'],
+            'codigo'           => $paquete->codigo,
+            'ancho'            => $paquete->tamaño['ancho'],       // en metros
+            'longitud'         => $paquete->tamaño['longitud'],    // en metros
+            'etiqueta_sub_id'  => $etiqueta->etiqueta_sub_id,
         ]);
     })->name('paquetes.tamaño');
-
     // === PLANILLAS Y PLANIFICACIÓN ===
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.crearImport');

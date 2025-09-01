@@ -245,6 +245,13 @@ class MaquinaController extends Controller
         $ubicacionesDisponiblesPorProductoBase = [];
         $pedidosActivos = collect();
 
+        $productoBaseSolicitados = Movimiento::where('tipo', 'recarga materia prima')
+            ->where('estado', 'pendiente')
+            ->where('maquina_destino', $maquina->id)
+            ->pluck('producto_base_id')
+            ->unique() ?? collect(); // 🔁 nunca null
+
+
         return view('maquinas.show', array_merge($base, compact(
             'maquina',
             'elementosMaquina',
@@ -257,13 +264,23 @@ class MaquinaController extends Controller
             'pedidosActivos',
             'elementosAgrupados',
             'elementosAgrupadosScript',
-            'turnoHoy'
+            'turnoHoy',
+            'productoBaseSolicitados'
         )));
     }
 
     /* =========================
    HELPERS PRIVADOS
    ========================= */
+    public static function productosSolicitadosParaMaquina($maquinaId)
+    {
+        return Movimiento::where('tipo', 'recarga_materia_prima')
+            ->where('estado', 'pendiente')
+            ->where('maquina_id', $maquinaId)
+            ->pluck('producto_base_id')
+            ->unique()
+            ->toArray();
+    }
 
     private function esGrua(Maquina $m): bool
     {

@@ -77,26 +77,27 @@ class Paquete extends Model
      */
     public function getTamañoAttribute()
     {
-        $maxLongitudMm = 0;
+        $maxLongitudCm = 0;
 
         foreach ($this->etiquetas as $etiqueta) {
             foreach ($etiqueta->elementos as $elemento) {
                 $maxLongitudElemento = $this->extraerMaxLongitudDeDimensiones($elemento->dimensiones);
 
-                if ($maxLongitudElemento > $maxLongitudMm) {
-                    $maxLongitudMm = $maxLongitudElemento;
+                if ($maxLongitudElemento > $maxLongitudCm) {
+                    $maxLongitudCm = $maxLongitudElemento;
                 }
             }
         }
 
-        // 🔥 ahora convertimos de mm a metros
-        $maxLongitudM = $maxLongitudMm / 1000;
+        // ✅ Convertimos de cm a metros (corregido)
+        $maxLongitudM = $maxLongitudCm / 100;
 
         return [
-            'ancho'    => 1,               // ancho fijo en metros
-            'longitud' => $maxLongitudM    // mayor longitud encontrada en metros
+            'ancho'    => 1,
+            'longitud' => $maxLongitudM
         ];
     }
+
 
     /**
      * Extrae la longitud máxima de un string de dimensiones en cm.

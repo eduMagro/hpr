@@ -46,8 +46,9 @@
                 <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
                     :productosBaseCompatibles="$productosBaseCompatibles" />
             @else
-                <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
-                    :productosBaseCompatibles="$productosBaseCompatibles" />
+                <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados" :productosBaseCompatibles="$productosBaseCompatibles"
+                    :productoBaseSolicitados="$productoBaseSolicitados" />
+
 
                 @include('components.maquinas.modales.normal.modales-normal')
             @endif

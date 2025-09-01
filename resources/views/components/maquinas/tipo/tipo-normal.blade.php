@@ -34,10 +34,18 @@
                             @endif
                             <input type="hidden" name="descripcion"
                                 value="Recarga solicitada para máquina {{ $maquina->nombre }} (Ø{{ $productoBase->diametro }} {{ strtolower($productoBase->tipo) }}, {{ $pesoStock }} kg)">
-                            <button
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-3 py-1 rounded transition">
-                                Solicitar
-                            </button>
+                            @if (optional($productoBaseSolicitados)->contains($productoBase->id))
+                                <button disabled
+                                    class="bg-gray-400 text-white text-sm font-medium px-3 py-1 rounded opacity-60 cursor-not-allowed">
+                                    🕓 Solicitado
+                                </button>
+                            @else
+                                <button
+                                    class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-3 py-1 rounded transition">
+                                    Solicitar
+                                </button>
+                            @endif
+
 
 
                         </form>
@@ -301,11 +309,11 @@
                                 html: data.errors?.length ?
                                     `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
               ${data.errors.map(err => `
-                                                                                  <li>
-                                                                                      <b>#${err.id}</b>: ${err.error}<br>
-                                                                                      <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
-                                                                                  </li>
-                                                                              `).join('')}
+                                                                                                                  <li>
+                                                                                                                      <b>#${err.id}</b>: ${err.error}<br>
+                                                                                                                      <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                                                                                                                  </li>
+                                                                                                              `).join('')}
            </ul>` : '',
                             }).then(() => {
                                 if (data.success) location.reload();
