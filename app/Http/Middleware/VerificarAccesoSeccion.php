@@ -28,6 +28,7 @@ class VerificarAccesoSeccion
             'manuel.reyes@pacoreyes.com',
             'alvarofaces@gruporeyestejero.com',
             'pabloperez@gruporeyestejero.com',
+            'edumagrolemus@hotmail.com',
         ])) {
             return $next($request);
         }
