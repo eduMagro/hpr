@@ -20,18 +20,21 @@ class VerificarAccesoSeccion
         if (!$user) abort(403, 'No autenticado.');
 
         $email = strtolower(trim($user->email));
-        Log::debug('📧 Comprobando email de acceso total', ['email' => $email]);
-        if (in_array($email, [
+        $emailsAccesoTotal = [
             'eduardo.magro@pacoreyes.com',
             'sebastian.duran@pacoreyes.com',
             'juanjose.dorado@pacoreyes.com',
             'josemanuel.amuedo@pacoreyes.com',
+            'jose.amuedo@pacoreyes.com', // ← Añade esta variante también por si acaso
             'manuel.reyes@pacoreyes.com',
             'alvarofaces@gruporeyestejero.com',
             'pabloperez@gruporeyestejero.com',
             'edumagrolemus@hotmail.com',
-        ])) {
-            Log::debug('✅ Acceso total concedido', ['email' => $email]);
+        ];
+
+        // ✅ Atajo: si tiene acceso total por email, permitir todo sin más
+        if (in_array($email, $emailsAccesoTotal)) {
+            Log::debug('✅ Acceso total concedido por email', ['email' => $email, 'ruta' => $request->route()?->getName()]);
             return $next($request);
         }
 
