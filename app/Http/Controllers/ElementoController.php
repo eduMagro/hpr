@@ -250,23 +250,126 @@ class ElementoController extends Controller
         $campo = $request->campo;
         $valor = $request->valor;
 
-        // Campos permitidos
         $camposPermitidos = ['maquina_id', 'maquina_id_2', 'maquina_id_3'];
         if (!in_array($campo, $camposPermitidos)) {
             return response()->json(['error' => 'Campo no permitido'], 403);
         }
 
-        // Buscar la máquina por nombre
-        $maquina = \App\Models\Maquina::where('nombre', $valor)->first();
-
-        if (!$maquina) {
+        // Buscar la nueva máquina por nombre
+        $nuevaMaquina = Maquina::where('nombre', $valor)->first();
+        if (!$nuevaMaquina) {
             return response()->json(['error' => 'Máquina no encontrada'], 404);
         }
 
-        $elemento->$campo = $maquina->id;
-        $elemento->save();
+        DB::beginTransaction();
+        try {
+            $planillaId = $elemento->planilla_id;
 
-        return response()->json(['ok' => true, 'campo' => $campo, 'maquina_id' => $maquina->id]);
+            // 🧠 Determina la máquina original real para esta planilla
+            $maquinaOriginal = $this->obtenerMaquinaReal($elemento);
+
+            // 1️⃣ Actualizamos el campo solicitado
+            $elemento->$campo = $nuevaMaquina->id;
+            $elemento->save();
+
+            // 2️⃣ Nueva máquina real tras el cambio
+            $elemento->refresh();
+            $nuevaMaquinaReal = $this->obtenerMaquinaReal($elemento);
+
+            // 3️⃣ Asegurarse de que exista la entrada en orden_planillas para la nueva máquina
+            $yaExiste = OrdenPlanilla::where('planilla_id', $planillaId)
+                ->where('maquina_id', $nuevaMaquinaReal)
+                ->exists();
+
+            if (!$yaExiste) {
+                // 1. Obtener las posiciones existentes de esta planilla en otras máquinas
+                $posicionesExistentes = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->pluck('posicion');
+
+                // 2. Calcular la media o usar 1 si no hay otras
+                $nuevaPosicion = $posicionesExistentes->isNotEmpty()
+                    ? intval(round($posicionesExistentes->avg()))
+                    : 1;
+
+                // 3. Incrementar las posiciones >= nuevaPosicion en la nueva máquina
+                // 3. Si hay una planilla fabricando en esa posición, buscar siguiente libre
+                $posicionFinal = $nuevaPosicion;
+
+                $planillaFabricando = OrdenPlanilla::with('planilla')
+                    ->where('maquina_id', $nuevaMaquinaReal)
+                    ->where('posicion', $posicionFinal)
+                    ->first();
+
+                while ($planillaFabricando && $planillaFabricando->planilla && $planillaFabricando->planilla->estado === 'fabricando') {
+                    $posicionFinal++;
+                    $planillaFabricando = OrdenPlanilla::with('planilla')
+                        ->where('maquina_id', $nuevaMaquinaReal)
+                        ->where('posicion', $posicionFinal)
+                        ->first();
+                }
+
+                // 4. Desplazar las posiciones a partir de la posición final
+                OrdenPlanilla::where('maquina_id', $nuevaMaquinaReal)
+                    ->where('posicion', '>=', $posicionFinal)
+                    ->increment('posicion');
+
+                // 5. Crear la nueva entrada
+                OrdenPlanilla::create([
+                    'planilla_id' => $planillaId,
+                    'maquina_id' => $nuevaMaquinaReal,
+                    'posicion' => $posicionFinal,
+                ]);
+            }
+
+            // 4️⃣ Verificar si la máquina original se ha quedado sin elementos de esa planilla
+            $quedanElementos = Elemento::where('planilla_id', $planillaId)
+                ->get()
+                ->filter(function ($e) use ($maquinaOriginal) {
+                    return $this->obtenerMaquinaReal($e) === $maquinaOriginal;
+                })
+                ->isNotEmpty();
+
+            if (!$quedanElementos) {
+                // Borramos el registro de orden_planillas
+                $ordenOriginal = OrdenPlanilla::where('planilla_id', $planillaId)
+                    ->where('maquina_id', $maquinaOriginal)
+                    ->first();
+
+                if ($ordenOriginal) {
+                    $posicionEliminada = $ordenOriginal->posicion;
+                    $ordenOriginal->delete();
+
+                    // Restar 1 a las planillas con posición superior
+                    OrdenPlanilla::where('maquina_id', $maquinaOriginal)
+                        ->where('posicion', '>', $posicionEliminada)
+                        ->decrement('posicion');
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'ok' => true,
+                'campo' => $campo,
+                'maquina_id' => $nuevaMaquina->id
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
+        }
+    }
+    private function obtenerMaquinaReal($e)
+    {
+        $tipo1 = optional($e->maquina)->tipo;
+        $tipo2 = optional($e->maquina_2)->tipo;
+        $tipo3 = optional($e->maquina_3)->tipo;
+
+        if ($tipo1 === 'ensambladora') return $e->maquina_id_2;
+        if ($tipo1 === 'soldadora')    return $e->maquina_id_3 ?? $e->maquina_id;
+        if ($tipo1 === 'dobladora manual') return $e->maquina_id;
+        if ($tipo2 === 'dobladora manual') return $e->maquina_id_2;
+
+        return $e->maquina_id;
     }
 
     public function dividirElemento(Request $request)
