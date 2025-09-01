@@ -19,8 +19,9 @@ class VerificarAccesoSeccion
         $user = Auth::user();
         if (!$user) abort(403, 'No autenticado.');
 
-        // ✅ Acceso total para admins
-        if (in_array($user->email, [
+        $email = strtolower(trim($user->email));
+        Log::debug('📧 Comprobando email de acceso total', ['email' => $email]);
+        if (in_array($email, [
             'eduardo.magro@pacoreyes.com',
             'sebastian.duran@pacoreyes.com',
             'juanjose.dorado@pacoreyes.com',
@@ -28,10 +29,12 @@ class VerificarAccesoSeccion
             'manuel.reyes@pacoreyes.com',
             'alvarofaces@gruporeyestejero.com',
             'pabloperez@gruporeyestejero.com',
-            'jose.amuedo@pacoreyes.com',
+            'edumagrolemus@hotmail.com',
         ])) {
+            Log::debug('✅ Acceso total concedido', ['email' => $email]);
             return $next($request);
         }
+
 
         // ============================
         // 🔎 DATOS DEL USUARIO

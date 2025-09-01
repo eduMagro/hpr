@@ -15,7 +15,20 @@ class PageController extends Controller
      */
     public function index()
     {
+
+
         $user = auth()->user();
+        $email = strtolower(trim($user->email));
+        $emailsAccesoTotal = [
+            'eduardo.magro@pacoreyes.com',
+            'sebastian.duran@pacoreyes.com',
+            'juanjose.dorado@pacoreyes.com',
+            'josemanuel.amuedo@pacoreyes.com',
+            'manuel.reyes@pacoreyes.com',
+            'alvarofaces@gruporeyestejero.com',
+            'pabloperez@gruporeyestejero.com',
+            'edumagrolemus@hotmail.com',
+        ];
         $esOperario = $user->rol === 'operario';
         $esTransportista = $user->rol === 'transportista';
         $esOficina  = $user->rol === 'oficina';
@@ -51,6 +64,17 @@ class PageController extends Controller
         $secciones = Seccion::with('departamentos')
             ->where('mostrar_en_dashboard', true)
             ->get();
+        // ✅ Acceso total → ver todas las secciones visibles
+        if (in_array($email, $emailsAccesoTotal)) {
+            $items = $secciones->map(fn($s) => [
+                'route' => $s->ruta,
+                'label' => $s->nombre,
+                'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
+                'departamentos' => $s->departamentos->pluck('id')->toArray(),
+            ]);
+
+            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina', 'departamentosUsuario', 'permitidosOperario', 'permitidosTransportista'));
+        }
 
         // 🟣 Caso 1: G.E Reyes Tejero + Oficina → solo ayuda y mensajes
         if ($empresaId === $empresaReyesTejeroId && $esOficina) {
