@@ -245,6 +245,29 @@ class ElementoController extends Controller
 
         return view('elementos.index', compact('elementos', 'maquinas', 'ordenables', 'totalPesoFiltrado'));
     }
+    public function actualizarCampo(Request $request, Elemento $elemento)
+    {
+        $campo = $request->campo;
+        $valor = $request->valor;
+
+        // Campos permitidos
+        $camposPermitidos = ['maquina_id', 'maquina_id_2', 'maquina_id_3'];
+        if (!in_array($campo, $camposPermitidos)) {
+            return response()->json(['error' => 'Campo no permitido'], 403);
+        }
+
+        // Buscar la máquina por nombre
+        $maquina = \App\Models\Maquina::where('nombre', $valor)->first();
+
+        if (!$maquina) {
+            return response()->json(['error' => 'Máquina no encontrada'], 404);
+        }
+
+        $elemento->$campo = $maquina->id;
+        $elemento->save();
+
+        return response()->json(['ok' => true, 'campo' => $campo, 'maquina_id' => $maquina->id]);
+    }
 
     public function dividirElemento(Request $request)
     {

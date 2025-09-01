@@ -280,6 +280,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ctx.fillStyle = "#FF0000";
         ctx.fillText(peso, canvas.width - 50, canvas.height - 10);
     }
+    window.dibujarFiguraElemento = dibujarFigura;
 
     /* ******************************************************************
      * Eventos: abrir y cerrar modal

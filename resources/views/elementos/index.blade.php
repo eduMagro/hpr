@@ -147,23 +147,29 @@
 
                 <tbody class="text-gray-700 text-sm">
                     @forelse ($elementos as $elemento)
-
                         <tr tabindex="0" x-data="{
                             editando: false,
+                            seleccionada: false,
                             elemento: @js($elemento),
                             original: JSON.parse(JSON.stringify(@js($elemento)))
                         }"
                             @dblclick="if(!$event.target.closest('input')) {
-                                  if(!editando) {
-                                    editando = true;
-                                  } else {
-                                    elemento = JSON.parse(JSON.stringify(original));
-                                    editando = false;
-                                  }
-                                }"
+        if(!editando) {
+            editando = true;
+        } else {
+            elemento = JSON.parse(JSON.stringify(original));
+            editando = false;
+        }
+    }"
                             @keydown.enter.stop="guardarCambios(elemento); editando = false"
-                            :class="{ 'bg-yellow-100': editando }"
-                            class="border-b odd:bg-gray-100 even:bg-gray-50 hover:bg-blue-200 cursor-pointer text-xs uppercase">
+                            @click="seleccionada = !seleccionada"
+                            :class="{
+                                'bg-yellow-100': editando,
+                                'bg-blue-100': seleccionada,
+                                'hover:bg-blue-200': !seleccionada && !editando
+                            }"
+                            class="border-b odd:bg-gray-100 even:bg-gray-50 cursor-pointer text-xs uppercase transition-colors">
+
                             <!-- ID -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
@@ -228,19 +234,16 @@
 
                             <!-- MAQUINA 1 -->
                             <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.maquina.nombre || 'N/A'"></span>
-                                </template>
-                                <!-- En modo edición, se edita el id de la máquina -->
-                                <select x-show="editando" x-model="elemento.maquina_id"
-                                    class="form-control form-control-sm">
-                                    <option value="">Seleccionar máquina</option>
+                                <select class="text-xs border rounded px-1 py-0.5" data-id="{{ $elemento->id }}"
+                                    data-field="maquina_id" onchange="actualizarCampoElemento(this)">
                                     @foreach ($maquinas as $maquina)
-                                        <option value="{{ $maquina->id }}">{{ $maquina->codigo }}</option>
+                                        <option value="{{ $maquina->nombre }}" @selected($elemento->maquina && $elemento->maquina->nombre === $maquina->nombre)>
+                                            {{ $maquina->nombre }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </td>
+
                             <!-- MAQUINA 2 -->
                             <td class="px-1 py-3 text-center border">
                                 <template x-if="!editando">
@@ -357,7 +360,7 @@
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
                                             <a href="#"
                                                 class="w-6 h-6 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 flex items-center justify-center abrir-modal-dibujo"
-                                                data-id="{{ $elemento->id }}"
+                                                data-id="{{ $elemento->id }}" data-codigo="{{ $elemento->codigo }}"
                                                 data-dimensiones="{{ $elemento->dimensiones }}"
                                                 data-peso="{{ $elemento->peso_kg }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
@@ -402,22 +405,94 @@
 
         <x-tabla.paginacion :paginador="$elementos" />
         <!-- Modal -->
-        <div id="modal-dibujo"
-            class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
-            <div class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative">
-                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">
-                    ✖
-                </button>
-                @if (isset($elemento) && $elemento->id)
-                    <h2 class="text-lg font-semibold mb-3">Elemento #{{ $elemento->id }}</h2>
-                @endif
+        <div id="modal-dibujo" class="hidden fixed inset-0 flex justify-center items-center pointer-events-none">
+            <div
+                class="bg-white rounded-lg p-5 w-3/4 max-w-lg relative pointer-events-auto shadow-lg border border-gray-300">
+                <button id="cerrar-modal" class="absolute top-2 right-2 text-red-600 hover:bg-red-100">✖</button>
+                <h2 class="text-lg font-semibold mb-3" id="modal-titulo">Elemento</h2>
                 <canvas id="canvas-dibujo" class="border border-gray-300 w-full h-[300px]"></canvas>
             </div>
         </div>
+
     </div>
 
     <script src="{{ asset('js/elementosJs/guardarCambios.js') }}" defer></script>
     <script src="{{ asset('js/elementosJs/figuraElemento.js') }}" defer></script>
+    <script>
+        function actualizarCampoElemento(input) {
+            const id = input.dataset.id;
+            const campo = input.dataset.field;
+            const valor = input.value;
+
+            fetch(`/elementos/${id}/actualizar-campo`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        campo: campo,
+                        valor: valor
+                    })
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error('Error al guardar');
+                    return res.json();
+                })
+                .then(data => {
+                    console.log(`Elemento #${id} actualizado: ${campo} = ${valor}`);
+                })
+                .catch(error => {
+                    alert('Error al guardar el dato');
+                    console.error(error);
+                });
+        }
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const modal = document.getElementById("modal-dibujo");
+            const titulo = document.getElementById("modal-titulo");
+            const canvas = document.getElementById("canvas-dibujo");
+            const cerrar = document.getElementById("cerrar-modal");
+
+            function abrirModal(ojo) {
+                const id = ojo.dataset.id;
+                const codigo = ojo.dataset.codigo;
+                const dimensiones = ojo.dataset.dimensiones;
+                const peso = ojo.dataset.peso;
+
+                if (titulo) titulo.textContent = `${codigo}`;
+
+                // Actualizamos datos
+                window.elementoData = {
+                    id,
+                    dimensiones,
+                    peso
+                };
+
+
+
+                modal.classList.remove("hidden");
+                // ⚠️ Forzar redibujado
+                if (typeof window.dibujarFiguraElemento === 'function') {
+                    window.dibujarFiguraElemento("canvas-dibujo", dimensiones, peso);
+                }
+            }
+
+            function cerrarModal() {
+                modal.classList.add("hidden");
+            }
+
+            document.querySelectorAll(".abrir-modal-dibujo").forEach(ojo => {
+                ojo.addEventListener("mouseenter", () => abrirModal(ojo));
+                ojo.addEventListener("mouseleave", cerrarModal);
+                ojo.addEventListener("click", e => e.preventDefault());
+            });
+
+            if (cerrar) cerrar.addEventListener("click", cerrarModal);
+        });
+    </script>
     <script>
         @if (isset($elemento))
             window.elementoData = @json($elemento);
