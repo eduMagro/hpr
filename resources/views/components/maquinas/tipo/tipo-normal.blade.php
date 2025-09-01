@@ -46,14 +46,23 @@
                     @if ($productoExistente)
                         <div id="progreso-container-{{ $productoExistente->id }}"
                             class="relative mt-2 {{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'w-20 h-20' : 'w-full max-w-sm h-4' }} bg-gray-300 overflow-hidden rounded-lg">
-                            <div class="absolute bottom-0 w-full"
+                            <div id="progreso-barra-{{ $productoExistente->id }}" class="absolute bottom-0 w-full"
                                 style="{{ strtoupper($productoBase->tipo) === 'ENCARRETADO' ? 'height' : 'width' }}: {{ $porcentaje }}%; background-color: green;">
                             </div>
-                            <span
+                            <span id="progreso-texto-{{ $productoExistente->id }}"
                                 class="absolute inset-0 flex items-center justify-center text-white text-xs font-semibold">
                                 {{ $pesoStock }} / {{ $pesoInicial }} kg
                             </span>
+
                         </div>
+                    @endif
+                    @if (strtoupper($productoBase->tipo) === 'BARRA')
+                        <label class="flex items-center space-x-2 mt-1">
+                            <input type="checkbox" name="activar_longitud" value="{{ $productoBase->longitud }}"
+                                data-diametro="{{ $productoBase->diametro }}"
+                                class="checkbox-longitud focus:ring focus:ring-blue-300 rounded border-gray-300 text-blue-600">
+                            <span class="text-sm text-gray-700">Usar longitud {{ $productoBase->longitud }} m</span>
+                        </label>
                     @endif
 
                     <hr class="my-1">
@@ -292,11 +301,11 @@
                                 html: data.errors?.length ?
                                     `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
               ${data.errors.map(err => `
-                                                                  <li>
-                                                                      <b>#${err.id}</b>: ${err.error}<br>
-                                                                      <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
-                                                                  </li>
-                                                              `).join('')}
+                                                                                  <li>
+                                                                                      <b>#${err.id}</b>: ${err.error}<br>
+                                                                                      <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                                                                                  </li>
+                                                                              `).join('')}
            </ul>` : '',
                             }).then(() => {
                                 if (data.success) location.reload();

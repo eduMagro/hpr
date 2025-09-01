@@ -37,6 +37,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
         e.target.value = ""; // Limpiar input tras procesar
     });
+    function validarYObtenerLongitudSeleccionada() {
+        const checkboxesBarra = document.querySelectorAll(
+            `input.checkbox-longitud`
+        );
+        const longitudesDisponibles = new Set();
+        const longitudesMarcadas = new Set();
+
+        checkboxesBarra.forEach((checkbox) => {
+            if (checkbox.dataset.diametro) {
+                longitudesDisponibles.add(checkbox.value);
+                if (checkbox.checked) {
+                    longitudesMarcadas.add(checkbox.value);
+                }
+            }
+        });
+
+        if (longitudesMarcadas.size === 0) {
+            Swal.fire({
+                icon: "warning",
+                title: "Longitud no seleccionada",
+                text: "Debes seleccionar una longitud de barra antes de continuar.",
+            });
+            return null;
+        }
+
+        if (longitudesMarcadas.size > 1) {
+            Swal.fire({
+                icon: "error",
+                title: "Demasiadas longitudes seleccionadas",
+                text: "Solo puedes seleccionar una única longitud de barra. Revisa tu selección.",
+            });
+            return null;
+        }
+
+        // ✅ Devuelve la longitud válida como número
+        return parseFloat([...longitudesMarcadas][0]);
+    }
 
     /**
      * Envía la solicitud PUT para actualizar la etiqueta en el servidor.
@@ -46,6 +83,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const csrfToken = document
             .querySelector('meta[name="csrf-token"]')
             ?.getAttribute("content");
+        // 🧠 Recorremos los checkboxes de tipo barra, si hay más de una longitud activa
+        const longitudSeleccionada = validarYObtenerLongitudSeleccionada();
+        if (longitudSeleccionada === null) return; // ⛔ Bloquear si hay error
 
         try {
             const response = await fetch(url, {
@@ -55,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     Accept: "application/json",
                     "X-CSRF-TOKEN": csrfToken,
                 },
-                body: JSON.stringify({ id }),
+                body: JSON.stringify({ id, longitud: longitudSeleccionada }),
             });
             let data;
 

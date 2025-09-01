@@ -226,6 +226,8 @@ class EtiquetaController extends Controller
             $warnings = []; // Array para acumular mensajes de alerta
             // Array para almacenar los productos consumidos y su stock actualizado
             $productosAfectados = [];
+            $longitudSeleccionada = $request->input('longitud');
+
             // Obtener la etiqueta y su planilla asociada
             $etiqueta = Etiqueta::with('elementos.planilla')->where('etiqueta_sub_id', $id)->firstOrFail();
             $planilla_id = $etiqueta->planilla_id;
@@ -272,7 +274,7 @@ class EtiquetaController extends Controller
             // Convertir los diámetros requeridos a enteros
             // 2) Diámetros requeridos (normalizados)
             $diametrosRequeridos = array_map('intval', array_keys($diametrosConPesos));
-            \Log::info("🔍 Diametros requeridos", $diametrosRequeridos);
+            Log::info("🔍 Diametros requeridos", $diametrosRequeridos);
 
             // Si por alguna razón no hay diametros (p.ej. diametro null en elementos), intenta derivarlos
             if (empty($diametrosRequeridos)) {
@@ -283,40 +285,58 @@ class EtiquetaController extends Controller
                     ->values()
                     ->all();
                 $diametrosRequeridos = $derivados;
-                \Log::info('🔄 Diametros requeridos derivados de elementos', $diametrosRequeridos);
+                Log::info('🔄 Diametros requeridos derivados de elementos', $diametrosRequeridos);
             }
             // -------------------------------------------- ESTADO PENDIENTE --------------------------------------------
             switch ($etiqueta->estado) {
                 case 'pendiente':
-
-                    // Actualizar el estado de los elementos en la máquina a "fabricando" y asignamos usuarios
-                    foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->users_id =  $operario1;
-                        $elemento->users_id_2 =  $operario2;
-                        $elemento->estado = "fabricando";
-                        $elemento->save();
-                    }
-                    // Log diametros requeridos y productos antes de filtrar
-                    Log::info("🔍 Diametros requeridos", $diametrosRequeridos);
+                    Log::info("🔍 Diámetros requeridos", $diametrosRequeridos);
                     Log::info("📦 Productos totales en máquina {$maquina->id}", $maquina->productos()->with('productoBase')->get()->toArray());
 
-                    // ------- CONSUMOS
-
-                    // Obtener los productos disponibles en la máquina con los diámetros requeridos
-                    $productos = $maquina->productos()
+                    // 1️⃣ Obtenemos todos los productos de la máquina con producto base con los diámetros requeridos
+                    $productosQuery = $maquina->productos()
                         ->whereHas('productoBase', function ($query) use ($diametrosRequeridos) {
                             $query->whereIn('diametro', $diametrosRequeridos);
                         })
-                        ->with('productoBase') // para evitar consultas adicionales al acceder a diametro
-                        ->orderBy('peso_stock')
-                        ->get();
+                        ->with('productoBase');
 
+                    // 2️⃣ Si es tipo barra y no se ha seleccionado longitud, validamos ANTES
+                    if ($maquina->tipo_material === 'barra') {
+                        // Cargamos para analizar
+                        $productosPrevios = $productosQuery->get();
+
+                        $longitudes = $productosPrevios->pluck('productoBase.longitud')->unique();
+
+                        if ($longitudes->count() > 1 && !$longitudSeleccionada) {
+                            return response()->json([
+                                'success' => false,
+                                'error' => "Hay varias longitudes disponibles para barras (" . $longitudes->implode(', ') . " m). Selecciona una longitud para continuar.",
+                            ], 400);
+                        }
+
+                        // Si hay longitud seleccionada, aplicamos filtro en la QUERY original
+                        if ($longitudSeleccionada) {
+                            $productosQuery->whereHas('productoBase', function ($query) use ($longitudSeleccionada) {
+                                $query->where('longitud', $longitudSeleccionada);
+                            });
+                        }
+
+                        // Volvemos a ejecutar la query tras aplicar filtros
+                        $productos = $productosQuery->orderBy('peso_stock')->get();
+                    } else {
+                        // Si no es tipo barra, simplemente ejecutamos la query original
+                        $productos = $productosQuery->orderBy('peso_stock')->get();
+                    }
+
+                    // 3️⃣ Validamos que haya productos tras aplicar filtros
                     if ($productos->isEmpty()) {
                         return response()->json([
                             'success' => false,
-                            'error' => 'No se encontraron productos en la máquina con los diámetros especificados.',
+                            'error' => 'No se encontraron productos en la máquina con los diámetros especificados y la longitud indicada.',
                         ], 400);
                     }
+
+
                     // Agrupar productos por diámetro (asegurando que sean enteros)
                     $productosAgrupados = $productos->groupBy(fn($producto) => (int) $producto->productoBase->diametro);
 
@@ -429,14 +449,19 @@ class EtiquetaController extends Controller
                         ], 400);
                     }
 
-                    // Actualizar la etiqueta a "fabricando"
-
+                    foreach ($elementosEnMaquina as $elemento) {
+                        $elemento->users_id =  $operario1;
+                        $elemento->users_id_2 =  $operario2;
+                        $elemento->estado = "fabricando";
+                        $elemento->save();
+                    }
 
                     $etiqueta->estado = "fabricando";
                     $etiqueta->operario1_id =  $operario1;
                     $etiqueta->operario2_id =  $operario2;
                     $etiqueta->fecha_inicio = now();
                     $etiqueta->save();
+
                     break;
                 // -------------------------------------------- ESTADO FABRICANDO --------------------------------------------
                 case 'fabricando':
