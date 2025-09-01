@@ -251,7 +251,8 @@
                         cancelButtonText: "Cancelar",
                         preConfirm: () => {
                             const userIds = seleccionados.map(e => e.dataset.id);
-                            return fetch('{{ route('asignaciones-turno.asignarObraMultiple') }}', {
+                            return fetch(
+                            '{{ route('asignaciones-turnos.asignarObraMultiple') }}', {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -318,7 +319,7 @@
                         }
                     });
 
-                    fetch('{{ route('asignaciones-turno.asignarObra') }}', {
+                    fetch('{{ route('asignaciones-turnos.asignarObra') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -533,7 +534,7 @@
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    fetch('{{ route('asignaciones-turno.repetirSemana') }}', {
+                    fetch('{{ route('asignaciones-turnos.repetirSemana') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

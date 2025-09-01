@@ -150,13 +150,13 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/festivos/{festivo}/fecha', [FestivoController::class, 'actualizarFecha'])->name('festivos.actualizarFecha');
     Route::delete('/festivos/{festivo}', [FestivoController::class, 'destroy'])->name('festivos.eliminar');
     Route::post('/festivos', [FestivoController::class, 'store'])->name('festivos.store');
-    Route::post('/asignaciones-turno/asignar-obra', [AsignacionTurnoController::class, 'asignarObra'])->name('asignaciones-turno.asignarObra');
-    Route::post('/asignaciones-turno/asignar-multiple', [AsignacionTurnoController::class, 'asignarObraMultiple'])->name('asignaciones-turno.asignarObraMultiple');
-    Route::put('/asignaciones-turno/{id}/quitar-obra', [AsignacionTurnoController::class, 'quitarObra'])->name('asignaciones-turno.quitarObra');
-    Route::put('/asignaciones-turnos/{id}/update-obra', [AsignacionTurnoController::class, 'updateObra'])->name('asignaciones-turno.update-obra');
-    Route::post('/asignaciones-turno/repetir-semana', [AsignacionTurnoController::class, 'repetirSemana'])->name('asignaciones-turno.repetirSemana');
-    Route::post('/asignaciones-turno/{id}/actualizar-horas', [AsignacionTurnoController::class, 'actualizarHoras'])->name('asignaciones-turno.actualizar-horas');
-    Route::get('/asignaciones-turno/exportar', [AsignacionTurnoController::class, 'export'])->name('asignaciones-turno.exportar');
+    Route::post('/asignaciones-turno/asignar-obra', [AsignacionTurnoController::class, 'asignarObra'])->name('asignaciones-turnos.asignarObra');
+    Route::post('/asignaciones-turno/asignar-multiple', [AsignacionTurnoController::class, 'asignarObraMultiple'])->name('asignaciones-turnos.asignarObraMultiple');
+    Route::put('/asignaciones-turno/{id}/quitar-obra', [AsignacionTurnoController::class, 'quitarObra'])->name('asignaciones-turnos.quitarObra');
+    Route::put('/asignaciones-turnos/{id}/update-obra', [AsignacionTurnoController::class, 'updateObra'])->name('asignaciones-turnos.update-obra');
+    Route::post('/asignaciones-turno/repetir-semana', [AsignacionTurnoController::class, 'repetirSemana'])->name('asignaciones-turnos.repetirSemana');
+    Route::post('/asignaciones-turno/{id}/actualizar-horas', [AsignacionTurnoController::class, 'actualizarHoras'])->name('asignaciones-turnos.actualizar-horas');
+    Route::get('/asignaciones-turno/exportar', [AsignacionTurnoController::class, 'export'])->name('asignaciones-turnos.exportar');
 
     // === MAQUINAS Y PRODUCCIÓN ===
     Route::resource('maquinas', MaquinaController::class);
