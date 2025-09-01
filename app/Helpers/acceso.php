@@ -4,35 +4,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\Seccion;
 
-/* =========================
-   Superusuarios por email
-   ========================= */
-
-if (!function_exists('emailsSuperUsuarios')) {
-    function emailsSuperUsuarios(): array
-    {
-        return array_map(
-            fn($e) => strtolower(trim($e)),
-            config('acceso.super_emails', [])
-        );
-    }
-}
-
-if (!function_exists('esSuperUsuario')) {
-    function esSuperUsuario(?string $email): bool
-    {
-        if (!$email) return false;
-        return in_array(strtolower(trim($email)), emailsSuperUsuarios(), true);
-    }
-}
-
-/* =========================
-   Whitelists por rol
-   ========================= */
+// ✅ Rutas permitidas para operarios (pueden ser exactas o prefijos)
 if (!function_exists('rutasPermitidasOperario')) {
     function rutasPermitidasOperario(): array
     {
-        return config('acceso.rutas_operario', [
+        return [
             'produccion.trabajadores',
             'users.',
             'alertas.',
@@ -41,71 +17,39 @@ if (!function_exists('rutasPermitidasOperario')) {
             'ayuda.',
             'maquinas.',
             'entradas.',
-        ]);
+        ];
     }
 }
 
-if (!function_exists('rutasPermitidasTransportista')) {
-    function rutasPermitidasTransportista(): array
-    {
-        return config('acceso.rutas_transportista', [
-            'users.',
-            'alertas.',
-            'ayuda.',
-            'planificacion.',
-            'salidas.',
-            'usuarios.',
-            'nominas.',
-        ]);
-    }
-}
-
-/* =========================
-   Regla principal de acceso
-   ========================= */
+// ✅ Función principal de validación de acceso
 if (!function_exists('usuarioTieneAcceso')) {
     function usuarioTieneAcceso(string $ruta): bool
     {
         $user = Auth::user();
         if (!$user) return false;
 
-        // 1) Superusuarios: acceso total
-        if (esSuperUsuario($user->email)) {
-            return true;
+        // 🔒 Operario: solo acceso a rutas permitidas
+        if ($user->rol === 'operario') {
+            return collect(rutasPermitidasOperario())
+                ->contains(fn($permitida) => Str::startsWith($ruta, $permitida));
         }
 
-        // 2) Reglas por rol permitido
-        switch ($user->rol) {
-            case 'operario':
-                return collect(rutasPermitidasOperario())
-                    ->contains(fn($permitida) => Str::startsWith($ruta, $permitida) || $ruta === $permitida);
+        // 🧾 Oficina: validar con secciones asignadas a sus departamentos
+        if ($user->rol === 'oficina') {
+            $departamentosUsuario = $user->departamentos->pluck('id')->toArray();
 
-            case 'transportista':
-                return collect(rutasPermitidasTransportista())
-                    ->contains(fn($permitida) => Str::startsWith($ruta, $permitida) || $ruta === $permitida);
+            $seccion = Seccion::where('ruta', $ruta)
+                ->with('departamentos')
+                ->first();
 
-            case 'oficina':
-                // Oficina: según secciones asignadas a departamentos
-                $departamentosUsuario = $user->departamentos->pluck('id')->all();
+            if (!$seccion) return false;
 
-                // Base = antes del primer punto (p.ej. 'usuarios' de 'usuarios.update')
-                $base   = Str::before($ruta, '.');
-                $seccion = Seccion::whereRaw('LOWER(ruta) LIKE ?', [strtolower($base) . '.%'])
-                    ->with('departamentos')
-                    ->first();
+            $departamentosSeccion = $seccion->departamentos->pluck('id')->toArray();
 
-                // Si no se encontró por prefijo, intenta exacta
-                if (!$seccion) {
-                    $seccion = Seccion::where('ruta', $ruta)->with('departamentos')->first();
-                    if (!$seccion) return false;
-                }
-
-                $departamentosSeccion = $seccion->departamentos->pluck('id')->all();
-                return count(array_intersect($departamentosUsuario, $departamentosSeccion)) > 0;
-
-            default:
-                // 3) Cualquier otro rol: DENEGAR por defecto
-                return false;
+            return count(array_intersect($departamentosUsuario, $departamentosSeccion)) > 0;
         }
+
+        // ✅ Otros roles (admin, etc.) tienen acceso total
+        return true;
     }
 }
