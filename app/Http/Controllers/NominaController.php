@@ -34,46 +34,42 @@ class NominaController extends Controller
             'mes_anio' => 'required|date_format:Y-m',
         ]);
 
-        // 1) Subida a carpeta temporal y rutas
+        // 1) Subida a carpeta temporal
         $rutaRelativa = $request->file('archivo')->store('private/temp');
         $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
 
-        // 2) Ampliar tiempo y memoria para procesos pesados
-        //    (si tu hosting lo permite). 0 = sin límite.
+        // 2) Ampliar límites de ejecución
         @set_time_limit(0);
         @ini_set('max_execution_time', '0');
-        // Opcional: sube memoria si lo necesitas (comenta si no procede)
         // @ini_set('memory_limit', '1024M');
 
-        // 3) Preparar contexto de fecha
+        // 3) Obtener mes y año
         $fecha        = Carbon::createFromFormat('Y-m', $request->mes_anio);
         $mesEnEspañol = ucfirst($fecha->locale('es')->translatedFormat('F'));
         $anio         = $fecha->format('Y');
 
-        // 4) Carpeta base del lote
+        // 4) Crear carpeta base para el lote
         $carpetaBaseRelativa = 'private/nominas/nominas_' . $anio . '/nomina_' . $mesEnEspañol . '_' . $anio;
         if (!Storage::exists($carpetaBaseRelativa)) {
             Storage::makeDirectory($carpetaBaseRelativa);
         }
 
-        // 5) Mapa de DNI -> EMPRESA_NORMALIZADA
+        // 5) Mapa de DNI => Empresa (aunque ya no lo usamos para carpeta, se puede loguear)
         $usuarios = User::with('empresa')->get();
         $mapaDnis = [];
         foreach ($usuarios as $u) {
             if (!$u->dni) continue;
-
             $dni = strtoupper(preg_replace('/[^A-Z0-9]/', '', $u->dni));
             $empresa = $u->empresa->nombre ?? 'SIN_EMPRESA';
             $empresaNorm = preg_replace('/[^A-Z0-9_-]/', '_', strtoupper($empresa));
             $mapaDnis[$dni] = $empresaNorm;
         }
 
-        // 6) Parseo del PDF y agrupación de páginas por clave (DNI o fallback)
+        // 6) Parsear PDF
         $parser = new Parser();
         try {
             $pdfParsed = $parser->parseFile($rutaAbsoluta);
         } catch (\Throwable $e) {
-            // Limpieza de temporal y salida con error
             Storage::delete($rutaRelativa);
             return back()->with('abort', 'No se pudo leer el PDF: ' . $e->getMessage());
         }
@@ -82,15 +78,13 @@ class NominaController extends Controller
 
         /** @var array<string,Fpdi> $pdfPorDni */
         $pdfPorDni = [];
-        /** @var array<string,string> $empresaPorDni */
-        $empresaPorDni = [];
         $dnisNoEncontrados = [];
 
         foreach ($pages as $i => $page) {
             $textoPagina      = strtoupper($page->getText());
             $textoNormalizado = preg_replace('/\s+/', '', $textoPagina);
 
-            // Heurística de extracción del DNI: 9 chars antes de "NºAFILIACION"
+            // Buscar DNI en la página (9 caracteres antes de "NºAFILIACION")
             $pos = strpos($textoNormalizado, 'NºAFILIACION');
             $dniExtraido = null;
             if ($pos !== false && $pos >= 9) {
@@ -98,57 +92,45 @@ class NominaController extends Controller
                 $dniExtraido = strtoupper(preg_replace('/[^A-Z0-9]/', '', $dniExtraido));
             }
 
-            // Clave: DNI si existe, si no "nomina_XXX"
+            // Clave de agrupación: DNI o fallback
             $clave = $dniExtraido ?: ('nomina_' . str_pad($i + 1, 3, '0', STR_PAD_LEFT));
 
-            // Empresa normalizada para ese DNI (o SIN_EMPRESA)
-            if ($dniExtraido && isset($mapaDnis[$dniExtraido])) {
-                $empresaNorm = $mapaDnis[$dniExtraido];
-            } else {
-                $empresaNorm = 'SIN_EMPRESA';
+            // Registrar DNI no encontrado
+            if (!$dniExtraido || !isset($mapaDnis[$dniExtraido])) {
                 $dnisNoEncontrados[] = $dniExtraido ?: ('SIN_DNI_PAGINA_' . ($i + 1));
             }
 
             // Crear FPDI por clave si no existe
             if (!isset($pdfPorDni[$clave])) {
                 $fpdi = new Fpdi();
-                // Fuente: el PDF original (se puede setear una vez por instancia)
                 $fpdi->setSourceFile($rutaAbsoluta);
-                $pdfPorDni[$clave]   = $fpdi;
-                $empresaPorDni[$clave] = $empresaNorm;
+                $pdfPorDni[$clave] = $fpdi;
             }
 
-            // Añadir la página i+1 al FPDI correspondiente
+            // Añadir página al PDF
             $fpdi = $pdfPorDni[$clave];
             $fpdi->AddPage();
             $tpl = $fpdi->importPage($i + 1);
             $fpdi->useTemplate($tpl);
         }
 
-        // 7) Guardar un PDF por clave en {EMPRESA}/{DNI}/
+        // 7) Guardar un PDF por clave en la misma carpeta: nominas_mes_año/{CLAVE}_{MES}_{AÑO}.pdf
         foreach ($pdfPorDni as $clave => $fpdi) {
-            $empresaNorm = $empresaPorDni[$clave];
+            // Nombre de archivo
+            $nombreArchivo = $clave . '_' . $mesEnEspañol . '_' . $anio . '.pdf';
 
-            $carpetaEmpresaRelativa = $carpetaBaseRelativa . '/' . $empresaNorm;
-            if (!Storage::exists($carpetaEmpresaRelativa)) {
-                Storage::makeDirectory($carpetaEmpresaRelativa);
-            }
+            // Ruta de guardado
+            $rutaSalida = storage_path('app/' . $carpetaBaseRelativa . '/' . $nombreArchivo);
 
-            $carpetaDniRelativa = $carpetaEmpresaRelativa . '/' . $clave;
-            if (!Storage::exists($carpetaDniRelativa)) {
-                Storage::makeDirectory($carpetaDniRelativa);
-            }
-
-            $rutaSalida = storage_path('app/' . $carpetaDniRelativa . '/' . $clave . '.pdf');
             try {
                 $fpdi->Output($rutaSalida, 'F');
             } catch (\Throwable $e) {
-                // Continúa con el resto, pero registra error
-                \Log::error('❌ Error guardando PDF de ' . $clave . ': ' . $e->getMessage());
+                \Log::error('❌ Error guardando PDF ' . $nombreArchivo . ': ' . $e->getMessage());
             }
         }
 
-        // 8) Crear alerta con DNIs no encontrados (si hay)
+
+        // 8) Crear alerta con DNIs no encontrados
         if (!empty($dnisNoEncontrados)) {
             $mensajeAlerta = 'Nóminas importadas (' . $mesEnEspañol . ' - ' . $anio . '). DNIs no encontrados: ' . implode(', ', $dnisNoEncontrados);
 
@@ -169,14 +151,14 @@ class NominaController extends Controller
                     'leida_en'  => null,
                 ]);
             } catch (\Throwable $e) {
-                \Log::error('❌ Error creando alerta o alertaLeida: ' . $e->getMessage());
+                \Log::error('❌ Error creando alerta: ' . $e->getMessage());
             }
         }
 
-        // 9) Limpieza del archivo temporal
+        // 9) Borrar archivo temporal
         Storage::delete($rutaRelativa);
 
-        // 10) Respuesta
+        // 10) Devolver mensaje al usuario
         $totalClaves = count($pdfPorDni);
         $paginasTotales = count($pages);
         $mensaje = "Nóminas divididas correctamente: {$totalClaves} PDFs generados a partir de {$paginasTotales} página(s).";
@@ -200,81 +182,37 @@ class NominaController extends Controller
 
         // Usuario actual
         $user = auth()->user();
-        $dniNormalizado = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
+        $dni = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
 
-        // Carpeta base general
-        $base = 'app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio;
-
-        // Nombre de empresa normalizado
-        $empresa = $user->empresa->nombre ?? 'SIN_EMPRESA';
-        $empresaNormalizada = preg_replace('/[^A-Za-z0-9_-]/', '_', strtoupper($empresa));
-
-        // Primera opción: carpeta dentro de empresa
-        $carpetaUsuario = storage_path($base . '/' . $empresaNormalizada . '/' . $dniNormalizado);
-
-        // Si no existe, segunda opción: carpeta directamente en la raíz
-        if (!is_dir($carpetaUsuario)) {
-            $carpetaUsuario = storage_path($base . '/' . $dniNormalizado);
-
-            if (!is_dir($carpetaUsuario)) {
-                return back()->with('error', 'No se encontró nómina para ' . $mes . '.');
-            }
-        }
-
-        $archivos = glob($carpetaUsuario . '/*.pdf');
+        $carpeta = storage_path('app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio);
+        $archivos = glob($carpeta . '/' . $dni . '_*.pdf');
 
         if (empty($archivos)) {
-            return back()->with('error', 'No hay archivos PDF en la carpeta de tu nómina.');
+            return back()->with('error', 'No se encontró ninguna nómina para el mes de ' . $mes . '.');
         }
 
-        // Preparar parser
-        $parser = new Parser();
-        $pdf = new Fpdi();
-        $dniEnPdf = false;
+        $rutaArchivo = $archivos[0];
 
-        foreach ($archivos as $archivo) {
-            try {
-                $pdfData = $parser->parseFile($archivo);
-                $texto = strtoupper($pdfData->getText());
 
-                // Comprobar que el texto contiene el DNI del usuario
-                if (strpos($texto, $dniNormalizado) === false) {
-                    continue;
-                }
+        // Nombre que verá el usuario al descargar
+        $nombreDescarga = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
 
-                // Añadir al PDF combinado
-                $dniEnPdf = true;
-                $pageCount = $pdf->setSourceFile($archivo);
-                for ($i = 1; $i <= $pageCount; $i++) {
-                    $tpl = $pdf->importPage($i);
-                    $pdf->AddPage();
-                    $pdf->useTemplate($tpl);
-                }
-            } catch (\Exception $e) {
-                \Log::error('Error leyendo PDF ' . $archivo . ': ' . $e->getMessage());
-                continue;
-            }
+        // Registrar alerta de descarga
+        try {
+            app(AlertaService::class)->crearAlerta(
+                emisorId: $user->id,
+                destinatarioId: $user->id,
+                mensaje: 'Te has descargado ' . $nombreDescarga,
+                tipo: 'usuario'
+            );
+        } catch (\Throwable $e) {
+            \Log::error('❌ Error creando alerta de descarga de nómina: ' . $e->getMessage());
         }
 
-        if (!$dniEnPdf) {
-            return back()->with('error', 'Hay un error en la nómina. Reporta el error, por favor.');
-        }
-
-        // Generar nombre del archivo
-        $nombreArchivo = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
-
-        // Registrar alerta
-        $alertaService = app(AlertaService::class);
-        $alertaService->crearAlerta(
-            emisorId: $user->id,
-            destinatarioId: $user->id,
-            mensaje: 'Te has descargado ' . $nombreArchivo,
-            tipo: 'usuario'
-        );
-
-        return response($pdf->Output('S', $nombreArchivo))
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
+        // Descargar
+        return response()->download($rutaArchivo, $nombreDescarga, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 
 
