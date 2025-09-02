@@ -185,7 +185,8 @@ class NominaController extends Controller
         $dni = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
 
         $carpeta = storage_path('app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio);
-        $archivos = glob($carpeta . '/' . $dni . '_*.pdf');
+        $archivos = glob($carpeta . '/' . $dni . '*.pdf');
+
 
         if (empty($archivos)) {
             return back()->with('error', 'No se encontró ninguna nómina para el mes de ' . $mes . '.');
