@@ -134,6 +134,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/vacaciones/{id}/denegar', [VacacionesController::class, 'denegar'])->name('vacaciones.editarDenegar');
     // Route::post('/vacaciones/reprogramar', [VacacionesController::class, 'reprogramar'])->name('vacaciones.reprogramar');
     // Route::post('/vacaciones/eliminar-evento', [VacacionesController::class, 'eliminarEvento'])->name('vacaciones.eliminarEvento');
+    Route::post('/nominas/descargar-mes', [NominaController::class, 'generarYDevolverRuta'])->name('nominas.verGenerarRuta');
 
     // === TURNOS ===
     Route::resource('turnos', TurnoController::class);
