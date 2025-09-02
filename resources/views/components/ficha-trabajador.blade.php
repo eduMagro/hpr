@@ -90,20 +90,29 @@
         <div class="mt-6 border-t pt-6">
             <h3 class="text-lg font-semibold text-gray-700 mb-2">Descargar mis nóminas</h3>
 
-            <form action="{{ route('nominas.crearDescargarMes') }}" method="GET"
-                class="flex flex-col sm:flex-row sm:items-center gap-3 max-w-md">
+            <form action="{{ route('nominas.crearDescargarMes') }}" method="GET" x-data="{ cargando: false }"
+                x-on:submit="cargando = true; setTimeout(() => cargando = false, 1000)" x-init="$watch('cargando', value => document.body.style.cursor = value ? 'wait' : 'default')"
+                class="flex flex-col sm:flex-row sm:items-center gap-3 max-w-md relative">
 
                 <input type="month" name="mes_anio" required
                     class="sm:flex-1 w-full sm:w-auto rounded-md border border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-green-500 focus:ring-2 focus:ring-green-300 transition">
 
                 <button type="submit"
                     class="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
-                    bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2
-                    focus:ring-green-500 focus:ring-offset-2 transition">
-                    📥 Descargar
+                           bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2
+                           focus:ring-green-500 focus:ring-offset-2 transition"
+                    x-bind:disabled="cargando">
+                    <span x-show="!cargando">📥 Descargar</span>
+                    <span x-show="cargando">⏳ Cargando...</span>
                 </button>
+
+                {{-- Overlay bloqueante --}}
+                <div x-show="cargando" x-transition.opacity class="fixed inset-0 bg-black/0 z-50" style="cursor: wait"
+                    x-cloak>
+                </div>
             </form>
         </div>
     @endif
+
 
 </div>
