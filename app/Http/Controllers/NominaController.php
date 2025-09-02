@@ -175,21 +175,34 @@ class NominaController extends Controller
             'mes_anio' => 'required|date_format:Y-m',
         ]);
 
+        // Obtener mes y año
         $fecha = Carbon::createFromFormat('Y-m-d', $request->mes_anio . '-01');
         $mes = ucfirst($fecha->locale('es')->translatedFormat('F'));
         $anio = $fecha->format('Y');
 
+        // Usuario y DNI limpio
         $user = auth()->user();
         $dni = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
 
-        $carpeta = storage_path('app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio);
+        // Carpeta principal del mes
+        $carpetaBase = storage_path("app/private/nominas/nominas_{$anio}/nomina_{$mes}_{$anio}");
 
-        // Buscar tanto DNI exacto como con sufijos
+        // Buscar en carpeta raíz
         $archivos = array_merge(
-            glob($carpeta . '/' . $dni . '.pdf'),
-            glob($carpeta . '/' . $dni . '_*.pdf'),
-            glob($carpeta . '/' . $dni . '-*.pdf')
+            glob($carpetaBase . '/' . $dni . '.pdf'),
+            glob($carpetaBase . '/' . $dni . '_*.pdf'),
+            glob($carpetaBase . '/' . $dni . '-*.pdf')
         );
+
+        // Si no se encuentra en la raíz, buscar en carpeta por DNI
+        if (empty($archivos)) {
+            $carpetaDni = $carpetaBase . '/' . $dni;
+            $archivos = array_merge(
+                glob($carpetaDni . '/' . $dni . '.pdf'),
+                glob($carpetaDni . '/' . $dni . '_*.pdf'),
+                glob($carpetaDni . '/' . $dni . '-*.pdf')
+            );
+        }
 
         if (empty($archivos)) {
             return back()->with('error', 'No se encontró ninguna nómina para el mes de ' . $mes . '.');
@@ -197,8 +210,10 @@ class NominaController extends Controller
 
         $rutaArchivo = $archivos[0];
 
-        $nombreDescarga = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
+        // Nombre que verá el usuario al descargar
+        $nombreDescarga = 'Nomina_' . $user->nombre_completo . '_' . $mes . '_' . $anio . '.pdf';
 
+        // Registrar alerta de descarga
         try {
             app(AlertaService::class)->crearAlerta(
                 emisorId: $user->id,
@@ -214,6 +229,7 @@ class NominaController extends Controller
             'Content-Type' => 'application/pdf',
         ]);
     }
+
 
 
 
