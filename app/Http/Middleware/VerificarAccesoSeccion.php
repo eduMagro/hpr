@@ -34,7 +34,7 @@ class VerificarAccesoSeccion
 
         // ✅ Atajo: si tiene acceso total por email, permitir todo sin más
         if (in_array($email, $emailsAccesoTotal)) {
-            Log::debug('✅ Acceso total concedido por email', ['email' => $email, 'ruta' => $request->route()?->getName()]);
+            // Log::debug('✅ Acceso total concedido por email', ['email' => $email, 'ruta' => $request->route()?->getName()]);
             return $next($request);
         }
 

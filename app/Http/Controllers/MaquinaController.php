@@ -479,6 +479,10 @@ class MaquinaController extends Controller
                 'diametro_max' => 'nullable|integer',
                 'peso_min'     => 'nullable|integer',
                 'peso_max'     => 'nullable|integer',
+                'ancho_m' => 'nullable|numeric|min:0.01',
+                'largo_m' => 'nullable|numeric|min:0.01',
+
+
             ], [
                 // Mensajes personalizados
                 'codigo.required' => 'El campo "código" es obligatorio.',
@@ -500,6 +504,12 @@ class MaquinaController extends Controller
                 'peso_min.integer'     => 'El campo "peso mínimo" debe ser un número entero.',
                 'peso_max.integer'     => 'El campo "peso máximo" debe ser un número entero.',
                 'obra_id.exists'       => 'La obra seleccionada no es válida.',
+
+                'ancho_m.numeric' => 'El ancho debe ser un número.',
+                'ancho_m.min'     => 'El ancho debe ser mayor que cero.',
+                'largo_m.numeric' => 'El largo debe ser un número.',
+                'largo_m.min'     => 'El largo debe ser mayor que cero.',
+
             ]);
 
             // Crear la nueva máquina en la base de datos
@@ -512,7 +522,10 @@ class MaquinaController extends Controller
                 'diametro_max' => $request->diametro_max,
                 'peso_min'     => $request->peso_min,
                 'peso_max'     => $request->peso_max,
+                'ancho_m'      => $request->ancho_m,
+                'largo_m'      => $request->largo_m,
             ]);
+
 
             DB::commit();  // Confirmamos la transacción
 
@@ -598,11 +611,13 @@ class MaquinaController extends Controller
         $validatedData = $request->validate([
             'codigo'       => 'required|string|max:6|unique:maquinas,codigo,' . $id,
             'nombre'       => 'required|string|max:40',
-            'obra_id'      => 'nullable|exists:obras,id', // 👈 añadimos validación para la obra
+            'obra_id'      => 'nullable|exists:obras,id',
             'diametro_min' => 'nullable|integer',
             'diametro_max' => 'nullable|integer',
             'peso_min'     => 'nullable|integer',
             'peso_max'     => 'nullable|integer',
+            'ancho_m'      => 'nullable|numeric|min:0.01',
+            'largo_m'      => 'nullable|numeric|min:0.01',
             'estado'       => 'nullable|string|in:activa,en mantenimiento,inactiva',
         ], [
             'codigo.required'   => 'El campo "código" es obligatorio.',
@@ -614,17 +629,21 @@ class MaquinaController extends Controller
             'nombre.string'     => 'El campo "nombre" debe ser una cadena de texto.',
             'nombre.max'        => 'El campo "nombre" no puede tener más de 40 caracteres.',
 
-            'obra_id.exists'    => 'La obra seleccionada no es válida.', // 👈 mensaje personalizado
+            'obra_id.exists'    => 'La obra seleccionada no es válida.',
 
             'diametro_min.integer' => 'El "diámetro mínimo" debe ser un número entero.',
             'diametro_max.integer' => 'El "diámetro máximo" debe ser un número entero.',
             'peso_min.integer'     => 'El "peso mínimo" debe ser un número entero.',
             'peso_max.integer'     => 'El "peso máximo" debe ser un número entero.',
 
-            'estado.in' => 'El estado debe ser: activa, en mantenimiento o inactiva.',
+            'ancho_m.numeric'   => 'El ancho debe ser un número.',
+            'ancho_m.min'       => 'El ancho debe ser mayor que cero.',
+            'largo_m.numeric'   => 'El largo debe ser un número.',
+            'largo_m.min'       => 'El largo debe ser mayor que cero.',
+
+            'estado.in'         => 'El estado debe ser: activa, en mantenimiento o inactiva.',
         ]);
 
-        // Iniciar la transacción
         DB::beginTransaction();
 
         try {
@@ -634,23 +653,20 @@ class MaquinaController extends Controller
             // Actualizar los datos de la máquina
             $maquina->update($validatedData);
 
-            // Confirmar la transacción
             DB::commit();
 
-            // Redirigir con un mensaje de éxito
             return redirect()
                 ->route('maquinas.index')
                 ->with('success', 'La máquina se actualizó correctamente.');
         } catch (\Exception $e) {
-            // Revertir la transacción en caso de error
             DB::rollBack();
 
-            // Redirigir con un mensaje de error
             return redirect()
                 ->back()
                 ->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente. Error: ' . $e->getMessage());
         }
     }
+
 
 
     public function actualizarImagen(Request $request, Maquina $maquina)

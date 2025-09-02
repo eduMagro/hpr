@@ -83,9 +83,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const csrfToken = document
             .querySelector('meta[name="csrf-token"]')
             ?.getAttribute("content");
-        // 🧠 Recorremos los checkboxes de tipo barra, si hay más de una longitud activa
-        const longitudSeleccionada = validarYObtenerLongitudSeleccionada();
-        if (longitudSeleccionada === null) return; // ⛔ Bloquear si hay error
+
+        let longitudSeleccionada = null;
+        if (window.tipoMaquina === "barra") {
+            longitudSeleccionada = validarYObtenerLongitudSeleccionada();
+            if (longitudSeleccionada === null) return; // ⛔ DETIENE el flujo
+        }
 
         try {
             const response = await fetch(url, {

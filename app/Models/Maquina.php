@@ -20,6 +20,8 @@ class Maquina extends Model
         'diametro_max',
         'peso_min',
         'peso_max',
+        'ancho_m',
+        'largo_m',
     ];
 
     public $timestamps = true;
@@ -27,8 +29,22 @@ class Maquina extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'tiene_carro' => 'boolean',
-    ];
+        'ancho_m' => 'float',
+        'largo_m' => 'float',
 
+    ];
+    // Celdas que ocupará según el tamaño de celda del almacén
+    public function getCeldasAttribute(): array
+    {
+        $cell = (float) config('almacen.tamano_celda_m', 0.50);
+        $ancho = max(0.0, (float) $this->ancho_m);
+        $largo = max(0.0, (float) $this->largo_m);
+
+        return [
+            'ancho' => $cell > 0 ? (int) ceil($ancho / $cell) : 0,
+            'largo' => $cell > 0 ? (int) ceil($largo / $cell) : 0,
+        ];
+    }
     public function usuarios()
     {
         return $this->hasMany(User::class, 'especialidad');

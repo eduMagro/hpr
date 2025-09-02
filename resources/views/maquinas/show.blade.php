@@ -65,8 +65,10 @@
             window.etiquetasData = @json($etiquetasData);
             window.pesosElementos = @json($pesosElementos);
             window.maquinaId = @json($maquina->id);
+            window.tipoMaquina = @json($maquina->tipo); // 👈 Añadido
             window.ubicacionId = @json(optional($ubicacion)->id);
         </script>
+
 
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
         {{-- <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script> --}}
@@ -139,8 +141,8 @@
                     await new Promise(res => {
                         new QRCode(tempQR, {
                             text: String(rawId),
-                            width: 25,
-                            height: 25
+                            width: 50,
+                            height: 50
                         });
                         setTimeout(() => {
                             // soporta librerías que crean <img> o <canvas>
@@ -191,7 +193,7 @@
           position:absolute;top:3mm;right:3mm;
           border:0.2mm solid #000;padding:1mm;background:#fff;
         }
-        .qr-box img{width:10mm;height:10mm;}
+        .qr-box img{width:16mm;height:16mm;}
         .no-print{display:none!important;}
       </style>
     `;
