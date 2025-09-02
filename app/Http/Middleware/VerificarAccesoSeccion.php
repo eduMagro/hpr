@@ -150,10 +150,10 @@ class VerificarAccesoSeccion
                 abort(403, 'Operario sin acceso.');
             }
 
-            Log::debug('✅ Ruta permitida para operario', [
-                'user' => $user->email,
-                'ruta' => $rutaActual,
-            ]);
+            // Log::debug('✅ Ruta permitida para operario', [
+            //     'user' => $user->email,
+            //     'ruta' => $rutaActual,
+            // ]);
 
             return $next($request);
         }
@@ -208,19 +208,19 @@ class VerificarAccesoSeccion
                 abort(403, 'No tienes permisos suficientes para esta acción.');
             }
 
-            Log::debug('✅ Acción autorizada por permisos', [
-                'user' => $user->email,
-                'ruta' => $rutaActual,
-            ]);
+            // Log::debug('✅ Acción autorizada por permisos', [
+            //     'user' => $user->email,
+            //     'ruta' => $rutaActual,
+            // ]);
 
             return $next($request);
         }
 
-        // 🚨 Si llegó hasta aquí, denegamos por defecto
-        Log::warning('🚫 Ruta denegada por defecto (sin coincidencias)', [
-            'user' => $user->email,
-            'ruta' => $rutaActual,
-        ]);
+        // // 🚨 Si llegó hasta aquí, denegamos por defecto
+        // Log::warning('🚫 Ruta denegada por defecto (sin coincidencias)', [
+        //     'user' => $user->email,
+        //     'ruta' => $rutaActual,
+        // ]);
         abort(403, 'Acceso denegado por configuración.');
     }
 }

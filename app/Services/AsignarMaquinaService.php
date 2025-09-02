@@ -17,7 +17,7 @@ class AsignarMaquinaService
             ->whereNull('maquina_id')
             ->get();
 
-        Log::info("🔄 Repartiendo planilla {$planilla->id}, elementos sin máquina: {$elementos->count()}");
+        // Log::info("🔄 Repartiendo planilla {$planilla->id}, elementos sin máquina: {$elementos->count()}");
         if ($elementos->isEmpty()) return;
 
         $grupos = [

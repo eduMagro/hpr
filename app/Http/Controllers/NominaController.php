@@ -32,7 +32,7 @@ class NominaController extends Controller
 
         $rutaRelativa = $request->file('archivo')->store('private/temp');
         $rutaAbsoluta = storage_path('app/' . $rutaRelativa);
-        \Log::info('Lanzamos el job');
+
         // 🚀 Lanzar job en segundo plano
         DividirNominasJob::dispatch($rutaAbsoluta, $request->mes_anio, auth()->id());
 
@@ -56,6 +56,16 @@ class NominaController extends Controller
         // Usuario actual
         $user = auth()->user();
         $dniNormalizado = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
+
+        // Normalizar nombre de empresa (quitar caracteres raros/espacios)
+        $empresa = $user->empresa->nombre ?? 'SIN_EMPRESA';
+        $empresaNormalizada = preg_replace('/[^A-Za-z0-9_-]/', '_', strtoupper($empresa));
+
+        // Ruta base con empresa
+        $carpetaBase = storage_path(
+            'app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio . '/' . $empresaNormalizada
+        );
+
         $carpetaUsuario = $carpetaBase . '/' . $dniNormalizado;
 
         if (!is_dir($carpetaUsuario)) {
