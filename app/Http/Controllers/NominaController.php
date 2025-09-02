@@ -175,18 +175,21 @@ class NominaController extends Controller
             'mes_anio' => 'required|date_format:Y-m',
         ]);
 
-        // Obtener mes y año
         $fecha = Carbon::createFromFormat('Y-m-d', $request->mes_anio . '-01');
         $mes = ucfirst($fecha->locale('es')->translatedFormat('F'));
         $anio = $fecha->format('Y');
 
-        // Usuario actual
         $user = auth()->user();
         $dni = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
 
         $carpeta = storage_path('app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio);
-        $archivos = glob($carpeta . '/' . $dni . '*.pdf');
 
+        // Buscar tanto DNI exacto como con sufijos
+        $archivos = array_merge(
+            glob($carpeta . '/' . $dni . '.pdf'),
+            glob($carpeta . '/' . $dni . '_*.pdf'),
+            glob($carpeta . '/' . $dni . '-*.pdf')
+        );
 
         if (empty($archivos)) {
             return back()->with('error', 'No se encontró ninguna nómina para el mes de ' . $mes . '.');
@@ -194,11 +197,8 @@ class NominaController extends Controller
 
         $rutaArchivo = $archivos[0];
 
-
-        // Nombre que verá el usuario al descargar
         $nombreDescarga = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
 
-        // Registrar alerta de descarga
         try {
             app(AlertaService::class)->crearAlerta(
                 emisorId: $user->id,
@@ -210,11 +210,11 @@ class NominaController extends Controller
             \Log::error('❌ Error creando alerta de descarga de nómina: ' . $e->getMessage());
         }
 
-        // Descargar
         return response()->download($rutaArchivo, $nombreDescarga, [
             'Content-Type' => 'application/pdf',
         ]);
     }
+
 
 
     // --------------------- GENERACION NOMINA
