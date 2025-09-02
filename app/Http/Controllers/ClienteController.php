@@ -12,7 +12,7 @@ use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Str;
 
 class ClienteController extends Controller
 {
@@ -262,8 +262,10 @@ class ClienteController extends Controller
             $obra->peso_entregado = $pesoPorObra[$obra->id] ?? 0;
             return $obra;
         });
+        // Detectamos si el cliente es Hierros Paco Reyes (LIKE %hierros paco reyes%)
+        $esPacoReyes = Str::contains(strtolower($cliente->empresa), 'hierros paco reyes');
 
-        return view('clientes.show', compact('cliente', 'obras'));
+        return view('clientes.show', compact('cliente', 'obras', 'esPacoReyes'));
     }
 
     public function edit(Cliente $cliente)

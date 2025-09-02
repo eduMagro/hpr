@@ -45,6 +45,11 @@
                                 <th class="px-2 py-3 text-center border">Latitud</th>
                                 <th class="px-2 py-3 text-center border">Longitud</th>
                                 <th class="px-2 py-3 text-center border">Radio</th>
+                                {{-- ✅ Solo si el nombre contiene "Hierros Paco Reyes" --}}
+                                @if ($esPacoReyes)
+                                    <th class="px-2 py-3 text-center border">Ancho (m)</th>
+                                    <th class="px-2 py-3 text-center border">Largo (m)</th>
+                                @endif
                                 <th class="px-2 py-3 text-center border">Fecha Inicio</th>
                                 <th class="px-2 py-3 text-center border">Peso Entregado</th>
                                 <th class="px-2 py-3 text-center border">Estado</th>
@@ -135,6 +140,24 @@
                                         <input x-show="editando" type="text" x-model="obra.distancia"
                                             class="form-input w-full">
                                     </td>
+                                    <!-- Dimensiones -->
+                                    @if ($esPacoReyes)
+                                        <td class="p-2 text-center border">
+                                            <template x-if="!editando">
+                                                <span x-text="obra.ancho_m"></span>
+                                            </template>
+                                            <input x-show="editando" type="text" x-model="obra.ancho_m"
+                                                class="form-input w-full">
+                                        </td>
+                                        <td class="p-2 text-center border">
+                                            <template x-if="!editando">
+                                                <span x-text="obra.largo_m"></span>
+                                            </template>
+                                            <input x-show="editando" type="text" x-model="obra.largo_m"
+                                                class="form-input w-full">
+                                        </td>
+                                    @endif
+
                                     <!-- Fecha Inicio -->
                                     <td class="p-2 text-center border">
                                         <template x-if="!editando">
@@ -277,6 +300,17 @@
                             <label class="block text-gray-700 font-semibold">Radio</label>
                             <input type="text" name="radio" class="form-input w-full p-2 border rounded-lg">
                         </div>
+                        @if ($esPacoReyes)
+                            <div>
+                                <label class="block text-gray-700 font-semibold">Ancho (m)</label>
+                                <input type="text" name="ancho_m" class="form-input w-full p-2 border rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 font-semibold">Largo (m)</label>
+                                <input type="text" name="largo_m" class="form-input w-full p-2 border rounded-lg">
+                            </div>
+                        @endif
+
                         <div class="col-span-2">
                             <label class="block text-gray-700 font-semibold">Tipo de Obra</label>
                             <select name="tipo" class="form-select w-full p-2 border rounded-lg" required>

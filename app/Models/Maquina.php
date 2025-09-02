@@ -80,4 +80,9 @@ class Maquina extends Model
     {
         return self::whereHas('obra', fn($q) => $q->where('obra', 'Nave A'));
     }
+
+    public function localizacion()
+    {
+        return $this->hasOne(Localizacion::class, 'maquina_id');
+    }
 }

@@ -1,10 +1,10 @@
 <x-app-layout>
-    <x-slot name="title">Mapa de Ubicaciones</x-slot>
+    <x-slot name="title">Mapa de Ubicaciones — Localizar</x-slot>
+    <x-menu.localizaciones.menu-localizaciones-index :obras="$cliente->obras" :obra-actual-id="$obra->id ?? null" />
 
     <style>
         html {
             scroll-behavior: smooth;
-            /* desplazamiento suave */
         }
 
         body {
@@ -13,546 +13,853 @@
             min-height: 100%;
         }
 
-        #grid-container {
-            transform: scale(1);
-            /* 1 = 100%, 1.2 = 120% zoom in, 0.8 = alejar */
+        /* Layout principal */
+        #toolbar {
+            gap: .5rem;
+        }
+
+        #zoom-wrapper {
             transform-origin: top left;
-            /* para que no se desplace raro */
+        }
+
+        /* Scroll interno para no pintar toda la página infinita */
+        #grid-scroll {
+            height: calc(100vh - 140px);
+            /* ajusta según tu header */
+            overflow: auto;
+            position: relative;
+            border: 1px solid #e5e7eb;
+            border-radius: .5rem;
+            background: #fff;
         }
 
         #grid {
-            display: grid;
-            grid-template-columns: repeat(44, 1fr);
-
-            /* no forces row height, just repeat */
-            grid-auto-rows: 1fr;
-            /* deja que cada celda defina su altura */
-            width: 100%;
-            /* en lugar de height fija, deja que crezca */
-            max-width: 90vw;
-            border: 1px solid #ccc;
+            position: relative;
+            width: 75vw;
+            max-width: 1400px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
         }
 
-        .cell {
-            aspect-ratio: 1 / 1;
-            /* mantiene 1x1 */
-            width: 100%;
-            background-color: white;
-            border: 1px solid #ddd;
+        .grid-lines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(to right, rgba(0, 0, 0, .08) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 0, 0, .08) 1px, transparent 1px);
+            background-repeat: repeat;
+            z-index: 1;
         }
 
+        #overlays {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+
+        .overlay-ping {
+            position: absolute;
+            background: rgba(255, 165, 0, .28);
+            border: 2px solid rgba(255, 165, 0, .9);
+            border-radius: 2px;
+            box-sizing: border-box;
+            animation: pulse 1.1s ease-out 2;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 165, 0, .6);
+            }
+
+            70% {
+                box-shadow: 0 0 0 12px rgba(255, 165, 0, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 165, 0, 0);
+            }
+        }
+
+        /* Columna de sectores: navegación rápida */
         #sectores {
             display: grid;
             grid-template-rows: repeat(7, 1fr);
-            width: 80px;
-            border-left: 1px solid #ccc;
+            width: 90px;
+            border-left: 1px solid #e5e7eb;
+            border-radius: .5rem;
+            overflow: hidden;
+            user-select: none;
         }
 
-        #sectores div {
+        #sectores button {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.75rem;
-            font-weight: bold;
-            border-top: 1px solid #ccc;
+            width: 100%;
+            height: 100%;
+            font-size: .8rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: filter .15s ease, transform .05s ease;
         }
 
-        #sectores div:nth-child(1) {
+        #sectores button:active {
+            transform: scale(.98);
+        }
+
+        #sectores button:hover {
+            filter: brightness(.95);
+        }
+
+        #sectores button[data-sector="7"] {
             background: #15803d;
-            color: white;
+            color: #fff;
+            border-top: 1px solid #e5e7eb;
         }
 
-        #sectores div:nth-child(2) {
+        #sectores button[data-sector="6"] {
             background: #16a34a;
-            color: white;
+            color: #fff;
+            border-top: 1px solid #e5e7eb;
         }
 
-        #sectores div:nth-child(3) {
+        #sectores button[data-sector="5"] {
             background: #22c55e;
-            color: white;
+            color: #fff;
+            border-top: 1px solid #e5e7eb;
         }
 
-        #sectores div:nth-child(4) {
+        #sectores button[data-sector="4"] {
             background: #4ade80;
+            color: #0b3;
+            border-top: 1px solid #e5e7eb;
         }
 
-        #sectores div:nth-child(5) {
+        #sectores button[data-sector="3"] {
             background: #86efac;
+            color: #064;
+            border-top: 1px solid #e5e7eb;
         }
 
-        #sectores div:nth-child(6) {
+        #sectores button[data-sector="2"] {
             background: #bbf7d0;
+            color: #064;
+            border-top: 1px solid #e5e7eb;
         }
 
-        #sectores div:nth-child(7) {
+        #sectores button[data-sector="1"] {
             background: #dcfce7;
+            color: #064;
+            border-top: 1px solid #e5e7eb;
         }
 
-        .selected {
-            background-color: green;
+        /* Mini HUD */
+        .hud {
+            position: fixed;
+            top: .75rem;
+            left: .75rem;
+            z-index: 50;
+            background: rgba(255, 255, 255, .9);
+            padding: .35rem .6rem;
+            border-radius: .45rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .06);
+            font-weight: 600;
+            color: #374151;
         }
 
-        .tipo-material {
-            background-color: #15803d !important;
+        /* Botones / inputs */
+        .btn {
+            padding: .45rem .7rem;
+            border-radius: .4rem;
+            border: 1px solid #e5e7eb;
+            background: #f3f4f6;
         }
 
-        .tipo-maquina {
-            background-color: #1d4ed8 !important;
+        .btn:hover {
+            background: #e5e7eb;
         }
 
-        .tipo-transitable {
-            background-color: #6b7280 !important;
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+            border-color: #1d4ed8;
         }
 
-        .paquete-preview {
-            background-color: rgba(255, 165, 0, 0.6) !important;
-            /* naranja translúcido */
-            border: 2px solid orange;
+        .btn-primary:hover {
+            background: #1d4ed8;
         }
 
-        .paquete-guardado {
-            background-color: rgba(57, 78, 183, 0.8) !important;
-            border: 2px solid darkblue;
+        .input {
+            border: 1px solid #e5e7eb;
+            border-radius: .4rem;
+            padding: .45rem .6rem;
+            min-width: 260px;
+        }
+
+        .pill {
+            font-size: .8rem;
+            padding: .1rem .5rem;
+            border-radius: 1rem;
+            background: #eef2ff;
+            color: #3730a3;
+        }
+
+        /* Capa de máquinas: interactiva (sí recibe eventos) */
+        #machines {
+            position: absolute;
+            inset: 0;
+            pointer-events: auto;
+        }
+
+        /* Caja visual de la máquina pintada en el grid */
+        .machine {
+            position: absolute;
+            box-sizing: border-box;
+            border: 2px solid #0ea5e9;
+            /* borde cyan */
+            background: rgba(14, 165, 233, .12);
+            border-radius: .35rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font: 600 12px/1.1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+            color: #0c4a6e;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, .4);
+            padding: 2px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform .06s ease, box-shadow .12s ease;
+        }
+
+        .machine:hover {
+            box-shadow: 0 2px 10px rgba(2, 132, 199, .25);
+        }
+
+        .machine .badge {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            background: #0369a1;
+            color: #fff;
+            border-radius: .5rem;
+            font-size: 10px;
+            padding: 2px 6px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, .12);
         }
     </style>
 
-    <div class="w-screen flex flex-col">
-        <div class="hidden md:block p-2 bg-white z-10">
-            <a href="{{ route('localizaciones.create') }}"
-                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition inline-block">Crear Nueva
-                Localización</a>
-            <a href="{{ route('localizaciones.editarMapa') }}"
-                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition inline-block">Editar
-                Localización</a>
-            <div class="fixed top-2 left-2 z-50 bg-white/90 px-3 py-1 rounded shadow font-semibold text-gray-800">
-                Posición actual: <span id="posicionActual">—</span>
+    <div class="w-screen flex flex-col gap-3 p-2">
+        <!-- Barra superior -->
+        <div id="toolbar" class="flex flex-wrap items-center">
+            <input id="codigoPaquete" type="text" class="input" placeholder="Código de paquete (ej. P25090001)">
+            <button id="btnLocalizar" class="btn btn-primary">📍 Localizar</button>
+            <button id="btnLimpiar" class="btn">🧹 Limpiar</button>
+            <div class="flex items-center gap-2 ml-auto">
+                <button class="btn" id="zoomOut">➖ Alejar</button>
+                <button class="btn" id="zoomIn">➕ Acercar</button>
+                <button class="btn" id="zoomReset">🔄 Reset</button>
+                <span id="zoomInfo" class="pill">zoom: 1.0×</span>
             </div>
         </div>
 
-        <!-- GRID Y SECTORES -->
-        <div class="p-2 flex gap-2">
-            <input id="codigoPaquete" type="text" class="border px-2 py-1 rounded" placeholder="Código de paquete">
-            <button onclick="dibujarPaquete()" class="bg-blue-600 text-white px-3 py-1 rounded">📦 Dibujar
-                paquete</button>
-        </div>
+        <div class="hud">Posición actual: <span id="posicionActual">—</span></div>
 
-        <div id="zoom-wrapper" class="flex origin-top-left">
+        <!-- Lienzo lógico: grid + overlays + columna sectores -->
+        <div id="layout" class="flex">
+            <div id="zoom-wrapper">
+                <div id="grid-scroll">
+                    <div id="grid" data-ancho-m="{{ $dimensiones['ancho'] }}" {{-- metros --}}
+                        data-alto-m="{{ $dimensiones['alto'] }}" {{-- metros --}} style="--cols: 1; --rows: 1;">
+                        {{-- se sobreescribe en JS --}}
+                        <div id="overlays"></div>
+                        <div id="machines"></div>
 
-            <div id="grid-container" class="relative" style="width:75%;">
-                <div id="grid"></div>
-                <!-- Marcadores invisibles de cada sector -->
-                <div id="sector-markers">
-                    <div id="sector7-marker" style="position:absolute;top:0;height:1px;width:1px;"></div>
-                    <div id="sector6-marker" style="position:absolute;top:calc(100%/7*1);height:1px;width:1px;"></div>
-                    <div id="sector5-marker" style="position:absolute;top:calc(100%/7*2);height:1px;width:1px;"></div>
-                    <div id="sector4-marker" style="position:absolute;top:calc(100%/7*3);height:1px;width:1px;"></div>
-                    <div id="sector3-marker" style="position:absolute;top:calc(100%/7*4);height:1px;width:1px;"></div>
-                    <div id="sector2-marker" style="position:absolute;top:calc(100%/7*5);height:1px;width:1px;"></div>
-                    <div id="sector1-marker" style="position:absolute;top:calc(100%/7*6);height:1px;width:1px;"></div>
+                        <!-- Marcadores (opcionales) -->
+                        <div id="sector-markers">
+                            <div id="sector7-marker" style="position:absolute;top:0;height:1px;width:1px;"></div>
+                            <div id="sector6-marker" style="position:absolute;top:calc(100%/7*1);height:1px;width:1px;">
+                            </div>
+                            <div id="sector5-marker" style="position:absolute;top:calc(100%/7*2);height:1px;width:1px;">
+                            </div>
+                            <div id="sector4-marker" style="position:absolute;top:calc(100%/7*3);height:1px;width:1px;">
+                            </div>
+                            <div id="sector3-marker" style="position:absolute;top:calc(100%/7*4);height:1px;width:1px;">
+                            </div>
+                            <div id="sector2-marker" style="position:absolute;top:calc(100%/7*5);height:1px;width:1px;">
+                            </div>
+                            <div id="sector1-marker" style="position:absolute;top:calc(100%/7*6);height:1px;width:1px;">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="sectores"></div>
-        </div>
 
-        <!-- LEYENDA NAVEGACIÓN -->
-        <div id="leyendaSectores"
-            class="hidden md:block fixed top-1/2 right-4 -translate-y-1/2 bg-white/90 shadow-lg rounded p-2 space-y-2 z-50">
-            <a href="#sector7-marker"
-                class="block bg-green-700 hover:bg-green-800 px-3 py-1 rounded text-xs font-bold w-full">Sector 7</a>
-            <a href="#sector6-marker"
-                class="block bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-xs font-bold w-full">Sector 6</a>
-            <a href="#sector5-marker"
-                class="block bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-xs font-bold w-full">Sector 5</a>
-            <a href="#sector4-marker"
-                class="block bg-green-400 hover:bg-green-500 px-3 py-1 rounded text-xs font-bold w-full">Sector 4</a>
-            <a href="#sector3-marker"
-                class="block bg-green-300 hover:bg-green-400 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
-                3</a>
-            <a href="#sector2-marker"
-                class="block bg-green-200 hover:bg-green-300 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
-                2</a>
-            <a href="#sector1-marker"
-                class="block bg-green-100 hover:bg-green-200 text-white px-3 py-1 rounded text-xs font-bold w-full">Sector
-                1</a>
-            <div class="flex gap-2 p-2">
-                <button onclick="zoomOut()" class="bg-gray-300 px-3 py-1 rounded">➖ Alejar</button>
-                <button onclick="zoomIn()" class="bg-gray-300 px-3 py-1 rounded">➕ Acercar</button>
-                <button onclick="resetZoom()" class="bg-gray-300 px-3 py-1 rounded">🔄 Reset</button>
+            <!-- Navegación rápida por sectores -->
+            <div id="sectores" class="hidden md:grid ml-2">
+                <button type="button" data-sector="7" title="Ir al Sector 7">Sector 7</button>
+                <button type="button" data-sector="6" title="Ir al Sector 6">Sector 6</button>
+                <button type="button" data-sector="5" title="Ir al Sector 5">Sector 5</button>
+                <button type="button" data-sector="4" title="Ir al Sector 4">Sector 4</button>
+                <button type="button" data-sector="3" title="Ir al Sector 3">Sector 3</button>
+                <button type="button" data-sector="2" title="Ir al Sector 2">Sector 2</button>
+                <button type="button" data-sector="1" title="Ir al Sector 1">Sector 1</button>
             </div>
-
         </div>
-
     </div>
     <script>
-        const paquetesEnMapa = @json($paquetesEnMapa);
+        // Datos de máquinas por localización (METROS)
+        const MACHINES = @json($machines);
+        console.log('MACHINES =', MACHINES);
     </script>
     <script>
-        const grid = document.getElementById('grid');
-        const seleccionadas = new Set();
-        const posicionActual = document.getElementById('posicionActual');
-        let startX = null;
-        let startY = null;
-        let isDragging = false;
-        let endX = null;
-        let endY = null;
-        let areaTemporal = new Set();
-        const celdas = [];
-        const cellsMap = {};
-        const columnas = 44; // 22 * 2
-        const filas = 230; // 115 * 2
+        /** ====== GRID CORE (común a Index y Create) ====== **/
 
+        const CELL_M = 0.5; // 1 celda = 0.5 m
 
-        for (let y = filas; y >= 1; y--) {
-            for (let x = 1; x <= columnas; x++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.coord = `${x},${y}`;
-                cell.dataset.x = x;
-                cell.dataset.y = y;
-
-                cell.addEventListener('mousemove', () => {
-                    posicionActual.textContent = `(${x}, ${y})`;
-                });
-
-                cell.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    isDragging = true;
-                    startX = parseInt(cell.dataset.x);
-                    startY = parseInt(cell.dataset.y);
-                    endX = startX;
-                    endY = startY;
-                    areaTemporal = new Set();
-                    seleccionarRectangulo(startX, startY, startX, startY);
-                });
-
-                cell.addEventListener('mouseenter', () => {
-                    if (isDragging) {
-                        endX = parseInt(cell.dataset.x);
-                        endY = parseInt(cell.dataset.y);
-                        seleccionarRectangulo(startX, startY, endX, endY);
-                    }
-                });
-
-                grid.appendChild(cell);
-                celdas.push(cell);
-
-                cellsMap[`${x},${y}`] = cell;
-            }
+        // Sistema canónico: (1,1) abajo-izquierda; x→, y↑
+        function metersToCells(m) {
+            return Math.max(1, Math.round(m / CELL_M));
         }
 
-        const localizaciones = @json($localizaciones);
-        for (const loc of localizaciones) {
-            for (let x = loc.x1; x <= loc.x2; x++) {
-                for (let y = loc.y1; y <= loc.y2; y++) {
-                    const key = `${x},${y}`;
-                    const cell = cellsMap[key];
-                    if (cell) {
-                        cell.classList.add('selected');
-                        cell.classList.add(`tipo-${loc.tipo}`);
-                    }
-                }
-            }
-        }
-        // después de pintar localizaciones
-        for (const paquete of paquetesEnMapa) {
-            for (let x = paquete.x1; x <= paquete.x2; x++) {
-                for (let y = paquete.y1; y <= paquete.y2; y++) {
-                    const key = `${x},${y}`;
-                    const cell = cellsMap[key];
-                    if (cell) {
-                        cell.classList.add('paquete-guardado'); // usa el mismo estilo o crea uno específico
-                    }
-                }
-            }
-        }
-
-        grid.addEventListener('mouseleave', () => {
-            posicionActual.textContent = '—';
-            isDragging = false;
-        });
-
-        function seleccionarRectangulo(x1, y1, x2, y2) {
-            const nuevaArea = new Set();
-            const minX = Math.min(x1, x2);
-            const maxX = Math.max(x1, x2);
-            const minY = Math.min(y1, y2);
-            const maxY = Math.max(y1, y2);
-
-            for (let cx = minX; cx <= maxX; cx++) {
-                for (let cy = minY; cy <= maxY; cy++) {
-                    const key = `${cx},${cy}`;
-                    nuevaArea.add(key);
-                }
-            }
-            for (const key of areaTemporal) {
-                if (!nuevaArea.has(key)) {
-                    const [cx, cy] = key.split(',').map(Number);
-                    const cell = cellsMap[key];
-                    if (cell && seleccionadas.has(key)) {
-                        seleccionadas.delete(key);
-                        cell.classList.remove('selected');
-                    }
-                }
-            }
-            for (const key of nuevaArea) {
-                if (!areaTemporal.has(key)) {
-                    const [cx, cy] = key.split(',').map(Number);
-                    const cell = cellsMap[key];
-                    if (cell && !seleccionadas.has(key)) {
-                        seleccionadas.add(key);
-                        cell.classList.add('selected');
-                    }
-                }
-            }
-            areaTemporal = nuevaArea;
-        }
-
-        function guardarConTipo(tipo, seccion, nombre) {
-            const minX = Math.min(startX, endX);
-            const maxX = Math.max(startX, endX);
-            const minY = Math.min(startY, endY);
-            const maxY = Math.max(startY, endY);
-
-            const localizacion = {
-                x1: minX,
-                y1: minY,
-                x2: maxX,
-                y2: maxY,
-                tipo,
-                seccion,
-                localizacion: nombre
+        function rectMetersToCells({
+            mx1,
+            my1,
+            mx2,
+            my2
+        }) {
+            // cubrir completamente metros → celdas (bordes inclusivos)
+            const x1 = Math.max(1, Math.floor((mx1 - 1e-9) / CELL_M) + 1);
+            const y1 = Math.max(1, Math.floor((my1 - 1e-9) / CELL_M) + 1);
+            const x2 = Math.max(x1, Math.ceil(mx2 / CELL_M));
+            const y2 = Math.max(y1, Math.ceil(my2 / CELL_M));
+            return {
+                x1,
+                y1,
+                x2,
+                y2
             };
-
-            fetch("{{ route('localizaciones.store') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify(localizacion)
-                })
-                .then(async res => {
-                    if (!res.ok) {
-                        const error = await res.json();
-                        throw new Error(error.message || 'Error desconocido');
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    Swal.fire('Guardado', data.message, 'success');
-                })
-                .catch(err => {
-                    Swal.fire('Error', err.message, 'error');
-                });
         }
 
-        // Crear los sectores visuales a la derecha
-        const sectoresContainer = document.getElementById('sectores');
-        const nombresSectores = ['Sector 7', 'Sector 6', 'Sector 5', 'Sector 4', 'Sector 3', 'Sector 2', 'Sector 1'];
-        nombresSectores.forEach(n => {
-            const div = document.createElement('div');
-            div.textContent = n;
-            sectoresContainer.appendChild(div);
-        });
+        // “Tumbadas”: intercambia ejes X<->Y manteniendo mismo origen (abajo-izq)
+        function tumbleRect({
+            x1,
+            y1,
+            x2,
+            y2
+        }) {
+            return {
+                x1: y1,
+                y1: x1,
+                x2: y2,
+                y2: x2
+            };
+        }
+
+        // px helpers (origen arriba-izq en pantalla; convertimos desde nuestro canónico)
+        function cellsRectToPx({
+            x1,
+            y1,
+            x2,
+            y2
+        }, {
+            cols,
+            rows
+        }, gridRect) {
+            const cw = gridRect.width / cols;
+            const ch = gridRect.height / rows;
+            const left = (x1 - 1) * cw;
+            const top = (rows - y2) * ch; // y crece hacia arriba
+            const width = (x2 - x1 + 1) * cw;
+            const height = (y2 - y1 + 1) * ch;
+            return {
+                left,
+                top,
+                width,
+                height
+            };
+        }
+
+        // Ocupación rápida
+        function occupyRect(set, {
+            x1,
+            y1,
+            x2,
+            y2
+        }) {
+            for (let y = y1; y <= y2; y++)
+                for (let x = x1; x <= x2; x++) set.add(`${x},${y}`);
+        }
+
+        function isFree(set, {
+            x1,
+            y1,
+            x2,
+            y2
+        }) {
+            for (let y = y1; y <= y2; y++)
+                for (let x = x1; x <= x2; x++)
+                    if (set.has(`${x},${y}`)) return false;
+            return true;
+        }
+
+        // Dibujo de líneas (sin celdas)
+        function ensureSquareGridSize(gridEl, cols, rows) {
+            const w = gridEl.clientWidth;
+            const cell = w / cols;
+            gridEl.style.height = Math.round(cell * rows) + 'px';
+            let lines = gridEl.querySelector('.grid-lines');
+            if (!lines) {
+                lines = document.createElement('div');
+                lines.className = 'grid-lines';
+                gridEl.appendChild(lines);
+            }
+            lines.style.backgroundSize = `${cell}px ${cell}px`;
+            return gridEl.getBoundingClientRect();
+        }
+
+        // Pinta/repinta un overlay rectangular
+        function drawOverlay(overlaysEl, key, pxBox, className = 'area') {
+            let el = overlaysEl.querySelector(`[data-key="${key}"]`);
+            if (!el) {
+                el = document.createElement('div');
+                el.dataset.key = key;
+                el.className = className;
+                overlaysEl.appendChild(el);
+            }
+            el.style.left = pxBox.left + 'px';
+            el.style.top = pxBox.top + 'px';
+            el.style.width = pxBox.width + 'px';
+            el.style.height = pxBox.height + 'px';
+            return el;
+        }
+        // Etiqueta centrada arriba
+        function drawLabel(overlaysEl, key, pxBox, text) {
+            let lab = overlaysEl.querySelector(`[data-key="${key}-label"]`);
+            if (!lab) {
+                lab = document.createElement('div');
+                lab.dataset.key = `${key}-label`;
+                lab.className = 'maquina-label';
+                overlaysEl.appendChild(lab);
+            }
+            lab.textContent = text;
+            lab.style.left = (pxBox.left + pxBox.width / 2) + 'px';
+            lab.style.top = (pxBox.top) + 'px';
+            return lab;
+        }
     </script>
-    {{--  ESTO ES PARA HACER ZOOM --}}
+
     <script>
+        (function IndexGrid() {
+            const TUMBLE_IN = false; // <-- pon true si lo que recibes está tumbado
+            const grid = document.getElementById('grid');
+            const overlays = document.getElementById('overlays');
+
+            const naveAnchoM = parseFloat(grid.dataset.anchoM) || 10;
+            const naveAltoM = parseFloat(grid.dataset.altoM) || 10;
+            const cols = metersToCells(naveAnchoM);
+            const rows = metersToCells(naveAltoM);
+
+            // Tamaño cuadrado + líneas
+            let gridRect = ensureSquareGridSize(grid, cols, rows);
+            window.addEventListener('resize', () => gridRect = ensureSquareGridSize(grid, cols, rows));
+
+            // Ocupación
+            const busy = new Set();
+
+            // PINTAR Localizaciones existentes (del backend)
+            const localizaciones = @json($localizacionesMaquinas); // {x1,y1,x2,y2,tipo,nombre} en CELDAS
+            localizaciones.forEach((l, i) => {
+                const base = TUMBLE_IN ? tumbleRect(l) : l;
+                occupyRect(busy, base);
+                const box = cellsRectToPx(base, {
+                    cols,
+                    rows
+                }, gridRect);
+                const key = `loc-${i}`;
+                drawOverlay(overlays, key, box, `area tipo-${l.tipo}`);
+                if (l.tipo === 'maquina' && l.nombre) drawLabel(overlays, key, box, l.nombre);
+            });
+
+            // HUD (opcional)
+            const posHud = document.getElementById('posicionActual');
+            grid.addEventListener('mousemove', (e) => {
+                const r = grid.getBoundingClientRect();
+                const cw = r.width / cols,
+                    ch = r.height / rows;
+                const cx = Math.min(cols, Math.max(1, Math.floor((e.clientX - r.left) / cw) + 1));
+                const cyFromTop = Math.min(rows, Math.max(1, Math.floor((e.clientY - r.top) / ch) + 1));
+                const cy = rows - cyFromTop + 1;
+                posHud && (posHud.textContent = `(${cx}, ${cy})`);
+            });
+            grid.addEventListener('mouseleave', () => posHud && (posHud.textContent = '—'));
+        })();
+    </script>
+
+    <script>
+        /* =========================
+         * 1) Configuración y helpers
+         * ========================= */
+
+        // 2 celdas = 1 metro  →  10 m = 20 celdas (lado celda ~0.5 m)
+        // Si quisieras 1 celda = 1 metro, pondrías 1.
+        const CELLS_PER_METER = 2;
+
+        // Conversión celdas ↔ metros (entran/salen índices 1..N)
+        function cellsToMeters(cellIndex) {
+            // celdas 1–2 => metro 1; 3–4 => metro 2; ...
+            return Math.ceil(cellIndex / CELLS_PER_METER);
+        }
+
+        function metersToCells(meterIndex) {
+            // metro 1 ocupa celdas 1–2 → devolvemos la PRIMERA celda de ese bloque
+            return (meterIndex - 1) * CELLS_PER_METER + 1;
+        }
+
+        /* =========================
+         * 2) Refs y dimensiones base
+         * ========================= */
+        const grid = document.getElementById('grid');
+        const overlays = document.getElementById('overlays');
+        const gridScroll = document.getElementById('grid-scroll');
+        const zoomWrapper = document.getElementById('zoom-wrapper');
+        const posHud = document.getElementById('posicionActual');
+
+        // Metros de la nave (vienen del dataset de Blade)
+        const metrosAncho = parseFloat(grid.dataset.anchoM) || 10;
+        const metrosAlto = parseFloat(grid.dataset.altoM) || 10;
+
+        // Columnas/filas calculadas con el factor  (siempre ≥ 1)
+        let columnas = Math.max(1, Math.round(metrosAncho * CELLS_PER_METER));
+        let filas = Math.max(1, Math.round(metrosAlto * CELLS_PER_METER));
+
+        // Aplicar a las variables CSS que dibujan las líneas de la cuadrícula
+        grid.style.setProperty('--cols', columnas);
+        grid.style.setProperty('--rows', filas);
+
+        /* ==========================================
+         * 3) Celdas cuadradas: ajustar altura en px
+         * ========================================== */
+        function ensureSquareCells() {
+            // Usamos el ancho real para calcular altura proporcional
+            const widthPx = grid.clientWidth;
+            if (!columnas || !filas || widthPx <= 0) return;
+
+            const cellW = widthPx / columnas; // ancho de UNA celda
+            const heightPx = Math.round(cellW * filas); // alto total = alto celda * filas
+
+            grid.style.height = heightPx + 'px';
+
+            if (MACHINES && MACHINES.length) drawMachines();
+        }
+        window.addEventListener('load', ensureSquareCells);
+        window.addEventListener('resize', ensureSquareCells);
+
+        // Si cambias de obra/máquina en caliente y conoces sus METROS:
+        function refreshFromMeters(anchoM, altoM) {
+            columnas = Math.max(1, Math.round(anchoM * CELLS_PER_METER));
+            filas = Math.max(1, Math.round(altoM * CELLS_PER_METER));
+            grid.style.setProperty('--cols', columnas);
+            grid.style.setProperty('--rows', filas);
+            ensureSquareCells();
+
+            resetMachines();
+        }
+
+        /* ==============
+         * 4) Control zoom
+         * ============== */
         let zoom = 1;
 
         function applyZoom() {
-            const wrapper = document.getElementById('zoom-wrapper');
-            wrapper.style.transform = `scale(${zoom})`;
-            wrapper.style.transformOrigin = 'top left'; // importante para que no se desplace raro
+            zoomWrapper.style.transform = `scale(${zoom})`;
+            document.getElementById('zoomInfo').textContent = `zoom: ${zoom.toFixed(1)}×`;
         }
-
-        function zoomIn() {
-            zoom += 0.1;
+        document.getElementById('zoomIn').addEventListener('click', () => {
+            zoom = Math.min(3, zoom + 0.1);
             applyZoom();
-        }
-
-        function zoomOut() {
-            zoom = Math.max(0.1, zoom - 0.1);
+        });
+        document.getElementById('zoomOut').addEventListener('click', () => {
+            zoom = Math.max(0.3, zoom - 0.1);
             applyZoom();
-        }
-
-        function resetZoom() {
+        });
+        document.getElementById('zoomReset').addEventListener('click', () => {
             zoom = 1;
             applyZoom();
+        });
+
+        /* =========================================
+         * 5) Coordenadas ratón -> HUD (en METROS)
+         * ========================================= */
+        function getMouseCell(e) {
+            const rect = grid.getBoundingClientRect();
+            const relX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+            const relY = Math.max(0, Math.min(e.clientY - rect.top, rect.height));
+
+            const cellW = rect.width / columnas;
+            const cellH = rect.height / filas;
+
+            // Índices de CELDA (1..N)
+            const xCell = Math.floor(relX / cellW) + 1;
+            const yCellFromTop = Math.floor(relY / cellH) + 1;
+            const yCell = filas - yCellFromTop + 1; // tu eje Y crece hacia ARRIBA
+
+            // Índices de POSICIÓN en METROS (1 cada 2 celdas)
+            const xPos = cellsToMeters(xCell);
+            const yPos = cellsToMeters(yCell);
+
+            return {
+                xCell,
+                yCell,
+                xPos,
+                yPos
+            };
         }
-    </script>
-    {{-- CARGAR TAMAÑO PAQUETE --}}
-    <script>
-        function cargarPaquete() {
-            const codigo = document.getElementById('codigoPaquete').value.trim();
-            if (!codigo) {
-                Swal.fire('Error', 'Introduce un código', 'error');
-                return;
-            }
 
-            fetch("{{ route('paquetes.tamaño') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify({
-                        codigo
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.error) {
-                        Swal.fire('Error', data.error, 'error');
-                        return;
-                    }
+        grid.addEventListener('mousemove', (e) => {
+            const {
+                xPos,
+                yPos
+            } = getMouseCell(e);
+            posHud.textContent = (xPos >= 1 && yPos >= 1) ? `(${xPos}, ${yPos})` : '—';
+        });
+        grid.addEventListener('mouseleave', () => posHud.textContent = '—');
 
-                    // 🔥 data.ancho y data.longitud ya son en metros (celdas)
-                    crearPaqueteVisual(data.codigo, data.ancho, data.longitud);
-                })
-                .catch(err => Swal.fire('Error', err.message, 'error'));
-        }
-    </script>
-    <script>
-        async function dibujarPaquete() {
-            const codigo = document.getElementById('codigoPaquete').value.trim();
-            if (!codigo) {
-                Swal.fire('Error', 'Introduce un código', 'error');
-                return;
-            }
+        /* =========================================
+         * 6) Overlay de localización (rect en celdas)
+         * ========================================= */
+        let pingEl = null;
 
-            // limpia cualquier paquete anterior
-            limpiarPreview();
-
-            try {
-                const res = await fetch("{{ route('paquetes.tamaño') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify({
-                        codigo
-                    })
-                });
-
-                if (!res.ok) throw new Error('No se pudo obtener el tamaño');
-                const data = await res.json();
-                if (data.error) {
-                    Swal.fire('Error', data.error, 'error');
-                    return;
-                }
-
-                // dimensiones en metros = celdas
-                const ancho = Math.max(1, Math.round(data.ancho * 2));
-                const largo = Math.max(1, Math.round(data.longitud * 2));
-
-
-                Swal.fire({
-                    title: 'Selecciona posición',
-                    html: `📦 Paquete: <b>${data.codigo}</b><br>
-           Tamaño real: <b>${(data.ancho).toFixed(2)}m × ${(data.longitud).toFixed(2)}m</b><br>
-           Celdas: <b>${ancho} × ${largo}</b>`,
-                    icon: 'info'
-                });
-
-
-                // espera a que el usuario haga click en la cuadrícula
-                prepararClickParaColocar(codigo, ancho, largo);
-
-            } catch (e) {
-                Swal.fire('Error', e.message, 'error');
+        function clearOverlay() {
+            if (pingEl) {
+                pingEl.remove();
+                pingEl = null;
             }
         }
 
-        let codigoActual = null; // arriba del todo
+        function rectToOverlay({
+            x1,
+            y1,
+            x2,
+            y2
+        }) {
+            clearOverlay();
 
-        function prepararClickParaColocar(codigo, ancho, largo) {
-            codigoActual = codigo; // guardamos el código para luego
-            // quitar cualquier click anterior
-            for (const cell of celdas) {
-                cell.removeEventListener('click', cell._clickHandlerPaquete);
-            }
-            for (const cell of celdas) {
-                cell._clickHandlerPaquete = () => {
-                    const startX = parseInt(cell.dataset.x);
-                    const startY = parseInt(cell.dataset.y);
-                    pintarPaqueteEnCeldas(startX, startY, ancho, largo);
-                };
-                cell.addEventListener('click', cell._clickHandlerPaquete);
-            }
+            const rect = grid.getBoundingClientRect();
+            const cellW = rect.width / columnas;
+            const cellH = rect.height / filas;
+
+            const left = (x1 - 1) * cellW;
+            const top = (filas - y2) * cellH; // y2 medido desde abajo
+            const width = (x2 - x1 + 1) * cellW;
+            const height = (y2 - y1 + 1) * cellH;
+
+            pingEl = document.createElement('div');
+            pingEl.className = 'overlay-ping';
+            Object.assign(pingEl.style, {
+                left: left + 'px',
+                top: top + 'px',
+                width: width + 'px',
+                height: height + 'px'
+            });
+            overlays.appendChild(pingEl);
+
+            centerScroll(left + width / 2, top + height / 2);
         }
 
-
-        function pintarPaqueteEnCeldas(startX, startY, ancho, largo) {
-            limpiarPreview();
-
-            for (let x = startX; x < startX + ancho; x++) {
-                for (let y = startY; y < startY + largo; y++) {
-                    const key = `${x},${y}`;
-                    const celda = cellsMap[key];
-                    if (celda) {
-                        celda.classList.add('paquete-preview');
-                    }
-                }
-            }
-
-            const x1 = startX;
-            const y1 = startY;
-            const x2 = startX + ancho - 1;
-            const y2 = startY + largo - 1;
-
-            // ⚡️ Pedimos confirmación
-            Swal.fire({
-                title: '¿Colocar paquete aquí?',
-                html: `Coordenadas: <b>${x1},${y1}</b> hasta <b>${x2},${y2}</b>`,
-                showCancelButton: true,
-                confirmButtonText: 'Confirmar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    guardarLocalizacionPaquete(codigoActual, x1, y1, x2, y2);
-                } else {
-                    limpiarPreview();
-                }
+        // Rectángulo en METROS → convertir a celdas y pintar
+        function metersRectToOverlay({
+            mx1,
+            my1,
+            mx2,
+            my2
+        }) {
+            rectToOverlay({
+                // inicio del metro → primera celda del bloque
+                x1: metersToCells(mx1),
+                y1: metersToCells(my1),
+                // final del metro → última celda del bloque
+                x2: metersToCells(mx2 + 1) - 1,
+                y2: metersToCells(my2 + 1) - 1
             });
         }
 
+        function centerScroll(targetX, targetY) {
+            const scrollLeft = targetX - gridScroll.clientWidth / 2;
+            const scrollTop = targetY - gridScroll.clientHeight / 2;
+            gridScroll.scrollTo({
+                left: Math.max(0, scrollLeft),
+                top: Math.max(0, scrollTop),
+                behavior: 'smooth'
+            });
+        }
 
-        function limpiarPreview() {
-            for (const cell of celdas) {
-                cell.classList.remove('paquete-preview');
+        /* ===========================
+         * 7) Localizar por código (METROS)
+         * =========================== */
+        document.getElementById('btnLocalizar').addEventListener('click', localizar);
+        document.getElementById('codigoPaquete').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') localizar();
+        });
+        document.getElementById('btnLimpiar').addEventListener('click', clearOverlay);
+
+        async function localizar() {
+            const codigo = document.getElementById('codigoPaquete').value.trim();
+            if (!codigo) return alert('Introduce un código de paquete');
+
+            try {
+                const res = await fetch(`/localizaciones-paquetes/${encodeURIComponent(codigo)}`, {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                if (!res.ok) throw new Error(await res.text() || 'No se pudo localizar el paquete.');
+                const data = await res.json();
+
+                // Preferimos METROS: { mx1, my1, mx2, my2 }
+                if (data && data.mx1 != null) {
+                    return metersRectToOverlay({
+                        mx1: +data.mx1,
+                        my1: +data.my1,
+                        mx2: +data.mx2,
+                        my2: +data.my2
+                    });
+                }
+
+                // Back-compat si el backend todavía devuelve celdas: { x1, y1, x2, y2 }
+                if (data && data.x1 != null) {
+                    return rectToOverlay({
+                        x1: +data.x1,
+                        y1: +data.y1,
+                        x2: +data.x2,
+                        y2: +data.y2
+                    });
+                }
+
+                throw new Error('Código sin coordenadas válidas.');
+            } catch (err) {
+                clearOverlay();
+                alert(err.message || 'Error inesperado al localizar.');
             }
         }
 
-        function guardarLocalizacionPaquete(codigo, x1, y1, x2, y2) {
-            fetch(`/localizaciones-paquetes/${codigo}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    },
-                    body: JSON.stringify({
-                        x1,
-                        y1,
-                        x2,
-                        y2
-                    })
-                })
-                .then(async res => {
-                    const text = await res.text(); // lee como texto
-                    console.log('Respuesta cruda:', text);
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    return JSON.parse(text);
-                })
-                .then(data => {
-                    Swal.fire('Guardado', data.message, 'success');
-                })
-                .catch(err => {
-                    console.error('Error al guardar:', err);
-                    Swal.fire('Error', err.message, 'error');
-                });
+        /* =========================
+         * 8) Navegación por sectores
+         * ========================= */
+        document.getElementById('sectores')?.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-sector]');
+            if (!btn) return;
+            const n = Number(btn.dataset.sector); // 1..7
+            scrollToSector(n);
+        });
 
+        function scrollToSector(sector) {
+            // sector 7 arriba; sector 1 abajo (7 bandas visuales)
+            const rect = grid.getBoundingClientRect();
+            const sectorHeight = rect.height / 7;
+            const indexFromTop = 7 - sector; // 0..6
+            const targetY = indexFromTop * sectorHeight;
+            centerScroll(rect.width / 2, targetY);
+        }
+
+        /* ===== Init ===== */
+        applyZoom();
+        ensureSquareCells();
+
+        // ========= PINTAR MÁQUINAS EN EL GRID =========
+        const machinesLayer = document.getElementById('machines');
+        let machineNodes = []; // referencias DOM para redibujar en resize
+
+        // Convierte un rectángulo EN METROS a coordenadas en píxeles sobre el grid
+        function metersRectToPixelBox({
+            mx1,
+            my1,
+            mx2,
+            my2
+        }) {
+            // 1) metros -> celdas (bloque completo)
+            const x1 = metersToCells(mx1);
+            const y1 = metersToCells(my1);
+            const x2 = metersToCells(mx2 + 1) - 1;
+            const y2 = metersToCells(my2 + 1) - 1;
+
+            // 2) celdas -> px con el tamaño actual del grid
+            const rect = grid.getBoundingClientRect();
+            const cellW = rect.width / columnas;
+            const cellH = rect.height / filas;
+
+            const left = (x1 - 1) * cellW;
+            const top = (filas - y2) * cellH; // y desde abajo
+            const width = (x2 - x1 + 1) * cellW;
+            const height = (y2 - y1 + 1) * cellH;
+
+            return {
+                left,
+                top,
+                width,
+                height
+            };
+        }
+
+        // Crea el nodo DOM de una máquina y lo posiciona
+        function createMachineNode(machine) {
+            const el = document.createElement('div');
+            el.className = 'machine';
+            el.title = machine.label;
+
+            // Badge con el código
+            const badge = document.createElement('div');
+            badge.className = 'badge';
+            badge.textContent = machine.code;
+            el.appendChild(badge);
+
+            // Texto centrado (nombre corto o código)
+            const span = document.createElement('div');
+            span.textContent = machine.label;
+            el.appendChild(span);
+
+            machinesLayer.appendChild(el);
+            return el;
+        }
+
+        // Posiciona (o reposiciona) un nodo existente según metros
+        function positionMachineNode(el, machine) {
+            const box = metersRectToPixelBox(machine);
+            el.style.left = box.left + 'px';
+            el.style.top = box.top + 'px';
+            el.style.width = box.width + 'px';
+            el.style.height = box.height + 'px';
+        }
+
+        // Dibuja todas las máquinas (crear si no existen, o reposicionar si ya hay)
+        function drawMachines() {
+            // Si no hay nodos aún, crearlos
+            if (machineNodes.length === 0) {
+                MACHINES.forEach(m => {
+                    const node = createMachineNode(m);
+                    machineNodes.push({
+                        node,
+                        data: m
+                    });
+                });
+            }
+            // Posicionar según tamaño actual del grid
+            machineNodes.forEach(({
+                node,
+                data
+            }) => positionMachineNode(node, data));
+        }
+
+        // Si cambian dimensiones en caliente, limpiar y repintar
+        function resetMachines() {
+            machineNodes.forEach(({
+                node
+            }) => node.remove());
+            machineNodes = [];
+            drawMachines();
         }
     </script>
-
 </x-app-layout>

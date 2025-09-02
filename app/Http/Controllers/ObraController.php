@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Obra;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class ObraController extends Controller
 {
@@ -62,60 +63,91 @@ class ObraController extends Controller
 
     public function store(Request $request)
     {
+        // Validación base
         $request->validate([
-            'obra' => 'required|string|max:255',
-            'cod_obra' => 'required|string|max:50|unique:obras,cod_obra',
-            'cliente_id' => 'required|exists:clientes,id', // Validamos que el cliente exista
-            'ciudad' => 'nullable|string|max:255',
-            'direccion' => 'nullable|string|max:255',
-            'latitud' => 'nullable|numeric',
-            'longitud' => 'nullable|numeric',
-            'distancia' => 'nullable|integer',
-            'tipo' => 'required|in:montaje,suministro',
+            'obra'       => 'required|string|max:255',
+            'cod_obra'   => 'required|string|max:50|unique:obras,cod_obra',
+            'cliente_id' => 'required|exists:clientes,id',
+            'ciudad'     => 'nullable|string|max:255',
+            'direccion'  => 'nullable|string|max:255',
+            'latitud'    => 'nullable|numeric',
+            'longitud'   => 'nullable|numeric',
+            'distancia'  => 'nullable|integer',
+            'tipo'       => 'required|in:montaje,suministro',
         ], [
             'obra.required' => 'El nombre de la obra es obligatorio.',
-            'obra.string' => 'El nombre de la obra debe ser un texto.',
-            'obra.max' => 'El nombre de la obra no puede tener más de 255 caracteres.',
+            'obra.string'   => 'El nombre de la obra debe ser un texto.',
+            'obra.max'      => 'El nombre de la obra no puede tener más de 255 caracteres.',
 
             'cod_obra.required' => 'El código de obra es obligatorio.',
-            'cod_obra.string' => 'El código de obra debe ser un texto.',
-            'cod_obra.max' => 'El código de obra no puede tener más de 50 caracteres.',
-            'cod_obra.unique' => 'El código de obra ya está en uso.',
+            'cod_obra.string'   => 'El código de obra debe ser un texto.',
+            'cod_obra.max'      => 'El código de obra no puede tener más de 50 caracteres.',
+            'cod_obra.unique'   => 'El código de obra ya está en uso.',
 
             'cliente_id.required' => 'El cliente es obligatorio.',
-            'cliente_id.exists' => 'El cliente seleccionado no existe.',
+            'cliente_id.exists'   => 'El cliente seleccionado no existe.',
 
-            'ciudad.string' => 'La ciudad debe ser un texto.',
-            'ciudad.max' => 'La ciudad no puede tener más de 255 caracteres.',
-
+            'ciudad.string'   => 'La ciudad debe ser un texto.',
+            'ciudad.max'      => 'La ciudad no puede tener más de 255 caracteres.',
             'direccion.string' => 'La dirección debe ser un texto.',
-            'direccion.max' => 'La dirección no puede tener más de 255 caracteres.',
+            'direccion.max'   => 'La dirección no puede tener más de 255 caracteres.',
 
-            'latitud.numeric' => 'La latitud debe ser un valor numérico.',
-            'longitud.numeric' => 'La longitud debe ser un valor numérico.',
-
+            'latitud.numeric'   => 'La latitud debe ser un valor numérico.',
+            'longitud.numeric'  => 'La longitud debe ser un valor numérico.',
             'distancia.integer' => 'La distancia debe ser un número entero.',
-            'tipo.required' => 'El tipo de obra es obligatorio.',
-            'tipo.in' => 'El tipo de obra debe ser montaje o suministro.',
-
+            'tipo.required'     => 'El tipo de obra es obligatorio.',
+            'tipo.in'           => 'El tipo de obra debe ser montaje o suministro.',
         ]);
 
-        // Crear la obra con cliente_id desde el input oculto y completada por defecto en 0
-        Obra::create([
-            'obra' => $request->obra,
-            'cod_obra' => $request->cod_obra,
-            'cliente_id' => $request->cliente_id, // Se obtiene del input hidden en el formulario
-            'ciudad' => $request->ciudad,
-            'direccion' => $request->direccion,
-            'latitud' => $request->latitud,
-            'longitud' => $request->longitud,
-            'distancia' => $request->distancia,
-            'estado' => 'activa', // Siempre será 0 por defecto
-            'tipo' => $request->tipo,
-        ]);
+        // Detectar si el cliente es "Hierros Paco Reyes" (LIKE %hierros paco reyes%)
+        $cliente = Cliente::findOrFail($request->cliente_id);
+        $esPacoReyes = Str::contains(Str::lower($cliente->empresa ?? ''), 'hierros paco reyes');
 
-        return redirect()->route('clientes.show', $request->cliente_id)->with('success', 'Obra creada correctamente.');
+        // Normalizar comas → puntos
+        $input = $request->all();
+        foreach (['latitud', 'longitud', 'ancho_m', 'largo_m'] as $numField) {
+            if (isset($input[$numField]) && $input[$numField] !== '') {
+                $input[$numField] = str_replace(',', '.', $input[$numField]);
+            }
+        }
+
+        // Validación condicional de ancho/largo para Paco Reyes
+        if ($esPacoReyes) {
+            $request->validate([
+                'ancho_m' => 'nullable|numeric|min:0',
+                'largo_m' => 'nullable|numeric|min:0',
+            ], [
+                'ancho_m.numeric' => 'El ancho debe ser numérico.',
+                'largo_m.numeric' => 'El largo debe ser numérico.',
+            ]);
+        }
+
+        // Datos a crear (solo incluimos ancho/largo si aplica)
+        $data = [
+            'obra'       => $input['obra'],
+            'cod_obra'   => $input['cod_obra'],
+            'cliente_id' => $input['cliente_id'],
+            'ciudad'     => $input['ciudad'] ?? null,
+            'direccion'  => $input['direccion'] ?? null,
+            'latitud'    => $input['latitud'] ?? null,
+            'longitud'   => $input['longitud'] ?? null,
+            'distancia'  => $input['distancia'] ?? null,
+            'estado'     => 'activa',
+            'tipo'       => $input['tipo'],
+        ];
+
+        if ($esPacoReyes) {
+            $data['ancho_m'] = $input['ancho_m'] ?? null;
+            $data['largo_m'] = $input['largo_m'] ?? null;
+        }
+
+        Obra::create($data);
+
+        return redirect()
+            ->route('clientes.show', $request->cliente_id)
+            ->with('success', 'Obra creada correctamente.');
     }
+
 
     public function edit(Obra $obra)
     {
@@ -124,58 +156,96 @@ class ObraController extends Controller
 
     public function update(Request $request, Obra $obra)
     {
-        $rules = [
-            'obra' => 'required|string|max:255',
-            'cod_obra' => 'required|string|max:50',
-            'distancia' => 'nullable|integer',
-            'latitud' => 'nullable|numeric',
-            'longitud' => 'nullable|numeric',
-            'estado' => 'nullable|string',
-            'tipo' => 'required|in:montaje,suministro',
-        ];
+        try {
 
-        $messages = [
-            'obra.required' => 'El nombre de la obra es obligatorio.',
-            'obra.string' => 'El nombre de la obra debe ser un texto.',
-            'obra.max' => 'El nombre de la obra no puede tener más de 255 caracteres.',
+            // Reglas base
+            $rules = [
+                'obra'      => 'required|string|max:255',
+                'cod_obra'  => 'required|string|max:50|unique:obras,cod_obra,' . $obra->id,
+                'distancia' => 'nullable|integer',
+                'latitud'   => 'nullable|numeric',
+                'longitud'  => 'nullable|numeric',
+                'estado'    => 'nullable|string',
+                'tipo'      => 'required|in:montaje,suministro',
+                'ciudad'    => 'nullable|string|max:255',
+                'direccion' => 'nullable|string|max:255',
+            ];
 
-            'cod_obra.required' => 'El código de obra es obligatorio.',
-            'cod_obra.string' => 'El código de obra debe ser un texto.',
-            'cod_obra.max' => 'El código de obra no puede tener más de 50 caracteres.',
+            $messages = [
+                'obra.required' => 'El nombre de la obra es obligatorio.',
+                'obra.string'   => 'El nombre de la obra debe ser un texto.',
+                'obra.max'      => 'El nombre de la obra no puede tener más de 255 caracteres.',
 
-            'distancia.integer' => 'La distancia debe ser un número entero.',
-            'latitud.numeric' => 'La latitud debe ser un número.',
-            'longitud.numeric' => 'La longitud debe ser un número.',
+                'cod_obra.required' => 'El código de obra es obligatorio.',
+                'cod_obra.string'   => 'El código de obra debe ser un texto.',
+                'cod_obra.max'      => 'El código de obra no puede tener más de 50 caracteres.',
+                'cod_obra.unique'   => 'El código de obra ya está en uso.',
 
-            'tipo.required' => 'El tipo de obra es obligatorio.',
-            'tipo.in' => 'El tipo de obra debe ser montaje o suministro.',
-        ];
+                'distancia.integer' => 'La distancia debe ser un número entero.',
+                'latitud.numeric'   => 'La latitud debe ser un número.',
+                'longitud.numeric'  => 'La longitud debe ser un número.',
 
-        $input = $request->all();
-        if (isset($input['latitud'])) {
-            $input['latitud'] = str_replace(',', '.', $input['latitud']);
-        }
-        if (isset($input['longitud'])) {
-            $input['longitud'] = str_replace(',', '.', $input['longitud']);
-        }
+                'ciudad.string'     => 'La ciudad debe ser un texto.',
+                'ciudad.max'        => 'La ciudad no puede tener más de 255 caracteres.',
+                'direccion.string'  => 'La dirección debe ser un texto.',
+                'direccion.max'     => 'La dirección no puede tener más de 255 caracteres.',
 
-        $validator = Validator::make($input, $rules, $messages);
+                'tipo.required'     => 'El tipo de obra es obligatorio.',
+                'tipo.in'           => 'El tipo de obra debe ser montaje o suministro.',
+            ];
 
-        if ($validator->fails()) {
+            // ¿El cliente de esta obra es Paco Reyes?
+            $cliente = $obra->cliente ?? Cliente::find($obra->cliente_id);
+            $esPacoReyes = Str::contains(Str::lower($cliente->empresa ?? ''), 'hierros paco reyes');
+
+            // Normalizar comas → puntos
+            $input = $request->all();
+            foreach (['latitud', 'longitud', 'ancho_m', 'largo_m'] as $numField) {
+                if (isset($input[$numField]) && $input[$numField] !== '') {
+                    $input[$numField] = str_replace(',', '.', $input[$numField]);
+                }
+            }
+
+            // Si es Paco Reyes, añadimos validación de ancho/largo
+            if ($esPacoReyes) {
+                $rules['ancho_m'] = 'nullable|numeric|min:0';
+                $rules['largo_m'] = 'nullable|numeric|min:0';
+                $messages['ancho_m.numeric'] = 'El ancho debe ser numérico.';
+                $messages['largo_m.numeric'] = 'El largo debe ser numérico.';
+            }
+
+            $validator = Validator::make($input, $rules, $messages);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'errors'  => $validator->errors()
+                ], 422);
+            }
+
+            $data = $validator->validated();
+
+            // Si NO es Paco Reyes, no permitimos actualizar ancho/largo aunque vengan en el request
+            if (!$esPacoReyes) {
+                unset($data['ancho_m'], $data['largo_m']);
+            }
+
+            $obra->update($data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Obra actualizada correctamente.',
+                'obra'    => $obra
+            ]);
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => $e->getMessage(), // 👈 aquí mostramos el error real
+                'debug'   => class_basename($e) . ' en línea ' . $e->getLine(), // opcional
+            ], 500);
         }
-
-        $obra->update($validator->validated());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Obra actualizada correctamente.',
-            'obra' => $obra
-        ]);
     }
+
     public function updateTipo(Request $request)
     {
         $request->validate([

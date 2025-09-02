@@ -153,69 +153,88 @@
 
     <!-- Modal de edición -->
     <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 justify-center items-center">
-        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 relative">
             <h2 class="text-xl font-bold mb-4 text-gray-800">Editar Máquina</h2>
 
             <form id="editMaquinaForm">
                 @csrf
                 <input type="hidden" id="edit-id" name="id">
 
-                <!-- Código -->
-                <div class="mb-3">
-                    <label for="edit-codigo" class="block text-sm font-semibold text-gray-700 mb-1">Código</label>
-                    <input id="edit-codigo" name="codigo" type="text"
-                        class="w-full border rounded px-3 py-2 text-sm">
-                </div>
+                <!-- Grid de 2 columnas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Código -->
+                    <div>
+                        <label for="edit-codigo" class="block text-sm font-semibold text-gray-700 mb-1">Código</label>
+                        <input id="edit-codigo" name="codigo" type="text"
+                            class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
 
-                <!-- Nombre -->
-                <div class="mb-3">
-                    <label for="edit-nombre" class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
-                    <input id="edit-nombre" name="nombre" type="text"
-                        class="w-full border rounded px-3 py-2 text-sm">
-                </div>
+                    <!-- Nombre -->
+                    <div>
+                        <label for="edit-nombre" class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+                        <input id="edit-nombre" name="nombre" type="text"
+                            class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
 
-                <!-- Obra asignada -->
-                <div class="mb-3">
-                    <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-1">Obra
-                        asignada</label>
-                    <select id="edit-obra_id" name="obra_id" class="w-full border rounded px-3 py-2 text-sm">
-                        <option value="">Sin asignar</option>
-                        @foreach ($obras as $obra)
-                            <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                    <!-- Obra asignada -->
+                    <div>
+                        <label for="edit-obra_id" class="block text-sm font-semibold text-gray-700 mb-1">Obra
+                            asignada</label>
+                        <select id="edit-obra_id" name="obra_id" class="w-full border rounded px-3 py-2 text-sm">
+                            <option value="">Sin asignar</option>
+                            @foreach ($obras as $obra)
+                                <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <!-- Diámetro mínimo -->
-                <div class="mb-3">
-                    <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-1">Diámetro
-                        mínimo</label>
-                    <input id="edit-diametro_min" name="diametro_min" type="number"
-                        class="w-full border rounded px-3 py-2 text-sm">
-                </div>
+                    <!-- Diámetro mínimo -->
+                    <div>
+                        <label for="edit-diametro_min" class="block text-sm font-semibold text-gray-700 mb-1">Diámetro
+                            mínimo</label>
+                        <input id="edit-diametro_min" name="diametro_min" type="number"
+                            class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
 
-                <!-- Diámetro máximo -->
-                <div class="mb-3">
-                    <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-1">Diámetro
-                        máximo</label>
-                    <input id="edit-diametro_max" name="diametro_max" type="number"
-                        class="w-full border rounded px-3 py-2 text-sm">
-                </div>
+                    <!-- Diámetro máximo -->
+                    <div>
+                        <label for="edit-diametro_max" class="block text-sm font-semibold text-gray-700 mb-1">Diámetro
+                            máximo</label>
+                        <input id="edit-diametro_max" name="diametro_max" type="number"
+                            class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
 
-                <!-- Peso mínimo -->
-                <div class="mb-3">
-                    <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-1">Peso
-                        mínimo</label>
-                    <input id="edit-peso_min" name="peso_min" type="number"
-                        class="w-full border rounded px-3 py-2 text-sm">
-                </div>
+                    <!-- Peso mínimo -->
+                    <div>
+                        <label for="edit-peso_min" class="block text-sm font-semibold text-gray-700 mb-1">Peso
+                            mínimo</label>
+                        <input id="edit-peso_min" name="peso_min" type="number"
+                            class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
 
-                <!-- Peso máximo -->
-                <div class="mb-3">
-                    <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-1">Peso
-                        máximo</label>
-                    <input id="edit-peso_max" name="peso_max" type="number"
-                        class="w-full border rounded px-3 py-2 text-sm">
+                    <!-- Peso máximo -->
+                    <div>
+                        <label for="edit-peso_max" class="block text-sm font-semibold text-gray-700 mb-1">Peso
+                            máximo</label>
+                        <input id="edit-peso_max" name="peso_max" type="number"
+                            class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
+
+                    <!-- Ancho en metros -->
+                    <div>
+                        <label for="edit-ancho_m" class="block text-sm font-semibold text-gray-700 mb-1">Ancho
+                            (m)</label>
+                        <input id="edit-ancho_m" name="ancho_m" type="number" step="0.01"
+                            class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
+
+                    <!-- Largo en metros -->
+                    <div>
+                        <label for="edit-largo_m" class="block text-sm font-semibold text-gray-700 mb-1">Largo
+                            (m)</label>
+                        <input id="edit-largo_m" name="largo_m" type="number" step="0.01"
+                            class="w-full border rounded px-3 py-2 text-sm">
+                    </div>
                 </div>
 
                 <!-- Botones -->
@@ -231,7 +250,6 @@
             </form>
         </div>
     </div>
-
 
     <script>
         // Asignar evento a todos los botones de edición

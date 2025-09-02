@@ -45,6 +45,7 @@
                                 'dobladora manual' => 'Dobladora Manual',
                             ]" empty="Selecciona su función" />
                         </div>
+
                         {{-- Nave (Obra asignada) --}}
                         <div class="mb-4">
                             <label for="obra_id" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
@@ -52,7 +53,6 @@
                             </label>
                             <x-tabla.select name="obra_id" :options="$obras->pluck('obra', 'id')->toArray()" empty="Selecciona la Nave" />
                         </div>
-
 
                         {{-- Diámetro mínimo --}}
                         <div>
@@ -96,13 +96,28 @@
                             ]" empty="Selecciona un peso máximo" />
                         </div>
 
+                        {{-- Ancho en metros --}}
+                        <div>
+                            <label for="ancho_m" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Ancho (m)
+                            </label>
+                            <x-tabla.input name="ancho_m" type="number" step="0.01" placeholder="Ej: 1.20" />
+                        </div>
+
+                        {{-- Largo en metros --}}
+                        <div>
+                            <label for="largo_m" class="block text-sm font-semibold text-gray-700 uppercase mb-1">
+                                Largo (m)
+                            </label>
+                            <x-tabla.input name="largo_m" type="number" step="0.01" placeholder="Ej: 3.50" />
+                        </div>
+
                         {{-- Botón --}}
                         <div class="flex justify-center">
                             <button type="submit"
                                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded text-sm">
                                 💾 Registrar Máquina
                             </button>
-
                         </div>
                     </form>
                 </div>

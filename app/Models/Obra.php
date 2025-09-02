@@ -21,6 +21,8 @@ class Obra extends Model
         'latitud',
         'longitud',
         'distancia',
+        'ancho_m',
+        'largo_m',
         'estado',
         'tipo'
     ];
@@ -53,5 +55,9 @@ class Obra extends Model
     public function productos()
     {
         return $this->hasMany(Producto::class);
+    }
+    public function localizaciones()
+    {
+        return $this->hasMany(Localizacion::class, 'nave_id');
     }
 }

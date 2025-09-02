@@ -8,26 +8,90 @@ use App\Models\LocalizacionPaquete;
 use App\Models\Producto;
 use App\Models\Paquete;
 use App\Models\Maquina;
+use App\Models\Obra;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 
 class LocalizacionController extends Controller
 {
     //------------------------------------------------------------------------------------ INDEX()
+
     public function index()
     {
-        $localizaciones = Localizacion::all();
-        $paquete = Paquete::with('etiquetas.elementos')->find(469);
-        $tamaño = $paquete?->tamaño;
+        // Obras del cliente "Hierros Paco Reyes"
+        $obras = Obra::with('cliente')
+            ->whereHas('cliente', function ($query) {
+                $query->where('empresa', 'LIKE', '%hierros paco reyes%');
+            })
+            ->orderBy('obra')
+            ->get();
 
-        $localizaciones = Localizacion::all();
-        $localizacionesPaquetes = LocalizacionPaquete::with('paquete')->get();
+        // Obra activa pasada por parámetro ?obra=ID
+        $obraActualId = request('obra');
+        $obraActiva = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+
+        // Cliente (relación desde obra activa)
+        $cliente = $obraActiva?->cliente;
+
+        // Localizaciones de la obra activa, con su máquina
+        $localizaciones = $obraActiva
+            ? \App\Models\Localizacion::with('maquina')->where('nave_id', $obraActiva->id)->get()
+            : collect();
+
+        // Solo las que tienen máquina
+        $localizacionesMaquinas = $localizaciones->whereNotNull('maquina_id');
+
+        // 🔽 Serializa aquí, fuera de Blade
+        $machines = $localizacionesMaquinas->map(function ($loc) {
+            return [
+                'id'    => $loc->id,
+                'mx1'   => (float) $loc->x1,  // METROS
+                'my1'   => (float) $loc->y1,
+                'mx2'   => (float) $loc->x2,
+                'my2'   => (float) $loc->y2,
+                'code'  => optional($loc->maquina)->codigo ?? (optional($loc->maquina)->nombre ?? 'Máquina'),
+                'label' => optional($loc->maquina)->nombre ?? 'Máquina',
+            ];
+        })->values()->toArray();
+        // LOG
+        Log::debug('MACHINES payload', [
+            'obra_id'   => $obraActiva?->id,
+            'count'     => count($machines),
+            'sample'    => array_slice($machines, 0, 3),
+        ]);
+        // Maquinas de esa obra
+        $maquinas = $obraActiva
+            ? \App\Models\Maquina::where('obra_id', $obraActiva->id)->get()
+            : collect();
+
+
+        // Dimensiones de la nave
+        $ancho = $obraActiva?->ancho_m ?? 10;
+        $largo = $obraActiva?->largo_m ?? 10;
+
+        $dimensiones = [
+            'ancho' => $ancho,
+            'alto'  => $largo,
+            'obra'  => $obraActiva?->obra,
+        ];
+
+        // Sectores (cada 20 metros)
+        $sectorSize = 20;
+        $numeroSectores = max(1, ceil($largo / $sectorSize));
 
         return view('localizaciones.index', [
-            'localizaciones' => $localizaciones,
-            'paquetesEnMapa' => $localizacionesPaquetes,
+            'localizacionesMaquinas' => $localizacionesMaquinas,
+            'machines'               => $machines, // << pásalo a la vista
+            'maquinas'           => $maquinas,
+            'obras'              => $obras,
+            'obraActualId'       => $obraActualId,
+            'cliente'            => $cliente,
+            'dimensiones'        => $dimensiones,
+            'numeroSectores'     => $numeroSectores,
         ]);
     }
+
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
     {
@@ -96,116 +160,195 @@ class LocalizacionController extends Controller
     //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
-        $localizaciones = Localizacion::all();
-        return view('localizaciones.create', compact('localizaciones'));
+
+        // Obras del cliente "Hierros Paco Reyes"
+        $obras = Obra::with('cliente')
+            ->whereHas('cliente', function ($query) {
+                $query->where('empresa', 'LIKE', '%hierros paco reyes%');
+            })
+            ->orderBy('obra')
+            ->get();
+
+        // Obra activa pasada por parámetro ?obra=ID
+        $obraActualId = request('obra');
+        $obraActiva = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+        // Dimensiones de la nave
+        $ancho = $obraActiva?->ancho_m ?? 10;
+        $largo = $obraActiva?->largo_m ?? 10;
+        $dimensiones = [
+            'ancho' => $ancho,
+            'alto'  => $largo,
+            'obra'  => $obraActiva?->obra,
+        ];
+        // Cliente (relación desde obra activa)
+        $cliente = $obraActiva?->cliente;
+        // Localizaciones con relación de máquina (solo id y nombre)
+        $localizaciones = Localizacion::with('maquina:id,nombre') // solo trae lo necesario
+            ->get()
+            ->map(function ($loc) {
+                return [
+                    'x1'         => $loc->x1,
+                    'y1'         => $loc->y1,
+                    'x2'         => $loc->x2,
+                    'y2'         => $loc->y2,
+                    'tipo'       => $loc->tipo,
+                    'maquina_id' => $loc->maquina_id,
+                    'nombre'     => $loc->tipo === 'maquina' && $loc->maquina ? $loc->maquina->nombre : null,
+                    'obra_id'   => $loc->obra_id,
+                ];
+            });
+
+        // Si además necesitas la bandeja de máquinas
+        $maquinas = Maquina::where('obra_id', $obraActiva->id)->select('id', 'nombre', 'ancho_m', 'largo_m')->get();
+        return view('localizaciones.create', compact('localizaciones', 'maquinas', 'obras', 'obraActualId', 'cliente', 'dimensiones'));
     }
     //------------------------------------------------------------------------------------ VERIFICAR()
 
     public function verificar(Request $request)
     {
-        // Mostrar en el log las coordenadas recibidas y lo que va a comparar
-        Log::info('Verificando localización con:', [
-            'x1' => $request->x1,
-            'y1' => $request->y1,
-            'x2' => $request->x2,
-            'y2' => $request->y2,
+        // Forzamos JSON si viene sin Accept correcto
+        if (!$request->expectsJson()) {
+            $request->headers->set('Accept', 'application/json');
+        }
+
+        // ✅ Validación incluyendo nave_id
+        $validator = Validator::make($request->all(), [
+            'x1'         => 'required|integer|min:1',
+            'y1'         => 'required|integer|min:1',
+            'x2'         => 'required|integer|min:1',
+            'y2'         => 'required|integer|min:1',
+            'excluir_id' => 'nullable|integer',
+            'nave_id'    => 'required|integer|exists:obras,id', // <-- AJUSTA la tabla si es otra
         ]);
 
-        // 1. Verificación exacta
-        $exacta = \App\Models\Localizacion::where('x1', $request->x1)
-            ->where('y1', $request->y1)
-            ->where('x2', $request->x2)
-            ->where('y2', $request->y2)
-            ->first();
-
-        if ($exacta) {
-            Log::info('✅ Coincidencia exacta encontrada:', [
-                'id' => $exacta->id,
-                'localizacion' => $exacta->localizacion,
-                'tipo' => $exacta->tipo,
-            ]);
-
+        if ($validator->fails()) {
             return response()->json([
-                'existe' => true,
-                'tipo' => 'exacta',
-                'localizacion' => $exacta
-            ]);
+                'existe' => false,
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
-        // 2. Verificación de solapamiento parcial (alguna celda incluida)
-        $superpuesta = \App\Models\Localizacion::where(function ($q) use ($request) {
-            $q->where('x1', '<=', $request->x2)
-                ->where('x2', '>=', $request->x1)
-                ->where('y1', '<=', $request->y2)
-                ->where('y2', '>=', $request->y1);
-        })->first();
+        try {
+            // Normalizar coordenadas
+            $x1 = min((int)$request->x1, (int)$request->x2);
+            $x2 = max((int)$request->x1, (int)$request->x2);
+            $y1 = min((int)$request->y1, (int)$request->y2);
+            $y2 = max((int)$request->y1, (int)$request->y2);
+            $excluirId = $request->excluir_id;
+            $naveId    = (int) $request->nave_id;
 
-        if ($superpuesta) {
-            Log::info('⚠️ Zona parcialmente ocupada por otra localización:', [
-                'id' => $superpuesta->id,
-                'localizacion' => $superpuesta->localizacion,
-                'tipo' => $superpuesta->tipo,
-            ]);
+            Log::info('🔎 Verificando nave', compact('naveId', 'x1', 'y1', 'x2', 'y2', 'excluirId'));
 
+            // 🔒 Base limitada a la misma nave y excluyendo transitables
+            $base = Localizacion::query()
+                ->select('id', 'tipo', 'x1', 'y1', 'x2', 'y2', 'maquina_id')
+                ->where('nave_id', $naveId)
+                ->where('tipo', '!=', 'transitable')
+                ->when($excluirId, fn($q) => $q->where('id', '!=', $excluirId));
+
+            // Coincidencia exacta
+            if ($exacta = (clone $base)->where(compact('x1', 'y1', 'x2', 'y2'))->first()) {
+                return response()->json([
+                    'existe' => true,
+                    'tipo'   => 'exacta',
+                    'localizacion' => $exacta,
+                ]);
+            }
+
+            // Solape (inclusivo por celdas)
+            $superpuesta = (clone $base)->where(function ($q) use ($x1, $y1, $x2, $y2) {
+                $q->where('x1', '<=', $x2)->where('x2', '>=', $x1)
+                    ->where('y1', '<=', $y2)->where('y2', '>=', $y1);
+            })->first();
+
+            if ($superpuesta) {
+                return response()->json([
+                    'existe' => true,
+                    'tipo'   => 'parcial',
+                    'localizacion' => $superpuesta,
+                ]);
+            }
+
+            return response()->json(['existe' => false]);
+        } catch (\Throwable $e) {
+            Log::error('❌ Error en verificar', ['e' => $e]);
             return response()->json([
-                'existe' => true,
-                'tipo' => 'parcial',
-                'localizacion' => $superpuesta
-            ]);
+                'error'   => true,
+                'message' => 'Error interno en verificación.',
+            ], 500);
         }
-
-        Log::info('✅ Área libre. No existe ninguna coincidencia.');
-        return response()->json(['existe' => false]);
     }
 
     //------------------------------------------------------------------------------------ STORE()
     public function store(Request $request)
     {
-        // Validación de los datos recibidos
-        $request->validate([
-            'x1' => 'required|integer|min:1',
-            'y1' => 'required|integer|min:1',
-            'x2' => 'required|integer|min:1',
-            'y2' => 'required|integer|min:1',
-            'tipo' => 'required|in:material,maquina,transitable',
-            'seccion' => 'required|string|max:50',
-            'localizacion' => 'required|string|max:100',
-        ], [
-            'x1.required' => 'La coordenada x1 es obligatoria.',
-            'y1.required' => 'La coordenada y1 es obligatoria.',
-            'x2.required' => 'La coordenada x2 es obligatoria.',
-            'y2.required' => 'La coordenada y2 es obligatoria.',
-            'tipo.required' => 'Debe indicar el tipo de localización.',
-            'tipo.in' => 'El tipo debe ser material, maquina o transitable.',
-            'seccion.required' => 'La sección es obligatoria.',
-            'localizacion.required' => 'El nombre de la localización es obligatorio.',
-        ]);
+        try {
+            // ✅ Validación con nave_id obligatorio
+            $validated = $request->validate([
+                'x1'         => 'required|integer|min:1',
+                'y1'         => 'required|integer|min:1',
+                'x2'         => 'required|integer|min:1',
+                'y2'         => 'required|integer|min:1',
+                'tipo'       => 'required|in:material,maquina,transitable',
+                'maquina_id' => 'nullable|integer|exists:maquinas,id',
+                'nave_id'    => 'required|integer|exists:obras,id', // <-- AJUSTA la tabla si es otra
+            ], [
+                'nave_id.required' => 'Debe indicar la nave.',
+                'nave_id.exists'   => 'La nave indicada no existe.',
+            ]);
 
-        // Ordenar coordenadas para asegurar consistencia
-        $x1 = min($request->x1, $request->x2);
-        $x2 = max($request->x1, $request->x2);
-        $y1 = min($request->y1, $request->y2);
-        $y2 = max($request->y1, $request->y2);
+            // Normalizar coordenadas
+            $x1 = min($validated['x1'], $validated['x2']);
+            $x2 = max($validated['x1'], $validated['x2']);
+            $y1 = min($validated['y1'], $validated['y2']);
+            $y2 = max($validated['y1'], $validated['y2']);
 
-        // Crear la localización
-        $localizacion = Localizacion::create([
-            'x1' => $x1,
-            'y1' => $y1,
-            'x2' => $x2,
-            'y2' => $y2,
-            'tipo' => $request->tipo,
-            'seccion' => $request->seccion,
-            'localizacion' => $request->localizacion,
-        ]);
+            // (Opcional) Doble-check: que no exista solape en esta nave
+            $solape = Localizacion::where('nave_id', $validated['nave_id'])
+                ->where('tipo', '!=', 'transitable')
+                ->where(function ($q) use ($x1, $y1, $x2, $y2) {
+                    $q->where('x1', '<=', $x2)->where('x2', '>=', $x1)
+                        ->where('y1', '<=', $y2)->where('y2', '>=', $y1);
+                })->exists();
 
-        // Devolver respuesta JSON
-        return response()->json([
-            'success' => true,
-            'message' => 'Localización guardada correctamente.',
-            'localizacion' => $localizacion
-        ]);
+            if ($solape) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ya existe una localización que solapa en esta nave.',
+                ], 409);
+            }
+
+            // Crear localización vinculada a la nave
+            $localizacion = Localizacion::create([
+                'x1'         => $x1,
+                'y1'         => $y1,
+                'x2'         => $x2,
+                'y2'         => $y2,
+                'tipo'       => $validated['tipo'],
+                'maquina_id' => $validated['tipo'] === 'maquina' ? ($validated['maquina_id'] ?? null) : null,
+                'nave_id'    => $validated['nave_id'], // 👈 vinculación clave
+            ]);
+
+            return response()->json([
+                'success'      => true,
+                'message'      => 'Localización guardada correctamente.',
+                'localizacion' => $localizacion
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errores de validación.',
+                'errors'  => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error al guardar localización', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al guardar la localización.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
     }
-
 
     //------------------------------------------------------------------------------------ DESTROY()
     public function destroy($id)
