@@ -84,60 +84,25 @@
         <p><strong>Días de baja:</strong> {{ $resumen['diasBaja'] }}</p>
     </div>
 
+
     {{-- Descargar mis nóminas --}}
     @if (auth()->check() && auth()->id() === $user->id)
-        <div x-data="{ cargando: false, url: null, nombre: null, error: null }" class="mt-6 border-t pt-6">
+        <div class="mt-6 border-t pt-6">
             <h3 class="text-lg font-semibold text-gray-700 mb-2">Descargar mis nóminas</h3>
 
-            <form
-                @submit.prevent="cargando = true; error = null;
-            fetch('{{ route('nominas.verGenerarRuta') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({ mes_anio: $refs.mes_anio.value })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.url) {
-                    url = data.url;
-                    nombre = data.nombre;
-                } else {
-                    error = data.error || 'Error inesperado';
-                }
-            })
-            .catch(() => error = 'Error inesperado.')
-            .finally(() => cargando = false)"
+            <form action="{{ route('nominas.crearDescargarMes') }}" method="GET"
                 class="flex flex-col sm:flex-row sm:items-center gap-3 max-w-md">
 
-                <input type="month" name="mes_anio" required x-ref="mes_anio"
+                <input type="month" name="mes_anio" required
                     class="sm:flex-1 w-full sm:w-auto rounded-md border border-gray-300 px-4 py-2 text-gray-700 shadow-sm focus:border-green-500 focus:ring-2 focus:ring-green-300 transition">
 
                 <button type="submit"
                     class="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow
-                bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2
-                focus:ring-green-500 focus:ring-offset-2 transition"
-                    x-bind:disabled="cargando">
-                    <span x-show="!cargando">📥 Descargar</span>
-                    <span x-show="cargando">⏳ Cargando...</span>
+                    bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2
+                    focus:ring-green-500 focus:ring-offset-2 transition">
+                    📥 Descargar
                 </button>
             </form>
-
-            <template x-if="url">
-                <div class="mt-4">
-                    <a :href="url" target="_blank"
-                        class="text-green-700 underline font-semibold hover:text-green-900">
-                        Abrir <span x-text="nombre"></span>
-
-                    </a>
-                </div>
-            </template>
-
-            <template x-if="error">
-                <p class="mt-2 text-red-600 font-medium" x-text="error"></p>
-            </template>
         </div>
     @endif
 
