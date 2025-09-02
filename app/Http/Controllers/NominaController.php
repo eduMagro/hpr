@@ -195,37 +195,36 @@ class NominaController extends Controller
 
         // Obtener mes y año
         $fecha = Carbon::createFromFormat('Y-m-d', $request->mes_anio . '-01');
-
         $mes = ucfirst($fecha->locale('es')->translatedFormat('F'));
         $anio = $fecha->format('Y');
-
-        // Ruta base
-        $carpetaBase = storage_path('app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio);
 
         // Usuario actual
         $user = auth()->user();
         $dniNormalizado = strtoupper(preg_replace('/[^A-Z0-9]/', '', $user->dni));
 
-        // Normalizar nombre de empresa (quitar caracteres raros/espacios)
+        // Carpeta base general
+        $base = 'app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio;
+
+        // Nombre de empresa normalizado
         $empresa = $user->empresa->nombre ?? 'SIN_EMPRESA';
         $empresaNormalizada = preg_replace('/[^A-Za-z0-9_-]/', '_', strtoupper($empresa));
 
-        // Ruta base con empresa
-        $carpetaBase = storage_path(
-            'app/private/nominas/nominas_' . $anio . '/nomina_' . $mes . '_' . $anio . '/' . $empresaNormalizada
-        );
+        // Primera opción: carpeta dentro de empresa
+        $carpetaUsuario = storage_path($base . '/' . $empresaNormalizada . '/' . $dniNormalizado);
 
-        $carpetaUsuario = $carpetaBase . '/' . $dniNormalizado;
-
+        // Si no existe, segunda opción: carpeta directamente en la raíz
         if (!is_dir($carpetaUsuario)) {
-            return back()->with('error', 'No se encontró nómina para ' . $mes . '.');
+            $carpetaUsuario = storage_path($base . '/' . $dniNormalizado);
+
+            if (!is_dir($carpetaUsuario)) {
+                return back()->with('error', 'No se encontró nómina para ' . $mes . '.');
+            }
         }
 
         $archivos = glob($carpetaUsuario . '/*.pdf');
 
-
         if (empty($archivos)) {
-            return back()->with('error', 'No hay archivos PDF en esa carpeta.');
+            return back()->with('error', 'No hay archivos PDF en la carpeta de tu nómina.');
         }
 
         // Preparar parser
@@ -240,11 +239,10 @@ class NominaController extends Controller
 
                 // Comprobar que el texto contiene el DNI del usuario
                 if (strpos($texto, $dniNormalizado) === false) {
-                    // Si no lo contiene, saltamos este archivo
                     continue;
                 }
 
-                // Si lo contiene, lo añadimos al combinado
+                // Añadir al PDF combinado
                 $dniEnPdf = true;
                 $pageCount = $pdf->setSourceFile($archivo);
                 for ($i = 1; $i <= $pageCount; $i++) {
@@ -262,12 +260,11 @@ class NominaController extends Controller
             return back()->with('error', 'Hay un error en la nómina. Reporta el error, por favor.');
         }
 
-        // Generar PDF combinado
+        // Generar nombre del archivo
         $nombreArchivo = 'Nomina_' . $user->nombre_completo  . '_' . $mes . '_' . $anio . '.pdf';
 
-        // dentro de tu método donde ya tienes $user y $nombreArchivo
+        // Registrar alerta
         $alertaService = app(AlertaService::class);
-
         $alertaService->crearAlerta(
             emisorId: $user->id,
             destinatarioId: $user->id,
@@ -279,6 +276,7 @@ class NominaController extends Controller
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $nombreArchivo . '"');
     }
+
     // --------------------- GENERACION NOMINA
     public function index()
     {
