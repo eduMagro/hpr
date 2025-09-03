@@ -17,6 +17,15 @@
                 Vista: {{ $columnasVista }}×{{ $filasVista }} (lado largo en horizontal).
             </p>
         </div>
+        <div class="px-4 sm:px-6 lg:px-8 mt-4">
+            <div class="bg-white border rounded-lg p-3 flex items-center gap-4">
+                <label class="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" id="toggle-detalles" checked>
+                    Mostrar nombres y botones eliminar
+                </label>
+            </div>
+        </div>
+
     </div>
     {{-- Bandeja de máquinas --}}
     <div class="px-4 sm:px-6 lg:px-8 mt-4">
@@ -48,22 +57,27 @@
         <div id="escenario-cuadricula">
             <div id="cuadricula" aria-label="Cuadrícula de la nave" class="relative">
 
-                {{-- overlays de localizaciones existentes --}}
+                {{-- overlays de localizaciones con máquina --}}
                 @foreach ($localizacionesConMaquina as $loc)
-                    <div class="loc-existente" data-id="{{ $loc['id'] }}" data-x1="{{ $loc['x1'] }}"
+                    <div class="loc-existente loc-maquina" data-id="{{ $loc['id'] }}" data-x1="{{ $loc['x1'] }}"
                         data-y1="{{ $loc['y1'] }}" data-x2="{{ $loc['x2'] }}" data-y2="{{ $loc['y2'] }}"
-                        data-nombre="{{ $loc['nombre'] }}">
+                        data-nombre="{{ $loc['nombre'] }}" data-maquina-id="{{ $loc['maquina_id'] ?? '' }}"
+                        data-w="{{ $loc['wCeldas'] ?? 1 }}" data-h="{{ $loc['hCeldas'] ?? 1 }}">
                         <span class="loc-label">{{ $loc['nombre'] }}</span>
                         <button type="button" class="loc-delete" aria-label="Eliminar localización"
                             title="Eliminar {{ $loc['nombre'] }}">×</button>
                     </div>
                 @endforeach
+
                 {{-- overlays de ZONAS (no-maquina) --}}
                 @foreach ($localizacionesZonas as $loc)
-                    <div class="loc-existente loc-zona tipo-{{ str_replace('-', '_', $loc['tipo']) }}"
-                        data-id="{{ $loc['id'] }}" data-x1="{{ $loc['x1'] }}" data-y1="{{ $loc['y1'] }}"
-                        data-x2="{{ $loc['x2'] }}" data-y2="{{ $loc['y2'] }}"
-                        data-nombre="{{ $loc['nombre'] }}" data-tipo="{{ $loc['tipo'] }}">
+                    @php
+                        $tipo = str_replace('-', '_', $loc['tipo'] ?? 'transitable');
+                    @endphp
+                    <div class="loc-existente loc-zona tipo-{{ $tipo }}" data-id="{{ $loc['id'] }}"
+                        data-x1="{{ $loc['x1'] }}" data-y1="{{ $loc['y1'] }}" data-x2="{{ $loc['x2'] }}"
+                        data-y2="{{ $loc['y2'] }}" data-nombre="{{ $loc['nombre'] }}"
+                        data-tipo="{{ $tipo }}">
                         <span class="loc-label">{{ $loc['nombre'] }}</span>
                         <button type="button" class="loc-delete" aria-label="Eliminar localización"
                             title="Eliminar {{ $loc['nombre'] }}">×</button>
@@ -96,11 +110,11 @@
             const escenario = document.getElementById('escenario-cuadricula');
             const grid = document.getElementById('cuadricula');
             const ghost = document.getElementById('ghost');
-            const chips = Array.from(document.querySelectorAll('.chip-maquina'));
+            const bandeja = document.getElementById('bandeja-maquinas');
             const estadoSel = document.getElementById('estado-seleccion');
 
             let celdaPx = 8;
-            let selected = null;
+            let selected = null; // {id, nombre, w, h} en REAL
             let ghostPosVista = {
                 x: 1,
                 y: 1
@@ -108,7 +122,7 @@
             let ghostSizeVista = {
                 w: 1,
                 h: 1
-            };
+            }; // en VISTA (transpuesto)
 
             function getCeldaPx() {
                 const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
@@ -131,7 +145,6 @@
                 };
             }
 
-
             // Vista -> Real
             // x = y' ; y = x' ; w_real = h_vista ; h_real = w_vista
             function vistaToRealRect(x1v, y1v, wv, hv) {
@@ -144,7 +157,6 @@
                     y2: x2v
                 };
             }
-
 
             function renderExistentes() {
                 celdaPx = getCeldaPx();
@@ -177,30 +189,6 @@
                 updateGhostColor();
             }
 
-            chips.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    chips.forEach(c => c.classList.remove('ring', 'ring-blue-500'));
-                    btn.classList.add('ring', 'ring-blue-500');
-                    selected = {
-                        id: +btn.dataset.id,
-                        nombre: btn.dataset.nombre,
-                        w: +btn.dataset.w, // real
-                        h: +btn.dataset.h // real
-                    };
-                    // 👇 en vista horizontal, el ghost se dibuja transpuesto
-                    ghostSizeVista = {
-                        w: selected.h,
-                        h: selected.w
-                    };
-                    ghost.classList.remove('hidden');
-                    estadoSel.textContent =
-                        `Seleccionada: ${selected.nombre} (${selected.w}×${selected.h}). Pulsa "R" para rotar. Haz clic en la cuadrícula para colocar.`;
-                    renderGhost();
-                    updateGhostColor();
-                });
-            });
-
-
             function puntoEnVista(ev) {
                 const rect = grid.getBoundingClientRect();
                 const x = Math.floor((ev.clientX - rect.left) / celdaPx) + 1;
@@ -222,8 +210,9 @@
             }
 
             function colisionaConOcupadas(rectReal) {
-                return ctx.ocupadas.some(o => !(rectReal.x2 < o.x1 || rectReal.x1 > o.x2 || rectReal.y2 < o.y1 ||
-                    rectReal.y1 > o.y2));
+                return (ctx.ocupadas || []).some(o =>
+                    !(rectReal.x2 < o.x1 || rectReal.x1 > o.x2 || rectReal.y2 < o.y1 || rectReal.y1 > o.y2)
+                );
             }
 
             function updateGhostColor() {
@@ -243,9 +232,41 @@
                 [ghostSizeVista.w, ghostSizeVista.h] = [ghostSizeVista.h, ghostSizeVista.w];
                 renderGhost();
                 updateGhostColor();
+                const wReal = ghostSizeVista.h; // transpuesto
+                const hReal = ghostSizeVista.w;
                 estadoSel.textContent =
-                    `Seleccionada: ${selected.nombre} (${ghostSizeVista.w}×${ghostSizeVista.h}). Pulsa "R" para rotar. Haz clic en la cuadrícula para colocar.`;
+                    `Seleccionada: ${selected.nombre} (${wReal}×${hReal} reales). Pulsa "R" para rotar. Haz clic en la cuadrícula para colocar.`;
             }
+
+            function seleccionarChip(btn) {
+                document.querySelectorAll('.chip-maquina').forEach(c => c.classList.remove('ring', 'ring-blue-500'));
+                btn.classList.add('ring', 'ring-blue-500');
+
+                selected = {
+                    id: +btn.dataset.id,
+                    nombre: btn.dataset.nombre,
+                    w: +btn.dataset.w, // REAL
+                    h: +btn.dataset.h // REAL
+                };
+                // en vista horizontal, el ghost se dibuja transpuesto
+                ghostSizeVista = {
+                    w: selected.h,
+                    h: selected.w
+                };
+
+                ghost.classList.remove('hidden');
+                estadoSel.textContent =
+                    `Seleccionada: ${selected.nombre} (${selected.w}×${selected.h} reales). Pulsa "R" para rotar. Haz clic en la cuadrícula para colocar.`;
+                renderGhost();
+                updateGhostColor();
+            }
+
+            // Delegación para TODAS las chips (presentes y futuras)
+            bandeja.addEventListener('click', (ev) => {
+                const btn = ev.target.closest('.chip-maquina');
+                if (!btn) return;
+                seleccionarChip(btn);
+            });
 
             document.addEventListener('keydown', ev => {
                 if (!selected) return;
@@ -266,12 +287,13 @@
 
             grid.addEventListener('click', async ev => {
                 if (!selected) return;
+
                 const x = Math.min(ghostPosVista.x, ctx.columnasVista - ghostSizeVista.w + 1);
                 const y = Math.min(ghostPosVista.y, ctx.filasVista - ghostSizeVista.h + 1);
                 const rectReal = vistaToRealRect(x, y, ghostSizeVista.w, ghostSizeVista.h);
 
-                const fuera = rectReal.x1 < 1 || rectReal.y1 < 1 || rectReal.x2 > ctx.columnasReales ||
-                    rectReal.y2 > ctx.filasReales;
+                const fuera = rectReal.x1 < 1 || rectReal.y1 < 1 ||
+                    rectReal.x2 > ctx.columnasReales || rectReal.y2 > ctx.filasReales;
                 if (fuera) {
                     Swal.fire({
                         icon: 'error',
@@ -297,7 +319,6 @@
                     confirmButtonText: 'Sí, colocar',
                     cancelButtonText: 'Cancelar'
                 });
-
                 if (!confirm.isConfirmed) return;
 
                 try {
@@ -317,24 +338,47 @@
                             x2: rectReal.x2,
                             y2: rectReal.y2,
                             seccion: 'A',
-                            localizacion: selected.nombre
+                            nombre: selected.nombre // unificado (no "localizacion")
                         })
                     });
                     if (!res.ok) throw new Error(await res.text());
+                    const saved = await res.json().catch(() => null);
 
-                    ctx.ocupadas.push(rectReal);
+                    // Actualiza ocupadas y pinta overlay con datasets completos
+                    (ctx.ocupadas ||= []).push(rectReal);
+
                     const div = document.createElement('div');
-                    div.className = 'loc-existente';
+                    div.className = 'loc-existente loc-maquina';
                     div.dataset.x1 = rectReal.x1;
                     div.dataset.y1 = rectReal.y1;
                     div.dataset.x2 = rectReal.x2;
                     div.dataset.y2 = rectReal.y2;
-                    div.textContent = selected.nombre;
+                    div.dataset.nombre = selected.nombre;
+                    div.dataset.maquinaId = String(selected.id);
+                    div.dataset.w = String(selected.w);
+                    div.dataset.h = String(selected.h);
+                    if (saved?.id) div.dataset.id = String(saved.id);
+
+                    const label = document.createElement('span');
+                    label.className = 'loc-label';
+                    label.textContent = selected.nombre;
+                    div.appendChild(label);
+
+                    const del = document.createElement('button');
+                    del.type = 'button';
+                    del.className = 'loc-delete';
+                    del.title = `Eliminar ${selected.nombre}`;
+                    del.setAttribute('aria-label', 'Eliminar localización');
+                    del.textContent = '×';
+                    div.appendChild(del);
+
                     grid.appendChild(div);
                     renderExistentes();
 
-                    const btn = chips.find(c => +c.dataset.id === selected.id);
-                    if (btn) btn.remove();
+                    // Elimina chip de la bandeja
+                    const chip = bandeja.querySelector(`.chip-maquina[data-id="${selected.id}"]`);
+                    if (chip) chip.remove();
+
                     selected = null;
                     ghost.classList.add('hidden');
                     estadoSel.textContent = 'Máquina colocada. Selecciona otra para continuar.';
@@ -365,6 +409,7 @@
                     pendiente = false;
                 });
             }
+
             ajustarTamCelda();
             window.addEventListener('resize', onResize, {
                 passive: true
@@ -377,10 +422,10 @@
             // =========================================================
             // BLOQUE INDEPENDIENTE: eliminación de localizaciones (X)
             // =========================================================
-
             const grid = document.getElementById('cuadricula');
+            const bandeja = document.getElementById('bandeja-maquinas');
             const ctx = window.__LOC_CTX__ || {};
-            const deleteTemplate = ctx.deleteUrlTemplate || '/localizaciones/:id'; // <-- define esto en tu controlador
+            const deleteTemplate = ctx.deleteUrlTemplate || '/localizaciones/:id';
 
             function buildDeleteUrl(id) {
                 return deleteTemplate.replace(':id', String(id));
@@ -395,12 +440,12 @@
                 if (idx !== -1) ctx.ocupadas.splice(idx, 1);
             }
 
-            // Delegación de eventos SOLO para el botón .loc-delete
+            // Delegación SOLO para el botón .loc-delete
             grid.addEventListener('click', async (ev) => {
                 const btn = ev.target.closest('.loc-delete');
                 if (!btn) return;
 
-                ev.stopPropagation(); // no dispares el click de colocar máquina
+                ev.stopPropagation();
                 ev.preventDefault();
 
                 const cont = btn.closest('.loc-existente');
@@ -424,7 +469,6 @@
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#ef4444'
                 });
-
                 if (!confirm.isConfirmed) return;
 
                 try {
@@ -439,59 +483,36 @@
                             id
                         })
                     });
-
                     if (!res.ok) {
                         const text = await res.text();
                         throw new Error(text || 'Error al eliminar');
                     }
 
-                    // Actualiza modelo de ocupadas y DOM
+                    // Actualiza estado
                     removeFromOcupadas(rect);
                     cont.remove();
-                    // tras cont.remove();
-                    const bandeja = document.getElementById('bandeja-maquinas');
+
+                    // Si era una máquina, reconstruimos el chip (delegación ya activa)
                     const maqId = Number(cont.dataset.maquinaId);
                     const maqNombre = cont.dataset.nombre || 'Máquina';
                     const w = Number(cont.dataset.w) || 1;
                     const h = Number(cont.dataset.h) || 1;
-                    if (!Number.isNaN(maqId) && maqId > 0) {
-                        if (!bandeja.querySelector(`.chip-maquina[data-id="${maqId}"]`)) {
-                            const chip = document.createElement('button');
-                            chip.className =
-                                'chip-maquina px-3 py-2 border rounded-lg text-sm hover:bg-gray-50';
-                            chip.dataset.id = String(maqId);
-                            chip.dataset.nombre = maqNombre;
-                            chip.dataset.w = String(w);
-                            chip.dataset.h = String(h);
-                            chip.title = `${maqNombre} — ${w}×${h} celdas`;
-                            chip.innerHTML = `
-    <span class="font-medium">${maqNombre}</span>
-    <span class="ml-2 text-gray-500">${w}×${h}</span>
-  `;
-                            bandeja.appendChild(chip);
-                        }
-                        // vuelve a enganchar tu handler de selección
-                        chip.addEventListener('click', () => {
-                            document.querySelectorAll('.chip-maquina').forEach(c => c.classList
-                                .remove('ring', 'ring-blue-500'));
-                            chip.classList.add('ring', 'ring-blue-500');
-                            selected = {
-                                id: maqId,
-                                nombre: maqNombre,
-                                w,
-                                h
-                            }; // reales
-                            ghostSizeVista = {
-                                w: h,
-                                h: w
-                            }; // 👈 transpuesto para la vista
-                            ghost.classList.remove('hidden');
-                            estadoSel.textContent =
-                                `Seleccionada: ${maqNombre} (${w}×${h}). Pulsa "R" para rotar. Haz clic en la cuadrícula para colocar.`;
-                            renderGhost();
-                            updateGhostColor();
-                        });
 
+                    if (maqId > 0 && !bandeja.querySelector(`.chip-maquina[data-id="${maqId}"]`)) {
+                        const chip = document.createElement('button');
+                        chip.className =
+                            'chip-maquina px-3 py-2 border rounded-lg text-sm hover:bg-gray-50';
+                        chip.dataset.id = String(maqId);
+                        chip.dataset.nombre = maqNombre;
+                        chip.dataset.w = String(w);
+                        chip.dataset.h = String(h);
+                        chip.title = `${maqNombre} — ${w}×${h} celdas`;
+                        chip.innerHTML = `
+          <span class="font-medium">${maqNombre}</span>
+          <span class="ml-2 text-gray-500">${w}×${h}</span>
+        `;
+                        bandeja.appendChild(chip);
+                        // No añadimos listeners: el bloque 1 usa DELEGACIÓN en #bandeja-maquinas
                     }
 
                     await Swal.fire({
@@ -511,32 +532,25 @@
             }, {
                 passive: false
             });
-
         })();
     </script>
+
 
     <script>
         (() => {
             // =========================================================
             // BLOQUE INDEPENDIENTE: Selección libre de zonas
             // (transitable / almacenamiento / carga_descarga)
-            // - Click + arrastrar para seleccionar
-            // - Mouseup: prompt de tipo y nombre
-            // - Valida límites y colisiones contra ctx.ocupadas
-            // - Guarda vía ctx.storeUrl y pinta overlay
             // =========================================================
-
             const grid = document.getElementById('cuadricula');
             const ctx = window.__LOC_CTX__;
             if (!grid || !ctx) return;
 
-            // Evita conflictos si estás en modo "colocar máquina" (ghost visible)
             function isMachinePlacementActive() {
                 const ghost = document.getElementById('ghost');
                 return ghost && !ghost.classList.contains('hidden');
             }
 
-            // Tamaño de celda desde CSS
             function getCeldaPx() {
                 const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
                 const n = parseInt(v, 10);
@@ -544,7 +558,6 @@
             }
             let celdaPx = getCeldaPx();
 
-            // Vista (horizontal) ⇄ Real
             function puntoEnVista(ev) {
                 const rect = grid.getBoundingClientRect();
                 const x = Math.floor((ev.clientX - rect.left) / celdaPx) + 1;
@@ -555,8 +568,6 @@
                 };
             }
 
-            // Real -> Vista
-            // x' = y ; y' = x ; w' = (y2 - y1 + 1) ; h' = (x2 - x1 + 1)
             function realToVistaRect(x1r, y1r, x2r, y2r) {
                 const x1 = Math.min(x1r, x2r),
                     x2 = Math.max(x1r, x2r);
@@ -570,7 +581,6 @@
                 };
             }
 
-            // Vista -> Real
             function vistaToRealRect(x1v, y1v, wv, hv) {
                 const x2v = x1v + wv - 1;
                 const y2v = y1v + hv - 1;
@@ -582,7 +592,6 @@
                 };
             }
 
-            // Normaliza dos puntos de vista a rect (x,y,w,h)
             function normalizarVistaRect(a, b) {
                 const x1 = Math.min(a.x, b.x),
                     y1 = Math.min(a.y, b.y);
@@ -596,19 +605,16 @@
                 };
             }
 
-            // Colisiones contra ctx.ocupadas (en real)
             function colisionaConOcupadas(r) {
                 const arr = Array.isArray(ctx.ocupadas) ? ctx.ocupadas : [];
                 return arr.some(o => !(r.x2 < o.x1 || r.x1 > o.x2 || r.y2 < o.y1 || r.y1 > o.y2));
             }
 
-            // ---- Drag select ----
             let dragging = false;
             let startCell = null;
             let selBox = null;
             let suppressNextClick = false;
 
-            // Evita que el click de soltar dispare otros handlers (captura)
             grid.addEventListener('click', (ev) => {
                 if (suppressNextClick) {
                     ev.stopImmediatePropagation();
@@ -618,7 +624,6 @@
             }, true);
 
             grid.addEventListener('mousedown', (ev) => {
-                // Solo botón izq, no sobre overlays/botones, y no si colocas máquina
                 if (ev.button !== 0) return;
                 if (isMachinePlacementActive()) return;
                 if (ev.target.closest('.loc-existente, .loc-delete')) return;
@@ -658,7 +663,6 @@
                     return;
                 }
 
-                // Evita click de soltar
                 suppressNextClick = true;
                 setTimeout(() => {
                     suppressNextClick = false;
@@ -667,7 +671,6 @@
                 selBox?.remove();
                 selBox = null;
 
-                // A real + validaciones
                 const rectReal = vistaToRealRect(vr.x, vr.y, vr.w, vr.h);
                 const fuera = rectReal.x1 < 1 || rectReal.y1 < 1 ||
                     rectReal.x2 > ctx.columnasReales || rectReal.y2 > ctx.filasReales;
@@ -705,22 +708,23 @@
                 });
                 if (!tipo) return;
 
-                // 2) Nombre
+                // 2) Nombre a guardar en BD (campo "nombre") y a mostrar en cuadrícula
                 const nombreDefecto = (tipo.replace('_', '/').toUpperCase()) +
                     ` ${rectReal.x1}-${rectReal.y1}`;
                 const {
-                    value: nombre
+                    value: nombreIngresado
                 } = await Swal.fire({
                     title: 'Nombre/etiqueta',
                     input: 'text',
                     inputValue: nombreDefecto,
-                    inputLabel: 'Texto que se mostrará en el plano',
+                    inputLabel: 'Texto que se mostrará en el plano (se guardará en el campo "nombre")',
                     showCancelButton: true,
                     confirmButtonText: 'Guardar'
                 });
-                if (nombre === undefined) return;
+                if (nombreIngresado === undefined) return;
 
-                // 3) Guardar
+                const nombreFinal = (nombreIngresado ?? '').trim() || nombreDefecto;
+
                 try {
                     const res = await fetch(ctx.storeUrl, {
                         method: 'POST',
@@ -736,17 +740,12 @@
                             y1: rectReal.y1,
                             x2: rectReal.x2,
                             y2: rectReal.y2,
-                            nombre: nombre
+                            nombre: nombreFinal // <<--- se guarda en BD en el campo "nombre"
                         })
                     });
-
                     if (!res.ok) throw new Error(await res.text());
-                    let saved = null;
-                    try {
-                        saved = await res.json();
-                    } catch (_) {}
+                    const saved = await res.json().catch(() => null);
 
-                    // 4) Actualizar modelo ocupadas y pintar overlay
                     (ctx.ocupadas ||= []).push(rectReal);
 
                     const zona = document.createElement('div');
@@ -755,38 +754,32 @@
                     zona.dataset.y1 = rectReal.y1;
                     zona.dataset.x2 = rectReal.x2;
                     zona.dataset.y2 = rectReal.y2;
-                    zona.dataset.nombre = nombre || nombreDefecto;
+                    zona.dataset.nombre = (saved?.nombre ?? nombreFinal); // <<--- lo que queda visible
                     if (saved?.id) zona.dataset.id = saved.id;
 
-                    // Botón eliminar (si tu handler por delegación ya existe, funcionará)
-                    if (saved?.id) {
-                        const del = document.createElement('button');
-                        del.type = 'button';
-                        del.className = 'loc-delete';
-                        del.title = `Eliminar ${zona.dataset.nombre}`;
-                        del.setAttribute('aria-label', 'Eliminar localización');
-                        del.textContent = '×';
-                        zona.appendChild(del);
-                    }
+                    const del = document.createElement('button');
+                    del.type = 'button';
+                    del.className = 'loc-delete';
+                    del.title = `Eliminar ${zona.dataset.nombre}`;
+                    del.setAttribute('aria-label', 'Eliminar localización');
+                    del.textContent = '×';
+                    zona.appendChild(del);
 
-                    // Etiqueta visible
                     const label = document.createElement('span');
                     label.className = 'loc-label';
-                    label.textContent = zona.dataset.nombre;
+                    label.textContent = zona.dataset.nombre; // <<--- lo mostrado en cuadrícula
                     zona.appendChild(label);
 
-                    // Posicionar en vista ahora
                     posicionarZonaVista(zona);
 
-                    // Colores por tipo (fallback si no tienes CSS específico)
                     if (tipo === 'transitable') {
-                        zona.style.background = 'rgba(107,114,128,0.15)'; // gris
+                        zona.style.background = 'rgba(107,114,128,0.15)';
                         zona.style.border = '1px dashed #6b7280';
                     } else if (tipo === 'almacenamiento') {
-                        zona.style.background = 'rgba(245,158,11,0.15)'; // ámbar
+                        zona.style.background = 'rgba(245,158,11,0.15)';
                         zona.style.border = '1px solid #f59e0b';
-                    } else { // carga_descarga
-                        zona.style.background = 'rgba(59,130,246,0.15)'; // azul
+                    } else {
+                        zona.style.background = 'rgba(59,130,246,0.15)';
                         zona.style.border = '1px solid #3b82f6';
                     }
 
@@ -816,7 +809,6 @@
                 selBox.style.height = (r.h * celdaPx) + 'px';
             }
 
-            // Reposiciona las zonas creadas por este módulo al redimensionar
             function posicionarZonaVista(el) {
                 const x1 = Number(el.dataset.x1),
                     y1 = Number(el.dataset.y1);
@@ -836,8 +828,551 @@
             }, {
                 passive: true
             });
-
         })();
     </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('toggle-detalles');
+            const grid = document.getElementById('cuadricula');
+
+            if (!toggle || !grid) return;
+
+            toggle.addEventListener('change', () => {
+                if (toggle.checked) {
+                    grid.classList.remove('ocultar-detalles');
+                } else {
+                    grid.classList.add('ocultar-detalles');
+                }
+            });
+        });
+    </script>
+
+    <script>
+        (() => {
+            // ======= Config / refs =======
+            const grid = document.getElementById('cuadricula');
+            if (!grid) return;
+
+            const CELL_METERS = 0.5; // cada celda = 0.5 m
+            const ghost = document.getElementById('ghost');
+
+            // UI flotante
+            const meter = document.createElement('div');
+            meter.id = 'medidor-area';
+            meter.style.position = 'fixed';
+            meter.style.zIndex = '9999';
+            meter.style.pointerEvents = 'none';
+            meter.style.padding = '6px 8px';
+            meter.style.borderRadius = '6px';
+            meter.style.boxShadow = '0 4px 10px rgba(0,0,0,.12)';
+            meter.style.background = 'rgba(17,24,39,.92)'; // gris muy oscuro
+            meter.style.color = '#fff';
+            meter.style.fontSize = '12px';
+            meter.style.lineHeight = '1.15';
+            meter.style.whiteSpace = 'nowrap';
+            meter.style.transform = 'translate(12px, 12px)'; // pequeño offset del cursor
+            meter.style.display = 'none';
+            meter.innerHTML = '—';
+            document.body.appendChild(meter);
+
+            // helpers
+            const getCeldaPx = () => {
+                const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
+                const n = parseInt(v, 10);
+                return Number.isFinite(n) && n > 0 ? n : 8;
+            };
+
+            const isGhostActive = () => ghost && !ghost.classList.contains('hidden');
+            const getSelBox = () => document.querySelector('.sel-box');
+
+            // vista -> real: w_real = h_vista ; h_real = w_vista
+            const vistaToRealWH = (wv, hv) => ({
+                w: hv,
+                h: wv
+            });
+
+            let celdaPx = getCeldaPx();
+            let raf = null;
+            let mouse = {
+                x: 0,
+                y: 0
+            };
+
+            // formatea con 2 decimales pero sin ceros sobrantes
+            const fmt = (n) => {
+                const s = (Math.round(n * 100) / 100).toFixed(2);
+                return s.replace(/\.?0+$/, '');
+            };
+
+            // pinta el tooltip según haya ghost o sel-box
+            const tick = () => {
+                raf = null;
+                celdaPx = getCeldaPx();
+
+                // 1) ¿selección libre activa?
+                const selBox = getSelBox();
+                if (selBox) {
+                    const wCellsVista = Math.max(1, Math.round(selBox.offsetWidth / celdaPx));
+                    const hCellsVista = Math.max(1, Math.round(selBox.offsetHeight / celdaPx));
+                    const {
+                        w: wRealCells,
+                        h: hRealCells
+                    } = vistaToRealWH(wCellsVista, hCellsVista);
+
+                    const anchoM = wRealCells * CELL_METERS;
+                    const largoM = hRealCells * CELL_METERS;
+                    const areaM2 = anchoM * largoM;
+
+                    meter.innerHTML =
+                        `<strong>Selección</strong><br>` +
+                        `${fmt(anchoM)} m × ${fmt(largoM)} m<br>` +
+                        `${fmt(areaM2)} m²`;
+                    meter.style.left = mouse.x + 'px';
+                    meter.style.top = mouse.y + 'px';
+                    meter.style.display = 'block';
+                    return;
+                }
+
+                // 2) ¿ghost de máquina visible?
+                if (isGhostActive()) {
+                    const wVistaCells = Math.max(1, Math.round(ghost.offsetWidth / celdaPx));
+                    const hVistaCells = Math.max(1, Math.round(ghost.offsetHeight / celdaPx));
+                    const {
+                        w: wRealCells,
+                        h: hRealCells
+                    } = vistaToRealWH(wVistaCells, hVistaCells);
+
+                    const anchoM = wRealCells * CELL_METERS;
+                    const largoM = hRealCells * CELL_METERS;
+                    const areaM2 = anchoM * largoM;
+
+                    meter.innerHTML =
+                        `<strong>Máquina (ghost)</strong><br>` +
+                        `${fmt(anchoM)} m × ${fmt(largoM)} m<br>` +
+                        `${fmt(areaM2)} m²`;
+                    meter.style.left = mouse.x + 'px';
+                    meter.style.top = mouse.y + 'px';
+                    meter.style.display = 'block';
+                    return;
+                }
+
+                // nada activo -> ocultar
+                meter.style.display = 'none';
+            };
+
+            // mover tooltip con el ratón y medir en rAF
+            const onMove = (ev) => {
+                mouse.x = ev.clientX;
+                mouse.y = ev.clientY;
+                if (!raf) raf = requestAnimationFrame(tick);
+            };
+
+            // también recalcula al redimensionar (cambia celdaPx)
+            const onResize = () => {
+                if (!raf) raf = requestAnimationFrame(tick);
+            };
+
+            // mostrar/ocultar por eventos propios de tu flujo
+            grid.addEventListener('mousemove', onMove, {
+                passive: true
+            });
+            window.addEventListener('resize', onResize, {
+                passive: true
+            });
+
+            // cuando aparezca/desaparezca sel-box o cambie ghost, forzamos un tick
+            const mo = new MutationObserver(() => {
+                if (!raf) raf = requestAnimationFrame(tick);
+            });
+            mo.observe(grid, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style']
+            });
+
+            // pequeña mejora: ocultar si el cursor sale del grid y no hay ghost
+            grid.addEventListener('mouseleave', () => {
+                if (!isGhostActive()) meter.style.display = 'none';
+            });
+
+            // primer cálculo
+            tick();
+        })();
+    </script>
+
+    <script>
+        (() => {
+            // =========================================================
+            // MOVER + ROTAR localizaciones existentes (maquina/zonas)
+            // (controlando click-through de SweetAlert y congelando el ghost)
+            // =========================================================
+            const grid = document.getElementById('cuadricula');
+            const ctx = window.__LOC_CTX__ || {};
+            if (!grid || !ctx) return;
+
+            const UPDATE_TPL = ctx.updateUrlTemplate || '/localizaciones/:id';
+            const buildUpdateUrl = (id) => UPDATE_TPL.replace(':id', String(id));
+
+            // ---- Estado para controlar el click-through del modal ----
+            let isModalOpen = false; // true mientras el Swal está abierto
+            let suprimeSiguienteDown = 0; // timestamp hasta el que ignoramos el próximo mousedown
+            let congelado = false; // cuando true, el ghost NO se actualiza con el mousemove
+
+            let isConfirming = false;
+
+            // (Captura de clicks en fase de captura para tragárnoslos si hay modal)
+            document.addEventListener('mousedown', (e) => {
+                if (isModalOpen) e.stopPropagation();
+            }, true);
+
+            // --- Geometría y helpers ---
+            const getCeldaPx = () => {
+                const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
+                const n = parseInt(v, 10);
+                return Number.isFinite(n) && n > 0 ? n : 8;
+            };
+            let celdaPx = getCeldaPx();
+
+            const realToVistaRect = (x1r, y1r, x2r, y2r) => {
+                const x1 = Math.min(x1r, x2r),
+                    x2 = Math.max(x1r, x2r);
+                const y1 = Math.min(y1r, y2r),
+                    y2 = Math.max(y1r, y2r);
+                return {
+                    x: y1,
+                    y: x1,
+                    w: (y2 - y1 + 1),
+                    h: (x2 - x1 + 1)
+                }; // transpuesto
+            };
+            const vistaToRealRect = (xv, yv, wv, hv) => {
+                const x2v = xv + wv - 1,
+                    y2v = yv + hv - 1;
+                return {
+                    x1: yv,
+                    y1: xv,
+                    x2: y2v,
+                    y2: x2v
+                }; // transpuesto
+            };
+            const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+            const puntoEnVista = (ev) => {
+                const r = grid.getBoundingClientRect();
+                const x = Math.floor((ev.clientX - r.left) / celdaPx) + 1;
+                const y = Math.floor((ev.clientY - r.top) / celdaPx) + 1;
+                return {
+                    x: clamp(x, 1, ctx.columnasVista),
+                    y: clamp(y, 1, ctx.filasVista)
+                };
+            };
+
+            const rectsIguales = (a, b) => a.x1 === b.x1 && a.y1 === b.y1 && a.x2 === b.x2 && a.y2 === b.y2;
+
+            const colisiona = (rectReal, selfRect = null) => {
+                const occ = Array.isArray(ctx.ocupadas) ? ctx.ocupadas : [];
+                return occ.some(o => {
+                    if (selfRect && rectsIguales(o, selfRect)) return false;
+                    // AABB overlap
+                    return !(rectReal.x2 < o.x1 || rectReal.x1 > o.x2 || rectReal.y2 < o.y1 || rectReal.y1 >
+                        o.y2);
+                });
+            };
+
+            const inBounds = (r) => (
+                r.x1 >= 1 && r.y1 >= 1 &&
+                r.x2 <= ctx.columnasReales &&
+                r.y2 <= ctx.filasReales
+            );
+
+            const actualizarCeldaPx = () => {
+                celdaPx = getCeldaPx();
+            };
+
+            // --- Estado de interacción ---
+            let active =
+                null; // { el, id, nombre, startVista, offVista, wVista, hVista, selfRectReal, nextVista, nextReal, validNext }
+            let dragGhost = null;
+
+            // Ghost
+            const ensureGhost = () => {
+                if (!dragGhost) {
+                    dragGhost = document.createElement('div');
+                    dragGhost.id = 'drag-ghost';
+                    dragGhost.style.position = 'absolute';
+                    dragGhost.style.pointerEvents = 'none';
+                    dragGhost.style.border = '2px dashed #22c55e';
+                    dragGhost.style.background = 'rgba(34,197,94,0.15)';
+                    dragGhost.style.borderRadius = '2px';
+                    dragGhost.style.zIndex = '60';
+                    grid.appendChild(dragGhost);
+                }
+            };
+            const paintGhostVista = (xv, yv, wv, hv, ok = true) => {
+                ensureGhost();
+                dragGhost.style.left = ((xv - 1) * celdaPx) + 'px';
+                dragGhost.style.top = ((yv - 1) * celdaPx) + 'px';
+                dragGhost.style.width = (wv * celdaPx) + 'px';
+                dragGhost.style.height = (hv * celdaPx) + 'px';
+                dragGhost.style.borderColor = ok ? '#22c55e' : '#ef4444';
+                dragGhost.style.background = ok ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)';
+                dragGhost.style.display = 'block';
+            };
+            const hideGhost = () => {
+                if (dragGhost) dragGhost.style.display = 'none';
+            };
+
+            // Posicionar un bloque según dataset real
+            const aplicarPosicionVistaAlDOM = (el) => {
+                const x1 = Number(el.dataset.x1),
+                    y1 = Number(el.dataset.y1);
+                const x2 = Number(el.dataset.x2),
+                    y2 = Number(el.dataset.y2);
+                const v = realToVistaRect(x1, y1, x2, y2);
+                el.style.left = ((v.x - 1) * celdaPx) + 'px';
+                el.style.top = ((v.y - 1) * celdaPx) + 'px';
+                el.style.width = (v.w * celdaPx) + 'px';
+                el.style.height = (v.h * celdaPx) + 'px';
+            };
+
+            // Ocupadas
+            const removeFromOcupadas = (r) => {
+                if (!Array.isArray(ctx.ocupadas)) return;
+                const i = ctx.ocupadas.findIndex(o => rectsIguales(o, r));
+                if (i !== -1) ctx.ocupadas.splice(i, 1);
+            };
+            const addToOcupadas = (r) => {
+                (ctx.ocupadas ||= []).push(r);
+            };
+
+            // --- MOUSE DOWN sobre una .loc-existente (salvo botón X) ---
+            grid.addEventListener('mousedown', (ev) => {
+                // suprimir click-through posterior al cierre del modal
+                if (performance.now() < suprimeSiguienteDown) return;
+                if (ev.button !== 0) return;
+                const el = ev.target.closest('.loc-existente');
+                if (!el) return;
+                if (ev.target.closest('.loc-delete')) return; // no interceptar la X
+
+                actualizarCeldaPx();
+
+                const id = Number(el.dataset.id);
+                const nom = el.dataset.nombre || 'Localización';
+                const x1 = Number(el.dataset.x1),
+                    y1 = Number(el.dataset.y1);
+                const x2 = Number(el.dataset.x2),
+                    y2 = Number(el.dataset.y2);
+                const maqId = Number(el.dataset.maquinaId || 0);
+                const tipo = (el.dataset.tipo || (maqId > 0 ? 'maquina' : 'zona'));
+
+                const v = realToVistaRect(x1, y1, x2, y2);
+                const mouseVista = puntoEnVista(ev);
+                const offVista = {
+                    dx: mouseVista.x - v.x,
+                    dy: mouseVista.y - v.y
+                };
+
+                active = {
+                    el,
+                    id,
+                    nombre: nom,
+                    tipo,
+                    maqId,
+                    startVista: {
+                        x: v.x,
+                        y: v.y
+                    },
+                    offVista,
+                    wVista: v.w,
+                    hVista: v.h,
+                    selfRectReal: {
+                        x1,
+                        y1,
+                        x2,
+                        y2
+                    }
+                };
+
+                paintGhostVista(v.x, v.y, v.w, v.h, true);
+                ev.preventDefault();
+            });
+
+            // --- MOUSE MOVE: sigue al ratón (salvo si está congelado) ---
+            window.addEventListener('mousemove', (ev) => {
+                if (!active || congelado) return;
+                actualizarCeldaPx();
+
+                const m = puntoEnVista(ev);
+                let nx = m.x - active.offVista.dx;
+                let ny = m.y - active.offVista.dy;
+
+                nx = clamp(nx, 1, ctx.columnasVista - active.wVista + 1);
+                ny = clamp(ny, 1, ctx.filasVista - active.hVista + 1);
+
+                const nr = vistaToRealRect(nx, ny, active.wVista, active.hVista);
+                const okBounds = inBounds(nr);
+                const okCol = !colisiona(nr, active.selfRectReal);
+                paintGhostVista(nx, ny, active.wVista, active.hVista, okBounds && okCol);
+
+                active.nextVista = {
+                    x: nx,
+                    y: ny
+                };
+                active.nextReal = nr;
+                active.validNext = okBounds && okCol;
+            }, {
+                passive: true
+            });
+
+            // --- ROTAR con 'r' ---
+            document.addEventListener('keydown', (ev) => {
+                if (!active || congelado) return;
+                if (ev.isComposing) return;
+                if (['input', 'textarea', 'select'].includes((ev.target.tagName || '').toLowerCase())) return;
+
+                if (ev.key === 'r' || ev.key === 'R') {
+                    ev.preventDefault();
+
+                    [active.wVista, active.hVista] = [active.hVista, active.wVista];
+
+                    const baseVista = active.nextVista || active.startVista;
+                    let nx = baseVista.x,
+                        ny = baseVista.y;
+                    nx = clamp(nx, 1, ctx.columnasVista - active.wVista + 1);
+                    ny = clamp(ny, 1, ctx.filasVista - active.hVista + 1);
+
+                    const nr = vistaToRealRect(nx, ny, active.wVista, active.hVista);
+                    const okBounds = inBounds(nr);
+                    const okCol = !colisiona(nr, active.selfRectReal);
+
+                    paintGhostVista(nx, ny, active.wVista, active.hVista, (okBounds && okCol));
+                    active.nextVista = {
+                        x: nx,
+                        y: ny
+                    };
+                    active.nextReal = nr;
+                    active.validNext = okBounds && okCol;
+                }
+
+                if (ev.key === 'Escape') {
+                    hideGhost();
+                    active = null;
+                }
+            });
+
+            // --- MOUSE UP: confirmar y guardar ---
+            window.addEventListener('mouseup', async () => {
+                if (!active || isConfirming) return;
+
+                const v = active.nextVista || active.startVista;
+                const r = active.nextReal || active.selfRectReal;
+
+                const cambiado = !rectsIguales(r, active.selfRectReal);
+                if (!cambiado) {
+                    hideGhost();
+                    active = null;
+                    return;
+                }
+
+                if (!active.validNext) {
+                    hideGhost();
+                    active = null;
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Posición no válida',
+                        text: 'Fuera de límites o colisiona con otra localización.'
+                    });
+                    return;
+                }
+
+                isConfirming = true;
+                congelado = true;
+                isModalOpen = true;
+
+                const confirm = await Swal.fire({
+                    icon: 'question',
+                    title: 'Confirmar movimiento',
+                    html: `¿Mover <b>${active.nombre}</b> a (${r.x1},${r.y1}) → (${r.x2},${r.y2})?` +
+                        `<br><small>Pulsa "r" mientras arrastras para rotar.</small>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar'
+                });
+
+                isConfirming = false;
+                isModalOpen = false;
+                congelado = false;
+
+                // Suprimir mousedown justo después de cerrar el modal (previene doble disparo)
+                suprimeSiguienteDown = performance.now() + 200;
+
+                if (!confirm.isConfirmed) {
+                    hideGhost();
+                    active = null;
+                    return;
+                }
+
+                try {
+                    const res = await fetch(buildUpdateUrl(active.id), {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                ?.getAttribute('content') || ''
+                        },
+                        body: JSON.stringify({
+                            x1: r.x1,
+                            y1: r.y1,
+                            x2: r.x2,
+                            y2: r.y2
+                        })
+                    });
+
+                    if (!res.ok) throw new Error(await res.text());
+
+                    // ✅ Actualizar
+                    removeFromOcupadas(active.selfRectReal);
+                    addToOcupadas(r);
+                    active.el.dataset.x1 = String(r.x1);
+                    active.el.dataset.y1 = String(r.y1);
+                    active.el.dataset.x2 = String(r.x2);
+                    active.el.dataset.y2 = String(r.y2);
+                    aplicarPosicionVistaAlDOM(active.el);
+
+                    hideGhost();
+                    active = null;
+
+                } catch (err) {
+                    console.error('❌ Error en UPDATE:', err);
+                    hideGhost();
+                    active = null;
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'No se pudo actualizar',
+                        text: 'Revisa la conexión o inténtalo de nuevo.'
+                    });
+                }
+            });
+
+
+            // Recalcular tamaños al redimensionar
+            window.addEventListener('resize', () => {
+                actualizarCeldaPx();
+                document.querySelectorAll('.loc-existente').forEach(aplicarPosicionVistaAlDOM);
+                if (active && active.nextVista && !congelado) {
+                    paintGhostVista(active.nextVista.x, active.nextVista.y, active.wVista, active.hVista, !!
+                        active.validNext);
+                }
+            }, {
+                passive: true
+            });
+
+            // Pintado inicial
+            document.querySelectorAll('.loc-existente').forEach(aplicarPosicionVistaAlDOM);
+        })();
+    </script>
+
 
 </x-app-layout>

@@ -74,56 +74,72 @@
   }
 
 
-  .loc-existente {
-      position: absolute;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      line-height: 1;
-      text-align: center;
-      overflow: visible;
-      padding: 2px 6px 2px 6px;
-      /* deja hueco a la etiqueta */
-      border-radius: 2px;
-      color: #1e3a8a;
-      /* azul oscuro */
-      background-color: rgba(59, 130, 246, 0.25);
-      /* azul semitransparente */
-      border: 1px solid rgba(59, 130, 246, 0.5);
-      backdrop-filter: blur(2px);
-  }
+/* Base común */
+.loc-existente {
+  position: absolute;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  .loc-existente .loc-label {
-      font-size: 11px;
-      color: #111827;
-      pointer-events: none;
-      /* la etiqueta no intercepta clics */
-  }
+/* Etiqueta */
+.loc-existente .loc-label {
+  font-size: 11px;
+  line-height: 1;
+  color: #111827;
+  background: rgba(255,255,255,0.8);
+  padding: 2px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+}
 
-  .loc-existente .loc-delete {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      width: 18px;
-      height: 18px;
-      line-height: 16px;
-      text-align: center;
-      border-radius: 9999px;
-      border: 1px solid #ef4444;
-      background: #fff;
-      color: #ef4444;
-      font-weight: 700;
-      font-size: 12px;
-      cursor: pointer;
-      opacity: .0;
-      transition: opacity .15s ease-in-out, transform .1s;
-  }
+/* Botón eliminar */
 
-  .loc-existente:hover .loc-delete {
-      opacity: 1;
-  }
+.loc-existente .loc-delete {
+  position: absolute;
+  top: 1px; right: 1px;
+  width: 12px; height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 3px;
+  background: #ef4444;
+  color: #fff;
+  font-weight: 700;
+  font-size: 8px;  /* más pequeño */
+  line-height: 1;  /* sin truco */
+  cursor: pointer;
+  box-sizing: border-box;
+}
 
-  .loc-existente .loc-delete:active {
-      transform: scale(0.95);
-  }
+
+/* MÁQUINA */
+.loc-maquina {
+  background: rgba(34,197,94,0.15);  /* verde suave */
+  border: 1px solid #22c55e;
+}
+
+/* ZONAS */
+.loc-zona.tipo-transitable {
+  background: rgba(107,114,128,0.15); /* gris */
+  border: 1px dashed #6b7280;
+}
+
+.loc-zona.tipo-almacenamiento {
+  background: rgba(245,158,11,0.15);  /* ámbar */
+  border: 1px solid #f59e0b;
+}
+
+.loc-zona.tipo-carga_descarga {
+  background: rgba(59,130,246,0.15);  /* azul */
+  border: 1px solid #3b82f6;
+}
+
+
+/* modo ocultar */
+.ocultar-detalles .loc-label,
+.ocultar-detalles .loc-delete {
+  display: none !important;
+}

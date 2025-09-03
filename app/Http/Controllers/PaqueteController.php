@@ -537,4 +537,99 @@ class PaqueteController extends Controller
 
         return response()->json(['message' => 'Localización guardada correctamente']);
     }
+
+    public function tamaño(Request $request)
+    {
+        // 1) Validación
+        $validated = $request->validate([
+            'codigo' => 'required|string|max:100',
+        ], [
+            'codigo.required' => 'Debes indicar el etiqueta_sub_id.',
+        ]);
+
+        $codigo = trim($validated['codigo']);
+
+        // 2) Buscar etiqueta directamente
+        $etiqueta = Etiqueta::where('etiqueta_sub_id', $codigo)->first();
+
+        // 3) Fallback: buscar en elementos
+        if (!$etiqueta) {
+            $elemento = Elemento::with('etiqueta')
+                ->where('etiqueta_sub_id', $codigo)
+                ->first();
+            if ($elemento) {
+                $etiqueta = $elemento->etiqueta;
+            }
+        }
+
+        if (!$etiqueta || !$etiqueta->paquete_id) {
+            return response()->json(['error' => 'Etiqueta no asociada a ningún paquete.'], 404);
+        }
+
+        // 4) Cargar paquete con todas sus etiquetas y elementos
+        $paquete = Paquete::with(['etiquetas.elementos'])->find($etiqueta->paquete_id);
+        if (!$paquete) {
+            return response()->json(['error' => 'Paquete no encontrado.'], 404);
+        }
+
+        // 5) Tamaño (usa accessor getTamañoAttribute o alias getTamanoAttribute)
+        $tamano = $paquete->tamaño ?? $paquete->tamano ?? ['ancho' => 1, 'longitud' => 0];
+
+        // 6) Métricas adicionales
+        $etiquetasCount = $paquete->etiquetas->count();
+        $elementosCount = $paquete->etiquetas->flatMap->elementos->count();
+
+        $celdaM = 0.5;
+        $celdasLargo = max(1, (int) ceil(($tamano['longitud'] ?? 0) / $celdaM));
+
+        // 7) Respuesta JSON
+        return response()->json([
+            'codigo'          => $paquete->codigo,
+            'paquete_id'      => $paquete->id,
+            'ancho'           => (float) $tamano['ancho'],
+            'longitud'        => (float) $tamano['longitud'],
+            'celdas_largo'    => $celdasLargo,
+            'etiqueta_sub_id' => $codigo,
+            'etiquetas_count' => $etiquetasCount,
+            'elementos_count' => $elementosCount,
+        ]);
+    }
+
+    public function storePaquete(Request $request)
+    {
+        $data = $request->validate([
+            'nave_id'     => 'required|exists:obras,id',
+            'tipo'        => 'required|in:paquete', // si prefieres otro tipo, ajusta
+            'nombre'      => 'required|string|max:100',
+            'paquete_id'  => 'nullable|exists:paquetes,id',
+            'x1'          => 'required|integer|min:1',
+            'y1'          => 'required|integer|min:1',
+            'x2'          => 'required|integer|min:1',
+            'y2'          => 'required|integer|min:1',
+        ]);
+
+        // Normaliza rect
+        $x1 = min($data['x1'], $data['x2']);
+        $y1 = min($data['y1'], $data['y2']);
+        $x2 = max($data['x1'], $data['x2']);
+        $y2 = max($data['y1'], $data['y2']);
+
+        // (Opcional) aquí puedes validar colisiones si procede
+
+        $loc = \App\Models\Localizacion::create([
+            'nave_id' => $data['nave_id'],
+            'tipo'    => $data['tipo'],        // 'paquete'
+            'nombre'  => $data['nombre'],      // código del paquete
+            'paquete_id' => $data['paquete_id'] ?? null,
+            'x1' => $x1,
+            'y1' => $y1,
+            'x2' => $x2,
+            'y2' => $y2,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'id' => $loc->id,
+        ]);
+    }
 }

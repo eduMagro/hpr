@@ -109,7 +109,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])->name('localizaciones.verificar');
 
     Route::post('/localizaciones-paquetes/{codigo}', [PaqueteController::class, 'update'])->name('localizaciones_paquetes.update');
-
+    Route::post('/localizaciones/store-paquete', [LocalizacionController::class, 'storePaquete'])->name('localizaciones.storePaquete');
     // === USUARIOS Y VACACIONES ===
 
     Route::resource('users', ProfileController::class);
@@ -199,26 +199,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('/planillas/informacion', [PlanillaController::class, 'informacionMasiva'])->name('planillas.editarInformacionMasiva');
 
     Route::put('/planillas/fechas', [PlanillaController::class, 'actualizarFechasMasiva'])->name('planillas.editarActualizarFechasMasiva');
-    Route::post('/paquetes/tamaño', function (Request $request) {
-        $etiqueta = \App\Models\Etiqueta::where('etiqueta_sub_id', $request->codigo)->first();
+    Route::post('/paquetes/tamaño', [PaqueteController::class, 'tamaño'])
+        ->name('paquetes.tamaño');
 
-        if (!$etiqueta || !$etiqueta->paquete_id) {
-            return response()->json(['error' => 'Etiqueta no asociada a ningún paquete.'], 404);
-        }
-
-        $paquete = \App\Models\Paquete::find($etiqueta->paquete_id);
-
-        if (!$paquete) {
-            return response()->json(['error' => 'Paquete no encontrado.'], 404);
-        }
-
-        return response()->json([
-            'codigo'           => $paquete->codigo,
-            'ancho'            => $paquete->tamaño['ancho'],       // en metros
-            'longitud'         => $paquete->tamaño['longitud'],    // en metros
-            'etiqueta_sub_id'  => $etiqueta->etiqueta_sub_id,
-        ]);
-    })->name('paquetes.tamaño');
     // === PLANILLAS Y PLANIFICACIÓN ===
     Route::resource('planillas', PlanillaController::class);
     Route::post('planillas/import', [PlanillaController::class, 'import'])->name('planillas.crearImport');
