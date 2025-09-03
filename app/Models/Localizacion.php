@@ -16,6 +16,7 @@ class Localizacion extends Model
         'tipo',
         'maquina_id',
         'nave_id',
+        'nombre',
     ];
 
 

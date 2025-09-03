@@ -41,7 +41,7 @@
 
             <a href="{{ $urlCreate }}"
                 class="block px-3 py-3 text-sm font-medium transition {{ $isCreate ? 'bg-blue-50 text-blue-900' : 'hover:bg-blue-50 text-blue-700 hover:text-blue-900' }}">
-                ➕ Asignar máquinas
+                ➕ Asignar localizaciones
             </a>
         </div>
     </div>
@@ -57,7 +57,7 @@
         <a href="{{ $urlCreate }}"
             class="flex-1 text-center px-4 py-2 font-semibold transition
            {{ $isCreate ? $colores['bgActivo'] . ' ' . $colores['txt'] : $colores['bg'] . ' ' . $colores['bgHover'] . ' ' . $colores['txt'] }}">
-            ➕ Asignar máquinas
+            ➕ Asignar localizaciones
         </a>
     </div>
 </div>

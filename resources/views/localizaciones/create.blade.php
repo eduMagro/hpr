@@ -58,6 +58,17 @@
                             title="Eliminar {{ $loc['nombre'] }}">×</button>
                     </div>
                 @endforeach
+                {{-- overlays de ZONAS (no-maquina) --}}
+                @foreach ($localizacionesZonas as $loc)
+                    <div class="loc-existente loc-zona tipo-{{ str_replace('-', '_', $loc['tipo']) }}"
+                        data-id="{{ $loc['id'] }}" data-x1="{{ $loc['x1'] }}" data-y1="{{ $loc['y1'] }}"
+                        data-x2="{{ $loc['x2'] }}" data-y2="{{ $loc['y2'] }}"
+                        data-nombre="{{ $loc['nombre'] }}" data-tipo="{{ $loc['tipo'] }}">
+                        <span class="loc-label">{{ $loc['nombre'] }}</span>
+                        <button type="button" class="loc-delete" aria-label="Eliminar localización"
+                            title="Eliminar {{ $loc['nombre'] }}">×</button>
+                    </div>
+                @endforeach
 
                 <div id="ghost" class="absolute pointer-events-none hidden border-2 border-dashed rounded-sm"></div>
             </div>
@@ -443,22 +454,22 @@
                     const maqNombre = cont.dataset.nombre || 'Máquina';
                     const w = Number(cont.dataset.w) || 1;
                     const h = Number(cont.dataset.h) || 1;
-
-                    if (!bandeja.querySelector(`.chip-maquina[data-id="${maqId}"]`)) {
-                        const chip = document.createElement('button');
-                        chip.className =
-                            'chip-maquina px-3 py-2 border rounded-lg text-sm hover:bg-gray-50';
-                        chip.dataset.id = String(maqId);
-                        chip.dataset.nombre = maqNombre;
-                        chip.dataset.w = String(w);
-                        chip.dataset.h = String(h);
-                        chip.title = `${maqNombre} — ${w}×${h} celdas`;
-                        chip.innerHTML = `
+                    if (!Number.isNaN(maqId) && maqId > 0) {
+                        if (!bandeja.querySelector(`.chip-maquina[data-id="${maqId}"]`)) {
+                            const chip = document.createElement('button');
+                            chip.className =
+                                'chip-maquina px-3 py-2 border rounded-lg text-sm hover:bg-gray-50';
+                            chip.dataset.id = String(maqId);
+                            chip.dataset.nombre = maqNombre;
+                            chip.dataset.w = String(w);
+                            chip.dataset.h = String(h);
+                            chip.title = `${maqNombre} — ${w}×${h} celdas`;
+                            chip.innerHTML = `
     <span class="font-medium">${maqNombre}</span>
     <span class="ml-2 text-gray-500">${w}×${h}</span>
   `;
-                        bandeja.appendChild(chip);
-
+                            bandeja.appendChild(chip);
+                        }
                         // vuelve a enganchar tu handler de selección
                         chip.addEventListener('click', () => {
                             document.querySelectorAll('.chip-maquina').forEach(c => c.classList
@@ -499,6 +510,331 @@
                 }
             }, {
                 passive: false
+            });
+
+        })();
+    </script>
+
+    <script>
+        (() => {
+            // =========================================================
+            // BLOQUE INDEPENDIENTE: Selección libre de zonas
+            // (transitable / almacenamiento / carga_descarga)
+            // - Click + arrastrar para seleccionar
+            // - Mouseup: prompt de tipo y nombre
+            // - Valida límites y colisiones contra ctx.ocupadas
+            // - Guarda vía ctx.storeUrl y pinta overlay
+            // =========================================================
+
+            const grid = document.getElementById('cuadricula');
+            const ctx = window.__LOC_CTX__;
+            if (!grid || !ctx) return;
+
+            // Evita conflictos si estás en modo "colocar máquina" (ghost visible)
+            function isMachinePlacementActive() {
+                const ghost = document.getElementById('ghost');
+                return ghost && !ghost.classList.contains('hidden');
+            }
+
+            // Tamaño de celda desde CSS
+            function getCeldaPx() {
+                const v = getComputedStyle(grid).getPropertyValue('--tam-celda').trim();
+                const n = parseInt(v, 10);
+                return Number.isFinite(n) && n > 0 ? n : 8;
+            }
+            let celdaPx = getCeldaPx();
+
+            // Vista (horizontal) ⇄ Real
+            function puntoEnVista(ev) {
+                const rect = grid.getBoundingClientRect();
+                const x = Math.floor((ev.clientX - rect.left) / celdaPx) + 1;
+                const y = Math.floor((ev.clientY - rect.top) / celdaPx) + 1;
+                return {
+                    x: Math.min(Math.max(1, x), ctx.columnasVista),
+                    y: Math.min(Math.max(1, y), ctx.filasVista)
+                };
+            }
+
+            // Real -> Vista
+            // x' = y ; y' = x ; w' = (y2 - y1 + 1) ; h' = (x2 - x1 + 1)
+            function realToVistaRect(x1r, y1r, x2r, y2r) {
+                const x1 = Math.min(x1r, x2r),
+                    x2 = Math.max(x1r, x2r);
+                const y1 = Math.min(y1r, y2r),
+                    y2 = Math.max(y1r, y2r);
+                return {
+                    x: y1,
+                    y: x1,
+                    w: (y2 - y1 + 1),
+                    h: (x2 - x1 + 1)
+                };
+            }
+
+            // Vista -> Real
+            function vistaToRealRect(x1v, y1v, wv, hv) {
+                const x2v = x1v + wv - 1;
+                const y2v = y1v + hv - 1;
+                return {
+                    x1: y1v,
+                    y1: x1v,
+                    x2: y2v,
+                    y2: x2v
+                };
+            }
+
+            // Normaliza dos puntos de vista a rect (x,y,w,h)
+            function normalizarVistaRect(a, b) {
+                const x1 = Math.min(a.x, b.x),
+                    y1 = Math.min(a.y, b.y);
+                const x2 = Math.max(a.x, b.x),
+                    y2 = Math.max(a.y, b.y);
+                return {
+                    x: x1,
+                    y: y1,
+                    w: (x2 - x1 + 1),
+                    h: (y2 - y1 + 1)
+                };
+            }
+
+            // Colisiones contra ctx.ocupadas (en real)
+            function colisionaConOcupadas(r) {
+                const arr = Array.isArray(ctx.ocupadas) ? ctx.ocupadas : [];
+                return arr.some(o => !(r.x2 < o.x1 || r.x1 > o.x2 || r.y2 < o.y1 || r.y1 > o.y2));
+            }
+
+            // ---- Drag select ----
+            let dragging = false;
+            let startCell = null;
+            let selBox = null;
+            let suppressNextClick = false;
+
+            // Evita que el click de soltar dispare otros handlers (captura)
+            grid.addEventListener('click', (ev) => {
+                if (suppressNextClick) {
+                    ev.stopImmediatePropagation();
+                    ev.preventDefault();
+                    suppressNextClick = false;
+                }
+            }, true);
+
+            grid.addEventListener('mousedown', (ev) => {
+                // Solo botón izq, no sobre overlays/botones, y no si colocas máquina
+                if (ev.button !== 0) return;
+                if (isMachinePlacementActive()) return;
+                if (ev.target.closest('.loc-existente, .loc-delete')) return;
+
+                dragging = true;
+                startCell = puntoEnVista(ev);
+
+                selBox = document.createElement('div');
+                selBox.className = 'sel-box';
+                selBox.style.position = 'absolute';
+                selBox.style.pointerEvents = 'none';
+                selBox.style.border = '2px dashed #111827';
+                selBox.style.background = 'rgba(17,24,39,0.10)';
+                selBox.style.borderRadius = '2px';
+                grid.appendChild(selBox);
+
+                updateSelBox(startCell, startCell);
+                ev.preventDefault();
+            });
+
+            grid.addEventListener('mousemove', (ev) => {
+                if (!dragging || !selBox) return;
+                const cur = puntoEnVista(ev);
+                updateSelBox(startCell, cur);
+            });
+
+            window.addEventListener('mouseup', async (ev) => {
+                if (!dragging) return;
+                dragging = false;
+
+                const endCell = puntoEnVista(ev);
+                const vr = normalizarVistaRect(startCell, endCell);
+
+                if (!vr || vr.w < 1 || vr.h < 1) {
+                    selBox?.remove();
+                    selBox = null;
+                    return;
+                }
+
+                // Evita click de soltar
+                suppressNextClick = true;
+                setTimeout(() => {
+                    suppressNextClick = false;
+                }, 0);
+
+                selBox?.remove();
+                selBox = null;
+
+                // A real + validaciones
+                const rectReal = vistaToRealRect(vr.x, vr.y, vr.w, vr.h);
+                const fuera = rectReal.x1 < 1 || rectReal.y1 < 1 ||
+                    rectReal.x2 > ctx.columnasReales || rectReal.y2 > ctx.filasReales;
+                if (fuera) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Fuera de límites',
+                        text: 'La selección se sale de la nave.'
+                    });
+                    return;
+                }
+                if (colisionaConOcupadas(rectReal)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Zona ocupada',
+                        text: 'Esa zona ya está ocupada.'
+                    });
+                    return;
+                }
+
+                // 1) Tipo (solo zonas, no "maquina")
+                const {
+                    value: tipo
+                } = await Swal.fire({
+                    title: 'Tipo de localización',
+                    input: 'select',
+                    inputOptions: {
+                        transitable: 'Transitable',
+                        almacenamiento: 'Almacenamiento',
+                        carga_descarga: 'Carga/descarga'
+                    },
+                    inputPlaceholder: 'Elige un tipo',
+                    showCancelButton: true,
+                    confirmButtonText: 'Continuar'
+                });
+                if (!tipo) return;
+
+                // 2) Nombre
+                const nombreDefecto = (tipo.replace('_', '/').toUpperCase()) +
+                    ` ${rectReal.x1}-${rectReal.y1}`;
+                const {
+                    value: nombre
+                } = await Swal.fire({
+                    title: 'Nombre/etiqueta',
+                    input: 'text',
+                    inputValue: nombreDefecto,
+                    inputLabel: 'Texto que se mostrará en el plano',
+                    showCancelButton: true,
+                    confirmButtonText: 'Guardar'
+                });
+                if (nombre === undefined) return;
+
+                // 3) Guardar
+                try {
+                    const res = await fetch(ctx.storeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            nave_id: ctx.naveId,
+                            tipo,
+                            x1: rectReal.x1,
+                            y1: rectReal.y1,
+                            x2: rectReal.x2,
+                            y2: rectReal.y2,
+                            nombre: nombre
+                        })
+                    });
+
+                    if (!res.ok) throw new Error(await res.text());
+                    let saved = null;
+                    try {
+                        saved = await res.json();
+                    } catch (_) {}
+
+                    // 4) Actualizar modelo ocupadas y pintar overlay
+                    (ctx.ocupadas ||= []).push(rectReal);
+
+                    const zona = document.createElement('div');
+                    zona.className = `loc-existente loc-zona tipo-${tipo}`;
+                    zona.dataset.x1 = rectReal.x1;
+                    zona.dataset.y1 = rectReal.y1;
+                    zona.dataset.x2 = rectReal.x2;
+                    zona.dataset.y2 = rectReal.y2;
+                    zona.dataset.nombre = nombre || nombreDefecto;
+                    if (saved?.id) zona.dataset.id = saved.id;
+
+                    // Botón eliminar (si tu handler por delegación ya existe, funcionará)
+                    if (saved?.id) {
+                        const del = document.createElement('button');
+                        del.type = 'button';
+                        del.className = 'loc-delete';
+                        del.title = `Eliminar ${zona.dataset.nombre}`;
+                        del.setAttribute('aria-label', 'Eliminar localización');
+                        del.textContent = '×';
+                        zona.appendChild(del);
+                    }
+
+                    // Etiqueta visible
+                    const label = document.createElement('span');
+                    label.className = 'loc-label';
+                    label.textContent = zona.dataset.nombre;
+                    zona.appendChild(label);
+
+                    // Posicionar en vista ahora
+                    posicionarZonaVista(zona);
+
+                    // Colores por tipo (fallback si no tienes CSS específico)
+                    if (tipo === 'transitable') {
+                        zona.style.background = 'rgba(107,114,128,0.15)'; // gris
+                        zona.style.border = '1px dashed #6b7280';
+                    } else if (tipo === 'almacenamiento') {
+                        zona.style.background = 'rgba(245,158,11,0.15)'; // ámbar
+                        zona.style.border = '1px solid #f59e0b';
+                    } else { // carga_descarga
+                        zona.style.background = 'rgba(59,130,246,0.15)'; // azul
+                        zona.style.border = '1px solid #3b82f6';
+                    }
+
+                    grid.appendChild(zona);
+
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Zona creada',
+                        timer: 1200,
+                        showConfirmButton: false
+                    });
+                } catch (err) {
+                    console.error(err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'No se pudo guardar',
+                        text: 'Revisa la conexión o vuelve a intentarlo.'
+                    });
+                }
+            });
+
+            function updateSelBox(a, b) {
+                const r = normalizarVistaRect(a, b);
+                selBox.style.left = ((r.x - 1) * celdaPx) + 'px';
+                selBox.style.top = ((r.y - 1) * celdaPx) + 'px';
+                selBox.style.width = (r.w * celdaPx) + 'px';
+                selBox.style.height = (r.h * celdaPx) + 'px';
+            }
+
+            // Reposiciona las zonas creadas por este módulo al redimensionar
+            function posicionarZonaVista(el) {
+                const x1 = Number(el.dataset.x1),
+                    y1 = Number(el.dataset.y1);
+                const x2 = Number(el.dataset.x2),
+                    y2 = Number(el.dataset.y2);
+                const v = realToVistaRect(x1, y1, x2, y2);
+                el.style.position = 'absolute';
+                el.style.left = ((v.x - 1) * celdaPx) + 'px';
+                el.style.top = ((v.y - 1) * celdaPx) + 'px';
+                el.style.width = (v.w * celdaPx) + 'px';
+                el.style.height = (v.h * celdaPx) + 'px';
+            }
+
+            window.addEventListener('resize', () => {
+                celdaPx = getCeldaPx();
+                document.querySelectorAll('.loc-zona').forEach(posicionarZonaVista);
+            }, {
+                passive: true
             });
 
         })();

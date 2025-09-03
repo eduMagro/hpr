@@ -262,22 +262,24 @@ class LocalizacionController extends Controller
         $columnasVista  = $estaGirado ? $filasReales : $columnasReales;
         $filasVista     = $estaGirado ? $columnasReales : $filasReales;
 
-        // 📌 Localizaciones con máquina (para pintar ocupadas)
+        // 📌 Colecciones para la vista
         $localizacionesConMaquina = collect();
+        $localizacionesZonas      = collect(); // 👈 NUEVO: no-maquina
         $ocupadas                 = [];
         $localizacionesTodas      = collect();
         $maquinasDisponibles      = collect();
 
         if ($obraActiva) {
-            // Todas las localizaciones de la nave
+            // Todas las localizaciones de la nave (incluye nombre)
             $localizaciones = Localizacion::with('maquina:id,nombre')
                 ->where('nave_id', $obraActiva->id)
                 ->get();
 
-            // Solo con máquina válida (para overlays)
+            // 👇 Maquinas colocadas (overlays)
             $localizacionesConMaquina = $localizaciones
+                ->where('tipo', 'maquina')
                 ->whereNotNull('maquina_id')
-                ->filter(fn($l) => $l->maquina)
+                ->filter(fn($l) => $l->maquina) // solo si existe la relación
                 ->values()
                 ->map(function ($l) {
                     return [
@@ -286,36 +288,55 @@ class LocalizacionController extends Controller
                         'y1'         => (int) $l->y1,
                         'x2'         => (int) $l->x2,
                         'y2'         => (int) $l->y2,
-                        'tipo'       => (string) $l->tipo,
+                        'tipo'       => (string) $l->tipo,            // 'maquina'
                         'maquina_id' => (int) $l->maquina_id,
-                        'nombre'     => (string) $l->maquina->nombre,
+                        'nombre'     => (string) ($l->nombre ?: $l->maquina->nombre), // respeta tu nueva columna
                         'nave_id'    => (int) $l->nave_id,
                     ];
                 });
 
-            // Coords simples para colisiones
-            $ocupadas = $localizacionesConMaquina->map(fn($l) => [
-                'x1' => (int) $l['x1'],
-                'y1' => (int) $l['y1'],
-                'x2' => (int) $l['x2'],
-                'y2' => (int) $l['y2'],
-            ])->values()->all();
+            // 👇 Zonas no-maquina (transitable / almacenamiento / carga_descarga)
+            $localizacionesZonas = $localizaciones
+                ->filter(fn($l) => $l->tipo !== 'maquina')
+                ->values()
+                ->map(function ($l) {
+                    return [
+                        'id'         => (int) $l->id,
+                        'x1'         => (int) $l->x1,
+                        'y1'         => (int) $l->y1,
+                        'x2'         => (int) $l->x2,
+                        'y2'         => (int) $l->y2,
+                        'tipo'       => (string) $l->tipo,            // 'transitable' | 'almacenamiento' | 'carga_descarga'
+                        'nombre'     => (string) ($l->nombre ?: strtoupper(str_replace('_', '/', $l->tipo))),
+                        'nave_id'    => (int) $l->nave_id,
+                    ];
+                });
+
+            // 👇 Coords para colisiones: incluye todo salvo transitables (coincide con tu backend)
+            $ocupadas = $localizaciones
+                ->filter(fn($l) => $l->tipo !== 'transitable')
+                ->map(fn($l) => [
+                    'x1' => (int) $l->x1,
+                    'y1' => (int) $l->y1,
+                    'x2' => (int) $l->x2,
+                    'y2' => (int) $l->y2,
+                ])->values()->all();
 
             $localizacionesTodas = $localizaciones;
 
             // IDs de máquinas ya colocadas en ESTA nave
             $maquinasColocadasIds = $localizaciones
+                ->where('tipo', 'maquina')
                 ->whereNotNull('maquina_id')
                 ->pluck('maquina_id')
                 ->unique()
                 ->values()
                 ->all();
 
-            // 📌 Máquinas disponibles: de la obra, que NO sean tipo grúa y que NO estén ya colocadas en la nave
+            // Máquinas disponibles: de la obra, no grúa, no colocadas
             $maquinasDisponibles = Maquina::where('obra_id', $obraActiva->id)
                 ->when(!empty($maquinasColocadasIds), fn($q) => $q->whereNotIn('id', $maquinasColocadasIds))
                 ->where(function ($q) {
-                    // incluir nulos; excluir 'grua' (case-insensitive)
                     $q->whereNull('tipo')->orWhereRaw('LOWER(tipo) <> ?', ['grua']);
                 })
                 ->select('id', 'nombre', 'ancho_m', 'largo_m')
@@ -347,7 +368,7 @@ class LocalizacionController extends Controller
             'columnasReales' => (int) $columnasReales,
             'filasReales'    => (int) $filasReales,
             'estaGirado'     => (bool) $estaGirado,
-            'ocupadas'       => $ocupadas,
+            'ocupadas'       => $ocupadas, // 👈 ahora incluye no-transitables
             'storeUrl'       => route('localizaciones.store'),
         ];
         $ctx['deleteUrlTemplate'] = route('localizaciones.destroy', ['localizacione' => ':id']);
@@ -364,11 +385,13 @@ class LocalizacionController extends Controller
             'filasVista',
             'estaGirado',
             'localizacionesConMaquina',
+            'localizacionesZonas',   // 👈 pásalo a la vista
             'localizacionesTodas',
             'maquinasDisponibles',
             'ctx'
         ));
     }
+
 
     //------------------------------------------------------------------------------------ VERIFICAR()
 
@@ -466,76 +489,93 @@ class LocalizacionController extends Controller
     }
 
     //------------------------------------------------------------------------------------ STORE()
+
+
     public function store(Request $request)
     {
+        // Normaliza "carga-descarga" -> "carga_descarga"
+        if ($request->filled('tipo')) {
+            $request->merge(['tipo' => str_replace('-', '_', $request->input('tipo'))]);
+        }
+
+        $isJson = $request->expectsJson() || $request->ajax() || $request->isJson();
+
+        // Reglas base
+        $rules = [
+            'x1'      => 'required|integer|min:1',
+            'y1'      => 'required|integer|min:1',
+            'x2'      => 'required|integer|min:1',
+            'y2'      => 'required|integer|min:1',
+            'tipo'    => 'required|in:maquina,transitable,almacenamiento,carga_descarga',
+            'nave_id' => 'required|integer|exists:obras,id',
+        ];
+
+        // maquina_id obligatorio solo si tipo=maquina
+        if ($request->input('tipo') === 'maquina' || str_replace('-', '_', $request->input('tipo')) === 'maquina') {
+            $rules['maquina_id'] = 'required|integer|exists:maquinas,id';
+        } else {
+            $rules['maquina_id'] = 'nullable|integer|exists:maquinas,id';
+        }
+
+        $messages = [
+            'tipo.required'      => 'Debes seleccionar el tipo de zona.',
+            'tipo.in'            => 'Tipo inválido.',
+            'nave_id.required'   => 'Debe indicar la nave.',
+            'nave_id.exists'     => 'La nave indicada no existe.',
+            'maquina_id.required' => 'Debes seleccionar la máquina.',
+            'maquina_id.exists'  => 'La máquina indicada no existe.',
+        ];
+
+        $v = Validator::make($request->all(), $rules, $messages);
+        if ($v->fails()) {
+            return $isJson
+                ? response()->json(['success' => false, 'message' => 'Errores de validación.', 'errors' => $v->errors()], 422)
+                : back()->withErrors($v)->withInput();
+        }
+
+        $data = $v->validated();
+
+        // Normalizar coordenadas
+        $x1 = min($data['x1'], $data['x2']);
+        $x2 = max($data['x1'], $data['x2']);
+        $y1 = min($data['y1'], $data['y2']);
+        $y2 = max($data['y1'], $data['y2']);
+
+        // Solape (permitimos transitables, bloqueamos contra no-transitables)
+        $solapa = Localizacion::where('nave_id', $data['nave_id'])
+            ->where('tipo', '!=', 'transitable')
+            ->where(function ($q) use ($x1, $y1, $x2, $y2) {
+                $q->where('x1', '<=', $x2)->where('x2', '>=', $x1)
+                    ->where('y1', '<=', $y2)->where('y2', '>=', $y1);
+            })->exists();
+
+        if ($solapa) {
+            return $isJson
+                ? response()->json(['success' => false, 'message' => 'Ya existe una zona que solapa en esta nave.'], 409)
+                : back()->withErrors(['solape' => 'Ya existe una zona que solapa en esta nave.'])->withInput();
+        }
+
         try {
-            // ✅ Validación con nave_id obligatorio
-            $validated = $request->validate([
-                'x1'         => 'required|integer|min:1',
-                'y1'         => 'required|integer|min:1',
-                'x2'         => 'required|integer|min:1',
-                'y2'         => 'required|integer|min:1',
-                'tipo'       => 'required|in:material,maquina,transitable',
-                'maquina_id' => 'nullable|integer|exists:maquinas,id',
-                'nave_id'    => 'required|integer|exists:obras,id', // <-- AJUSTA la tabla si es otra
-            ], [
-                'nave_id.required' => 'Debe indicar la nave.',
-                'nave_id.exists'   => 'La nave indicada no existe.',
-            ]);
-
-            // Normalizar coordenadas
-            $x1 = min($validated['x1'], $validated['x2']);
-            $x2 = max($validated['x1'], $validated['x2']);
-            $y1 = min($validated['y1'], $validated['y2']);
-            $y2 = max($validated['y1'], $validated['y2']);
-
-            // (Opcional) Doble-check: que no exista solape en esta nave
-            $solape = Localizacion::where('nave_id', $validated['nave_id'])
-                ->where('tipo', '!=', 'transitable')
-                ->where(function ($q) use ($x1, $y1, $x2, $y2) {
-                    $q->where('x1', '<=', $x2)->where('x2', '>=', $x1)
-                        ->where('y1', '<=', $y2)->where('y2', '>=', $y1);
-                })->exists();
-
-            if ($solape) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ya existe una localización que solapa en esta nave.',
-                ], 409);
-            }
-
-            // Crear localización vinculada a la nave
             $localizacion = Localizacion::create([
                 'x1'         => $x1,
                 'y1'         => $y1,
                 'x2'         => $x2,
                 'y2'         => $y2,
-                'tipo'       => $validated['tipo'],
-                'maquina_id' => $validated['tipo'] === 'maquina' ? ($validated['maquina_id'] ?? null) : null,
-                'nave_id'    => $validated['nave_id'], // 👈 vinculación clave
+                'tipo'       => $data['tipo'],
+                'maquina_id' => $data['tipo'] === 'maquina' ? ($data['maquina_id'] ?? null) : null,
+                'nave_id'    => $data['nave_id'],
             ]);
 
-            return response()->json([
-                'success'      => true,
-                'message'      => 'Localización guardada correctamente.',
-                'localizacion' => $localizacion
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Errores de validación.',
-                'errors'  => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            \Log::error('Error al guardar localización', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al guardar la localización.',
-                'error'   => $e->getMessage()
-            ], 500);
+            return $isJson
+                ? response()->json(['success' => true, 'message' => 'Zona guardada.', 'id' => $localizacion->id, 'localizacion' => $localizacion], 201)
+                : back()->with('success', 'Zona guardada.');
+        } catch (\Throwable $e) {
+            \Log::error('Error al guardar zona', ['e' => $e->getMessage()]);
+            return $isJson
+                ? response()->json(['success' => false, 'message' => 'Error al guardar.'], 500)
+                : back()->with('error', 'Error al guardar.')->withInput();
         }
     }
-
     //------------------------------------------------------------------------------------ DESTROY()
     public function destroy($id)
     {
