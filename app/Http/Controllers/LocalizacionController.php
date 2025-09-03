@@ -19,100 +19,138 @@ class LocalizacionController extends Controller
 
     public function index()
     {
-        // Obras del cliente "Hierros Paco Reyes"
+        // 1) Obras (cliente HPR)
         $obras = Obra::with('cliente')
-            ->whereHas('cliente', function ($query) {
-                $query->where('empresa', 'LIKE', '%hierros paco reyes%');
-            })
+            ->whereHas('cliente', fn($q) => $q->where('empresa', 'LIKE', '%hierros paco reyes%'))
             ->orderBy('obra')
             ->get();
 
-        // Obra activa pasada por parámetro ?obra=ID
+        // 2) Obra activa (?obra=ID)
         $obraActualId = request('obra');
-        $obraActiva = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+        $obraActiva   = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+        $cliente      = $obraActiva?->cliente;
 
-        // Cliente (relación desde obra activa)
-        $cliente = $obraActiva?->cliente;
+        // 3) Dimensiones nave (m) -> grid real a 0,5 m/celda
+        $anchoM = max(1, (int) ($obraActiva->ancho_m ?? 22));
+        $largoM = max(1, (int) ($obraActiva->largo_m ?? 115));
+        $columnasReales = $anchoM * 2; // celdas
+        $filasReales    = $largoM * 2; // celdas
 
-        // Localizaciones de la obra activa, con su máquina
-        $localizaciones = $obraActiva
-            ? \App\Models\Localizacion::with('maquina')->where('nave_id', $obraActiva->id)->get()
-            : collect();
+        // 4) Orientación (vertical por defecto)
+        //    vertical => la vista intercambia ejes (lado largo queda en vertical)
+        $orientacion = request('orientacion', 'vertical'); // 'vertical' | 'horizontal'
+        $estaGirado  = ($orientacion === 'vertical');
 
-        // Solo las que tienen máquina
-        $localizacionesMaquinas = $localizaciones->whereNotNull('maquina_id');
+        // 5) Tamaño de la vista (según orientación)
+        // 4) Orientación
+        $orientacion = request('orientacion', 'vertical'); // 'vertical' | 'horizontal'
+        $estaGirado  = ($orientacion === 'vertical');      // true => vertical
 
-        // 🔽 Serializa aquí, fuera de Blade
-        $machines = $localizacionesMaquinas->map(function ($loc) {
+        // 5) Tamaño de la vista (según orientación)  ✅ CORREGIDO
+        if ($estaGirado) {
+            // Vertical: W × H (sin transponer)
+            $columnasVista = $columnasReales;
+            $filasVista    = $filasReales;
+        } else {
+            // Horizontal: H × W (transpuesta)
+            $columnasVista = $filasReales;
+            $filasVista    = $columnasReales;
+        }
+
+
+        // 6) Localizaciones con máquina (solo las que tienen máquina, y con su nombre)
+        $localizacionesConMaquina = collect();
+        if ($obraActiva) {
+            $localizacionesConMaquina = Localizacion::with('maquina:id,nombre')
+                ->where('nave_id', $obraActiva->id)
+                ->whereNotNull('maquina_id')
+                ->get()
+                ->filter(fn($loc) => $loc->maquina)
+                ->map(function ($loc) {
+                    return [
+                        'id'           => $loc->id,
+                        'x1'           => (int) $loc->x1,
+                        'y1'           => (int) $loc->y1,
+                        'x2'           => (int) $loc->x2,
+                        'y2'           => (int) $loc->y2,
+                        'maquina_id'   => (int) $loc->maquina_id,
+                        'maquina_nombre' => $loc->maquina->nombre ?? 'Máquina',
+                        // NOTA: no guardamos nombre de localización; usamos el de la máquina
+                    ];
+                })
+                ->values();
+        }
+
+        // 7) Payload “ligero” para dibujar (si lo necesitas en JS)
+        $machines = $localizacionesConMaquina->map(function ($loc) {
             return [
-                'id'    => $loc->id,
-                'mx1'   => (float) $loc->x1,  // METROS
-                'my1'   => (float) $loc->y1,
-                'mx2'   => (float) $loc->x2,
-                'my2'   => (float) $loc->y2,
-                'code'  => optional($loc->maquina)->codigo ?? (optional($loc->maquina)->nombre ?? 'Máquina'),
-                'label' => optional($loc->maquina)->nombre ?? 'Máquina',
+                'id'    => $loc['id'],
+                'mx1'   => (float) $loc['x1'], // en “celdas reales” (equivale a metros*2)
+                'my1'   => (float) $loc['y1'],
+                'mx2'   => (float) $loc['x2'],
+                'my2'   => (float) $loc['y2'],
+                'code'  => $loc['maquina_nombre'],
+                'label' => $loc['maquina_nombre'],
             ];
-        })->values()->toArray();
+        })->toArray();
 
-        // LOG
-        Log::debug('MACHINES payload', [
-            'obra_id'   => $obraActiva?->id,
-            'count'     => count($machines),
-            'sample'    => array_slice($machines, 0, 3),
-        ]);
+        // 8) Sectores (cada 20 m)
+        $sectorSize      = 20;
+        $numeroSectores  = max(1, (int) ceil($largoM / $sectorSize));
 
-        // Maquinas de esa obra (AGREGADO: igual que en create)
+        // 9) Contexto JS para la vista
+        $ctx = [
+            'naveId'         => $obraActiva?->id,
+            'estaGirado'     => $estaGirado,          // ⬅️ clave: true = vertical
+            'orientacion'    => $orientacion,         // 'vertical' | 'horizontal'
+            'columnasReales' => $columnasReales,
+            'filasReales'    => $filasReales,
+            'columnasVista'  => $columnasVista,
+            'filasVista'     => $filasVista,
+            'ocupadas'       => $localizacionesConMaquina->map(fn($l) => [
+                'x1' => $l['x1'],
+                'y1' => $l['y1'],
+                'x2' => $l['x2'],
+                'y2' => $l['y2'],
+            ])->toArray(),
+        ];
+
+        // 10) Dimensiones para cabecera
+        $dimensiones = [
+            'ancho' => $anchoM,
+            'largo' => $largoM,
+            'obra'  => $obraActiva?->obra,
+        ];
+
+        // 11) (Opcional) Máquinas de esa obra, por si las listaras
         $maquinas = $obraActiva
             ? \App\Models\Maquina::where('obra_id', $obraActiva->id)->get()
             : collect();
 
-        // Dimensiones de la nave
-        $ancho = $obraActiva?->ancho_m ?? 10;
-        $largo = $obraActiva?->largo_m ?? 10;
-
-        $dimensiones = [
-            'ancho' => $ancho,
-            'alto'  => $largo,
-            'obra'  => $obraActiva?->obra,
-        ];
-
-        // Sectores (cada 20 metros)
-        $sectorSize = 20;
-        $numeroSectores = max(1, ceil($largo / $sectorSize));
-
-        // AGREGADO: Localizaciones con relación de máquina (igual que en create)
-        $localizacionesMaquinas = Localizacion::with('maquina:id,nombre')
-            ->whereNotNull('maquina_id')
-            ->where('nave_id', $obraActiva->id)
-            ->get()
-            ->filter(fn($loc) => $loc->maquina)
-            ->map(function ($loc) {
-                return [
-                    'id'         => $loc->id,
-                    'x1'         => $loc->x1,
-                    'y1'         => $loc->y1,
-                    'x2'         => $loc->x2,
-                    'y2'         => $loc->y2,
-                    'tipo'       => $loc->tipo,
-                    'maquina_id' => $loc->maquina_id,
-                    'nombre'     => $loc->maquina->nombre,
-                    'nave_id'    => $loc->nave_id,
-                ];
-            });
+        // 12) LOG útil
+        Log::debug('localizaciones.index payload', [
+            'obra_id'        => $obraActiva?->id,
+            'orientacion'    => $orientacion,
+            'grid_real'      => "{$columnasReales}x{$filasReales}",
+            'grid_vista'     => "{$columnasVista}x{$filasVista}",
+            'loc_count'      => $localizacionesConMaquina->count(),
+            'sample'         => $localizacionesConMaquina->take(3),
+        ]);
 
         return view('localizaciones.index', [
-            'localizacionesMaquinas' => $localizacionesMaquinas,
-            'machines'               => $machines,
-            'maquinas'               => $maquinas,
-            'obras'                  => $obras,
-            'obraActualId'           => $obraActualId,
-            'cliente'                => $cliente,
-            'dimensiones'            => $dimensiones,
-            'numeroSectores'         => $numeroSectores,
-            // AGREGADO: igual que en create
+            'obras'                    => $obras,
+            'obraActualId'             => $obraActualId,
+            'cliente'                  => $cliente,
+            'dimensiones'              => $dimensiones,
+            'numeroSectores'           => $numeroSectores,
+            'localizacionesConMaquina' => $localizacionesConMaquina, // para pintar overlays
+            'machines'                 => $machines,                  // por si lo usas en JS
+            'ctx'                      => $ctx,                       // ⬅️ trae estaGirado + tamaños
+            'columnasVista'            => $columnasVista,
+            'filasVista'               => $filasVista,
         ]);
     }
+
 
     //------------------------------------------------------------------------------------ SHOW()
     public function show($id)
@@ -198,7 +236,6 @@ class LocalizacionController extends Controller
 
 
     //------------------------------------------------------------------------------------ CREATE()
-    //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
         // 📌 Obras del cliente "Hierros Paco Reyes"
@@ -213,8 +250,8 @@ class LocalizacionController extends Controller
         $cliente      = $obraActiva?->cliente;
 
         // 📌 Dimensiones nave (m)
-        $anchoM = max(1, (int) ($obraActiva->ancho_m ?? 22));
-        $largoM = max(1, (int) ($obraActiva->largo_m ?? 115));
+        $anchoM = max(1, (int) ($obraActiva->ancho_m ?? 50));
+        $largoM = max(1, (int) ($obraActiva->largo_m ?? 50));
 
         // 📌 Grid real (celdas de 0,5 m)
         $columnasReales = $anchoM * 2;
@@ -222,7 +259,7 @@ class LocalizacionController extends Controller
 
         // 📌 Vista: lado más largo en horizontal
         $estaGirado     = $filasReales > $columnasReales;
-        $columnasVista  = $estaGirado ? $filasReales   : $columnasReales;
+        $columnasVista  = $estaGirado ? $filasReales : $columnasReales;
         $filasVista     = $estaGirado ? $columnasReales : $filasReales;
 
         // 📌 Localizaciones con máquina (para pintar ocupadas)
@@ -232,11 +269,12 @@ class LocalizacionController extends Controller
         $maquinasDisponibles      = collect();
 
         if ($obraActiva) {
+            // Todas las localizaciones de la nave
             $localizaciones = Localizacion::with('maquina:id,nombre')
                 ->where('nave_id', $obraActiva->id)
                 ->get();
 
-            // Solo con maquina válida
+            // Solo con máquina válida (para overlays)
             $localizacionesConMaquina = $localizaciones
                 ->whereNotNull('maquina_id')
                 ->filter(fn($l) => $l->maquina)
@@ -255,7 +293,7 @@ class LocalizacionController extends Controller
                     ];
                 });
 
-            // Array simple para colisiones
+            // Coords simples para colisiones
             $ocupadas = $localizacionesConMaquina->map(fn($l) => [
                 'x1' => (int) $l['x1'],
                 'y1' => (int) $l['y1'],
@@ -265,8 +303,21 @@ class LocalizacionController extends Controller
 
             $localizacionesTodas = $localizaciones;
 
-            // 📌 Máquinas de esta obra como fichas con tamaño en celdas
+            // IDs de máquinas ya colocadas en ESTA nave
+            $maquinasColocadasIds = $localizaciones
+                ->whereNotNull('maquina_id')
+                ->pluck('maquina_id')
+                ->unique()
+                ->values()
+                ->all();
+
+            // 📌 Máquinas disponibles: de la obra, que NO sean tipo grúa y que NO estén ya colocadas en la nave
             $maquinasDisponibles = Maquina::where('obra_id', $obraActiva->id)
+                ->when(!empty($maquinasColocadasIds), fn($q) => $q->whereNotIn('id', $maquinasColocadasIds))
+                ->where(function ($q) {
+                    // incluir nulos; excluir 'grua' (case-insensitive)
+                    $q->whereNull('tipo')->orWhereRaw('LOWER(tipo) <> ?', ['grua']);
+                })
                 ->select('id', 'nombre', 'ancho_m', 'largo_m')
                 ->get()
                 ->map(function ($m) {
@@ -281,14 +332,14 @@ class LocalizacionController extends Controller
                 })->values();
         }
 
-        // 📌 Texto cabecera
+        // Cabecera
         $dimensiones = [
             'ancho' => $anchoM,
             'largo' => $largoM,
             'obra'  => $obraActiva?->obra,
         ];
 
-        // 📌 Contexto para JS (solo datos simples)
+        // Contexto para JS
         $ctx = [
             'naveId'         => (int) $obraActiva->id,
             'columnasVista'  => (int) $columnasVista,
@@ -299,6 +350,7 @@ class LocalizacionController extends Controller
             'ocupadas'       => $ocupadas,
             'storeUrl'       => route('localizaciones.store'),
         ];
+        $ctx['deleteUrlTemplate'] = route('localizaciones.destroy', ['localizacione' => ':id']);
 
         return view('localizaciones.create', compact(
             'obras',

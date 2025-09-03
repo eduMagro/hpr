@@ -1,0 +1,129 @@
+  :root {
+      --columnas-vista: {
+              {
+              $columnasVista
+          }
+      }
+
+      ;
+
+      --filas-vista: {
+              {
+              $filasVista
+          }
+      }
+
+      ;
+      --tam-celda: 20px;
+      /* se recalcula por JS para encajar en pantalla */
+      --grosor-linea: 1px;
+      /* grosor de las líneas del grid */
+  }
+
+  /* Escenario: ocupa la ventana (sin scroll) y centra la cuadrícula */
+  #escenario-cuadricula {
+      position: relative;
+      width: 100%;
+      height: calc(100vh - 500px);
+      /* ajusta según header/menus reales */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+  }
+
+  /* La cuadrícula es un único div con fondo de líneas (máximo rendimiento) */
+  #cuadricula {
+      position: relative;
+      width: calc(var(--columnas-vista) * var(--tam-celda));
+      height: calc(var(--filas-vista) * var(--tam-celda));
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(149, 157, 165, .15);
+
+      /* Dos gradientes: vertical y horizontal (líneas de la rejilla) */
+      background-image:
+          linear-gradient(to right, #f1f5f9 var(--grosor-linea), transparent var(--grosor-linea)),
+          linear-gradient(to bottom, #f1f5f9 var(--grosor-linea), transparent var(--grosor-linea));
+      background-size:
+          calc(var(--tam-celda)) calc(var(--tam-celda)),
+          calc(var(--tam-celda)) calc(var(--tam-celda));
+      background-position: 0 0, 0 0;
+  }
+
+  /* Etiquetas informativas (no interfieren con rendimiento) */
+  #info-cuadricula,
+  .info-cuadricula {
+      position: absolute;
+      top: 8px;
+      /* antes estaba bottom; cámbialo a top */
+      right: 8px;
+      z-index: 5;
+      pointer-events: none;
+      /* ← clave: no bloquea clics/drag */
+      user-select: none;
+      font-size: 12px;
+      line-height: 1;
+      color: #fff;
+      background: rgba(17, 24, 39, 0.7);
+      /* negro 70% */
+      padding: 4px 8px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+  }
+
+
+  .loc-existente {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      line-height: 1;
+      text-align: center;
+      overflow: visible;
+      padding: 2px 6px 2px 6px;
+      /* deja hueco a la etiqueta */
+      border-radius: 2px;
+      color: #1e3a8a;
+      /* azul oscuro */
+      background-color: rgba(59, 130, 246, 0.25);
+      /* azul semitransparente */
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      backdrop-filter: blur(2px);
+  }
+
+  .loc-existente .loc-label {
+      font-size: 11px;
+      color: #111827;
+      pointer-events: none;
+      /* la etiqueta no intercepta clics */
+  }
+
+  .loc-existente .loc-delete {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 18px;
+      height: 18px;
+      line-height: 16px;
+      text-align: center;
+      border-radius: 9999px;
+      border: 1px solid #ef4444;
+      background: #fff;
+      color: #ef4444;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      opacity: .0;
+      transition: opacity .15s ease-in-out, transform .1s;
+  }
+
+  .loc-existente:hover .loc-delete {
+      opacity: 1;
+  }
+
+  .loc-existente .loc-delete:active {
+      transform: scale(0.95);
+  }

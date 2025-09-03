@@ -1,23 +1,23 @@
 <x-app-layout>
     {{-- Cabecera --}}
     <x-slot name="title">Mapa de Ubicaciones — Colocar máquinas</x-slot>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Editar mapa de {{ $obraActiva->obra ?? 'localizaciones' }}
-        </h2>
-        <p class="text-sm text-gray-500">
-            Celda = 0,5 m.
-            Ancho: {{ $dimensiones['ancho'] }} m ({{ $columnasReales }} columnas),
-            Largo: {{ $dimensiones['largo'] }} m ({{ $filasReales }} filas).
-            Vista: {{ $columnasVista }}×{{ $filasVista }} (lado largo en horizontal).
-        </p>
-    </x-slot>
-
     {{-- Menús --}}
     <x-menu.localizaciones.menu-localizaciones-vistas :obra-actual-id="$obraActualId ?? null" route-index="localizaciones.index"
         route-create="localizaciones.create" />
     <x-menu.localizaciones.menu-localizaciones-naves :obras="$obras" :obra-actual-id="$obraActualId ?? null" />
-
+    <div class="px-4 sm:px-6 lg:px-8 mt-4">
+        <div class="bg-white border rounded-lg p-3">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                Editar mapa de {{ $obraActiva->obra ?? 'localizaciones' }}
+            </h2>
+            <p class="text-sm text-gray-500">
+                Celda = 0,5 m.
+                Ancho: {{ $dimensiones['ancho'] }} m ({{ $columnasReales }} columnas),
+                Largo: {{ $dimensiones['largo'] }} m ({{ $filasReales }} filas).
+                Vista: {{ $columnasVista }}×{{ $filasVista }} (lado largo en horizontal).
+            </p>
+        </div>
+    </div>
     {{-- Bandeja de máquinas --}}
     <div class="px-4 sm:px-6 lg:px-8 mt-4">
         <div class="bg-white border rounded-lg p-3">
@@ -47,14 +47,18 @@
     <div class="px-4 sm:px-6 lg:px-8 mt-4">
         <div id="escenario-cuadricula">
             <div id="cuadricula" aria-label="Cuadrícula de la nave" class="relative">
+
                 {{-- overlays de localizaciones existentes --}}
                 @foreach ($localizacionesConMaquina as $loc)
-                    <div class="loc-existente" data-x1="{{ $loc['x1'] }}" data-y1="{{ $loc['y1'] }}"
-                        data-x2="{{ $loc['x2'] }}" data-y2="{{ $loc['y2'] }}"
+                    <div class="loc-existente" data-id="{{ $loc['id'] }}" data-x1="{{ $loc['x1'] }}"
+                        data-y1="{{ $loc['y1'] }}" data-x2="{{ $loc['x2'] }}" data-y2="{{ $loc['y2'] }}"
                         data-nombre="{{ $loc['nombre'] }}">
-                        {{ $loc['nombre'] }}
+                        <span class="loc-label">{{ $loc['nombre'] }}</span>
+                        <button type="button" class="loc-delete" aria-label="Eliminar localización"
+                            title="Eliminar {{ $loc['nombre'] }}">×</button>
                     </div>
                 @endforeach
+
                 <div id="ghost" class="absolute pointer-events-none hidden border-2 border-dashed rounded-sm"></div>
             </div>
 
@@ -66,7 +70,7 @@
     </div>
 
     {{-- CSS --}}
-    <link rel="stylesheet" href="{{ asset('css/localizaciones/styleLoc.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/localizaciones/styleLocCreate.css') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{-- Contexto listo del backend --}}
@@ -74,7 +78,7 @@
         window.__LOC_CTX__ = @json($ctx);
     </script>
 
-    {{-- JS interacción (igual que ya tenías, sin cálculos Blade) --}}
+    {{-- JS interacción --}}
     <script>
         (() => {
             const ctx = window.__LOC_CTX__;
@@ -101,41 +105,35 @@
                 return Number.isFinite(n) && n > 0 ? n : 8;
             }
 
+            // Real (x:1..W, y:1..H) -> Vista horizontal (x':1..H, y':1..W)
+            // x' = y ; y' = x ; w' = h ; h' = w
             function realToVistaRect(x1r, y1r, x2r, y2r) {
-                if (ctx.estaGirado) {
-                    return {
-                        x: y1r,
-                        y: x1r,
-                        w: y2r - y1r + 1,
-                        h: x2r - x1r + 1
-                    };
-                }
+                const x1 = Math.min(x1r, x2r),
+                    x2 = Math.max(x1r, x2r);
+                const y1 = Math.min(y1r, y2r),
+                    y2 = Math.max(y1r, y2r);
                 return {
-                    x: x1r,
-                    y: y1r,
-                    w: x2r - x1r + 1,
-                    h: y2r - y1r + 1
+                    x: y1,
+                    y: x1,
+                    w: (y2 - y1 + 1),
+                    h: (x2 - x1 + 1)
                 };
             }
 
+
+            // Vista -> Real
+            // x = y' ; y = x' ; w_real = h_vista ; h_real = w_vista
             function vistaToRealRect(x1v, y1v, wv, hv) {
-                const x2v = x1v + wv - 1,
-                    y2v = y1v + hv - 1;
-                if (ctx.estaGirado) {
-                    return {
-                        x1: y1v,
-                        y1: x1v,
-                        x2: y2v,
-                        y2: x2v
-                    };
-                }
+                const x2v = x1v + wv - 1;
+                const y2v = y1v + hv - 1;
                 return {
-                    x1: x1v,
-                    y1: y1v,
-                    x2: x2v,
-                    y2: y2v
+                    x1: y1v,
+                    y1: x1v,
+                    x2: y2v,
+                    y2: x2v
                 };
             }
+
 
             function renderExistentes() {
                 celdaPx = getCeldaPx();
@@ -175,12 +173,13 @@
                     selected = {
                         id: +btn.dataset.id,
                         nombre: btn.dataset.nombre,
-                        w: +btn.dataset.w,
-                        h: +btn.dataset.h
+                        w: +btn.dataset.w, // real
+                        h: +btn.dataset.h // real
                     };
+                    // 👇 en vista horizontal, el ghost se dibuja transpuesto
                     ghostSizeVista = {
-                        w: selected.w,
-                        h: selected.h
+                        w: selected.h,
+                        h: selected.w
                     };
                     ghost.classList.remove('hidden');
                     estadoSel.textContent =
@@ -189,6 +188,7 @@
                     updateGhostColor();
                 });
             });
+
 
             function puntoEnVista(ev) {
                 const rect = grid.getBoundingClientRect();
@@ -361,5 +361,147 @@
         })();
     </script>
 
+    <script>
+        (() => {
+            // =========================================================
+            // BLOQUE INDEPENDIENTE: eliminación de localizaciones (X)
+            // =========================================================
+
+            const grid = document.getElementById('cuadricula');
+            const ctx = window.__LOC_CTX__ || {};
+            const deleteTemplate = ctx.deleteUrlTemplate || '/localizaciones/:id'; // <-- define esto en tu controlador
+
+            function buildDeleteUrl(id) {
+                return deleteTemplate.replace(':id', String(id));
+            }
+
+            // Quita el rect de ctx.ocupadas (coincidencia exacta por coords)
+            function removeFromOcupadas(rect) {
+                if (!Array.isArray(ctx.ocupadas)) return;
+                const idx = ctx.ocupadas.findIndex(o =>
+                    o.x1 === rect.x1 && o.y1 === rect.y1 && o.x2 === rect.x2 && o.y2 === rect.y2
+                );
+                if (idx !== -1) ctx.ocupadas.splice(idx, 1);
+            }
+
+            // Delegación de eventos SOLO para el botón .loc-delete
+            grid.addEventListener('click', async (ev) => {
+                const btn = ev.target.closest('.loc-delete');
+                if (!btn) return;
+
+                ev.stopPropagation(); // no dispares el click de colocar máquina
+                ev.preventDefault();
+
+                const cont = btn.closest('.loc-existente');
+                if (!cont) return;
+
+                const id = Number(cont.dataset.id);
+                const rect = {
+                    x1: Number(cont.dataset.x1),
+                    y1: Number(cont.dataset.y1),
+                    x2: Number(cont.dataset.x2),
+                    y2: Number(cont.dataset.y2),
+                };
+                const nombre = cont.dataset.nombre || 'Localización';
+
+                const confirm = await Swal.fire({
+                    icon: 'warning',
+                    title: 'Eliminar localización',
+                    html: `¿Seguro que quieres eliminar <b>${nombre}</b>? Esta acción no se puede deshacer.`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#ef4444'
+                });
+
+                if (!confirm.isConfirmed) return;
+
+                try {
+                    const res = await fetch(buildDeleteUrl(id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')
+                                .getAttribute('content')
+                        },
+                        body: JSON.stringify({
+                            id
+                        })
+                    });
+
+                    if (!res.ok) {
+                        const text = await res.text();
+                        throw new Error(text || 'Error al eliminar');
+                    }
+
+                    // Actualiza modelo de ocupadas y DOM
+                    removeFromOcupadas(rect);
+                    cont.remove();
+                    // tras cont.remove();
+                    const bandeja = document.getElementById('bandeja-maquinas');
+                    const maqId = Number(cont.dataset.maquinaId);
+                    const maqNombre = cont.dataset.nombre || 'Máquina';
+                    const w = Number(cont.dataset.w) || 1;
+                    const h = Number(cont.dataset.h) || 1;
+
+                    if (!bandeja.querySelector(`.chip-maquina[data-id="${maqId}"]`)) {
+                        const chip = document.createElement('button');
+                        chip.className =
+                            'chip-maquina px-3 py-2 border rounded-lg text-sm hover:bg-gray-50';
+                        chip.dataset.id = String(maqId);
+                        chip.dataset.nombre = maqNombre;
+                        chip.dataset.w = String(w);
+                        chip.dataset.h = String(h);
+                        chip.title = `${maqNombre} — ${w}×${h} celdas`;
+                        chip.innerHTML = `
+    <span class="font-medium">${maqNombre}</span>
+    <span class="ml-2 text-gray-500">${w}×${h}</span>
+  `;
+                        bandeja.appendChild(chip);
+
+                        // vuelve a enganchar tu handler de selección
+                        chip.addEventListener('click', () => {
+                            document.querySelectorAll('.chip-maquina').forEach(c => c.classList
+                                .remove('ring', 'ring-blue-500'));
+                            chip.classList.add('ring', 'ring-blue-500');
+                            selected = {
+                                id: maqId,
+                                nombre: maqNombre,
+                                w,
+                                h
+                            }; // reales
+                            ghostSizeVista = {
+                                w: h,
+                                h: w
+                            }; // 👈 transpuesto para la vista
+                            ghost.classList.remove('hidden');
+                            estadoSel.textContent =
+                                `Seleccionada: ${maqNombre} (${w}×${h}). Pulsa "R" para rotar. Haz clic en la cuadrícula para colocar.`;
+                            renderGhost();
+                            updateGhostColor();
+                        });
+
+                    }
+
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Localización eliminada',
+                        timer: 1200,
+                        showConfirmButton: false
+                    });
+                } catch (err) {
+                    console.error(err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'No se pudo eliminar',
+                        text: 'Inténtalo de nuevo o contacta con soporte.'
+                    });
+                }
+            }, {
+                passive: false
+            });
+
+        })();
+    </script>
 
 </x-app-layout>
