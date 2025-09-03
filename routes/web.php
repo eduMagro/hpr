@@ -105,7 +105,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === LOCALIZACIONES ===
     Route::resource('localizaciones', LocalizacionController::class);
-    // Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])->name('localizaciones.editarMapa');
+    Route::get('/localizaciones/editar-mapa', [LocalizacionController::class, 'editarMapa'])->name('localizaciones.editarMapa');
     Route::post('/localizaciones/verificar', [LocalizacionController::class, 'verificar'])->name('localizaciones.verificar');
 
     Route::post('/localizaciones-paquetes/{codigo}', [PaqueteController::class, 'update'])->name('localizaciones_paquetes.update');

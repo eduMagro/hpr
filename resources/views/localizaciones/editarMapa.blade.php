@@ -2,9 +2,15 @@
     <x-slot name="title">Mapa de Ubicaciones</x-slot>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Editar Localizaciones') }}
+            Editar mapa de {{ $obraActiva->obra ?? 'localizaciones' }}
         </h2>
     </x-slot>
+
+    {{-- Menús de navegación --}}
+    <x-menu.localizaciones.menu-localizaciones-vistas :obra-actual-id="$obraActualId ?? null" route-index="localizaciones.index"
+        route-create="localizaciones.create" />
+
+    <x-menu.localizaciones.menu-localizaciones-naves :obras="$obras" :obra-actual-id="$obraActualId ?? null" />
 
     <div class="h-screen w-screen flex flex-col">
         <div class="p-2 bg-white z-10">
@@ -45,8 +51,18 @@
         }
 
         .preview {
-            background-color: rgba(0, 0, 0, 0.2) !important;
-            outline: 2px dashed black;
+            background-color: rgba(255, 165, 0, 0.28) !important;
+            outline: 2px dashed #f97316;
+        }
+
+        .preview.ok {
+            background-color: rgba(34, 197, 94, 0.25) !important;
+            outline: 2px dashed #22c55e;
+        }
+
+        .preview.bad {
+            background-color: rgba(239, 68, 68, 0.25) !important;
+            outline: 2px dashed #ef4444;
         }
 
         .tipo-material {
@@ -93,6 +109,16 @@
     </style>
 
     <script>
+        // Rutas para verificación
+        window.routes = {
+            verificar: "{{ route('localizaciones.verificar') }}"
+        };
+
+        // Contexto de la nave actual
+        window.context = {
+            nave_id: {{ $obraActualId ?? 'null' }}
+        };
+
         const grid = document.getElementById('grid');
         const posicionActual = document.getElementById('posicionActual');
         const celdas = [];
@@ -157,8 +183,8 @@
         console.log('✅ Celdas creadas:', celdas.length); // Debería ser 22 x 115 = 2530
         console.log('✅ Localizaciones recibidas:', localizaciones);
 
-        // Mostrar sombra en movimiento
-        function mostrarSombra(e) {
+        // Mostrar sombra en movimiento con verificación en tiempo real
+        async function mostrarSombra(e) {
             limpiarSombra();
 
             const target = e.target.closest('.cell');
@@ -170,6 +196,7 @@
             const ancho = localizacionSeleccionada.x2 - localizacionSeleccionada.x1;
             const alto = localizacionSeleccionada.y2 - localizacionSeleccionada.y1;
 
+            // Dibujar la sombra
             for (let dx = 0; dx <= ancho; dx++) {
                 for (let dy = 0; dy <= alto; dy++) {
                     const sombra = celdas.find(c => c.dataset.coord === `${x + dx},${y + dy}`);
@@ -179,14 +206,78 @@
                     }
                 }
             }
+
+            // Verificar si la posición es válida
+            const esValida = await verificarPosicion(x, y, x + ancho, y + alto, localizacionSeleccionada.id);
+
+            // Aplicar clase según validación
+            sombraActual.forEach(cell => {
+                if (esValida) {
+                    cell.classList.add('ok');
+                    cell.classList.remove('bad');
+                } else {
+                    cell.classList.add('bad');
+                    cell.classList.remove('ok');
+                }
+            });
+        }
+
+        // Función para verificar posición con el servidor
+        async function verificarPosicion(x1, y1, x2, y2, excluirId) {
+            try {
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+                const naveId = window.context?.nave_id;
+
+                if (!csrf) {
+                    console.warn('No se encontró el token CSRF');
+                    return false;
+                }
+
+                if (!naveId) {
+                    console.warn('No hay nave_id disponible');
+                    return false;
+                }
+
+                const response = await fetch(window.routes.verificar, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        x1: x1,
+                        y1: y1,
+                        x2: x2,
+                        y2: y2,
+                        nave_id: naveId,
+                        excluir_id: excluirId
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error en verificación:', response.status, errorText);
+                    return false;
+                }
+
+                const data = await response.json();
+                console.log('Respuesta de verificación:', data);
+                return !data.existe; // Si no existe conflicto, es válida
+            } catch (error) {
+                console.error('Error al verificar posición:', error);
+                return false;
+            }
         }
 
         function limpiarSombra() {
-            sombraActual.forEach(cell => cell.classList.remove('preview'));
+            sombraActual.forEach(cell => {
+                cell.classList.remove('preview', 'ok', 'bad');
+            });
             sombraActual = [];
         }
 
-        grid.addEventListener('mouseup', (e) => {
+        grid.addEventListener('mouseup', async (e) => {
             grid.removeEventListener('mousemove', mostrarSombra);
 
             const cell = e.target.closest('.cell');
@@ -202,6 +293,21 @@
             const newY1 = y;
             const newX2 = x + ancho;
             const newY2 = y + alto;
+
+            // Verificar si la posición es válida antes de mostrar el diálogo
+            const esValida = await verificarPosicion(newX1, newY1, newX2, newY2, localizacionSeleccionada.id);
+
+            if (!esValida) {
+                Swal.fire({
+                    title: 'Posición no válida',
+                    text: 'No se puede mover la máquina a esta posición porque hay un conflicto con otra localización.',
+                    icon: 'error',
+                    confirmButtonText: 'Entendido'
+                });
+                limpiarSombra();
+                localizacionSeleccionada = null;
+                return;
+            }
 
             console.log(`📦 Nueva posición: (${newX1}, ${newY1}) → (${newX2}, ${newY2})`);
             Swal.fire({

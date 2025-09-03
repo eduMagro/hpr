@@ -54,17 +54,18 @@ class LocalizacionController extends Controller
                 'label' => optional($loc->maquina)->nombre ?? 'Máquina',
             ];
         })->values()->toArray();
+
         // LOG
         Log::debug('MACHINES payload', [
             'obra_id'   => $obraActiva?->id,
             'count'     => count($machines),
             'sample'    => array_slice($machines, 0, 3),
         ]);
-        // Maquinas de esa obra
+
+        // Maquinas de esa obra (AGREGADO: igual que en create)
         $maquinas = $obraActiva
             ? \App\Models\Maquina::where('obra_id', $obraActiva->id)->get()
             : collect();
-
 
         // Dimensiones de la nave
         $ancho = $obraActiva?->ancho_m ?? 10;
@@ -80,15 +81,36 @@ class LocalizacionController extends Controller
         $sectorSize = 20;
         $numeroSectores = max(1, ceil($largo / $sectorSize));
 
+        // AGREGADO: Localizaciones con relación de máquina (igual que en create)
+        $localizacionesMaquinas = Localizacion::with('maquina:id,nombre')
+            ->whereNotNull('maquina_id')
+            ->where('nave_id', $obraActiva->id)
+            ->get()
+            ->filter(fn($loc) => $loc->maquina)
+            ->map(function ($loc) {
+                return [
+                    'id'         => $loc->id,
+                    'x1'         => $loc->x1,
+                    'y1'         => $loc->y1,
+                    'x2'         => $loc->x2,
+                    'y2'         => $loc->y2,
+                    'tipo'       => $loc->tipo,
+                    'maquina_id' => $loc->maquina_id,
+                    'nombre'     => $loc->maquina->nombre,
+                    'nave_id'    => $loc->nave_id,
+                ];
+            });
+
         return view('localizaciones.index', [
             'localizacionesMaquinas' => $localizacionesMaquinas,
-            'machines'               => $machines, // << pásalo a la vista
-            'maquinas'           => $maquinas,
-            'obras'              => $obras,
-            'obraActualId'       => $obraActualId,
-            'cliente'            => $cliente,
-            'dimensiones'        => $dimensiones,
-            'numeroSectores'     => $numeroSectores,
+            'machines'               => $machines,
+            'maquinas'               => $maquinas,
+            'obras'                  => $obras,
+            'obraActualId'           => $obraActualId,
+            'cliente'                => $cliente,
+            'dimensiones'            => $dimensiones,
+            'numeroSectores'         => $numeroSectores,
+            // AGREGADO: igual que en create
         ]);
     }
 
@@ -102,9 +124,27 @@ class LocalizacionController extends Controller
     //------------------------------------------------------------------------------------ EDITARMAPA()
     public function editarMapa()
     {
-        $localizaciones = Localizacion::all();
+        // Obras del cliente "Hierros Paco Reyes"
+        $obras = Obra::with('cliente')
+            ->whereHas('cliente', function ($query) {
+                $query->where('empresa', 'LIKE', '%hierros paco reyes%');
+            })
+            ->orderBy('obra')
+            ->get();
 
-        return view('localizaciones.editarMapa', compact('localizaciones'));
+        // Obra activa pasada por parámetro ?obra=ID
+        $obraActualId = request('obra');
+        $obraActiva = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+
+        // Cliente (relación desde obra activa)
+        $cliente = $obraActiva?->cliente;
+
+        // Localizaciones de la obra activa
+        $localizaciones = $obraActiva
+            ? Localizacion::where('nave_id', $obraActiva->id)->get()
+            : collect();
+
+        return view('localizaciones.editarMapa', compact('localizaciones', 'obras', 'obraActualId', 'cliente', 'obraActiva'));
     }
     //------------------------------------------------------------------------------------ UPDATE LOCALIZACION()
     public function update(Request $request, $id)
@@ -182,25 +222,42 @@ class LocalizacionController extends Controller
         ];
         // Cliente (relación desde obra activa)
         $cliente = $obraActiva?->cliente;
-        // Localizaciones con relación de máquina (solo id y nombre)
-        $localizaciones = Localizacion::with('maquina:id,nombre') // solo trae lo necesario
-            ->get()
-            ->map(function ($loc) {
-                return [
-                    'x1'         => $loc->x1,
-                    'y1'         => $loc->y1,
-                    'x2'         => $loc->x2,
-                    'y2'         => $loc->y2,
-                    'tipo'       => $loc->tipo,
-                    'maquina_id' => $loc->maquina_id,
-                    'nombre'     => $loc->tipo === 'maquina' && $loc->maquina ? $loc->maquina->nombre : null,
-                    'obra_id'   => $loc->obra_id,
-                ];
-            });
 
-        // Si además necesitas la bandeja de máquinas
-        $maquinas = Maquina::where('obra_id', $obraActiva->id)->select('id', 'nombre', 'ancho_m', 'largo_m')->get();
-        return view('localizaciones.create', compact('localizaciones', 'maquinas', 'obras', 'obraActualId', 'cliente', 'dimensiones'));
+        // Primera variable: Localizaciones CON máquina asignada
+        $localizacionesConMaquina = collect([]);
+        // Segunda variable: (por definir después)
+        $localizacionesTodas = collect([]);
+        $maquinas = collect([]);
+
+        if ($obraActiva) {
+            // 1️⃣ Localizaciones donde maquina_id NO es null, filtradas por nave_id
+            $localizacionesConMaquina = Localizacion::with('maquina:id,nombre')
+                ->whereNotNull('maquina_id')
+                ->where('nave_id', $obraActiva->id) // 👈 filtro por nave_id (clave foránea de obras)
+                ->get()
+                ->filter(fn($loc) => $loc->maquina) // 👈 evita relaciones rotas
+                ->map(function ($loc) {
+                    return [
+                        'id'         => $loc->id,
+                        'x1'         => $loc->x1,
+                        'y1'         => $loc->y1,
+                        'x2'         => $loc->x2,
+                        'y2'         => $loc->y2,
+                        'tipo'       => $loc->tipo,
+                        'maquina_id' => $loc->maquina_id,
+                        'nombre'     => $loc->maquina->nombre,
+                        'nave_id'    => $loc->nave_id,
+                    ];
+                });
+
+            // 2️⃣ Segunda variable (por definir después)
+            // $localizacionesTodas = ...
+
+            // Bandeja de máquinas disponibles
+            $maquinas = Maquina::where('obra_id', $obraActiva->id)->select('id', 'nombre', 'ancho_m', 'largo_m')->get();
+        }
+
+        return view('localizaciones.create', compact('localizacionesConMaquina', 'localizacionesTodas', 'maquinas', 'obras', 'obraActualId', 'cliente', 'dimensiones'));
     }
     //------------------------------------------------------------------------------------ VERIFICAR()
 
@@ -217,6 +274,7 @@ class LocalizacionController extends Controller
             'y1'         => 'required|integer|min:1',
             'x2'         => 'required|integer|min:1',
             'y2'         => 'required|integer|min:1',
+            'maquina_id' => 'nullable|integer|exists:maquinas,id',
             'excluir_id' => 'nullable|integer',
             'nave_id'    => 'required|integer|exists:obras,id', // <-- AJUSTA la tabla si es otra
         ]);
@@ -268,13 +326,30 @@ class LocalizacionController extends Controller
                     'localizacion' => $superpuesta,
                 ]);
             }
+            // 🛑 Evitar duplicado de maquina_id
+            if ($request->filled('maquina_id')) {
+                $yaExiste = Localizacion::where('nave_id', $naveId)
+                    ->where('maquina_id', $request->maquina_id)
+                    ->when($excluirId, fn($q) => $q->where('id', '!=', $excluirId))
+                    ->first();
+
+                if ($yaExiste) {
+                    return response()->json([
+                        'existe' => true,
+                        'tipo'   => 'duplicado_maquina',
+                        'localizacion' => $yaExiste,
+                        'message' => 'Esta máquina ya tiene una ubicación asignada en esta nave.'
+                    ]);
+                }
+            }
 
             return response()->json(['existe' => false]);
-        } catch (\Throwable $e) {
-            Log::error('❌ Error en verificar', ['e' => $e]);
+        } catch (\Exception $e) {
+            Log::error('❌ Error al guardar localización', ['error' => $e->getMessage()]);
             return response()->json([
-                'error'   => true,
-                'message' => 'Error interno en verificación.',
+                'success' => false,
+                'message' => 'Error al guardar la localización.',
+                'error'   => $e->getMessage(), // añade esto si no lo tienes
             ], 500);
         }
     }
@@ -353,12 +428,25 @@ class LocalizacionController extends Controller
     //------------------------------------------------------------------------------------ DESTROY()
     public function destroy($id)
     {
-        $localizacion = \App\Models\Localizacion::findOrFail($id);
+        try {
+            $localizacion = \App\Models\Localizacion::findOrFail($id);
 
-        $localizacion->delete();
+            $localizacion->delete();
 
-        return response()->json([
-            'message' => 'Localización eliminada correctamente.'
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Localización eliminada correctamente.'
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La localización no existe.'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la localización: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }
