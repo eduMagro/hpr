@@ -198,67 +198,126 @@ class LocalizacionController extends Controller
 
 
     //------------------------------------------------------------------------------------ CREATE()
+    //------------------------------------------------------------------------------------ CREATE()
     public function create()
     {
-
-        // Obras del cliente "Hierros Paco Reyes"
+        // 📌 Obras del cliente "Hierros Paco Reyes"
         $obras = Obra::with('cliente')
-            ->whereHas('cliente', function ($query) {
-                $query->where('empresa', 'LIKE', '%hierros paco reyes%');
-            })
+            ->whereHas('cliente', fn($q) => $q->where('empresa', 'LIKE', '%hierros paco reyes%'))
             ->orderBy('obra')
             ->get();
 
-        // Obra activa pasada por parámetro ?obra=ID
+        // 📌 Obra activa
         $obraActualId = request('obra');
-        $obraActiva = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
-        // Dimensiones de la nave
-        $ancho = $obraActiva?->ancho_m ?? 10;
-        $largo = $obraActiva?->largo_m ?? 10;
-        $dimensiones = [
-            'ancho' => $ancho,
-            'alto'  => $largo,
-            'obra'  => $obraActiva?->obra,
-        ];
-        // Cliente (relación desde obra activa)
-        $cliente = $obraActiva?->cliente;
+        $obraActiva   = $obras->firstWhere('id', $obraActualId) ?? $obras->first();
+        $cliente      = $obraActiva?->cliente;
 
-        // Primera variable: Localizaciones CON máquina asignada
-        $localizacionesConMaquina = collect([]);
-        // Segunda variable: (por definir después)
-        $localizacionesTodas = collect([]);
-        $maquinas = collect([]);
+        // 📌 Dimensiones nave (m)
+        $anchoM = max(1, (int) ($obraActiva->ancho_m ?? 22));
+        $largoM = max(1, (int) ($obraActiva->largo_m ?? 115));
+
+        // 📌 Grid real (celdas de 0,5 m)
+        $columnasReales = $anchoM * 2;
+        $filasReales    = $largoM * 2;
+
+        // 📌 Vista: lado más largo en horizontal
+        $estaGirado     = $filasReales > $columnasReales;
+        $columnasVista  = $estaGirado ? $filasReales   : $columnasReales;
+        $filasVista     = $estaGirado ? $columnasReales : $filasReales;
+
+        // 📌 Localizaciones con máquina (para pintar ocupadas)
+        $localizacionesConMaquina = collect();
+        $ocupadas                 = [];
+        $localizacionesTodas      = collect();
+        $maquinasDisponibles      = collect();
 
         if ($obraActiva) {
-            // 1️⃣ Localizaciones donde maquina_id NO es null, filtradas por nave_id
-            $localizacionesConMaquina = Localizacion::with('maquina:id,nombre')
+            $localizaciones = Localizacion::with('maquina:id,nombre')
+                ->where('nave_id', $obraActiva->id)
+                ->get();
+
+            // Solo con maquina válida
+            $localizacionesConMaquina = $localizaciones
                 ->whereNotNull('maquina_id')
-                ->where('nave_id', $obraActiva->id) // 👈 filtro por nave_id (clave foránea de obras)
-                ->get()
-                ->filter(fn($loc) => $loc->maquina) // 👈 evita relaciones rotas
-                ->map(function ($loc) {
+                ->filter(fn($l) => $l->maquina)
+                ->values()
+                ->map(function ($l) {
                     return [
-                        'id'         => $loc->id,
-                        'x1'         => $loc->x1,
-                        'y1'         => $loc->y1,
-                        'x2'         => $loc->x2,
-                        'y2'         => $loc->y2,
-                        'tipo'       => $loc->tipo,
-                        'maquina_id' => $loc->maquina_id,
-                        'nombre'     => $loc->maquina->nombre,
-                        'nave_id'    => $loc->nave_id,
+                        'id'         => (int) $l->id,
+                        'x1'         => (int) $l->x1,
+                        'y1'         => (int) $l->y1,
+                        'x2'         => (int) $l->x2,
+                        'y2'         => (int) $l->y2,
+                        'tipo'       => (string) $l->tipo,
+                        'maquina_id' => (int) $l->maquina_id,
+                        'nombre'     => (string) $l->maquina->nombre,
+                        'nave_id'    => (int) $l->nave_id,
                     ];
                 });
 
-            // 2️⃣ Segunda variable (por definir después)
-            // $localizacionesTodas = ...
+            // Array simple para colisiones
+            $ocupadas = $localizacionesConMaquina->map(fn($l) => [
+                'x1' => (int) $l['x1'],
+                'y1' => (int) $l['y1'],
+                'x2' => (int) $l['x2'],
+                'y2' => (int) $l['y2'],
+            ])->values()->all();
 
-            // Bandeja de máquinas disponibles
-            $maquinas = Maquina::where('obra_id', $obraActiva->id)->select('id', 'nombre', 'ancho_m', 'largo_m')->get();
+            $localizacionesTodas = $localizaciones;
+
+            // 📌 Máquinas de esta obra como fichas con tamaño en celdas
+            $maquinasDisponibles = Maquina::where('obra_id', $obraActiva->id)
+                ->select('id', 'nombre', 'ancho_m', 'largo_m')
+                ->get()
+                ->map(function ($m) {
+                    $wCeldas = max(1, (int) round(($m->ancho_m ?? 1) * 2));
+                    $hCeldas = max(1, (int) round(($m->largo_m ?? 1) * 2));
+                    return [
+                        'id'      => (int) $m->id,
+                        'nombre'  => (string) $m->nombre,
+                        'wCeldas' => $wCeldas,
+                        'hCeldas' => $hCeldas,
+                    ];
+                })->values();
         }
 
-        return view('localizaciones.create', compact('localizacionesConMaquina', 'localizacionesTodas', 'maquinas', 'obras', 'obraActualId', 'cliente', 'dimensiones'));
+        // 📌 Texto cabecera
+        $dimensiones = [
+            'ancho' => $anchoM,
+            'largo' => $largoM,
+            'obra'  => $obraActiva?->obra,
+        ];
+
+        // 📌 Contexto para JS (solo datos simples)
+        $ctx = [
+            'naveId'         => (int) $obraActiva->id,
+            'columnasVista'  => (int) $columnasVista,
+            'filasVista'     => (int) $filasVista,
+            'columnasReales' => (int) $columnasReales,
+            'filasReales'    => (int) $filasReales,
+            'estaGirado'     => (bool) $estaGirado,
+            'ocupadas'       => $ocupadas,
+            'storeUrl'       => route('localizaciones.store'),
+        ];
+
+        return view('localizaciones.create', compact(
+            'obras',
+            'obraActualId',
+            'obraActiva',
+            'cliente',
+            'dimensiones',
+            'columnasReales',
+            'filasReales',
+            'columnasVista',
+            'filasVista',
+            'estaGirado',
+            'localizacionesConMaquina',
+            'localizacionesTodas',
+            'maquinasDisponibles',
+            'ctx'
+        ));
     }
+
     //------------------------------------------------------------------------------------ VERIFICAR()
 
     public function verificar(Request $request)
