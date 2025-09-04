@@ -423,216 +423,92 @@
         });
         // ---------------------------------------------------- REGISTRAR FICHAJE
         function registrarFichaje(tipo) {
-            const boton = event?.currentTarget;
-            const textoOriginal = boton?.querySelector('.texto')?.textContent ?? 'Fichar';
+            const boton = event.currentTarget;
+            const textoOriginal = boton.querySelector('.texto').textContent;
 
-            const bloquearBtn = () => {
-                if (!boton) return;
-                boton.disabled = true;
-                boton.querySelector('.texto')?.textContent = 'Buscando ubicación precisa…';
-                boton.classList.add('opacity-50', 'cursor-not-allowed');
-            };
-            const desbloquearBtn = () => {
-                if (!boton) return;
-                boton.disabled = false;
-                boton.querySelector('.texto')?.textContent = textoOriginal;
-                boton.classList.remove('opacity-50', 'cursor-not-allowed');
-            };
+            boton.disabled = true;
+            boton.querySelector('.texto').textContent = 'Obteniendo ubicación…';
+            boton.classList.add('opacity-50', 'cursor-not-allowed');
 
-            if (!('geolocation' in navigator)) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Sin geolocalización',
-                    text: 'Tu dispositivo/navegador no soporta GPS.'
-                });
-                return;
-            }
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const latitud = position.coords.latitude;
+                    const longitud = position.coords.longitude;
 
-            bloquearBtn();
-
-            const UMBRAL_BUENO_M = 5; // 🎯 Apunta a 5 m (ajústalo a 3–8 según tu realidad)
-            const VENTANA_MS = 12000; // ⏱️ Ventana para mejorar (12 s)
-            const MAX_FIXES = 12; // cuántos fixes como máximo guardamos
-            const MIN_FIXES = 3; // mínimo para promediar bien
-
-            let watchId = null;
-            let fixes = []; // {lat, lon, acc}
-
-            const clear = () => {
-                if (watchId !== null) {
-                    navigator.geolocation.clearWatch(watchId);
-                    watchId = null;
-                }
-            };
-
-            const haversine = (lat1, lon1, lat2, lon2) => {
-                const R = 6371000;
-                const toRad = d => d * Math.PI / 180;
-                const dLat = toRad(lat2 - lat1);
-                const dLon = toRad(lon2 - lon1);
-                const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon /
-                    2) ** 2;
-                return 2 * R * Math.asin(Math.sqrt(a));
-            };
-
-            const weightedAverage = (pts) => {
-                // Peso = 1/acc^2; devolver {lat, lon, accEstimada}
-                let sw = 0,
-                    slat = 0,
-                    slon = 0;
-                pts.forEach(p => {
-                    const acc = Math.max(1, p.acc); // evita división por 0
-                    const w = 1 / (acc * acc);
-                    sw += w;
-                    slat += w * p.lat;
-                    slon += w * p.lon;
-                });
-                const lat = slat / sw;
-                const lon = slon / sw;
-                // Aproximación de precisión combinada: ~ sqrt(1/sum(w))
-                const accEstimada = Math.sqrt(1 / sw);
-                return {
-                    lat,
-                    lon,
-                    acc: accEstimada
-                };
-            };
-
-            const confirmarYEnviar = async (best) => {
-                const textoPrecision = Number.isFinite(best.acc) ? `±${Math.round(best.acc)} m` : 'N/D';
-                const r = await Swal.fire({
-                    title: 'Confirmar Fichaje',
-                    html: `¿Quieres registrar una <b>${tipo}</b>?<br>📍 Precisión estimada: <b>${textoPrecision}</b>`,
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, fichar',
-                    cancelButtonText: 'Cancelar'
-                });
-                if (!r.isConfirmed) {
-                    desbloquearBtn();
-                    return;
-                }
-
-                fetch("{{ url('/fichar') }}", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                        },
-                        body: JSON.stringify({
-                            user_id: "{{ auth()->id() }}",
-                            tipo,
-                            latitud: best.lat,
-                            longitud: best.lon,
-                            precision: best.acc
-                        })
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data?.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: data.success,
-                                text: data.obra_nombre ?
-                                    `📍 Lugar: ${data.obra_nombre} (${textoPrecision})` :
-                                    `Precisión: ${textoPrecision}`,
-                                showConfirmButton: false,
-                                timer: 3000
-                            });
-                        } else {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Error',
-                                text: data?.error || 'No se pudo registrar el fichaje.'
-                            });
+                    // Ya tenemos coordenadas rápidas
+                    Swal.fire({
+                        title: 'Confirmar Fichaje',
+                        text: `¿Quieres registrar una ${tipo}?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Sí, fichar',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            fetch("{{ url('/fichar') }}", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                                    },
+                                    body: JSON.stringify({
+                                        user_id: "{{ auth()->id() }}",
+                                        tipo: tipo,
+                                        latitud: latitud,
+                                        longitud: longitud,
+                                    })
+                                })
+                                .then(r => r.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: data.success,
+                                            text: `📍 Lugar: ${data.obra_nombre}`,
+                                            showConfirmButton: false,
+                                            timer: 3000
+                                        });
+                                    } else {
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Error',
+                                            text: data.error
+                                        });
+                                    }
+                                })
+                                .catch(err => {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: 'No se pudo comunicar con el servidor'
+                                    });
+                                });
                         }
-                    })
-                    .catch(() => Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo comunicar con el servidor.'
-                    }))
-                    .finally(() => desbloquearBtn());
-            };
+                    });
 
-            // Arrancamos el watch
-            try {
-                watchId = navigator.geolocation.watchPosition(
-                    (pos) => {
-                        if (typeof pos.coords.accuracy !== 'number') return;
-                        const fix = {
-                            lat: pos.coords.latitude,
-                            lon: pos.coords.longitude,
-                            acc: pos.coords.accuracy
-                        };
-
-                        // Filtro rápido de outliers: si ya tenemos fixes, descartar si se va > 50 m del promedio actual
-                        if (fixes.length >= 2) {
-                            const current = weightedAverage(fixes);
-                            const d = haversine(current.lat, current.lon, fix.lat, fix.lon);
-                            if (d > 50 && fix.acc > 30) {
-                                // outlier probable, lo saltamos
-                            } else {
-                                fixes.push(fix);
-                            }
-                        } else {
-                            fixes.push(fix);
-                        }
-
-                        if (fixes.length > MAX_FIXES) fixes.shift();
-
-                        // Si ya tenemos un fix MUY bueno, cortamos ya
-                        if (fix.acc <= UMBRAL_BUENO_M && fixes.length >= MIN_FIXES) {
-                            clear();
-                            const best = weightedAverage(fixes);
-                            confirmarYEnviar(best);
-                        }
-                    },
-                    (error) => {
-                        clear();
-                        desbloquearBtn();
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error de ubicación',
-                            text: error.message || 'No se pudo obtener tu ubicación.'
-                        });
-                    }, {
-                        enableHighAccuracy: true,
-                        maximumAge: 0,
-                        timeout: 20000
-                    }
-                );
-            } catch (e) {
-                clear();
-                desbloquearBtn();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo iniciar el GPS.'
-                });
-                return;
-            }
-
-            // Al acabar la ventana, promediamos lo mejor que haya
-            setTimeout(() => {
-                clear();
-                if (fixes.length === 0) {
-                    desbloquearBtn();
+                    boton.disabled = false;
+                    boton.querySelector('.texto').textContent = textoOriginal;
+                    boton.classList.remove('opacity-50', 'cursor-not-allowed');
+                },
+                function(error) {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Sin señal',
-                        text: 'Activa GPS y Wi-Fi y vuelve a intentarlo cerca de una ventana.'
+                        title: 'Error de ubicación',
+                        text: `${error.message}`
                     });
-                    return;
+                    boton.disabled = false;
+                    boton.querySelector('.texto').textContent = textoOriginal;
+                    boton.classList.remove('opacity-50', 'cursor-not-allowed');
+                }, {
+                    enableHighAccuracy: false, // 💡 más rápido
+                    timeout: 8000, // 💡 máximo 8 segundos
+                    maximumAge: 60000 // 💡 usar cache si tiene <1 min
                 }
-                // (Opcional) recorte final de outliers respecto al centro
-                const pre = weightedAverage(fixes);
-                const depurados = fixes.filter(f => haversine(pre.lat, pre.lon, f.lat, f.lon) <= Math.max(30, 3 *
-                    pre.acc));
-                const best = weightedAverage(depurados.length >= MIN_FIXES ? depurados : fixes);
-                confirmarYEnviar(best);
-            }, VENTANA_MS);
+            );
         }
+
 
         function guardarCambios(usuario) {
             fetch(`{{ route('usuarios.updateActualizar', '') }}/${usuario.id}`, {
