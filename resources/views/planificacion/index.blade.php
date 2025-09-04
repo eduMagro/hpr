@@ -28,6 +28,21 @@
 
                 </div>
 
+                <!-- Filtros de tipo de evento -->
+                <div class="flex items-center gap-3">
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="solo-salidas"
+                            class="rounded border-gray-300 text-green-600 focus:ring-green-500" />
+                        <label for="solo-salidas" class="text-sm text-gray-700 cursor-pointer">Solo salidas</label>
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="solo-planillas"
+                            class="rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
+                        <label for="solo-planillas" class="text-sm text-gray-700 cursor-pointer">Solo planillas y
+                            resúmenes</label>
+                    </div>
+                </div>
+
                 <!-- Resumen Semanal -->
                 <div class="max-w-sm bg-blue-50 border border-blue-200 rounded-md p-3 shadow-sm text-sm">
 
@@ -90,6 +105,11 @@
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script src="https://unpkg.com/tippy.js@6"></script>
     <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
+    <!-- Primero los helpers -->
+    <script src="{{ asset('js/utils/global-fechas.js') }}"></script>
+
+    <!-- Después el calendario que los usa -->
+    <script src="{{ asset('js/modules/calendario-salidas/calendario-menu.js') }}"></script>
 
     {{-- Tu config global ANTES de @vite --}}
     <script>

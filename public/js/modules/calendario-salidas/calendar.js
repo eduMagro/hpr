@@ -178,49 +178,53 @@ export function crearCalendario() {
                 const p = arg.event.extendedProps || {};
 
                 let html = `
-        <div style="background-color:${bg}; color:#fff;" class="rounded p-4 text-sm leading-snug font-medium space-y-1">
-            <div class="text-sm text-black font-semibold mb-2">${arg.event.title}</div>
+        <div style="background-color:${bg}; color:#000;" class="rounded p-3 text-sm leading-snug font-medium space-y-1">
+            <div class="text-sm text-black font-semibold mb-1">${arg.event.title}</div>
     `;
 
                 if (p.tipo === "planilla") {
-                    html += `<table class="w-full text-sm font-normal">`;
+                    // Línea compacta: peso, longitud, diámetro
+                    const peso =
+                        p.pesoTotal != null
+                            ? `📦 ${Number(p.pesoTotal).toLocaleString(
+                                  undefined,
+                                  {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                  }
+                              )} kg`
+                            : null;
 
-                    if (p.pesoTotal != null || p.longitudTotal != null) {
-                        html += `<tr class="py-2">`;
-                        if (p.pesoTotal != null) {
-                            html += `<td class="pr-4 py-2"><span class="text-base font-semibold">${Number(
-                                p.pesoTotal
-                            ).toLocaleString()} kg</span></td>`;
-                        }
-                        if (p.longitudTotal != null) {
-                            html += `<td class="py-2"><span class="text-base font-semibold">${Number(
-                                p.longitudTotal
-                            ).toLocaleString()} m</span></td>`;
-                        }
-                        html += `</tr>`;
+                    const longitud =
+                        p.longitudTotal != null
+                            ? `📏 ${Number(p.longitudTotal).toLocaleString()} m`
+                            : null;
+
+                    const diametro =
+                        p.diametroMedio != null
+                            ? `⌀ ${Number(p.diametroMedio).toFixed(2)} mm`
+                            : null;
+
+                    const partes = [peso, longitud, diametro].filter(Boolean);
+                    if (partes.length > 0) {
+                        html += `<div class="text-sm text-black font-semibold">${partes.join(
+                            " | "
+                        )}</div>`;
                     }
 
+                    // Bloque de salidas (si existen)
                     if (
-                        p.diametroMedio != null ||
-                        (p.tieneSalidas &&
-                            Array.isArray(p.salidas_codigos) &&
-                            p.salidas_codigos.length > 0)
+                        p.tieneSalidas &&
+                        Array.isArray(p.salidas_codigos) &&
+                        p.salidas_codigos.length > 0
                     ) {
-                        html += `<tr class="py-1">`;
-                        if (p.diametroMedio != null) {
-                            html += `<td class="pr-4 py-2">⌀ <span class="text-base font-semibold">${p.diametroMedio} mm</span></td>`;
-                        }
-                        if (p.salidas_codigos.length > 0) {
-                            html += `<td class="py-2">
-                    <span class="text-black bg-yellow-400 rounded px-2 py-1 inline-block text-xs font-semibold">
-                        Salidas: ${p.salidas_codigos.join(", ")}
-                    </span>
-                </td>`;
-                        }
-                        html += `</tr>`;
+                        html += `
+            <div class="mt-2">
+                <span class="text-black bg-yellow-400 rounded px-2 py-1 inline-block text-xs font-semibold">
+                    Salidas: ${p.salidas_codigos.join(", ")}
+                </span>
+            </div>`;
                     }
-
-                    html += `</table>`;
                 }
 
                 html += `</div>`;
@@ -314,8 +318,13 @@ export function crearCalendario() {
                         return r.json();
                     })
                     .then(() => {
-                        // calendar.refetchEvents();
-                        // calendar.refetchResources();
+                        calendar.refetchEvents();
+                        calendar.refetchResources();
+                        // ✅ actualiza totales sin recargar nada
+                        const nuevaFecha = info.event.start;
+                        const fechaISO = nuevaFecha.toISOString().split("T")[0];
+                        actualizarTotales(fechaISO);
+
                         /* ▼ asegurar que se vea al terminar */
                         safeUpdateSize();
                     })

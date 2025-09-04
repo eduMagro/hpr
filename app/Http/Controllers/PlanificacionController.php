@@ -37,15 +37,16 @@ class PlanificacionController extends Controller
                 // Orden por tipo: planilla (0), salida (1), resumen (2), festivo (3)
                 fn($e) => match ($e['tipo'] ?? $e['extendedProps']['tipo'] ?? '') {
                     'planilla' => 0,
-                    'salida' => 1,
-                    'resumen' => 2,
-                    'festivo' => 3,
-                    default => 99,
+                    'salida'   => 1,
+                    'resumen'  => 2,
+                    'festivo'  => 3,
+                    default    => 99,
                 },
-                // Orden secundario: por cod_obra si existe
-                fn($e) => $e['extendedProps']['cod_obra'] ?? '',
+                // Orden secundario: por cod_obra como número
+                fn($e) => (int) ($e['extendedProps']['cod_obra'] ?? 0),
             ])
             ->values();
+
 
         // Resources
         $resources = $this->getResources($eventos);

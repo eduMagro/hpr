@@ -102,6 +102,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const hoyISO = (saved || new Date().toISOString()).split("T")[0];
     actualizarTotales(hoyISO);
 
+    // Restaurar estado de los checkboxes desde localStorage
+    const soloSalidasGuardado = localStorage.getItem("soloSalidas") === "true";
+    const soloPlanillasGuardado =
+        localStorage.getItem("soloPlanillas") === "true";
+
+    const checkboxSoloSalidas = document.getElementById("solo-salidas");
+    const checkboxSoloPlanillas = document.getElementById("solo-planillas");
+
+    if (checkboxSoloSalidas) {
+        checkboxSoloSalidas.checked = soloSalidasGuardado;
+    }
+    if (checkboxSoloPlanillas) {
+        checkboxSoloPlanillas.checked = soloPlanillasGuardado;
+    }
+
     // Filtros
     const filtroCodigo = document.getElementById("filtro-obra");
     const filtroNombre = document.getElementById("filtro-nombre-obra");
@@ -110,6 +125,16 @@ document.addEventListener("DOMContentLoaded", () => {
     btnReset?.addEventListener("click", () => {
         if (filtroCodigo) filtroCodigo.value = "";
         if (filtroNombre) filtroNombre.value = "";
+        if (checkboxSoloSalidas) {
+            checkboxSoloSalidas.checked = false;
+            localStorage.setItem("soloSalidas", "false");
+        }
+        if (checkboxSoloPlanillas) {
+            checkboxSoloPlanillas.checked = false;
+            localStorage.setItem("soloPlanillas", "false");
+        }
+        // Actualizar estilos
+        actualizarEstilosContenedores();
         calendar.refetchEvents();
     });
 
@@ -127,6 +152,60 @@ document.addEventListener("DOMContentLoaded", () => {
 
     filtroCodigo?.addEventListener("input", refiltrar);
     filtroNombre?.addEventListener("input", refiltrar);
+
+    // Función para actualizar estilos de contenedores
+    function actualizarEstilosContenedores() {
+        const contenedorSalidas = checkboxSoloSalidas?.closest(
+            ".checkbox-container"
+        );
+        const contenedorPlanillas = checkboxSoloPlanillas?.closest(
+            ".checkbox-container"
+        );
+
+        // Remover todas las clases activas
+        contenedorSalidas?.classList.remove("active-salidas");
+        contenedorPlanillas?.classList.remove("active-planillas");
+
+        // Agregar clase activa según el estado
+        if (checkboxSoloSalidas?.checked) {
+            contenedorSalidas?.classList.add("active-salidas");
+        }
+        if (checkboxSoloPlanillas?.checked) {
+            contenedorPlanillas?.classList.add("active-planillas");
+        }
+    }
+
+    // Event listeners para los checkboxes de tipo de evento (mutuamente excluyentes)
+    checkboxSoloSalidas?.addEventListener("change", (e) => {
+        if (e.target.checked && checkboxSoloPlanillas) {
+            // Si se marca "Solo salidas", desmarcar "Solo planillas"
+            checkboxSoloPlanillas.checked = false;
+            localStorage.setItem("soloPlanillas", "false");
+        }
+        // Guardar estado en localStorage
+        localStorage.setItem("soloSalidas", e.target.checked.toString());
+        // Actualizar estilos
+        actualizarEstilosContenedores();
+        // Refrescar eventos del calendario
+        calendar.refetchEvents();
+    });
+
+    checkboxSoloPlanillas?.addEventListener("change", (e) => {
+        if (e.target.checked && checkboxSoloSalidas) {
+            // Si se marca "Solo planillas", desmarcar "Solo salidas"
+            checkboxSoloSalidas.checked = false;
+            localStorage.setItem("soloSalidas", "false");
+        }
+        // Guardar estado en localStorage
+        localStorage.setItem("soloPlanillas", e.target.checked.toString());
+        // Actualizar estilos
+        actualizarEstilosContenedores();
+        // Refrescar eventos del calendario
+        calendar.refetchEvents();
+    });
+
+    // Aplicar estilos iniciales
+    actualizarEstilosContenedores();
 
     btnLimpiar?.addEventListener("click", () => {
         if (filtroCodigo) filtroCodigo.value = "";

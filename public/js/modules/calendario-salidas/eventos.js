@@ -16,11 +16,34 @@ export async function dataEvents(viewType, info) {
             return [];
         }
         const data = await res.json();
-        return Array.isArray(data)
+        let eventos = Array.isArray(data)
             ? data
             : Array.isArray(data?.events)
             ? data.events
             : [];
+
+        // Filtrar eventos según los checkboxes de tipo
+        const soloSalidas =
+            document.getElementById("solo-salidas")?.checked || false;
+        const soloPlanillas =
+            document.getElementById("solo-planillas")?.checked || false;
+
+        if (soloSalidas && !soloPlanillas) {
+            // Mostrar solo eventos de salidas
+            eventos = eventos.filter((evento) => {
+                const tipo = evento.extendedProps?.tipo;
+                return tipo === "salida";
+            });
+        } else if (soloPlanillas && !soloSalidas) {
+            // Mostrar solo planillas, festivos y resúmenes
+            eventos = eventos.filter((evento) => {
+                const tipo = evento.extendedProps?.tipo;
+                return tipo === "planilla" || tipo === "festivo" || !tipo; // !tipo para resúmenes sin tipo específico
+            });
+        }
+        // Si ambos están marcados o ninguno está marcado, mostrar todos los eventos
+
+        return eventos;
     } catch (err) {
         console.error("fetch eventos falló:", err);
         return [];

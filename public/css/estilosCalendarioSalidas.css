@@ -75,21 +75,201 @@
     pointer-events: none;
 } /* bloquea clicks/hover */
 
-.evento-filtrado > div {
-    background: linear-gradient(90deg, #89b9f7 0%, #9cd3f8 100%) !important;
-    animation: pulso-borde 2s ease-in-out infinite;
-    font-weight: bold;
-    border-radius: 4px;
+/* 🔹 Baja los background-events para que no tapen */
+.fc .fc-bg-event {
+    z-index: 0 !important;
 }
 
-@keyframes pulso-borde {
+/* 🔹 Asegura los eventos normales por encima */
+.fc .fc-event {
+    z-index: 1;
+}
+
+/* 🔹 Eventos filtrados destacados */
+.fc .fc-event.evento-filtrado {
+    position: relative;
+    isolation: isolate; /* nuevo stacking context */
+    z-index: 900 !important;
+
+    /* Gradiente elegante de fondo */
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+
+    /* Sombra elegante con múltiples capas */
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4),
+        0 2px 8px rgba(118, 75, 162, 0.3), 0 0 0 2px rgba(255, 255, 255, 0.8),
+        0 0 0 4px rgba(102, 126, 234, 0.5);
+
+    /* Sin transformación inicial - la animación se encarga */
+    transform: scale(1);
+
+    /* Transición suave */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Bordes redondeados */
+    border-radius: 6px !important;
+
+    /* Animación de pulso exagerado más rápida */
+    animation: pulso-elegante 1.5s ease-in-out infinite;
+}
+
+/* 🔹 Efecto hover para eventos filtrados */
+.fc .fc-event.evento-filtrado:hover {
+    /* Gradiente más intenso en hover */
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%) !important;
+
+    /* Sombra más pronunciada */
+    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.8),
+        0 8px 25px rgba(118, 75, 162, 0.6), 0 0 0 4px rgba(255, 255, 255, 1),
+        0 0 0 10px rgba(102, 126, 234, 0.8);
+
+    /* Escala mucho mayor en hover */
+    transform: scale(1.2);
+
+    /* Pausa la animación en hover */
+    animation-play-state: paused;
+}
+
+/* 🔹 Evita que se recorten bordes/sombras */
+.fc .fc-timegrid-event,
+.fc .fc-daygrid-event {
+    overflow: visible;
+}
+
+.fc .fc-event .fc-event-main {
+    position: relative;
+    z-index: 2;
+}
+
+/* 🔹 Animación de pulso exagerado */
+@keyframes pulso-elegante {
     0% {
-        box-shadow: 0 0 0 rgba(37, 99, 235, 0.2);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4),
+            0 2px 8px rgba(118, 75, 162, 0.3),
+            0 0 0 2px rgba(255, 255, 255, 0.8),
+            0 0 0 4px rgba(102, 126, 234, 0.5);
+        transform: scale(1);
     }
     50% {
-        box-shadow: 0 0 10px rgba(37, 99, 235, 0.6);
+        box-shadow: 0 12px 30px rgba(102, 126, 234, 0.8),
+            0 8px 20px rgba(118, 75, 162, 0.6), 0 0 0 3px rgba(255, 255, 255, 1),
+            0 0 0 8px rgba(102, 126, 234, 0.9);
+        transform: scale(1.15);
     }
     100% {
-        box-shadow: 0 0 0 rgba(37, 99, 235, 0.2);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4),
+            0 2px 8px rgba(118, 75, 162, 0.3),
+            0 0 0 2px rgba(255, 255, 255, 0.8),
+            0 0 0 4px rgba(102, 126, 234, 0.5);
+        transform: scale(1);
     }
+}
+
+/* 🔹 Brillo sutil con pseudo-elemento */
+.fc .fc-event.evento-filtrado::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.2) 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0.05) 100%
+    );
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* 🔹 Contenido del evento por encima del brillo */
+.fc .fc-event.evento-filtrado .fc-event-main,
+.fc .fc-event.evento-filtrado .fc-event-title,
+.fc .fc-event.evento-filtrado .fc-event-time {
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+}
+
+/* 🔹 Mejora la legibilidad de todo el contenido del evento filtrado */
+.fc .fc-event.evento-filtrado * {
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 🔹 Estilos para los checkboxes de filtro de tipo */
+#solo-salidas,
+#solo-planillas {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#solo-salidas:checked {
+    background-color: #10b981;
+    border-color: #10b981;
+}
+
+#solo-salidas:focus {
+    ring: 2px;
+    ring-color: #10b981;
+    ring-opacity: 0.5;
+}
+
+#solo-planillas:checked {
+    background-color: #8b5cf6;
+    border-color: #8b5cf6;
+}
+
+#solo-planillas:focus {
+    ring: 2px;
+    ring-color: #8b5cf6;
+    ring-opacity: 0.5;
+}
+
+/* Contenedor del checkbox para mejor alineación */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.checkbox-container:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+/* Estilos especiales cuando los checkboxes están activos */
+.checkbox-container:has(#solo-salidas:checked) {
+    background: #ecfdf5;
+    border-color: #10b981;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.1);
+}
+
+.checkbox-container:has(#solo-planillas:checked) {
+    background: #f3f4f6;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.1);
+}
+
+/* Fallback para navegadores que no soportan :has() */
+.checkbox-container.active-salidas {
+    background: #ecfdf5;
+    border-color: #10b981;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.1);
+}
+
+.checkbox-container.active-planillas {
+    background: #f3f4f6;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.1);
 }

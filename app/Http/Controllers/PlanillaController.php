@@ -1471,7 +1471,6 @@ class PlanillaController extends Controller
                 'fecha_finalizacion'     => 'nullable|date_format:d/m/Y H:i',
                 'fecha_estimada_entrega' => 'nullable|date_format:d/m/Y H:i',
                 'fecha_importacion'      => 'nullable|date_format:d/m/Y',
-
                 'usuario'                => 'nullable|string|max:100'
             ], [
                 'codigo.required'     => 'El campo Código es obligatorio.',
@@ -1667,8 +1666,6 @@ class PlanillaController extends Controller
                 ->map(fn($x) => (int) trim($x))
                 ->filter();
 
-            Log::info('[informacionMasiva] ids=', $ids->toArray());
-
             if ($ids->isEmpty()) {
                 return response()->json(['planillas' => []]);
             }
@@ -1676,7 +1673,7 @@ class PlanillaController extends Controller
             // No incluimos codigo_limpio en el select porque es un accessor
             $planillas = Planilla::query()
                 ->whereIn('id', $ids->all())
-                ->select(['id', 'codigo', 'fecha_estimada_entrega', 'obra_id'])
+                ->select(['id', 'codigo', 'fecha_estimada_entrega', 'obra_id', 'seccion', 'descripcion', 'peso_total'])
                 ->with(['obra:id,cod_obra,obra'])
                 ->get();
 
@@ -1685,7 +1682,9 @@ class PlanillaController extends Controller
                 $fecha = null;
                 if (!empty($p->fecha_estimada_entrega)) {
                     try {
-                        $fecha = \Carbon\Carbon::parse($p->fecha_estimada_entrega)->format('Y-m-d');
+                        // Forzar interpretación como DD/MM/YYYY en lugar de MM/DD/YYYY
+                        $carbon = \Carbon\Carbon::createFromFormat('d/m/Y H:i', $p->fecha_estimada_entrega);
+                        $fecha = $carbon->format('Y-m-d');
                     } catch (\Throwable $e) {
                         // deja null si no se puede parsear
                     }
@@ -1706,6 +1705,9 @@ class PlanillaController extends Controller
                     'codigo'                     => $p->codigo_limpio ?? ('Planilla ' . $p->id),
                     'fecha_estimada_entrega'     => $fecha,
                     'obra'                       => $obra,
+                    'seccion'                    => $p->seccion ?? null,
+                    'descripcion'                => $p->descripcion ?? null,
+                    'peso_total'                 => $p->peso_total ?? null,
                 ];
             });
 

@@ -1,5 +1,26 @@
 // calendario-menu.js
 import { openActionsMenu, closeMenu } from "./menuContextual.js";
+/* ===================== Helpers de fecha (locales) ===================== */
+
+/**
+ * Convierte fecha ISO (YYYY-MM-DD) para input type="date"
+ * @param {string} str - Fecha en formato ISO
+ * @returns {string} - Fecha en formato YYYY-MM-DD para input date
+ */
+function toISO(str) {
+    if (!str || typeof str !== "string") return "";
+
+    // Si ya está en formato ISO (YYYY-MM-DD), devolverla tal como está
+    const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s|T|$)/);
+    if (isoMatch) {
+        const year = isoMatch[1];
+        const month = isoMatch[2].padStart(2, "0");
+        const day = isoMatch[3].padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    return str; // Si no coincide, devolver tal como está
+}
 
 /* ===================== Animaciones SweetAlert (una vez) ===================== */
 /* FIX: la animación incluye translate(-50%,-50%) para no romper el centrado */
@@ -28,6 +49,56 @@ import { openActionsMenu, closeMenu } from "./menuContextual.js";
   }
 
   @keyframes swalRowIn { to { opacity: 1; transform: none; } }
+  
+  /* Estilos para fines de semana en input type="date" */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+  
+  /* Estilo personalizado para inputs de fecha en fines de semana */
+  .weekend-date {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    color: #dc2626 !important;
+  }
+  
+  .weekend-date:focus {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+  }
+  
+  /* Estilos para celdas de fin de semana en el calendario */
+  .fc-day-sat,
+  .fc-day-sun {
+    background-color: rgba(239, 68, 68, 0.05) !important;
+  }
+  
+  /* Estilos para el encabezado de días de fin de semana */
+  .fc-col-header-cell.fc-day-sat,
+  .fc-col-header-cell.fc-day-sun {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: #dc2626 !important;
+  }
+  
+  /* Para vista de mes - celdas de fin de semana */
+  .fc-daygrid-day.fc-day-sat,
+  .fc-daygrid-day.fc-day-sun {
+    background-color: rgba(239, 68, 68, 0.05) !important;
+  }
+  
+  /* Para vista de semana - columnas de fin de semana */
+  .fc-timegrid-col.fc-day-sat,
+  .fc-timegrid-col.fc-day-sun {
+    background-color: rgba(239, 68, 68, 0.05) !important;
+  }
+  
+  /* Números de día en fin de semana */
+  .fc-daygrid-day.fc-day-sat .fc-daygrid-day-number,
+  .fc-daygrid-day.fc-day-sun .fc-daygrid-day-number {
+    color: #dc2626 !important;
+    font-weight: 600 !important;
+  }
   `;
     document.head.appendChild(style);
 })();
@@ -91,8 +162,8 @@ async function crearSalida(planillasIds, calendar) {
             data.success ? "success" : "warning"
         );
         if (data.success && calendar) {
-            // calendar.refetchEvents();
-            // calendar.refetchResources?.();
+            calendar.refetchEvents();
+            calendar.refetchResources?.();
         }
     } catch (err) {
         console.error(err);
@@ -246,28 +317,53 @@ async function obtenerInformacionPlanillas(ids) {
     return Array.isArray(data?.planillas) ? data.planillas : [];
 }
 
+/**
+ * Detecta si una fecha es fin de semana (sábado o domingo)
+ * @param {string} dateStr - Fecha en formato YYYY-MM-DD
+ * @returns {boolean} - true si es fin de semana
+ */
+function esFinDeSemana(dateStr) {
+    if (!dateStr) return false;
+    const date = new Date(dateStr + "T00:00:00"); // Evitar problemas de zona horaria
+    const dayOfWeek = date.getDay(); // 0 = domingo, 6 = sábado
+    return dayOfWeek === 0 || dayOfWeek === 6;
+}
+
 function construirFormularioFechas(planillas) {
     const filas = planillas
         .map((p, i) => {
-            const f = (p.fecha_estimada_entrega || "").slice(0, 10);
-            const codObra = p.obra?.codigo || p.obra?.cod_obra || "";
-            const nombreObra = p.obra?.nombre || p.obra?.obra || "";
+            const codObra = p.obra?.codigo || "";
+            const nombreObra = p.obra?.nombre || "";
+            const seccionObra = p.seccion || "";
+            const descripcionObra = p.descripcion || "";
             const codigoPlanilla = p.codigo || `Planilla ${p.id}`;
+            const pesoTotal = p.peso_total
+                ? parseFloat(p.peso_total).toLocaleString("es-ES", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                  }) + " kg"
+                : "";
+            const fechaISO = toISO(p.fecha_estimada_entrega);
+
             return `
-      <tr style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${
-          i * 18
-      }ms;">
-        <td class="px-2 py-1 text-xs">${p.id}</td>
-        <td class="px-2 py-1 text-xs">${codObra}</td>
-        <td class="px-2 py-1 text-xs">${nombreObra}</td>
-        <td class="px-2 py-1 text-xs">${codigoPlanilla}</td>
-        <td class="px-2 py-1">
-          <input type="date" class="swal2-input !m-0 !w-auto" data-planilla-id="${
-              p.id
-          }" value="${f}">
-        </td>
-      </tr>`;
+<tr style="opacity:0; transform:translateY(4px); animation: swalRowIn .22s ease-out forwards; animation-delay:${
+                i * 18
+            }ms;">
+  <td class="px-2 py-1 text-xs">${p.id}</td>
+  <td class="px-2 py-1 text-xs">${codObra}</td>
+  <td class="px-2 py-1 text-xs">${nombreObra}</td>
+  <td class="px-2 py-1 text-xs">${seccionObra}</td>
+  <td class="px-2 py-1 text-xs">${descripcionObra}</td>
+  <td class="px-2 py-1 text-xs">${codigoPlanilla}</td>
+  <td class="px-2 py-1 text-xs text-right font-medium">${pesoTotal}</td>
+  <td class="px-2 py-1">
+    <input type="date" class="swal2-input !m-0 !w-auto" data-planilla-id="${
+        p.id
+    }" value="${fechaISO}">
+  </td>
+</tr>`;
         })
+
         .join("");
 
     return `
@@ -275,21 +371,141 @@ function construirFormularioFechas(planillas) {
       <div class="text-sm text-gray-600 mb-2">
         Edita la <strong>fecha estimada de entrega</strong> y guarda.
       </div>
-      <div class="overflow-auto" style="max-height:50vh;border:1px solid #e5e7eb;border-radius:6px;">
+      
+      <!-- Sumatorio dinámico por fechas -->
+      <div id="sumatorio-fechas" class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div class="text-sm font-medium text-blue-800 mb-2">📊 Resumen por fecha:</div>
+        <div id="resumen-contenido" class="text-xs text-blue-700">
+          Cambia las fechas para ver el resumen...
+        </div>
+      </div>
+      
+      <div class="overflow-auto" style="max-height:45vh;border:1px solid #e5e7eb;border-radius:6px;">
         <table class="min-w-full text-sm">
-          <thead class="sticky top-0 bg-white">
-            <tr>
-              <th class="px-2 py-1 text-left">ID</th>
-              <th class="px-2 py-1 text-left">Cod. Obra</th>
-              <th class="px-2 py-1 text-left">Obra</th>
-              <th class="px-2 py-1 text-left">Planilla</th>
-              <th class="px-2 py-1 text-left">Fecha Estimada Entrega</th>
-            </tr>
-          </thead>
+        <thead class="sticky top-0 bg-white">
+  <tr>
+    <th class="px-2 py-1 text-left">ID</th>
+    <th class="px-2 py-1 text-left">Cod. Obra</th>
+    <th class="px-2 py-1 text-left">Obra</th>
+    <th class="px-2 py-1 text-left">Sección</th>
+    <th class="px-2 py-1 text-left">Descripción</th>
+    <th class="px-2 py-1 text-left">Planilla</th>
+    <th class="px-2 py-1 text-left">Peso Total</th>
+    <th class="px-2 py-1 text-left">Fecha Entrega</th>
+  </tr>
+</thead>
+
           <tbody>${filas}</tbody>
         </table>
       </div>
     </div>`;
+}
+
+/**
+ * Calcula el sumatorio de pesos por fecha
+ * @param {Array} planillas - Array de planillas con peso_total
+ * @returns {Object} - Objeto con fechas como keys y objetos {peso, planillas, esFinDeSemana} como values
+ */
+function calcularSumatorioFechas(planillas) {
+    const sumatorio = {};
+
+    // Obtener todas las fechas actuales de los inputs
+    const dateInputs = document.querySelectorAll(
+        'input[type="date"][data-planilla-id]'
+    );
+
+    dateInputs.forEach((input) => {
+        const planillaId = parseInt(input.dataset.planillaId);
+        const fecha = input.value;
+        const planilla = planillas.find((p) => p.id === planillaId);
+
+        if (fecha && planilla && planilla.peso_total) {
+            if (!sumatorio[fecha]) {
+                sumatorio[fecha] = {
+                    peso: 0,
+                    planillas: 0,
+                    esFinDeSemana: esFinDeSemana(fecha),
+                };
+            }
+            sumatorio[fecha].peso += parseFloat(planilla.peso_total);
+            sumatorio[fecha].planillas += 1;
+        }
+    });
+
+    return sumatorio;
+}
+
+/**
+ * Actualiza el contenido del sumatorio dinámico
+ * @param {Array} planillas - Array de planillas
+ */
+function actualizarSumatorio(planillas) {
+    const sumatorio = calcularSumatorioFechas(planillas);
+    const contenedor = document.getElementById("resumen-contenido");
+
+    if (!contenedor) return;
+
+    const fechas = Object.keys(sumatorio).sort();
+
+    if (fechas.length === 0) {
+        contenedor.innerHTML =
+            '<span class="text-gray-500">Selecciona fechas para ver el resumen...</span>';
+        return;
+    }
+
+    const resumenHTML = fechas
+        .map((fecha) => {
+            const datos = sumatorio[fecha];
+            const fechaFormateada = new Date(
+                fecha + "T00:00:00"
+            ).toLocaleDateString("es-ES", {
+                weekday: "short",
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+            });
+
+            const pesoFormateado = datos.peso.toLocaleString("es-ES", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+
+            const claseFinDeSemana = datos.esFinDeSemana
+                ? "bg-orange-100 border-orange-300 text-orange-800"
+                : "bg-green-100 border-green-300 text-green-800";
+            const iconoFinDeSemana = datos.esFinDeSemana ? "🏖️" : "📦";
+
+            return `
+            <div class="inline-block m-1 px-2 py-1 rounded border ${claseFinDeSemana}">
+                <span class="font-medium">${iconoFinDeSemana} ${fechaFormateada}</span>
+                <br>
+                <span class="text-xs">${pesoFormateado} kg (${
+                datos.planillas
+            } planilla${datos.planillas !== 1 ? "s" : ""})</span>
+            </div>
+        `;
+        })
+        .join("");
+
+    const pesoTotal = fechas.reduce(
+        (total, fecha) => total + sumatorio[fecha].peso,
+        0
+    );
+    const totalPlanillas = fechas.reduce(
+        (total, fecha) => total + sumatorio[fecha].planillas,
+        0
+    );
+
+    contenedor.innerHTML = `
+        <div class="mb-2">${resumenHTML}</div>
+        <div class="text-sm font-medium text-blue-900 pt-2 border-t border-blue-200">
+            📊 Total: ${pesoTotal.toLocaleString("es-ES", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            })} kg 
+            (${totalPlanillas} planilla${totalPlanillas !== 1 ? "s" : ""})
+        </div>
+    `;
 }
 
 async function guardarFechasPlanillas(payload) {
@@ -342,9 +558,12 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
         const html = barraDrag + construirFormularioFechas(planillas);
 
         const { isConfirmed } = await Swal.fire({
-            title: "", // usamos barraDrag en el HTML
+            title: "",
             html,
-            width: Math.min(window.innerWidth * 0.9, 800),
+            width: Math.min(window.innerWidth * 0.98, 1200), // ⬅️ Más ancho (hasta 1200px)
+            customClass: {
+                popup: "w-full max-w-screen-xl", // ⬅️ Fuerza a pantalla completa en pantallas grandes
+            },
             showCancelButton: true,
             confirmButtonText: "💾 Guardar",
             cancelButtonText: "Cancelar",
@@ -364,16 +583,40 @@ async function cambiarFechasEntrega(planillasIds, calendar) {
                         );
                     first?.focus({ preventScroll: true });
                 }, 120);
+
+                // 4) Agregar event listeners para actualizar estilo de fin de semana y sumatorio
+                const dateInputs =
+                    Swal.getHtmlContainer().querySelectorAll(
+                        'input[type="date"]'
+                    );
+                dateInputs.forEach((input) => {
+                    input.addEventListener("change", function () {
+                        const isWeekend = esFinDeSemana(this.value);
+                        if (isWeekend) {
+                            this.classList.add("weekend-date");
+                        } else {
+                            this.classList.remove("weekend-date");
+                        }
+                        // Actualizar sumatorio dinámico
+                        actualizarSumatorio(planillas);
+                    });
+                });
+
+                // 5) Actualizar sumatorio inicial
+                setTimeout(() => {
+                    actualizarSumatorio(planillas);
+                }, 100);
             },
         });
         if (!isConfirmed) return;
 
         const inputs = Swal.getHtmlContainer().querySelectorAll(
-            'input[type="date"][data-planilla-id]'
+            "input[data-planilla-id]"
         );
+
         const payload = Array.from(inputs).map((inp) => ({
             id: Number(inp.getAttribute("data-planilla-id")),
-            fecha_estimada_entrega: (inp.value || "").trim() || null,
+            fecha_estimada_entrega: inp.value, // input type="date" ya devuelve formato YYYY-MM-DD
         }));
 
         const resp = await guardarFechasPlanillas(payload);
