@@ -23,7 +23,7 @@ function guardarCambios(elemento) {
         diametro: elemento.diametro || null,
         longitud: elemento.longitud || null,
 
-        estado: elemento.estado || null,
+        estado: elemento.estado ?? null,
     };
 
     fetch(`/elementos/${elemento.id}`, {

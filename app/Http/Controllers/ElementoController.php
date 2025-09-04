@@ -743,7 +743,6 @@ class ElementoController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            Log::info('Datos antes de validar:', ['data' => $request]);
 
             // Validar los datos recibidos con mensajes personalizados
             $validated = $request->validate([
@@ -789,15 +788,11 @@ class ElementoController extends Controller
                 'etiqueta.string'       => 'El campo etiqueta debe ser una cadena de texto.',
                 'etiqueta.max'          => 'El campo etiqueta no debe tener más de 255 caracteres.',
                 'diametro.numeric'      => 'El campo diametro debe ser un número.',
-                'peso.numeric'      => 'El campo peso debe ser un número.',
+                'peso.numeric'          => 'El campo peso debe ser un número.',
                 'longitud.numeric'      => 'El campo longitud debe ser un número.',
                 'estado.string'         => 'El campo estado debe ser una cadena de texto.',
                 'estado.max'            => 'El campo estado no debe tener más de 50 caracteres.',
             ]);
-
-
-            // Registrar los datos validados antes de actualizar
-            Log::info('Datos antes de actualizar:', ['data' => $validated]);
 
             $elemento = Elemento::findOrFail($id);
 
@@ -832,7 +827,10 @@ class ElementoController extends Controller
             }
 
             // Actualizar resto de campos
-            $elemento->update($validated);
+            $elemento->fill($validated);
+
+            $elemento->save();
+
             // Si cambió de máquina, actualizar orden_planillas
             if (array_key_exists('maquina_id', $validated) && $validated['maquina_id'] != $elemento->getOriginal('maquina_id')) {
                 $planillaId = $elemento->planilla_id;
@@ -865,8 +863,6 @@ class ElementoController extends Controller
                         ->delete();
                 }
             }
-            // Registrar el estado del elemento después de actualizar
-            Log::info('Elemento después de actualizar:', ['data' => $elemento->toArray()]);
 
             return response()->json([
                 'success' => true,
