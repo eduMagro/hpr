@@ -40,6 +40,17 @@ class SalidaController extends Controller
             ])
                 ->orderBy('created_at', 'desc')
                 ->get();
+
+            $empresasTransporte = EmpresaTransporte::orderBy('nombre')->get();
+            $camiones = Camion::orderBy('modelo')->get(); // Con empresa_transporte_id
+            // Prepara el array plano con solo los datos necesarios
+            $camionesJson = $camiones->map(function ($camion) {
+                return [
+                    'id'         => $camion->id,
+                    'modelo'     => $camion->modelo,
+                    'empresa_id' => $camion->empresaTransporte->id ?? null,
+                ];
+            });
         } else {
             $salidas = Salida::where('estado', 'pendiente')
                 ->with([
@@ -69,8 +80,8 @@ class SalidaController extends Controller
         foreach ($salidasPorMes as $mes => $salidasGrupo) {
             $empresaSummary = [];
             foreach ($salidasGrupo as $salida) {
-                $nombreEmpresa = trim($salida->empresaTransporte->nombre) ?: "Empresa desconocida";
-                $empresaId = $salida->empresaTransporte->id;
+                $nombreEmpresa = trim($salida->empresaTransporte->nombre ?? "N/A") ?: "Empresa desconocida";
+                $empresaId = $salida->empresaTransporte->id ?? null;
                 if (!isset($empresaSummary[$nombreEmpresa])) {
                     $empresaSummary[$nombreEmpresa] = [
                         'empresa_id' => $empresaId,
@@ -99,7 +110,15 @@ class SalidaController extends Controller
             $resumenMensual[$mes] = $empresaSummary;
         }
 
-        return view('salidas.index', compact('salidasPorMes', 'salidas', 'resumenMensual', 'paquetes'));
+        return view('salidas.index', compact(
+            'salidasPorMes',
+            'salidas',
+            'resumenMensual',
+            'paquetes',
+            'empresasTransporte',
+            'camiones',
+            'camionesJson'
+        ));
     }
 
     public function show($id)
@@ -412,8 +431,8 @@ class SalidaController extends Controller
 
 
             // Obtener el camión y la empresa de transporte asociada
-            $camion = Camion::find($request->camion_id);
-            $empresa = $camion->empresaTransporte;
+            // $camion = Camion::find($request->camion_id);
+            // $empresa = $camion->empresaTransporte;
 
             // Obtener la primera planilla de los paquetes seleccionados
             $primeraPlanilla = Paquete::with('planilla')
@@ -430,8 +449,8 @@ class SalidaController extends Controller
 
             // Crear la salida
             $salida = Salida::create([
-                'empresa_id' => $empresa->id,
-                'camion_id' => $request->camion_id,
+                // 'empresa_id' => $empresa->id,
+                // 'camion_id' => $request->camion_id,
                 'fecha_salida' => $fechaSalida,
                 'estado' => 'pendiente', // Estado por defecto
             ]);
@@ -515,7 +534,7 @@ class SalidaController extends Controller
             $request->validate([
                 'planillas_ids' => 'required|array|min:1',
                 'planillas_ids.*' => 'exists:planillas,id',
-                'camion_id' => 'required|exists:camiones,id',
+                'camion_id' => 'nullable|exists:camiones,id',
             ]);
 
             // Buscar todos los paquetes asociados a las planillas dadas
@@ -560,8 +579,8 @@ class SalidaController extends Controller
             }
 
             // Obtener el camión y la empresa de transporte
-            $camion = Camion::findOrFail($request->camion_id);
-            $empresa = $camion->empresaTransporte;
+            // $camion = Camion::findOrFail($request->camion_id);
+            // $empresa = $camion->empresaTransporte;
 
             // Obtener la primera planilla para la fecha
             $primeraPlanilla = Planilla::whereIn('id', $request->planillas_ids)->first();
@@ -571,8 +590,8 @@ class SalidaController extends Controller
 
             // Crear la salida
             $salida = Salida::create([
-                'empresa_id' => $empresa?->id,
-                'camion_id' => $camion->id,
+                // 'empresa_id' => $empresa?->id,
+                // 'camion_id' => $camion->id,
                 'fecha_salida' => $fechaSalida,
                 'estado' => 'pendiente',
             ]);
@@ -630,53 +649,76 @@ class SalidaController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            // Buscar la salida por ID
+            /** @var \App\Models\Salida $salida */
             $salida = Salida::findOrFail($id);
 
-            // Obtener campo y valor desde la petición
-            $field = $request->input('field');
-            $value = $request->input('value');
-            $clienteId = $request->input('cliente_id'); // Para actualización en salida_cliente
-            $obraId = $request->input('obra_id');    // Nuevo: para identificar la obra
+            $field     = $request->input('field');
+            $value     = $request->input('value');
+            $clienteId = $request->input('cliente_id');
+            $obraId    = $request->input('obra_id');
 
-            // Definir campos para cada tabla
-            $salidaFields = ['fecha_salida', 'estado', 'codigo_sage'];
+            // Campos actualizables en 'salidas'
+            $salidaFields = [
+                'fecha_salida',
+                'estado',
+                'codigo_sage',
+                'empresa_id',
+                'camion_id',
+            ];
+
+            // Campos actualizables en 'salida_cliente' (pivot)
             $salidaClienteFields = [
                 'importe',
                 'horas_paralizacion',
                 'importe_paralizacion',
                 'horas_grua',
                 'importe_grua',
-                'horas_almacen'
+                'horas_almacen',
             ];
 
-            if (!in_array($field, array_merge($salidaFields, $salidaClienteFields))) {
+            $allFields = array_merge($salidaFields, $salidaClienteFields);
+
+            if (!in_array($field, $allFields, true)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'El campo especificado no es editable en línea.'
                 ], 422);
             }
 
-            // Validaciones
+            // Reglas de validación campo a campo
             $rules = [
-                'importe' => 'nullable|numeric',
-                'horas_paralizacion' => 'nullable|numeric',
-                'importe_paralizacion' => 'nullable|numeric',
-                'horas_grua' => 'nullable|numeric',
-                'importe_grua' => 'nullable|numeric',
-                'horas_almacen' => 'nullable|numeric',
-                'fecha_salida' => 'nullable|date',
-                'estado' => 'nullable|string|max:50',
-                'codigo_sage'        => 'nullable|string|max:100'
+                'fecha_salida'         => ['nullable', 'date'],
+                'estado'               => ['nullable', 'string', 'max:50'],
+                'codigo_sage'          => ['nullable', 'string', 'max:100'],
+                'empresa_id' => ['nullable', 'integer', 'exists:empresa_transportes,id'],
+                'camion_id'            => ['nullable', 'integer', 'exists:camiones,id'],
+
+                'importe'              => ['nullable', 'numeric'],
+                'horas_paralizacion'   => ['nullable', 'numeric'],
+                'importe_paralizacion' => ['nullable', 'numeric'],
+                'horas_grua'           => ['nullable', 'numeric'],
+                'importe_grua'         => ['nullable', 'numeric'],
+                'horas_almacen'        => ['nullable', 'numeric'],
             ];
 
-            $request->validate([$field => $rules[$field]]);
+            // Valida sólo el campo que viene
+            if (array_key_exists($field, $rules)) {
+                $request->validate([$field => $rules[$field]]);
+            }
 
-            // Si el campo es 'fecha_salida', formatear la fecha correctamente
-            if ($field === 'fecha_salida' && !empty($value)) {
+            // Normalizaciones previas
+            // 1) Fecha con hora aceptando varios formatos
+            if ($field === 'fecha_salida' && filled($value)) {
                 try {
-                    $value = Carbon::parse($value)->format('Y-m-d');
-                } catch (\Exception $e) {
+                    // Acepta 'd/m/Y H:i' o cualquier parseable por Carbon
+                    $value = self::parseFechaHora($value)?->format('Y-m-d H:i:s');
+                    if (!$value) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Formato de fecha no válido. Usa DD/MM/YYYY HH:MM o YYYY-MM-DD HH:MM:SS.'
+                        ], 422);
+                    }
+                } catch (\Throwable $e) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Formato de fecha no válido.'
@@ -684,14 +726,63 @@ class SalidaController extends Controller
                 }
             }
 
-            // **Actualizar en la tabla 'salidas'**
-            if (in_array($field, $salidaFields)) {
-                $salida->$field = $value;
-                $salida->save();
+            // 2) Numéricos: null -> null, cadena vacía -> null
+            if (in_array($field, $salidaClienteFields, true)) {
+                if ($value === '' || $value === null) {
+                    $value = null;
+                } else {
+                    $value = (float) $value;
+                }
             }
-            // **Actualizar en la tabla 'salida_cliente'**
-            elseif (in_array($field, $salidaClienteFields)) {
-                // Validamos que se hayan enviado cliente_id y obra_id
+
+            // ------- Persistencia -------
+            if (in_array($field, $salidaFields, true)) {
+
+                if ($field === 'empresa_id') {
+                    // Cambiar empresa => limpiar camión si no pertenece
+                    $nuevaEmpresaId = $value ?: null;
+
+                    $salida->empresa_id = $nuevaEmpresaId;
+
+                    // Si hay un camión asignado y no coincide con la nueva empresa, nuléalo
+                    if ($salida->camion_id) {
+                        $camionPertenece = Camion::where('id', $salida->camion_id)
+                            ->where('empresa_id', $nuevaEmpresaId)
+                            ->exists();
+
+                        if (!$camionPertenece) {
+                            $salida->camion_id = null;
+                        }
+                    }
+
+                    $salida->save();
+                } elseif ($field === 'camion_id') {
+                    // Validar pertenencia del camión a la empresa actual (si hay)
+                    if ($value) {
+                        $empresaId = $salida->empresa_id;
+                        if ($empresaId) {
+                            $camionOk = Camion::where('id', $value)
+                                ->where('empresa_id', $empresaId)
+                                ->exists();
+
+                            if (!$camionOk) {
+                                return response()->json([
+                                    'success' => false,
+                                    'message' => 'El camión no pertenece a la empresa de transporte seleccionada.'
+                                ], 422);
+                            }
+                        }
+                    }
+
+                    $salida->camion_id = $value ?: null;
+                    $salida->save();
+                } else {
+                    // fecha_salida, estado, codigo_sage
+                    $salida->$field = $value;
+                    $salida->save();
+                }
+            } else {
+                // Pivot: salida_cliente — requiere cliente y obra
                 if (!$clienteId || !$obraId) {
                     return response()->json([
                         'success' => false,
@@ -699,8 +790,7 @@ class SalidaController extends Controller
                     ], 422);
                 }
 
-                // Actualizar usando los tres identificadores: salida_id, cliente_id y obra_id
-                $updated = DB::table('salida_cliente')
+                DB::table('salida_cliente')
                     ->where('salida_id', $salida->id)
                     ->where('cliente_id', $clienteId)
                     ->where('obra_id', $obraId)
@@ -710,18 +800,25 @@ class SalidaController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Salida actualizada correctamente.',
-                'data' => $salida
+                'data'    => [
+                    'id'                     => $salida->id,
+                    'fecha_salida'           => $salida->fecha_salida,
+                    'estado'                 => $salida->estado,
+                    'codigo_sage'            => $salida->codigo_sage,
+                    'empresa_id'             => $salida->empresa_id,
+                    'camion_id'              => $salida->camion_id,
+                ],
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'errors' => $e->errors()
+                'errors'  => $e->errors()
             ], 422);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al actualizar la salida.',
-                'error' => $e->getMessage()
+                'message' => 'Error al actualizar la salida.' . $e->getMessage(),
+                'error'   => $e->getMessage()
             ], 500);
         }
     }

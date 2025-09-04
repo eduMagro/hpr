@@ -33,31 +33,18 @@ class PlanificacionController extends Controller
             ->concat($salidasEventos)
             ->concat($resumenEventos)
             ->concat(Festivo::eventosCalendario())
-            ->sort(function ($a, $b) {
-                // 1) prioridad por tipo
-                $rank = function ($e) {
-                    $t = $e['tipo'] ?? ($e['extendedProps']['tipo'] ?? '');
-                    return match ($t) {
-                        'planilla' => 0,
-                        'salida'   => 1,
-                        'resumen'  => 2,
-                        'festivo'  => 3,
-                        default    => 99,
-                    };
-                };
-
-                // 2) cod_obra como número (siempre es numérico)
-                $numCod = function ($e) {
-                    $codObra = $e['extendedProps']['cod_obra'] ?? '';
-                    return is_numeric($codObra) ? (int)$codObra : PHP_INT_MAX;
-                };
-
-                $ra = $rank($a);
-                $rb = $rank($b);
-                if ($ra !== $rb) return $ra <=> $rb;
-
-                return $numCod($a) <=> $numCod($b);
-            })
+            ->sortBy([
+                // Orden por tipo: planilla (0), salida (1), resumen (2), festivo (3)
+                fn($e) => match ($e['tipo'] ?? $e['extendedProps']['tipo'] ?? '') {
+                    'planilla' => 0,
+                    'salida' => 1,
+                    'resumen' => 2,
+                    'festivo' => 3,
+                    default => 99,
+                },
+                // Orden secundario: por cod_obra si existe
+                fn($e) => $e['extendedProps']['cod_obra'] ?? '',
+            ])
             ->values();
 
         // Resources
@@ -295,7 +282,6 @@ class PlanificacionController extends Controller
                 $color = '#9CA3AF'; // gris
             }
 
-
             // Antes del return de cada evento, obtén todas las salidas relacionadas con esas planillas
             // 👉 Buscar primero los paquetes asociados a esas planillas
             $paqueteIds = Paquete::whereIn('planilla_id', $planillasIds)->pluck('id');
@@ -332,7 +318,11 @@ class PlanificacionController extends Controller
                     'salidas_codigos' => $salidaRelacionada->pluck('codigo_salida')->toArray(),
                 ],
             ];
-        })->values();
+        })->sortBy([
+            fn($e) => (int) preg_replace('/\D/', '', $e['extendedProps']['cod_obra'] ?? '0'),
+            fn($e) => $e['start'],
+        ])
+            ->values();
 
         return [
             'planillas' => $planillas,
@@ -344,10 +334,7 @@ class PlanificacionController extends Controller
     {
 
         $resourceIds = $eventos->pluck('resourceId')->filter()->unique()->values();
-        $obras = Obra::with('cliente')->whereIn('id', $resourceIds)->get()
-            ->sortBy(function ($obra) {
-                return is_numeric($obra->cod_obra) ? (int)$obra->cod_obra : PHP_INT_MAX;
-            });
+        $obras = Obra::with('cliente')->whereIn('id', $resourceIds)->orderBy('obra')->get();
 
         $resources = $obras->map(fn($obra) => [
             'id' => (string) $obra->id,

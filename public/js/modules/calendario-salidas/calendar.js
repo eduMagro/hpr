@@ -150,6 +150,26 @@ export function crearCalendario() {
                 center: "title",
                 right: "resourceTimelineDay,resourceTimelineWeek,dayGridMonth",
             },
+            eventOrderStrict: true, // evita reordenamientos “por título”
+            eventOrder: (a, b) => {
+                const na =
+                    parseInt(
+                        String(a.extendedProps.cod_obra ?? "").replace(
+                            /\D/g,
+                            ""
+                        ),
+                        10
+                    ) || 0;
+                const nb =
+                    parseInt(
+                        String(b.extendedProps.cod_obra ?? "").replace(
+                            /\D/g,
+                            ""
+                        ),
+                        10
+                    ) || 0;
+                return na - nb;
+            },
             datesSet: (info) => {
                 try {
                     const fecha = calcularFechaCentral(info);

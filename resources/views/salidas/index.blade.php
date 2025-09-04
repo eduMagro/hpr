@@ -56,11 +56,73 @@
                                             </td>
                                             <td class="py-2 px-4 border-b">{{ $registro->cliente->empresa }}</td>
                                             <td class="py-2 px-4 border-b">{{ $registro->obra->obra ?? 'N/A' }}</td>
-                                            <td class="py-2 px-4 border-b">{{ $salida->empresaTransporte->nombre }}
+                                            <!-- Empresa de Transporte -->
+                                            <td class="p-2 border-b">
+                                                <div class="relative">
+                                                    <select
+                                                        class="text-xs h-8 w-full pl-3 pr-8 rounded-md border border-gray-300 bg-white text-gray-800
+             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+             hover:border-gray-400 transition
+             disabled:opacity-60 disabled:cursor-not-allowed
+             appearance-none
+             empresa-select editable-select"
+                                                        data-id="{{ $salida->id }}"
+                                                        data-key="{{ $salida->id }}-{{ $registro->cliente->id }}-{{ $registro->obra->id }}"
+                                                        data-field="empresa_id"
+                                                        data-cliente="{{ $registro->cliente->id }}"
+                                                        data-obra="{{ $registro->obra->id }}">
+                                                        <option value="">Sin empresa</option>
+                                                        @foreach ($empresasTransporte as $empresa)
+                                                            <option value="{{ $empresa->id }}"
+                                                                {{ (int) $salida->empresa_id === (int) $empresa->id ? 'selected' : '' }}>
+                                                                {{ $empresa->nombre }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                    <span
+                                                        class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                            stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                    </span>
+                                                </div>
                                             </td>
-                                            <td class="py-2 px-4 border-b">
-                                                {{ $salida->camion->modelo }}
+
+                                            <!-- Camión -->
+                                            <td class="p-2 border-b">
+                                                <div class="relative">
+                                                    <select
+                                                        class="text-xs h-8 w-full pl-3 pr-8 rounded-md border border-gray-300 bg-white text-gray-800
+             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+             hover:border-gray-400 transition
+             disabled:opacity-60 disabled:cursor-not-allowed
+             appearance-none
+             camion-select editable-select"
+                                                        data-id="{{ $salida->id }}"
+                                                        data-key="{{ $salida->id }}-{{ $registro->cliente->id }}-{{ $registro->obra->id }}"
+                                                        data-field="camion_id"
+                                                        data-cliente="{{ $registro->cliente->id }}"
+                                                        data-obra="{{ $registro->obra->id }}"
+                                                        data-value="{{ $salida->camion_id ?? '' }}">
+                                                        <!-- Se rellena por JS -->
+                                                    </select>
+                                                    <span
+                                                        class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-500">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                            stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                    </span>
+                                                </div>
                                             </td>
+
+
+
                                             <td class="p-2 border-b editable" contenteditable="true"
                                                 data-id="{{ $salida->id }}"
                                                 data-cliente="{{ $registro->cliente->id }}"
@@ -204,7 +266,7 @@
                                         </p>
                                     </div>
                                     <div class="mt-2 sm:mt-0">
-                                        <p class="py-2">{{ $salida->empresaTransporte->nombre }}</p>
+                                        <p class="py-2">{{ $salida->empresaTransporte->nombre ?? 'N/A' }}</p>
                                         <p class="py-2">
                                             {{ $salida->camion->modelo }}
                                         </p>
@@ -491,6 +553,158 @@
 
                 return null; // No es un formato válido
             }
+        });
+    </script>
+    <script>
+        const TODOS_CAMIONES = @json($camionesJson);
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canEdit = !!window.canEdit;
+
+            // Deshabilitar selects si no puede editar
+            if (!canEdit) {
+                document.querySelectorAll('select.editable-select').forEach(s => s.disabled = true);
+            }
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            function opcionesCamion(empresaId, camionActual) {
+                const frag = document.createDocumentFragment();
+                const opt0 = document.createElement('option');
+                opt0.value = '';
+                opt0.textContent = 'Sin camión';
+                frag.appendChild(opt0);
+
+                const lista = TODOS_CAMIONES.filter(c => String(c.empresa_id) === String(empresaId));
+                lista.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.modelo;
+                    if (camionActual && String(camionActual) === String(c.id)) opt.selected = true;
+                    frag.appendChild(opt);
+                });
+                return frag;
+            }
+
+            function findCamionSelectByKey(key) {
+                return document.querySelector(`select.camion-select[data-key="${CSS.escape(key)}"]`);
+            }
+
+            // Inicializar “camión” para cada fila en base a la empresa seleccionada
+            document.querySelectorAll('select.empresa-select').forEach(selEmpresa => {
+                const key = selEmpresa.dataset.key;
+                const empresaId = selEmpresa.value;
+                const selCamion = findCamionSelectByKey(key);
+                if (!selCamion) return;
+
+                const camionActual = selCamion.getAttribute('data-value') || '';
+                selCamion.innerHTML = '';
+                selCamion.appendChild(opcionesCamion(empresaId, camionActual));
+            });
+
+            // Handler de cambio de empresa: repoblar camiones y guardar empresa
+            document.querySelectorAll('select.empresa-select').forEach(selEmpresa => {
+                selEmpresa.addEventListener('change', async (e) => {
+                    const empresaId = e.target.value;
+                    const key = e.target.dataset.key;
+                    const selCamion = findCamionSelectByKey(key);
+                    if (selCamion) {
+                        selCamion.innerHTML = '';
+                        selCamion.appendChild(opcionesCamion(empresaId,
+                            null)); // limpia selección de camión
+                    }
+                    if (!canEdit) return;
+
+                    const payload = {
+                        id: e.target.dataset.id,
+                        cliente_id: e.target.dataset.cliente,
+                        obra_id: e.target.dataset.obra,
+                        field: e.target.dataset.field, // "empresa_transporte_id"
+                        value: empresaId || null,
+                    };
+
+                    try {
+                        const res = await fetch(`/salidas/${payload.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf
+                            },
+                            body: JSON.stringify(payload),
+                        });
+                        const data = await res.json();
+                        if (!data.success) {
+                            console.error('Error actualizando empresa transporte:', data
+                                .message);
+                            Swal?.fire?.({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'No se pudo guardar.'
+                            });
+                        } else {
+                            // Si hemos cambiado de empresa, lo normal es resetear también el camión en BD
+                            if (selCamion) {
+                                const clearPayload = {
+                                    id: payload.id,
+                                    cliente_id: payload.cliente_id,
+                                    obra_id: payload.obra_id,
+                                    field: 'camion_id',
+                                    value: null,
+                                };
+                                await fetch(`/salidas/${payload.id}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': csrf
+                                    },
+                                    body: JSON.stringify(clearPayload),
+                                });
+                            }
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                });
+            });
+
+            // Handler de cambio de camión: guardar camión
+            document.querySelectorAll('select.camion-select').forEach(selCamion => {
+                selCamion.addEventListener('change', async (e) => {
+                    if (!canEdit) return;
+
+                    const payload = {
+                        id: e.target.dataset.id,
+                        cliente_id: e.target.dataset.cliente,
+                        obra_id: e.target.dataset.obra,
+                        field: e.target.dataset.field, // "camion_id"
+                        value: e.target.value || null,
+                    };
+
+                    try {
+                        const res = await fetch(`/salidas/${payload.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrf
+                            },
+                            body: JSON.stringify(payload),
+                        });
+                        const data = await res.json();
+                        if (!data.success) {
+                            console.error('Error actualizando camión:', data.message);
+                            Swal?.fire?.({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'No se pudo guardar.'
+                            });
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                });
+            });
         });
     </script>
 

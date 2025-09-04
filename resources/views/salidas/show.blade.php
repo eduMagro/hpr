@@ -20,10 +20,10 @@
             </div>
 
             <p class="text-gray-700 mt-2">Empresa Transporte: <span
-                    class="font-semibold text-gray-800">{{ $salida->empresaTransporte->nombre }}</p>
+                    class="font-semibold text-gray-800">{{ $salida->empresaTransporte->nombre ?? 'N/A' }}</p>
 
             <p class="text-gray-700 mt-2"> </span>Camión: <span
-                    class="font-semibold text-gray-800">{{ $salida->camion->modelo }}
+                    class="font-semibold text-gray-800">{{ $salida->camion->modelo ?? 'N/A' }}
                 </span></p>
 
             <h3 class="font-semibold text-md text-gray-800 mt-4">Paquetes Asociados:</h3>

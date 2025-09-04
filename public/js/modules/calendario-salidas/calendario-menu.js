@@ -114,31 +114,6 @@ function extraerPlanillasIds(event) {
 
 /* ===================== Crear salida ===================== */
 async function crearSalida(planillasIds, calendar) {
-    const camiones = window.AppSalidas?.camiones || [];
-    if (!camiones.length) {
-        return Swal.fire(
-            "Sin camiones",
-            "No hay camiones disponibles.",
-            "warning"
-        );
-    }
-    const { value: camionId, isConfirmed } = await Swal.fire({
-        title: "Selecciona un camión",
-        input: "select",
-        inputOptions: Object.fromEntries(
-            camiones.map((c) => [
-                c.id,
-                `${c.modelo} (${
-                    c?.empresa_transporte?.nombre ?? "Sin empresa"
-                })`,
-            ])
-        ),
-        inputPlaceholder: "Elige una opción",
-        showCancelButton: true,
-        confirmButtonText: "Confirmar",
-    });
-    if (!isConfirmed || !camionId) return;
-
     try {
         const res = await fetch(
             window.AppSalidas?.routes?.crearSalidaDesdeCalendario,
@@ -150,24 +125,28 @@ async function crearSalida(planillasIds, calendar) {
                 },
                 body: JSON.stringify({
                     planillas_ids: planillasIds,
-                    camion_id: camionId,
+                    camion_id: null, // 🚚 Sin camión asignado
                 }),
             }
         );
+
         const data = await res.json();
         await Swal.fire(
-            data.success ? "" : "",
+            data.success ? "✅" : "⚠️",
             data.message ||
-                (data.success ? "Salida creada" : "No se pudo crear"),
+                (data.success
+                    ? "Salida creada sin camión"
+                    : "No se pudo crear la salida"),
             data.success ? "success" : "warning"
         );
+
         if (data.success && calendar) {
             calendar.refetchEvents();
             calendar.refetchResources?.();
         }
     } catch (err) {
         console.error(err);
-        Swal.fire("", "Hubo un problema al crear la salida.", "error");
+        Swal.fire("❌", "Hubo un problema al crear la salida.", "error");
     }
 }
 
