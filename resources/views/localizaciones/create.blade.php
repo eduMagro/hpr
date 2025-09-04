@@ -237,6 +237,13 @@
                 estadoSel.textContent =
                     `Seleccionada: ${selected.nombre} (${wReal}×${hReal} reales). Pulsa "R" para rotar. Haz clic en la cuadrícula para colocar.`;
             }
+            // 1) Añade esta función junto a rotarSeleccion()
+            function cancelarColocacion() {
+                if (!selected) return;
+                selected = null;
+                ghost.classList.add('hidden');
+                estadoSel.textContent = 'Selección cancelada. Selecciona una máquina para continuar.';
+            }
 
             function seleccionarChip(btn) {
                 document.querySelectorAll('.chip-maquina').forEach(c => c.classList.remove('ring', 'ring-blue-500'));
@@ -275,6 +282,12 @@
                 if (ev.key === 'r' || ev.key === 'R') {
                     ev.preventDefault();
                     rotarSeleccion();
+                }
+                // 👇 nuevo: cancelar con ESC
+                if (ev.key === 'Escape') {
+                    ev.preventDefault();
+                    cancelarColocacion();
+                    return;
                 }
             });
 

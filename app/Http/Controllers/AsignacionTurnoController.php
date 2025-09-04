@@ -333,6 +333,10 @@ class AsignacionTurnoController extends Controller
                 'latitud'  => 'required|numeric',
                 'longitud' => 'required|numeric',
             ]);
+            Log::info('Coordenadas recibidas', [
+                'latitud'  => $request->latitud,
+                'longitud' => $request->longitud,
+            ]);
 
             $user = User::findOrFail($request->user_id);
             if ($user->rol !== 'operario') {
