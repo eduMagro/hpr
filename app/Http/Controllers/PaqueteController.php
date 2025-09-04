@@ -161,7 +161,12 @@ class PaqueteController extends Controller
         $paquetesPage = $query->paginate($perPage)->appends($request->query());
 
         /* ── Para el JSON y scripts auxiliares (sin paginar) ── */
-        $paquetesAll = Paquete::with('etiquetas.elementos', 'planilla', 'ubicacion')->get();
+        $paquetesAll = Paquete::with('etiquetas:id,paquete_id,etiqueta_sub_id,nombre,codigo,peso_kg')
+            ->select('id', 'codigo')
+            ->latest()
+            ->take(100) // 🔸 solo los 100 últimos, ajusta según lo que necesites
+            ->get();
+
         $paquetesConEtiquetas = $paquetesAll->mapWithKeys(
             fn($p) =>
             [$p->codigo => $p->etiquetas->pluck('etiqueta_sub_id')]
@@ -179,16 +184,21 @@ class PaqueteController extends Controller
             ]),
         ]);
 
-        $elementosAgrupadosScript = Etiqueta::with('elementos')->get()->map(fn($et) => [
-            'etiqueta'  => ['id' => $et->id, 'etiqueta_sub_id' => $et->etiqueta_sub_id],
-            'elementos' => $et->elementos->map(fn($e) => [
-                'id'         => $e->id,
-                'dimensiones' => $e->dimensiones,
-                'barras'     => $e->barras,
-                'peso'       => $e->peso_kg,
-                'diametro'   => $e->diametro,
-            ]),
-        ]);
+        $elementosAgrupadosScript = Etiqueta::with(['elementos:id,etiqueta_id,dimensiones,barras,peso_kg,diametro'])
+            ->select('id', 'etiqueta_sub_id')
+            ->latest()
+            ->take(100) // igual, solo los últimos
+            ->get()
+            ->map(fn($et) => [
+                'etiqueta'  => ['id' => $et->id, 'etiqueta_sub_id' => $et->etiqueta_sub_id],
+                'elementos' => $et->elementos->map(fn($e) => [
+                    'id'         => $e->id,
+                    'dimensiones' => $e->dimensiones,
+                    'barras'     => $e->barras,
+                    'peso'       => $e->peso_kg,
+                    'diametro'   => $e->diametro,
+                ]),
+            ]);
 
         /* ── Ordenables para la cabecera ── */
         $ordenables = [
