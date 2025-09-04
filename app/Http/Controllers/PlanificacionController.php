@@ -47,7 +47,6 @@ class PlanificacionController extends Controller
             ])
             ->values();
 
-
         // Resources
         $resources = $this->getResources($eventos);
         if ($request->input('tipo') === 'resources') {
