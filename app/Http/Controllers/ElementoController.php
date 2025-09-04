@@ -829,7 +829,13 @@ class ElementoController extends Controller
             // Actualizar resto de campos
             $elemento->fill($validated);
 
-            $elemento->save();
+            if ($elemento->isDirty()) {
+                if ($elemento->isDirty('estado')) {
+                    Log::debug("⚠️ Estado sí cambió: {$elemento->getOriginal('estado')} → {$elemento->estado}");
+                }
+                $elemento->save();
+            }
+
 
             // Si cambió de máquina, actualizar orden_planillas
             if (array_key_exists('maquina_id', $validated) && $validated['maquina_id'] != $elemento->getOriginal('maquina_id')) {
