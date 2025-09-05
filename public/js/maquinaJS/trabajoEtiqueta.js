@@ -5,51 +5,65 @@ document.addEventListener("DOMContentLoaded", () => {
     /*** PROCESO ETIQUETA ***/
     const procesoEtiqueta = document.getElementById("procesoEtiqueta");
     const maquinaInfo = document.getElementById("maquina-info");
-
-    if (!procesoEtiqueta) {
-        console.error("Error: No se encontró el input de etiqueta en el DOM.");
-        return;
-    }
-
     const maquinaId = maquinaInfo?.dataset?.maquinaId;
+
     if (!maquinaId) {
         console.error("Error: No se encontró la información de la máquina.");
         return;
     }
 
-    procesoEtiqueta.addEventListener("keypress", (e) => {
-        if (e.key !== "Enter") return;
-        e.preventDefault();
+    // ✅ Registrar listener del input SOLO si existe (no hagas return global)
+    if (procesoEtiqueta) {
+        procesoEtiqueta.addEventListener("keypress", (e) => {
+            if (e.key !== "Enter") return;
+            e.preventDefault();
 
-        const etiquetaId = e.target.value.trim();
+            const etiquetaId = e.target.value.trim();
+            actualizarEtiqueta(etiquetaId, maquinaId);
+            e.target.value = ""; // Limpiar input tras procesar
+        });
+    } else {
+        console.warn(
+            "Aviso: no hay #procesoEtiqueta. Solo funcionará el botón .btn-fabricar."
+        );
+    }
 
-        // Validar que el ID sea un número válido mayor que cero
-        // if (!etiquetaId || isNaN(etiquetaId) || Number(etiquetaId) <= 0) {
-        //     Swal.fire({
-        //         icon: "error",
-        //         title: "Error",
-        //         text: "❌ ID inválido. Intenta de nuevo.",
-        //     });
-        //     return;
-        // }
+    // --- CLICK EN BOTÓN FABRICAR: hace lo mismo que escanear + Enter ---
+    document.addEventListener("click", async (ev) => {
+        const btn = ev.target.closest(".btn-fabricar");
+        if (!btn) return;
 
-        actualizarEtiqueta(etiquetaId, maquinaId);
+        ev.preventDefault();
 
-        e.target.value = ""; // Limpiar input tras procesar
+        const etiquetaId = String(btn.dataset.etiquetaId || "").trim();
+        if (!etiquetaId) {
+            Swal.fire({
+                icon: "error",
+                title: "Etiqueta no válida",
+                text: "Falta el ID de etiqueta.",
+            });
+            return;
+        }
+
+        // (Opcional) anti doble clic
+        const prevDisabled = btn.disabled;
+        btn.disabled = true;
+        try {
+            await actualizarEtiqueta(etiquetaId, maquinaId);
+        } finally {
+            btn.disabled = prevDisabled;
+        }
     });
+
     function validarYObtenerLongitudSeleccionada() {
         const checkboxesBarra = document.querySelectorAll(
-            `input.checkbox-longitud`
+            "input.checkbox-longitud"
         );
-        const longitudesDisponibles = new Set();
         const longitudesMarcadas = new Set();
 
         checkboxesBarra.forEach((checkbox) => {
-            if (checkbox.dataset.diametro) {
-                longitudesDisponibles.add(checkbox.value);
-                if (checkbox.checked) {
-                    longitudesMarcadas.add(checkbox.value);
-                }
+            if (checkbox.dataset.diametro && checkbox.checked) {
+                longitudesMarcadas.add(checkbox.value);
             }
         });
 
@@ -71,13 +85,9 @@ document.addEventListener("DOMContentLoaded", () => {
             return null;
         }
 
-        // ✅ Devuelve la longitud válida como número
         return parseFloat([...longitudesMarcadas][0]);
     }
 
-    /**
-     * Envía la solicitud PUT para actualizar la etiqueta en el servidor.
-     */
     async function actualizarEtiqueta(id, maquinaId) {
         const url = `/actualizar-etiqueta/${id}/maquina/${maquinaId}`;
         const csrfToken = document
@@ -100,11 +110,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 },
                 body: JSON.stringify({ id, longitud: longitudSeleccionada }),
             });
-            let data;
 
+            let data;
             try {
                 data = await response.json();
-            } catch (jsonError) {
+            } catch {
                 throw new Error(
                     "Respuesta del servidor no es JSON válido. Posible error HTML: sesión caducada o ruta incorrecta."
                 );
@@ -122,33 +132,25 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (data.success) {
-                if (data.warnings && data.warnings.length > 0) {
-                    Swal.fire({
+                if (data.warnings?.length) {
+                    await Swal.fire({
                         icon: "warning",
                         title: "Atención",
                         html: data.warnings.join("<br>"),
                         confirmButtonText: "OK",
-                    }).then(() => {
-                        // Actualiza el DOM y, si corresponde, agrega la etiqueta a la lista.
-                        actualizarDOMEtiqueta(id, data);
                     });
-                } else {
-                    actualizarDOMEtiqueta(id, data);
                 }
+                actualizarDOMEtiqueta(id, data);
             } else {
-                showErrorAlert(error);
+                showErrorAlert(data?.message || "Error desconocido");
             }
         } catch (error) {
             showErrorAlert(error);
         }
     }
 
-    /**
-     * Actualiza el DOM según los datos devueltos por el servidor.
-     * Si el estado indica que la etiqueta está completada, se agrega automáticamente a la lista.
-     */
     function actualizarDOMEtiqueta(id, data) {
-        const safeId = id.replace(/\./g, "-"); // Reemplaza "." por "-" para usarlo en IDs HTML
+        const safeId = id.replace(/\./g, "-"); // ✅ declarar una sola vez
         const estadoEtiqueta = document.getElementById(`estado-${safeId}`);
         const inicioEtiqueta = document.getElementById(`inicio-${safeId}`);
         const finalEtiqueta = document.getElementById(`final-${safeId}`);
@@ -164,31 +166,23 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // ✅ Sincroniza clase + CSS var + dataset (una sola verdad: CSS)
+        aplicarEstadoAProceso(id, data.estado);
+
         function showAlert(icon, title, text, timer = 2000) {
-            Swal.fire({
-                icon: icon,
-                title: title,
-                text: text,
-                timer: timer,
-                showConfirmButton: false,
-            });
+            Swal.fire({ icon, title, text, timer, showConfirmButton: false });
         }
 
         switch (data.estado.toLowerCase()) {
             case "completada":
-                // Si hay un temporizador iniciado, calcular el tiempo transcurrido
                 if (etiquetaTimers[id]) {
                     const elapsedTime = Date.now() - etiquetaTimers[id];
-                    // Se puede asignar el valor al objeto data para utilizarlo en el backend o mostrarlo
                     data.tiempo_fabricacion = elapsedTime;
                     showAlert(
                         "success",
                         "Etiqueta completada",
                         `Tiempo de fabricación: ${elapsedTime} ms`
                     );
-                    // Aquí podrías hacer otra petición para guardar el tiempo en la base de datos si lo requieres
-                    // await actualizarTiempoFabricacion(id, elapsedTime);55555555555555555555555555555555555555555555555555
-                    // Una vez calculado, se elimina el temporizador de la etiqueta
                     delete etiquetaTimers[id];
                 } else {
                     showAlert(
@@ -197,12 +191,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         "Hemos completado la etiqueta."
                     );
                 }
-                // 💥 Aquí la clave: safeId
-                const safeId = id.replace(/\./g, "-");
-                scrollToNextDiv(safeId);
+                scrollToNextDiv(safeId); // ✅ usa safeId ya declarado
                 break;
+
             case "fabricando":
-                // Si no se ha iniciado el temporizador para esta etiqueta, se guarda el instante actual
                 if (!etiquetaTimers[id]) {
                     etiquetaTimers[id] = Date.now();
                     showAlert(
@@ -212,14 +204,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     );
                 }
                 break;
+
             case "fabricada":
                 showAlert(
                     "info",
                     "Fabricada",
                     "Los Elementos han sido fabricados y los pasamos a otra máquina."
                 );
-                scrollToNextDiv(id);
+                scrollToNextDiv(safeId);
                 break;
+
             case "ensamblando":
                 showAlert(
                     "info",
@@ -227,14 +221,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     "El paquete ha sido enviado a la ensambladora."
                 );
                 break;
+
             case "ensamblada":
                 showAlert(
                     "success",
                     "Etiqueta ensamblada",
                     "El proceso de ensamblado ha finalizado correctamente."
                 );
-                scrollToNextDiv(id);
+                scrollToNextDiv(safeId);
                 break;
+
             case "soldando":
                 showAlert(
                     "info",
@@ -242,14 +238,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     "La etiqueta está en proceso de soldadura."
                 );
                 break;
+
             case "soldada":
                 showAlert(
                     "success",
                     "Etiqueta soldada",
                     "El proceso de soldadura ha finalizado correctamente."
                 );
-                scrollToNextDiv(id);
+                scrollToNextDiv(safeId);
                 break;
+
             default:
                 console.warn(
                     `Estado no manejado para etiqueta ${id}: ${data.estado}`
@@ -262,38 +260,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
         }
 
-        // Si la etiqueta se encuentra en estado completada o fabricada, agregarla automáticamente a la lista.
-        if (
-            data.estado.toLowerCase() === "completada" ||
-            data.estado.toLowerCase() === "fabricada"
-        ) {
+        if (["completada", "fabricada"].includes(data.estado.toLowerCase())) {
             agregarItemEtiqueta(id, data);
         }
 
-        // Si hay información de productos afectados, actualiza sus datos en el DOM.
-        if (data.productos_afectados && data.productos_afectados.length > 0) {
+        if (data.productos_afectados?.length) {
             data.productos_afectados.forEach((producto) => {
-                let pesoStockElemento = document.getElementById(
+                const pesoStockElemento = document.getElementById(
                     `peso-stock-${producto.id}`
                 );
-                let progresoTexto = document.getElementById(
+                const progresoTexto = document.getElementById(
                     `progreso-texto-${producto.id}`
                 );
-                let progresoBarra = document.getElementById(
+                const progresoBarra = document.getElementById(
                     `progreso-barra-${producto.id}`
                 );
 
-                if (pesoStockElemento) {
+                if (pesoStockElemento)
                     pesoStockElemento.textContent = `${producto.peso_stock} kg`;
-                }
-                if (progresoTexto) {
+                if (progresoTexto)
                     progresoTexto.textContent = `${producto.peso_stock} / ${producto.peso_inicial} kg`;
-                }
-                if (progresoBarra) {
-                    let progresoPorcentaje =
-                        (producto.peso_stock / producto.peso_inicial) * 100;
-                    progresoBarra.style.height = `${progresoPorcentaje}%`;
-                }
+                if (progresoBarra)
+                    progresoBarra.style.height = `${
+                        (producto.peso_stock / producto.peso_inicial) * 100
+                    }%`;
             });
         } else {
             console.warn(
@@ -301,27 +291,51 @@ document.addEventListener("DOMContentLoaded", () => {
             );
         }
     }
+
+    // ✅ Unifica estado visual y CSS variable (lee --bg-estado para el SVG)
+    function aplicarEstadoAProceso(etiquetaSubId, estado) {
+        const safe = etiquetaSubId.replace(/\./g, "-");
+        const proceso = document.getElementById("etiqueta-" + safe);
+        if (!proceso) return;
+
+        // actualiza data-estado para lectores lógicos
+        proceso.dataset.estado = String(estado || "").toLowerCase();
+
+        // quita clases estado-*
+        proceso.className = proceso.className
+            .split(" ")
+            .filter((c) => !c.startsWith("estado-"))
+            .join(" ")
+            .trim();
+
+        // añade clase estado-<estado>
+        proceso.classList.add("estado-" + proceso.dataset.estado);
+
+        // refresca el fondo del svg con la CSS var centralizada
+        const contenedor = proceso.querySelector('[id^="contenedor-svg-"]');
+        const svg = contenedor?.querySelector("svg");
+        if (svg) {
+            svg.style.background = getComputedStyle(proceso)
+                .getPropertyValue("--bg-estado")
+                .trim();
+        }
+    }
+
     function scrollToNextDiv(currentEtiquetaId) {
-        // Intenta seleccionar usando CSS.escape (más seguro que reemplazar solo '.')
         const currentSelector = `#etiqueta-${CSS.escape(currentEtiquetaId)}`;
         const currentDiv = document.querySelector(currentSelector);
-
         const allDivs = Array.from(document.querySelectorAll(".proceso"));
 
-        // Helpers
         const limpiar = (txt) =>
             (txt || "")
                 .normalize("NFD")
-                .replace(/\p{Diacritic}/gu, "") // quita acentos
+                .replace(/\p{Diacritic}/gu, "")
                 .trim()
                 .toLowerCase();
 
         const leerEstado = (div) => {
-            // Prioriza data-estado si existe
             const deData = div.dataset?.estado;
             if (deData) return limpiar(deData);
-
-            // Fallback al span que empiece por estado-
             const estadoSpan = div.querySelector('[id^="estado-"]');
             return limpiar(
                 estadoSpan?.textContent || estadoSpan?.innerText || ""
@@ -340,11 +354,8 @@ document.addEventListener("DOMContentLoaded", () => {
         ]);
 
         const estaCompletada = (div) => ES_COMPLETADA.has(leerEstado(div));
-
-        // Construye el listado de búsqueda: desde el actual o desde el principio
         const idx = currentDiv ? allDivs.indexOf(currentDiv) : -1;
         const colaBusqueda = idx >= 0 ? allDivs.slice(idx + 1) : allDivs;
-
         const siguienteDiv = colaBusqueda.find((div) => !estaCompletada(div));
 
         if (siguienteDiv) {
@@ -353,7 +364,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 block: "center",
             });
         } else {
-            // Debug útil para saber qué estados está leyendo realmente
             console.info(
                 "Estados vistos:",
                 allDivs.map((d, i) => ({ i, id: d.id, estado: leerEstado(d) }))
@@ -368,9 +378,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function showErrorAlert(error) {
-        // Se puede extraer el mensaje del error, ya sea error.message o el propio error
         const mensaje =
-            error.message || error || "Ocurrió un error inesperado.";
+            error?.message || error || "Ocurrió un error inesperado.";
         Swal.fire({
             icon: "error",
             title: "Ha ocurrido un error",
@@ -383,15 +392,12 @@ document.addEventListener("DOMContentLoaded", () => {
             denyButtonText: "Reportar Error",
         })
             .then((result) => {
-                if (result.isDenied) {
-                    notificarProgramador(mensaje); // Asegúrate de que esta función esté definida
-                }
+                if (result.isDenied) notificarProgramador(mensaje);
             })
             .then(() => {
-                window.location.reload(); // Recarga la página tras el mensaje
+                window.location.reload();
             });
     }
-
     // Actualiza la función para recibir el id conocido de la etiqueta
     function agregarItemEtiqueta(etiquetaId, data) {
         // Si data.id no está definido, usamos el id pasado como argumento (etiquetaId)

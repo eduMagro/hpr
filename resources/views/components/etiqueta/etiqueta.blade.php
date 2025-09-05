@@ -7,19 +7,57 @@
 @php
     $safeSubId = str_replace('.', '-', $etiqueta->etiqueta_sub_id);
     $estado = strtolower($etiqueta->estado ?? 'pendiente');
-@endphp
 
-<div class="proceso" id="etiqueta-{{ $safeSubId }}" data-estado="{{ $estado }}"
-    style="background-color:#fe7f09;border:1px solid black;width:100%;" class="border shadow-xl mt-4">
+@endphp
+<style>
+    /* Mapa de colores centralizado */
+    .proceso {
+        --bg-estado: #e5e7eb;
+    }
+
+    /* default */
+
+    .proceso.estado-pendiente {
+        --bg-estado: #ffffff;
+    }
+
+    /* blanco */
+    .proceso.estado-fabricando,
+    .proceso.estado-ensamblando,
+    .proceso.estado-soldando {
+        --bg-estado: #facc15;
+    }
+
+    /* amarillo */
+
+    .proceso.estado-fabricada,
+    .proceso.estado-completada,
+    .proceso.estado-ensamblada,
+    .proceso.estado-soldada {
+        --bg-estado: #22c55e;
+    }
+
+    /* verde */
+</style>
+
+
+
+<div class="proceso border shadow-xl mt-4 estado-{{ $estado }}" id="etiqueta-{{ $safeSubId }}"
+    data-estado="{{ $estado }}" style="background-color: var(--bg-estado); border:1px solid black; width:100%;">
+
     <div class="relative"><!-- Botón de impresión -->
+        <!-- Botón para fabricar la etiqueta actual -->
+
         <button onclick="imprimirEtiquetas(['{{ $etiqueta->etiqueta_sub_id }}'])"
             class="absolute top-2 right-2 text-blue-800 hover:text-blue-900 no-print" title="Imprimir esta etiqueta">
             🖨️
         </button>
+        <button type="button"
+            class="absolute top-2 right-12 bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 no-print btn-fabricar"
+            data-etiqueta-id="{{ $etiqueta->etiqueta_sub_id }}" title="Fabricar esta etiqueta">
+            ⚙️
+        </button>
     </div>
-
-
-
 
     <!-- Contenido principal -->
     <div class="p-2">
@@ -64,11 +102,9 @@
 
     <!-- Canvas -->
     <div>
-        <div id="contenedor-svg-{{ $etiqueta->id }}" class="w-full h-auto"></div>
-
+        <div id="contenedor-svg-{{ $etiqueta->id }}" class="w-full h-full"></div>
         <div style="width:100%;border-top:1px solid black;visibility:hidden;height:0;">
             <canvas id="canvas-imprimir-etiqueta-{{ $etiqueta->etiqueta_sub_id }}"></canvas>
         </div>
-
     </div>
 </div>

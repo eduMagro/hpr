@@ -15,7 +15,7 @@ const OVERLAP_GROW_UNITS = 0.6;
 const SIZE_MAIN_TEXT = 18;
 const SIZE_DIM_TEXT = 14;
 const DIM_LINE_OFFSET = 16;
-const DIM_LABEL_LIFT = 6;
+const DIM_LABEL_LIFT = 10; // px vertical (o horizontal) extra para separar la etiqueta de la línea
 // separación de la cota respecto a la línea y cómo se desplaza si choca
 const DIM_OFFSET = 10; // px perpendicular a la línea
 const DIM_TANG_STEP = 6; // px por intento a lo largo de la línea
@@ -27,10 +27,10 @@ const LABEL_STEP = 4; // px
 
 // Reserva para layout (bandas)
 const TOP_BAND_HEIGHT = 26; // alto de franja lógica arriba
-const TOP_BAND_GAP = 6; // separación figura-banda arriba
+const TOP_BAND_GAP = 14; // separación figura-banda arriba
 const TOP_BAND_PAD_X = 6; // padding horizontal del texto
 
-const SIDE_BAND_GAP = 6; // separación figura-banda lateral
+const SIDE_BAND_GAP = 12; // separación figura-banda lateral
 const SIDE_BAND_PAD = 6; // padding interno lateral
 
 // Reserva mínima para “anillo de cotas”
@@ -39,18 +39,29 @@ const DIM_RING_MARGIN = DIM_LINE_OFFSET + SIZE_DIM_TEXT + DIM_LABEL_LIFT + 6;
 // =======================
 // Helpers SVG
 // =======================
-function crearSVG(width, height) {
+
+function getEstadoColorFromCSSVar(contenedor) {
+    const proceso = contenedor.closest(".proceso");
+    if (!proceso) return "#e5e7eb";
+    const color = getComputedStyle(proceso)
+        .getPropertyValue("--bg-estado")
+        .trim();
+    return color || "#e5e7eb";
+}
+
+function crearSVG(width, height, bgColor) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.style.width = "100%";
     svg.style.height = "70%";
     svg.style.display = "block";
-    svg.style.background = "#fe7f09";
+    svg.style.background = bgColor || "#ffffff";
     svg.style.shapeRendering = "geometricPrecision";
     svg.style.textRendering = "optimizeLegibility";
     return svg;
 }
+
 function agregarTexto(svg, x, y, texto, color, size, anchor) {
     const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
     txt.setAttribute("x", x);
@@ -727,12 +738,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     elementos.forEach(function (grupo, gidx) {
         var groupId =
-            grupo &&
-            grupo.etiqueta &&
-            grupo.etiqueta.id !== undefined &&
-            grupo.etiqueta.id !== null
+            grupo && grupo.etiqueta && grupo.etiqueta.id != null
                 ? grupo.etiqueta.id
-                : grupo && grupo.id !== undefined && grupo.id !== null
+                : grupo && grupo.id != null
                 ? grupo.id
                 : gidx;
 
@@ -741,7 +749,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var ancho = 600,
             alto = 150;
-        var svg = crearSVG(ancho, alto);
+
+        // ✅ lee el color UNA VEZ por contenedor y pásalo al crear el SVG
+        const svgBg = getEstadoColorFromCSSVar(contenedor);
+        var svg = crearSVG(ancho, alto, svgBg);
 
         var numElementos = grupo.elementos.length;
 
@@ -799,27 +810,19 @@ document.addEventListener("DOMContentLoaded", function () {
             var ptsModel = computePathPoints(dims);
             var minX = Math.min.apply(
                 null,
-                ptsModel.map(function (p) {
-                    return p.x;
-                })
+                ptsModel.map((p) => p.x)
             );
             var maxX = Math.max.apply(
                 null,
-                ptsModel.map(function (p) {
-                    return p.x;
-                })
+                ptsModel.map((p) => p.x)
             );
             var minY = Math.min.apply(
                 null,
-                ptsModel.map(function (p) {
-                    return p.y;
-                })
+                ptsModel.map((p) => p.y)
             );
             var maxY = Math.max.apply(
                 null,
-                ptsModel.map(function (p) {
-                    return p.y;
-                })
+                ptsModel.map((p) => p.y)
             );
             var cxModel = (minX + maxX) / 2,
                 cyModel = (minY + maxY) / 2;
@@ -828,32 +831,24 @@ document.addEventListener("DOMContentLoaded", function () {
             var needsRotate = maxY - minY > maxX - minX;
             var rotDeg = needsRotate ? -90 : 0;
 
-            var ptsRot = ptsModel.map(function (p) {
-                return rotatePoint(p, cxModel, cyModel, rotDeg);
-            });
+            var ptsRot = ptsModel.map((p) =>
+                rotatePoint(p, cxModel, cyModel, rotDeg)
+            );
             minX = Math.min.apply(
                 null,
-                ptsRot.map(function (p) {
-                    return p.x;
-                })
+                ptsRot.map((p) => p.x)
             );
             maxX = Math.max.apply(
                 null,
-                ptsRot.map(function (p) {
-                    return p.x;
-                })
+                ptsRot.map((p) => p.x)
             );
             minY = Math.min.apply(
                 null,
-                ptsRot.map(function (p) {
-                    return p.y;
-                })
+                ptsRot.map((p) => p.y)
             );
             maxY = Math.max.apply(
                 null,
-                ptsRot.map(function (p) {
-                    return p.y;
-                })
+                ptsRot.map((p) => p.y)
             );
             var figW = Math.max(1, maxX - minX),
                 figH = Math.max(1, maxY - minY);
@@ -862,12 +857,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             // Colocación del texto (según reglas)
             var segCount = segCounts[idx];
-            var textPlacement;
-            if (numElementos === 1)
-                textPlacement = segCount > 5 ? "side" : "top";
-            else textPlacement = "top";
+            var textPlacement =
+                numElementos === 1 ? (segCount > 5 ? "side" : "top") : "top";
 
-            // Estimar ancho banda lateral
+            // Banda lateral estimada
             var estSideW =
                 mainText.length * SIZE_MAIN_TEXT * 0.55 + 2 * SIDE_BAND_PAD;
             var sideBandWidth = Math.max(80, Math.min(estSideW, 160));
@@ -894,36 +887,26 @@ document.addEventListener("DOMContentLoaded", function () {
                 scale = Math.min(usableWidth / figW, (cellHeight * 0.8) / figH);
             }
 
-            // puntos SVG y bbox figura (antes de textos)
-            var ptsSvg = ptsRot.map(function (pt) {
-                return {
-                    x: centerX + (pt.x - midX) * scale,
-                    y: centerY + (pt.y - midY) * scale,
-                };
-            });
+            // Bbox figura
+            var ptsSvg = ptsRot.map((pt) => ({
+                x: centerX + (pt.x - midX) * scale,
+                y: centerY + (pt.y - midY) * scale,
+            }));
             var figMinX = Math.min.apply(
                 null,
-                ptsSvg.map(function (p) {
-                    return p.x;
-                })
+                ptsSvg.map((p) => p.x)
             );
             var figMaxX = Math.max.apply(
                 null,
-                ptsSvg.map(function (p) {
-                    return p.x;
-                })
+                ptsSvg.map((p) => p.x)
             );
             var figMinY = Math.min.apply(
                 null,
-                ptsSvg.map(function (p) {
-                    return p.y;
-                })
+                ptsSvg.map((p) => p.y)
             );
             var figMaxY = Math.max.apply(
                 null,
-                ptsSvg.map(function (p) {
-                    return p.y;
-                })
+                ptsSvg.map((p) => p.y)
             );
             var figBox = {
                 left: figMinX,
@@ -932,7 +915,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 bottom: figMaxY,
             };
 
-            // Dibujar figura
+            // Path principal
             var dPath = buildSvgPathFromDims(
                 dims,
                 cxModel,
@@ -976,15 +959,15 @@ document.addEventListener("DOMContentLoaded", function () {
             var placedBoxes = [];
             if (textPlacement === "top") {
                 placeMainLabelTopBand({
-                    svg: svg,
+                    svg,
                     text: mainText,
-                    figBox: figBox,
-                    centerX: centerX,
-                    placedBoxes: placedBoxes,
-                    safeLeft: safeLeft,
-                    safeRight: safeRight,
-                    safeTop: safeTop,
-                    safeBottom: safeBottom,
+                    figBox,
+                    centerX,
+                    placedBoxes,
+                    safeLeft,
+                    safeRight,
+                    safeTop,
+                    safeBottom,
                     baseSize: SIZE_MAIN_TEXT,
                     minSize: 10,
                 });
@@ -993,15 +976,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 var freeRight = safeRight - figBox.right;
                 var chosenSide = freeRight >= freeLeft ? "right" : "left";
                 placeMainLabelSideBand({
-                    svg: svg,
+                    svg,
                     text: mainText,
-                    figBox: figBox,
-                    centerY: centerY,
-                    placedBoxes: placedBoxes,
-                    safeLeft: safeLeft,
-                    safeRight: safeRight,
-                    safeTop: safeTop,
-                    safeBottom: safeBottom,
+                    figBox,
+                    centerY,
+                    placedBoxes,
+                    safeLeft,
+                    safeRight,
+                    safeTop,
+                    safeBottom,
                     side: chosenSide,
                     baseSize: SIZE_MAIN_TEXT,
                     minSize: 10,
@@ -1026,7 +1009,6 @@ document.addEventListener("DOMContentLoaded", function () {
             var MAX_OFF = Math.max(ancho, alto) * 0.6;
 
             segsUnicos.forEach(function (s) {
-                // rotar segmento al SVG
                 var s1 = rotatePoint(s.start, cxModel, cyModel, rotDeg);
                 var s2 = rotatePoint(s.end, cxModel, cyModel, rotDeg);
                 var p1 = {
@@ -1038,18 +1020,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     y: centerY + (s2.y - midY) * scale,
                 };
 
-                // base: dir, normal, punto medio
                 var dx = p2.x - p1.x,
                     dy = p2.y - p1.y;
                 var L = Math.hypot(dx, dy) || 1;
                 var tx = dx / L,
-                    ty = dy / L; // tangente (a lo largo del tramo)
+                    ty = dy / L;
                 var nx = dy / L,
-                    ny = -dx / L; // normal (perpendicular)
+                    ny = -dx / L;
                 var mx = (p1.x + p2.x) / 2,
                     my = (p1.y + p2.y) / 2;
 
-                // posición objetivo (pegada a la línea)
                 var baseLX = mx + nx * DIM_OFFSET;
                 var baseLY = my + ny * DIM_OFFSET;
 
@@ -1058,7 +1038,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 var tw = tb.w,
                     th = tb.h;
 
-                // función para construir bbox de texto en (x,y)
                 function makeBox(cx, cy) {
                     return {
                         left: cx - tw / 2,
@@ -1068,34 +1047,25 @@ document.addEventListener("DOMContentLoaded", function () {
                     };
                 }
 
-                // límites de desplazamiento a lo largo del tramo
                 var maxShift = L * DIM_TANG_MAX_FRAC;
-
-                // busca hueco alternando +/-
                 var bestLX = baseLX,
                     bestLY = baseLY;
-                var placed = false;
+
                 for (
                     var step = 0;
                     step <= Math.ceil(maxShift / DIM_TANG_STEP);
                     step++
                 ) {
-                    // alterna derecha/izquierda desde el centro: +, -, ++, --, ...
                     var dir = step % 2 === 0 ? 1 : -1;
                     var mult = Math.ceil(step / 2);
                     var shift = dir * mult * DIM_TANG_STEP;
-
-                    // recorta shift a los extremos del tramo
                     if (Math.abs(shift) > maxShift) continue;
 
                     var lx = baseLX + tx * shift;
                     var ly = baseLY + ty * shift;
 
-                    // evita salirse del tramo visual: que la proyección quede entre p1 y p2
-                    var tProj = (lx - p1.x) * tx + (ly - p1.y) * ty; // distancia desde p1 a lo largo del tramo
-                    if (tProj < 0 + tw * 0.3 || tProj > L - tw * 0.3) {
-                        continue;
-                    }
+                    var tProj = (lx - p1.x) * tx + (ly - p1.y) * ty;
+                    if (tProj < 0 + tw * 0.3 || tProj > L - tw * 0.3) continue;
 
                     var labelBox = makeBox(lx, ly);
 
@@ -1109,9 +1079,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         labelBox,
                         0
                     );
-                    var collideOth = placedBoxes.some(function (b) {
-                        return rectsOverlap(b, labelBox, LABEL_CLEARANCE);
-                    });
+                    var collideOth = placedBoxes.some((b) =>
+                        rectsOverlap(b, labelBox, LABEL_CLEARANCE)
+                    );
                     var outOfBounds =
                         labelBox.top < 0 ||
                         labelBox.bottom > alto ||
@@ -1121,13 +1091,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (!collideFig && !collideOth && !outOfBounds) {
                         bestLX = lx;
                         bestLY = ly;
-                        placed = true;
-                        placedBoxes.push(labelBox); // reserva este espacio para siguientes cotas
+                        placedBoxes.push(labelBox);
                         break;
                     }
                 }
 
-                // highlight (invisible hasta hover)
                 var hl = document.createElementNS(
                     "http://www.w3.org/2000/svg",
                     "line"
@@ -1145,7 +1113,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 hl.style.transition = "opacity 120ms ease";
                 svg.appendChild(hl);
 
-                // texto (pegado a la línea y sin pisar a otros)
                 var txt = document.createElementNS(
                     "http://www.w3.org/2000/svg",
                     "text"

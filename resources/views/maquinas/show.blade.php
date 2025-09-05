@@ -33,22 +33,26 @@
     </x-slot>
     <div class="w-full sm:px-4 py-6">
         <!-- Grid principal -->
-        <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
+        <div class="w-full">
             @if ($maquina->tipo === 'grua')
-                {{-- <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :ubicaciones="$ubicaciones" :paquetes="$paquetes" /> --}}
-                <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :movimientosCompletados="$movimientosCompletados" :ubicacionesDisponiblesPorProductoBase="$ubicacionesDisponiblesPorProductoBase" />
-
+                <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
+                    {{-- <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :ubicaciones="$ubicaciones" :paquetes="$paquetes" /> --}}
+                    <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :movimientosCompletados="$movimientosCompletados" :ubicacionesDisponiblesPorProductoBase="$ubicacionesDisponiblesPorProductoBase" />
+                </div>
                 @include('components.maquinas.modales.grua.modales-grua')
             @elseif ($maquina->tipo === 'dobladora manual')
-                <x-maquinas.tipo.tipo-dobladora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
-                    :productosBaseCompatibles="$productosBaseCompatibles" />
+                <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
+                    <x-maquinas.tipo.tipo-dobladora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
+                        :productosBaseCompatibles="$productosBaseCompatibles" />
+                </div>
             @elseif ($maquina->tipo === 'cortadora manual')
-                <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
-                    :productosBaseCompatibles="$productosBaseCompatibles" />
+                <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
+                    <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
+                        :productosBaseCompatibles="$productosBaseCompatibles" />
+                </div>
             @else
                 <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados" :productosBaseCompatibles="$productosBaseCompatibles"
                     :productoBaseSolicitados="$productoBaseSolicitados" />
-
 
                 @include('components.maquinas.modales.normal.modales-normal')
             @endif
