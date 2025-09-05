@@ -69,7 +69,7 @@
             window.etiquetasData = @json($etiquetasData);
             window.pesosElementos = @json($pesosElementos);
             window.maquinaId = @json($maquina->id);
-            window.tipoMaquina = @json($maquina->tipo); // 👈 Añadido
+            window.tipoMaquina = @json($maquina->tipo_material); // 👈 Añadido
             window.ubicacionId = @json(optional($ubicacion)->id);
         </script>
 

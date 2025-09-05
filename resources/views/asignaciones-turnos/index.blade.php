@@ -123,7 +123,7 @@
 
                             </th>
                             <x-tabla.botones-filtro ruta="asignaciones-turnos.index"
-                                rutaExportar="asignaciones-turno.exportar" />
+                                rutaExportar="asignaciones-turnos.verExportar" />
                         </form>
                     </tr>
 
