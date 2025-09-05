@@ -3,7 +3,20 @@
             display: none !important
         }
     </style>
-
+    @props([
+        'maquina',
+        'maquinas' => collect(),
+        'elementosAgrupados' => collect(),
+        'productosBaseCompatibles' => collect(),
+        'productoBaseSolicitados' => collect(),
+    
+        // nuevas
+        'planillasActivas' => [],
+        'elementosPorPlanilla' => collect(),
+        'mostrarDos' => false,
+    
+        'sugerenciasPorElemento' => [],
+    ])
     <div x-data="{
         showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'true'),
         showRight: JSON.parse(localStorage.getItem('showRight') ?? 'true'),
@@ -197,25 +210,89 @@
                 'sm:col-span-9 sm:col-start-1': !showLeft && showRight, // 9 | 3
                 'sm:col-span-12 sm:col-start-1': !showLeft && !showRight // 12 columnas completas
             }">
-            @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
-                @php
-                    $firstElement = $elementos->first();
-                    $etiqueta =
-                        $firstElement->etiquetaRelacion ?? Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
-                    $planilla = $firstElement->planilla ?? null;
-                    $tieneElementosEnOtrasMaquinas =
-                        isset($otrosElementos[$etiqueta?->id]) && $otrosElementos[$etiqueta?->id]->isNotEmpty();
-                @endphp
 
-                <div>
-                    <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
+            {{-- Panel info centrado en pantalla --}}
+            <div id="element-info-panel"
+                class="fixed top-1/2 left-1/2 z-50 w-full max-w-md hidden
+            -translate-x-1/2 -translate-y-1/2
+            bg-blue-100 border border-blue-300 shadow-xl rounded-xl p-4">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <h4 class="font-semibold text-sm text-blue-900">Sugerencia de corte</h4>
+                    <button type="button" class="text-blue-700 hover:text-blue-900"
+                        onclick="document.getElementById('element-info-panel').classList.add('hidden')">
+                        ✕
+                    </button>
                 </div>
-            @empty
-                <div
-                    class="col-span-2 text-center mt-6 p-6 text-gray-800 text-lg font-semibold bg-yellow-100 border border-yellow-300 rounded-xl shadow-sm">
-                    No hay planillas en la cola de trabajo.
-                </div>
-            @endforelse
+                <div id="element-info-body" class="text-xs text-blue-900 space-y-1"></div>
+            </div>
+
+
+            {{-- contenido: 1 o 2 columnas segun $mostrarDos --}}
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-{{ $mostrarDos ? '2' : '1' }} p-3">
+                @forelse($planillasActivas as $planilla)
+                    @php
+                        $grupoPlanilla = $elementosPorPlanilla->get($planilla->id, collect());
+                        $elementosAgrupados = $grupoPlanilla
+                            ->groupBy('etiqueta_sub_id')
+                            ->sortBy(function ($grupo, $subId) {
+                                if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
+                                    return sprintf('%s-%010d', $m[1], (int) $m[2]);
+                                }
+                                return $subId . '-0000000000';
+                            });
+                    @endphp
+
+                    <section class="bg-white rounded-lg border shadow-sm flex flex-col">
+                        {{-- cabecera fija --}}
+                        <header class="p-2 border-b flex-shrink-0">
+                            <div class="text-sm font-semibold">
+                                Planilla
+                                <span class="text-gray-500">— {{ $planilla->codigo_limpio ?? 'sin código' }}</span>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                Tiempo estimado:
+                                {{ optional($planilla->tiempo_fabricacion) ? $planilla->tiempo_fabricacion . ' min' : 'N/A' }}
+                            </div>
+                        </header>
+
+                        {{-- contenido con scroll independiente --}}
+                        <div class="p-2 space-y-2 flex-1 overflow-y-auto" style="max-height: 80vh;">
+                            @forelse ($elementosAgrupados as $etiquetaSubId => $elementos)
+                                @php
+                                    $firstElement = $elementos->first();
+                                    $etiqueta =
+                                        $firstElement->etiquetaRelacion ??
+                                        \App\Models\Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)->first();
+                                    $tieneElementosEnOtrasMaquinas =
+                                        isset($otrosElementos[$etiqueta?->id]) &&
+                                        $otrosElementos[$etiqueta?->id]->isNotEmpty();
+                                @endphp
+
+                                <div class="border rounded-md p-2">
+                                    <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquina->tipo" />
+                                    <div class="text-xs text-gray-500 mt-1 flex gap-4">
+                                        <span>Elementos: {{ $elementos->count() }}</span>
+                                        <span>Peso: {{ number_format($elementos->sum('peso'), 2, ',', '.') }} kg</span>
+                                        @if ($tieneElementosEnOtrasMaquinas)
+                                            <span class="text-amber-600">Tiene piezas en otras máquinas</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="text-center p-4 text-sm text-gray-600">
+                                    Esta planilla no tiene subetiquetas pendientes.
+                                </div>
+                            @endforelse
+                        </div>
+                    </section>
+                @empty
+                    <div
+                        class="col-span-2 text-center mt-6 p-6 text-gray-800 text-lg font-semibold bg-yellow-100 border border-yellow-300 rounded-xl shadow-sm">
+                        No hay planillas en la cola de trabajo.
+                    </div>
+                @endforelse
+            </div>
+
         </div>
         <!-- --------------------------------------------------------------- COLUMNA DERECHA --------------------------------------------------------------- -->
 
@@ -223,7 +300,7 @@
             class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-3 md:sticky md:top-4">
             <div class="flex flex-col gap-4">
                 <!-- Input de lectura de QR -->
-                <div x-data="accionesLote()" class="mt-2 space-y-2">
+                {{-- <div x-data="accionesLote()" class="mt-2 space-y-2">
                     <button @click="procesar('fabricar')" :disabled="cargando"
                         class="w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50">
                         <span x-show="!cargando">Empezar a Fabricar</span>
@@ -239,10 +316,25 @@
 
                 <input type="text" id="procesoEtiqueta" placeholder="ESCANEA ETIQUETA" autofocus
                     class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;" />
+                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;" /> --}}
 
                 <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
+                {{-- cabecera con toggle opcional (si lo usas) --}}
+                <div class="flex items-center justify-between p-3 border-b">
+                    <h2 class="font-semibold text-base">Cola de trabajo</h2>
 
+                    {{-- ejemplo de toggle GET para mostrar dos planillas --}}
+                    <form method="GET" class="text-sm">
+                        @foreach (request()->except('mostrar_dos') as $k => $v)
+                            <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+                        @endforeach
+                        <label class="inline-flex items-center gap-2">
+                            <input type="checkbox" name="mostrar_dos" value="1" @checked($mostrarDos)
+                                onchange="this.form.submit()">
+                            Ver también la siguiente planilla
+                        </label>
+                    </form>
+                </div>
                 <script>
                     document.addEventListener("DOMContentLoaded", function() {
                         const input = document.getElementById("procesoEtiqueta");
@@ -381,11 +473,11 @@
                                     html: data.errors?.length ?
                                         `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
               ${data.errors.map(err => `
-                                                                                                                                                                                                                                                                                                                                                                              <li>
-                                                                                                                                                                                                                                                                                                                                                                                  <b>#${err.id}</b>: ${err.error}<br>
-                                                                                                                                                                                                                                                                                                                                                                                  <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
-                                                                                                                                                                                                                                                                                                                                                                              </li>
-                                                                                                                                                                                                                                                                                                                                                                          `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <li>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <b>#${err.id}</b>: ${err.error}<br>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </li>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          `).join('')}
            </ul>` : '',
                                 }).then(() => {
                                     if (data.success) location.reload();
@@ -406,3 +498,27 @@
     <!-- --------------------------------------------------------------- MODALES --------------------------------------------------------------- -->
     <x-maquinas.modales.cambio-maquina :maquina="$maquina" :maquinas="$maquinas" />
     <x-maquinas.modales.dividir-elemento />
+
+
+    {{-- Sugerencias por elemento (id => datos) --}}
+    <script>
+        window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
+        window.ELEMENTOS_AGRUPADOS = @json($elementosAgrupadosScript ?? []);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('miCanvasMaquina');
+            const ctx = canvas.getContext('2d');
+
+            // La función viene de tu bundle (Vite/Mix)
+            window.initCanvasMaquinas?.({
+                canvas,
+                ctx,
+                sugerencias: window.SUGERENCIAS,
+                elementosAgrupados: window.ELEMENTOS_AGRUPADOS,
+                panelIds: {
+                    panelId: 'element-info-panel',
+                    panelBodyId: 'element-info-body'
+                }
+            });
+        });
+    </script>

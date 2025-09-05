@@ -30,6 +30,7 @@
                 </form>
             @endif
         </div>
+
     </x-slot>
     <div class="w-full sm:px-4 py-6">
         <!-- Grid principal -->
@@ -52,7 +53,9 @@
                 </div>
             @else
                 <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados" :productosBaseCompatibles="$productosBaseCompatibles"
-                    :productoBaseSolicitados="$productoBaseSolicitados" />
+                    :productoBaseSolicitados="$productoBaseSolicitados" {{-- nuevas props --}} :planillasActivas="$planillasActivas" :elementosPorPlanilla="$elementosPorPlanilla" :mostrarDos="$mostrarDos"
+                    :sugerenciasPorElemento="$sugerenciasPorElemento" />
+
 
                 @include('components.maquinas.modales.normal.modales-normal')
             @endif
@@ -64,6 +67,7 @@
         <script src="{{ asset('js/maquinaJS/trabajoEtiqueta.js') }}"></script>
         <script src="{{ asset('js/imprimirQrS.js') }}"></script>
         <script>
+            window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
             window.elementosAgrupadosScript = @json($elementosAgrupadosScript ?? null);
             window.rutaDividirElemento = "{{ route('elementos.dividir') }}";
             window.etiquetasData = @json($etiquetasData);
@@ -75,6 +79,8 @@
 
 
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
+        <script src="{{ asset('js/maquinaJS/elementInfoPanel.js') }}"></script>
+
         {{-- <script src="{{ asset('js/maquinaJS/canvasMaquinaSinBoton.js') }}" defer></script> --}}
 
         <script src="{{ asset('js/maquinaJS/crearPaquetes.js') }}" defer></script>
@@ -296,6 +302,28 @@
                     display: none !important;
                 }
             }
+
+            /* Desactiva menú/selección por long-press dentro de la tarjeta/etiqueta */
+            .proceso,
+            .proceso * {
+                -webkit-touch-callout: none;
+                /* iOS Safari: sin menú */
+                -webkit-user-select: none;
+                /* iOS */
+                user-select: none;
+                /* resto */
+                -webkit-tap-highlight-color: transparent;
+            }
         </style>
+        <script>
+            // Bloquea el menú contextual solo dentro de .proceso (tu tarjeta de etiqueta)
+            document.addEventListener('contextmenu', function(e) {
+                if (e.target.closest('.proceso')) {
+                    e.preventDefault();
+                }
+            }, {
+                capture: true
+            });
+        </script>
 
 </x-app-layout>

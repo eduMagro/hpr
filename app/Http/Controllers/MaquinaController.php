@@ -23,6 +23,9 @@ use Illuminate\Support\Facades\Session;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage; // ✅ Añadir esta línea
 use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
+use App\Services\SugeridorProductoBaseService;
+use Illuminate\Support\Facades\Log;
 
 class MaquinaController extends Controller
 {
@@ -186,20 +189,32 @@ class MaquinaController extends Controller
         }
 
         // 3) Seleccionar planilla activa según orden manual (OrdenPlanilla)
-        [$planillaActiva, $elementosMaquina] = $this->aplicarColaPlanillas($maquina, $elementosMaquina);
+        // Leer preferencia (URL o sesión). Si viene en la query ?mostrar_dos=1, activa dos.
+        // 3) Seleccionar planilla(s) activa(s)
+        $mostrarDos = request()->boolean('mostrar_dos');
+        $cuantas = $mostrarDos ? 2 : 1;
+        [$planillasActivas, $elementosFiltrados] = $this->aplicarColaPlanillas($maquina, $elementosMaquina, $cuantas);
 
-        // 4) Empaquetados visuales + datasets que usas en canvas/tabla
-        $pesosElementos  = $elementosMaquina->map(fn($e) => ['id' => $e->id, 'peso' => $e->peso])->values()->toArray();
+        // datasets por planilla
+        $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
 
-        $etiquetasData = $elementosMaquina
+        // 4) Datasets para canvas/tabla (USANDO FILTRADOS)
+        $pesosElementos = $elementosFiltrados
+            ->map(fn($e) => ['id' => $e->id, 'peso' => $e->peso])
+            ->values()
+            ->toArray();
+
+        $ordenSub = function ($grupo, $subId) {
+            if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
+                return sprintf('%s-%010d', $m[1], (int) $m[2]);
+            }
+            return $subId . '-0000000000';
+        };
+
+        $etiquetasData = $elementosFiltrados
             ->filter(fn($e) => !empty($e->etiqueta_sub_id))
             ->groupBy('etiqueta_sub_id')
-            ->sortBy(function ($grupo, $subId) {
-                if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
-                    return sprintf('%s-%010d', $m[1], (int) $m[2]);
-                }
-                return $subId . '-0000000000';
-            })
+            ->sortBy($ordenSub)
             ->map(fn($grupo, $subId) => [
                 'codigo'     => (string) $subId,
                 'elementos'  => $grupo->pluck('id')->toArray(),
@@ -208,14 +223,10 @@ class MaquinaController extends Controller
             ->values();
 
         $elementosReempaquetados = session('elementos_reempaquetados', []);
-        $elementosAgrupados = $elementosMaquina
+
+        $elementosAgrupados = $elementosFiltrados
             ->groupBy('etiqueta_sub_id')
-            ->sortBy(function ($grupo, $subId) {
-                if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
-                    return sprintf('%s-%010d', $m[1], (int) $m[2]);
-                }
-                return $subId . '-0000000000';
-            });
+            ->sortBy($ordenSub);
 
         $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
             'etiqueta'   => $grupo->first()->etiquetaRelacion,
@@ -249,22 +260,86 @@ class MaquinaController extends Controller
             ->where('estado', 'pendiente')
             ->where('maquina_destino', $maquina->id)
             ->pluck('producto_base_id')
-            ->unique() ?? collect(); // 🔁 nunca null
+            ->unique() ?? collect();
 
+        $sugeridor = app(SugeridorProductoBaseService::class);
+        // 1) Saca la colección desde $base (debe venir de cargarContextoBase)
+        $productosBaseCompatibles = collect($base['productosBaseCompatibles'] ?? []);
 
+        // 2) Filtro “barra” adaptado a tu modelo
+        $productosBarra = $productosBaseCompatibles->filter(function ($pb) {
+            $tipo = strtolower((string)($pb->tipo ?? ''));
+            // si viene “barra”, “varilla”, etc.
+            if (str_contains($tipo, 'barra') || str_contains($tipo, 'varilla') || str_contains($tipo, 'corrug')) {
+                return true;
+            }
+            // si tiene una longitud de barra razonable (≥ 1000 mm)
+            $L = (float)($pb->longitud ?? 0);
+            return $L >= 1000;
+        })->values();
+
+        // 3) Fallback si quedó vacío (para no romper mientras afinamos datos)
+        if ($productosBarra->isEmpty() && $productosBaseCompatibles->isNotEmpty()) {
+            \Log::warning('[SugeridorPB] productosBarra vacío; usando todos los compatibles como fallback');
+            $productosBarra = $productosBaseCompatibles;
+        }
+
+        // 4) Log rápido para verificar
+        \Log::debug('[SugeridorPB][PB-snapshot]', [
+            'compatibles_total' => $productosBaseCompatibles->count(),
+            'barra_total'       => $productosBarra->count(),
+            'ejemplo_attrs'     => $productosBarra->take(3)->map(fn($pb) => [
+                'id'        => $pb->id,
+                'tipo'      => $pb->tipo,
+                'diametro'  => $pb->diametro,
+                'longitud'  => $pb->longitud,
+            ]),
+        ]);
+
+        // 5) Calcular sugerencias (pásale productosBarra al service)
+        $sugerenciasPorElemento = [];
+        $debug = true; // mientras pruebas
+        $sugeridor = app(\App\Services\SugeridorProductoBaseService::class);
+
+        foreach ($elementosFiltrados as $el) {
+            $colegas = $elementosFiltrados->where('planilla_id', $el->planilla_id);
+            $res = $sugeridor->sugerirParaElemento($el, $productosBarra, $colegas, $debug);
+            $sugerenciasPorElemento[$el->id] = $res;
+
+            \Log::debug('[SugeridorPB][Controller]', [
+                'elemento_id' => $el->id,
+                'ok'          => $res['ok'] ?? false,
+                'reason'      => $res['reason'] ?? null,
+                'pb'          => $res['sugerencia']['producto_base_id'] ?? null,
+                'n_por_barra' => $res['sugerencia']['n_por_barra'] ?? null,
+                'pareja'      => $res['sugerencia']['pareja']['elemento_id'] ?? null,
+            ]);
+        }
+        // ✅ PASO CORRECTO DE VARIABLES A LA VISTA
         return view('maquinas.show', array_merge($base, compact(
+            // base
             'maquina',
-            'elementosMaquina',
+
+            // cola y filtrados
+            'planillasActivas',
+            'elementosFiltrados',
+            'elementosPorPlanilla',
+            'mostrarDos',
+
+            // datasets para la vista
+            'elementosMaquina',          // si aún lo usas en alguna parte
             'pesosElementos',
             'etiquetasData',
             'elementosReempaquetados',
+            'elementosAgrupados',
+            'elementosAgrupadosScript',
+            'sugerenciasPorElemento',
+            // extra contexto
+            'turnoHoy',
             'movimientosPendientes',
             'movimientosCompletados',
             'ubicacionesDisponiblesPorProductoBase',
             'pedidosActivos',
-            'elementosAgrupados',
-            'elementosAgrupadosScript',
-            'turnoHoy',
             'productoBaseSolicitados'
         )));
     }
@@ -372,35 +447,41 @@ class MaquinaController extends Controller
      * Devuelve [planillaActiva, elementosFiltradosAPlanillaActiva]
      * según el orden manual (OrdenPlanilla) de esta máquina.
      */
-    private function aplicarColaPlanillas(Maquina $maquina, \Illuminate\Support\Collection $elementos)
+    private function aplicarColaPlanillas(Maquina $maquina, Collection $elementos, int $cuantas = 1)
     {
-        // Agrupar por planilla
-        $elementosPorPlanilla = $elementos->groupBy('planilla_id');
+        // 1) Agrupar por planilla
+        $porPlanilla = $elementos->groupBy('planilla_id');
 
-        // Orden manual
+        // 2) Traer orden manual: [planilla_id => posicion]
         $ordenManual = OrdenPlanilla::where('maquina_id', $maquina->id)
-            ->get()
-            ->pluck('posicion', 'planilla_id'); // [planilla_id => posicion]
+            ->pluck('posicion', 'planilla_id');
 
-        $elementosPorPlanilla = $elementosPorPlanilla->sortBy(function ($grupo, $planillaId) use ($ordenManual) {
+        // 3) Ordenar grupos por posición (los que no estén en la cola los manda al final)
+        $porPlanillaOrdenado = $porPlanilla->sortBy(function ($grupo, $planillaId) use ($ordenManual) {
             return $ordenManual[$planillaId] ?? PHP_INT_MAX;
         });
 
-        $planillaActiva = null;
-        foreach ($elementosPorPlanilla as $grupo) {
+        // 4) Seleccionar las N planillas activas (que estén en el orden manual)
+        $planillasActivas = [];
+        foreach ($porPlanillaOrdenado as $grupo) {
             $planilla = $grupo->first()->planilla;
             if (!$planilla || !$ordenManual->has($planilla->id)) {
                 continue;
             }
-            $planillaActiva = $planilla;
-            break;
+            $planillasActivas[] = $planilla;
+            if (count($planillasActivas) >= $cuantas) {
+                break;
+            }
         }
 
-        $elementosFiltrados = $planillaActiva
-            ? $elementos->where('planilla_id', $planillaActiva->id)->values()
+        // 5) Filtrar elementos a las planillas activas
+        $idsActivos = collect($planillasActivas)->pluck('id');
+        $elementosFiltrados = $idsActivos->isNotEmpty()
+            ? $elementos->whereIn('planilla_id', $idsActivos)->values()
             : collect();
 
-        return [$planillaActiva, $elementosFiltrados];
+        // 6) (opcional) devolver también el mapa planilla_id => posición, por si quieres pintar la posición
+        return [$planillasActivas, $elementosFiltrados, $ordenManual];
     }
 
     private function activarMovimientosSalidasHoy(): void

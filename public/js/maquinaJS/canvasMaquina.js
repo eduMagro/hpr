@@ -733,6 +733,13 @@ function buildSvgPathFromDims(
 // Script principal
 // =======================
 document.addEventListener("DOMContentLoaded", function () {
+    // 👉 Conectar el panel informativo (global)
+    if (window.setDataSources) {
+        window.setDataSources({
+            sugerencias: window.SUGERENCIAS || {},
+            elementosAgrupados: window.elementosAgrupadosScript || [],
+        });
+    }
     var elementos = window.elementosAgrupadosScript;
     if (!elementos) return;
 
@@ -928,31 +935,71 @@ document.addEventListener("DOMContentLoaded", function () {
                 centerY
             );
             var pathEl = agregarPathD(svg, dPath, FIGURE_LINE_COLOR, 2);
+            // Crear un path invisible más gordo como zona clicable
+            var hitbox = pathEl.cloneNode(false);
+            hitbox.setAttribute("stroke-width", "50"); // mucho más ancho
+            hitbox.setAttribute("stroke", "transparent");
+            hitbox.setAttribute("fill", "none");
+            hitbox.style.cursor = "pointer";
+
+            // Reenvía los eventos al path original
+            [
+                "click",
+                "contextmenu",
+                "mouseenter",
+                "mouseleave",
+                "keydown",
+            ].forEach((evt) => {
+                hitbox.addEventListener(evt, (e) =>
+                    pathEl.dispatchEvent(new e.constructor(e.type, e))
+                );
+            });
+
+            // Insertar hitbox ANTES del path visible, así no tapa la figura
+            svg.insertBefore(hitbox, pathEl);
 
             // Interacción
             var etiquetaClick =
                 (elemento.codigo != null ? elemento.codigo : elemento.id) + "";
             pathEl.style.cursor = "pointer";
-            pathEl.setAttribute("tabindex", "0");
-            pathEl.setAttribute("role", "button");
+            // 🆕 tooltip accesible para el operario
             pathEl.setAttribute(
-                "aria-label",
-                "Dividir elemento " + etiquetaClick
+                "title",
+                "Click: dividir · Ctrl/Shift/⌘+Click o botón derecho: info"
             );
-            pathEl.addEventListener("click", function () {
+
+            // 🆕 Click normal -> dividir. Con modificadores -> info
+            pathEl.addEventListener("click", function (e) {
+                if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                    e.preventDefault();
+                    if (window.mostrarPanelInfoElemento)
+                        window.mostrarPanelInfoElemento(elemento.id);
+                    return;
+                }
                 abrirModalDividirElemento(elemento.id, etiquetaClick);
             });
+
+            // 🆕 Botón derecho -> info
+            pathEl.addEventListener("contextmenu", function (e) {
+                e.preventDefault();
+                if (window.mostrarPanelInfoElemento)
+                    window.mostrarPanelInfoElemento(elemento.id);
+            });
+
+            // 🆕 Teclado: Enter/Espacio = dividir. Ctrl+Enter = info
             pathEl.addEventListener("keydown", function (e) {
                 if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     abrirModalDividirElemento(elemento.id, etiquetaClick);
                 }
-            });
-            pathEl.addEventListener("mouseenter", function () {
-                pathEl.setAttribute("stroke-width", "3");
-            });
-            pathEl.addEventListener("mouseleave", function () {
-                pathEl.setAttribute("stroke-width", "2");
+                if (
+                    (e.ctrlKey || e.metaKey) &&
+                    e.key.toLowerCase() === "enter"
+                ) {
+                    e.preventDefault();
+                    if (window.mostrarPanelInfoElemento)
+                        window.mostrarPanelInfoElemento(elemento.id);
+                }
             });
 
             // Reservas + texto
