@@ -972,6 +972,17 @@ class EtiquetaController extends Controller
 
             // 🧠 Regla especial: si el nombre de la etiqueta contiene "pates"
             if (Str::of($etiqueta->nombre ?? '')->lower()->contains('pates')) {
+
+                $cid = (string) Str::uuid();
+
+                Log::info("[pates][$cid] Disparada regla especial", [
+                    'etiqueta_id'     => $etiqueta->id ?? null,
+                    'etiqueta_sub_id' => $etiqueta->etiqueta_sub_id ?? null,
+                    'etiqueta_nombre' => $etiqueta->nombre ?? null,
+                    'maquina_id'      => $maquina->id ?? null,
+                    'maquina_tipo'    => $maquina->tipo ?? null,
+                    'maquina_obra_id' => $maquina->obra_id ?? null,
+                ]);
                 DB::transaction(function () use ($etiqueta, $maquina) {
                     // 1) Marcar etiqueta como "fabricada" y cerrar fecha
                     $etiqueta->estado = 'fabricada';
