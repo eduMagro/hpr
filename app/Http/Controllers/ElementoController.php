@@ -250,8 +250,11 @@ class ElementoController extends Controller
         $campo = $request->campo;
         $valor = $request->valor;
 
+        Log::info("Actualizando elemento {$elemento->id}, campo: {$campo}, valor: '{$valor}'");
+
         $camposPermitidos = ['maquina_id', 'maquina_id_2', 'maquina_id_3'];
         if (!in_array($campo, $camposPermitidos)) {
+            Log::warning("Campo no permitido: {$campo}");
             return response()->json(['error' => 'Campo no permitido'], 403);
         }
 
@@ -392,11 +395,21 @@ class ElementoController extends Controller
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
+            Log::error("Error al actualizar elemento {$elemento->id}: " . $e->getMessage(), [
+                'campo' => $campo,
+                'valor' => $valor,
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
         }
     }
     private function obtenerMaquinaReal($e)
     {
+        // Asegurar que las relaciones estén cargadas
+        if (!$e->relationLoaded('maquina')) {
+            $e->load(['maquina', 'maquina_2', 'maquina_3']);
+        }
+
         $tipo1 = optional($e->maquina)->tipo;
         $tipo2 = optional($e->maquina_2)->tipo;
         $tipo3 = optional($e->maquina_3)->tipo;

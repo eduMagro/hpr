@@ -429,6 +429,14 @@
             const campo = input.dataset.field;
             const valor = input.value;
 
+            // Guardar el valor original para poder revertir si hay error
+            const valorOriginal = input.dataset.originalValue || input.defaultValue || '';
+            if (!input.dataset.originalValue) {
+                input.dataset.originalValue = valorOriginal;
+            }
+
+            console.log(`Actualizando elemento ${id}, campo ${campo}, valor: "${valor}"`);
+
             fetch(`/elementos/${id}/actualizar-campo`, {
                     method: 'POST',
                     headers: {
@@ -450,16 +458,28 @@
                 })
                 .then(data => {
                     console.log(`Elemento #${id} actualizado: ${campo} = ${valor}`);
+                    // Actualizar el valor original para futuras comparaciones
+                    input.dataset.originalValue = valor;
                     // Opcional: mostrar mensaje de éxito
                     // alert('Dato guardado correctamente');
                 })
                 .catch(error => {
                     alert('Error al guardar dato: ' + error.message);
                     console.error('Error completo:', error);
-                    // Revertir el select al valor anterior si es necesario
-                    // input.value = input.dataset.originalValue || '';
+                    // Revertir el select al valor anterior
+                    if (input.dataset.originalValue) {
+                        input.value = input.dataset.originalValue;
+                    }
                 });
         }
+
+        // Inicializar valores originales al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            const selects = document.querySelectorAll('select[data-field]');
+            selects.forEach(select => {
+                select.dataset.originalValue = select.value;
+            });
+        });
     </script>
 
     <script>
