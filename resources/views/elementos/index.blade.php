@@ -236,8 +236,9 @@
                             <td class="px-1 py-3 text-center border">
                                 <select class="text-xs border rounded px-1 py-0.5" data-id="{{ $elemento->id }}"
                                     data-field="maquina_id" onchange="actualizarCampoElemento(this)">
-                                    @foreach ($maquinas as $maquina)
-                                        <option value="{{ $maquina->nombre }}" @selected($elemento->maquina && $elemento->maquina->nombre === $maquina->nombre)>
+                                    <option value="">N/A</option>
+                                    @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual']) as $maquina)
+                                        <option value="{{ $maquina->id }}" @selected($elemento->maquina_id === $maquina->id)>
                                             {{ $maquina->nombre }}
                                         </option>
                                     @endforeach
@@ -246,24 +247,28 @@
 
                             <!-- MAQUINA 2 -->
                             <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.maquina_2.nombre || 'N/A'"></span>
-                                </template>
-                                <!-- En modo edición, se edita el id de la máquina -->
-                                <input x-show="editando" type="text" x-model="elemento.maquina_id_2"
-                                    class="form-control form-control-sm">
+                                <select class="text-xs border rounded px-1 py-0.5" data-id="{{ $elemento->id }}"
+                                    data-field="maquina_id_2" onchange="actualizarCampoElemento(this)">
+                                    <option value="">N/A</option>
+                                    @foreach ($maquinas->whereIn('tipo', ['cortadora_dobladora', 'estribadora', 'cortadora manual', 'dobladora manual', 'soldadora']) as $maquina)
+                                        <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_2 === $maquina->id)>
+                                            {{ $maquina->nombre }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </td>
 
                             <!-- MAQUINA 3 -->
                             <td class="px-1 py-3 text-center border">
-                                <template x-if="!editando">
-                                    <!-- Se muestra el nombre de la máquina -->
-                                    <span x-text="elemento.maquina_3.nombre || 'N/A'"></span>
-                                </template>
-                                <!-- En modo edición, se edita el id de la máquina -->
-                                <input x-show="editando" type="text" x-model="elemento.maquina_id_3"
-                                    class="form-control form-control-sm">
+                                <select class="text-xs border rounded px-1 py-0.5" data-id="{{ $elemento->id }}"
+                                    data-field="maquina_id_3" onchange="actualizarCampoElemento(this)">
+                                    <option value="">N/A</option>
+                                    @foreach ($maquinas->whereIn('tipo', ['soldadora', 'ensambladora']) as $maquina)
+                                        <option value="{{ $maquina->id }}" @selected($elemento->maquina_id_3 === $maquina->id)>
+                                            {{ $maquina->nombre }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </td>
 
                             <!-- PRODUCTO 1 -->
@@ -436,15 +441,23 @@
                     })
                 })
                 .then(res => {
-                    if (!res.ok) throw new Error('Error al guardar');
+                    if (!res.ok) {
+                        return res.json().then(errorData => {
+                            throw new Error(errorData.error || 'Error al guardar');
+                        });
+                    }
                     return res.json();
                 })
                 .then(data => {
                     console.log(`Elemento #${id} actualizado: ${campo} = ${valor}`);
+                    // Opcional: mostrar mensaje de éxito
+                    // alert('Dato guardado correctamente');
                 })
                 .catch(error => {
-                    alert('Error al guardar el dato');
-                    console.error(error);
+                    alert('Error al guardar dato: ' + error.message);
+                    console.error('Error completo:', error);
+                    // Revertir el select al valor anterior si es necesario
+                    // input.value = input.dataset.originalValue || '';
                 });
         }
     </script>

@@ -255,18 +255,55 @@ class ElementoController extends Controller
             return response()->json(['error' => 'Campo no permitido'], 403);
         }
 
-        // Buscar la nueva máquina por nombre
-        $nuevaMaquina = Maquina::where('nombre', $valor)->first();
-        if (!$nuevaMaquina) {
-            return response()->json(['error' => 'Máquina no encontrada'], 404);
-        }
+        $planillaId = $elemento->planilla_id;
 
         DB::beginTransaction();
         try {
-            $planillaId = $elemento->planilla_id;
 
             // 🧠 Determina la máquina original real para esta planilla
             $maquinaOriginal = $this->obtenerMaquinaReal($elemento);
+            if (empty($valor)) {
+                // 👉 Si el valor es vacío (Ninguno), quitamos la asignación
+                $elemento->$campo = null;
+                $elemento->save();
+
+                // 🧹 Verificar si ya no quedan elementos en esa máquina para esa planilla
+                $quedanElementos = Elemento::where('planilla_id', $planillaId)
+                    ->get()
+                    ->filter(function ($e) use ($maquinaOriginal) {
+                        return $this->obtenerMaquinaReal($e) === $maquinaOriginal;
+                    })
+                    ->isNotEmpty();
+
+                if (!$quedanElementos) {
+                    $ordenOriginal = OrdenPlanilla::where('planilla_id', $planillaId)
+                        ->where('maquina_id', $maquinaOriginal)
+                        ->first();
+
+                    if ($ordenOriginal) {
+                        $posicionEliminada = $ordenOriginal->posicion;
+                        $ordenOriginal->delete();
+
+                        OrdenPlanilla::where('maquina_id', $maquinaOriginal)
+                            ->where('posicion', '>', $posicionEliminada)
+                            ->decrement('posicion');
+                    }
+                }
+
+                DB::commit();
+                return response()->json([
+                    'ok' => true,
+                    'campo' => $campo,
+                    'maquina_id' => null
+                ]);
+            }
+
+            // Buscar la nueva máquina por ID
+            $nuevaMaquina = Maquina::find($valor);
+            if (!$nuevaMaquina) {
+                DB::rollBack();
+                return response()->json(['error' => 'Máquina no encontrada'], 404);
+            }
 
             // 1️⃣ Actualizamos el campo solicitado
             $elemento->$campo = $nuevaMaquina->id;
