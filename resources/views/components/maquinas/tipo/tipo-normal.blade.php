@@ -284,6 +284,32 @@
                                     N/A
                                 @endif
                             </div>
+                            @php $rawInicio = $planilla->getRawOriginal('fecha_inicio'); @endphp
+                            @if ($rawInicio)
+                                <div class="text-xs text-green-700 mt-1" x-data="{
+                                    start: '{{ \Carbon\Carbon::parse($rawInicio)->toIso8601String() }}',
+                                    now: Date.now(),
+                                    get elapsed() {
+                                        const s = new Date(this.start).getTime();
+                                        const diff = Math.max(0, this.now - s);
+                                        let total = Math.floor(diff / 1000);
+                                        const d = Math.floor(total / 86400);
+                                        total %= 86400;
+                                        const h = Math.floor(total / 3600);
+                                        total %= 3600;
+                                        const m = Math.floor(total / 60);
+                                        const sec = total % 60;
+                                        const parts = [];
+                                        if (d > 0) parts.push(d + ' d');
+                                        if (h > 0) parts.push(h + ' h');
+                                        parts.push(m + ' min');
+                                        return parts.join(' ');
+                                    }
+                                }"
+                                    x-init="setInterval(() => { now = Date.now() }, 1000)">
+                                    Llevamos: <span x-text="elapsed"></span>
+                                </div>
+                            @endif
                         </header>
 
                         {{-- contenido con scroll independiente --}}
@@ -504,11 +530,11 @@
                                     html: data.errors?.length ?
                                         `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
               ${data.errors.map(err => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <b>#${err.id}</b>: ${err.error}<br>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <li>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <b>#${err.id}</b>: ${err.error}<br>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </li>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          `).join('')}
            </ul>` : '',
                                 }).then(() => {
                                     if (data.success) location.reload();
