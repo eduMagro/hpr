@@ -86,6 +86,67 @@ function agregarPathD(svg, d, color, ancho) {
 }
 
 // =======================
+// Letras y leyenda
+// =======================
+function indexToLetters(n) {
+    // 0 -> A, 25 -> Z, 26 -> AA, etc.
+    let s = "";
+    let i = Number(n) || 0;
+    while (i >= 0) {
+        const r = i % 26;
+        s = String.fromCharCode(65 + r) + s;
+        i = Math.floor(i / 26) - 1;
+    }
+    return s;
+}
+function drawLegendBottomLeft(svg, entries, width, height) {
+    if (!entries || !entries.length) return;
+    const pad = 8;
+    const gap = 4;
+    const size = 12;
+
+    // Sin título: solo líneas A — Ø... | ... | xN
+    const lines = entries.map(
+        (e) => (e.letter ? e.letter + " — " : "") + (e.text || "")
+    );
+
+    // Medición para colocar bloque dentro del área inferior
+    let maxW = 0;
+    for (let i = 0; i < lines.length; i++) {
+        const w = approxTextBox(lines[i], size).w;
+        if (w > maxW) maxW = w;
+    }
+    const boxW = Math.min(
+        Math.max(120, maxW + pad * 2),
+        Math.max(140, width * 0.6)
+    );
+    const boxH = pad * 2 + lines.length * size + (lines.length - 1) * gap;
+
+    const x = marginX;
+    const y = Math.max(marginY, height - boxH - marginY);
+
+    // Solo texto, sin fondo ni borde
+    let cy = y + pad + size / 2;
+    for (let i = 0; i < lines.length; i++) {
+        const anchorX = x + pad;
+        const t = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "text"
+        );
+        t.setAttribute("x", anchorX);
+        t.setAttribute("y", cy);
+        t.setAttribute("fill", BARS_TEXT_COLOR);
+        t.setAttribute("font-size", size);
+        t.setAttribute("text-anchor", "start");
+        t.setAttribute("alignment-baseline", "middle");
+        t.style.pointerEvents = "none";
+        t.textContent = lines[i];
+        svg.appendChild(t);
+        cy += size + gap;
+    }
+}
+
+// =======================
 // Geometría base
 // =======================
 function extraerDimensiones(dimensiones) {
@@ -762,6 +823,10 @@ document.addEventListener("DOMContentLoaded", function () {
         var svg = crearSVG(ancho, alto, svgBg);
 
         var numElementos = grupo.elementos.length;
+        var legendEntries = [];
+        // Reset reservas por grupo
+        window.__placedLetterBoxes = [];
+        window.__figBoxesGroup = [];
 
         // Precalcular nº segmentos
         var segCounts = grupo.elementos.map(function (el) {
@@ -808,10 +873,22 @@ document.addEventListener("DOMContentLoaded", function () {
             );
 
             var barras = elemento.barras != null ? elemento.barras : 0;
-            var diametro =
-                elemento.diametro != null ? elemento.diametro : "N/A";
+            // Formatear diámetro: quitar unidad y redondear (sin decimales)
+            var diametro = "N/A";
+            if (elemento.diametro != null && elemento.diametro !== "") {
+                var dstr = String(elemento.diametro).replace(",", ".");
+                var m = dstr.match(/-?\d+(?:\.\d+)?/);
+                if (m) {
+                    var dn = parseFloat(m[0]);
+                    if (isFinite(dn)) diametro = String(Math.round(dn));
+                }
+            }
             var peso = elemento.peso != null ? elemento.peso : "N/A";
             var mainText = "Ø" + diametro + " | " + peso + " | x" + barras;
+
+            // Letra de la figura y recoger en leyenda
+            var letter = indexToLetters(idx);
+            legendEntries.push({ letter: letter, text: mainText });
 
             // Figura (bbox modelo)
             var ptsModel = computePathPoints(dims);
@@ -921,6 +998,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 top: figMinY,
                 bottom: figMaxY,
             };
+            // Guarda caja de figura para evitar invadir con letras
+            window.__figBoxesGroup.push({
+                left: figMinX,
+                right: figMaxX,
+                top: figMinY,
+                bottom: figMaxY,
+            });
 
             // Path principal
             var dPath = buildSvgPathFromDims(
@@ -1002,44 +1086,130 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
 
-            // Reservas + texto
+            // Reservas + texto (solo letra por figura, leyenda abajo-izquierda)
             var placedBoxes = [];
-            if (textPlacement === "top") {
-                placeMainLabelTopBand({
-                    svg,
-                    text: mainText,
-                    figBox,
-                    centerX,
-                    placedBoxes,
+            (function placeLetter() {
+                var letterSize = 14;
+                var tb = approxTextBox(letter, letterSize);
+
+                // Colocar SIEMPRE a la derecha de la figura, evitando solapes
+                function makeBoxAt(lx, ly) {
+                    return {
+                        left: lx,
+                        right: lx + tb.w,
+                        top: ly - tb.h / 2,
+                        bottom: ly + tb.h / 2,
+                    };
+                }
+
+                var chosen = null;
+                var baseX = clampXInside(
+                    figBox.right + 10,
+                    tb.w,
                     safeLeft,
-                    safeRight,
-                    safeTop,
-                    safeBottom,
-                    baseSize: SIZE_MAIN_TEXT,
-                    minSize: 10,
-                });
-            } else {
-                var freeLeft = figBox.left - safeLeft;
-                var freeRight = safeRight - figBox.right;
-                var chosenSide = freeRight >= freeLeft ? "right" : "left";
-                placeMainLabelSideBand({
-                    svg,
-                    text: mainText,
-                    figBox,
-                    centerY,
-                    placedBoxes,
-                    safeLeft,
-                    safeRight,
-                    safeTop,
-                    safeBottom,
-                    side: chosenSide,
-                    baseSize: SIZE_MAIN_TEXT,
-                    minSize: 10,
-                    bandWidth: sideBandWidth,
-                    bandGap: SIDE_BAND_GAP,
-                    bandPad: SIDE_BAND_PAD,
-                });
-            }
+                    safeRight
+                );
+                var centerYFig = (figBox.top + figBox.bottom) / 2;
+                var baseY = Math.max(
+                    safeTop + tb.h / 2,
+                    Math.min(centerYFig, safeBottom - tb.h / 2)
+                );
+
+                function tryColumn(xPos) {
+                    var maxSpread = Math.max(40, (safeBottom - safeTop) * 0.5);
+                    for (var off = 0; off <= maxSpread; off += LABEL_STEP) {
+                        var dir = off % 2 === 0 ? 1 : -1;
+                        var mult = Math.ceil(off / 2);
+                        var dy = dir * mult * LABEL_STEP;
+                        var ly = Math.max(
+                            safeTop + tb.h / 2,
+                            Math.min(safeBottom - tb.h / 2, baseY + dy)
+                        );
+                        var lx = xPos;
+                        var box = makeBoxAt(lx, ly);
+
+                        var collideFig = window.__figBoxesGroup.some(function (
+                            b
+                        ) {
+                            return rectsOverlap(b, box, LABEL_CLEARANCE);
+                        });
+                        if (collideFig) continue;
+
+                        var collidePrev = window.__placedLetterBoxes.some(
+                            function (b) {
+                                return rectsOverlap(b, box, LABEL_CLEARANCE);
+                            }
+                        );
+                        if (collidePrev) continue;
+
+                        var collideLocal = placedBoxes.some(function (b) {
+                            return rectsOverlap(b, box, LABEL_CLEARANCE);
+                        });
+                        if (collideLocal) continue;
+
+                        var out =
+                            box.top < 0 ||
+                            box.bottom > alto ||
+                            box.left < 0 ||
+                            box.right > ancho;
+                        if (out) continue;
+
+                        chosen = { x: lx, y: ly, box: box };
+                        return true;
+                    }
+                    return false;
+                }
+
+                // Probar columna base y algunas columnas más a la derecha
+                var columnsTried = 0;
+                var xStep = 8;
+                while (!chosen && columnsTried < 6) {
+                    var xCol = clampXInside(
+                        baseX + columnsTried * xStep,
+                        tb.w,
+                        safeLeft,
+                        safeRight
+                    );
+                    if (tryColumn(xCol)) break;
+                    columnsTried++;
+                }
+
+                // Fallback extremo: última columna disponible
+                if (!chosen) {
+                    var lxFallback = clampXInside(
+                        safeRight - tb.w,
+                        tb.w,
+                        safeLeft,
+                        safeRight
+                    );
+                    var lyFallback = baseY;
+                    chosen = {
+                        x: lxFallback,
+                        y: lyFallback,
+                        box: makeBoxAt(lxFallback, lyFallback),
+                    };
+                }
+
+                window.__placedLetterBoxes.push(chosen.box);
+                // También registrar en reservas locales para que otras etiquetas/cotas lo respeten
+                placedBoxes.push(chosen.box);
+
+                // Dibujar letra
+                var t = document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "text"
+                );
+                t.setAttribute("x", chosen.x);
+                t.setAttribute("y", chosen.y);
+                t.setAttribute("fill", BARS_TEXT_COLOR);
+                t.setAttribute("font-size", letterSize);
+                t.setAttribute("text-anchor", "start");
+                t.setAttribute("alignment-baseline", "middle");
+                t.style.fontWeight = "600";
+                t.style.pointerEvents = "none";
+                t.textContent = letter;
+                svg.appendChild(t);
+            })();
 
             // Cotas
             var segsAdj = computeLineSegments(dims);
@@ -1189,6 +1359,8 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         contenedor.innerHTML = "";
+        // Dibuja la leyenda en la esquina inferior izquierda del SVG
+        drawLegendBottomLeft(svg, legendEntries, ancho, alto);
         contenedor.appendChild(svg);
     });
 });

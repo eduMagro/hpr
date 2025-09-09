@@ -290,84 +290,109 @@ class EtiquetaController extends Controller
             // -------------------------------------------- ESTADO PENDIENTE --------------------------------------------
             switch ($etiqueta->estado) {
                 case 'pendiente':
-                    Log::info("🔍 Diámetros requeridos", $diametrosRequeridos);
-                    Log::info("📦 Productos totales en máquina {$maquina->id}", $maquina->productos()->with('productoBase')->get()->toArray());
 
-                    // 1️⃣ Obtenemos todos los productos de la máquina con producto base con los diámetros requeridos
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 1) LOG AUXILIAR: contexto de lo que vamos a necesitar
+                    // ─────────────────────────────────────────────────────────────────────
+                    // Log::info("🔍 Diámetros requeridos", $diametrosRequeridos);
+                    // Log::info(
+                    //     "📦 Productos totales en máquina {$maquina->id}",
+                    //     $maquina->productos()->with('productoBase')->get()->toArray()
+                    // );
+
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 2) BASE QUERY: traer productos de la máquina solo de los diámetros
+                    //    que pide la etiqueta (diametrosRequeridos). Cargamos productoBase
+                    //    para poder filtrar/leer diametro/longitud/tipo con comodidad.
+                    // ─────────────────────────────────────────────────────────────────────
                     $productosQuery = $maquina->productos()
                         ->whereHas('productoBase', function ($query) use ($diametrosRequeridos) {
                             $query->whereIn('diametro', $diametrosRequeridos);
                         })
                         ->with('productoBase');
 
-                    // 2️⃣ Si es tipo barra y no se ha seleccionado longitud, validamos ANTES
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 3) VALIDACIÓN DE LONGITUD (solo si la materia prima es "barra")
+                    //    - Si en la máquina hay barras de varias longitudes y el usuario
+                    //      no ha elegido ninguna, paramos y pedimos que seleccione.
+                    //    - Si eligió longitud, filtramos por esa longitud.
+                    // ─────────────────────────────────────────────────────────────────────
                     if ($maquina->tipo_material === 'barra') {
-                        // Cargamos para analizar
+                        // Cargamos una primera muestra para explorar longitudes existentes
                         $productosPrevios = $productosQuery->get();
 
+                        // Obtenemos las longitudes disponibles en producto_base (únicas)
                         $longitudes = $productosPrevios->pluck('productoBase.longitud')->unique();
 
+                        // Si hay varias longitudes y no nos han dicho cuál usar, paramos
                         if ($longitudes->count() > 1 && !$longitudSeleccionada) {
                             return response()->json([
                                 'success' => false,
-                                'error' => "Hay varias longitudes disponibles para barras (" . $longitudes->implode(', ') . " m). Selecciona una longitud para continuar.",
+                                'error'   => "Hay varias longitudes disponibles para barras (" . $longitudes->implode(', ') . " m). Selecciona una longitud para continuar.",
                             ], 400);
                         }
 
-                        // Si hay longitud seleccionada, aplicamos filtro en la QUERY original
+                        // Si sí nos han indicado una longitud, la aplicamos al filtrado
                         if ($longitudSeleccionada) {
                             $productosQuery->whereHas('productoBase', function ($query) use ($longitudSeleccionada) {
                                 $query->where('longitud', $longitudSeleccionada);
                             });
                         }
 
-                        // Volvemos a ejecutar la query tras aplicar filtros
+                        // Re-ejecutamos la query con los filtros definitivos
                         $productos = $productosQuery->orderBy('peso_stock')->get();
                     } else {
-                        // Si no es tipo barra, simplemente ejecutamos la query original
+                        // Si no trabajamos con barras, ejecutamos tal cual
                         $productos = $productosQuery->orderBy('peso_stock')->get();
                     }
 
-                    // 3️⃣ Validamos que haya productos tras aplicar filtros
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 4) SI TRAS FILTRAR NO QUEDA NADA, NO PODEMOS FABRICAR
+                    // ─────────────────────────────────────────────────────────────────────
                     if ($productos->isEmpty()) {
                         return response()->json([
                             'success' => false,
-                            'error' => 'No se encontraron productos en la máquina con los diámetros especificados y la longitud indicada.',
+                            'error'   => 'No se encontraron productos en la máquina con los diámetros especificados y la longitud indicada.',
                         ], 400);
                     }
 
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 5) AGRUPAR POR DIÁMETRO para facilitar los chequeos posteriores.
+                    //    Nota: casteamos a (int) por si vinieran strings desde BD.
+                    // ─────────────────────────────────────────────────────────────────────
+                    $productosAgrupados = $productos->groupBy(fn($p) => (int) $p->productoBase->diametro);
 
-                    // Agrupar productos por diámetro (asegurando que sean enteros)
-                    $productosAgrupados = $productos->groupBy(fn($producto) => (int) $producto->productoBase->diametro);
-
-
-                    // Verificar si hay productos para cada diámetro requerido
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 6) CHEQUEO DE FALTANTES (diámetros sin NINGÚN producto en máquina)
+                    //
+                    //    Si un diámetro requerido no tiene ni un solo producto en la máquina,
+                    //    no podemos empezar: generamos recarga por cada faltante y salimos.
+                    //
+                    //    Motivo de parar: no existe material del diámetro, no es solo que
+                    //    haya poco; es que no hay NADA para empezar a cortar/fabricar.
+                    // ─────────────────────────────────────────────────────────────────────
                     $faltantes = [];
-                    foreach ($diametrosRequeridos as $diametro) {
-                        if (!$productosAgrupados->has($diametro) || $productosAgrupados[$diametro]->isEmpty()) {
-                            $faltantes[] = $diametro;
+                    foreach ($diametrosRequeridos as $diametroReq) {
+                        if (!$productosAgrupados->has((int)$diametroReq) || $productosAgrupados[(int)$diametroReq]->isEmpty()) {
+                            $faltantes[] = (int) $diametroReq;
                         }
                     }
 
-                    // 🚩  DIÁMETROS SIN STOCK EN LA MÁQUINA
                     if (!empty($faltantes)) {
-
-                        // 1️⃣  Cancelamos la transacción principal (evita dejar estados a medias)
+                        // Cancelamos la transacción principal para no dejar estados a medias
                         DB::rollBack();
 
-                        // 2️⃣  Generamos un movimiento por cada diámetro faltante
+                        // Por cada diámetro faltante, solicitamos recarga (no hay material)
                         foreach ($faltantes as $diametroFaltante) {
-
-                            // Localizamos el ProductoBase adecuado
                             $productoBaseFaltante = ProductoBase::where('diametro', $diametroFaltante)
-                                ->where('tipo', $maquina->tipo_material)          // usa siempre la columna real
+                                ->where('tipo', $maquina->tipo_material) // usar SIEMPRE el campo real
                                 ->first();
 
                             if ($productoBaseFaltante) {
-                                // Mini-transacción que persiste aunque el resto falle
+                                // Transacción corta y autónoma: el movimiento se registra pase lo que pase
                                 DB::transaction(function () use ($productoBaseFaltante, $maquina) {
-                                    $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina);
-                                    Log::info('✅ Movimiento de recarga creado', [
+                                    $this->generarMovimientoRecargaMateriaPrima($productoBaseFaltante, $maquina, null);
+                                    Log::info('✅ Movimiento de recarga creado (faltante)', [
                                         'producto_base_id' => $productoBaseFaltante->id,
                                         'maquina_id'       => $maquina->id,
                                     ]);
@@ -377,7 +402,7 @@ class EtiquetaController extends Controller
                             }
                         }
 
-                        // 3️⃣  Respondemos y detenemos la ejecución
+                        // En faltantes SÍ paramos: no podemos arrancar sin ningún material de ese diámetro
                         return response()->json([
                             'success' => false,
                             'error'   => 'No hay materias primas disponibles para los siguientes diámetros: '
@@ -386,83 +411,159 @@ class EtiquetaController extends Controller
                         ], 400);
                     }
 
-                    // Arreglo donde se guardarán los detalles del consumo por diámetro
-                    $consumos = []; // Estructura: [ <diametro> => [ ['producto_id' => X, 'consumido' => Y], ... ], ... ]
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 7) SIMULACIÓN DE CONSUMO (sin tocar BD) PARA DETECTAR INSUFICIENCIAS
+                    //    Objetivo: prever si, con el stock actual y la demanda por diámetro,
+                    //    habrá déficit. La simulación reparte el peso necesario entre los
+                    //    productos disponibles del mismo diámetro, agotando primero el que
+                    //    menos peso tiene (minimiza restos).
+                    //
+                    //    Resultado: por cada diámetro, obtenemos:
+                    //      - un "plan" de consumo por producto (SOLO informativo)
+                    //      - un "pendiente" (déficit) si el stock total no alcanza
+                    //    Con esto, avisamos al gruista/operario y opcionalmente creamos
+                    //    movimiento de recarga. NO se descuenta stock real aquí.
+                    // ─────────────────────────────────────────────────────────────────────
 
-                    // Para cada diámetro, comprobar que el stock total es suficiente
+                    $warnings   = $warnings ?? [];
+                    $simulacion = []; // [diametro => ['plan' => [[producto_id, consumo_previsto]], 'pendiente' => kg]]
+
                     foreach ($diametrosConPesos as $diametro => $pesoNecesario) {
-                        $productosPorDiametro = $productos->filter(fn($producto) => $producto->productoBase->diametro == $diametro);
 
-                        $stockTotal = $productosPorDiametro->sum('peso_stock');
+                        // Productos de este diámetro (ya filtrados por longitud si es barra)
+                        $productosPorDiametro = $productos
+                            ->filter(fn($p) => (int)$p->productoBase->diametro === (int)$diametro)
+                            // Estrategia: agotar primero el que menos stock tiene
+                            ->sortBy('peso_stock'); // ascendente
 
-                        if ($stockTotal < $pesoNecesario) {
+                        $restante   = (float) $pesoNecesario;
+                        $plan       = []; // [[producto_id, consumo_previsto_kg], ...]
+                        $stockTotal = 0.0;
 
-                            // 1️⃣ Log del fallo
-                            $warnings[] = "El stock para Ø{$diametro} mm es insuficiente. Se ha generado una solicitud de recarga automática.";
-                            Log::info("🔴 Stock insuficiente de materia prima para Ø{$diametro} mm en {$maquina->nombre}");
+                        foreach ($productosPorDiametro as $prod) {
+                            $disponible = (float) ($prod->peso_stock ?? 0);
+                            if ($disponible <= 0) continue;
 
-                            // 2️⃣ Buscar ProductoBase
-                            $productoBase = ProductoBase::where('diametro', $diametro)
-                                ->where('tipo', $maquina->tipo)
-                                ->first();
+                            $stockTotal += $disponible;
 
-                            if (!$productoBase) {
-                                Log::warning("No se encontró ProductoBase para Ø{$diametro} y tipo {$maquina->tipo}");
-                                DB::rollBack();
-                                return response()->json([
-                                    'success' => false,
-                                    'error' => "No hay suficiente materia prima para Ø{$diametro} mm, y no se encontró el ProductoBase asociado.",
-                                ], 400);
+                            if ($restante <= 0) break;
+
+                            $consumoPrevisto = min($disponible, $restante);
+                            if ($consumoPrevisto > 0) {
+                                $plan[]    = ['producto_id' => $prod->id, 'consumo' => $consumoPrevisto];
+                                $restante -= $consumoPrevisto;
                             }
+                        }
 
-                            // 3️⃣ Revertimos toda la transacción
-                            DB::rollBack();
+                        $pendiente = max(0, $restante); // kg que faltarán si no llega recarga
 
-                            // 4️⃣ Creamos movimiento en transacción independiente
-                            DB::transaction(function () use ($productoBase, $maquina) {
-                                $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina);
-                                Log::info('✅ Movimiento de recarga creado', [
-                                    'producto_base_id' => $productoBase->id,
-                                    'maquina_id'       => $maquina->id,
-                                ]);
-                            });
+                        $simulacion[(int)$diametro] = [
+                            'plan'      => $plan,      // SOLO informativo para logs/UI
+                            'pendiente' => $pendiente, // 0 si alcanza; >0 si faltará
+                            'stock'     => $stockTotal // útil para logs
+                        ];
+                    }
 
-                            // 5️⃣ Respondemos y detenemos el flujo
-                            return response()->json([
-                                'success' => false,
-                                'error'   => "No hay suficiente materia prima para Ø{$diametro} mm en la máquina {$maquina->nombre}. "
-                                    . "Se ha generado la solicitud de recarga automáticamente.",
-                            ], 400);
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 8) ALERTAS Y (OPCIONAL) SOLICITUD DE RECARGA PARA LOS DIÁMETROS QUE
+                    //    QUEDARÁN CORTOS. NO paramos el flujo: seguimos a "fabricando".
+                    // ─────────────────────────────────────────────────────────────────────
+
+                    $diamInsuf = collect($simulacion)
+                        ->filter(fn($info) => ($info['pendiente'] ?? 0) > 0)
+                        ->keys()
+                        ->map(fn($d) => (int)$d)
+                        ->values()
+                        ->all();
+
+                    if (!empty($diamInsuf)) {
+                        foreach ($diamInsuf as $dInsuf) {
+                            $deficitKg   = $simulacion[$dInsuf]['pendiente'] ?? null;
+                            $stockActual = $simulacion[$dInsuf]['stock']     ?? null;
+
+                            // Aviso claro para UI (toast/alerta)
+                            $warnings[] = "Advertencia: Ø{$dInsuf} mm quedará corto. "
+                                . "Faltarán ~" . number_format($deficitKg, 2) . " kg (stock actual: "
+                                . number_format($stockActual, 2) . " kg). Se ha solicitado recarga.";
+
+                            // Log detallado con el "plan" simulado (útil para trazabilidad)
+                            Log::warning('⚠️ Simulación: déficit previsto en diámetro', [
+                                'maquina_id' => $maquina->id,
+                                'diametro'   => $dInsuf,
+                                'pendiente'  => $deficitKg,
+                                'plan'       => $simulacion[$dInsuf]['plan'],
+                                'stock'      => $stockActual,
+                                'necesario'  => (float)($diametrosConPesos[$dInsuf] ?? 0),
+                            ]);
+
+                            // (Opcional) solicitar recarga automática, sin parar el flujo
+                            if ($solicitarRecargaAuto ?? true) { // flag por si quieres desactivarlo
+                                $productoBase = ProductoBase::where('diametro', $dInsuf)
+                                    ->where('tipo', $maquina->tipo_material)
+                                    ->first();
+
+                                if ($productoBase) {
+                                    try {
+                                        // Tu método existente. productoId = null → materia prima genérica
+                                        $this->generarMovimientoRecargaMateriaPrima($productoBase, $maquina, null);
+
+                                        Log::info('📣 Recarga solicitada (déficit previsto)', [
+                                            'maquina_id'       => $maquina->id,
+                                            'producto_base_id' => $productoBase->id,
+                                            'diametro'         => $dInsuf,
+                                            'deficit_kg'       => $deficitKg,
+                                        ]);
+                                    } catch (\Throwable $e) {
+                                        Log::error('❌ Error al solicitar recarga (déficit previsto)', [
+                                            'maquina_id'       => $maquina->id,
+                                            'producto_base_id' => $productoBase->id ?? null,
+                                            'diametro'         => $dInsuf,
+                                            'deficit_kg'       => $deficitKg,
+                                            'error'            => $e->getMessage(),
+                                        ]);
+                                    }
+                                } else {
+                                    Log::warning("No se encontró ProductoBase para Ø{$dInsuf} y tipo {$maquina->tipo_material} (recarga no creada).");
+                                }
+                            }
                         }
                     }
 
+                    // ─────────────────────────────────────────────────────────────────────
+                    // 9) ARRANQUE DE FABRICACIÓN: cambiamos estados de planilla/etiqueta/elementos
+                    //    - Si la planilla no tenía fecha de inicio, la fijamos y pasamos a "fabricando".
+                    //    - Marcamos elementos en máquina como "fabricando" y asignamos operarios.
+                    //    - Ponemos la etiqueta en "fabricando".
+                    // ─────────────────────────────────────────────────────────────────────
                     if ($etiqueta->planilla) {
                         if (is_null($etiqueta->planilla->fecha_inicio)) {
                             $etiqueta->planilla->fecha_inicio = now();
-                            $etiqueta->planilla->estado = "fabricando";
+                            $etiqueta->planilla->estado       = "fabricando";
                             $etiqueta->planilla->save();
                         }
                     } else {
+                        // Caso raro: etiqueta sin planilla asociada → no podemos continuar
                         return response()->json([
                             'success' => false,
-                            'error' => 'La etiqueta no tiene una planilla asociada.',
+                            'error'   => 'La etiqueta no tiene una planilla asociada.',
                         ], 400);
                     }
 
                     foreach ($elementosEnMaquina as $elemento) {
-                        $elemento->users_id =  $operario1;
-                        $elemento->users_id_2 =  $operario2;
-                        $elemento->estado = "fabricando";
+                        $elemento->users_id   = $operario1;
+                        $elemento->users_id_2 = $operario2;
+                        $elemento->estado     = "fabricando";
                         $elemento->save();
                     }
 
-                    $etiqueta->estado = "fabricando";
-                    $etiqueta->operario1_id =  $operario1;
-                    $etiqueta->operario2_id =  $operario2;
-                    $etiqueta->fecha_inicio = now();
+                    $etiqueta->estado        = "fabricando";
+                    $etiqueta->operario1_id  = $operario1;
+                    $etiqueta->operario2_id  = $operario2;
+                    $etiqueta->fecha_inicio  = now();
                     $etiqueta->save();
 
                     break;
+
                 // -------------------------------------------- ESTADO FABRICANDO --------------------------------------------
                 case 'fabricando':
                     // Verificamos si ya todos los elementos en la máquina han sido completados
