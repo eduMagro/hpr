@@ -99,26 +99,25 @@ class PlanillaService
         $fail = 0;
         $errores = [];
 
-        $hoy = Carbon::today();
+        $fechaCorte = Carbon::today()->subDays(14); // 👈 fecha de corte hace 14 días
 
-        // Base: solo pendientes (y opcionalmente acotadas por IDs)
-        $base = Planilla::query()->where('estado', 'pendiente');
+        // Base: planillas en estado pendiente o fabricando
+        $base = Planilla::query()->whereIn('estado', ['pendiente', 'fabricando']);
         if (!empty($planillaIds)) {
             $base->whereIn('id', $planillaIds);
         }
-
         // Métrica: cuántas omitimos por fecha (futuras o sin fecha)
         $omitidasPorFecha = (clone $base)
-            ->where(function ($q) use ($hoy) {
+            ->where(function ($q) use ($fechaCorte) {
                 $q->whereNull('fecha_estimada_entrega')
-                    ->orWhereDate('fecha_estimada_entrega', '>', $hoy);
+                    ->orWhereDate('fecha_estimada_entrega', '>', $fechaCorte);
             })
             ->count();
 
         // Planillas candidatas
         $planillas = (clone $base)
             ->whereNotNull('fecha_estimada_entrega')
-            ->whereDate('fecha_estimada_entrega', '<=', $hoy)
+            ->whereDate('fecha_estimada_entrega', '<=', $fechaCorte)
             ->get();
 
         foreach ($planillas as $planilla) {

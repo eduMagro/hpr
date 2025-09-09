@@ -91,12 +91,19 @@ window.renderizarInfoElemento = function (elem, sugWrap) {
 
         sugHtml = `
       <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-        <div>Producto base:</div><div class="font-medium">#${s.producto_base_id}</div>
-        <div>Longitud barra:</div><div class="font-medium">${longBarraM} m</div>
-        <div>Piezas por barra:</div><div class="font-medium">${s.n_por_barra}</div>
-        <div>Sobrante por barra:</div><div class="font-medium">${s.sobrante_mm} mm</div>
+        <div>Producto Base:</div><div class="font-medium">${s.tipo ?? "—"} - ${
+            s.diametro_mm
+        } mm - ${longBarraM} m</div>
+        <div>Piezas por barra:</div><div class="font-medium">${
+            s.n_por_barra
+        }</div>
+        <div>Sobrante por barra:</div><div class="font-medium">${
+            s.sobrante_mm
+        } mm</div>
         <div>Eficiencia:</div><div class="font-medium">${eff}%</div>
-        <div>Barras totales (est.):</div><div class="font-medium">${s.barras_totales}</div>
+        <div>Barras totales (est.):</div><div class="font-medium">${
+            s.barras_totales
+        }</div>
       </div>
     `;
 
@@ -122,12 +129,8 @@ window.renderizarInfoElemento = function (elem, sugWrap) {
       <div class="text-xs text-gray-500">Elemento</div>
       <div class="text-sm font-semibold">${codigo}</div>
       <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-        <div>Longitud:</div><div class="font-medium">${longCm ?? "—"} ${
-        longCm ? "cm" : ""
-    }</div>
-        <div>Diámetro:</div><div class="font-medium">${diam ?? "—"} ${
-        diam ? "mm" : ""
-    }</div>
+        <div>Longitud:</div><div class="font-medium">${longCm ?? "—"}</div>
+        <div>Diámetro:</div><div class="font-medium">${diam ?? "—"}</div>
       </div>
       <hr class="my-2">
       ${sugHtml}

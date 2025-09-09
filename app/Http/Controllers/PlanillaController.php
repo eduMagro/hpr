@@ -574,6 +574,7 @@ class PlanillaController extends Controller
         // ⚠️ Contexto para warnings numéricos
         $__numCtx = ['planilla' => 'N/D', 'excel_row' => 0, 'campo' => 'N/D', 'valor' => null];
 
+
         // 2) Validación del archivo -----------------------------------------------------
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
@@ -748,7 +749,7 @@ class PlanillaController extends Controller
                 // Agrupar por nº de etiqueta (número en Excel)
                 $etiquetasExcel = [];
                 foreach ($rows as $row) {
-                    $numEtiqueta = $row[21] ?? null; // nº de etiqueta en el Excel
+                    $numEtiqueta = $row[30] ?? null; // nº de etiqueta en el Excel
                     if ($numEtiqueta) $etiquetasExcel[$numEtiqueta][] = $row;
                 }
 
