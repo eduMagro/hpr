@@ -474,9 +474,19 @@ class ElementoController extends Controller
                     ->selectRaw("COALESCE(MAX(CAST(SUBSTRING_INDEX(etiqueta_sub_id, '.', -1) AS UNSIGNED)), 0) AS max_suf")
                     ->value('max_suf');
 
-                // === 1) Actualiza ORIGINAL: peso y barras, etiqueta con su nuevo peso ===
-                $elemento->peso   = $pesos[0];
-                $elemento->barras = $barrasParts[0];
+                // === Reparto de TIEMPO DE FABRICACIÓN (numérico, entero en minutos o segundos) ===
+                $tiempoTotal = (int) ($elemento->tiempo_fabricacion ?? 0);
+                $tiempoBase  = intdiv($tiempoTotal, $totalPartes);
+                $restoTiempo = $tiempoTotal % $totalPartes;
+                $tiempos     = array_fill(0, $totalPartes, $tiempoBase);
+                for ($i = 0; $i < $restoTiempo; $i++) {
+                    $tiempos[$i] += 1;
+                }
+
+                // === 1) Actualiza ORIGINAL
+                $elemento->peso               = $pesos[0];
+                $elemento->barras             = $barrasParts[0];
+                $elemento->tiempo_fabricacion = $tiempos[0];
                 $elemento->save();
 
                 // Si tu etiqueta representa solo ese elemento, actualiza su peso:
@@ -758,6 +768,83 @@ class ElementoController extends Controller
         });
     }
 
+
+    public function moverTodoANuevaSubEtiqueta(Request $request)
+    {
+        $request->validate([
+            'elemento_id' => 'required|exists:elementos,id',
+        ]);
+
+        $colPesoElem = 'peso';
+        $colPesoEtiq = 'peso';
+
+        return DB::transaction(function () use ($request, $colPesoElem, $colPesoEtiq) {
+            /** @var \App\Models\Elemento $elemento */
+            $elemento = Elemento::with('etiquetaRelacion')
+                ->lockForUpdate()
+                ->findOrFail($request->elemento_id);
+
+            // Usar la relación correcta del modelo (no el campo string 'etiqueta')
+            $etiquetaOriginal = $elemento->etiquetaRelacion;
+            if (!$etiquetaOriginal) {
+                return response()->json(['success' => false, 'message' => 'Etiqueta del elemento no encontrada.'], 404);
+            }
+
+            $pesoElemento = (float) ($elemento->{$colPesoElem} ?? 0);
+
+            // Base del sub_id (antes del punto)
+            $baseCodigo = explode('.', (string) $etiquetaOriginal->etiqueta_sub_id)[0];
+
+            // Buscar el siguiente sub_id libre
+            $existentes = Etiqueta::where('etiqueta_sub_id', 'like', "$baseCodigo.%")
+                ->lockForUpdate()
+                ->pluck('etiqueta_sub_id')
+                ->toArray();
+
+            $nuevoSubId = null;
+            for ($j = 1; $j <= 500; $j++) {
+                $cand = $baseCodigo . '.' . str_pad($j, 2, '0', STR_PAD_LEFT);
+                if (!in_array($cand, $existentes)) {
+                    $nuevoSubId = $cand;
+                    break;
+                }
+            }
+            if (!$nuevoSubId) {
+                throw new \RuntimeException('No hay subetiqueta disponible.');
+            }
+
+            // Crear nueva subetiqueta (replica) con peso reseteado
+            $nuevaEtiqueta = $etiquetaOriginal->replicate();
+            $nuevaEtiqueta->etiqueta_sub_id = $nuevoSubId;
+            $nuevaEtiqueta->{$colPesoEtiq} = 0; // no arrastrar peso de la original
+            $nuevaEtiqueta->save();
+
+            // Mover el elemento a la nueva subetiqueta
+            $elemento->etiqueta_id = $nuevaEtiqueta->id;
+            $elemento->etiqueta_sub_id = $nuevoSubId;
+            $elemento->save();
+
+            // Ajustar pesos en etiquetas (si corresponde)
+            if ($pesoElemento > 0) {
+                DB::table('etiquetas')
+                    ->where('id', $etiquetaOriginal->id)
+                    ->decrement($colPesoEtiq, $pesoElemento);
+
+                DB::table('etiquetas')
+                    ->where('id', $nuevaEtiqueta->id)
+                    ->increment($colPesoEtiq, $pesoElemento);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Elemento movido a nueva subetiqueta correctamente.',
+                'data' => [
+                    'elemento_id' => $elemento->id,
+                    'subetiqueta_nueva' => $nuevoSubId,
+                ]
+            ], 200);
+        });
+    }
 
     public function store(Request $request)
     {

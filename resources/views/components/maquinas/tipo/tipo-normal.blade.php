@@ -251,7 +251,38 @@
                             </div>
                             <div class="text-xs text-gray-500">
                                 Tiempo estimado:
-                                {{ optional($planilla->tiempo_fabricacion) ? $planilla->tiempo_fabricacion . ' min' : 'N/A' }}
+                                @php
+                                    // Sumar tiempos de elementos (segundos) + 10 min por etiqueta (cambio de trabajo)
+                                    $sumSegs = (int) ($grupoPlanilla->sum('tiempo_fabricacion') ?? 0);
+                                    $etiquetasCount = $grupoPlanilla
+                                        ->pluck('etiqueta_sub_id')
+                                        ->filter()
+                                        ->unique()
+                                        ->count();
+                                    $totalSegs = $sumSegs + $etiquetasCount * 600; // 600 seg = 10 min por etiqueta
+                                @endphp
+                                @if ($totalSegs > 0)
+                                    @php
+                                        // Convertir a formato legible: d h min
+                                        $totalMin = intdiv($totalSegs, 60);
+                                        $dias = intdiv($totalMin, 1440); // 24*60
+                                        $resto = $totalMin % 1440;
+                                        $horas = intdiv($resto, 60);
+                                        $min = $resto % 60;
+                                        $partes = [];
+                                        if ($dias > 0) {
+                                            $partes[] = $dias . ' d';
+                                        }
+                                        if ($horas > 0) {
+                                            $partes[] = $horas . ' h';
+                                        }
+                                        $partes[] = $min . ' min';
+                                        $formateado = implode(' ', $partes);
+                                    @endphp
+                                    {{ $formateado }}
+                                @else
+                                    N/A
+                                @endif
                             </div>
                         </header>
 
@@ -473,11 +504,11 @@
                                     html: data.errors?.length ?
                                         `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
               ${data.errors.map(err => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <b>#${err.id}</b>: ${err.error}<br>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              </li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <li>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <b>#${err.id}</b>: ${err.error}<br>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  </li>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              `).join('')}
            </ul>` : '',
                                 }).then(() => {
                                     if (data.success) location.reload();
