@@ -286,244 +286,247 @@
                         </select>
                     </div>
                 </form>
+                <pre>
+CONFIGURACIÓN RECIBIDA:
+{{ json_encode($configuracion_vista_stock) }}
+</pre>
+
                 <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
                     :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
                     :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion-vista-stock="$configuracion_vista_stock" />
+                class="mt-4 text-right">
 
+                <div id="modalConfirmacion"
+                    class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
 
-                <div class="mt-4 text-right">
+                        {{-- Título alineado a la izquierda --}}
+                        <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
 
-                    <div id="modalConfirmacion"
-                        class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-                        <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
+                        <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
+                            class="space-y-4">
+                            @csrf
 
-                            {{-- Título alineado a la izquierda --}}
-                            <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
+                            {{-- Selector de fabricante alineado a la izquierda --}}
+                            <div class="text-left">
+                                <label for="fabricante"
+                                    class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
+                                    fabricante:</label>
+                                <select name="fabricante_id" id="fabricante"
+                                    class="w-full border border-gray-300 rounded px-3 py-2">
+                                    <option value="">-- Elige un fabricante --</option>
+                                    @foreach ($fabricantes as $fabricante)
+                                        <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            {{-- Selector de distribuidor --}}
+                            <div class="text-left mt-4">
+                                <label for="distribuidor"
+                                    class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
+                                    distribuidor:</label>
+                                <select name="distribuidor_id" id="distribuidor"
+                                    class="w-full border border-gray-300 rounded px-3 py-2">
+                                    <option value="">-- Elige un distribuidor --</option>
+                                    @foreach ($distribuidores as $distribuidor)
+                                        <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                            <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
-                                class="space-y-4">
-                                @csrf
+                            {{-- Campo de lugar de entrega --}}
+                            {{-- Campo de lugar de entrega: solo se puede seleccionar uno --}}
+                            <div class="text-left">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                    Lugar de Entrega:
+                                </label>
 
-                                {{-- Selector de fabricante alineado a la izquierda --}}
-                                <div class="text-left">
-                                    <label for="fabricante"
-                                        class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
-                                        fabricante:</label>
-                                    <select name="fabricante_id" id="fabricante"
-                                        class="w-full border border-gray-300 rounded px-3 py-2">
-                                        <option value="">-- Elige un fabricante --</option>
-                                        @foreach ($fabricantes as $fabricante)
-                                            <option value="{{ $fabricante->id }}">{{ $fabricante->nombre }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                {{-- Selector de distribuidor --}}
-                                <div class="text-left mt-4">
-                                    <label for="distribuidor"
-                                        class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
-                                        distribuidor:</label>
-                                    <select name="distribuidor_id" id="distribuidor"
-                                        class="w-full border border-gray-300 rounded px-3 py-2">
-                                        <option value="">-- Elige un distribuidor --</option>
-                                        @foreach ($distribuidores as $distribuidor)
-                                            <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {{-- Select para naves HPR --}}
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Naves de Hierros Paco
+                                            Reyes</label>
+                                        <select name="obra_id_hpr" id="obra_id_hpr"
+                                            class="w-full border border-gray-300 rounded px-3 py-2"
+                                            onchange="limpiarObraManual()">
+                                            <option value="">Seleccionar nave</option>
+                                            @foreach ($navesHpr as $nave)
+                                                <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-                                {{-- Campo de lugar de entrega --}}
-                                {{-- Campo de lugar de entrega: solo se puede seleccionar uno --}}
-                                <div class="text-left">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                                        Lugar de Entrega:
-                                    </label>
+                                    {{-- Select para obras externas --}}
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Obras Externas
+                                            (activas)</label>
+                                        <select name="obra_id_externa" id="obra_id_externa"
+                                            class="w-full border border-gray-300 rounded px-3 py-2"
+                                            onchange="limpiarObraManual()">
+                                            <option value="">Seleccionar obra externa</option>
+                                            @foreach ($obrasExternas as $obra)
+                                                <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
 
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {{-- Select para naves HPR --}}
-                                        <div>
-                                            <label class="block text-xs text-gray-500 mb-1">Naves de Hierros Paco
-                                                Reyes</label>
-                                            <select name="obra_id_hpr" id="obra_id_hpr"
-                                                class="w-full border border-gray-300 rounded px-3 py-2"
-                                                onchange="limpiarObraManual()">
-                                                <option value="">Seleccionar nave</option>
-                                                @foreach ($navesHpr as $nave)
-                                                    <option value="{{ $nave->id }}">{{ $nave->obra }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-
-                                        {{-- Select para obras externas --}}
-                                        <div>
-                                            <label class="block text-xs text-gray-500 mb-1">Obras Externas
-                                                (activas)</label>
-                                            <select name="obra_id_externa" id="obra_id_externa"
-                                                class="w-full border border-gray-300 rounded px-3 py-2"
-                                                onchange="limpiarObraManual()">
-                                                <option value="">Seleccionar obra externa</option>
-                                                @foreach ($obrasExternas as $obra)
-                                                    <option value="{{ $obra->id }}">{{ $obra->obra }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-
-                                        {{-- Input de obra manual --}}
-                                        <div>
-                                            <label class="block text-xs text-gray-500 mb-1">Otra ubicación (texto
-                                                libre)</label>
-                                            <input type="text" name="obra_manual" id="obra_manual"
-                                                class="w-full border border-gray-300 rounded px-3 py-2"
-                                                placeholder="Escribir dirección manualmente"
-                                                oninput="limpiarSelectsObra()" value="{{ old('obra_manual') }}">
-                                        </div>
+                                    {{-- Input de obra manual --}}
+                                    <div>
+                                        <label class="block text-xs text-gray-500 mb-1">Otra ubicación (texto
+                                            libre)</label>
+                                        <input type="text" name="obra_manual" id="obra_manual"
+                                            class="w-full border border-gray-300 rounded px-3 py-2"
+                                            placeholder="Escribir dirección manualmente"
+                                            oninput="limpiarSelectsObra()" value="{{ old('obra_manual') }}">
                                     </div>
                                 </div>
+                            </div>
 
 
-                                <table
-                                    class="w-full border-collapse text-sm text-center shadow-xl overflow-hidden rounded-lg border border-gray-300">
-                                    <thead class="bg-blue-800 text-white">
-                                        <tr class="bg-gray-700 text-white">
-                                            <th class="border px-2 py-1">Tipo</th>
-                                            <th class="border px-2 py-1">Diámetro</th>
-                                            <th class="border px-2 py-1">Peso a pedir (kg)</th>
+                            <table
+                                class="w-full border-collapse text-sm text-center shadow-xl overflow-hidden rounded-lg border border-gray-300">
+                                <thead class="bg-blue-800 text-white">
+                                    <tr class="bg-gray-700 text-white">
+                                        <th class="border px-2 py-1">Tipo</th>
+                                        <th class="border px-2 py-1">Diámetro</th>
+                                        <th class="border px-2 py-1">Peso a pedir (kg)</th>
 
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tablaConfirmacionBody">
-                                        {{-- JavaScript agregará filas con inputs aquí --}}
-                                    </tbody>
-                                </table>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablaConfirmacionBody">
+                                    {{-- JavaScript agregará filas con inputs aquí --}}
+                                </tbody>
+                            </table>
 
 
 
-                                <div class="text-right pt-4">
-                                    <button type="button" onclick="cerrarModalConfirmacion()"
-                                        class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
-                                        Cancelar
-                                    </button>
-                                    <button type="submit"
-                                        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                                        Crear Pedido de Compra
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                            <div class="text-right pt-4">
+                                <button type="button" onclick="cerrarModalConfirmacion()"
+                                    class="mr-2 px-4 py-2 rounded border border-gray-300 hover:bg-gray-100">
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                    Crear Pedido de Compra
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
+    </div>
 
-        @endif
-        {{-- ---------------------------------------------------- ROL OPERARIO ---------------------------------------------------- --}}
-        @if (Auth::user()->rol === 'operario')
-            <div class="p-4 w-full max-w-4xl mx-auto">
-                <div class="px-4 flex justify-center">
-                    <form method="GET" action="{{ route('pedidos.index') }}"
-                        class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3 flex flex-col sm:flex-row gap-2 mb-6">
-                        <x-tabla.input name="codigo" value="{{ request('codigo') }}" class="flex-grow"
-                            placeholder="Introduce el código del pedido (ej: PC25/0003)" />
+    @endif
+    {{-- ---------------------------------------------------- ROL OPERARIO ---------------------------------------------------- --}}
+    @if (Auth::user()->rol === 'operario')
+        <div class="p-4 w-full max-w-4xl mx-auto">
+            <div class="px-4 flex justify-center">
+                <form method="GET" action="{{ route('pedidos.index') }}"
+                    class="w-full sm:w-2/3 md:w-1/2 lg:w-1/3 flex flex-col sm:flex-row gap-2 mb-6">
+                    <x-tabla.input name="codigo" value="{{ request('codigo') }}" class="flex-grow"
+                        placeholder="Introduce el código del pedido (ej: PC25/0003)" />
 
-                        <button type="submit"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">
-                            🔍 Buscar
-                        </button>
-                    </form>
-                </div>
-
-                @php
-                    $codigo = request('codigo');
-                    $pedidosFiltrados = $codigo
-                        ? \App\Models\Pedido::with('productos')
-                            ->where('codigo', 'like', '%' . $codigo . '%')
-                            ->orderBy('created_at', 'desc')
-                            ->get()
-                        : collect();
-                @endphp
-
-                @if ($codigo)
-                    @if ($pedidosFiltrados->isEmpty())
-                        <div class="text-red-500 text-sm text-center">
-                            No se encontraron pedidos con el código <strong>{{ $codigo }}</strong>.
-                        </div>
-                    @else
-                        {{-- Vista tipo tarjeta en móvil --}}
-                        <div class="grid gap-4 sm:hidden">
-                            @foreach ($pedidosFiltrados as $pedido)
-                                <div class="bg-white shadow rounded-lg p-4 text-sm border">
-                                    <div><span class="font-semibold">Código:</span> {{ $pedido->codigo }}</div>
-                                    <div><span class="font-semibold">Fabricante:</span>
-                                        {{ $pedido->fabricante->nombre ?? '—' }}</div>
-                                    <div><span class="font-semibold">Distribuidor:</span>
-                                        {{ $pedido->fabricante->distribuidor ?? '—' }}</div>
-                                    <div><span class="font-semibold">Fecha Pedido:</span>
-                                        {{ optional($pedido->fecha_pedido)->format('d/m/Y') }}
-                                    </div>
-                                    <div><span class="font-semibold">Fecha Entrega:</span>
-                                        {{ optional($pedido->fecha_entrega)->format('d/m/Y') }}
-                                    </div>
-                                    <div>
-                                        <span class="font-semibold">Peso Total:</span>
-                                        {{ $pedido->peso_total !== null ? round($pedido->peso_total, 0) . ' kg' : '—' }}
-                                    </div>
-                                    <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
-                                    <div class="mt-2">
-                                        <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}"
-                                            class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
-                                            Recepcionar
-                                        </a>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-
-                        {{-- Vista tabla en escritorio --}}
-                        <div class="hidden sm:block bg-white shadow rounded-lg overflow-x-auto mt-4">
-                            <table class="w-full border text-sm text-center">
-                                <thead class="bg-blue-600 text-white uppercase text-xs">
-                                    <tr>
-                                        <th class="px-3 py-2 border">Código</th>
-                                        <th class="px-3 py-2 border">Fabricante</th>
-                                        <th class="px-3 py-2 border">Distribuidor</th>
-                                        <th class="px-3 py-2 border">Fecha Pedido</th>
-                                        <th class="px-3 py-2 border">Fecha Entrega</th>
-                                        <th class="px-3 py-2 border">Peso Total</th>
-                                        <th class="px-3 py-2 border">Estado</th>
-                                        <th class="px-3 py-2 border">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($pedidosFiltrados as $pedido)
-                                        <tr class="border-b hover:bg-blue-50">
-                                            <td class="px-3 py-2">{{ $pedido->codigo }}</td>
-                                            <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
-                                            <td class="px-3 py-2">{{ $pedido->fabricante->distribuidor ?? '—' }}</td>
-                                            <td class="px-3 py-2">
-                                                {{ optional($pedido->fecha_pedido)->format('d/m/Y') }}
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                {{ optional($pedido->fecha_entrega)->format('d/m/Y') }}
-                                            </td>
-                                            <td class="px-3 py-2">
-                                                {{ $pedido->peso_total !== null ? round($pedido->peso_total, 0) . ' kg' : '—' }}
-                                            </td>
-                                            <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
-                                            <td class="px-3 py-2">
-                                                <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
-                                                    class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
-                                                    Recepcionar
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                @endif
-
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-xl shadow transition">
+                        🔍 Buscar
+                    </button>
+                </form>
             </div>
-        @endif
+
+            @php
+                $codigo = request('codigo');
+                $pedidosFiltrados = $codigo
+                    ? \App\Models\Pedido::with('productos')
+                        ->where('codigo', 'like', '%' . $codigo . '%')
+                        ->orderBy('created_at', 'desc')
+                        ->get()
+                    : collect();
+            @endphp
+
+            @if ($codigo)
+                @if ($pedidosFiltrados->isEmpty())
+                    <div class="text-red-500 text-sm text-center">
+                        No se encontraron pedidos con el código <strong>{{ $codigo }}</strong>.
+                    </div>
+                @else
+                    {{-- Vista tipo tarjeta en móvil --}}
+                    <div class="grid gap-4 sm:hidden">
+                        @foreach ($pedidosFiltrados as $pedido)
+                            <div class="bg-white shadow rounded-lg p-4 text-sm border">
+                                <div><span class="font-semibold">Código:</span> {{ $pedido->codigo }}</div>
+                                <div><span class="font-semibold">Fabricante:</span>
+                                    {{ $pedido->fabricante->nombre ?? '—' }}</div>
+                                <div><span class="font-semibold">Distribuidor:</span>
+                                    {{ $pedido->fabricante->distribuidor ?? '—' }}</div>
+                                <div><span class="font-semibold">Fecha Pedido:</span>
+                                    {{ optional($pedido->fecha_pedido)->format('d/m/Y') }}
+                                </div>
+                                <div><span class="font-semibold">Fecha Entrega:</span>
+                                    {{ optional($pedido->fecha_entrega)->format('d/m/Y') }}
+                                </div>
+                                <div>
+                                    <span class="font-semibold">Peso Total:</span>
+                                    {{ $pedido->peso_total !== null ? round($pedido->peso_total, 0) . ' kg' : '—' }}
+                                </div>
+                                <div><span class="font-semibold">Estado:</span> {{ $pedido->estado ?? '—' }}</div>
+                                <div class="mt-2">
+                                    <a href="{{ route('pedidos.crearRecepcion', $pedido->id) }}"
+                                        class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
+                                        Recepcionar
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    {{-- Vista tabla en escritorio --}}
+                    <div class="hidden sm:block bg-white shadow rounded-lg overflow-x-auto mt-4">
+                        <table class="w-full border text-sm text-center">
+                            <thead class="bg-blue-600 text-white uppercase text-xs">
+                                <tr>
+                                    <th class="px-3 py-2 border">Código</th>
+                                    <th class="px-3 py-2 border">Fabricante</th>
+                                    <th class="px-3 py-2 border">Distribuidor</th>
+                                    <th class="px-3 py-2 border">Fecha Pedido</th>
+                                    <th class="px-3 py-2 border">Fecha Entrega</th>
+                                    <th class="px-3 py-2 border">Peso Total</th>
+                                    <th class="px-3 py-2 border">Estado</th>
+                                    <th class="px-3 py-2 border">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($pedidosFiltrados as $pedido)
+                                    <tr class="border-b hover:bg-blue-50">
+                                        <td class="px-3 py-2">{{ $pedido->codigo }}</td>
+                                        <td class="px-3 py-2">{{ $pedido->fabricante->nombre ?? '—' }}</td>
+                                        <td class="px-3 py-2">{{ $pedido->fabricante->distribuidor ?? '—' }}</td>
+                                        <td class="px-3 py-2">
+                                            {{ optional($pedido->fecha_pedido)->format('d/m/Y') }}
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            {{ optional($pedido->fecha_entrega)->format('d/m/Y') }}
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            {{ $pedido->peso_total !== null ? round($pedido->peso_total, 0) . ' kg' : '—' }}
+                                        </td>
+                                        <td class="px-3 py-2">{{ $pedido->estado ?? '—' }}</td>
+                                        <td class="px-3 py-2">
+                                            <a href="{{ route('pedidos.recepcion', $pedido->id) }}"
+                                                class="bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded text-xs">
+                                                Recepcionar
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            @endif
+
+        </div>
+    @endif
 
     </div>
     <script>

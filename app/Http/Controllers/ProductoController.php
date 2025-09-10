@@ -199,6 +199,7 @@ class ProductoController extends Controller
                 'peso_stock' => 'Peso Stock',
                 'estado' => 'Estado',
                 'ubicacion' => 'Ubicación',
+                'created_at' => 'Fecha de Creación',
             ];
 
             $columna = $request->sort;
@@ -254,6 +255,7 @@ class ProductoController extends Controller
             'peso_stock'     => $this->getOrdenamiento('peso_stock', 'Peso Stock'),
             'estado'         => $this->getOrdenamiento('estado', 'Estado'),
             'ubicacion'      => $this->getOrdenamiento('ubicacion', 'Ubicación'),
+            'created_at'      => $this->getOrdenamiento('created_at', 'Fecha de Creación'),
         ];
 
         // Si no se está filtrando por estado ni código, excluir consumido/fabricando

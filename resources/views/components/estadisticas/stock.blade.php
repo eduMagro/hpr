@@ -17,8 +17,7 @@
 <div class="space-y-12">
 
     @php
-
-        $config = array_merge(
+        $configuracionVistaStock = array_merge(
             [
                 'incluir_encarretado' => true,
                 'longitudes_barras' => [12, 14, 15, 16],
@@ -26,10 +25,6 @@
             ],
             $configuracion_vista_stock ?? [],
         );
-
-        $incluirEncarretado = $config['incluir_encarretado'];
-        $longitudesBarras = $config['longitudes_barras'];
-        $numBloques = ($incluirEncarretado ? 1 : 0) + count($longitudesBarras) + 2;
 
         // 🎨 Función para marcar celdas en rojo según condiciones de diámetro y tipo
         function rojo($diametro, $tipo, $longitud = null)
@@ -116,8 +111,13 @@
 
                             <td class="border px-2 py-1 {{ $claseRojo }}">
                                 @if (!$claseRojo)
-                                    <div class="flex items-center justify-start gap-2">
+                                    <div class="gap-2">
                                         <span>{{ number_format($pedidoVal, 0, ',', '.') }}</span>
+                                        <input type="hidden"
+                                            name="detalles[encarretado-{{ $diametro }}][producto_base_id]"
+                                            value="{{ $productoBaseInfo['encarretado'][$diametro]['id'] ?? '' }}">
+
+
                                         <label class="inline-flex items-center gap-1">
                                             <input type="checkbox" name="seleccionados[]"
                                                 value="encarretado-{{ $diametro }}">
@@ -150,8 +150,12 @@
 
                             <td class="border px-2 py-1 {{ $claseRojo }}">
                                 @if (!$claseRojo)
-                                    <div class="flex items-center justify-start gap-2">
+                                    <div class= "gap-2">
                                         <span>{{ number_format($pedidoVal, 0, ',', '.') }}</span>
+                                        <input type="hidden"
+                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][producto_base_id]"
+                                            value="{{ $productoBaseInfo['barras'][$diametro][$longitud]['id'] ?? '' }}">
+
                                         <label class="inline-flex items-center gap-1">
                                             <input type="checkbox" name="seleccionados[]"
                                                 value="barra-{{ $diametro }}-{{ $longitud }}">

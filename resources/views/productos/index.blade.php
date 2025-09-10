@@ -136,6 +136,7 @@
                             <th class="p-2 border">{!! $ordenables['peso_stock'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['estado'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['ubicacion'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['created_at'] !!}</th>
                             <th class="p-2 border">Acciones</th>
                         </tr>
                         <tr class="text-center text-xs uppercase">
@@ -190,6 +191,9 @@
                                     <x-tabla.input name="ubicacion" type="text" :value="request('ubicacion')"
                                         class="w-full text-xs" />
                                 </th>
+                                <th class="p-1 border">
+
+                                </th>
 
                                 <x-tabla.botones-filtro ruta="productos.index" />
                             </form>
@@ -242,6 +246,7 @@
                                         No está ubicada
                                     @endif
                                 </td>
+                                <td class="px-2 py-3 text-center border">{{ $producto->created_at }}</td>
                                 <td class="px-2 py-2 border text-xs font-bold">
                                     <div class="flex items-center space-x-2 justify-center">
                                         {{-- Editar: va a la ruta productos.edit --}}

@@ -42,6 +42,7 @@ class StockService
         $recomendacionReposicion = $this->getRecomendacionReposicion($resumenReposicion, $consumosMensuales['consumos']);
 
         $configuracionVistaStock = $this->obtenerConfiguracionVistaStock($obraIds);
+        // dd($configuracionVistaStock);
         return [
             'stockData'                => $stockData,
             'pedidosPorDiametro'       => $pedidosPorDiametro,
