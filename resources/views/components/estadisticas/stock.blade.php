@@ -32,9 +32,6 @@
         $longitudesBarras = $configuracionVistaStock['longitudes_barras'] ?? [12, 14, 15, 16];
         $numBloques = ($incluirEncarretado ? 1 : 0) + count($longitudesBarras) + 2;
 
-        // (Opcional) para comprobar rápido:
-        // // dump($configuracionVistaStock, $incluirEncarretado, $longitudesBarras);
-
     @endphp
     @php
 

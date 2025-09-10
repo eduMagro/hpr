@@ -286,14 +286,11 @@
                         </select>
                     </div>
                 </form>
-                <pre>
-CONFIGURACIÓN RECIBIDA:
-{{ json_encode($configuracion_vista_stock) }}
-</pre>
+
 
                 <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
                     :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
-                    :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion-vista-stock="$configuracion_vista_stock" />
+                    :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
                 class="mt-4 text-right">
 
                 <div id="modalConfirmacion"
