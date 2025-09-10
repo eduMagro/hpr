@@ -32,17 +32,17 @@
         $longitudesBarras = $configuracionVistaStock['longitudes_barras'] ?? [12, 14, 15, 16];
         $numBloques = ($incluirEncarretado ? 1 : 0) + count($longitudesBarras) + 2;
 
-    @endphp
-    @php
+        $esNaveAlmacen = $configuracionVistaStock['es_nave_almacen'] ?? false;
+        $rojo = function ($diametro, $tipo, $longitud = null) use ($esNaveAlmacen) {
+            if ($esNaveAlmacen) {
+                return '';
+            }
 
-        // 🎨 Función para marcar celdas en rojo según condiciones de diámetro y tipo
-        function rojo($diametro, $tipo, $longitud = null)
-        {
             if ($tipo === 'barra' && $diametro == 10 && $longitud == 12) {
                 return '';
             }
             if ($tipo === 'encarretado' && in_array($diametro, [25, 32])) {
-                return 'bg-red-200'; // 🔴 marcar producto no disponible
+                return 'bg-red-200';
             }
             if ($tipo === 'barra') {
                 if (in_array($diametro, [8, 10])) {
@@ -53,8 +53,9 @@
                 }
             }
             return '';
-        }
+        };
     @endphp
+
 
     <div class="overflow-x-auto bg-white shadow-lg rounded-lg border border-gray-300">
         <table class="w-full text-sm text-center border-collapse">
@@ -111,7 +112,7 @@
                                 $stockVal = $stock['encarretado'] ?? 0;
                                 $pedidoVal = $pedido['encarretado'] ?? 0;
                                 $necesarioVal = $necesario['encarretado'] ?? 0;
-                                $claseRojo = rojo($diametro, 'encarretado');
+                                $claseRojo = $rojo($diametro, 'encarretado', null);
                             @endphp
 
                             <td class="border px-2 py-1 {{ $claseRojo }}">
@@ -150,7 +151,7 @@
                                 $stockVal = $stock['barras'][$longitud] ?? 0;
                                 $pedidoVal = $pedido['barras'][$longitud] ?? 0;
                                 $necesarioVal = $necesario['barras'][$longitud] ?? 0;
-                                $claseRojo = rojo($diametro, 'barra', $longitud);
+                                $claseRojo = $rojo($diametro, 'barra', $longitud);
                             @endphp
 
                             <td class="border px-2 py-1 {{ $claseRojo }}">
