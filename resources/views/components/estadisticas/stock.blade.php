@@ -11,11 +11,26 @@
     'kgPedidosPorProductoBase' => [],
     'resumenReposicion' => [],
     'recomendacionReposicion' => [],
+    'configuracion_vista_stock' => [],
 ])
 
 <div class="space-y-12">
 
     @php
+
+        $config = array_merge(
+            [
+                'incluir_encarretado' => true,
+                'longitudes_barras' => [12, 14, 15, 16],
+                'es_nave_almacen' => false,
+            ],
+            $configuracion_vista_stock ?? [],
+        );
+
+        $incluirEncarretado = $config['incluir_encarretado'];
+        $longitudesBarras = $config['longitudes_barras'];
+        $numBloques = ($incluirEncarretado ? 1 : 0) + count($longitudesBarras) + 2;
+
         // 🎨 Función para marcar celdas en rojo según condiciones de diámetro y tipo
         function rojo($diametro, $tipo, $longitud = null)
         {
@@ -41,96 +56,58 @@
         <table class="w-full text-sm text-center border-collapse">
             <thead>
                 <tr class="bg-blue-900 text-white text-xs">
-                    <th rowspan="2" class="border px-2 py-2">Ø mm<br>
-                        <span class="text-blue-200 text-[10px]">Diámetro</span>
+                    <th rowspan="2" class="border px-2 py-2">
+                        Ø mm<br><span class="text-blue-200 text-[10px]">Diámetro</span>
                     </th>
-                    <th colspan="2" class="border px-2 py-2">Encarretado</th>
-                    <th colspan="2" class="border px-2 py-2">Barras 12 m</th>
-                    <th colspan="2" class="border px-2 py-2">Barras 14 m</th>
-                    <th colspan="2" class="border px-2 py-2">Barras 15 m</th>
-                    <th colspan="2" class="border px-2 py-2">Barras 16 m</th>
+
+                    @if ($incluirEncarretado)
+                        <th colspan="2" class="border px-2 py-2">Encarretado</th>
+                    @endif
+
+                    @foreach ($longitudesBarras as $L)
+                        <th colspan="2" class="border px-2 py-2">Barras {{ $L }} m</th>
+                    @endforeach
+
                     <th colspan="2" class="border px-2 py-2">Barras Total</th>
                     <th colspan="2" class="border px-2 py-2">Total</th>
                 </tr>
+
                 <tr class="bg-blue-800 text-white text-xs">
-                    @for ($i = 0; $i < 7; $i++)
+                    @for ($i = 0; $i < $numBloques; $i++)
                         <th class="border px-2 py-1">Stock</th>
                         <th class="border px-2 py-1">Pedido</th>
-                        {{-- <th class="border px-2 py-1">Necesario</th> --}}
                     @endfor
                 </tr>
             </thead>
+
 
             <tbody class="bg-white">
                 @foreach ($stockData as $diametro => $stock)
                     @php
                         $pedido = $pedidosPorDiametro[$diametro] ?? [
                             'encarretado' => 0,
-                            'barras' => collect([12 => 0, 14 => 0, 15 => 0, 16 => 0]),
+                            'barras' => collect($longitudesBarras)->mapWithKeys(fn($L) => [$L => 0])->all(),
                             'barras_total' => 0,
                             'total' => 0,
                         ];
                         $necesario = $necesarioPorDiametro[$diametro] ?? [
                             'encarretado' => 0,
-                            'barras' => collect([12 => 0, 14 => 0, 15 => 0, 16 => 0]),
+                            'barras' => collect($longitudesBarras)->mapWithKeys(fn($L) => [$L => 0])->all(),
                             'barras_total' => 0,
                             'total' => 0,
                         ];
                     @endphp
+
                     <tr class="hover:bg-gray-100 transition">
                         <td class="border px-2 py-1 font-bold text-gray-800">{{ $diametro }}</td>
 
-                        {{-- 🔵 Encarretado --}}
-                        @php
-                            $stockVal = $stock['encarretado'];
-                            $pedidoVal = $pedido['encarretado'];
-                            $necesarioVal = $necesario['encarretado'];
-                            $claseRojo = rojo($diametro, 'encarretado');
-                            $colorNecesario =
-                                $necesarioVal > $stockVal
-                                    ? 'text-red-600 font-semibold'
-                                    : 'text-green-600 font-semibold';
-                        @endphp
-
-                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                            {{ !$claseRojo ? number_format($stockVal, 0, ',', '.') : '' }}
-                        </td>
-
-                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                            @if (!$claseRojo)
-                                <div class="flex items-center justify-start gap-2">
-                                    {{-- número de pedido existente --}}
-                                    <span>{{ number_format($pedidoVal, 0, ',', '.') }}</span>
-
-                                    {{-- checkbox + hidden inputs (antes estaban en “Necesario”) --}}
-                                    <label class="inline-flex items-center gap-1">
-                                        <input type="checkbox" name="seleccionados[]"
-                                            value="encarretado-{{ $diametro }}">
-                                        <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
-                                            value="encarretado">
-                                        <input type="hidden" name="detalles[encarretado-{{ $diametro }}][diametro]"
-                                            value="{{ $diametro }}">
-                                        <input type="hidden" name="detalles[encarretado-{{ $diametro }}][cantidad]"
-                                            value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
-                                        {{-- indicador visual del necesario (opcional) --}}
-                                        {{-- <span class="{{ $colorNecesario }}">
-                                            {{ number_format($necesarioVal, 0, ',', '.') }}
-                                        </span> --}}
-                                    </label>
-                                </div>
-                            @endif
-                        </td>
-                        {{-- 🔵 Barras por longitud --}}
-                        @foreach ([12, 14, 15, 16] as $longitud)
+                        {{-- 🔵 Encarretado (solo si aplica) --}}
+                        @if ($incluirEncarretado)
                             @php
-                                $stockVal = $stock['barras'][$longitud] ?? 0;
-                                $pedidoVal = $pedido['barras'][$longitud] ?? 0;
-                                $necesarioVal = $necesario['barras'][$longitud] ?? 0;
-                                $claseRojo = rojo($diametro, 'barra', $longitud);
-                                $colorNecesario =
-                                    $necesarioVal > $stockVal
-                                        ? 'text-red-600 font-semibold'
-                                        : 'text-green-600 font-semibold';
+                                $stockVal = $stock['encarretado'] ?? 0;
+                                $pedidoVal = $pedido['encarretado'] ?? 0;
+                                $necesarioVal = $necesario['encarretado'] ?? 0;
+                                $claseRojo = rojo($diametro, 'encarretado');
                             @endphp
 
                             <td class="border px-2 py-1 {{ $claseRojo }}">
@@ -140,10 +117,41 @@
                             <td class="border px-2 py-1 {{ $claseRojo }}">
                                 @if (!$claseRojo)
                                     <div class="flex items-center justify-start gap-2">
-                                        {{-- número de pedido existente --}}
                                         <span>{{ number_format($pedidoVal, 0, ',', '.') }}</span>
+                                        <label class="inline-flex items-center gap-1">
+                                            <input type="checkbox" name="seleccionados[]"
+                                                value="encarretado-{{ $diametro }}">
+                                            <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
+                                                value="encarretado">
+                                            <input type="hidden"
+                                                name="detalles[encarretado-{{ $diametro }}][diametro]"
+                                                value="{{ $diametro }}">
+                                            <input type="hidden"
+                                                name="detalles[encarretado-{{ $diametro }}][cantidad]"
+                                                value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
+                                        </label>
+                                    </div>
+                                @endif
+                            </td>
+                        @endif
 
-                                        {{-- checkbox + hidden inputs (antes en “Necesario”) --}}
+                        {{-- 🔵 Barras por longitud (dinámico) --}}
+                        @foreach ($longitudesBarras as $longitud)
+                            @php
+                                $stockVal = $stock['barras'][$longitud] ?? 0;
+                                $pedidoVal = $pedido['barras'][$longitud] ?? 0;
+                                $necesarioVal = $necesario['barras'][$longitud] ?? 0;
+                                $claseRojo = rojo($diametro, 'barra', $longitud);
+                            @endphp
+
+                            <td class="border px-2 py-1 {{ $claseRojo }}">
+                                {{ !$claseRojo ? number_format($stockVal, 0, ',', '.') : '' }}
+                            </td>
+
+                            <td class="border px-2 py-1 {{ $claseRojo }}">
+                                @if (!$claseRojo)
+                                    <div class="flex items-center justify-start gap-2">
+                                        <span>{{ number_format($pedidoVal, 0, ',', '.') }}</span>
                                         <label class="inline-flex items-center gap-1">
                                             <input type="checkbox" name="seleccionados[]"
                                                 value="barra-{{ $diametro }}-{{ $longitud }}">
@@ -159,10 +167,6 @@
                                             <input type="hidden"
                                                 name="detalles[barra-{{ $diametro }}-{{ $longitud }}][cantidad]"
                                                 value="{{ round($necesarioVal, 0) }}">
-                                            {{-- indicador visual del necesario (opcional) --}}
-                                            {{-- <span class="{{ $colorNecesario }}">
-                                                {{ number_format($necesarioVal, 0, ',', '.') }}
-                                            </span> --}}
                                         </label>
                                     </div>
                                 @endif

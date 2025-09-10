@@ -173,7 +173,7 @@ class PedidoController extends Controller
         }
 
         // ✅ Ordenación segura por columnas locales o por nombre de relación
-        $sortBy = $request->input('sort', 'fecha_entrega');
+        $sortBy = $request->input('sort', 'created_at'); // o 'fecha_pedido'
         $order  = $request->input('order', 'desc');
 
         // Limpia órdenes previas (importantísimo)

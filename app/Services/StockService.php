@@ -90,14 +90,15 @@ class StockService
     {
         if (empty($idsObrasFiltradas)) return false;
 
+        // intenta con 'nombre' (con y sin tilde), y como respaldo otras columnas comunes
         return Obra::whereIn('id', $idsObrasFiltradas)
-            ->whereRaw('LOWER(nombre) = ?', ['almacén'])
-            ->exists()
-            ||
-            Obra::whereIn('id', $idsObrasFiltradas)
-            ->whereRaw('LOWER(nombre) = ?', ['almacen'])
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(obra) = ?', ['almacén'])
+                    ->orWhereRaw('LOWER(obra) = ?', ['almacen']);
+            })
             ->exists();
     }
+
     /**
      * Devuelve la configuración de la vista de stock según la nave.
      */
