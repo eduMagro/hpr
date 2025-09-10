@@ -256,47 +256,65 @@
       }
 
       function abrirModalPedidoDesdeMovimiento(movimiento) {
-          if (!movimiento || !movimiento.pedido) return;
+          if (!movimiento || !movimiento.pedido || !movimiento.pedido_producto) return;
 
           const pedido = movimiento.pedido;
-
-          const productoBaseId = movimiento.producto_base_id;
+          const linea = movimiento.pedido_producto; // 👈 línea de pedido
           const producto = movimiento.producto_base;
+
           const tipo = producto?.tipo ?? '—';
           const diametro = producto?.diametro ?? '—';
-          const longitud = producto?.longitud ?? '—';
+          const longitud = producto?.longitud ?? '—'; // suele venir en metros si es barra
+
+          const proveedor = (pedido.fabricante_id && pedido.fabricante?.nombre) ?
+              pedido.fabricante.nombre :
+              (pedido.distribuidor?.nombre ?? '—');
+
+          // Datos de línea
+          const cantidadKg = Number(linea.cantidad ?? 0); // total pedido para esa línea
+          const recepcionadoKg = Number(linea.cantidad_recepcionada ?? 0);
+          const restanteKg = Math.max(0, cantidadKg - recepcionadoKg);
+          const estadoLinea = linea.estado ?? '—';
+          const fechaLinea = linea.fecha_estimada_entrega ?
+              new Date(linea.fecha_estimada_entrega).toLocaleDateString('es-ES') :
+              '—';
+
+          // Info general del pedido (opcionales)
+          const pesoPedidoRed = Math.round(pedido.peso_total || 0) + ' kg';
+
+          // Formateo longitud según tipo
+          const longitudFmt = (tipo === 'barra' && !isNaN(Number(longitud))) ?
+              `${longitud} m` :
+              (longitud ? `${longitud} mm` : '—');
 
           const contenedor = document.getElementById('contenidoPedido');
           const modal = document.getElementById('modal-ver-pedido');
 
-          const proveedor = pedido.fabricante_id && pedido.fabricante?.nombre ?
-              pedido.fabricante.nombre :
-              (pedido.distribuidor?.nombre ?? '—');
-
-          const pesoRedondeado = Math.round(pedido.peso_total || 0) + ' kg';
-
-          const fechaEntrega = pedido.fecha_entrega ?
-              new Date(pedido.fecha_entrega).toLocaleDateString('es-ES') :
-              '—';
+          // ⚠️ Importante: pasamos pedido_producto_id por query para que el back lo coja.
+          const hrefRecepcion =
+              `/pedidos/${pedido.id}/recepcion/${producto?.id ?? movimiento.producto_base_id}?pedido_producto_id=${linea.id}`;
 
           contenedor.innerHTML = `
-      <p><strong>Proveedor:</strong> ${proveedor}</p>
-        <p><strong>Código Pedido:</strong> ${pedido.codigo}</p>
-        <p><strong>Estado Pedido:</strong> ${pedido.estado}</p>
-        <p><strong>Peso Total:</strong> ${pesoRedondeado}</p>
-        <p><strong>Fecha Entrega:</strong> ${fechaEntrega}</p>
+    <p><strong>Proveedor:</strong> ${proveedor}</p>
+    <p><strong>Código Pedido:</strong> ${pedido.codigo ?? pedido.id}</p>
 
-        <hr class="my-3" />
+    <hr class="my-3" />
 
-        <p><strong>Tipo Producto:</strong> ${tipo}</p>
-        <p><strong>Diámetro:</strong> ${diametro} mm</p>
-        <p><strong>Longitud:</strong> ${longitud} mm</p>
+    <p><strong>Línea de pedido:</strong> #${linea.id}</p>
+    <p><strong>Fecha estimada:</strong> ${fechaLinea}</p>
+    <p><strong>Cantidad pedida:</strong> ${cantidadKg.toLocaleString('es-ES')} kg</p>
 
-        <a href="/pedidos/${pedido.id}/recepcion/${productoBaseId}"
-            class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow inline-block mt-4">
-            Ir a recepcionarlo
-        </a>
-    `;
+    <hr class="my-3" />
+
+    <p><strong>Tipo:</strong> ${tipo}</p>
+    <p><strong>Diámetro:</strong> ${diametro} mm</p>
+    <p><strong>Longitud:</strong> ${longitudFmt}</p>
+
+    <a href="${hrefRecepcion}"
+       class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded shadow inline-block mt-4">
+      RECEPCIONAR
+    </a>
+  `;
 
           modal.classList.remove('hidden');
       }

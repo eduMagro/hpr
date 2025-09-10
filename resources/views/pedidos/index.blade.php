@@ -30,7 +30,7 @@
                             <form method="GET" action="{{ route('pedidos.index') }}">
 
                                 <th class="p-1 border">
-                                    <x-tabla.input name="id" type="text" :value="request('id')"
+                                    <x-tabla.input name="pedido_producto_id" type="text" :value="request('pedido_producto_id')"
                                         class="w-full text-xs" />
                                 </th>
                                 <th class="p-1 border">

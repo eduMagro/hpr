@@ -78,6 +78,7 @@
         </script>
 
 
+
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
         <script src="{{ asset('js/maquinaJS/elementInfoPanel.js') }}"></script>
 

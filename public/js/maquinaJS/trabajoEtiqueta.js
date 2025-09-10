@@ -2,30 +2,12 @@
 let etiquetaTimers = {};
 
 document.addEventListener("DOMContentLoaded", () => {
-    /*** PROCESO ETIQUETA ***/
-    const procesoEtiqueta = document.getElementById("procesoEtiqueta");
     const maquinaInfo = document.getElementById("maquina-info");
     const maquinaId = maquinaInfo?.dataset?.maquinaId;
 
     if (!maquinaId) {
         console.error("Error: No se encontró la información de la máquina.");
         return;
-    }
-
-    // ✅ Registrar listener del input SOLO si existe (no hagas return global)
-    if (procesoEtiqueta) {
-        procesoEtiqueta.addEventListener("keypress", (e) => {
-            if (e.key !== "Enter") return;
-            e.preventDefault();
-
-            const etiquetaId = e.target.value.trim();
-            actualizarEtiqueta(etiquetaId, maquinaId);
-            e.target.value = ""; // Limpiar input tras procesar
-        });
-    } else {
-        console.warn(
-            "Aviso: no hay #procesoEtiqueta. Solo funcionará el botón .btn-fabricar."
-        );
     }
 
     // --- CLICK EN BOTÓN FABRICAR: hace lo mismo que escanear + Enter ---
@@ -36,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ev.preventDefault();
 
         const etiquetaId = String(btn.dataset.etiquetaId || "").trim();
+        console.log("Botón fabricar clicado para etiqueta ID:", etiquetaId);
         if (!etiquetaId) {
             Swal.fire({
                 icon: "error",

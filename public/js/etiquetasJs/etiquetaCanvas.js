@@ -11,6 +11,7 @@ const marginX = 50;
 const marginY = 50;
 const gapSpacing = 30;
 const minSlotHeight = 100;
+const LEGEND_ZONE = 36; // espacio reservado inferior en cada slot para la leyenda
 
 // === Constantes nuevas (cotas duplicadas) ===
 const DUP_OFFSET_STEP_PX = 12; // escalón entre cotas duplicadas
@@ -133,6 +134,7 @@ function dibujarGrupoEnCanvas(grupo, canvas) {
 
     const availableSlotHeight =
         (canvasHeight - textHeight - (n - 1) * gapSpacing) / n;
+    const drawableSlotHeight = Math.max(10, availableSlotHeight - LEGEND_ZONE); // alto útil para figura y cotas
     const availableWidth = canvasWidth - 2 * marginX;
 
     grupo.elementos.forEach((el, i) => {
@@ -143,26 +145,27 @@ function dibujarGrupoEnCanvas(grupo, canvas) {
         const peso = el.peso ?? "N/A";
 
         const cX = marginX + availableWidth / 2;
-        const cY =
-            textHeight +
-            i * (availableSlotHeight + gapSpacing) +
-            availableSlotHeight / 2;
+        const slotTop = textHeight + i * (availableSlotHeight + gapSpacing);
+        const cY = slotTop + drawableSlotHeight / 2;
 
+        // Leyenda inferior izquierda (reservada por LEGEND_ZONE)
         ctx.font = "26px Arial";
         ctx.fillStyle = "#000";
-        ctx.textAlign = "right";
+        ctx.textAlign = "left";
+        const legendText = `Ø${diam} | ${peso} | x${barras}`;
         ctx.fillText(
-            `Ø${diam} | ${peso} | x${barras}`,
-            canvasWidth - 10,
-            cY - 40
+            legendText,
+            marginX + 6,
+            slotTop + availableSlotHeight - LEGEND_ZONE / 2
         );
 
+        // Id del elemento (mantener fuera del área de dibujo)
         ctx.fillStyle = ELEMENT_TEXT_COLOR;
         ctx.textAlign = "left";
         ctx.fillText(
             `#${el.id}`,
             marginX + availableWidth + 25,
-            cY + availableSlotHeight / 2 - 50
+            slotTop + drawableSlotHeight - 50
         );
 
         // -------- Dibujo de la figura --------
@@ -170,10 +173,14 @@ function dibujarGrupoEnCanvas(grupo, canvas) {
             const arc = dims[0];
             const scale = Math.min(
                 availableWidth / (2 * arc.radius),
-                availableSlotHeight / (2 * arc.radius)
+                drawableSlotHeight / (2 * arc.radius)
             );
             const R = arc.radius * scale;
             const ang = ((arc.arcAngle || 360) * Math.PI) / 180;
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(marginX, slotTop, availableWidth, drawableSlotHeight);
+            ctx.clip();
             ctx.beginPath();
             ctx.arc(cX, cY, R, 0, ang);
             ctx.strokeStyle = FIGURE_LINE_COLOR;
@@ -187,6 +194,7 @@ function dibujarGrupoEnCanvas(grupo, canvas) {
                 cX + (R + 10) * Math.cos(mid),
                 cY + (R + 10) * Math.sin(mid)
             );
+            ctx.restore();
         } else if (dims.length === 1 && dims[0].type === "line") {
             const line = dims[0];
             const scale = availableWidth / Math.abs(line.length);
@@ -227,7 +235,7 @@ function dibujarGrupoEnCanvas(grupo, canvas) {
             const figCY = (minY + maxY) / 2;
             const scale = Math.min(
                 availableWidth / effW,
-                availableSlotHeight / effH
+                drawableSlotHeight / effH
             );
 
             // figura

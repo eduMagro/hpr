@@ -29,6 +29,7 @@ use App\Services\StockService;
 use App\Models\AsignacionTurno;
 use App\Services\AlertaService;
 
+
 class PedidoController extends Controller
 {
     private function filtrosActivosPedidos(Request $request): array
@@ -37,6 +38,9 @@ class PedidoController extends Controller
 
         if ($request->filled('codigo')) {
             $filtros[] = 'Código pedido: <strong>' . $request->codigo . '</strong>';
+        }
+        if ($request->filled('pedido_producto_id')) {
+            $filtros[] = 'ID línea: <strong>' . $request->pedido_producto_id . '</strong>';
         }
 
         if ($request->filled('pedido_global_id')) {
@@ -110,8 +114,10 @@ class PedidoController extends Controller
     public function aplicarFiltrosPedidos($query, Request $request)
     {
         if ($request->filled('pedido_producto_id')) {
-            $query->whereHas('pedidoProductos', function ($q) use ($request) {
-                $q->where('id', $request->pedido_producto_id);
+            $lineaId = (int) $request->pedido_producto_id;
+
+            $query->whereHas('pedidoProductos', function ($q) use ($lineaId) {
+                $q->where('pedido_productos.id', $lineaId);
             });
         }
 
@@ -153,10 +159,11 @@ class PedidoController extends Controller
         }
 
         if ($request->filled('fecha_entrega')) {
-            $query->whereHas('productos', function ($q) use ($request) {
-                $q->whereDate('pedido_productos.fecha_estimada_entrega', $request->fecha_entrega);
+            $query->whereHas('pedidoProductos', function ($q) use ($request) {
+                $q->whereDate('fecha_estimada_entrega', $request->fecha_entrega);
             });
         }
+
 
 
         if ($request->filled('estado')) {
@@ -358,7 +365,6 @@ class PedidoController extends Controller
             if (in_array($pedido->estado, ['completado', 'cancelado'])) {
                 return redirect()->back()->with('error', "El pedido ya está {$pedido->estado} y no puede recepcionarse.");
             }
-            $obraIdActual = auth()->user()->lugarActualTrabajador();
 
             $request->validate(
                 [
@@ -414,34 +420,37 @@ class PedidoController extends Controller
                 ]
             );
             // Normaliza a MAYÚSCULAS antes de crear
+            $obraIdActual = auth()->user()->lugarActualTrabajador();
             $codigo   = strtoupper(trim($request->input('codigo')));
             $codigo2  = $request->filled('codigo_2') ? strtoupper(trim($request->input('codigo_2'))) : null;
-            $esDoble         = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
-            $peso            = floatval($request->input('peso'));
-            $pesoPorPaquete  = $esDoble ? round($peso / 2, 3) : $peso;
-
-            if ($peso <= 0) {
-                return redirect()->back()->with('error', 'El peso del paquete debe ser mayor que cero.');
-            }
+            $esDoble  = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
+            $peso     = (float) $request->input('peso');
+            $pesoPorPaquete = $esDoble ? round($peso / 2, 3) : $peso;
 
             $ubicacion = Ubicacion::findOrFail($request->ubicacion_id);
+
             Log::debug('🔍 Buscando línea de pedido...', [
                 'pedido_producto_id' => $request->pedido_producto_id,
             ]);
 
-            $pedidoProducto = PedidoProducto::findOrFail($request->pedido_producto_id);
+            /** @var PedidoProducto $pedidoProducto */
+            $pedidoProducto = PedidoProducto::lockForUpdate()->findOrFail($request->pedido_producto_id);
+
             if ($pedidoProducto->pedido_id !== $pedido->id) {
                 return redirect()->back()->with('error', 'La línea de pedido no pertenece al pedido actual.');
             }
+
             Log::debug('✅ Línea de pedido encontrada', [
                 'pedido_producto_id' => $pedidoProducto->id,
                 'pedido_id_en_linea' => $pedidoProducto->pedido_id,
                 'esperado_pedido_id' => $pedido->id,
             ]);
 
-            // Buscar o crear entrada abierta
+            // ✅ Buscar/crear ENTRADA ABIERTA POR LÍNEA
             $entrada = Entrada::where('pedido_id', $pedido->id)
+                ->where('pedido_producto_id', $pedidoProducto->id)
                 ->where('estado', 'abierto')
+                ->lockForUpdate()
                 ->first();
 
             $entradaRecienCreada = false;
@@ -449,7 +458,7 @@ class PedidoController extends Controller
             if (!$entrada) {
                 $entrada = new Entrada();
                 $entrada->pedido_id          = $pedido->id;
-                $entrada->pedido_producto_id = $pedidoProducto?->id;
+                $entrada->pedido_producto_id = $pedidoProducto->id; // 🔒 clave: por línea
                 $entrada->albaran            = $this->generarCodigoAlbaran();
                 $entrada->usuario_id         = auth()->id();
                 $entrada->peso_total         = 0;
@@ -460,7 +469,7 @@ class PedidoController extends Controller
                 $entradaRecienCreada = true;
             }
 
-            // 🔔 Enviar alerta a Administración **solo si se acaba de crear la entrada**
+            // 🔔 alertas si se creó ahora (como ya tenías)
             if ($entradaRecienCreada) {
                 $alertaService = app(AlertaService::class);
                 $emisorId = auth()->id();
@@ -476,17 +485,16 @@ class PedidoController extends Controller
                     $alertaService->crearAlerta(
                         emisorId: $emisorId,
                         destinatarioId: $usuario->id,
-                        mensaje: "Camión de ($fabricante) recibido. Pedido $pedidoCodigo. Linea de pedido ($pedidoProducto?->id)",
+                        mensaje: "Camión de ($fabricante) recibido. Pedido $pedidoCodigo. Línea de pedido ({$pedidoProducto->id})",
                         tipo: 'Entrada material',
                     );
                 }
             }
 
-            // Fabricante: si el pedido no tiene fabricante definido, usamos el que venga del formulario
+            // Fabricante final como ya tenías
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
 
-
-            // Primer producto
+            // ➕ Crear producto(s) siempre colgando de ESTA entrada (de la línea correcta)
             Producto::create([
                 'codigo'            => $codigo,
                 'producto_base_id'  => $request->producto_base_id,
@@ -503,14 +511,13 @@ class PedidoController extends Controller
                 'otros'             => $request->otros ?? null,
             ]);
 
-            // Segundo producto si aplica
             if ($esDoble) {
                 Producto::create([
                     'codigo'            => $codigo2,
                     'producto_base_id'  => $request->producto_base_id,
                     'fabricante_id'     => $fabricanteFinal,
                     'obra_id'           => $obraIdActual,
-                    'entrada_id'        => $entrada->id,
+                    'entrada_id'        => $entrada->id, // 👈 misma entrada (misma línea)
                     'n_colada'          => $request->n_colada_2,
                     'n_paquete'         => $request->n_paquete_2,
                     'peso_inicial'      => $pesoPorPaquete,
@@ -522,11 +529,10 @@ class PedidoController extends Controller
                 ]);
             }
 
-            // Actualizar peso total
+            // Actualizar peso total de ESA entrada/linea
             $entrada->peso_total += $peso;
             $entrada->save();
 
-            // Guardar estado del pedido (si quieres dejarlo como parcial por ahora)
             $pedido->save();
 
             return redirect()->back()->with('success', 'Producto(s) recepcionado(s) correctamente.');
@@ -635,53 +641,83 @@ class PedidoController extends Controller
 
     public function activar($pedidoId, $lineaId)
     {
+        // Cargamos la línea como stdClass (tal como ya haces)
         $linea = DB::table('pedido_productos')->where('id', $lineaId)->first();
 
         if (!$linea) {
             return redirect()->back()->with('error', 'Línea de pedido no encontrada.');
         }
 
-        $pedido = Pedido::findOrFail($linea->pedido_id);
+        // Cargamos el pedido con fabricante y distribuidor
+        /** @var \App\Models\Pedido $pedido */
+        $pedido = Pedido::with(['fabricante', 'distribuidor'])->findOrFail($linea->pedido_id);
 
         if (!in_array($pedido->estado, ['pendiente', 'parcial', 'activo'])) {
             return redirect()->back()->with('error', 'Solo se pueden activar productos de pedidos pendientes, parciales o activos.');
         }
 
+        // Producto base de la línea
         $productoBase = ProductoBase::findOrFail($linea->producto_base_id);
 
-        $descripcion = "Se solicita descarga para producto {$productoBase->tipo} Ø{$productoBase->diametro}";
-        if ($productoBase->tipo === 'barra') {
-            $descripcion .= " de {$productoBase->longitud} m";
+        // Proveedor: prioriza fabricante; si no hay, usa distribuidor; si tampoco, “No especificado”
+        $proveedor = $pedido->fabricante->nombre
+            ?? $pedido->distribuidor->nombre
+            ?? 'No especificado';
+
+        // Fecha estimada entrega (por si viene null, mostramos “—”)
+        $fechaEntregaFmt = $linea->fecha_estimada_entrega
+            ? Carbon::parse($linea->fecha_estimada_entrega)->format('d/m/Y')
+            : '—';
+
+        // Partes de descripción
+        $partes = [];
+        $partes[] = sprintf(
+            'Se solicita descarga para producto %s Ø%s%s',
+            $productoBase->tipo,
+            (string) $productoBase->diametro,
+            $productoBase->tipo === 'barra' ? (' de ' . (string) $productoBase->longitud . ' m') : ''
+        );
+
+        // Identificación del pedido, proveedor y línea
+        $partes[] = sprintf('Pedido %s', $pedido->codigo ?? $pedido->id);
+        $partes[] = sprintf('Proveedor: %s', $proveedor);
+        $partes[] = sprintf('Línea: #%d', $lineaId);
+
+        // Información adicional útil (opcional): cantidad prevista y fecha estimada
+        if (!is_null($linea->cantidad)) {
+            $partes[] = sprintf('Cantidad solicitada: %s kg', rtrim(rtrim(number_format((float)$linea->cantidad, 3, ',', '.'), '0'), ','));
         }
-        $descripcion .= " del pedido {$pedido->codigo} (fecha: {$linea->fecha_estimada_entrega})";
+        $partes[] = sprintf('Fecha prevista: %s', $fechaEntregaFmt);
+
+        // Descripción final
+        $descripcion = implode(' | ', $partes);
 
         DB::beginTransaction();
-
         try {
+            // Activamos la línea
             DB::table('pedido_productos')->where('id', $lineaId)->update([
-                'estado' => 'activo',
-                'updated_at' => now()
+                'estado'     => 'activo',
+                'updated_at' => now(),
             ]);
 
+            // Creamos el movimiento con la descripción ampliada
             Movimiento::create([
-                'tipo'                => 'entrada',
-                'estado'              => 'pendiente',
-                'descripcion'         => $descripcion,
-                'fecha_solicitud'     => now(),
-                'solicitado_por'      => auth()->id(),
-                'pedido_id'           => $pedidoId,
-                'producto_base_id'    => $productoBase->id,
-                'pedido_producto_id'  => $lineaId,
-                'prioridad'           => 2,
+                'tipo'               => 'entrada',
+                'estado'             => 'pendiente',
+                'descripcion'        => $descripcion,
+                'fecha_solicitud'    => now(),
+                'solicitado_por'     => auth()->id(),
+                'pedido_id'          => $pedidoId,
+                'producto_base_id'   => $productoBase->id,
+                'pedido_producto_id' => $lineaId,
+                'prioridad'          => 2,
             ]);
 
             DB::commit();
-
-            return redirect()->back()->with('success', 'Producto activado correctamente y movimiento generado.');
+            return redirect()->back()->with('success', 'Línea activada y movimiento creado.');
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al activar línea del pedido: ' . $e->getMessage());
-
             return redirect()->back()->with('error', 'Error al activar el producto.');
         }
     }
@@ -714,7 +750,7 @@ class PedidoController extends Controller
                 ]);
         });
 
-        return redirect()->back()->with('success', 'Producto desactivado correctamente.');
+        return redirect()->back()->with('success');
     }
     public function cancelarLinea($pedidoId, $lineaId)
     {
@@ -752,7 +788,7 @@ class PedidoController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Línea cancelada y pesos actualizados.');
+            return back()->with('success');
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al cancelar línea de pedido', [

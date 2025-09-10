@@ -221,6 +221,67 @@ class EtiquetaController extends Controller
 
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
+        // Delegación a servicios (nuevo flujo)
+        try {
+            $maquina = Maquina::findOrFail($maquina_id);
+
+            $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
+                etiquetaSubId: $id,
+                maquinaId: (int) $maquina_id,
+                longitudSeleccionada: $request->input('longitud'),
+                operario1Id: Auth::id(),
+                operario2Id: auth()->user()->compañeroDeTurno()?->id,
+                opciones: []
+            );
+            log::info("Delegando actualización de etiqueta {$dto->etiquetaSubId} a servicio para máquina {$maquina->id} ({$maquina->tipo}, operario1Id={$dto->operario1Id}, operario2Id={$dto->operario2Id})");
+            /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
+            $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
+            $servicio = $fabrica->porMaquina($maquina);
+
+            $resultado = $servicio->actualizar($dto);
+            $etiqueta = $resultado->etiqueta;
+
+            return response()->json([
+                'success' => true,
+                'estado' => $etiqueta->estado,
+                'productos_afectados' => $resultado->productosAfectados,
+                'warnings' => $resultado->warnings,
+                'fecha_inicio' => optional($etiqueta->fecha_inicio)->format('d-m-Y H:i:s'),
+                'fecha_finalizacion' => optional($etiqueta->fecha_finalizacion)->format('d-m-Y H:i:s'),
+            ], 200);
+        } catch (\Throwable $e) {
+            try {
+                $servicioClass = isset($servicio) ? get_class($servicio) : null;
+                $maquinaLocal = isset($maquina) ? $maquina : \App\Models\Maquina::find($maquina_id);
+                $etq = \App\Models\Etiqueta::where('etiqueta_sub_id', (int) $id)->first();
+                \Log::error('Error en actualizarEtiqueta (delegado a servicio)', [
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                    'etiqueta_sub_id' => (int) $id,
+                    'etiqueta_id' => optional($etq)->id,
+                    'etiqueta_estado_actual' => optional($etq)->estado,
+                    'planilla_id' => optional($etq)->planilla_id,
+                    'maquina_id' => (int) $maquina_id,
+                    'maquina_tipo' => optional($maquinaLocal)->tipo,
+                    'servicio' => $servicioClass,
+                    'user_id' => \Illuminate\Support\Facades\Auth::id(),
+                    'request_longitud' => $request->input('longitud'),
+                ]);
+            } catch (\Throwable $logEx) {
+                \Log::error('Fallo al registrar contexto de error en actualizarEtiqueta', [
+                    'error_original' => $e->getMessage(),
+                    'error_log' => $logEx->getMessage(),
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'etiqueta_sub_id' => (int) $id,
+            ], 400);
+        }
+
+        // Flujo legado (no alcanzado tras 'return'); se mantiene temporalmente por compatibilidad
         DB::beginTransaction();
         try {
             $warnings = []; // Array para acumular mensajes de alerta
@@ -1451,6 +1512,46 @@ class EtiquetaController extends Controller
                 'success' => false,
                 'message' => 'Error al eliminar la etiqueta. Intente nuevamente. ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function actualizarEtiquetaViaServicio(Request $request, $id, $maquina_id)
+    {
+        try {
+            $maquina = Maquina::findOrFail($maquina_id);
+
+            $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
+                etiquetaSubId: (string) $id, // no castear a int: puede ser alfanumérico con puntos
+                maquinaId: (int) $maquina_id,
+                longitudSeleccionada: $request->input('longitud'),
+                operario1Id: Auth::id(),
+                operario2Id: auth()->user()->compañeroDeTurno()?->id,
+                opciones: []
+            );
+
+            /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
+            $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
+            $servicio = $fabrica->porMaquina($maquina);
+
+            $resultado = $servicio->actualizar($dto);
+            $etiqueta = $resultado->etiqueta;
+
+            return response()->json([
+                'success' => true,
+                'estado' => $etiqueta->estado,
+                'productos_afectados' => $resultado->productosAfectados,
+                'warnings' => $resultado->warnings,
+                'fecha_inicio' => optional($etiqueta->fecha_inicio)->format('Y-m-d H:i:s'),
+                'fecha_finalizacion' => optional($etiqueta->fecha_finalizacion)->format('Y-m-d H:i:s'),
+            ], 200);
+        } catch (\Throwable $e) {
+            \Log::error('Error en actualizarEtiquetaViaServicio', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 400);
         }
     }
 

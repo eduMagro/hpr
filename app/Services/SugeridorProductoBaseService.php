@@ -42,26 +42,26 @@ class SugeridorProductoBaseService
             return $this->diametrosCompatibles($diamA, $diamB);
         })->values();
 
-        Log::debug('[SugeridorPB][diametros]', [
-            'elemento_id' => $elemento->id,
-            'diamA_mm'    => $diamA,
-            'PB_count_in' => $productosBaseCompatibles->count(),
-            'colegas_filtrados' => $colegas->count(),
-        ]);
+        // Log::debug('[SugeridorPB][diametros]', [
+        //     'elemento_id' => $elemento->id,
+        //     'diamA_mm'    => $diamA,
+        //     'PB_count_in' => $productosBaseCompatibles->count(),
+        //     'colegas_filtrados' => $colegas->count(),
+        // ]);
 
         $mejor = null;
 
         foreach ($productosBaseCompatibles as $pb) {
             $L = $this->longitudBarraMm($pb);
-            Log::debug('[SugeridorPB][calc]', [
-                'pb_id'     => $pb->id,
-                'tipo'      => $pb->tipo,
-                'diametro'  => $pb->diametro,
-                'diam_pb_mm' => $this->diamPBmm($pb),
-                'long_raw'  => $pb->longitud ?? null,
-                'long_m'    => $pb->longitud_m ?? null,
-                'L_mm'      => $L,
-            ]);
+            // Log::debug('[SugeridorPB][calc]', [
+            //     'pb_id'     => $pb->id,
+            //     'tipo'      => $pb->tipo,
+            //     'diametro'  => $pb->diametro,
+            //     'diam_pb_mm' => $this->diamPBmm($pb),
+            //     'long_raw'  => $pb->longitud ?? null,
+            //     'long_m'    => $pb->longitud_m ?? null,
+            //     'L_mm'      => $L,
+            // ]);
             if ($L <= 0) continue;
 
             // 1) Packing simple: solo el elemento A

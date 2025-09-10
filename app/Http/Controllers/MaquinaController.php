@@ -280,21 +280,21 @@ class MaquinaController extends Controller
 
         // 3) Fallback si quedó vacío (para no romper mientras afinamos datos)
         if ($productosBarra->isEmpty() && $productosBaseCompatibles->isNotEmpty()) {
-            \Log::warning('[SugeridorPB] productosBarra vacío; usando todos los compatibles como fallback');
+            // \Log::warning('[SugeridorPB] productosBarra vacío; usando todos los compatibles como fallback');
             $productosBarra = $productosBaseCompatibles;
         }
 
         // 4) Log rápido para verificar
-        \Log::debug('[SugeridorPB][PB-snapshot]', [
-            'compatibles_total' => $productosBaseCompatibles->count(),
-            'barra_total'       => $productosBarra->count(),
-            'ejemplo_attrs'     => $productosBarra->take(3)->map(fn($pb) => [
-                'id'        => $pb->id,
-                'tipo'      => $pb->tipo,
-                'diametro'  => $pb->diametro,
-                'longitud'  => $pb->longitud,
-            ]),
-        ]);
+        // \Log::debug('[SugeridorPB][PB-snapshot]', [
+        //     'compatibles_total' => $productosBaseCompatibles->count(),
+        //     'barra_total'       => $productosBarra->count(),
+        //     'ejemplo_attrs'     => $productosBarra->take(3)->map(fn($pb) => [
+        //         'id'        => $pb->id,
+        //         'tipo'      => $pb->tipo,
+        //         'diametro'  => $pb->diametro,
+        //         'longitud'  => $pb->longitud,
+        //     ]),
+        // ]);
 
         // 5) Calcular sugerencias (pásale productosBarra al service)
         $sugerenciasPorElemento = [];
@@ -306,14 +306,14 @@ class MaquinaController extends Controller
             $res = $sugeridor->sugerirParaElemento($el, $productosBarra, $colegas, $debug);
             $sugerenciasPorElemento[$el->id] = $res;
 
-            \Log::debug('[SugeridorPB][Controller]', [
-                'elemento_id' => $el->id,
-                'ok'          => $res['ok'] ?? false,
-                'reason'      => $res['reason'] ?? null,
-                'pb'          => $res['sugerencia']['producto_base_id'] ?? null,
-                'n_por_barra' => $res['sugerencia']['n_por_barra'] ?? null,
-                'pareja'      => $res['sugerencia']['pareja']['elemento_id'] ?? null,
-            ]);
+            // \Log::debug('[SugeridorPB][Controller]', [
+            //     'elemento_id' => $el->id,
+            //     'ok'          => $res['ok'] ?? false,
+            //     'reason'      => $res['reason'] ?? null,
+            //     'pb'          => $res['sugerencia']['producto_base_id'] ?? null,
+            //     'n_por_barra' => $res['sugerencia']['n_por_barra'] ?? null,
+            //     'pareja'      => $res['sugerencia']['pareja']['elemento_id'] ?? null,
+            // ]);
         }
         // ✅ PASO CORRECTO DE VARIABLES A LA VISTA
         return view('maquinas.show', array_merge($base, compact(
@@ -407,41 +407,147 @@ class MaquinaController extends Controller
     {
         $ubicacionesDisponiblesPorProductoBase = [];
 
-        $movimientosPendientes = Movimiento::with(['solicitadoPor', 'producto.ubicacion', 'pedido.fabricante', 'productoBase'])
+        // PENDIENTES: eager load estrecho + columns mínimos
+        $movimientosPendientes = Movimiento::with([
+            'solicitadoPor:id,name',
+            'producto.ubicacion:id,nombre', // si producto puede ser null, ok
+            'productoBase:id,tipo,diametro,longitud',
+            'pedido:id,codigo,peso_total,fabricante_id,distribuidor_id',
+            'pedido.fabricante:id,nombre',
+            'pedido.distribuidor:id,nombre',
+            'pedidoProducto:id,pedido_id,producto_base_id,cantidad,cantidad_recepcionada,estado,fecha_estimada_entrega',
+        ])
             ->where('estado', 'pendiente')
             ->orderBy('prioridad', 'asc')
             ->get();
 
-        $movimientosCompletados = Movimiento::with(['solicitadoPor', 'ejecutadoPor', 'producto.ubicacion', 'productoBase'])
+        // COMPLETADOS (últimos 20 ejecutados por mí)
+        $movimientosCompletados = Movimiento::with([
+            'solicitadoPor:id,name',
+            'ejecutadoPor:id,name',
+            'producto.ubicacion:id,nombre',
+            'productoBase:id,tipo,diametro,longitud',
+            'pedidoProducto:id,pedido_id,producto_base_id,cantidad,cantidad_recepcionada,estado,fecha_estimada_entrega',
+        ])
             ->where('estado', 'completado')
             ->where('ejecutado_por', auth()->id())
             ->orderBy('updated_at', 'desc')
             ->take(20)
             ->get();
 
-        $pedidosActivos = Pedido::where('estado', 'activo')->orderBy('updated_at', 'desc')->get();
+        // JSON compacto para el front (incluye LA LÍNEA)
+        $movsPendJson = $movimientosPendientes->map(function ($m) {
+            $linea = $m->pedidoProducto;
+            $pedido = $m->pedido;
+            $pb = $m->productoBase;
 
+            $cantidad     = (float) ($linea->cantidad ?? 0);
+            $recep        = (float) ($linea->cantidad_recepcionada ?? 0);
+            $restante     = max(0.0, $cantidad - $recep);
+
+            return [
+                'id'                  => $m->id,
+                'tipo'                => $m->tipo,
+                'estado'              => $m->estado,
+                'prioridad'           => $m->prioridad,
+                'pedido_id'           => $pedido?->id,
+                'pedido_producto_id'  => $linea?->id,
+                'producto_base_id'    => $pb?->id,
+
+                'pedido' => [
+                    'id'          => $pedido?->id,
+                    'codigo'      => $pedido?->codigo,
+                    'peso_total'  => $pedido?->peso_total,
+                    'fabricante_id' => $pedido?->fabricante_id,
+                    'fabricante'  => ['nombre' => $pedido?->fabricante?->nombre],
+                    'distribuidor' => ['nombre' => $pedido?->distribuidor?->nombre],
+                ],
+
+                // 🔹 LÍNEA DE PEDIDO (lo que pide el modal)
+                'pedido_producto' => [
+                    'id'                     => $linea?->id,
+                    'cantidad'               => $cantidad,
+                    'cantidad_recepcionada'  => $recep,
+                    'restante'               => $restante,
+                    'estado'                 => $linea?->estado,
+                    'fecha_estimada_entrega' => $linea?->fecha_estimada_entrega,
+                ],
+
+                // Producto base
+                'producto_base' => [
+                    'id'       => $pb?->id,
+                    'tipo'     => $pb?->tipo,
+                    'diametro' => $pb?->diametro,
+                    'longitud' => $pb?->longitud, // en m si es barra en tu BD
+                ],
+
+                // Extras útiles para la vista grúa (opcionales)
+                'solicitado_por' => [
+                    'id'   => $m->solicitadoPor?->id,
+                    'name' => $m->solicitadoPor?->name,
+                ],
+                'ubicacion_producto' => [
+                    'nombre' => $m->producto?->ubicacion?->nombre,
+                ],
+            ];
+        });
+
+        $movsComplJson = $movimientosCompletados->map(function ($m) {
+            $pb = $m->productoBase;
+            $linea = $m->pedidoProducto;
+            return [
+                'id'                 => $m->id,
+                'estado'             => $m->estado,
+                'updated_at'         => $m->updated_at?->toIso8601String(),
+                'pedido_producto'    => [
+                    'id'        => $linea?->id,
+                    'estado'    => $linea?->estado,
+                ],
+                'producto_base'      => [
+                    'id'       => $pb?->id,
+                    'tipo'     => $pb?->tipo,
+                    'diametro' => $pb?->diametro,
+                    'longitud' => $pb?->longitud,
+                ],
+                'solicitado_por'     => ['id' => $m->solicitadoPor?->id, 'name' => $m->solicitadoPor?->name],
+                'ejecutado_por'      => ['id' => $m->ejecutadoPor?->id, 'name' => $m->ejecutadoPor?->name],
+                'ubicacion_producto' => ['nombre' => $m->producto?->ubicacion?->nombre],
+            ];
+        });
+
+        // Ubicaciones disponibles por producto base (como ya tenías)
         foreach ($movimientosPendientes as $mov) {
             if ($mov->producto_base_id) {
-                $productosCompatibles = Producto::with('ubicacion')
+                $productosCompatibles = Producto::with('ubicacion:id,nombre')
                     ->where('producto_base_id', $mov->producto_base_id)
                     ->where('estado', 'almacenado')
                     ->get();
 
                 $ubicaciones = $productosCompatibles->filter(fn($p) => $p->ubicacion)
                     ->map(fn($p) => [
-                        'id'         => $p->ubicacion->id,
-                        'nombre'     => $p->ubicacion->nombre,
+                        'id'          => $p->ubicacion->id,
+                        'nombre'      => $p->ubicacion->nombre,
                         'producto_id' => $p->id,
-                        'codigo'     => $p->codigo,
+                        'codigo'      => $p->codigo,
                     ])->unique('id')->values()->toArray();
 
                 $ubicacionesDisponiblesPorProductoBase[$mov->producto_base_id] = $ubicaciones;
             }
         }
 
-        return compact('movimientosPendientes', 'movimientosCompletados', 'ubicacionesDisponiblesPorProductoBase', 'pedidosActivos');
+        $pedidosActivos = Pedido::where('estado', 'activo')->orderBy('updated_at', 'desc')->get();
+
+        // 👉 Devolvemos tanto las colecciones Eloquent (si las usas en Blade) como los JSON ligeros para JS
+        return [
+            'movimientosPendientes'                 => $movimientosPendientes,
+            'movimientosCompletados'                => $movimientosCompletados,
+            'movimientosPendientesJson'             => $movsPendJson->values(),
+            'movimientosCompletadosJson'            => $movsComplJson->values(),
+            'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase,
+            'pedidosActivos'                        => $pedidosActivos,
+        ];
     }
+
 
     /**
      * Devuelve [planillaActiva, elementosFiltradosAPlanillaActiva]
