@@ -17,6 +17,7 @@
 <div class="space-y-12">
 
     @php
+        // 1) Defaults y luego los que vienen del service (los del service tienen prioridad)
         $configuracionVistaStock = array_merge(
             [
                 'incluir_encarretado' => true,
@@ -25,6 +26,17 @@
             ],
             $configuracion_vista_stock ?? [],
         );
+
+        // 2) Variables que usa la vista
+        $incluirEncarretado = $configuracionVistaStock['incluir_encarretado'] ?? true;
+        $longitudesBarras = $configuracionVistaStock['longitudes_barras'] ?? [12, 14, 15, 16];
+        $numBloques = ($incluirEncarretado ? 1 : 0) + count($longitudesBarras) + 2;
+
+        // (Opcional) para comprobar rápido:
+        // // dump($configuracionVistaStock, $incluirEncarretado, $longitudesBarras);
+
+    @endphp
+    @php
 
         // 🎨 Función para marcar celdas en rojo según condiciones de diámetro y tipo
         function rojo($diametro, $tipo, $longitud = null)
