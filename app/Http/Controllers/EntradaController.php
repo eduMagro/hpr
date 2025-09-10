@@ -186,7 +186,7 @@ class EntradaController extends Controller
                 'filtrosActivos',
                 'ordenables'
             ));
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             return back()->with('error', 'Ocurrió un error inesperado: ' . $e->getMessage());

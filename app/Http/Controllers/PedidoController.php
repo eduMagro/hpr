@@ -315,7 +315,6 @@ class PedidoController extends Controller
         ], $datosStock));
     }
 
-
     public function recepcion($id, $producto_base_id)
     {
         // 🔹 Cargar pedido con relaciones

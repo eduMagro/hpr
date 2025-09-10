@@ -41,6 +41,7 @@ class StockService
         $ids               = $this->getIds($consumosMensuales['consumos']);
         $recomendacionReposicion = $this->getRecomendacionReposicion($resumenReposicion, $consumosMensuales['consumos']);
 
+        $configuracionVistaStock = $this->obtenerConfiguracionVistaStock($obraIds);
         return [
             'stockData'                => $stockData,
             'pedidosPorDiametro'       => $pedidosPorDiametro,
@@ -58,6 +59,7 @@ class StockService
             'ids'                      => $ids,
             'obraIds_filtradas'        => $obraIds,
             'clienteLike'              => $clienteLike,
+            'configuracion_vista_stock' => $configuracionVistaStock,
         ];
     }
 
@@ -81,143 +83,209 @@ class StockService
         return Obra::whereIn('cliente_id', $clienteIds)->pluck('id')->all();
     }
 
+    /**
+     * Determina si las obras filtradas corresponden a la nave "Almacén".
+     */
+    private function esNaveAlmacen(?array $idsObrasFiltradas): bool
+    {
+        if (empty($idsObrasFiltradas)) return false;
+
+        return Obra::whereIn('id', $idsObrasFiltradas)
+            ->whereRaw('LOWER(nombre) = ?', ['almacén'])
+            ->exists()
+            ||
+            Obra::whereIn('id', $idsObrasFiltradas)
+            ->whereRaw('LOWER(nombre) = ?', ['almacen'])
+            ->exists();
+    }
+    /**
+     * Devuelve la configuración de la vista de stock según la nave.
+     */
+    private function obtenerConfiguracionVistaStock(?array $idsObrasFiltradas): array
+    {
+        $esAlmacen = $this->esNaveAlmacen($idsObrasFiltradas);
+
+        if ($esAlmacen) {
+            return [
+                'es_nave_almacen'          => true,
+                'diametros_considerados'   => [6, 8, 10, 12, 16, 20, 25, 32],
+                'longitudes_barras'        => [12, 6],     // solo barras de 12 m y 6 m
+                'incluir_encarretado'      => false,       // se ignora encarrete
+            ];
+        }
+
+        return [
+            'es_nave_almacen'          => false,
+            'diametros_considerados'   => [8, 10, 12, 16, 20, 25, 32],
+            'longitudes_barras'        => [12, 14, 15, 16],
+            'incluir_encarretado'      => true,
+        ];
+    }
+
     // ⬇️ añade parámetro $obraIds a estos dos
 
     // ======================= Helpers existentes =======================
-    private function getStockData(?array $obraIds = null)
+    private function getStockData(?array $idsObrasFiltradas = null)
     {
-        $productos = Producto::with('productoBase')
+        $configuracionVistaStock = $this->obtenerConfiguracionVistaStock($idsObrasFiltradas);
+
+        $productosAlmacenados = Producto::with('productoBase')
             ->where('estado', 'almacenado')
-            ->when($obraIds, fn($q) => $q->whereIn('obra_id', $obraIds))
+            ->when($idsObrasFiltradas, fn($q) => $q->whereIn('obra_id', $idsObrasFiltradas))
             ->get()
-            ->filter(fn($p) => $p->productoBase);
+            ->filter(fn($producto) => $producto->productoBase);
 
-        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
-
-        $res = [];
-        foreach ($diametrosFijos as $d) {
-            $res[$d] = [
-                'encarretado'  => 0.0,
-                'barras'       => [12 => 0.0, 14 => 0.0, 15 => 0.0, 16 => 0.0],
-                'barras_total' => 0.0,
-                'total'        => 0.0,
+        // Inicializamos la estructura de resultados
+        $resultadoStock = [];
+        foreach ($configuracionVistaStock['diametros_considerados'] as $diametro) {
+            $resultadoStock[$diametro] = [
+                'encarretado'   => 0.0,
+                'barras'        => collect($configuracionVistaStock['longitudes_barras'])
+                    ->mapWithKeys(fn($longitud) => [(int)$longitud => 0.0])
+                    ->all(),
+                'barras_total'  => 0.0,
+                'total'         => 0.0,
             ];
         }
 
-        foreach ($productos as $p) {
-            $pb = $p->productoBase;
-            $d  = (int)$pb->diametro;
-            if (!isset($res[$d])) continue;
+        // Recorremos productos
+        foreach ($productosAlmacenados as $producto) {
+            $productoBase = $producto->productoBase;
+            if (!$productoBase) continue;
 
-            if ($pb->tipo === 'encarretado') {
-                $res[$d]['encarretado'] += (float)$p->peso_inicial;
-            } elseif ($pb->tipo === 'barra') {
-                $L = (int)($pb->longitud ?? 12);
-                if (!isset($res[$d]['barras'][$L])) $res[$d]['barras'][$L] = 0.0;
-                $res[$d]['barras'][$L] += (float)$p->peso_inicial;
+            $diametro = (int) $productoBase->diametro;
+            if (!array_key_exists($diametro, $resultadoStock)) continue;
+
+            if ($productoBase->tipo === 'encarretado') {
+                if ($configuracionVistaStock['incluir_encarretado']) {
+                    $resultadoStock[$diametro]['encarretado'] += (float) $producto->peso_inicial;
+                }
+            } elseif ($productoBase->tipo === 'barra') {
+                $longitudBarra = (int) ($productoBase->longitud ?? 12);
+
+                // En Almacén solo admitimos 12 m y 6 m
+                if (!in_array($longitudBarra, $configuracionVistaStock['longitudes_barras'], true)) {
+                    continue;
+                }
+
+                if (!isset($resultadoStock[$diametro]['barras'][$longitudBarra])) {
+                    $resultadoStock[$diametro]['barras'][$longitudBarra] = 0.0;
+                }
+                $resultadoStock[$diametro]['barras'][$longitudBarra] += (float) $producto->peso_inicial;
             }
         }
 
-        foreach ($res as $d => $x) {
-            $res[$d]['barras_total'] = array_sum($x['barras']);
-            $res[$d]['total']        = $x['encarretado'] + $res[$d]['barras_total'];
+        // Calcular totales
+        foreach ($resultadoStock as $diametro => $datos) {
+            $resultadoStock[$diametro]['barras_total'] = array_sum($datos['barras']);
+            $resultadoStock[$diametro]['total'] = $datos['encarretado'] + $resultadoStock[$diametro]['barras_total'];
         }
 
-        return collect($res);
+        return collect($resultadoStock);
     }
 
 
-    private function getNecesarioPorDiametro(?array $obraIds = null)
+    private function getNecesarioPorDiametro(?array $idsObrasFiltradas = null)
     {
-        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
+        $configuracionVistaStock = $this->obtenerConfiguracionVistaStock($idsObrasFiltradas);
 
-        $elementos = Elemento::with(['maquina', 'planilla'])
+        $elementosPendientes = Elemento::with(['maquina', 'planilla'])
             ->where('estado', 'pendiente')
-            ->when($obraIds, fn($q) => $q->whereHas('planilla', fn($p) => $p->whereIn('obra_id', $obraIds)))
+            ->when($idsObrasFiltradas, fn($q) => $q->whereHas('planilla', fn($p) => $p->whereIn('obra_id', $idsObrasFiltradas)))
             ->get()
-            ->filter(fn($e) => $e->maquina && $e->maquina->tipo_material && $e->diametro);
+            ->filter(fn($elemento) => $elemento->maquina && $elemento->maquina->tipo_material && $elemento->diametro);
 
-        // Estructura base como arrays
-        $res = [];
-        foreach ($diametrosFijos as $d) {
-            $res[$d] = [
-                'encarretado'  => 0.0,
-                'barras'       => [12 => 0.0, 14 => 0.0, 15 => 0.0, 16 => 0.0], // sin info de L, quedarán en 0
-                'barras_total' => 0.0,
-                'total'        => 0.0,
+        $resultadoNecesario = [];
+        foreach ($configuracionVistaStock['diametros_considerados'] as $diametro) {
+            $resultadoNecesario[$diametro] = [
+                'encarretado'   => 0.0,
+                'barras'        => collect($configuracionVistaStock['longitudes_barras'])
+                    ->mapWithKeys(fn($longitud) => [(int)$longitud => 0.0])
+                    ->all(),
+                'barras_total'  => 0.0,
+                'total'         => 0.0,
             ];
         }
 
-        foreach ($elementos as $e) {
-            $d = (int) $e->diametro;
-            if (!isset($res[$d])) continue;
+        foreach ($elementosPendientes as $elemento) {
+            $diametro = (int) $elemento->diametro;
+            if (!isset($resultadoNecesario[$diametro])) continue;
 
-            $peso = (float) ($e->peso ?? 0);
-            $tipo = $e->maquina->tipo_material; // 'barra' | 'encarretado'
+            $pesoNecesario = (float) ($elemento->peso ?? 0);
+            $tipoMaterial  = $elemento->maquina->tipo_material; // 'barra' | 'encarretado'
 
-            if ($tipo === 'encarretado') {
-                $res[$d]['encarretado'] += $peso;
+            if ($tipoMaterial === 'encarretado') {
+                if ($configuracionVistaStock['incluir_encarretado']) {
+                    $resultadoNecesario[$diametro]['encarretado'] += $pesoNecesario;
+                }
             } else {
-                // No conocemos longitud base -> sumamos al TOTAL de barras
-                $res[$d]['barras_total'] += $peso;
+                // No conocemos longitud exacta → sumamos al total de barras
+                $resultadoNecesario[$diametro]['barras_total'] += $pesoNecesario;
             }
         }
 
-        // Recalcular totales (las claves por L quedan para coherencia visual)
-        foreach ($res as $d => $x) {
-            $res[$d]['total'] = $res[$d]['encarretado'] + $res[$d]['barras_total'];
+        foreach ($resultadoNecesario as $diametro => $datos) {
+            $resultadoNecesario[$diametro]['total'] = $datos['encarretado'] + $resultadoNecesario[$diametro]['barras_total'];
         }
 
-        return collect($res);
+        return collect($resultadoNecesario);
     }
 
 
-    private function getPedidosPorDiametro(?array $obraIds = null)
+    private function getPedidosPorDiametro(?array $idsObrasFiltradas = null)
     {
-        $diametrosFijos = [8, 10, 12, 16, 20, 25, 32];
+        $configuracionVistaStock = $this->obtenerConfiguracionVistaStock($idsObrasFiltradas);
 
-        $rows = DB::table('pedido_productos as pp')
+        $lineasPedidos = DB::table('pedido_productos as pp')
             ->join('pedidos as p', 'p.id', '=', 'pp.pedido_id')
             ->join('productos_base as pb', 'pb.id', '=', 'pp.producto_base_id')
-            ->when($obraIds, fn($q) => $q->whereIn('p.obra_id', $obraIds))
+            ->when($idsObrasFiltradas, fn($q) => $q->whereIn('p.obra_id', $idsObrasFiltradas))
             ->where('pp.estado', 'pendiente')
             ->groupBy('pb.tipo', 'pb.diametro', 'pb.longitud')
             ->select('pb.tipo', 'pb.diametro', 'pb.longitud', DB::raw('SUM(pp.cantidad) as total'))
             ->get();
 
-        // Inicializa como ARRAYS (no Collection)
-        $res = [];
-        foreach ($diametrosFijos as $d) {
-            $res[$d] = [
-                'encarretado'  => 0.0,
-                'barras'       => [12 => 0.0, 14 => 0.0, 15 => 0.0, 16 => 0.0],
-                'barras_total' => 0.0,
-                'total'        => 0.0,
+        $resultadoPedidos = [];
+        foreach ($configuracionVistaStock['diametros_considerados'] as $diametro) {
+            $resultadoPedidos[$diametro] = [
+                'encarretado'   => 0.0,
+                'barras'        => collect($configuracionVistaStock['longitudes_barras'])
+                    ->mapWithKeys(fn($longitud) => [(int)$longitud => 0.0])
+                    ->all(),
+                'barras_total'  => 0.0,
+                'total'         => 0.0,
             ];
         }
 
-        foreach ($rows as $r) {
-            $d = (int)$r->diametro;
-            if (!isset($res[$d])) continue;
+        foreach ($lineasPedidos as $linea) {
+            $diametro = (int) $linea->diametro;
+            if (!isset($resultadoPedidos[$diametro])) continue;
 
-            if ($r->tipo === 'encarretado') {
-                $res[$d]['encarretado'] += (float)$r->total;
-            } elseif ($r->tipo === 'barra') {
-                $L = (int)($r->longitud ?? 12);
-                if (!isset($res[$d]['barras'][$L])) $res[$d]['barras'][$L] = 0.0;
-                $res[$d]['barras'][$L] += (float)$r->total;
+            if ($linea->tipo === 'encarretado') {
+                if ($configuracionVistaStock['incluir_encarretado']) {
+                    $resultadoPedidos[$diametro]['encarretado'] += (float) $linea->total;
+                }
+            } elseif ($linea->tipo === 'barra') {
+                $longitudBarra = (int) ($linea->longitud ?? 12);
+                if (!in_array($longitudBarra, $configuracionVistaStock['longitudes_barras'], true)) {
+                    continue;
+                }
+
+                if (!isset($resultadoPedidos[$diametro]['barras'][$longitudBarra])) {
+                    $resultadoPedidos[$diametro]['barras'][$longitudBarra] = 0.0;
+                }
+                $resultadoPedidos[$diametro]['barras'][$longitudBarra] += (float) $linea->total;
             }
         }
 
-        // Totales
-        foreach ($res as $d => $x) {
-            $res[$d]['barras_total'] = array_sum($x['barras']);
-            $res[$d]['total']        = $x['encarretado'] + $res[$d]['barras_total'];
+        foreach ($resultadoPedidos as $diametro => $datos) {
+            $resultadoPedidos[$diametro]['barras_total'] = array_sum($datos['barras']);
+            $resultadoPedidos[$diametro]['total'] = $datos['encarretado'] + $resultadoPedidos[$diametro]['barras_total'];
         }
 
-        // Devuelve como Collection si lo prefieres:
-        return collect($res);
+        return collect($resultadoPedidos);
     }
+
 
     private function getComparativa($stockData, $pedidosPendientes, $necesarioPorDiametro)
     {

@@ -44,19 +44,19 @@
                     <th rowspan="2" class="border px-2 py-2">Ø mm<br>
                         <span class="text-blue-200 text-[10px]">Diámetro</span>
                     </th>
-                    <th colspan="3" class="border px-2 py-2">Encarretado</th>
-                    <th colspan="3" class="border px-2 py-2">Barras 12 m</th>
-                    <th colspan="3" class="border px-2 py-2">Barras 14 m</th>
-                    <th colspan="3" class="border px-2 py-2">Barras 15 m</th>
-                    <th colspan="3" class="border px-2 py-2">Barras 16 m</th>
-                    <th colspan="3" class="border px-2 py-2">Barras Total</th>
-                    <th colspan="3" class="border px-2 py-2">Total</th>
+                    <th colspan="2" class="border px-2 py-2">Encarretado</th>
+                    <th colspan="2" class="border px-2 py-2">Barras 12 m</th>
+                    <th colspan="2" class="border px-2 py-2">Barras 14 m</th>
+                    <th colspan="2" class="border px-2 py-2">Barras 15 m</th>
+                    <th colspan="2" class="border px-2 py-2">Barras 16 m</th>
+                    <th colspan="2" class="border px-2 py-2">Barras Total</th>
+                    <th colspan="2" class="border px-2 py-2">Total</th>
                 </tr>
                 <tr class="bg-blue-800 text-white text-xs">
                     @for ($i = 0; $i < 7; $i++)
                         <th class="border px-2 py-1">Stock</th>
                         <th class="border px-2 py-1">Pedido</th>
-                        <th class="border px-2 py-1">Necesario</th>
+                        {{-- <th class="border px-2 py-1">Necesario</th> --}}
                     @endfor
                 </tr>
             </thead>
@@ -91,27 +91,35 @@
                                     ? 'text-red-600 font-semibold'
                                     : 'text-green-600 font-semibold';
                         @endphp
+
                         <td class="border px-2 py-1 {{ $claseRojo }}">
-                            {{ !$claseRojo ? number_format($stockVal, 0, ',', '.') : '' }}</td>
-                        <td class="border px-2 py-1 {{ $claseRojo }}">
-                            {{ !$claseRojo ? number_format($pedidoVal, 0, ',', '.') : '' }}</td>
+                            {{ !$claseRojo ? number_format($stockVal, 0, ',', '.') : '' }}
+                        </td>
+
                         <td class="border px-2 py-1 {{ $claseRojo }}">
                             @if (!$claseRojo)
-                                <div class="flex items-center justify-start gap-1">
-                                    <input type="checkbox" name="seleccionados[]"
-                                        value="encarretado-{{ $diametro }}">
-                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
-                                        value="encarretado">
-                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][diametro]"
-                                        value="{{ $diametro }}">
-                                    <input type="hidden" name="detalles[encarretado-{{ $diametro }}][cantidad]"
-                                        value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
-                                    <span
-                                        class="{{ $colorNecesario }}">{{ number_format($necesarioVal, 0, ',', '.') }}</span>
+                                <div class="flex items-center justify-start gap-2">
+                                    {{-- número de pedido existente --}}
+                                    <span>{{ number_format($pedidoVal, 0, ',', '.') }}</span>
+
+                                    {{-- checkbox + hidden inputs (antes estaban en “Necesario”) --}}
+                                    <label class="inline-flex items-center gap-1">
+                                        <input type="checkbox" name="seleccionados[]"
+                                            value="encarretado-{{ $diametro }}">
+                                        <input type="hidden" name="detalles[encarretado-{{ $diametro }}][tipo]"
+                                            value="encarretado">
+                                        <input type="hidden" name="detalles[encarretado-{{ $diametro }}][diametro]"
+                                            value="{{ $diametro }}">
+                                        <input type="hidden" name="detalles[encarretado-{{ $diametro }}][cantidad]"
+                                            value="{{ round(max(0, $necesarioVal - $stockVal), 2) }}">
+                                        {{-- indicador visual del necesario (opcional) --}}
+                                        {{-- <span class="{{ $colorNecesario }}">
+                                            {{ number_format($necesarioVal, 0, ',', '.') }}
+                                        </span> --}}
+                                    </label>
                                 </div>
                             @endif
                         </td>
-
                         {{-- 🔵 Barras por longitud --}}
                         @foreach ([12, 14, 15, 16] as $longitud)
                             @php
@@ -124,46 +132,56 @@
                                         ? 'text-red-600 font-semibold'
                                         : 'text-green-600 font-semibold';
                             @endphp
+
                             <td class="border px-2 py-1 {{ $claseRojo }}">
-                                {{ !$claseRojo ? number_format($stockVal, 0, ',', '.') : '' }}</td>
-                            <td class="border px-2 py-1 {{ $claseRojo }}">
-                                {{ !$claseRojo ? number_format($pedidoVal, 0, ',', '.') : '' }}</td>
+                                {{ !$claseRojo ? number_format($stockVal, 0, ',', '.') : '' }}
+                            </td>
+
                             <td class="border px-2 py-1 {{ $claseRojo }}">
                                 @if (!$claseRojo)
-                                    <div class="flex items-center justify-start gap-1">
-                                        <input type="checkbox" name="seleccionados[]"
-                                            value="barra-{{ $diametro }}-{{ $longitud }}">
-                                        <input type="hidden"
-                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][tipo]"
-                                            value="barra">
-                                        <input type="hidden"
-                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][diametro]"
-                                            value="{{ $diametro }}">
-                                        <input type="hidden"
-                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][longitud]"
-                                            value="{{ $longitud }}">
-                                        <input type="hidden"
-                                            name="detalles[barra-{{ $diametro }}-{{ $longitud }}][cantidad]"
-                                            value="{{ round($necesarioVal, 0) }}">
-                                        <span
-                                            class="{{ $colorNecesario }}">{{ number_format($necesarioVal, 0, ',', '.') }}</span>
+                                    <div class="flex items-center justify-start gap-2">
+                                        {{-- número de pedido existente --}}
+                                        <span>{{ number_format($pedidoVal, 0, ',', '.') }}</span>
+
+                                        {{-- checkbox + hidden inputs (antes en “Necesario”) --}}
+                                        <label class="inline-flex items-center gap-1">
+                                            <input type="checkbox" name="seleccionados[]"
+                                                value="barra-{{ $diametro }}-{{ $longitud }}">
+                                            <input type="hidden"
+                                                name="detalles[barra-{{ $diametro }}-{{ $longitud }}][tipo]"
+                                                value="barra">
+                                            <input type="hidden"
+                                                name="detalles[barra-{{ $diametro }}-{{ $longitud }}][diametro]"
+                                                value="{{ $diametro }}">
+                                            <input type="hidden"
+                                                name="detalles[barra-{{ $diametro }}-{{ $longitud }}][longitud]"
+                                                value="{{ $longitud }}">
+                                            <input type="hidden"
+                                                name="detalles[barra-{{ $diametro }}-{{ $longitud }}][cantidad]"
+                                                value="{{ round($necesarioVal, 0) }}">
+                                            {{-- indicador visual del necesario (opcional) --}}
+                                            {{-- <span class="{{ $colorNecesario }}">
+                                                {{ number_format($necesarioVal, 0, ',', '.') }}
+                                            </span> --}}
+                                        </label>
                                     </div>
                                 @endif
                             </td>
                         @endforeach
 
+
                         <td class="border px-2 py-1 font-semibold text-gray-800">
                             {{ number_format($stock['barras_total'], 0, ',', '.') }}</td>
                         <td class="border px-2 py-1 font-semibold text-gray-800">
                             {{ number_format($pedido['barras_total'], 0, ',', '.') }}</td>
-                        <td class="border px-2 py-1 font-semibold text-gray-800">
-                            {{ number_format($necesario['barras_total'], 0, ',', '.') }}</td>
+                        {{-- <td class="border px-2 py-1 font-semibold text-gray-800">
+                            {{ number_format($necesario['barras_total'], 0, ',', '.') }}</td> --}}
                         <td class="border px-2 py-1 font-bold bg-gray-100">
                             {{ number_format($stock['total'], 0, ',', '.') }}</td>
                         <td class="border px-2 py-1 font-bold bg-gray-100">
                             {{ number_format($pedido['total'], 0, ',', '.') }}</td>
-                        <td class="border px-2 py-1 font-bold bg-gray-100">
-                            {{ number_format($necesario['total'], 0, ',', '.') }}</td>
+                        {{-- <td class="border px-2 py-1 font-bold bg-gray-100">
+                            {{ number_format($necesario['total'], 0, ',', '.') }}</td> --}}
                     </tr>
                 @endforeach
             </tbody>
