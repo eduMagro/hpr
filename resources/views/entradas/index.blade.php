@@ -8,7 +8,7 @@
             <table class="w-full border text-sm text-center">
                 <thead class="bg-blue-600 text-white uppercase text-xs">
                     <tr>
-                        <th class="px-3 py-2 border">ID Linea Pedido</th>
+                        <th class="px-3 py-2 border">{!! $ordenables['pedido_producto_id'] ?? 'Línea de pedido' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['albaran'] ?? 'Albarán' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['codigo_sage'] ?? 'Código SAGE' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['pedido_codigo'] ?? 'Pedido Compra' !!}</th>
@@ -20,9 +20,13 @@
                         <th class="px-3 py-2 border">PDF Adjunto</th>
                         <th class="px-3 py-2 border">Acciones</th>
                     </tr>
+
                     <tr>
                         <form method="GET" action="{{ route('entradas.index') }}">
-                            <th class="border p-1"></th>
+                            {{-- ID Línea Pedido --}}
+                            <th class="border p-1">
+                                <x-tabla.input name="pedido_producto_id" :value="request('pedido_producto_id')" class="text-xs w-full" />
+                            </th>
 
                             <th class="border p-1">
                                 <x-tabla.input name="albaran" :value="request('albaran')" class="text-xs w-full" />

@@ -77,15 +77,19 @@ class PedidoController extends Controller
 
         if ($request->filled('sort')) {
             $sorts = [
-                'fecha_pedido' => 'Fecha pedido',
+                'codigo'        => 'Código',
+                'fecha_pedido'  => 'Fecha pedido',
                 'fecha_entrega' => 'Entrega estimada',
-                'estado' => 'Estado',
-                'fabricante_id' => 'Fabricante',
-                'peso_total' => 'Peso total',
+                'estado'        => 'Estado',
+                'peso_total'    => 'Peso total',
+                'fabricante'    => 'Fabricante',
+                'distribuidor'  => 'Distribuidor',
+                'created_by'    => 'Creado por',
             ];
             $orden = $request->order == 'desc' ? 'descendente' : 'ascendente';
             $filtros[] = 'Ordenado por <strong>' . ($sorts[$request->sort] ?? $request->sort) . "</strong> en orden <strong>$orden</strong>";
         }
+
 
         if ($request->filled('per_page')) {
             $filtros[] = 'Mostrando <strong>' . $request->per_page . '</strong> registros por página';
@@ -164,25 +168,57 @@ class PedidoController extends Controller
             });
         }
 
-
-
         if ($request->filled('estado')) {
             $query->where('estado', $request->estado);
         }
 
-
-        // Ordenación
+        // ✅ Ordenación segura por columnas locales o por nombre de relación
         $sortBy = $request->input('sort', 'fecha_entrega');
-        $order = $request->input('order', 'desc');
-        $query->orderByRaw("CAST({$sortBy} AS CHAR) {$order}");
+        $order  = $request->input('order', 'desc');
+
+        // Limpia órdenes previas (importantísimo)
+        $query->reorder();
+
+        switch ($sortBy) {
+            case 'fabricante':
+                $query->orderBy(
+                    \App\Models\Fabricante::select('nombre')
+                        ->whereColumn('fabricantes.id', 'pedidos.fabricante_id'),
+                    $order
+                );
+                break;
+
+            case 'distribuidor':
+                $query->orderBy(
+                    \App\Models\Distribuidor::select('nombre')
+                        ->whereColumn('distribuidores.id', 'pedidos.distribuidor_id'),
+                    $order
+                );
+                break;
+
+            // Campos locales
+            case 'codigo':
+            case 'fecha_pedido':
+            case 'fecha_entrega':
+            case 'estado':
+            case 'peso_total':
+            case 'created_by':
+            case 'created_at':
+                $query->orderBy("pedidos.$sortBy", $order);
+                break;
+
+            default:
+                $query->orderBy('pedidos.fecha_entrega', 'desc');
+                break;
+        }
 
         return $query;
     }
 
     public function index(Request $request, StockService $stockService)
     {
-        $query = Pedido::with(['fabricante', 'distribuidor', 'productos', 'pedidoGlobal', 'pedidoProductos.productoBase'])
-            ->latest();
+        $query = Pedido::with(['fabricante', 'distribuidor', 'productos', 'pedidoGlobal', 'pedidoProductos.productoBase']);
+
 
         if (auth()->user()->rol === 'operario') {
             $query->whereIn('estado', ['pendiente', 'parcial']);
