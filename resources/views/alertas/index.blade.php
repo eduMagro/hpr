@@ -116,7 +116,7 @@
 
                                     @if ($usuario)
                                         @if ($usuario->rol === 'oficina')
-                                            {{ $usuario->email === 'eduardo.magro@pacoreyes.com' ? 'Dpto. Informática' : 'Dpto. RRHH' }}
+                                            {{ $usuario->email === 'eduardo.magro@pacoreyes.com' ? 'Dpto. Informática' : 'Administrador' }}
                                         @else
                                             {{ $usuario->nombre_completo }}
                                         @endif

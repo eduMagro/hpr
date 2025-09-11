@@ -235,12 +235,13 @@ class PedidoController extends Controller
                 ->filter(function ($linea) use ($request) {
                     $pb = $linea->productoBase;
 
-                    // Si no hay ningún filtro, mostrar todas
+                    // Si no hay ningún filtro activo
                     if (
                         !$request->filled('producto_tipo') &&
                         !$request->filled('producto_diametro') &&
                         !$request->filled('producto_longitud') &&
-                        !$request->filled('fecha_entrega')
+                        !$request->filled('fecha_entrega') &&
+                        !$request->filled('estado')
                     ) {
                         return true;
                     }
@@ -265,7 +266,9 @@ class PedidoController extends Controller
                             return false;
                         }
                     }
-
+                    if ($request->filled('estado') && $linea->estado !== $request->estado) {
+                        return false;
+                    }
                     return true;
                 })
                 ->map(function ($linea) {
@@ -277,12 +280,13 @@ class PedidoController extends Controller
                         'cantidad'               => $linea->cantidad,
                         'cantidad_recepcionada'  => $linea->cantidad_recepcionada,
                         'estado'                 => $linea->estado ?? 'pendiente',
-                        'fecha_estimada_entrega' => $linea->fecha_estimada_entrega_formateada ?? '—',
+                        'fecha_estimada_entrega' => $linea->fecha_estimada_entrega
+                            ? \Carbon\Carbon::parse($linea->fecha_estimada_entrega)->format('d-m-Y')
+                            : '—',
                         'created_at'             => $linea->created_at,
                         'codigo_sage'            => $linea->codigo_sage ?? '',
                     ];
                 });
-
             return $pedido;
         });
 
