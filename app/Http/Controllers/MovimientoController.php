@@ -10,6 +10,7 @@ use App\Models\Localizacion;
 use App\Models\Paquete;
 use App\Models\Ubicacion;
 use App\Models\Maquina;
+use App\Models\Obra;
 use App\Models\Alerta;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
@@ -38,10 +39,8 @@ class MovimientoController extends Controller
         if ($request->filled('descripcion')) {
             $query->where('descripcion', 'like', '%' . $request->descripcion . '%');
         }
-        if ($request->filled('nave')) {
-            $query->whereHas('nave', function ($q) use ($request) {
-                $q->where('nombre', 'like', '%' . $request->nave . '%');
-            });
+        if ($request->filled('nave_id')) {
+            $query->where('nave_id', $request->nave_id);
         }
 
         // Prioridad exacta (baja, media, alta)
@@ -151,6 +150,12 @@ class MovimientoController extends Controller
             $filtros[] = 'Descripción contiene: <strong>' . $request->descripcion . '</strong>';
         }
 
+        if ($request->filled('nave_id')) {
+            $obra = Obra::find($request->nave_id);
+            if ($obra) {
+                $filtros[] = 'Nave: <strong>' . e($obra->obra) . '</strong>';
+            }
+        }
         if ($request->filled('origen'))   $filtros[] = 'Origen: <strong>'   . $request->origen   . '</strong>';
         if ($request->filled('destino'))  $filtros[] = 'Destino: <strong>'  . $request->destino  . '</strong>';
 
@@ -310,10 +315,16 @@ class MovimientoController extends Controller
             'fecha_solicitud' => $this->getOrdenamiento('fecha_solicitud', 'Fecha Solicitud'),
             'fecha_ejecucion' => $this->getOrdenamiento('fecha_ejecucion', 'Fecha Ejecución'),
         ];
+        $navesSelect = Obra::whereHas('cliente', function ($q) {
+            $q->whereRaw("UPPER(empresa) LIKE '%PACO REYES%'");
+        })
+            ->orderBy('obra')
+            ->pluck('obra', 'id')   // ['id' => 'Obra']
+            ->toArray();
         // 🔟 Obtener texto de filtros aplicados para mostrar en la vista
         $filtrosActivos = $this->filtrosActivos($request);
         // Retornar vista con los datos paginados
-        return view('movimientos.index', compact('registrosMovimientos', 'ordenables', 'filtrosActivos'));
+        return view('movimientos.index', compact('registrosMovimientos', 'ordenables', 'filtrosActivos', 'navesSelect'));
     }
 
     //------------------------------------------------ CREATE() --------------------------------------------------------

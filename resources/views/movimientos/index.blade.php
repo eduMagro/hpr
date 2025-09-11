@@ -53,15 +53,8 @@
                                 <x-tabla.input name="descripcion" value="{{ request('descripcion') }}" />
                             </th>
                             <th class="p-1 border">
-                                <x-tabla.select name="nave_id" class="form-select">
-                                    <option value="">-- Selecciona nave --</option>
-                                    @foreach (\App\Models\Obra::getNavesPacoReyes() as $nave)
-                                        <option value="{{ $nave->id }}"
-                                            {{ request('nave_id') == $nave->id ? 'selected' : '' }}>
-                                            {{ $nave->obra }}
-                                        </option>
-                                    @endforeach
-                                </x-tabla.select>
+                                <x-tabla.select name="nave_id" :options="$navesSelect" :selected="request('nave_id')" empty="Todas"
+                                    class="form-select" />
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.select name="prioridad" :options="[
