@@ -250,79 +250,113 @@
             </form>
         </div>
     </div>
-
     <script>
-        // Asignar evento a todos los botones de edición
-        document.querySelectorAll('.open-edit-modal').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const id = this.dataset.id;
-                console.log('Clic en editar máquina ID:', id); // Para depurar
+        (function() {
+            const modal = document.getElementById('editModal');
+            const modalContent = document.getElementById('editModalContent');
+            const closeBtn = document.getElementById('closeModal');
 
-                // Obtener los datos de la máquina por AJAX
-                fetch(`/maquinas/${id}/json`)
+            function openModal() {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            }
 
-                    .then(res => res.json())
-                    .then(data => {
-                        // Rellenar los campos del modal
-                        document.getElementById('edit-id').value = data.id;
-                        ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min', 'peso_max',
-                            'estado'
-                        ].forEach(field => {
-                            const el = document.getElementById(`edit-${field}`);
-                            if (el) el.value = data[field] ?? '';
+            function closeModal() {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            // Abrir: cuando haces clic en “Editar”
+            document.querySelectorAll('.open-edit-modal').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.id;
+
+                    fetch(`/maquinas/${id}/json`)
+                        .then(res => res.json())
+                        .then(data => {
+                            // Rellenar campos
+                            document.getElementById('edit-id').value = data.id ?? '';
+                            ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min',
+                                'peso_max', 'ancho_m', 'largo_m'
+                            ]
+                            .forEach(f => {
+                                const el = document.getElementById(`edit-${f}`);
+                                if (el) el.value = (data[f] ?? '');
+                            });
+
+                            // Select obra con fallback
+                            const obraSelect = document.getElementById('edit-obra_id');
+                            if (obraSelect) {
+                                const obraId = data.obra_id ?? '';
+                                let opt = obraSelect.querySelector(`option[value="${obraId}"]`);
+                                if (!opt && obraId) {
+                                    opt = document.createElement('option');
+                                    opt.value = obraId;
+                                    opt.textContent = (data.obra && data.obra.obra) ? data.obra
+                                        .obra : `Obra #${obraId}`;
+                                    obraSelect.appendChild(opt);
+                                }
+                                obraSelect.value = opt ? obraId : '';
+                            }
+
+                            openModal();
+                        })
+                        .catch(err => {
+                            console.error('Error al cargar datos de la máquina:', err);
+                            alert('No se pudieron cargar los datos de la máquina.');
                         });
+                });
+            });
 
-                        // Mostrar el modal (asegura visibilidad con estilo)
-                        const modal = document.getElementById('editModal');
-                        modal.classList.remove('hidden');
-                        modal.style.display = 'flex';
+            // Cerrar: botón “Cancelar”
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeModal);
+            }
+
+            // Cerrar: clic en el fondo (pero no dentro del panel)
+            modal.addEventListener('click', (e) => {
+                if (!modalContent.contains(e.target)) closeModal();
+            });
+
+            // Cerrar: tecla ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    closeModal();
+                }
+            });
+
+            // Envío del formulario (sin cambios, pero no toques display inline)
+            document.getElementById('editMaquinaForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const id = document.getElementById('edit-id').value;
+                const formData = new FormData(this);
+                formData.append('_method', 'PUT');
+
+                fetch(`/maquinas/${id}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': formData.get('_token'),
+                            'Accept': 'application/json'
+                        },
+                        body: formData
                     })
-                    .catch(err => {
-                        console.error('Error al cargar datos de la máquina:', err);
-                        alert('No se pudieron cargar los datos de la máquina.');
+                    .then(response => {
+                        if (response.ok) {
+                            closeModal();
+                            location.reload();
+                        } else {
+                            return response.json().then(data => {
+                                alert(data.message || 'Error al actualizar la máquina.');
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error en la actualización:', error);
+                        alert('Error inesperado. Revisa la consola.');
                     });
             });
-        });
-
-        // Cerrar modal al hacer clic en cancelar
-        document.getElementById('closeModal').addEventListener('click', () => {
-            const modal = document.getElementById('editModal');
-            modal.classList.add('hidden');
-            modal.style.display = 'none';
-        });
-
-        // Enviar formulario de edición con AJAX
-        document.getElementById('editMaquinaForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const id = document.getElementById('edit-id').value;
-            const formData = new FormData(this);
-            formData.append('_method', 'PUT');
-
-            fetch(`/maquinas/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': formData.get('_token'),
-                        'Accept': 'application/json'
-                    },
-                    body: formData
-                })
-                .then(response => {
-                    if (response.ok) {
-                        document.getElementById('editModal').classList.add('hidden');
-                        document.getElementById('editModal').style.display = 'none';
-                        location.reload(); // Recargar para mostrar cambios
-                    } else {
-                        return response.json().then(data => {
-                            alert(data.message || 'Error al actualizar la máquina.');
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error en la actualización:', error);
-                    alert('Error inesperado. Revisa la consola.');
-                });
-        });
+        })();
     </script>
+
 
 </x-app-layout>

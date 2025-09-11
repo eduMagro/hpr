@@ -37,6 +37,7 @@
                                 Tipo de Máquina
                             </label>
                             <x-tabla.select name="tipo" :options="[
+                                'grua' => 'Grua',
                                 'cortadora_dobladora' => 'Cortadora y Dobladora',
                                 'estribadora' => 'Estribadora',
                                 'ensambladora' => 'Ensambladora',

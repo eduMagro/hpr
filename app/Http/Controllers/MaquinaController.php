@@ -100,7 +100,7 @@ class MaquinaController extends Controller
             $query->orderBy($sortBy, $order);
         }
 
-        $perPage = $request->input('per_page', 20);
+        $perPage = $request->input('per_page', 30);
         $registrosMaquina = $query->paginate($perPage)
             ->appends($request->except('page'));
 
@@ -126,9 +126,10 @@ class MaquinaController extends Controller
 
     public function showJson($id)
     {
-        $maquina = Maquina::findOrFail($id);
+        $maquina = Maquina::with('obra:id,obra')->findOrFail($id);
         return response()->json($maquina);
     }
+
 
     //------------------------------------------------------------------------------------ SHOW
 
@@ -407,21 +408,25 @@ class MaquinaController extends Controller
     {
         $ubicacionesDisponiblesPorProductoBase = [];
 
-        // PENDIENTES: eager load estrecho + columns mínimos
+        // Nave (obra) de esta máquina
+        $obraId = $maquina->obra_id;
+
+        // PENDIENTES: eager load estrecho + columns mínimos + misma nave
         $movimientosPendientes = Movimiento::with([
             'solicitadoPor:id,name',
-            'producto.ubicacion:id,nombre', // si producto puede ser null, ok
+            'producto.ubicacion:id,nombre',
             'productoBase:id,tipo,diametro,longitud',
-            'pedido:id,codigo,peso_total,fabricante_id,distribuidor_id',
+            'pedido:id,codigo,peso_total,fabricante_id,distribuidor_id,obra_id',
             'pedido.fabricante:id,nombre',
             'pedido.distribuidor:id,nombre',
             'pedidoProducto:id,pedido_id,producto_base_id,cantidad,cantidad_recepcionada,estado,fecha_estimada_entrega',
         ])
             ->where('estado', 'pendiente')
+            ->where('nave_id', $obraId)              // ⬅️ solo movimientos de la misma nave
             ->orderBy('prioridad', 'asc')
             ->get();
 
-        // COMPLETADOS (últimos 20 ejecutados por mí)
+        // COMPLETADOS (últimos 20 ejecutados por mí) + misma nave
         $movimientosCompletados = Movimiento::with([
             'solicitadoPor:id,name',
             'ejecutadoPor:id,name',
@@ -431,36 +436,37 @@ class MaquinaController extends Controller
         ])
             ->where('estado', 'completado')
             ->where('ejecutado_por', auth()->id())
+            ->where('nave_id', $obraId)              // ⬅️ misma nave
             ->orderBy('updated_at', 'desc')
             ->take(20)
             ->get();
 
         // JSON compacto para el front (incluye LA LÍNEA)
         $movsPendJson = $movimientosPendientes->map(function ($m) {
-            $linea = $m->pedidoProducto;
+            $linea  = $m->pedidoProducto;
             $pedido = $m->pedido;
-            $pb = $m->productoBase;
+            $pb     = $m->productoBase;
 
-            $cantidad     = (float) ($linea->cantidad ?? 0);
-            $recep        = (float) ($linea->cantidad_recepcionada ?? 0);
-            $restante     = max(0.0, $cantidad - $recep);
+            $cantidad = (float) ($linea->cantidad ?? 0);
+            $recep    = (float) ($linea->cantidad_recepcionada ?? 0);
+            $restante = max(0.0, $cantidad - $recep);
 
             return [
-                'id'                  => $m->id,
-                'tipo'                => $m->tipo,
-                'estado'              => $m->estado,
-                'prioridad'           => $m->prioridad,
-                'pedido_id'           => $pedido?->id,
-                'pedido_producto_id'  => $linea?->id,
-                'producto_base_id'    => $pb?->id,
+                'id'                 => $m->id,
+                'tipo'               => $m->tipo,
+                'estado'             => $m->estado,
+                'prioridad'          => $m->prioridad,
+                'pedido_id'          => $pedido?->id,
+                'pedido_producto_id' => $linea?->id,
+                'producto_base_id'   => $pb?->id,
 
                 'pedido' => [
-                    'id'          => $pedido?->id,
-                    'codigo'      => $pedido?->codigo,
-                    'peso_total'  => $pedido?->peso_total,
+                    'id'            => $pedido?->id,
+                    'codigo'        => $pedido?->codigo,
+                    'peso_total'    => $pedido?->peso_total,
                     'fabricante_id' => $pedido?->fabricante_id,
-                    'fabricante'  => ['nombre' => $pedido?->fabricante?->nombre],
-                    'distribuidor' => ['nombre' => $pedido?->distribuidor?->nombre],
+                    'fabricante'    => ['nombre' => $pedido?->fabricante?->nombre],
+                    'distribuidor'  => ['nombre' => $pedido?->distribuidor?->nombre],
                 ],
 
                 // 🔹 LÍNEA DE PEDIDO (lo que pide el modal)
@@ -493,25 +499,34 @@ class MaquinaController extends Controller
         });
 
         $movsComplJson = $movimientosCompletados->map(function ($m) {
-            $pb = $m->productoBase;
+            $pb    = $m->productoBase;
             $linea = $m->pedidoProducto;
+
             return [
-                'id'                 => $m->id,
-                'estado'             => $m->estado,
-                'updated_at'         => $m->updated_at?->toIso8601String(),
-                'pedido_producto'    => [
-                    'id'        => $linea?->id,
-                    'estado'    => $linea?->estado,
+                'id'            => $m->id,
+                'estado'        => $m->estado,
+                'updated_at'    => $m->updated_at?->toIso8601String(),
+                'pedido_producto' => [
+                    'id'     => $linea?->id,
+                    'estado' => $linea?->estado,
                 ],
-                'producto_base'      => [
+                'producto_base' => [
                     'id'       => $pb?->id,
                     'tipo'     => $pb?->tipo,
                     'diametro' => $pb?->diametro,
                     'longitud' => $pb?->longitud,
                 ],
-                'solicitado_por'     => ['id' => $m->solicitadoPor?->id, 'name' => $m->solicitadoPor?->name],
-                'ejecutado_por'      => ['id' => $m->ejecutadoPor?->id, 'name' => $m->ejecutadoPor?->name],
-                'ubicacion_producto' => ['nombre' => $m->producto?->ubicacion?->nombre],
+                'solicitado_por' => [
+                    'id'   => $m->solicitadoPor?->id,
+                    'name' => $m->solicitadoPor?->name,
+                ],
+                'ejecutado_por' => [
+                    'id'   => $m->ejecutadoPor?->id,
+                    'name' => $m->ejecutadoPor?->name,
+                ],
+                'ubicacion_producto' => [
+                    'nombre' => $m->producto?->ubicacion?->nombre,
+                ],
             ];
         });
 
@@ -535,7 +550,11 @@ class MaquinaController extends Controller
             }
         }
 
-        $pedidosActivos = Pedido::where('estado', 'activo')->orderBy('updated_at', 'desc')->get();
+        // Pedidos activos (de la misma nave)
+        $pedidosActivos = Pedido::where('estado', 'activo')
+            ->where('obra_id', $obraId)              // ⬅️ pedidos de la misma nave
+            ->orderBy('updated_at', 'desc')
+            ->get();
 
         // 👉 Devolvemos tanto las colecciones Eloquent (si las usas en Blade) como los JSON ligeros para JS
         return [
@@ -547,6 +566,7 @@ class MaquinaController extends Controller
             'pedidosActivos'                        => $pedidosActivos,
         ];
     }
+
 
 
     /**
@@ -658,7 +678,7 @@ class MaquinaController extends Controller
         try {
             // Validación de los datos del formulario
             $request->validate([
-                'codigo'       => 'required|string|max:6|unique:maquinas,codigo',
+                'codigo'       => 'required|string|unique:maquinas,codigo',
                 'nombre'       => 'required|string|max:40|unique:maquinas,nombre',
                 'tipo'         => 'nullable|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual',
                 'obra_id'      => 'nullable|exists:obras,id',
@@ -674,7 +694,6 @@ class MaquinaController extends Controller
                 // Mensajes personalizados
                 'codigo.required' => 'El campo "código" es obligatorio.',
                 'codigo.string'   => 'El campo "código" debe ser una cadena de texto.',
-                'codigo.max'      => 'El campo "código" no puede tener más de 6 caracteres.',
                 'codigo.unique'   => 'Ya existe una máquina con el mismo código.',
 
                 'nombre.required' => 'El campo "nombre" es obligatorio.',

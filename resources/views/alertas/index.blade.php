@@ -348,6 +348,17 @@
                 if (id) nuevasAlertas.push(id);
             });
             console.log("Nuevas alertas detectadas:", nuevasAlertas); // Depuración
+
+            // Cerrar modal de mensaje al hacer clic fuera del contenido
+            const modalMensaje = document.getElementById('modalVerMensaje');
+            if (modalMensaje) {
+                modalMensaje.addEventListener('click', function(e) {
+                    if (e.target === modalMensaje) {
+                        cerrarModalMensaje();
+                    }
+                });
+            }
+
         });
 
         let alertaActualId = null;
