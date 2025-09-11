@@ -66,15 +66,52 @@ class PedidoGlobal extends Model
     {
         return Carbon::parse($this->created_at)->format('d-m-Y H:i');
     }
-    public function actualizarEstadoSegunProgreso()
-    {
-        $pesoAcumulado = $this->pedidos()->sum('peso_total');
+    // En App\Models\PedidoGlobal
 
-        if ($pesoAcumulado >= $this->cantidad_total) {
-            $this->estado = self::ESTADO_COMPLETADO;
+    public function actualizarEstadoSegunProgreso(): void
+    {
+        // Opcional: si guardas un cache del acumulado en una columna 'peso_acumulado'
+        $sum = (float) $this->pedidos()
+            // si quieres ser ultra-estricto: ->whereRaw('LOWER(estado) != ?', ['cancelado'])
+            ->sum('peso_total');
+
+        $this->peso_acumulado = $sum; // quita esta línea si no tienes la columna
+
+        $objetivo = (float) ($this->cantidad_total ?? 0);
+        $epsilon  = 0.001; // tolerancia por decimales (kg)
+
+        $nuevoEstado = $this->estado; // por defecto, mantener
+
+        if ($objetivo <= 0) {
+            // Sin objetivo no se puede completar: considera 'en curso' si hay algo, si no 'pendiente'
+            $nuevoEstado = ($sum > $epsilon) ? self::ESTADO_EN_CURSO : self::ESTADO_PENDIENTE;
+        } else {
+            if ($sum + $epsilon >= $objetivo) {
+                $nuevoEstado = self::ESTADO_COMPLETADO;
+            } elseif ($sum > $epsilon) {
+                $nuevoEstado = self::ESTADO_EN_CURSO;
+            } else {
+                $nuevoEstado = self::ESTADO_PENDIENTE;
+            }
+        }
+
+        // Solo persistir si cambió algo relevante
+        $dirty = false;
+
+        if (property_exists($this, 'peso_acumulado') && $this->isDirty('peso_acumulado')) {
+            $dirty = true;
+        }
+
+        if ($this->estado !== $nuevoEstado) {
+            $this->estado = $nuevoEstado;
+            $dirty = true;
+        }
+
+        if ($dirty) {
             $this->save();
         }
     }
+
 
     // Relación con pedidos individuales
     public function pedidos()

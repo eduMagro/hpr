@@ -790,7 +790,7 @@ class PedidoController extends Controller
     public function cancelarLinea($pedidoId, $lineaId)
     {
         $pedido = Pedido::findOrFail($pedidoId);
-        $linea = PedidoProducto::findOrFail($lineaId);
+        $linea  = PedidoProducto::findOrFail($lineaId);
 
         if ($linea->pedido_id !== $pedido->id) {
             abort(403, 'La línea no pertenece a este pedido.');
@@ -801,35 +801,56 @@ class PedidoController extends Controller
         }
 
         try {
-            DB::beginTransaction();
+            DB::transaction(function () use ($pedido, $linea) {
 
-            $linea->estado = 'cancelado';
-            $linea->save();
+                // 1) Cancelar la línea
+                $linea->estado = 'cancelado';
+                $linea->save();
 
-            $cantidad = $linea->cantidad ?? 0;
-
-            // Restar peso solo al pedido individual
-            $pedido->peso_total = max(0, $pedido->peso_total - $cantidad);
-            $pedido->save();
-
-            // ✅ Verificamos si todas las líneas están canceladas → cancelar el pedido también
-            $lineasActivas = PedidoProducto::where('pedido_id', $pedido->id)
-                ->where('estado', '!=', 'cancelado')
-                ->count();
-
-            if ($lineasActivas === 0) {
-                $pedido->estado = 'cancelado';
+                // 2) Restar del peso del pedido
+                $cantidad = (float) ($linea->cantidad ?? 0);
+                $pedido->peso_total = max(0, (float)$pedido->peso_total - $cantidad);
                 $pedido->save();
-            }
 
-            DB::commit();
-            return back()->with('success');
+                // 3) Si todas las líneas del pedido están canceladas, cancelar el pedido
+                $lineasActivas = PedidoProducto::where('pedido_id', $pedido->id)
+                    ->whereRaw('LOWER(estado) != ?', ['cancelado'])
+                    ->count();
+
+                if ($lineasActivas === 0) {
+                    $pedido->estado = 'cancelado';
+                    $pedido->save();
+                }
+
+                // 4) Reabrir y recalcular el Pedido Global si aplica
+                if ($pedido->pedido_global_id) {
+
+                    /** @var \App\Models\PedidoGlobal|null $pg */
+                    $pedidoGlobal = PedidoGlobal::where('id', $pedido->pedido_global_id)->lockForUpdate()->first();
+
+                    if ($pedidoGlobal) {
+                        // Si estaba completado, al menos pásalo a pendiente
+                        $estadoAnterior = trim(strtolower($pedidoGlobal->estado));
+                        if ($estadoAnterior === 'completado') {
+                            $pedidoGlobal->estado = 'pendiente';
+                            $pedidoGlobal->save();
+                        }
+
+                        // Recalcular según su propia lógica agregada (pedidos/lineas asociadas)
+                        // Esta rutina debería decidir si queda en 'pendiente', 'en curso' o volver a 'completado'
+                        if (method_exists($pedidoGlobal, 'actualizarEstadoSegunProgreso')) {
+                            $pedidoGlobal->actualizarEstadoSegunProgreso();
+                        }
+                    }
+                }
+            });
+
+            return back()->with('success', 'Línea cancelada correctamente.');
         } catch (\Throwable $e) {
-            DB::rollBack();
             Log::error('Error al cancelar línea de pedido', [
-                'pedido_id' => $pedidoId,
-                'linea_id' => $lineaId,
-                'mensaje' => $e->getMessage(),
+                'pedido_id' => $pedido->id,
+                'linea_id'  => $linea->id,
+                'mensaje'   => $e->getMessage(),
             ]);
 
             return back()->with('error', 'Error al cancelar la línea. Consulta con administración.');
@@ -1107,9 +1128,38 @@ class PedidoController extends Controller
 
     public function destroy($id)
     {
-        $pedido = Pedido::findOrFail($id);
-        $pedido->delete();
+        try {
+            DB::transaction(function () use ($id) {
+                /** @var \App\Models\Pedido $pedido */
+                $pedido = Pedido::findOrFail($id);
 
-        return redirect()->route('pedidos.index')->with('success', 'Pedido eliminado correctamente.');
+                // Guardamos el PG antes de borrar
+                $pedidoGlobalId = $pedido->pedido_global_id;
+
+                // Si usas cascadas a líneas, el FK debe encargarse; si no, elimina manualmente:
+                // $pedido->productosPivot()->delete(); // si tu relación pivot se llama así
+
+                // Borrar pedido (soft o hard, según tu modelo)
+                $pedido->delete();
+
+                // Recalcular estado del Pedido Global, si aplica
+                if ($pedidoGlobalId) {
+                    /** @var \App\Models\PedidoGlobal|null $pg */
+                    $pg = PedidoGlobal::where('id', $pedidoGlobalId)->lockForUpdate()->first();
+
+                    if ($pg) {
+                        // Recalcula con los pedidos restantes (excluye soft-deleted por defecto)
+                        $pg->actualizarEstadoSegunProgreso();
+                    }
+                }
+            });
+
+            return redirect()
+                ->route('pedidos.index')
+                ->with('success', 'Pedido eliminado correctamente.');
+        } catch (\Throwable $e) {
+            Log::error('Error al eliminar pedido', ['pedido_id' => $id, 'mensaje' => $e->getMessage()]);
+            return back()->with('error', 'No se pudo eliminar el pedido. Consulta con administración.');
+        }
     }
 }
