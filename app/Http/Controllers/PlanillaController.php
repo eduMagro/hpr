@@ -152,6 +152,7 @@ class PlanillaController extends Controller
             'peso_fabricado',
             'peso_total',
             'estado',
+            'revisada',
             'fecha_inicio',
             'fecha_finalizacion',
             'fecha_importacion',
@@ -191,6 +192,10 @@ class PlanillaController extends Controller
                     $q->orWhere('codigo', 'like', '%' . $codigo . '%');
                 }
             });
+        }
+        if ($request->filled('revisada')) {
+            // valores esperados: '1' o '0'
+            $query->where('revisada', (int) $request->input('revisada'));
         }
 
 
@@ -278,7 +283,7 @@ class PlanillaController extends Controller
 
         try {
             // 1️⃣ Iniciar la consulta base con relaciones
-            $query = Planilla::with(['user', 'elementos', 'cliente', 'obra']);
+            $query = Planilla::with(['user', 'elementos', 'cliente', 'obra', 'revisor']);
             // Filtro “solo mis planillas” salvo admins
             if (! $esAdmin) {
                 $query->where('users_id', $user->id);    // Ajusta el nombre de columna
@@ -308,6 +313,7 @@ class PlanillaController extends Controller
                 'fecha_importacion' => $this->getOrdenamiento('fecha_importacion', 'Fecha Importación'),
                 'fecha_entrega' => $this->getOrdenamiento('fecha_entrega', 'Fecha Entrega'),
                 'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Usuario'),
+                'revisada' => $this->getOrdenamiento('revisada', 'Revisada'),
             ];
 
 
@@ -1445,10 +1451,9 @@ class PlanillaController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            // Buscar la planilla o lanzar excepción si no se encuentra
             $planilla = Planilla::findOrFail($id);
 
-            // Si los campos de fecha vienen vacíos, forzar null
+            // Fechas vacías -> null
             $request->merge([
                 'fecha_inicio'           => $request->fecha_inicio ?: null,
                 'fecha_estimada_entrega' => $request->fecha_estimada_entrega ?: null,
@@ -1456,11 +1461,17 @@ class PlanillaController extends Controller
                 'fecha_importacion'      => $request->fecha_importacion ?: null,
             ]);
 
-            // Validar los datos recibidos con mensajes personalizados
+            // ✅ Nuevo: normalizar checkbox "revisada" (acepta on/true/1)
+            if ($request->has('revisada')) {
+                $request->merge([
+                    'revisada' => filter_var($request->input('revisada'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false
+                ]);
+            }
+
             $validatedData = $request->validate([
                 'codigo'                 => 'required|string|max:50',
                 'cliente_id'             => 'nullable|integer|exists:clientes,id',
-                'obra_id'               => 'nullable|integer|exists:obras,id',
+                'obra_id'                => 'nullable|integer|exists:obras,id',
                 'seccion'                => 'nullable|string|max:100',
                 'descripcion'            => 'nullable|string',
                 'ensamblado'             => 'nullable|string|max:100',
@@ -1472,44 +1483,38 @@ class PlanillaController extends Controller
                 'fecha_finalizacion'     => 'nullable|date_format:d/m/Y H:i',
                 'fecha_estimada_entrega' => 'nullable|date_format:d/m/Y H:i',
                 'fecha_importacion'      => 'nullable|date_format:d/m/Y',
-                'usuario'                => 'nullable|string|max:100'
+                'usuario'                => 'nullable|string|max:100',
+                // ✅ Nuevo:
+                'revisada'               => 'nullable|boolean',
             ], [
                 'codigo.required'     => 'El campo Código es obligatorio.',
                 'codigo.string'       => 'El campo Código debe ser una cadena de texto.',
                 'codigo.max'          => 'El campo Código no debe exceder 50 caracteres.',
-
-                'cliente_id.integer'    => 'El campo cliente_id debe ser un número entero.',
-                'cliente_id.exists'     => 'El cliente especificaoa en cliente_id no existe.',
-                'obra_id.integer'  => 'El campo obra_id debe ser un número entero.',
-                'obra_id.exists'     => 'La obra especificada en obra_id no existe.',
-
+                'cliente_id.integer'  => 'El campo cliente_id debe ser un número entero.',
+                'cliente_id.exists'   => 'El cliente especificaoa en cliente_id no existe.',
+                'obra_id.integer'     => 'El campo obra_id debe ser un número entero.',
+                'obra_id.exists'      => 'La obra especificada en obra_id no existe.',
                 'seccion.string'      => 'El campo Sección debe ser una cadena de texto.',
                 'seccion.max'         => 'El campo Sección no debe exceder 100 caracteres.',
-
                 'descripcion.string'  => 'El campo Descripción debe ser una cadena de texto.',
-
                 'ensamblado.string'   => 'El campo Ensamblado debe ser una cadena de texto.',
                 'ensamblado.max'      => 'El campo Ensamblado no debe exceder 100 caracteres.',
-
                 'comentario.string'   => 'El campo Comentario debe ser una cadena de texto.',
                 'comentario.max'      => 'El campo Comentario no debe exceder 255 caracteres.',
-
                 'peso_fabricado.numeric' => 'El campo Peso Fabricado debe ser un número.',
                 'peso_total.numeric'     => 'El campo Peso Total debe ser un número.',
-
-                'estado.in'             => 'El campo Estado debe ser: pendiente, fabricando o completada.',
-
-                // Se modifican los mensajes para referir a cada campo.
+                'estado.in'              => 'El campo Estado debe ser: pendiente, fabricando o completada.',
                 'fecha_inicio.date_format'           => 'El campo Fecha Inicio no corresponde al formato DD/MM/YYYY HH:mm.',
                 'fecha_finalizacion.date_format'     => 'El campo Fecha Finalización no corresponde al formato DD/MM/YYYY HH:mm.',
                 'fecha_estimada_entrega.date_format' => 'El campo Fecha Estimada de Entrega no corresponde al formato DD/MM/YYYY HH:mm.',
-                'fecha_importacion.date_format'           => 'El campo Fecha Estimada de Entrega no corresponde al formato DD/MM/YYYY.',
-
+                'fecha_importacion.date_format'      => 'El campo Fecha de Importación no corresponde al formato DD/MM/YYYY.',
                 'usuario.string'        => 'El campo Usuario debe ser una cadena de texto.',
-                'usuario.max'           => 'El campo Usuario no debe exceder 100 caracteres.'
+                'usuario.max'           => 'El campo Usuario no debe exceder 100 caracteres.',
+                // ✅ Nuevo:
+                'revisada.boolean'      => 'El campo Revisada debe ser booleano.',
             ]);
 
-            // ✅ Validación personalizada: Comprobar que la obra seleccionada pertenece al cliente seleccionado
+            // Validación: obra pertenece al cliente
             if (!empty($validatedData['obra_id']) && !empty($validatedData['cliente_id'])) {
                 $obra = Obra::find($validatedData['obra_id']);
                 if ($obra && $obra->cliente_id != $validatedData['cliente_id']) {
@@ -1519,24 +1524,31 @@ class PlanillaController extends Controller
                     ], 422);
                 }
             }
-            // 1) Convertir fecha_inicio si existe
+
+            // Fechas -> formato BD
             if (!empty($validatedData['fecha_inicio'])) {
-                $validatedData['fecha_inicio'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_inicio'])
-                    ->format('Y-m-d H:i:s');
+                $validatedData['fecha_inicio'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_inicio'])->format('Y-m-d H:i:s');
             }
-
-            // 2) Convertir fecha_finalizacion si existe
             if (!empty($validatedData['fecha_finalizacion'])) {
-                $validatedData['fecha_finalizacion'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_finalizacion'])
-                    ->format('Y-m-d H:i:s');
+                $validatedData['fecha_finalizacion'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_finalizacion'])->format('Y-m-d H:i:s');
+            }
+            if (!empty($validatedData['fecha_estimada_entrega'])) {
+                $validatedData['fecha_estimada_entrega'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_estimada_entrega'])->format('Y-m-d H:i:s');
             }
 
-            // 3) Convertir fecha_estimada_entrega si existe (si la recibes con día/mes/año)
-            if (!empty($validatedData['fecha_estimada_entrega'])) {
-                $validatedData['fecha_estimada_entrega'] = Carbon::createFromFormat('d/m/Y H:i', $validatedData['fecha_estimada_entrega'])
-                    ->format('Y-m-d H:i:s');
+            // ✅ Lógica de revisión (quién/cuándo)
+            if (array_key_exists('revisada', $validatedData)) {
+                $revisada = (bool)$validatedData['revisada'];
+
+                if ($revisada) {
+                    $validatedData['revisada_por_id'] = auth()->id();
+                    $validatedData['revisada_at']     = now();
+                } else {
+                    $validatedData['revisada_por_id'] = null;
+                    $validatedData['revisada_at']     = null;
+                }
             }
-            // Actualizar la planilla con los datos validados
+
             $planilla->update($validatedData);
 
             return response()->json([
@@ -1562,6 +1574,7 @@ class PlanillaController extends Controller
             ], 500);
         }
     }
+
     //------------------------------------------------------------------------------------ DESTROY()
     // Eliminar una planilla y sus elementos asociados
     public function destroy($id)

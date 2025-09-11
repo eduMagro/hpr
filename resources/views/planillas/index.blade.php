@@ -64,6 +64,10 @@
                         <th class="p-2 border">{!! $ordenables['fecha_importacion'] ?? '' !!}</th>
                         <th class="p-2 border">{!! $ordenables['fecha_entrega'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['nombre_completo'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['revisada'] !!}</th>
+                        <th class="p-2 border">Revisada por</th>
+                        <th class="p-2 border">Fecha revisión</th>
+
                         <th class="p-2 border">Acciones</th>
                     </tr>
 
@@ -131,6 +135,13 @@
                             <th class="p-1 border">
                                 <x-tabla.input name="nombre_completo" value="{{ request('nombre_completo') }}" />
                             </th>
+                            <th class="p-1 border">
+                                <x-tabla.select name="revisada" :options="['' => 'Todas', '1' => 'Sí', '0' => 'No']" :selected="request()->query('revisada', '')" />
+                            </th>
+
+                            <th class="p-1 border"></th>
+                            <th class="p-1 border"></th>
+
 
                             <x-tabla.botones-filtro ruta="planillas.index" />
                         </form>
@@ -320,6 +331,36 @@
                                 <span x-text="planilla.user?.nombre_completo ?? 'Desconocido'"></span>
                             </td>
 
+                            {{-- Revisiones --}}
+                            <td class="p-2 text-center border">
+                                <template x-if="!editando">
+                                    <span
+                                        :class="planilla.revisada ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'"
+                                        class="px-2 py-1 rounded text-[11px] font-semibold inline-flex items-center gap-1">
+                                        <span x-text="planilla.revisada ? 'Sí' : 'No'"></span>
+                                    </span>
+                                </template>
+
+                                <label x-show="editando" class="inline-flex items-center gap-2">
+                                    <input type="checkbox" x-model="planilla.revisada"
+                                        class="w-4 h-4 accent-blue-600">
+                                    <span>Revisada</span>
+                                </label>
+                            </td>
+                            <!-- Revisor -->
+                            <td class="p-2 text-center border">
+                                <span x-text="planilla.revisor?.nombre_completo ?? '—'"></span>
+                            </td>
+                            <!-- Fecha Revisión -->
+                            <td class="p-2 text-center border">
+                                <template x-if="planilla.revisada_at">
+                                    <span x-text="new Date(planilla.revisada_at).toLocaleString()"></span>
+                                </template>
+                                <template x-if="!planilla.revisada_at">
+                                    <span>—</span>
+                                </template>
+                            </td>
+
                             <!-- Acciones Fila -->
                             <td class="px-2 py-2 border text-xs font-bold">
                                 <div class="flex items-center space-x-2 justify-center">
@@ -342,8 +383,20 @@
                                                         d="M4 4v6h6M20 20v-6h-6M4 20l4.586-4.586M20 4l-4.586 4.586" />
                                                 </svg>
                                             </button>
+                                            <button
+                                                @click="
+    planilla.revisada = !planilla.revisada;
+    guardarCambios(planilla);
+  "
+                                                class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 flex items-center justify-center"
+                                                title="Marcar como revisada (José Amuedo)">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M9 12l2 2 4-4-1.5-1.5L11 11l-1.5-1.5L8 11l1 1z" />
+                                                </svg>
+                                            </button>
 
-                                            <!-- Botón Completar -->
+                                            {{-- <!-- Botón Completar -->
                                             <button @click="completarPlanilla({{ $planilla->id }})"
                                                 class="w-6 h-6 bg-green-100 text-green-600 rounded hover:bg-green-200 flex items-center justify-center"
                                                 title="Completar Planilla">
@@ -353,7 +406,7 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M5 13l4 4L19 7" />
                                                 </svg>
-                                            </button>
+                                            </button> --}}
 
                                             <x-tabla.boton-editar @click="editando = true" x-show="!editando" />
                                             <x-tabla.boton-ver :href="route('planillas.show', $planilla->id)" />

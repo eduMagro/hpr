@@ -22,6 +22,8 @@ class Planilla extends Model
         'updated_at' => 'datetime',
         'fecha_estimada_entrega' => 'datetime',
         'fecha_inicio' => 'datetime',
+        'revisada' => 'boolean',
+        'revisada_at' => 'datetime',
     ];
 
 
@@ -45,6 +47,9 @@ class Planilla extends Model
         'fecha_finalizacion',
         'tiempo_fabricacion',
         'fecha_estimada_entrega',
+        'revisada',
+        'revisada_por_id',
+        'revisada_at',
     ];
 
     /**
@@ -183,5 +188,10 @@ class Planilla extends Model
 
         // Asegurar que created_at es un objeto Carbon y sumarle 6 días
         return Carbon::parse($this->created_at)->addDays(6);
+    }
+
+    public function revisor()
+    {
+        return $this->belongsTo(User::class, 'revisada_por_id');
     }
 }
