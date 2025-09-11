@@ -188,23 +188,40 @@
                                     </td>
                                     <td class="border px-2 py-1 text-center">
                                         <div class="flex flex-col items-center gap-1">
-                                            {{-- Botones en línea --}}
+                                            @php
+                                                $estado = strtolower(trim($linea['estado']));
+                                                $esCancelado = $estado === 'cancelado';
+                                                $esCompletado = $estado === 'completado';
+                                                $esFacturado = $estado === 'facturado';
+                                                $esEntregaDirecta = !$pedido->obra?->es_nave_paco_reyes;
+                                                $pedidoCompletado = strtolower($pedido->estado) === 'completado';
+                                            @endphp
+
                                             <div class="flex items-center justify-center gap-1"
                                                 @if ($esCancelado) style="pointer-events: none; opacity: 0.5;" @endif>
 
-                                                @php $estado = strtolower(trim($linea['estado'])); @endphp
-
-                                                @if ($esCompletado)
-                                                    {{-- --}}
-                                                @elseif ($esFacturado)
-                                                    {{-- --}}
+                                                @if ($esCompletado || $esFacturado)
+                                                    {{-- Nada --}}
                                                 @elseif ($esCancelado)
                                                     <button disabled
                                                         class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-50 cursor-not-allowed">
                                                         Cancelado
                                                     </button>
+
+                                                    {{-- Entrega directa: mostrar botón "Completar pedido" --}}
+                                                @elseif ($esEntregaDirecta && !$pedidoCompletado)
+                                                    <form method="POST"
+                                                        action="{{ route('pedidos.editarCompletarManual', $pedido->id) }}"
+                                                        onsubmit="return confirm('¿Marcar el PEDIDO como COMPLETADO sin recepcionar?');">
+                                                        @csrf
+                                                        <button type="submit"
+                                                            class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                            Completar
+                                                        </button>
+                                                    </form>
+
+                                                    {{-- Flujo normal HPR --}}
                                                 @elseif ($estado === 'activo')
-                                                    {{-- Solo botón Desactivar --}}
                                                     <form method="POST"
                                                         action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea['id']]) }}">
                                                         @csrf
@@ -215,7 +232,6 @@
                                                         </button>
                                                     </form>
                                                 @elseif ($estado === 'pendiente')
-                                                    {{-- Botón Activar --}}
                                                     <form method="POST"
                                                         action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
                                                         @csrf
@@ -226,7 +242,6 @@
                                                         </button>
                                                     </form>
 
-                                                    {{-- Botón Cancelar (SweetAlert) --}}
                                                     <form method="POST"
                                                         action="{{ route('pedidos.lineas.editarCancelar', [$pedido->id, $linea['id']]) }}"
                                                         class="form-cancelar-linea hidden"
@@ -242,10 +257,11 @@
                                                         Cancelar
                                                     </button>
                                                 @endif
-
                                             </div>
                                         </div>
                                     </td>
+
+
                                 </tr>
                             @endforeach
 

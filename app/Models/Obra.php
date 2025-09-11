@@ -60,4 +60,10 @@ class Obra extends Model
     {
         return $this->hasMany(Localizacion::class, 'nave_id');
     }
+
+    public function getEsNavePacoReyesAttribute(): bool
+    {
+        $empresa = strtoupper(trim($this->cliente->empresa ?? ''));
+        return str_contains($empresa, 'PACO REYES');
+    }
 }

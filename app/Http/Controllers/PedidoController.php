@@ -1124,7 +1124,62 @@ class PedidoController extends Controller
     }
 
 
+    public function completarManual(Request $request, $id)
+    {
+        // opcional: $this->authorize('completarManual', Pedido::class);
 
+        try {
+            DB::transaction(function () use ($id, $request) {
+                /** @var \App\Models\Pedido $pedido */
+                $pedido = \App\Models\Pedido::lockForUpdate()->findOrFail($id);
+
+                // Si ya estaba cancelado, no tiene sentido completarlo
+                if (strtolower((string)$pedido->estado) === 'cancelado') {
+                    abort(422, 'No puedes completar un pedido cancelado.');
+                }
+
+                // (Opcional) marca todas las líneas no canceladas como completadas
+                \App\Models\PedidoProducto::where('pedido_id', $pedido->id)
+                    ->where(function ($q) {
+                        $q->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
+                    })
+                    ->update(['estado' => 'completado']);
+
+                // Completar el pedido
+                $pedido->estado = 'completado';
+                // (Opcional) marca de auditoría si tienes estas columnas
+                if ($pedido->isFillable('completado_manualmente')) {
+                    $pedido->completado_manualmente = true;
+                }
+                if ($pedido->isFillable('fecha_completado')) {
+                    $pedido->fecha_completado = now();
+                }
+                if ($pedido->isFillable('updated_by')) {
+                    $pedido->updated_by = auth()->id();
+                }
+                $pedido->save();
+
+                // Recalcular estado del Pedido Global si aplica
+                if ($pedido->pedido_global_id) {
+                    $pg = \App\Models\PedidoGlobal::where('id', $pedido->pedido_global_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($pg && method_exists($pg, 'actualizarEstadoSegunProgreso')) {
+                        $pg->actualizarEstadoSegunProgreso(); // pasará a en curso/completado/pendiente según acumulado
+                    }
+                }
+            });
+
+            return back()->with('success', 'Pedido completado manualmente.');
+        } catch (\Throwable $e) {
+            Log::error('Error al completar pedido manualmente', [
+                'pedido_id' => $id,
+                'msg' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'No se pudo completar manualmente. Consulta con administración.');
+        }
+    }
 
     public function destroy($id)
     {
