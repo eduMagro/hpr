@@ -790,7 +790,7 @@ class PedidoController extends Controller
             ]);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Línea activada y movimiento creado.');
+            return redirect()->back()->with('success');
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error al activar línea del pedido: ' . $e->getMessage());
@@ -886,7 +886,7 @@ class PedidoController extends Controller
                 }
             });
 
-            return back()->with('success', 'Línea cancelada correctamente.');
+            return back()->with('success');
         } catch (\Throwable $e) {
             Log::error('Error al cancelar línea de pedido', [
                 'pedido_id' => $pedido->id,
