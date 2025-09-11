@@ -715,10 +715,13 @@ class PedidoController extends Controller
     public function activar($pedidoId, $lineaId)
     {
         // Cargamos la línea como stdClass (tal como ya haces)
-        $linea = DB::table('pedido_productos')->where('id', $lineaId)->first();
+        $linea = DB::table('pedido_productos')->where('id', $lineaId)->lockForUpdate()->first();
 
         if (!$linea) {
             return redirect()->back()->with('error', 'Línea de pedido no encontrada.');
+        }
+        if (!in_array($linea->estado, ['pendiente', 'parcial'])) {
+            return redirect()->back()->with('error', 'Esta línea ya ha sido activada por otro usuario.');
         }
 
         // Cargamos el pedido con fabricante y distribuidor
