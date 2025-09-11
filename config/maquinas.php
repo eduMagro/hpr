@@ -1,16 +1,22 @@
 <?php
 
+
 return [
-    // Mapa por tipo de máquina -> clase del servicio
+
+    // Tipos “simples” => clase de servicio
     'mapa_por_tipo' => [
-        'cortadora_dobladora' => \App\Servicios\Etiquetas\Servicios\CortadoraDobladoraEtiquetaServicio::class,
-        'cortadora_manual'    => \App\Servicios\Etiquetas\Servicios\EnsambladoraEtiquetaServicio::class, // corta a mano pero usa flujo base
-        'dobladora manual'    => \App\Servicios\Etiquetas\Servicios\DobladoraEtiquetaServicio::class,
-        'ensambladora'        => \App\Servicios\Etiquetas\Servicios\EnsambladoraEtiquetaServicio::class,
-        'estribadora'         => \App\Servicios\Etiquetas\Servicios\EnsambladoraEtiquetaServicio::class, // similar a corte/fabricación
-        'soldadora'           => \App\Servicios\Etiquetas\Servicios\SoldadoraEtiquetaServicio::class,
+        // ejemplo:
+        'cortadora'       => \App\Servicios\Etiquetas\Servicios\DobladoraEtiquetaServicio::class,
+        'dobladora'       => \App\Servicios\Etiquetas\Servicios\EnsambladoraEtiquetaServicio::class,
+        'ensambladora'    => \App\Servicios\Etiquetas\Servicios\SoldadoraEtiquetaServicio::class,
+        // si tuvieras una cortadora_dobladora genérica por defecto:
+        // 'cortadora_dobladora' => \App\Servicios\Etiquetas\Tipos\CortadoraDobladoraBarraServicio::class,
     ],
 
-    // Fallback configurable para ubicaciones cuando no se encuentra por código
-    'ubicacion_fallback_id' => 33,
+    // Rama especial para cortadora_dobladora según material
+    'cortadora_dobladora_por_material' => [
+        // claves **en minúsculas**
+        'barra'       => \App\Servicios\Etiquetas\Servicios\CortadoraDobladoraBarraEtiquetaServicio::class,
+        'encarretado' => \App\Servicios\Etiquetas\Servicios\CortadoraDobladoraEncarretadoEtiquetaServicio::class,
+    ],
 ];

@@ -39,9 +39,10 @@ class EtiquetaController extends Controller
             $query->where('codigo', $request->codigo);
         }
 
-        if ($request->filled('etiqueta_sub_id')) {
-            $query->where('etiqueta_sub_id', $request->etiqueta_sub_id);
+        if ($request->has('etiqueta_sub_id') && $request->etiqueta_sub_id !== '') {
+            $query->where('etiqueta_sub_id', 'like', '%' . $request->etiqueta_sub_id . '%');
         }
+
         if ($request->filled('paquete')) {
             // Buscar el paquete por su código
             $paquete = Paquete::where('codigo', $request->paquete)->first();
