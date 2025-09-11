@@ -2,7 +2,8 @@
     <x-slot name="title">{{ $planilla->codigo_limpio }} - {{ config('app.name') }}</x-slot>
 
     <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        {{-- CABECERA SHOW --}}
+        <div x-data="{ planilla: @js($planilla) }" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     Planilla <strong>{{ $planilla->codigo_limpio }}</strong>
@@ -13,13 +14,72 @@
                     Sección: <strong>{{ $planilla->seccion ?? '—' }}</strong>
                 </p>
             </div>
-            <div class="w-full sm:w-auto">
-                <div class="w-full sm:w-64 bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div class="bg-blue-500 h-3 rounded-full" style="width: {{ $progreso }}%"></div>
+
+            <div class="flex items-center gap-3 sm:w-auto">
+                {{-- Barra de progreso --}}
+                <div>
+                    <div class="w-32 sm:w-64 bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div class="bg-blue-500 h-3 rounded-full" style="width: {{ $progreso }}%"></div>
+                    </div>
+                    <p class="text-right text-xs text-gray-500 mt-1">{{ $progreso }}%</p>
                 </div>
-                <p class="text-right text-xs text-gray-500 mt-1">{{ $progreso }}%</p>
+
+                {{-- Botón Revisada (igual que en index) --}}
+                <button @click="
+        planilla.revisada = !planilla.revisada;
+        guardarCambios(planilla);
+    "
+                    class="w-7 h-7 rounded flex items-center justify-center transition
+           hover:bg-indigo-200"
+                    :class="planilla.revisada ? 'bg-green-100 text-green-700' : 'bg-indigo-100 text-indigo-700'"
+                    :title="planilla.revisada ? 'Quitar revisión' : 'Marcar como revisada'">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 12l2 2 4-4-1.5-1.5L11 11l-1.5-1.5L8 11l1 1z" />
+                    </svg>
+                </button>
+
+
             </div>
         </div>
+
+        {{-- Si NO tienes la función global en el layout, añade este script en la show --}}
+        <script>
+            if (typeof guardarCambios !== 'function') {
+                function guardarCambios(planilla) {
+                    fetch(`{{ route('planillas.update', '') }}/${planilla.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                ...planilla,
+                                _method: 'PUT'
+                            })
+                        })
+                        .then(async (response) => {
+                            const ct = response.headers.get('content-type') || '';
+                            const data = ct.includes('application/json') ? await response.json() : {};
+                            if (!response.ok || !data.success) {
+                                throw new Error(data.message || 'No se pudo actualizar la planilla');
+                            }
+                            // Si quieres refrescar:
+                            window.location.reload();
+                        })
+                        .catch(err => {
+                            Swal?.fire?.({
+                                icon: "error",
+                                title: "Error al actualizar",
+                                text: err.message || "Error de conexión",
+                                confirmButtonText: "OK"
+                            }) || alert(err.message || 'Error al actualizar');
+                        });
+                }
+            }
+        </script>
+
+
     </x-slot>
 
     <div class="w-full sm:px-4 py-6">
@@ -280,4 +340,6 @@
             -webkit-tap-highlight-color: transparent;
         }
     </style>
+
+
 </x-app-layout>
