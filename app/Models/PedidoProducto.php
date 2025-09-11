@@ -16,6 +16,9 @@ class PedidoProducto extends Model
         'estado',
         'observaciones',
     ];
+    protected $casts = [
+        'fecha_estimada_entrega' => 'datetime',
+    ];
 
     public function pedido()
     {
@@ -35,5 +38,12 @@ class PedidoProducto extends Model
     public function productoBase()
     {
         return $this->belongsTo(ProductoBase::class, 'producto_base_id');
+    }
+
+    public function getFechaEstimadaEntregaFormateadaAttribute(): ?string
+    {
+        return $this->fecha_estimada_entrega
+            ? \Carbon\Carbon::parse($this->fecha_estimada_entrega)->format('d-m-Y')
+            : null;
     }
 }

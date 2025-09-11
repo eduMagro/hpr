@@ -230,21 +230,59 @@ class PedidoController extends Controller
         $pedidos = $query->paginate($perPage)->appends($request->all());
         $pedidosGlobales = PedidoGlobal::orderBy('codigo')->get();
 
-        $pedidos->getCollection()->transform(function ($pedido) {
-            $pedido->lineas = $pedido->pedidoProductos->map(function ($linea) {
-                return [
-                    'id'                     => $linea->id,
-                    'tipo'                   => $linea->productoBase?->tipo ?? '—',
-                    'diametro'               => $linea->productoBase?->diametro ?? '—',
-                    'longitud'               => $linea->productoBase?->longitud ?? '—',
-                    'cantidad'               => $linea->cantidad,
-                    'cantidad_recepcionada'  => $linea->cantidad_recepcionada,
-                    'estado'                 => $linea->estado ?? 'pendiente',
-                    'fecha_estimada_entrega' => $linea->fecha_estimada_entrega ?? '—',
-                    'created_at'             => $linea->created_at,
-                    'codigo_sage'            => $linea->codigo_sage ?? '',
-                ];
-            });
+        $pedidos->getCollection()->transform(function ($pedido) use ($request) {
+            $pedido->lineas = $pedido->pedidoProductos
+                ->filter(function ($linea) use ($request) {
+                    $pb = $linea->productoBase;
+
+                    // Si no hay ningún filtro, mostrar todas
+                    if (
+                        !$request->filled('producto_tipo') &&
+                        !$request->filled('producto_diametro') &&
+                        !$request->filled('producto_longitud') &&
+                        !$request->filled('fecha_entrega')
+                    ) {
+                        return true;
+                    }
+
+                    if ($request->filled('producto_tipo') && (! $pb || ! str_contains($pb->tipo, $request->producto_tipo))) {
+                        return false;
+                    }
+
+                    if ($request->filled('producto_diametro') && (! $pb || $pb->diametro != $request->producto_diametro)) {
+                        return false;
+                    }
+
+                    if ($request->filled('producto_longitud') && (! $pb || $pb->longitud != $request->producto_longitud)) {
+                        return false;
+                    }
+
+                    if ($request->filled('fecha_entrega')) {
+                        $fechaLinea = $linea->fecha_estimada_entrega;
+                        $fechaLinea = $fechaLinea ? \Carbon\Carbon::parse($fechaLinea)->format('Y-m-d') : null;
+
+                        if ($fechaLinea !== $request->fecha_entrega) {
+                            return false;
+                        }
+                    }
+
+                    return true;
+                })
+                ->map(function ($linea) {
+                    return [
+                        'id'                     => $linea->id,
+                        'tipo'                   => $linea->productoBase?->tipo ?? '—',
+                        'diametro'               => $linea->productoBase?->diametro ?? '—',
+                        'longitud'               => $linea->productoBase?->longitud ?? '—',
+                        'cantidad'               => $linea->cantidad,
+                        'cantidad_recepcionada'  => $linea->cantidad_recepcionada,
+                        'estado'                 => $linea->estado ?? 'pendiente',
+                        'fecha_estimada_entrega' => $linea->fecha_estimada_entrega_formateada ?? '—',
+                        'created_at'             => $linea->created_at,
+                        'codigo_sage'            => $linea->codigo_sage ?? '',
+                    ];
+                });
+
             return $pedido;
         });
 
