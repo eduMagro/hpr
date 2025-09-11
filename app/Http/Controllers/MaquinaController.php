@@ -815,8 +815,9 @@ class MaquinaController extends Controller
     {
         // Validar los datos del formulario
         $validatedData = $request->validate([
-            'codigo'       => 'required|string|max:6|unique:maquinas,codigo,' . $id,
+            'codigo'       => 'required|string|unique:maquinas,codigo,' . $id,
             'nombre'       => 'required|string|max:40',
+            'tipo'         => 'nullable|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual,grua',
             'obra_id'      => 'nullable|exists:obras,id',
             'diametro_min' => 'nullable|integer',
             'diametro_max' => 'nullable|integer',
@@ -828,12 +829,15 @@ class MaquinaController extends Controller
         ], [
             'codigo.required'   => 'El campo "código" es obligatorio.',
             'codigo.string'     => 'El campo "código" debe ser una cadena de texto.',
-            'codigo.max'        => 'El campo "código" no puede tener más de 6 caracteres.',
             'codigo.unique'     => 'El código ya existe, por favor ingrese otro diferente.',
 
             'nombre.required'   => 'El campo "nombre" es obligatorio.',
             'nombre.string'     => 'El campo "nombre" debe ser una cadena de texto.',
             'nombre.max'        => 'El campo "nombre" no puede tener más de 40 caracteres.',
+
+            'tipo.string'       => 'El campo "tipo" debe ser texto.',
+            'tipo.max'          => 'El campo "tipo" no puede tener más de 50 caracteres.',
+            'tipo.in'           => 'El tipo no está entre los posibles.',
 
             'obra_id.exists'    => 'La obra seleccionada no es válida.',
 
@@ -853,10 +857,7 @@ class MaquinaController extends Controller
         DB::beginTransaction();
 
         try {
-            // Buscar la máquina por su ID
             $maquina = Maquina::findOrFail($id);
-
-            // Actualizar los datos de la máquina
             $maquina->update($validatedData);
 
             DB::commit();
@@ -866,7 +867,6 @@ class MaquinaController extends Controller
                 ->with('success', 'La máquina se actualizó correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-
             return redirect()
                 ->back()
                 ->with('error', 'Hubo un problema al actualizar la máquina. Intenta nuevamente. Error: ' . $e->getMessage());

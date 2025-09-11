@@ -187,6 +187,19 @@
                             @endforeach
                         </select>
                     </div>
+                    <!-- Tipo -->
+                    <div>
+                        <label for="edit-tipo" class="block text-sm font-semibold text-gray-700 mb-1">Tipo</label>
+                        <select id="edit-tipo" name="tipo" class="w-full border rounded px-3 py-2 text-sm">
+                            <option value="">— Selecciona tipo —</option>
+                            <option value="cortadora_dobladora">Cortadora-Dobladora</option>
+                            <option value="ensambladora">Ensambladora</option>
+                            <option value="soldadora">Soldadora</option>
+                            <option value="cortadora_manual">Cortadora manual</option>
+                            <option value="dobladora_manual">Dobladora manual</option>
+                            <option value="grua">Grúa</option>
+                        </select>
+                    </div>
 
                     <!-- Diámetro mínimo -->
                     <div>
@@ -277,7 +290,7 @@
                             // Rellenar campos
                             document.getElementById('edit-id').value = data.id ?? '';
                             ['codigo', 'nombre', 'diametro_min', 'diametro_max', 'peso_min',
-                                'peso_max', 'ancho_m', 'largo_m'
+                                'peso_max', 'ancho_m', 'largo_m', 'tipo'
                             ]
                             .forEach(f => {
                                 const el = document.getElementById(`edit-${f}`);
