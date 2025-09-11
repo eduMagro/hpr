@@ -66,4 +66,12 @@ class Obra extends Model
         $empresa = strtoupper(trim($this->cliente->empresa ?? ''));
         return str_contains($empresa, 'PACO REYES');
     }
+
+    // Colección: todas las naves PACO REYES
+    public static function getNavesPacoReyes()
+    {
+        return self::whereHas('cliente', function ($q) {
+            $q->where('empresa', 'like', '%PACO REYES%');
+        })->get();
+    }
 }

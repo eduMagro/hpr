@@ -38,6 +38,11 @@ class MovimientoController extends Controller
         if ($request->filled('descripcion')) {
             $query->where('descripcion', 'like', '%' . $request->descripcion . '%');
         }
+        if ($request->filled('nave')) {
+            $query->whereHas('nave', function ($q) use ($request) {
+                $q->where('nombre', 'like', '%' . $request->nave . '%');
+            });
+        }
 
         // Prioridad exacta (baja, media, alta)
         if ($request->filled('prioridad')) {
@@ -246,6 +251,7 @@ class MovimientoController extends Controller
             'id',
             'tipo',
             'descripcion',
+            'nave',
             'prioridad',
             'estado',
             'fecha_solicitud',
@@ -278,7 +284,7 @@ class MovimientoController extends Controller
             return redirect()->route('movimientos.create');
         }
         // Base query con relaciones necesarias
-        $query = Movimiento::with(['producto', 'productoBase', 'ejecutadoPor', 'solicitadoPor', 'ubicacionOrigen', 'ubicacionDestino', 'maquinaOrigen', 'maquinaDestino']);
+        $query = Movimiento::with(['producto', 'productoBase', 'ejecutadoPor', 'solicitadoPor', 'ubicacionOrigen', 'ubicacionDestino', 'maquinaOrigen', 'maquinaDestino', 'nave']);
         // Si es 'oficina', no aplicamos restricciones y puede ver todos los movimientos
 
         // Filtros
@@ -296,6 +302,7 @@ class MovimientoController extends Controller
             'producto_id'              => $this->getOrdenamiento('producto_id', 'Producto Solicitado'),
             'tipo'            => $this->getOrdenamiento('tipo', 'Tipo'),
             'descripcion'       => $this->getOrdenamiento('descripcion', 'Descripción'),
+            'nave' => $this->getOrdenamiento('nave', 'Nave'),
             'prioridad'       => $this->getOrdenamiento('prioridad', 'Prioridad'),
             'solicitado_por'       => $this->getOrdenamiento('solicitado_por', 'Solicitado por'),
             'ejecutado_por'       => $this->getOrdenamiento('ejecutado_por', 'Ejecutado por'),

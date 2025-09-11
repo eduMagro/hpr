@@ -198,50 +198,56 @@
                                             @endphp
 
                                             <div class="flex items-center justify-center gap-1"
-                                                @if ($esCancelado) style="pointer-events: none; opacity: 0.5;" @endif>
+                                                @if ($esCancelado) style="pointer-events:none;opacity:.5" @endif>
 
                                                 @if ($esCompletado || $esFacturado)
-                                                    {{-- Nada --}}
+                                                    {{-- Cerrada: sin acciones --}}
                                                 @elseif ($esCancelado)
                                                     <button disabled
                                                         class="bg-gray-400 text-white text-xs px-2 py-1 rounded shadow opacity-50 cursor-not-allowed">
                                                         Cancelado
                                                     </button>
+                                                @else
+                                                    {{-- === LÍNEA ABIERTA: mostramos acciones según caso === --}}
 
-                                                    {{-- Entrega directa: mostrar botón "Completar pedido" --}}
-                                                @elseif ($esEntregaDirecta && !$pedidoCompletado)
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.editarCompletarManual', $pedido->id) }}"
-                                                        onsubmit="return confirm('¿Marcar el PEDIDO como COMPLETADO sin recepcionar?');">
-                                                        @csrf
-                                                        <button type="submit"
-                                                            class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                            Completar
-                                                        </button>
-                                                    </form>
+                                                    {{-- Entrega directa: botón Completar línea --}}
+                                                    @if ($esEntregaDirecta && !$pedidoCompletado)
+                                                        <form method="POST"
+                                                            action="{{ route('pedidos.editarCompletarLineaManual', ['pedido' => $pedido->id, 'linea' => $linea['id']]) }}"
+                                                            onsubmit="return confirmarCompletarLinea(this);">
+                                                            @csrf
+                                                            <button type="submit"
+                                                                class="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                Completar
+                                                            </button>
+                                                        </form>
+                                                    @endif
 
                                                     {{-- Flujo normal HPR --}}
-                                                @elseif ($estado === 'activo')
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea['id']]) }}">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" title="Desactivar línea"
-                                                            class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                            Desactivar
-                                                        </button>
-                                                    </form>
-                                                @elseif ($estado === 'pendiente')
-                                                    <form method="POST"
-                                                        action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
-                                                        @csrf
-                                                        @method('PUT')
-                                                        <button type="submit" title="Activar línea"
-                                                            class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
-                                                            Activar
-                                                        </button>
-                                                    </form>
+                                                    @if ($estado === 'activo')
+                                                        <form method="POST"
+                                                            action="{{ route('pedidos.lineas.editarDesactivar', [$pedido->id, $linea['id']]) }}">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" title="Desactivar línea"
+                                                                class="bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                Desactivar
+                                                            </button>
+                                                        </form>
+                                                    @elseif ($estado === 'pendiente' && $pedido->obra?->es_nave_paco_reyes)
+                                                        {{-- activar SOLO si es nave Paco Reyes --}}
+                                                        <form method="POST"
+                                                            action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
+                                                            @csrf
+                                                            @method('PUT')
+                                                            <button type="submit" title="Activar línea"
+                                                                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs px-2 py-1 rounded shadow transition">
+                                                                Activar
+                                                            </button>
+                                                        </form>
+                                                    @endif
 
+                                                    {{-- Botón CANCELAR (siempre que esté abierto) --}}
                                                     <form method="POST"
                                                         action="{{ route('pedidos.lineas.editarCancelar', [$pedido->id, $linea['id']]) }}"
                                                         class="form-cancelar-linea hidden"
@@ -260,7 +266,6 @@
                                             </div>
                                         </div>
                                     </td>
-
 
                                 </tr>
                             @endforeach
@@ -542,6 +547,27 @@
     @endif
 
     </div>
+
+    <script>
+        function confirmarCompletarLinea(form) {
+            Swal.fire({
+                title: '¿Completar línea?',
+                html: 'Se marcará como <b>completada</b> sin recepcionar.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, completar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#16a34a', // verde (tailwind: green-600)
+                focusCancel: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+            return false; // bloquear envío hasta confirmar
+        }
+    </script>
+
     <script>
         function limpiarObraManual() {
             document.getElementById('obra_manual').value = '';

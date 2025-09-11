@@ -26,6 +26,7 @@ class Movimiento extends Model
         'estado',
         'prioridad',
         'descripcion',
+        'nave_id',
         'fecha_solicitud',
         'fecha_ejecucion',
         'solicitado_por',
@@ -96,5 +97,10 @@ class Movimiento extends Model
     public function ejecutadoPor()
     {
         return $this->belongsTo(User::class, 'ejecutado_por');
+    }
+
+    public function nave()
+    {
+        return $this->belongsTo(Obra::class, 'nave_id');
     }
 }

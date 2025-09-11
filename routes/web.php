@@ -87,8 +87,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::delete('/pedidos/{pedido}/lineas/{linea}/desactivar', [PedidoController::class, 'desactivar'])->name('pedidos.lineas.editarDesactivar');
 
     // Completar manualmente un pedido que no es para una nave de paco reyes
-    Route::post('/pedidos/{pedido}/completar-manual', [PedidoController::class, 'completarManual'])
-        ->name('pedidos.editarCompletarManual');
+
+    Route::post('pedidos/{pedido}/lineas/{linea}/completar', [PedidoController::class, 'completarLineaManual'])->name('pedidos.editarCompletarLineaManual');
 
     // === LINEAS DEL PEDIDO ===
     Route::put('/pedidos/{pedido}/lineas/{linea}/cancelar', [PedidoController::class, 'cancelarLinea'])->name('pedidos.lineas.editarCancelar');

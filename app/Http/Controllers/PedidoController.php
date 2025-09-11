@@ -730,7 +730,8 @@ class PedidoController extends Controller
 
         // Cargamos el pedido con fabricante y distribuidor
         /** @var \App\Models\Pedido $pedido */
-        $pedido = Pedido::with(['fabricante', 'distribuidor'])->findOrFail($linea->pedido_id);
+        $pedido = Pedido::with(['fabricante', 'distribuidor', 'obra'])->findOrFail($linea->pedido_id);
+
 
         if (!in_array($pedido->estado, ['pendiente', 'parcial', 'activo'])) {
             return redirect()->back()->with('error', 'Solo se pueden activar productos de pedidos pendientes, parciales o activos.');
@@ -791,6 +792,7 @@ class PedidoController extends Controller
                 'producto_base_id'   => $productoBase->id,
                 'pedido_producto_id' => $lineaId,
                 'prioridad'          => 2,
+                'nave_id'          => $pedido->obra_id,
             ]);
 
             DB::commit();
@@ -1169,60 +1171,48 @@ class PedidoController extends Controller
     }
 
 
-    public function completarManual(Request $request, $id)
+    public function completarLineaManual(Request $request, Pedido $pedido, PedidoProducto $linea)
     {
-        // opcional: $this->authorize('completarManual', Pedido::class);
-
         try {
-            DB::transaction(function () use ($id, $request) {
-                /** @var \App\Models\Pedido $pedido */
-                $pedido = \App\Models\Pedido::lockForUpdate()->findOrFail($id);
+            // Verifica pertenencia: evita que “linea=120” (pedido) cuele
+            if ((int)$linea->pedido_id !== (int)$pedido->id) {
+                abort(404, 'La línea no pertenece a este pedido.');
+            }
 
-                // Si ya estaba cancelado, no tiene sentido completarlo
-                if (strtolower((string)$pedido->estado) === 'cancelado') {
-                    abort(422, 'No puedes completar un pedido cancelado.');
+            DB::transaction(function () use ($pedido, $linea) {
+                // Completar SOLO esta línea (si no está facturada)
+                if (strtolower((string)$linea->estado) !== 'facturado') {
+                    $linea->estado = 'completado';
+                    if ($linea->isFillable('fecha_completado')) $linea->fecha_completado = now();
+                    if ($linea->isFillable('updated_by'))       $linea->updated_by       = auth()->id();
+                    $linea->save();
                 }
 
-                // (Opcional) marca todas las líneas no canceladas como completadas
-                \App\Models\PedidoProducto::where('pedido_id', $pedido->id)
-                    ->where(function ($q) {
-                        $q->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
-                    })
-                    ->update(['estado' => 'completado']);
+                // Pedido = completado si TODAS las líneas están en {completado, facturado}
+                $estadosQueCierran = ['completado', 'facturado'];
+                $ignorar           = ['cancelado']; // quítalo si no usas ‘cancelado’ en líneas
 
-                // Completar el pedido
-                $pedido->estado = 'completado';
-                // (Opcional) marca de auditoría si tienes estas columnas
-                if ($pedido->isFillable('completado_manualmente')) {
-                    $pedido->completado_manualmente = true;
+                $todas = PedidoProducto::where('pedido_id', $pedido->id)->get();
+                $relevantes   = $todas->reject(fn($l) => in_array(strtolower((string)$l->estado), $ignorar, true));
+                $todasCerradas = $relevantes->count() > 0
+                    && $relevantes->every(fn($l) => in_array(strtolower((string)$l->estado), $estadosQueCierran, true));
+
+                $pedido->estado = $todasCerradas ? 'completado' : 'pendiente';
+                if ($todasCerradas && $pedido->isFillable('fecha_completado')) {
+                    $pedido->fecha_completado = $pedido->fecha_completado ?? now();
                 }
-                if ($pedido->isFillable('fecha_completado')) {
-                    $pedido->fecha_completado = now();
-                }
-                if ($pedido->isFillable('updated_by')) {
-                    $pedido->updated_by = auth()->id();
-                }
+                if ($pedido->isFillable('updated_by')) $pedido->updated_by = auth()->id();
                 $pedido->save();
-
-                // Recalcular estado del Pedido Global si aplica
-                if ($pedido->pedido_global_id) {
-                    $pg = \App\Models\PedidoGlobal::where('id', $pedido->pedido_global_id)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if ($pg && method_exists($pg, 'actualizarEstadoSegunProgreso')) {
-                        $pg->actualizarEstadoSegunProgreso(); // pasará a en curso/completado/pendiente según acumulado
-                    }
-                }
             });
 
-            return back()->with('success', 'Pedido completado manualmente.');
+            return back()->with('success', 'Línea completada y pedido recalculado.');
         } catch (\Throwable $e) {
-            Log::error('Error al completar pedido manualmente', [
-                'pedido_id' => $id,
-                'msg' => $e->getMessage(),
+            Log::error('Error al completar línea manualmente', [
+                'pedido_id' => $pedido->id,
+                'linea_id'  => $linea->id ?? null,
+                'msg'       => $e->getMessage(),
             ]);
-            return back()->with('error', 'No se pudo completar manualmente. Consulta con administración.');
+            return back()->with('error', 'No se pudo completar la línea.');
         }
     }
 

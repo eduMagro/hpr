@@ -24,6 +24,7 @@
                         <th class="p-2 border">{!! $ordenables['tipo'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['producto_id'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['descripcion'] !!}</th>
+                        <th class="p-2 border">{!! $ordenables['nave'] ?? 'Nave' !!}</th>
                         <th class="p-2 border">{!! $ordenables['prioridad'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['solicitado_por'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['ejecutado_por'] !!}</th>
@@ -50,6 +51,17 @@
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.input name="descripcion" value="{{ request('descripcion') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.select name="nave_id" class="form-select">
+                                    <option value="">-- Selecciona nave --</option>
+                                    @foreach (\App\Models\Obra::getNavesPacoReyes() as $nave)
+                                        <option value="{{ $nave->id }}"
+                                            {{ request('nave_id') == $nave->id ? 'selected' : '' }}>
+                                            {{ $nave->obra }}
+                                        </option>
+                                    @endforeach
+                                </x-tabla.select>
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.select name="prioridad" :options="[
@@ -116,6 +128,13 @@
                             <td class="px-6 py-4 text-sm text-gray-500 text-center"
                                 title="{{ $movimiento->descripcion }}">
                                 {{ Str::limit($movimiento->descripcion, 50) ?? '—' }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-500 text-center">
+                                @if ($movimiento->nave)
+                                    {{ $movimiento->nave->obra }}
+                                @else
+                                    <span class="text-gray-400">—</span>
+                                @endif
                             </td>
 
                             <td class="px-6 py-4 text-sm text-gray-500 text-center">
