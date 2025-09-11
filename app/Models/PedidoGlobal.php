@@ -70,20 +70,16 @@ class PedidoGlobal extends Model
 
     public function actualizarEstadoSegunProgreso(): void
     {
-        // Opcional: si guardas un cache del acumulado en una columna 'peso_acumulado'
         $sum = (float) $this->pedidos()
-            // si quieres ser ultra-estricto: ->whereRaw('LOWER(estado) != ?', ['cancelado'])
+            // ->whereRaw('LOWER(estado) != ?', ['cancelado']) // si te interesa
             ->sum('peso_total');
 
-        $this->peso_acumulado = $sum; // quita esta línea si no tienes la columna
-
         $objetivo = (float) ($this->cantidad_total ?? 0);
-        $epsilon  = 0.001; // tolerancia por decimales (kg)
+        $epsilon  = 0.001;
 
-        $nuevoEstado = $this->estado; // por defecto, mantener
+        $nuevoEstado = $this->estado;
 
         if ($objetivo <= 0) {
-            // Sin objetivo no se puede completar: considera 'en curso' si hay algo, si no 'pendiente'
             $nuevoEstado = ($sum > $epsilon) ? self::ESTADO_EN_CURSO : self::ESTADO_PENDIENTE;
         } else {
             if ($sum + $epsilon >= $objetivo) {
@@ -95,22 +91,12 @@ class PedidoGlobal extends Model
             }
         }
 
-        // Solo persistir si cambió algo relevante
-        $dirty = false;
-
-        if (property_exists($this, 'peso_acumulado') && $this->isDirty('peso_acumulado')) {
-            $dirty = true;
-        }
-
         if ($this->estado !== $nuevoEstado) {
             $this->estado = $nuevoEstado;
-            $dirty = true;
-        }
-
-        if ($dirty) {
             $this->save();
         }
     }
+
 
 
     // Relación con pedidos individuales
@@ -129,19 +115,44 @@ class PedidoGlobal extends Model
         return $this->belongsTo(Distribuidor::class, 'distribuidor_id');
     }
 
-    // Accesor para calcular la cantidad restante
-    public function getCantidadRestanteAttribute()
+    public function getCantidadRestanteAttribute(): float
     {
-        // Sumar la cantidad de todas las líneas de pedido (pedidoProductos) de los pedidos hijos
-        $cantidadPedida = $this->pedidos()
-            ->with('pedidoProductos') // usamos la relación correcta
-            ->get()
-            ->flatMap->pedidoProductos
+        // Suma solo líneas ACTIVAS de pedidos ACTIVOS del mismo PedidoGlobal
+        $cantidadPedida = (float) PedidoProducto::whereHas('pedido', function ($q) {
+            $q->where('pedido_global_id', $this->id)
+                ->where(function ($q2) {
+                    $q2->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
+                });
+        })
+            ->where(function ($q) {
+                $q->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
+            })
             ->sum('cantidad');
 
-        return max(0, $this->cantidad_total - $cantidadPedida);
+        $objetivo = (float) ($this->cantidad_total ?? 0);
+        return max(0.0, $objetivo - $cantidadPedida);
     }
 
+    public function getProgresoAttribute(): float
+    {
+        $objetivo = (float) ($this->cantidad_total ?? 0);
+        if ($objetivo <= 0) {
+            return 0.0;
+        }
+
+        $acumulado = (float) PedidoProducto::whereHas('pedido', function ($q) {
+            $q->where('pedido_global_id', $this->id)
+                ->where(function ($q2) {
+                    $q2->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
+                });
+        })
+            ->where(function ($q) {
+                $q->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
+            })
+            ->sum('cantidad');
+
+        return round(($acumulado / $objetivo) * 100, 2);
+    }
 
 
 
@@ -155,22 +166,5 @@ class PedidoGlobal extends Model
             'id',                         // Local key en pedido_global
             'id'                          // Local key en pedidos
         );
-    }
-
-    // Accesor para calcular el % de avance
-    public function getProgresoAttribute()
-    {
-        if ($this->cantidad_total == 0) {
-            return 0;
-        }
-
-        // Sumar la cantidad recepcionada de todas las líneas de pedido (pedidoProductos)
-        $acumulado = $this->pedidos()
-            ->with('pedidoProductos')
-            ->get()
-            ->flatMap->pedidoProductos
-            ->sum('cantidad');
-
-        return round(($acumulado / $this->cantidad_total) * 100, 2);
     }
 }
