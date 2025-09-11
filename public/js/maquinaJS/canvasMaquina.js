@@ -42,10 +42,12 @@ const DIM_RING_MARGIN = DIM_LINE_OFFSET + SIZE_DIM_TEXT + DIM_LABEL_LIFT + 6;
 
 function getEstadoColorFromCSSVar(contenedor) {
     const proceso = contenedor.closest(".proceso");
+
     if (!proceso) return "#e5e7eb";
     const color = getComputedStyle(proceso)
         .getPropertyValue("--bg-estado")
         .trim();
+
     return color || "#e5e7eb";
 }
 
@@ -167,6 +169,7 @@ function extraerDimensiones(dimensiones) {
             dims.push({ type: "line", length: parseFloat(t) });
         }
     }
+    console.log("Dims:", dims);
     return dims;
 }
 function computePathPoints(dims) {

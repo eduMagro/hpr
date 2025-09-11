@@ -6,6 +6,7 @@ use App\Models\Maquina;
 use App\Servicios\Etiquetas\Contratos\EtiquetaServicio;
 use Illuminate\Contracts\Container\Container;
 use InvalidArgumentException;
+use Illuminate\Support\Facades\Log;
 
 class FabricaEtiquetaServicio
 {
@@ -13,12 +14,41 @@ class FabricaEtiquetaServicio
 
     public function porMaquina(Maquina $maquina): EtiquetaServicio
     {
-        $mapa = config('maquinas.mapa_por_tipo', []);
-        $tipo = $maquina->tipo ?? null;
-        if (!$tipo || !isset($mapa[$tipo])) {
-            throw new InvalidArgumentException('No hay servicio de etiqueta configurado para el tipo de máquina: ' . ($tipo ?? 'desconocido'));
+        $tipo = $maquina->tipo;
+        if (!$tipo) {
+            throw new InvalidArgumentException('La máquina no tiene tipo definido.');
         }
-        $clase = $mapa[$tipo];
-        return $this->container->make($clase);
+        log::info("Fábrica de servicio para máquina ID {$maquina->id} de tipo {$tipo}");
+        // Rama especial para cortadora_dobladora
+        if ($tipo === 'cortadora_dobladora') {
+            $material = strtolower(trim((string)$maquina->tipo_material)); // 'barra' | 'encarretado'
+            $mapaMaterial = config('maquinas.cortadora_dobladora_por_material', []);
+            $clase = $mapaMaterial[$material] ?? null;
+
+            if (!$clase) {
+                throw new InvalidArgumentException(
+                    "No hay servicio configurado para cortadora_dobladora con tipo_material={$material}"
+                );
+            }
+
+            $servicio = $this->container->make($clase);
+            if (!$servicio instanceof EtiquetaServicio) {
+                throw new InvalidArgumentException("La clase [$clase] no implementa EtiquetaServicio");
+            }
+            return $servicio;
+        }
+
+        // Resto de tipos “simples”
+        $mapa = config('maquinas.mapa_por_tipo', []);
+        $clase = $mapa[$tipo] ?? null;
+        if (!$clase) {
+            throw new InvalidArgumentException("No hay servicio configurado para el tipo de máquina: {$tipo}");
+        }
+
+        $servicio = $this->container->make($clase);
+        if (!$servicio instanceof EtiquetaServicio) {
+            throw new InvalidArgumentException("La clase [$clase] no implementa EtiquetaServicio");
+        }
+        return $servicio;
     }
 }

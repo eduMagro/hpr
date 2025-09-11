@@ -1,93 +1,283 @@
 <x-app-layout>
-    @php
-        $planilla = $planillaCalculada['planilla'];
-    @endphp
+    <x-slot name="title">{{ $planilla->codigo_limpio }} - {{ config('app.name') }}</x-slot>
+
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            <a href="{{ route('planillas.index') }}" class="text-blue-500">
-                {{ __('Planillas') }}
-            </a>
-            <span> / </span>Elementos de Planilla <strong class="text-black">{{ $planilla->codigo_limpio }}</strong>
-        </h2>
-    </x-slot>
-
-    <div class="container mx-auto p-4">
-        <h1 class="text-2xl font-bold mb-4 text-black">Progreso de la Planilla</h1>
-
-        <div class="bg-white shadow-md rounded-lg p-6 mb-6">
-            <h2 class="text-lg font-semibold text-black">
-                Planilla: {{ $planilla->codigo_limpio }} (Peso Total: {{ number_format($planilla->peso_total, 2) }} kg)
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 text-black">
-                <p><strong>Cliente:</strong> {{ $planilla->cliente->empresa }}</p>
-                <p><strong>Obra:</strong> {{ $planilla->obra->obra }}</p>
-                <p><strong>Sección:</strong> {{ $planilla->seccion }}</p>
-                <p><strong>Descripción:</strong> {{ $planilla->descripcion }}</p>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                    Planilla <strong>{{ $planilla->codigo_limpio }}</strong>
+                </h2>
+                <p class="text-sm text-gray-600">
+                    Obra: <strong>{{ $planilla->obra->obra ?? '—' }}</strong> ·
+                    Cliente: <strong>{{ $planilla->cliente->empresa ?? '—' }}</strong> ·
+                    Sección: <strong>{{ $planilla->seccion ?? '—' }}</strong>
+                </p>
             </div>
-
-            <div class="w-full bg-gray-200 rounded-full h-6 mt-4">
-                <div class="bg-blue-600 text-xs font-medium text-white text-center p-1 leading-none rounded-full"
-                    style="width: {{ $planillaCalculada['progreso'] }}%">
-                    {{ number_format($planillaCalculada['progreso'], 2) }}%
+            <div class="w-full sm:w-auto">
+                <div class="w-full sm:w-64 bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div class="bg-blue-500 h-3 rounded-full" style="width: {{ $progreso }}%"></div>
                 </div>
+                <p class="text-right text-xs text-gray-500 mt-1">{{ $progreso }}%</p>
             </div>
         </div>
+    </x-slot>
 
-        @if ($planillaCalculada['paquetes']->isNotEmpty())
-            <h3 class="text-md font-semibold mt-6 text-black">Elementos Empaquetados</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                @foreach ($planillaCalculada['paquetes'] as $paquete)
-                    <div class="bg-white shadow-md rounded-lg p-4 border {{ $paquete->color }}">
-                        <strong class="text-black">Paquete #{{ $paquete->id }}</strong> -
-                        Peso: {{ number_format($paquete->peso, 2) }} kg
-                        @if (!is_null($paquete->ubicacion))
-                            - Ubicación: {{ $paquete->ubicacion->nombre }}
-                        @endif
+    <div class="w-full sm:px-4 py-6">
+        <div class="space-y-6">
+            @foreach ($maquinas as $clave => $maquina)
+                @php
+                    $bloque = $etiquetasPorMaquina->get($maquina->id ?? 'sin', collect());
+                    $maquinaTipo = strtolower(trim($maquina->tipo ?? 'normal'));
+                @endphp
 
-                        @if ($paquete->elementos->isNotEmpty())
-                            <h4 class="text-md font-semibold mt-4 text-gray-800">Elementos dentro del Paquete</h4>
-                            <ul class="list-disc list-inside ml-4 mt-2">
-                                @foreach ($paquete->elementos as $elemento)
-                                    <li class="p-2 rounded-lg {{ $elemento->color }} text-gray-600">
-                                        <strong>ET#</strong>{{ $elemento->etiquetaRelacion->id ?? null }} -
-                                        <strong>Elemento #{{ $elemento->id }}</strong> -
-                                        Peso: {{ number_format($elemento->peso, 2) }} kg
-                                        @if (!is_null($elemento->maquina))
-                                            - Máquina: {{ $elemento->diametro_mm }}
-                                        @endif
-                                    </li>
-                                @endforeach
-                            </ul>
+                <section class="bg-white border shadow rounded-lg">
+                    <header class="p-3 border-b flex items-center justify-between">
+                        <h3 class="font-semibold text-lg">{{ $maquina->nombre ?? 'Sin máquina' }}</h3>
+                    </header>
+
+                    <div class="p-3">
+                        @if ($bloque->isEmpty())
+                            <p class="text-sm text-gray-500">No hay etiquetas en esta máquina.</p>
                         @else
-                            <p class="text-gray-500 text-sm mt-2">No hay etiquetas ni elementos en este paquete.</p>
-                        @endif
+                            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                @foreach ($bloque as $item)
+                                    @php $etiqueta = $item['etiqueta'] ?? null; @endphp
+                                    @continue(!$etiqueta || !$etiqueta->id) {{-- si no hay id, saltamos --}}
 
-                    </div>
-                @endforeach
-            </div>
-        @else
-            <p class="text-gray-500 mt-4">No hay paquetes empaquetados.</p>
-        @endif
+                                    <x-etiqueta.etiqueta :etiqueta="$etiqueta" :planilla="$planilla" :maquina-tipo="$maquinaTipo" />
+                                @endforeach
 
-        @if ($planillaCalculada['elementosSinPaquete']->isNotEmpty())
-            <h3 class="text-md font-semibold mt-8 text-gray-800">Elementos sin paquete</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                @foreach ($planillaCalculada['elementosSinPaquete'] as $elemento)
-                    <div class="bg-white shadow-md rounded-lg p-4 border {{ $elemento->color }} text-gray-800">
-                        <strong>Elemento #{{ $elemento->id }}</strong> -
-                        Peso: {{ number_format($elemento->peso, 2) }} kg
-                        @if (!is_null($elemento->maquina))
-                            - Máquina: {{ $elemento->maquina->nombre }}
-                        @endif
-                        @if (!is_null($elemento->ubicacion))
-                            - Ubicación: {{ $elemento->ubicacion->nombre }}
+                            </div>
                         @endif
                     </div>
-                @endforeach
-            </div>
-        @else
-            <p class="text-gray-500 mt-4">No hay elementos sin paquete.</p>
-        @endif
-
+                </section>
+            @endforeach
+        </div>
     </div>
+    {{-- === Variables que LEE canvasMaquina.js === --}}
+    <script>
+        // 👇 ESTE nombre es el que usa canvasMaquina.js
+        window.elementosAgrupadosScript = @json($elementosAgrupadosScript);
+        // otros datasets opcionales que tu script pudiera consultar:
+        window.pesosElementos = @json($pesosElementos ?? []);
+        window.SUGERENCIAS = window.SUGERENCIAS || {};
+    </script>
+
+    {{-- Solo los JS necesarios. Ojo al orden: datasets -> canvasMaquina --}}
+    <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
+    <script src="{{ asset('js/imprimirQrS.js') }}"></script>
+
+    {{-- Helper de impresión (mismo flujo que en la vista de máquina) --}}
+    <script>
+        const domSafe = (v) => String(v).replace(/[^A-Za-z0-9_-]/g, '-');
+
+        async function imprimirEtiquetas(ids) {
+            if (!Array.isArray(ids)) ids = [ids];
+
+            const etiquetasHtml = [];
+            for (const rawId of ids) {
+                const safeId = domSafe(rawId);
+
+                let contenedor =
+                    document.getElementById(`etiqueta-${safeId}`) ||
+                    document.getElementById(`etiqueta-${rawId}`);
+                if (!contenedor) continue;
+
+                let canvas =
+                    document.getElementById(`canvas-imprimir-etiqueta-${safeId}`) ||
+                    document.getElementById(`canvas-imprimir-etiqueta-${rawId}`) ||
+                    contenedor.querySelector('canvas');
+
+                let canvasImg = null;
+                if (canvas && (canvas.width || canvas.height)) {
+                    const scale = 2;
+                    const tmp = document.createElement('canvas');
+                    const w = canvas.width || canvas.getBoundingClientRect().width || 600;
+                    const h = canvas.height || canvas.getBoundingClientRect().height || 200;
+                    tmp.width = Math.max(1, Math.round(w * scale));
+                    tmp.height = Math.max(1, Math.round(h * scale));
+                    const ctx = tmp.getContext('2d');
+                    ctx.scale(scale, scale);
+                    ctx.drawImage(canvas, 0, 0);
+                    canvasImg = tmp.toDataURL('image/png');
+                }
+
+                const clone = contenedor.cloneNode(true);
+                clone.classList.add('etiqueta-print');
+                clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+                if (canvasImg) {
+                    const targetCanvas = clone.querySelector('canvas');
+                    const host = targetCanvas ? targetCanvas.parentNode : clone;
+                    if (host) {
+                        if (targetCanvas) targetCanvas.remove();
+                        const img = new Image();
+                        img.src = canvasImg;
+                        img.style.width = '100%';
+                        img.style.height = 'auto';
+                        host.appendChild(img);
+                    }
+                }
+
+                const tempQR = document.createElement('div');
+                document.body.appendChild(tempQR);
+                await new Promise(res => {
+                    new QRCode(tempQR, {
+                        text: String(rawId),
+                        width: 50,
+                        height: 50
+                    });
+                    setTimeout(() => {
+                        const qrImg = tempQR.querySelector('img');
+                        const qrCanvas = tempQR.querySelector('canvas');
+                        const qrNode = qrImg || (qrCanvas ? (() => {
+                            const img = new Image();
+                            img.src = qrCanvas.toDataURL();
+                            return img;
+                        })() : null);
+
+                        if (qrNode) {
+                            qrNode.classList.add('qr-print');
+                            const qrBox = document.createElement('div');
+                            qrBox.className = 'qr-box';
+                            qrBox.appendChild(qrNode);
+                            clone.insertBefore(qrBox, clone.firstChild);
+                        }
+                        tempQR.remove();
+                        res();
+                    }, 150);
+                });
+
+                etiquetasHtml.push(clone.outerHTML);
+            }
+
+            const css = `
+            <style>
+                @page{size:A4 portrait;margin:10;}
+                body{margin:0;padding:0;background:#fff;}
+                .sheet-grid{
+                  display:grid;
+                  grid-template-columns:105mm 105mm;
+                  grid-template-rows:repeat(5,59.4mm);
+                  width:210mm;height:297mm;
+                }
+                .etiqueta-print{
+                  position:relative;width:105mm;height:59.4mm;
+                  box-sizing:border-box;border:0.2mm solid #000;
+                  overflow:hidden;padding:3mm;background:#fff;
+                  page-break-inside:avoid;
+                }
+                .etiqueta-print h2{font-size:10pt;margin:0;}
+                .etiqueta-print h3{font-size:9pt;margin:0;}
+                .etiqueta-print img:not(.qr-print){width:100%;height:auto;margin-top:2mm;}
+                .qr-box{
+                  position:absolute;top:3mm;right:3mm;
+                  border:0.2mm solid #000;padding:1mm;background:#fff;
+                }
+                .qr-box img{width:16mm;height:16mm;}
+                .no-print{display:none!important;}
+            </style>`;
+
+            const w = window.open('', '_blank');
+            w.document.open();
+            w.document.write(`
+              <html>
+                <head><title>Impresión</title>${css}</head>
+                <body>
+                  <div class="sheet-grid">${etiquetasHtml.join('')}</div>
+                  <script>
+                    window.onload = () => {
+                      const imgs = document.images;
+                      let loaded = 0, total = imgs.length;
+                      if(total===0){window.print();setTimeout(()=>window.close(),500);return;}
+                      for(const img of imgs){
+                        if(img.complete){
+                          loaded++; if(loaded===total){window.print();setTimeout(()=>window.close(),500);}
+                        }else{
+                          img.onload = img.onerror = () => { loaded++; if(loaded===total){window.print();setTimeout(()=>window.close(),500);} };
+                        }
+                      }
+                    };
+                  <\/script>
+                </body>
+              </html>
+            `);
+            w.document.close();
+        }
+
+        // Bloquear menú contextual sólo en tarjetas de etiqueta (igual que en máquina)
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.closest('.proceso')) e.preventDefault();
+        }, {
+            capture: true
+        });
+    </script>
+
+    {{-- Estilos de impresión en línea (coherentes con máquina) --}}
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+        }
+
+        .sheet-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(5, 1fr);
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .etiqueta-print {
+            position: relative;
+            width: 105mm;
+            height: 59.4mm;
+            box-sizing: border-box;
+            border: 0.2mm solid #000;
+            overflow: hidden;
+            background: #fff;
+            page-break-inside: avoid;
+            padding: 4mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .qr-box {
+            position: absolute;
+            top: 2%;
+            right: 2%;
+            border: 0.2mm solid #000;
+            padding: 2px;
+            background: #fff;
+        }
+
+        .qr-box img {
+            width: 20mm;
+            height: 20mm;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .proceso,
+        .proceso * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
 </x-app-layout>

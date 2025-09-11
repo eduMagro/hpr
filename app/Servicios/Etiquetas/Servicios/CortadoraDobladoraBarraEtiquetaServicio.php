@@ -18,14 +18,15 @@ use Illuminate\Support\Str;
 use RuntimeException;
 use App\Servicios\Exceptions\ServicioEtiquetaException;
 
-class CortadoraDobladoraEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServicio
+
+class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase implements EtiquetaServicio
 {
     public function actualizar(ActualizarEtiquetaDatos $datos): ActualizarEtiquetaResultado
     {
         return DB::transaction(function () use ($datos) {
             /** @var Maquina $maquina */
             $maquina = Maquina::findOrFail($datos->maquinaId);
-
+            log::info("CortadoraDobladoraBarraEtiquetaServicio::actualizar - Iniciando actualización para etiqueta {$datos->etiquetaSubId} en máquina {$maquina->id}");
             // Bloqueo etiqueta + elementos
             $etiqueta = Etiqueta::with('planilla')
                 ->where('etiqueta_sub_id', $datos->etiquetaSubId)

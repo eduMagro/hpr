@@ -351,7 +351,12 @@ class EtiquetaController extends Controller
             // -------------------------------------------- ESTADO PENDIENTE --------------------------------------------
             switch ($etiqueta->estado) {
                 case 'pendiente':
-
+                    log::info("Etiqueta {$id}: estado pendiente");
+                    // Si la etiqueta está pendiente, verificar si ya están todos los elementos fabricados
+                    if ($numeroElementosCompletadosEnMaquina >= $numeroElementosTotalesEnEtiqueta) {
+                        // Actualizar estado de la etiqueta a "fabricado"
+                        $etiqueta->update(['estado' => 'fabricado']);
+                    }
                     // ─────────────────────────────────────────────────────────────────────
                     // 1) LOG AUXILIAR: contexto de lo que vamos a necesitar
                     // ─────────────────────────────────────────────────────────────────────
@@ -1528,7 +1533,7 @@ class EtiquetaController extends Controller
                 operario2Id: auth()->user()->compañeroDeTurno()?->id,
                 opciones: []
             );
-
+            log::info('ActualizarEtiquetaViaServicio');
             /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
             $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
             $servicio = $fabrica->porMaquina($maquina);
