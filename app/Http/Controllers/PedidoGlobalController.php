@@ -99,13 +99,17 @@ class PedidoGlobalController extends Controller
     {
         $query = PedidoGlobal::with(['fabricante', 'distribuidor', 'pedidos']);
 
-        // Aplicar filtros
+        // Filtros
         $this->aplicarFiltrosPedidosGlobales($query, $request);
 
-        // Paginación configurable
+        // 👉 Clon para totales filtrados (sin paginar)
+        $queryFiltrado = (clone $query);
+
+        // Paginación
         $perPage = $request->input('per_page', 10);
         $pedidosGlobales = $query->paginate($perPage)->appends($request->all());
 
+        // Filtros activos y ordenables
         $filtrosActivos = $this->filtrosActivosPedidosGlobales($request);
         $ordenables = [
             'codigo' => $this->getOrdenamientoPedidosGlobales('codigo', 'Código'),
@@ -119,8 +123,50 @@ class PedidoGlobalController extends Controller
         $fabricantes = Fabricante::select('id', 'nombre')->get();
         $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
-        return view('pedidos_globales.index', compact('pedidosGlobales', 'filtrosActivos', 'ordenables', 'fabricantes', 'distribuidores'));
+        /* ─────────────────────────────────────────────────────────
+     |  TOTALES (Página y Filtrado)
+     |  Nota: asumo que $pedido->cantidad_restante es un accessor.
+     |  Si es columna real, puedes usar sum('cantidad_restante') directamente.
+     ───────────────────────────────────────────────────────── */
+
+        // // Totales de la página actual (colección paginada)
+        // $totalesPagina = [
+        //     'cantidad_total'     => $pedidosGlobales->getCollection()->sum('cantidad_total'),
+        //     'cantidad_restante'  => $pedidosGlobales->getCollection()->sum(function ($p) {
+        //         return (float) ($p->cantidad_restante ?? 0);
+        //     }),
+        // ];
+
+        // Totales del conjunto filtrado (sin paginar)
+        // cantidad_total se puede sumar en SQL directamente
+        $totalFiltradoCantidadTotal = (clone $queryFiltrado)->sum('cantidad_total');
+
+        // cantidad_restante (si es accessor) lo sumamos en PHP de forma eficiente
+        $totalFiltradoCantidadRestante = 0.0;
+        (clone $queryFiltrado)
+            ->select('pedidos_globales.*') // ajusta el nombre real de la tabla si es distinto
+            ->orderBy('id')
+            ->lazyById(1000, 'id')
+            ->each(function ($p) use (&$totalFiltradoCantidadRestante) {
+                $totalFiltradoCantidadRestante += (float) ($p->cantidad_restante ?? 0);
+            });
+
+        $totalesFiltrados = [
+            'cantidad_total'    => $totalFiltradoCantidadTotal,
+            'cantidad_restante' => $totalFiltradoCantidadRestante,
+        ];
+
+        return view('pedidos_globales.index', compact(
+            'pedidosGlobales',
+            'filtrosActivos',
+            'ordenables',
+            'fabricantes',
+            'distribuidores',
+            // 'totalesPagina',
+            'totalesFiltrados'
+        ));
     }
+
 
     // Mostrar formulario de creación
     public function create()

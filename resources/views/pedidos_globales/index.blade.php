@@ -184,6 +184,31 @@
                     @endforelse
 
                 </tbody>
+                <tfoot class="bg-gray-100 text-xs uppercase">
+                    {{-- Totales de la página
+                    <tr>
+                        <td class="p-2 border text-right font-semibold" colspan="4">Totales (página)</td>
+                        <td class="p-2 border font-semibold">
+                            {{ number_format($totalesPagina['cantidad_total'] ?? 0, 2, ',', '.') }} kg
+                        </td>
+                        <td class="p-2 border font-semibold">
+                            {{ number_format($totalesPagina['cantidad_restante'] ?? 0, 2, ',', '.') }} kg
+                        </td>
+                        <td class="p-2 border" colspan="4"></td>
+                    </tr> --}}
+
+                    {{-- Totales del filtrado completo --}}
+                    <tr>
+                        <td class="p-2 border text-right font-semibold" colspan="4">Totales (filtrado)</td>
+                        <td class="p-2 border font-semibold">
+                            {{ number_format($totalesFiltrados['cantidad_total'] ?? 0, 2, ',', '.') }} kg
+                        </td>
+                        <td class="p-2 border font-semibold">
+                            {{ number_format($totalesFiltrados['cantidad_restante'] ?? 0, 2, ',', '.') }} kg
+                        </td>
+                        <td class="p-2 border" colspan="4"></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
 
