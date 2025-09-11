@@ -347,7 +347,7 @@ class MovimientoController extends Controller
             'tipo' => 'required',
             'producto_id' => 'nullable|exists:productos,id',
             'producto_base_id' => 'required_if:tipo,recarga_materia_prima|exists:productos_base,id',
-            'paquete_id' => 'required_if: tipo,paquete|nullable|exists:paquetes,id',
+            'paquete_id' => 'required_if:tipo,paquete|nullable|exists:paquetes,id',
             'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
             'maquina_id' => 'nullable|exists:maquinas,id',
         ], [
@@ -374,43 +374,59 @@ class MovimientoController extends Controller
 
         try {
             DB::transaction(function () use ($request) {
-                switch ($request->tipo) {
-                    //__________________________________ RECARGA MATERIA PRIMA __________________________________
-                    case 'recarga_materia_prima':
-                        $productoBase = null;
 
+                switch ($request->tipo) {
+
+                    // __________________________ RECARGA MATERIA PRIMA __________________________
+                    case 'recarga_materia_prima':
+
+                        // máquina destino obligatoria para este tipo
+                        /** @var \App\Models\Maquina|null $maquina */
+                        $maquina = Maquina::find($request->maquina_id);
+                        if (!$maquina) {
+                            throw new \Exception('No se encontró la máquina destino para asignar la nave.');
+                        }
+                        $naveId = $maquina->obra_id;
+
+                        if (!$naveId) {
+                            throw new \Exception('La máquina seleccionada no tiene una nave asignada (obra_id).');
+                        }
+
+
+                        // Resolver producto base (desde producto o producto_base_id)
                         if ($request->filled('producto_id')) {
                             $productoReferencia = Producto::with('productoBase')->find($request->producto_id);
-                            $productoBase = $productoReferencia->productoBase;
+                            $productoBase = $productoReferencia?->productoBase;
                         } else {
                             $productoBase = ProductoBase::find($request->producto_base_id);
                         }
-
-                        $maquina = Maquina::find($request->maquina_id);
+                        if (!$productoBase) {
+                            throw new \Exception('No se pudo resolver el producto base.');
+                        }
 
                         $tipo = strtolower($productoBase->tipo ?? 'N/A');
                         $diametro = $productoBase->diametro ?? '?';
                         $longitud = $productoBase->longitud ?? '?';
-
                         $nombreMaquina = $maquina->nombre ?? 'desconocida';
 
                         $descripcion = "Se solicita materia prima del tipo {$tipo} (Ø{$diametro}, {$longitud} mm) en la máquina {$nombreMaquina}";
 
                         $yaExiste = Movimiento::where('tipo', 'Recarga materia prima')
                             ->where('producto_base_id', $productoBase->id)
-                            ->where('maquina_destino', $request->maquina_id)
+                            ->where('maquina_destino', $maquina->id)
                             ->where('estado', 'pendiente')
                             ->exists();
 
                         if ($yaExiste) {
-                            throw new \Exception("Ya existe una solicitud pendiente..");
+                            throw new \Exception('Ya existe una solicitud pendiente para esta máquina y producto base.');
                         }
 
                         Movimiento::create([
                             'tipo'              => 'Recarga materia prima',
+                            'nave_id'           => $naveId,              // <<<<<<
                             'maquina_origen'    => null,
-                            'maquina_destino'   => $request->maquina_id,
-                            'producto_id'       => null, // puede ser null
+                            'maquina_destino'   => $maquina->id,
+                            'producto_id'       => null,
                             'producto_base_id'  => $productoBase->id,
                             'estado'            => 'pendiente',
                             'descripcion'       => $descripcion,
@@ -418,23 +434,42 @@ class MovimientoController extends Controller
                             'fecha_solicitud'   => now(),
                             'solicitado_por'    => auth()->id(),
                         ]);
-
-
                         break;
 
-
-                    //__________________________________ MOVIMIENTO PAQUETE __________________________________
+                    // __________________________ MOVIMIENTO PAQUETE __________________________
                     case 'paquete':
                         $paquete = Paquete::findOrFail($request->paquete_id);
+
+                        // Determinar nave_id = obra_id de la máquina
+                        // 1) Si hay máquina destino en la solicitud, usar esa
+                        // 2) Si no, usar la máquina actual del paquete (origen), si existe
+                        // 3) Si ninguna, queda null (último recurso)
+                        $maquinaDestino = $request->maquina_id ? Maquina::find($request->maquina_id) : null;
+                        $maquinaOrigen = $paquete->maquina_id ? Maquina::find($paquete->maquina_id) : null;
+
+                        $maquinaParaNave = $maquinaDestino ?: $maquinaOrigen;
+
+                        if (!$maquinaParaNave) {
+                            throw new \Exception('No se puede determinar la máquina para asignar la nave.');
+                        }
+
+                        $naveId = $maquinaParaNave->obra_id;
+
+                        if (!$naveId) {
+                            throw new \Exception('La máquina relacionada no tiene una nave (obra_id) asignada.');
+                        }
 
                         $nombreUbicacion = optional($paquete->ubicacion)->nombre ?? 'desconocida';
                         $descripcion = "Se solicita mover el paquete #{$paquete->codigo} desde {$nombreUbicacion}";
 
                         Movimiento::create([
                             'tipo'               => 'Movimiento de paquete',
+                            'nave_id'            => $naveId,                 // <<<<<<
                             'paquete_id'         => $paquete->id,
                             'ubicacion_origen'   => $paquete->ubicacion_id,
                             'maquina_origen'     => $paquete->maquina_id,
+                            'ubicacion_destino'  => $request->ubicacion_destino, // si aplicara
+                            'maquina_destino'    => $request->maquina_id,        // si aplicara
                             'estado'             => 'pendiente',
                             'prioridad'          => 3,
                             'fecha_solicitud'    => now(),
@@ -442,7 +477,6 @@ class MovimientoController extends Controller
                             'descripcion'        => $descripcion,
                         ]);
                         break;
-
 
                     default:
                         throw new \Exception('Tipo de movimiento no reconocido.');
@@ -452,10 +486,10 @@ class MovimientoController extends Controller
             return redirect()->back()->with('success', 'Movimiento creado correctamente.');
         } catch (\Exception $e) {
             Log::error('Error al registrar movimiento: ' . $e->getMessage());
-
             return redirect()->back()->with('error', 'No se ha podido crear el movimiento.');
         }
     }
+
 
     //------------------------------------------------ STORE() --------------------------------------------------------
     public function store(Request $request)
@@ -487,9 +521,23 @@ class MovimientoController extends Controller
             $maquinaDetectada = Maquina::where('codigo', $ubicacion->descripcion)->first();
         }
 
+        $naveId = auth()->user()?->lugarActualTrabajador();
+
+        if (!$naveId) {
+            $mensaje = 'No se puede determinar tu nave de trabajo actual. ¿Has fichado entrada?.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $mensaje,
+                ], 422);
+            }
+
+            return back()->with('error', $mensaje);
+        }
 
         try {
-            DB::transaction(function () use ($codigo, $ubicacion, $maquinaDetectada) {
+            DB::transaction(function () use ($codigo, $ubicacion, $maquinaDetectada, $naveId) {
                 $producto = null;
                 $paquete = null;
 
@@ -555,6 +603,7 @@ class MovimientoController extends Controller
                                 'maquina_destino'    => $maquinaDetectada->id,
                                 'estado'             => 'completado',
                                 'descripcion'        => $descripcion,
+                                'nave_id'            => $naveId,
                                 'fecha_ejecucion'    => now(),
                                 'ejecutado_por'      => auth()->id(),
                             ]);
@@ -593,6 +642,7 @@ class MovimientoController extends Controller
                             'maquina_destino'    => null,
                             'estado'             => 'completado',
                             'descripcion'        => $descripcion,
+                            'nave_id'            => $naveId,
                             'fecha_ejecucion'    => now(),
                             'ejecutado_por'      => auth()->id(),
                         ]);
@@ -639,6 +689,7 @@ class MovimientoController extends Controller
                             'maquina_destino'    => $maquinaDetectada?->id,
                             'estado'             => 'completado',
                             'descripcion'        => $descripcion,
+                            'nave_id'            => $naveId,
                             'fecha_ejecucion'    => now(),
                             'ejecutado_por'      => auth()->id(),
                         ]);
