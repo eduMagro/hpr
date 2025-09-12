@@ -1317,13 +1317,7 @@ class PlanillaController extends Controller
 
                 // Actualizar datos agregados de la subetiqueta
                 $subEtiqueta->update([
-                    'peso'  => $subEtiqueta->elementos()->sum('peso'),
-                    'marca' => $subEtiqueta->elementos()
-                        ->whereNotNull('marca')
-                        ->select('marca', DB::raw('COUNT(*) as total'))
-                        ->groupBy('marca')
-                        ->orderByDesc('total')
-                        ->value('marca'),
+                    'peso' => $subEtiqueta->elementos()->sum('peso'),
                 ]);
             }
 
