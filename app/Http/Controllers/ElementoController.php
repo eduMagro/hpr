@@ -252,17 +252,17 @@ class ElementoController extends Controller
         $campo = $request->campo;
         $valor = $request->valor;
 
-        \Log::info("Actualizando elemento {$elemento->id}, campo: {$campo}, valor: '{$valor}'");
+        Log::info("Actualizando elemento {$elemento->id}, campo: {$campo}, valor: '{$valor}'");
 
         $camposPermitidos = ['maquina_id', 'maquina_id_2', 'maquina_id_3'];
         if (!in_array($campo, $camposPermitidos)) {
-            \Log::warning("Campo no permitido: {$campo}");
+            Log::warning("Campo no permitido: {$campo}");
             return response()->json(['error' => 'Campo no permitido'], 403);
         }
 
         $planillaId = $elemento->planilla_id;
 
-        \DB::beginTransaction();
+        DB::beginTransaction();
         try {
             // 🧠 Máquina real original (antes del cambio)
             $maquinaOriginal = $this->obtenerMaquinaReal($elemento);
@@ -273,13 +273,13 @@ class ElementoController extends Controller
                 $elemento->save();
 
                 // 🧹 OrdenPlanilla si se queda vacía la máquina original
-                $quedanElementos = \App\Models\Elemento::where('planilla_id', $planillaId)
+                $quedanElementos = Elemento::where('planilla_id', $planillaId)
                     ->get()
                     ->filter(fn($e) => $this->obtenerMaquinaReal($e) === $maquinaOriginal)
                     ->isNotEmpty();
 
                 if (!$quedanElementos) {
-                    $ordenOriginal = \App\Models\OrdenPlanilla::where('planilla_id', $planillaId)
+                    $ordenOriginal = OrdenPlanilla::where('planilla_id', $planillaId)
                         ->where('maquina_id', $maquinaOriginal)
                         ->first();
 
@@ -287,13 +287,13 @@ class ElementoController extends Controller
                         $pos = $ordenOriginal->posicion;
                         $ordenOriginal->delete();
 
-                        \App\Models\OrdenPlanilla::where('maquina_id', $maquinaOriginal)
+                        OrdenPlanilla::where('maquina_id', $maquinaOriginal)
                             ->where('posicion', '>', $pos)
                             ->decrement('posicion');
                     }
                 }
 
-                \DB::commit();
+                DB::commit();
                 return response()->json([
                     'ok' => true,
                     'campo' => $campo,
@@ -302,11 +302,26 @@ class ElementoController extends Controller
             }
 
             // ✅ Nueva máquina
-            $nuevaMaquina = \App\Models\Maquina::find($valor);
+            $nuevaMaquina = Maquina::find($valor);
             if (!$nuevaMaquina) {
-                \DB::rollBack();
+                DB::rollBack();
                 return response()->json(['error' => 'Máquina no encontrada'], 404);
             }
+
+            // ⛔ Validación de diámetro
+            // ⛔ Validación de diámetro
+            [$ok, $msg] = $this->validarDiametroMaquina($nuevaMaquina, $elemento);
+            if (!$ok) {
+                DB::rollBack();
+                return response()->json([
+                    'swal' => [
+                        'icon'  => 'error',
+                        'title' => 'Diámetro no válido',
+                        'text'  => $msg,
+                    ]
+                ], 422);
+            }
+
 
             // 1️⃣ Cambiar el campo de máquina solicitado y guardar
             $elemento->$campo = $nuevaMaquina->id;
@@ -318,15 +333,15 @@ class ElementoController extends Controller
 
             // ================== SUBETIQUETA: unir por PREFIJO + NOMBRE, o crear ==================
             $subIdOriginal = $elemento->getOriginal('etiqueta_sub_id'); // antes del cambio de sub
-            $etiquetaPadre = \App\Models\Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
+            $etiquetaPadre = Etiqueta::lockForUpdate()->findOrFail($elemento->etiqueta_id);
 
             $codigoPadre = (string) $etiquetaPadre->codigo;      // p.ej. ETQ2509010
             $prefijoSub  = $codigoPadre . '.';                   // p.ej. ETQ2509010.
-            $nombreObj   = \Illuminate\Support\Str::of((string)$etiquetaPadre->nombre)
+            $nombreObj   = Str::of((string)$etiquetaPadre->nombre)
                 ->lower()->ascii()->replaceMatches('/\s+/', ' ')->trim()->__toString();
 
             // Candidatos: misma etiqueta_id, sub-id con el prefijo
-            $candidatos = \App\Models\Elemento::where('etiqueta_id', $elemento->etiqueta_id)
+            $candidatos = Elemento::where('etiqueta_id', $elemento->etiqueta_id)
                 ->whereNotNull('etiqueta_sub_id')
                 ->where('etiqueta_sub_id', 'like', $prefijoSub . '%')
                 ->lockForUpdate()
@@ -341,9 +356,9 @@ class ElementoController extends Controller
             $subIds = $gruposValidos->keys()->values()->all();
             $nombresPorSub = collect();
             if (!empty($subIds)) {
-                $nombresPorSub = \App\Models\Etiqueta::whereIn('etiqueta_sub_id', $subIds)
+                $nombresPorSub = Etiqueta::whereIn('etiqueta_sub_id', $subIds)
                     ->pluck('nombre', 'etiqueta_sub_id')
-                    ->map(fn($n) => \Illuminate\Support\Str::of((string)$n)->lower()->ascii()->replaceMatches('/\s+/', ' ')->trim()->__toString());
+                    ->map(fn($n) => Str::of((string)$n)->lower()->ascii()->replaceMatches('/\s+/', ' ')->trim()->__toString());
             }
 
             $gruposCompatibles = $gruposValidos->filter(function ($grupo, $subId) use ($nombresPorSub, $nombreObj) {
@@ -369,7 +384,7 @@ class ElementoController extends Controller
 
             // ¿El sub-id original está compartido por otros?
             $estaCompartido = $subIdOriginal
-                ? \App\Models\Elemento::where('etiqueta_sub_id', $subIdOriginal)
+                ? Elemento::where('etiqueta_sub_id', $subIdOriginal)
                 ->where('id', '!=', $elemento->id)
                 ->lockForUpdate()
                 ->exists()
@@ -383,9 +398,9 @@ class ElementoController extends Controller
             } else {
                 // No hay hermano compatible: si no tenía sub o estaba compartido → crear nuevo
                 if (!$subIdOriginal || $estaCompartido) {
-                    $subIdDestino = \App\Models\Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
+                    $subIdDestino = Etiqueta::generarCodigoSubEtiqueta($codigoPadre);
                     // Crear fila etiquetas de la sub con el nombre del padre (si no existe)
-                    $existeSub = \App\Models\Etiqueta::where('etiqueta_sub_id', $subIdDestino)->exists();
+                    $existeSub = Etiqueta::where('etiqueta_sub_id', $subIdDestino)->exists();
                     if (!$existeSub) {
                         $dataNueva = [
                             'codigo'          => $codigoPadre,
@@ -417,11 +432,11 @@ class ElementoController extends Controller
                                 'fecha_finalizacion_soldadura',
                             ] as $col
                         ) {
-                            if (\Illuminate\Support\Facades\Schema::hasColumn('etiquetas', $col)) {
+                            if (Schema::hasColumn('etiquetas', $col)) {
                                 $dataNueva[$col] = $etiquetaPadre->$col;
                             }
                         }
-                        \App\Models\Etiqueta::create($dataNueva);
+                        Etiqueta::create($dataNueva);
                     }
                 }
             }
@@ -436,39 +451,39 @@ class ElementoController extends Controller
             $pesoDelta = (float) ($elemento->peso ?? 0);
 
             // 1) Origen −delta (si cambió)
-            if ($subIdOriginal && $subIdOriginal !== $subIdDestino && \Illuminate\Support\Facades\Schema::hasColumn('etiquetas', 'peso')) {
-                \App\Models\Etiqueta::where('etiqueta_sub_id', $subIdOriginal)
-                    ->update(['peso' => \DB::raw('GREATEST(peso - ' . $pesoDelta . ', 0)')]);
+            if ($subIdOriginal && $subIdOriginal !== $subIdDestino && Schema::hasColumn('etiquetas', 'peso')) {
+                Etiqueta::where('etiqueta_sub_id', $subIdOriginal)
+                    ->update(['peso' => DB::raw('GREATEST(peso - ' . $pesoDelta . ', 0)')]);
 
                 // Si se queda sin elementos, borrar filas de ese subId
-                $quedan = \App\Models\Elemento::where('etiqueta_sub_id', $subIdOriginal)->exists();
+                $quedan = Elemento::where('etiqueta_sub_id', $subIdOriginal)->exists();
                 if (!$quedan) {
-                    \App\Models\Etiqueta::where('etiqueta_sub_id', $subIdOriginal)->delete();
+                    Etiqueta::where('etiqueta_sub_id', $subIdOriginal)->delete();
                 }
             }
 
             // 2) Destino +delta
-            if ($subIdDestino && \Illuminate\Support\Facades\Schema::hasColumn('etiquetas', 'peso')) {
-                $tocadas = \App\Models\Etiqueta::where('etiqueta_sub_id', $subIdDestino)
-                    ->update(['peso' => \DB::raw('peso + ' . $pesoDelta)]);
+            if ($subIdDestino && Schema::hasColumn('etiquetas', 'peso')) {
+                $tocadas = Etiqueta::where('etiqueta_sub_id', $subIdDestino)
+                    ->update(['peso' => DB::raw('peso + ' . $pesoDelta)]);
 
                 // Si no había fila aún (caso creación), ajusta al peso real actual
                 if ($tocadas === 0) {
-                    $pesoActual = (float) \App\Models\Elemento::where('etiqueta_sub_id', $subIdDestino)->sum('peso');
+                    $pesoActual = (float) Elemento::where('etiqueta_sub_id', $subIdDestino)->sum('peso');
                     \App\Models\Etiqueta::where('etiqueta_sub_id', $subIdDestino)
                         ->update(['peso' => $pesoActual]);
                 }
             }
 
             // 3) Actualizar PADRE (fila con etiqueta_sub_id NULL) agregando todas sus sub-filas
-            if (\Illuminate\Support\Facades\Schema::hasColumn('etiquetas', 'peso')) {
-                $filaPadre = \App\Models\Etiqueta::lockForUpdate()
+            if (Schema::hasColumn('etiquetas', 'peso')) {
+                $filaPadre = Etiqueta::lockForUpdate()
                     ->where('codigo', $codigoPadre)
                     ->whereNull('etiqueta_sub_id')
                     ->first();
 
                 if ($filaPadre) {
-                    $pesoPadre = (float) \App\Models\Elemento::where('etiqueta_sub_id', 'like', $codigoPadre . '.%')->sum('peso');
+                    $pesoPadre = (float) Elemento::where('etiqueta_sub_id', 'like', $codigoPadre . '.%')->sum('peso');
                     $filaPadre->peso = $pesoPadre;
                     $filaPadre->save();
                 }
@@ -476,34 +491,34 @@ class ElementoController extends Controller
             // ================== FIN sub-etiquetas y pesos ==================
 
             // 4️⃣ Asegurar entrada en orden_planillas para la nueva máquina
-            $yaExiste = \App\Models\OrdenPlanilla::where('planilla_id', $planillaId)
+            $yaExiste = OrdenPlanilla::where('planilla_id', $planillaId)
                 ->where('maquina_id', $nuevaMaquinaReal)
                 ->exists();
 
             if (!$yaExiste) {
-                $posiciones = \App\Models\OrdenPlanilla::where('planilla_id', $planillaId)->pluck('posicion');
+                $posiciones = OrdenPlanilla::where('planilla_id', $planillaId)->pluck('posicion');
                 $nuevaPos = $posiciones->isNotEmpty() ? intval(round($posiciones->avg())) : 1;
 
                 // Saltar posiciones "fabricando"
                 $posFinal = $nuevaPos;
-                $ocupada = \App\Models\OrdenPlanilla::with('planilla')
+                $ocupada = OrdenPlanilla::with('planilla')
                     ->where('maquina_id', $nuevaMaquinaReal)
                     ->where('posicion', $posFinal)
                     ->first();
 
                 while ($ocupada && $ocupada->planilla && $ocupada->planilla->estado === 'fabricando') {
                     $posFinal++;
-                    $ocupada = \App\Models\OrdenPlanilla::with('planilla')
+                    $ocupada = OrdenPlanilla::with('planilla')
                         ->where('maquina_id', $nuevaMaquinaReal)
                         ->where('posicion', $posFinal)
                         ->first();
                 }
 
-                \App\Models\OrdenPlanilla::where('maquina_id', $nuevaMaquinaReal)
+                OrdenPlanilla::where('maquina_id', $nuevaMaquinaReal)
                     ->where('posicion', '>=', $posFinal)
                     ->increment('posicion');
 
-                \App\Models\OrdenPlanilla::create([
+                OrdenPlanilla::create([
                     'planilla_id' => $planillaId,
                     'maquina_id'  => $nuevaMaquinaReal,
                     'posicion'    => $posFinal,
@@ -511,13 +526,13 @@ class ElementoController extends Controller
             }
 
             // 5️⃣ Limpiar orden_planillas si la máquina original quedó vacía
-            $quedanElementos = \App\Models\Elemento::where('planilla_id', $planillaId)
+            $quedanElementos = Elemento::where('planilla_id', $planillaId)
                 ->get()
                 ->filter(fn($e) => $this->obtenerMaquinaReal($e) === $maquinaOriginal)
                 ->isNotEmpty();
 
             if (!$quedanElementos) {
-                $ordenOriginal = \App\Models\OrdenPlanilla::where('planilla_id', $planillaId)
+                $ordenOriginal = OrdenPlanilla::where('planilla_id', $planillaId)
                     ->where('maquina_id', $maquinaOriginal)
                     ->first();
 
@@ -525,13 +540,13 @@ class ElementoController extends Controller
                     $posElim = $ordenOriginal->posicion;
                     $ordenOriginal->delete();
 
-                    \App\Models\OrdenPlanilla::where('maquina_id', $maquinaOriginal)
+                    OrdenPlanilla::where('maquina_id', $maquinaOriginal)
                         ->where('posicion', '>', $posElim)
                         ->decrement('posicion');
                 }
             }
 
-            \DB::commit();
+            DB::commit();
 
             return response()->json([
                 'ok' => true,
@@ -539,8 +554,8 @@ class ElementoController extends Controller
                 'maquina_id' => $nuevaMaquina->id
             ]);
         } catch (\Throwable $e) {
-            \DB::rollBack();
-            \Log::error("Error al actualizar elemento {$elemento->id}: " . $e->getMessage(), [
+            DB::rollBack();
+            Log::error("Error al actualizar elemento {$elemento->id}: " . $e->getMessage(), [
                 'campo' => $campo,
                 'valor' => $valor,
                 'trace' => $e->getTraceAsString()
@@ -548,7 +563,35 @@ class ElementoController extends Controller
             return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
         }
     }
+    /**
+     * Valida que el diámetro del elemento esté dentro de los permitidos por la máquina.
+     * - Si el elemento no tiene diámetro (null), se permite.
+     * - Si la máquina no tiene min o max definidos (null), ese lado no limita.
+     *
+     * @return array{0: bool, 1: string|null} [ok, mensajeError]
+     */
+    private function validarDiametroMaquina(Maquina $maquina, Elemento $elemento): array
+    {
+        // Ajusta el nombre del campo si en tu modelo es otro (p.ej. diametro_mm)
+        $diametro = $elemento->diametro;
 
+        if ($diametro === null) {
+            return [true, null];
+        }
+
+        $min = $maquina->diametro_min; // pueden ser null
+        $max = $maquina->diametro_max;
+
+        if ($min !== null && $diametro < (int) $min) {
+            return [false, "El diámetro {$diametro} está por debajo del mínimo ({$min}) permitido por la máquina {$maquina->codigo}."];
+        }
+
+        if ($max !== null && $diametro > (int) $max) {
+            return [false, "El diámetro {$diametro} supera el máximo ({$max}) permitido por la máquina {$maquina->codigo}."];
+        }
+
+        return [true, null];
+    }
     private function obtenerMaquinaReal($e)
     {
         // Asegurar que las relaciones estén cargadas

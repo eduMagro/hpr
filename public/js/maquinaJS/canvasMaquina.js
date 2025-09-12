@@ -5,8 +5,8 @@ const FIGURE_LINE_COLOR = "rgba(0, 0, 0, 0.8)";
 const VALOR_COTA_COLOR = "rgba(0, 0, 0, 1)";
 const BARS_TEXT_COLOR = "rgba(0, 0, 0, 1)";
 
-const marginX = 5;
-const marginY = 5;
+const marginX = 1;
+const marginY = 1;
 
 // “recrecimiento” (en UNIDADES del modelo, no px)
 const OVERLAP_GROW_UNITS = 0.6;

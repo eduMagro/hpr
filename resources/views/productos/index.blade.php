@@ -126,6 +126,7 @@
                             <th class="p-2 border">{!! $ordenables['id'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['entrada_id'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['codigo'] !!}</th>
+                            <th class="p-2 border">{!! $ordenables['nave'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['tipo'] !!}</th>
                             <th class="p-2 border">{!! $ordenables['diametro'] !!}</th>
@@ -153,6 +154,12 @@
                                     <x-tabla.input name="codigo" type="text" :value="request('codigo')"
                                         class="w-full text-xs" />
                                 </th>
+                                <th class="p-1 border">
+                                    <x-tabla.select name="nave_id" :options="$navesSelect" :selected="request('nave_id')" empty="Todas"
+                                        class="form-select w-full text-xs" />
+                                </th>
+
+
                                 <th class="p-1 border">
                                     <x-tabla.input name="fabricante" type="text" :value="request('fabricante')"
                                         class="w-full text-xs" />
@@ -222,6 +229,10 @@
                                 </td>
 
                                 <td class="px-2 py-3 text-center border">{{ $producto->codigo ?? 'N/A' }}</td>
+                                <td class="px-2 py-3 text-center border">
+                                    {{ $producto->obra->obra ?? '—' }}
+                                </td>
+
                                 <td class="px-2 py-3 text-center border">{{ $producto->fabricante->nombre ?? '—' }}
                                 </td>
                                 <td class="px-2 py-3 text-center border">

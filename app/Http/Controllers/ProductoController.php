@@ -9,6 +9,7 @@ use App\Models\Fabricante;
 use Illuminate\Http\Request;
 use App\Models\ProductoCodigo;
 use App\Models\ProductoBase;
+use App\Models\Obra;
 use Illuminate\Support\Facades\DB;
 use Exception;
 use Illuminate\Validation\ValidationException;
@@ -40,6 +41,11 @@ class ProductoController extends Controller
         if ($request->filled('codigo')) {
             $query->where('codigo', 'like', '%' . $request->codigo . '%');
         }
+
+        if ($request->filled('nave_id') && is_numeric($request->nave_id)) {
+            $query->where('obra_id', $request->nave_id);
+        }
+
 
         if ($request->filled('fabricante') && is_numeric($request->fabricante)) {
             $query->where('fabricante_id', (int) $request->fabricante);
@@ -130,6 +136,10 @@ class ProductoController extends Controller
             $query->leftJoin('fabricantes', 'productos.fabricante_id', '=', 'fabricantes.id')
                 ->orderBy('fabricantes.nombre', $order)
                 ->select('productos.*'); // importante para evitar conflictos en las columnas
+        } elseif ($sort === 'nave') {
+            $query->leftJoin('obras', 'productos.obra_id', '=', 'obras.id')
+                ->orderBy('obras.obra', $order)
+                ->select('productos.*');
         } else {
             $query->orderBy($sort, $order);
         }
@@ -149,6 +159,10 @@ class ProductoController extends Controller
 
         if ($request->filled('codigo')) {
             $filtros[] = 'Código: <strong>' . e($request->codigo) . '</strong>';
+        }
+        if ($request->filled('nave_id')) {
+            $obra = \App\Models\Obra::find($request->nave_id);
+            $filtros[] = 'Nave: <strong>' . e($obra?->obra ?? 'ID ' . $request->nave_id) . '</strong>';
         }
 
         if ($request->filled('fabricante')) {
@@ -220,10 +234,12 @@ class ProductoController extends Controller
             'fabricante:id,nombre',
             'entrada:id,albaran',
             'ubicacion:id,nombre',
-            'maquina:id,nombre'
+            'maquina:id,nombre',
+            'obra:id,obra'
         ])->select([
             'id',
             'codigo',
+            'obra_id',
             'fabricante_id',
             'entrada_id',
             'producto_base_id',
@@ -245,6 +261,7 @@ class ProductoController extends Controller
             'id'             => $this->getOrdenamiento('id', 'ID Materia Prima'),
             'entrada_id'     => $this->getOrdenamiento('entrada_id', 'Albarán'),
             'codigo'         => $this->getOrdenamiento('codigo', 'Código'),
+            'nave' => $this->getOrdenamiento('nave', 'Nave'),
             'fabricante'     => $this->getOrdenamiento('fabricante', 'Fabricante'),
             'tipo'           => $this->getOrdenamiento('tipo', 'Tipo'),
             'diametro'       => $this->getOrdenamiento('diametro', 'Diámetro'),
@@ -283,8 +300,13 @@ class ProductoController extends Controller
                 ->orderBy('longitud')
                 ->get();
         });
-
-        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial'));
+        $navesSelect = Obra::whereHas('cliente', function ($q) {
+            $q->whereRaw("UPPER(empresa) LIKE '%PACO REYES%'");
+        })
+            ->orderBy('obra')
+            ->pluck('obra', 'id')   // ['id' => 'Obra']
+            ->toArray();
+        return view('productos.index', compact('registrosProductos', 'productosBase', 'filtrosActivos', 'ordenables', 'totalPesoInicial', 'navesSelect'));
     }
 
     public function GenerarYExportar(Request $request)

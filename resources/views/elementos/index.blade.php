@@ -448,25 +448,40 @@
                         valor: valor
                     })
                 })
-                .then(res => {
+                .then(res => res.json().then(data => {
                     if (!res.ok) {
-                        return res.json().then(errorData => {
-                            throw new Error(errorData.error || 'Error al guardar');
-                        });
+                        const err = new Error(data.error || 'Error al guardar');
+                        err.responseJson = data; // 👉 guardamos la respuesta completa
+                        throw err;
                     }
-                    return res.json();
-                })
+                    return data;
+                }))
                 .then(data => {
                     console.log(`Elemento #${id} actualizado: ${campo} = ${valor}`);
-                    // Actualizar el valor original para futuras comparaciones
                     input.dataset.originalValue = valor;
-                    // Opcional: mostrar mensaje de éxito
-                    // alert('Dato guardado correctamente');
+
+                    if (data.swal) {
+                        Swal.fire(data.swal); // 👈 dispara el swal de éxito si lo enviaste
+                    }
                 })
                 .catch(error => {
-                    alert('Error al guardar dato: ' + error.message);
                     console.error('Error completo:', error);
-                    // Revertir el select al valor anterior
+
+                    // intenta leer la última respuesta json guardada en el error
+                    let mensaje = error.message || 'Error al guardar dato';
+
+                    // si en la respuesta vino un swal, úsalo directamente
+                    if (error.responseJson && error.responseJson.swal) {
+                        Swal.fire(error.responseJson.swal);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: mensaje
+                        });
+                    }
+
+                    // revertir al valor original
                     if (input.dataset.originalValue) {
                         input.value = input.dataset.originalValue;
                     }

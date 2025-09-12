@@ -13,4 +13,14 @@ class ActualizarEtiquetaResultado
         public array $productosAfectados = [],
         public array $metricas = []
     ) {}
+
+    public function toArray(): array
+    {
+        return [
+            'etiqueta_id'        => $this->etiqueta->id,
+            'warnings'           => $this->warnings,
+            'productosAfectados' => $this->productosAfectados,
+            'metricas'           => $this->metricas,
+        ];
+    }
 }
