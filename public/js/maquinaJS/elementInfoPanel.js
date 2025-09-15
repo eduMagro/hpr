@@ -1,5 +1,3 @@
-// public/js/elementInfoPanel.js
-
 // Estado interno
 window.HITBOXES = new Map();
 window.DATA_SUGERENCIAS = {};

@@ -65,12 +65,13 @@ class SugeridorProductoBaseService
             if ($L <= 0) continue;
 
             // 1) Packing simple: solo el elemento A
-            $nA   = intdiv($L, $lenA);
-            $usoA = $nA * $lenA;
+            $nA    = intdiv($L, $lenA);      // piezas por barra
+            $usoA  = $nA * $lenA;
             $sobrA = $L - $usoA;
-            $effA = $usoA / $L; // 0..1
+            $effA  = $L > 0 ? ($usoA / $L) : 0.0;
 
-            $barrasTotalesA = $nA > 0 ? (int)ceil(($elemento->barras ?? 1) / $nA) : ($elemento->barras ?? 1);
+            $piezasNecesarias = $this->piezasNecesarias($elemento);
+            $barrasTotalesA   = ($nA > 0) ? (int) ceil($piezasNecesarias / $nA) : $piezasNecesarias;
 
             $candidato = [
                 'producto_base_id'   => $pb->id,
@@ -87,24 +88,36 @@ class SugeridorProductoBaseService
             // 2) Intento de emparejamiento con un solo colega (misma compatibilidad de diámetro ya aplicada)
             $mejorPareja = $this->mejorPareja($lenA, $colegas, $L);
             if ($mejorPareja) {
-                $nA2 = 1;
-                $nB2 = 1;
-                $usoAB  = $lenA + $mejorPareja['lenB'];
-                $sobrAB = $L - $usoAB;
-                $effAB  = $usoAB / $L;
-                $candidato['pareja'] = [
-                    'elemento_id' => $mejorPareja['idB'],
-                    'lenB_mm'     => $mejorPareja['lenB'],
-                    'n_por_barra' => ['A' => $nA2, 'B' => $nB2],
-                    'sobrante_mm' => $sobrAB,
-                    'eficiencia'  => $effAB,
-                ];
+                $nA2   = $mejorPareja['nA'];              // parejas por barra
+                $nB2   = $mejorPareja['nB'];
+                $usoAB = $mejorPareja['uso'];
+                $sobrAB = $mejorPareja['sobr'];
+                $effAB = $mejorPareja['eff'];
+
+                // Muestra la pareja solo si no empeora
+                if ($effAB >= $effA) {
+                    $candidato['pareja'] = [
+                        'elemento_id' => $mejorPareja['idB'],
+                        'lenB_mm'     => $mejorPareja['lenB'],
+                        'n_por_barra' => ['A' => $nA2, 'B' => $nB2],
+                        'sobrante_mm' => $sobrAB,
+                        'eficiencia'  => $effAB,
+                    ];
+
+                    // si decides que la tarjeta refleje el “mix” cuando mejora:
+                    $candidato['n_por_barra'] = $nA2 + $nB2;   // opcional
+                    $candidato['sobrante_mm'] = $sobrAB;       // opcional
+                    $candidato['eficiencia']  = $effAB;        // opcional
+                }
+
+                // Para la comparación que decide el mejor candidato:
                 $candidato['_effComparacion']  = max($effA, $effAB);
                 $candidato['_sobrComparacion'] = ($effAB > $effA) ? $sobrAB : $sobrA;
             } else {
                 $candidato['_effComparacion']  = $effA;
                 $candidato['_sobrComparacion'] = $sobrA;
             }
+
 
             $mejor = $this->esMejor($candidato, $mejor) ? $candidato : $mejor;
         }
@@ -118,11 +131,30 @@ class SugeridorProductoBaseService
     /* ---------------- Helpers ---------------- */
 
     /** Longitud de elemento en mm */
+    /** Longitud de elemento en mm (acepta m, cm o mm; o número “pelado”) */
     private function lenElemMm(Elemento $e): int
     {
-        if (!empty($e->longitud)) return (int) round((float)$e->longitud); // ya en mm en tu BD
+        // Soporta campos alternativos si los tuvieras
+        if (!empty($e->longitud_mm)) return (int) round($e->longitud_mm);
+        if (!empty($e->longitud_m))  return $this->parseLongitudToMm($e->longitud_m);
+
+        // Campo genérico "longitud": puede venir en m/cm/mm o como número
+        if (isset($e->longitud) && $e->longitud !== null && $e->longitud !== '') {
+            return $this->parseLongitudToMm($e->longitud);
+        }
+
         return 0;
     }
+
+    /** Piezas necesarias del elemento (mejor esfuerzo) */
+    private function piezasNecesarias(Elemento $e): int
+    {
+        foreach (['cantidad', 'piezas', 'unidades', 'uds', 'barras'] as $campo) {
+            if (isset($e->{$campo}) && (int)$e->{$campo} > 0) return (int)$e->{$campo};
+        }
+        return 1;
+    }
+
 
     /** Diámetro elemento en mm (normaliza strings como "16.00") */
     private function diamElemMm(Elemento $e): float
@@ -215,15 +247,31 @@ class SugeridorProductoBaseService
         foreach ($colegas as $b) {
             $lenB = $this->lenElemMm($b);
             if ($lenB <= 0) continue;
-            if ($lenA + $lenB > $L) continue;
-            $sobr = $L - ($lenA + $lenB);
+
+            $patron = $lenA + $lenB;
+            if ($patron > $L) continue;
+
+            $nPatrones = intdiv($L, $patron);      // nº de parejas A+B por barra
+            $uso       = $nPatrones * $patron;
+            $sobr      = $L - $uso;
+            $eff       = $L > 0 ? ($uso / $L) : 0;
+
             if (!$best || $sobr < $best['sobr']) {
-                $best = ['idB' => $b->id, 'lenB' => $lenB, 'sobr' => $sobr];
-                if ($sobr === 0) break;
+                $best = [
+                    'idB'   => $b->id,
+                    'lenB'  => $lenB,
+                    'nA'    => $nPatrones,   // A por barra
+                    'nB'    => $nPatrones,   // B por barra
+                    'uso'   => $uso,
+                    'sobr'  => $sobr,
+                    'eff'   => $eff,
+                ];
+                if ($sobr === 0) break; // encaje perfecto
             }
         }
         return $best;
     }
+
 
     private function esMejor(array $cand, ?array $best): bool
     {
