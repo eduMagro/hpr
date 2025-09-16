@@ -14,6 +14,7 @@ use App\Models\ProductoBase;
 use App\Models\Fabricante;
 use App\Models\Distribuidor;
 use App\Models\Movimiento;
+use App\Models\Obra;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -196,47 +197,47 @@ class EntradaController extends Controller
 
     public function create()
     {
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 1) Listados para los select
-        // ─────────────────────────────────────────────────────────────────────────────
-        $ubicaciones = Ubicacion::all()->map(function ($ubicacion) {
-            $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
-            return $ubicacion;
+        // 1) Ubicaciones completas (incluye 'almacen')
+        $ubicaciones = Ubicacion::select('id', 'nombre', 'almacen')->get()->map(function ($u) {
+            $u->nombre_sin_prefijo = Str::after($u->nombre, 'Almacén ');
+            return $u;
         });
 
-        $usuarios       = User::all();
-        $productosBase  = ProductoBase::orderBy('tipo')
-            ->orderBy('diametro')
-            ->orderBy('longitud')
-            ->get();
-        $fabricantes    = Fabricante::orderBy('nombre')->get();
+        $usuarios      = User::all();
+        $productosBase = ProductoBase::orderBy('tipo')->orderBy('diametro')->orderBy('longitud')->get();
+        $fabricantes   = Fabricante::orderBy('nombre')->get();
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 2) Último producto registrado por el usuario autenticado
-        //    (cargamos también entrada y productoBase para no hacer más queries)
-        // ─────────────────────────────────────────────────────────────────────────────
+        // 2) Último producto del usuario
         $ultimoProducto = Producto::with(['entrada', 'productoBase'])
             ->whereHas('entrada', fn($q) => $q->where('usuario_id', auth()->id()))
-            ->latest()           // mismo efecto que orderByDesc('created_at')
+            ->latest()
             ->first();
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 3) Datos precargados para el formulario
-        // ─────────────────────────────────────────────────────────────────────────────
         $ultimaColada         = $ultimoProducto?->n_colada;
         $ultimoProductoBaseId = $ultimoProducto?->producto_base_id;
-
-        // - Fabricante: primero miramos si el producto tiene fabricante_id propio;
-        //   si no, lo tomamos del producto base.
-        $ultimoFabricanteId   = $ultimoProducto?->fabricante_id
-            ?? $ultimoProducto?->productoBase?->fabricante_id;
-
-        // - Ubicación: la obtenemos desde la entrada asociada
+        $ultimoFabricanteId   = $ultimoProducto?->fabricante_id ?? $ultimoProducto?->productoBase?->fabricante_id;
         $ultimaUbicacionId    = $ultimoProducto?->ubicacion_id;
 
-        // ─────────────────────────────────────────────────────────────────────────────
-        // 4) Devolvemos la vista con todos los datos
-        // ─────────────────────────────────────────────────────────────────────────────
+        // 3) OBRAS del cliente cuya empresa like %paco reyes%
+        //    (ajusta el nombre del modelo/relación si tu Obra tiene otra relación con Cliente)
+        $obras = Obra::select('id', 'obra')
+            ->whereHas('cliente', function ($q) {
+                $q->where('empresa', 'like', '%paco reyes%');
+            })
+            ->orderBy('obra')
+            ->get();
+
+        // Mapa obra_id => código de almacén (0A/0B/AL) según el texto de 'obra'
+        $obraAlmacenes = $obras->mapWithKeys(function ($o) {
+            $nombre = Str::lower($o->obra);
+            $code = Str::contains($nombre, 'nave a') ? '0A'
+                : (Str::contains($nombre, 'nave b') ? '0B' : 'AL');
+            return [$o->id => $code];
+        });
+
+        $obraActualId = $ultimoProducto?->obra_id ?? null;
+
+        // 4) Vista
         return view('entradas.create', compact(
             'ubicaciones',
             'usuarios',
@@ -245,40 +246,34 @@ class EntradaController extends Controller
             'ultimaColada',
             'ultimoProductoBaseId',
             'ultimoFabricanteId',
-            'ultimaUbicacionId'
+            'ultimaUbicacionId',
+            'obras',
+            'obraActualId',
+            'obraAlmacenes' // 👈 NUEVO
         ));
     }
 
     public function store(Request $request)
     {
         DB::beginTransaction();
+
         try {
+            // 1) Validación
             $request->validate([
-                'codigo'            => [
-                    'required',
-                    'string',
-                    'unique:productos,codigo',
-                    'max:20',
-                    'regex:/^MP.*/i',
-                ],
-                'codigo_2'          => [
-                    'nullable',
-                    'string',
-                    'unique:productos,codigo',
-                    'max:20',
-                    'regex:/^MP.*/i',
-                ],
-                'fabricante_id'     => 'required|exists:fabricantes,id',
-                'albaran'           => 'required|string|min:1|max:30',
-                'pedido_id'         => 'nullable|exists:pedidos,id',
-                'producto_base_id'  => 'required|exists:productos_base,id',
-                'n_colada'          => 'required|string|max:50',
-                'n_paquete'         => 'required|string|max:50',
-                'n_colada_2'        => 'nullable|string|max:50',
-                'n_paquete_2'       => 'nullable|string|max:50',
-                'peso'              => 'required|numeric|min:1',
-                'ubicacion_id'      => 'nullable|integer|exists:ubicaciones,id',
-                'otros'             => 'nullable|string|max:255',
+                'codigo'            => ['required', 'string', 'unique:productos,codigo', 'max:20', 'regex:/^MP.*/i'],
+                'codigo_2'          => ['nullable', 'string', 'unique:productos,codigo', 'max:20', 'regex:/^MP.*/i'],
+                'fabricante_id'     => ['required', 'exists:fabricantes,id'],
+                'albaran'           => ['required', 'string', 'min:1', 'max:30'],
+                'pedido_id'         => ['nullable', 'exists:pedidos,id'],
+                'producto_base_id'  => ['required', 'exists:productos_base,id'],
+                'n_colada'          => ['required', 'string', 'max:50'],
+                'n_paquete'         => ['required', 'string', 'max:50'],
+                'n_colada_2'        => ['nullable', 'string', 'max:50'],
+                'n_paquete_2'       => ['nullable', 'string', 'max:50'],
+                'peso'              => ['required', 'numeric', 'min:1'],
+                'ubicacion_id'      => ['nullable', 'integer', 'exists:ubicaciones,id'], // ✅ clave correcta
+                'obra_id'           => ['required', 'integer', 'exists:obras,id'],       // ✅ requerido para ambos productos
+                'otros'             => ['nullable', 'string', 'max:255'],
             ], [
                 'codigo.required'   => 'El código generado es obligatorio.',
                 'codigo.string'     => 'El código debe ser una cadena de texto.',
@@ -286,58 +281,66 @@ class EntradaController extends Controller
                 'codigo.max'        => 'El código no puede tener más de 20 caracteres.',
                 'codigo.regex'      => 'El código debe empezar por MP.',
 
-                'codigo_2.string'      => 'El segundo código debe ser una cadena de texto.',
-                'codigo_2.unique'      => 'El segundo código ya existe.',
-                'codigo_2.max'         => 'El segundo código no puede tener más de 20 caracteres.',
+                'codigo_2.string'   => 'El segundo código debe ser una cadena de texto.',
+                'codigo_2.unique'   => 'El segundo código ya existe.',
+                'codigo_2.max'      => 'El segundo código no puede tener más de 20 caracteres.',
 
                 'fabricante_id.required' => 'El fabricante es obligatorio.',
                 'fabricante_id.exists'   => 'El fabricante seleccionado no es válido.',
 
-                'albaran.required'     => 'El albarán es obligatorio.',
-                'albaran.string'       => 'El albarán debe ser una cadena de texto.',
-                'albaran.min'          => 'El albarán debe tener al menos 1 carácter.',
-                'albaran.max'          => 'El albarán no puede tener más de 30 caracteres.',
+                'albaran.required'  => 'El albarán es obligatorio.',
+                'albaran.string'    => 'El albarán debe ser una cadena de texto.',
+                'albaran.min'       => 'El albarán debe tener al menos 1 carácter.',
+                'albaran.max'       => 'El albarán no puede tener más de 30 caracteres.',
 
-                'pedido_id.exists'     => 'El pedido seleccionado no es válido.',
-
+                'pedido_id.exists'        => 'El pedido seleccionado no es válido.',
                 'producto_base_id.required' => 'El producto base es obligatorio.',
-                'producto_base_id.exists'   => 'El producto base seleccionado no es válido.',
+                'producto_base_id.exists'  => 'El producto base seleccionado no es válido.',
 
-                'n_colada.required'    => 'El número de colada es obligatorio.',
-                'n_colada.string'      => 'El número de colada debe ser una cadena de texto.',
-                'n_colada.max'         => 'El número de colada no puede tener más de 50 caracteres.',
+                'n_colada.required' => 'El número de colada es obligatorio.',
+                'n_colada.string'   => 'El número de colada debe ser una cadena de texto.',
+                'n_colada.max'      => 'El número de colada no puede tener más de 50 caracteres.',
 
-                'n_paquete.required'   => 'El número de paquete es obligatorio.',
-                'n_paquete.string'     => 'El número de paquete debe ser una cadena de texto.',
-                'n_paquete.max'        => 'El número de paquete no puede tener más de 50 caracteres.',
+                'n_paquete.required' => 'El número de paquete es obligatorio.',
+                'n_paquete.string'  => 'El número de paquete debe ser una cadena de texto.',
+                'n_paquete.max'     => 'El número de paquete no puede tener más de 50 caracteres.',
 
-                'n_colada_2.string'    => 'El segundo número de colada debe ser una cadena de texto.',
-                'n_colada_2.max'       => 'El segundo número de colada no puede tener más de 50 caracteres.',
+                'n_colada_2.string' => 'El segundo número de colada debe ser una cadena de texto.',
+                'n_colada_2.max'    => 'El segundo número de colada no puede tener más de 50 caracteres.',
 
-                'n_paquete_2.string'   => 'El segundo número de paquete debe ser una cadena de texto.',
-                'n_paquete_2.max'      => 'El segundo número de paquete no puede tener más de 50 caracteres.',
+                'n_paquete_2.string' => 'El segundo número de paquete debe ser una cadena de texto.',
+                'n_paquete_2.max'   => 'El segundo número de paquete no puede tener más de 50 caracteres.',
 
-                'peso.required'        => 'El peso es obligatorio.',
-                'peso.numeric'         => 'El peso debe ser un número.',
-                'peso.min'             => 'El peso debe ser mayor que cero.',
+                'peso.required'     => 'El peso es obligatorio.',
+                'peso.numeric'      => 'El peso debe ser un número.',
+                'peso.min'          => 'El peso debe ser mayor que cero.',
 
-                'ubicacion.integer'    => 'La ubicación debe ser un número entero.',
-                'ubicacion.exists'     => 'La ubicación seleccionada no es válida.',
+                'ubicacion_id.integer' => 'La ubicación debe ser un número entero.',
+                'ubicacion_id.exists'  => 'La ubicación seleccionada no es válida.',
 
-                'otros.string'         => 'El campo "otros" debe ser una cadena de texto.',
-                'otros.max'            => 'El campo "otros" no puede tener más de 255 caracteres.',
+                'obra_id.required'  => 'Debes seleccionar un almacén (obra).',
+                'obra_id.integer'   => 'La obra debe ser un número entero.',
+                'obra_id.exists'    => 'La obra seleccionada no es válida.',
+
+                'otros.string'      => 'El campo "otros" debe ser una cadena de texto.',
+                'otros.max'         => 'El campo "otros" no puede tener más de 255 caracteres.',
             ]);
 
+            // 2) Normalizaciones / cálculos
+            $esDoble         = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
+            $pesoTotal       = round((float)$request->peso, 3);
+            $pesoPorPaquete  = $esDoble ? round($pesoTotal / 2, 3) : $pesoTotal;
 
-            $productoBase = ProductoBase::findOrFail($request->producto_base_id);
-            $esDoble = $request->filled('codigo_2') && $request->filled('n_colada_2') && $request->filled('n_paquete_2');
-            $pesoPorPaquete = $esDoble ? round($request->peso / 2, 3) : $request->peso;
-            $codigo1 = strtoupper($request->codigo);
-            $codigo2 = strtoupper($request->codigo_2);
+            $codigo1 = strtoupper(trim($request->codigo));
+            $codigo2 = $request->filled('codigo_2') ? strtoupper(trim($request->codigo_2)) : null;
+
+            $fabricanteNombre = optional(\App\Models\Fabricante::find($request->fabricante_id))->nombre ?? '—';
+            $otrosTexto       = trim((string)($request->otros ?? ''));
+            $otrosComun       = 'Alta manual. Fabricante: ' . $fabricanteNombre . ($otrosTexto ? " | {$otrosTexto}" : '');
+
+            // 3) Pedido producto (si aplica)
             $pedidoProductoId = null;
-
             if ($request->filled('pedido_id')) {
-
                 $pedidoProducto = DB::table('pedido_productos')
                     ->where('pedido_id', $request->pedido_id)
                     ->where('producto_base_id', $request->producto_base_id)
@@ -350,54 +353,58 @@ class EntradaController extends Controller
                 }
             }
 
-            // Crear entrada principal
+            // 4) Crear Entrada
             $entrada = Entrada::create([
-                'albaran'              => $request->albaran,
-                'usuario_id'           => auth()->id(),
-                'peso_total'           => $request->peso,
-                'estado'               => 'cerrado',
-                'otros'                => $request->otros ?? null,
-                'pedido_id'            => $request->pedido_id,
-                'pedido_producto_id'   => $pedidoProductoId,
+                'albaran'            => $request->albaran,
+                'usuario_id'         => auth()->id(),
+                'peso_total'         => $pesoTotal,
+                'estado'             => 'cerrado',
+                'otros'              => $otrosTexto ?: null,
+                'pedido_id'          => $request->pedido_id,
+                'pedido_producto_id' => $pedidoProductoId,
             ]);
 
-            // Primer producto
+            // 5) Crear primer producto
             $producto1 = Producto::create([
                 'codigo'           => $codigo1,
                 'producto_base_id' => $request->producto_base_id,
-                'fabricante_id'     => $request->fabricante_id,
+                'fabricante_id'    => $request->fabricante_id,
                 'entrada_id'       => $entrada->id,
                 'n_colada'         => $request->n_colada,
                 'n_paquete'        => $request->n_paquete,
                 'peso_inicial'     => $pesoPorPaquete,
                 'peso_stock'       => $pesoPorPaquete,
                 'estado'           => 'almacenado',
-                'ubicacion_id' => $request->ubicacion_id,
+                'obra_id'          => $request->obra_id,
+                'ubicacion_id'     => $request->ubicacion_id,
                 'maquina_id'       => null,
-                'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
+                'otros'            => $otrosComun,
             ]);
 
-
-            // Segundo producto si aplica
+            // 6) Crear segundo producto (si aplica)
             if ($esDoble) {
-                $producto2 = Producto::create([
-                    'codigo'           => $codigo2,
+                Producto::create([
+                    'codigo'           => $codigo2, // seguro: ya null-safe
                     'producto_base_id' => $request->producto_base_id,
-                    'fabricante_id'     => $request->fabricante_id,
-                    'entrada_id'   => $entrada->id,
+                    'fabricante_id'    => $request->fabricante_id,
+                    'entrada_id'       => $entrada->id,
                     'n_colada'         => $request->n_colada_2,
                     'n_paquete'        => $request->n_paquete_2,
                     'peso_inicial'     => $pesoPorPaquete,
                     'peso_stock'       => $pesoPorPaquete,
                     'estado'           => 'almacenado',
-                    'ubicacion_id' => $request->ubicacion_id,
+                    'obra_id'          => $request->obra_id,
+                    'ubicacion_id'     => $request->ubicacion_id,
                     'maquina_id'       => null,
-                    'otros'            => 'Alta manual. Fabricante: ' . ($request->fabricante ?? '—'),
+                    'otros'            => $otrosComun,
                 ]);
             }
 
             DB::commit();
-            return redirect()->route('productos.index')->with('success', 'Entrada registrada correctamente.');
+
+            return redirect()
+                ->route('productos.index')
+                ->with('success', 'Entrada registrada correctamente.');
         } catch (ValidationException $e) {
             DB::rollBack();
             return redirect()->back()->withErrors($e->errors())->withInput();
@@ -406,6 +413,7 @@ class EntradaController extends Controller
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage())->withInput();
         }
     }
+
 
     public function edit($id)
     {
