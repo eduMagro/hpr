@@ -680,7 +680,7 @@ class MaquinaController extends Controller
             $request->validate([
                 'codigo'       => 'required|string|unique:maquinas,codigo',
                 'nombre'       => 'required|string|max:40|unique:maquinas,nombre',
-                'tipo'         => 'nullable|string|max:50|in:cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual',
+                'tipo'         => 'nullable|string|max:50|in:grua,cortadora_dobladora,ensambladora,soldadora,cortadora manual,dobladora manual',
                 'obra_id'      => 'nullable|exists:obras,id',
                 'diametro_min' => 'nullable|integer',
                 'diametro_max' => 'nullable|integer',
