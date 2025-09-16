@@ -1,10 +1,14 @@
 <x-app-layout>
     <x-slot name="title">Salidas - {{ config('app.name') }}</x-slot>
     <x-menu.salidas />
+    <x-menu.salidas2 />
 
     <div class="w-full p-4 sm:p-4">
 
-        {{-- Botón para crear nueva salida (solo rol oficina) --}}
+        {{-- Si el usuario es de oficina, mostramos la tabla completa --}}
+        {{-- Si el usuario es operario, mostramos un listado simplificado con opción de completar --}}
+        {{-- y escanear paquetes --}}
+        {{-- Si el usuario no es ninguno de los dos, mostramos un mensaje de error --}}
         @if (auth()->user()->rol == 'oficina')
             {{-- Verificamos que existan salidas --}}
             @if ($salidas->count())
@@ -174,10 +178,10 @@
                                             </td>
 
                                             <td class="py-2 px-4 border-b">
-                                                <a href="{{ route('salidas.show', $salida->id) }}"
+                                                <a href="{{ route('salidas-ferralla.show', $salida->id) }}"
                                                     class="text-blue-600 hover:text-blue-800">Ver</a>
                                                 @if (auth()->user()->rol === 'oficina' || strtolower(auth()->user()->name) === 'alberto mayo martin')
-                                                    <x-tabla.boton-eliminar :action="route('salidas.destroy', $salida->id)" />
+                                                    <x-tabla.boton-eliminar :action="route('salidas-ferralla.destroy', $salida->id)" />
                                                 @endif
 
                                             </td>

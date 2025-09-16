@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\File;
 
 use Illuminate\Support\Facades\Mail;
 
-class SalidaController extends Controller
+class SalidaFerrallaController extends Controller
 {
     public function index(Request $request)
     {
@@ -871,7 +871,7 @@ class SalidaController extends Controller
 
             // 🔹 Validar si el mes es válido
             if (!isset($meses[$mesSolo])) {
-                return redirect()->route('salidas.index')->with('error', "Mes no válido: $mes");
+                return redirect()->route('salidas.ferralla.index')->with('error', "Mes no válido: $mes");
             }
 
             $mesIngles = $meses[$mesSolo];
@@ -897,7 +897,7 @@ class SalidaController extends Controller
                 ->get();
 
             if ($salidas->isEmpty()) {
-                return redirect()->route('salidas.index')->with('error', "No hay salidas registradas en $mesSolo $anio.");
+                return redirect()->route('salidas.ferralla.index')->with('error', "No hay salidas registradas en $mesSolo $anio.");
             }
 
             // 🔹 Generar resumen por empresa de transporte
@@ -959,7 +959,7 @@ class SalidaController extends Controller
 
             return \Excel::download(new \App\Exports\SalidasExport($salidas, $empresaSummary), "salidas_{$mesSolo}_{$anio}.xlsx");
         } catch (\Exception $e) {
-            return redirect()->route('salidas.index')->with('error', 'Hubo un problema al exportar las salidas: ' . $e->getMessage());
+            return redirect()->route('salidas.ferralla.index')->with('error', 'Hubo un problema al exportar las salidas: ' . $e->getMessage());
         }
     }
 
@@ -1028,10 +1028,10 @@ class SalidaController extends Controller
 
             $salida->delete();
 
-            return redirect()->route('salidas.index')
+            return redirect()->route('salidas.ferralla.index')
                 ->with('success', 'Salida eliminada correctamente.');
         } catch (\Exception $e) {
-            return redirect()->route('salidas.index')
+            return redirect()->route('salidas.ferralla.index')
                 ->with('error', 'Hubo un problema al eliminar la salida: ' . $e->getMessage());
         }
     }

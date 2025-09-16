@@ -32,7 +32,7 @@
         'productos.index' => '🧱 Productos',
         'movimientos.index' => '🔄 Movimientos',
         'entradas.index' => '⬅️ Entradas',
-        'salidas.index' => '➡️ Salidas',
+        'salidas-ferralla.index' => '➡️ Salidas',
     ] as $ruta => $texto)
                 <a href="{{ route($ruta) }}"
                     class="block px-2 py-3 text-sm font-medium transition

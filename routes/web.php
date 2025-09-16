@@ -25,7 +25,8 @@ use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\PaqueteController;
 use App\Http\Controllers\EtiquetaController;
 use App\Http\Controllers\AlertaController;
-use App\Http\Controllers\SalidaController;
+use App\Http\Controllers\SalidaFerrallaController;
+use App\Http\Controllers\SalidaAlmacenController;
 use App\Http\Controllers\ObraController;
 use App\Http\Controllers\AsignacionTurnoController;
 use App\Http\Controllers\CamionController;
@@ -230,16 +231,40 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/update-field', [EmpresaTransporteController::class, 'updateField'])->name('empresas-transporte.editarField');
 
-    // === SALIDAS Y ESCANEO ===
-    Route::resource('salidas', SalidaController::class);
-    Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaController::class, 'quitarPaquete'])->name('salidas.editarQuitarPaquete');
-    Route::put('/salidas/{salida}/actualizar-estado', [SalidaController::class, 'editarActualizarEstado']);
-    Route::post('/actualizar-fecha-salida', [SalidaController::class, 'actualizarFechaSalida']);
-    Route::post('/escaneo', [SalidaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
-    Route::get('/salidas/export/{mes}', [SalidaController::class, 'export'])->name('salidas.export');
-    Route::post('/planificacion/crear-salida-desde-calendario', [SalidaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
-    Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaController::class, 'completarDesdeMovimiento']);
-    Route::put('/salidas/{salida}/codigo-sage', [SalidaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
+    // === SALIDAS FERRALLA ===
+    Route::resource('salidas-ferralla', SalidaFerrallaController::class);
+    Route::delete('/salidas/{salida}/quitar-paquete/{paquete}', [SalidaFerrallaController::class, 'quitarPaquete'])->name('salidas.editarQuitarPaquete');
+    Route::put('/salidas/{salida}/actualizar-estado', [SalidaFerrallaController::class, 'editarActualizarEstado']);
+    Route::post('/actualizar-fecha-salida', [SalidaFerrallaController::class, 'actualizarFechaSalida']);
+    Route::post('/escaneo', [SalidaFerrallaController::class, 'marcarSubido'])->name('escaneo.marcarSubido');
+    Route::get('/salidas/export/{mes}', [SalidaFerrallaController::class, 'export'])->name('salidas.export');
+    Route::post('/planificacion/crear-salida-desde-calendario', [SalidaFerrallaController::class, 'crearSalidaDesdeCalendario'])->name('planificacion.crearSalidaDesdeCalendario');
+    Route::put('/salidas/completar-desde-movimiento/{movimientoId}', [SalidaFerrallaController::class, 'completarDesdeMovimiento']);
+    Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
+
+    // === SALIDAS ALMACEN ===
+    Route::get('salidas-almacen/disponibilidad', [SalidaAlmacenController::class, 'disponibilidad'])
+        ->name('salidas-almacen.disponibilidad');
+
+    Route::resource('salidas-almacen', SalidaAlmacenController::class);
+
+    Route::put('/salidas/{salida}/actualizar-estado', [SalidaAlmacenController::class, 'editarActualizarEstado'])
+        ->name('salidas.editarActualizarEstado');
+
+    Route::put('/salidas/{salida}/codigo-sage', [SalidaAlmacenController::class, 'actualizarCodigoSage'])
+        ->name('salidas.editarCodigoSage');
+    Route::post('/salidas-almacen/{salida}/activar', [SalidaAlmacenController::class, 'activar'])->name('salidas-almacen.activar');
+    Route::post('/salidas-almacen/{salida}/cancelar', [SalidaAlmacenController::class, 'cancelar'])->name('salidas-almacen.cancelar');
+    Route::post('/salidas-almacen/{salida}/desactivar', [SalidaAlmacenController::class, 'desactivar'])->name('salidas-almacen.desactivar');
+
+    Route::get('/salidas-almacen/{salida}/asignados', [SalidaAlmacenController::class, 'productosAsignados']);
+    Route::get('/salidas-almacen/{movimiento}/productos', [SalidaAlmacenController::class, 'productosPorMovimiento']);
+    Route::post('/productos/validar-para-salida', [SalidaAlmacenController::class, 'validarProductoEscaneado']);
+    Route::delete('/salidas-almacen/{salida}/detalle/{codigo}', [SalidaAlmacenController::class, 'eliminarProductoEscaneado']);
+
+
+
+
 
     // === OBRAS ===
     Route::resource('obras', ObraController::class);

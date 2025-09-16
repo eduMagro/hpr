@@ -1,8 +1,8 @@
 <x-app-layout>
     <x-slot name="title">Crear Salidas - {{ config('app.name') }}</x-slot>
-   <x-menu.salidas />
+    <x-menu.salidas />
     <div class="container mx-auto p-6">
-        <form action="{{ route('salidas.store') }}" method="POST" id="form-crear-salida">
+        <form action="{{ route('salidas-ferralla.store') }}" method="POST" id="form-crear-salida">
             @csrf
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 

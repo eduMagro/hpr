@@ -1,29 +1,13 @@
 @php
-    use Illuminate\Support\Str;
-
-    $links = [
-        ['route' => 'planificacion.index', 'label' => '📅 Planificación Salidas'],
-        ['route' => 'salidas-ferralla.index', 'label' => '⬆️ Listado Salidas'],
-        ['route' => 'salidas-ferralla.create', 'label' => '➕ Nueva Salida mezclando obras'],
-        ['route' => 'empresas-transporte.index', 'label' => '🚛 Empresas Transporte'],
+    // 🔗 Menú secundario para tipos de salidas
+    $subLinks = [
+        ['route' => 'salidas-ferralla.index', 'label' => '🏗️ Salidas Ferralla'],
+        ['route' => 'salidas-almacen.index', 'label' => '🏢 Salidas Almacén'],
     ];
 
-    $rutaActual = request()->route()->getName();
+    $rutaActual = request()->route()->getName(); // Se mantiene del menú anterior
 
-    // Rutas que NO deben encender la pestaña general "Salidas"
-    $excluirDeSeccion = [
-        'salidas-ferralla.create',
-        // si algún día tienes otro create:
-        // 'salidas-almacen.create',
-    ];
-
-    // Estás en la sección Salidas (ferralla o almacén) y NO en una ruta excluida
-    $estaEnSeccionMostrable =
-        request()->routeIs('salidas-ferralla.*', 'salidas-almacen.*') && !request()->routeIs($excluirDeSeccion);
-
-    // Pestaña representante de la sección
-    $representanteSeccion = 'salidas-ferralla.index';
-
+    // 🟦 Colores base (reutilizados del menú principal)
     $colorBase = 'blue';
     $colores = [
         'bg' => "bg-$colorBase-600",
@@ -39,22 +23,22 @@
     ];
 @endphp
 
-<div class="w-full" x-data="{ open: false }">
-    <!-- Menú móvil -->
+<div class="w-full mt-2" x-data="{ open: false }">
+    <!-- Menú móvil secundario -->
     <div class="sm:hidden relative">
         <button @click="open = !open"
             class="w-1/2 {{ $colores['bg'] }} {{ $colores['bgHover'] }} {{ $colores['txt'] }} font-semibold px-4 py-2 shadow transition">
-            Opciones
+            Tipo de Salida
         </button>
 
         <div x-show="open" x-transition @click.away="open = false"
             class="absolute z-30 mt-0 w-1/2 bg-white border {{ $colores['borde'] }} rounded-b-lg shadow-xl overflow-hidden divide-y {{ $colores['borde'] }}"
             x-cloak>
-            @foreach ($links as $link)
+
+            @foreach ($subLinks as $link)
                 @php
-                    $active =
-                        $rutaActual === $link['route'] ||
-                        ($estaEnSeccionMostrable && $link['route'] === $representanteSeccion);
+                    $base = Str::beforeLast($link['route'], '.'); // p.ej. 'salidas-ferralla'
+                    $active = request()->routeIs($base . '.*');
                 @endphp
                 <a href="{{ route($link['route']) }}"
                     class="block px-2 py-3 text-sm font-medium transition
@@ -64,26 +48,24 @@
                     {{ $link['label'] }}
                 </a>
             @endforeach
-
         </div>
     </div>
 
-    <!-- Menú escritorio -->
+    {{-- Menú escritorio secundario --}}
     <div class="hidden sm:flex sm:mt-0 w-full">
-        @foreach ($links as $link)
+
+        @foreach ($subLinks as $link)
             @php
-                $active =
-                    $rutaActual === $link['route'] ||
-                    ($estaEnSeccionMostrable && $link['route'] === $representanteSeccion);
+                $base = Str::beforeLast($link['route'], '.');
+                $active = request()->routeIs($base . '.*');
             @endphp
             <a href="{{ route($link['route']) }}"
-                class="relative flex-1 text-center px-4 py-2 font-semibold transition
+                class="flex-1 text-center px-4 py-2 font-semibold transition
               {{ $active
                   ? $colores['bgActivo'] . ' ' . $colores['txt']
                   : $colores['bg'] . ' ' . $colores['bgHover'] . ' ' . $colores['txt'] }}">
                 {{ $link['label'] }}
             </a>
         @endforeach
-
     </div>
 </div>

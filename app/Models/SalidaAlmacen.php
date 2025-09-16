@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Salida extends Model
+class SalidaAlmacen extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'codigo_salida',
+        'codigo',
         'codigo_sage',
         'user_id',
         'camion_id',
@@ -25,6 +25,9 @@ class Salida extends Model
         'fecha_salida',
         'observaciones'
     ];
+    // app/Models/SalidaAlmacen.php
+    protected $table = 'salidas_almacen';
+
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -49,25 +52,22 @@ class Salida extends Model
     /**
      * Relación: Una salida tiene muchos paquetes.
      */
-    public function paquetes()
+    public function productos()
     {
-        return $this->belongsToMany(Paquete::class, 'salidas_paquetes', 'salida_id', 'paquete_id');
+        return $this->belongsToMany(Paquete::class, 'salidas_almacen_productos', 'salida_almacen_id', 'producto_id');
     }
     public function salidasPaquetes()
     {
         return $this->hasMany(SalidaPaquete::class);
     }
-    public function salidaClientes()
-    {
-        return $this->hasMany(SalidaCliente::class);
-    }
-    public function clientes()
-    {
-        return $this->belongsToMany(Cliente::class, 'salida_cliente', 'salida_id', 'cliente_id');
-    }
+
     public function obras()
     {
         return $this->belongsToMany(Obra::class, 'salida_cliente', 'salida_id', 'obra_id');
+    }
+    public function obraDestino()
+    {
+        return $this->belongsTo(Obra::class, 'obra_id_destino');
     }
 
     public function movimientos()
@@ -75,10 +75,27 @@ class Salida extends Model
         return $this->hasMany(Movimiento::class);
     }
 
+    public function clientes()
+    {
+        // solo para listar clientes vinculados (sin campos extra del pivote)
+        return $this->belongsToMany(
+            Cliente::class,
+            'salidas_almacen_clientes',   // tabla pivote
+            'salida_almacen_id',          // FK local en la pivote
+            'cliente_id'                  // FK remota
+        );
+    }
+
+    public function salidasClientes()
+    {
+        // aquí gestionas los campos extra (horas, importes, obra_id…)
+        return $this->hasMany(SalidaAlmacenCliente::class, 'salida_almacen_id');
+    }
+
     public static function generarCodigo()
     {
         $año = now()->format('y'); // ejemplo: '25' para 2025
-        $prefijo = "SA{$año}/";
+        $prefijo = "AS{$año}/";
 
         // Buscar el último código generado con ese prefijo
         $ultimoCodigo = self::where('codigo', 'like', "{$prefijo}%")

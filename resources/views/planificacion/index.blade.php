@@ -83,7 +83,7 @@
                 // para update por drag&drop: PUT /planificacion/{id}
                 'updateItem' => url('/planificacion/__ID__'),
                 'totales' => url('/planificacion/totales'), // GET ?fecha=YYYY-MM-DD
-                'salidasCreate' => route('salidas.create'),
+                'salidasCreate' => route('salidas-ferralla.create'),
                 // 📅 nuevas rutas para cambiar fechas de entrega
                 'informacionPlanillas' => route('planillas.editarInformacionMasiva'), // GET ?ids=1,2,3
                 'actualizarFechasPlanillas' => route('planillas.editarActualizarFechasMasiva'), // PUT JSON
