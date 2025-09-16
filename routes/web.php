@@ -262,7 +262,10 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/productos/validar-para-salida', [SalidaAlmacenController::class, 'validarProductoEscaneado']);
     Route::delete('/salidas-almacen/{salida}/detalle/{codigo}', [SalidaAlmacenController::class, 'eliminarProductoEscaneado']);
 
-
+    Route::put(
+        '/salidas-almacen/completar-desde-movimiento/{movimiento}',
+        [SalidaAlmacenController::class, 'completarDesdeMovimiento']
+    )->name('salidas-almacen.completar-desde-movimiento');
 
 
 

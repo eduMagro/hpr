@@ -818,6 +818,44 @@ class SalidaAlmacenController extends Controller
             ], 500);
         }
     }
+    public function completarDesdeMovimiento($movimientoId)
+    {
+        try {
+            // Buscar el movimiento
+            $movimiento = Movimiento::findOrFail($movimientoId);
+
+            if (strtolower($movimiento->tipo) !== 'salida almacén') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El movimiento no corresponde a una salida de almacén.'
+                ], 422);
+            }
+
+            // Buscar la salida asociada
+            $salida = SalidaAlmacen::findOrFail($movimiento->salida_almacen_id);
+
+            // Marcar salida como completada
+            $salida->estado = 'completado';
+            $salida->save();
+
+            // Actualizar movimiento como ejecutado
+            $movimiento->estado = 'ejecutado';
+            $movimiento->ejecutado_por = auth()->id();
+            $movimiento->fecha_ejecucion = now(); // 👈 aquí guardamos la fecha y hora
+            $movimiento->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salida de almacén completada correctamente.'
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error("Error completando salida desde movimiento {$movimientoId}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error inesperado al completar la salida.'
+            ], 500);
+        }
+    }
 
 
     public function update(Request $request, $id)
