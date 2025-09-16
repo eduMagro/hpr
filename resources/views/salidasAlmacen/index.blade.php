@@ -17,7 +17,8 @@
                             <th class="p-2 border">{!! $ordenables['conductor'] ?? 'Conductor' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fecha_salida'] ?? 'Fecha' !!}</th>
                             <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
-                            <x-tabla.botones-filtro ruta="salidas-almacen.index" />
+                            <th class="p-2 border">Acciones</th>
+
                         </tr>
                         <tr class="text-center text-xs uppercase">
                             <form method="GET" action="{{ route('salidas-almacen.index') }}">
@@ -42,13 +43,19 @@
                     <tbody>
                         @forelse ($salidas as $salida)
                             @php
-                                $claseFondo = match ($salida->estado) {
+                                $estadoSalida = strtolower(trim($salida['estado']));
+                                $claseFondo = match ($estadoSalida) {
+                                    'facturada' => 'bg-green-500',
                                     'completada' => 'bg-green-100',
                                     'activa' => 'bg-yellow-100',
-                                    'cancelada' => 'bg-gray-200 text-gray-500',
+                                    'cancelada' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
                                     default => 'even:bg-gray-50 odd:bg-white',
                                 };
+                                $esCancelado = $estadoSalida === 'cancelado';
+                                $esCompletado = $estadoSalida === 'completado';
+                                $esFacturado = $estadoSalida === 'facturado';
                             @endphp
+
                             <tr class="text-xs {{ $claseFondo }}">
                                 <td class="border px-2 py-1">{{ $salida->codigo }}</td>
                                 <td class="border px-2 py-1">{{ $salida->codigo_sage ?? '—' }}</td>
@@ -58,41 +65,52 @@
                                 <td class="border px-2 py-1 capitalize">{{ $salida->estado }}</td>
                                 <td class="border px-2 py-1">
                                     <div class="flex items-center justify-center gap-1">
-                                        @if ($salida->estado === 'activa')
-                                            <form method="POST"
-                                                action="{{ route('salidas-almacen.desactivar', $salida->id) }}"
-                                                onsubmit="return confirmarDesactivacion(event)" class="inline">
-                                                @csrf
-                                                <button type="submit"
-                                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-2 py-1 text-xs">Desactivar</button>
-                                            </form>
-                                        @else
-                                            <form method="POST"
-                                                action="{{ route('salidas-almacen.activar', $salida->id) }}"
-                                                onsubmit="return confirmarActivacion(event)" class="inline">
-                                                @csrf
-                                                <button type="submit"
-                                                    class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded px-2 py-1 text-xs">Activar</button>
-                                            </form>
+                                        @if ($salida->estado !== 'completada')
+                                            @if ($salida->estado === 'activa')
+                                                <form method="POST"
+                                                    action="{{ route('salidas-almacen.editarDesactivar', $salida->id) }}"
+                                                    onsubmit="return confirmarDesactivacion(event)" class="inline">
+                                                    @csrf
+                                                    <button type="submit"
+                                                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-2 py-1 text-xs">
+                                                        Desactivar
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <form method="POST"
+                                                    action="{{ route('salidas-almacen.editarActivar', $salida->id) }}"
+                                                    onsubmit="return confirmarActivacion(event)" class="inline">
+                                                    @csrf
+                                                    <button type="submit"
+                                                        class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded px-2 py-1 text-xs">
+                                                        Activar
+                                                    </button>
+                                                </form>
 
-                                            <form method="POST"
-                                                action="{{ route('salidas-almacen.cancelar', $salida->id) }}"
-                                                onsubmit="return confirmarCancelacion(event)" class="inline">
-                                                @csrf
-                                                <button type="submit"
-                                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-2 py-1 text-xs">Cancelar</button>
-                                            </form>
+                                                <form method="POST"
+                                                    action="{{ route('salidas-almacen.editarCancelar', $salida->id) }}"
+                                                    onsubmit="return confirmarCancelacion(event)" class="inline">
+                                                    @csrf
+                                                    <button type="submit"
+                                                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-2 py-1 text-xs">
+                                                        Cancelar
+                                                    </button>
+                                                </form>
 
-                                            <form method="POST"
-                                                action="{{ route('salidas-almacen.destroy', $salida->id) }}"
-                                                onsubmit="return confirmarEliminacion(event)" class="inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                    class="bg-red-100 hover:bg-red-200 text-red-700 rounded px-2 py-1 text-xs">Eliminar</button>
-                                            </form>
+                                                <form method="POST"
+                                                    action="{{ route('salidas-almacen.destroy', $salida->id) }}"
+                                                    onsubmit="return confirmarEliminacion(event)" class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                        class="bg-red-100 hover:bg-red-200 text-red-700 rounded px-2 py-1 text-xs">
+                                                        Eliminar
+                                                    </button>
+                                                </form>
+                                            @endif
                                         @endif
                                     </div>
+
                                 </td>
 
                             </tr>

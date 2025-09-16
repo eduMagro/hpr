@@ -224,7 +224,7 @@
     const codigosEscaneados = new Set(); // evita dobles lecturas en la sesión del modal
     const productosEscaneadosPorTipo = {}; // { [producto_base_id]: Array<{codigo, peso_kg, cantidad}> }
     const
-    metaPB = {}; // { [producto_base_id]: { objetivoKg, objetivoUd, asignadoKg, asignadoUd, label, diametro, longitud } }
+        metaPB = {}; // { [producto_base_id]: { objetivoKg, objetivoUd, asignadoKg, asignadoUd, label, diametro, longitud } }
     window._salidaActualId = null; // id de la salida actual (para eliminar)
 
     // ====== Utilidad fetch ======
@@ -305,7 +305,7 @@
         if (bar) {
             bar.style.width = pct + '%';
             bar.style.backgroundColor = pct >= 100 ? '#10B981' : (pct > 0 ? '#FBBF24' :
-            '#E5E7EB'); // verde / ámbar / gris
+                '#E5E7EB'); // verde / ámbar / gris
         }
         if (chip) {
             let texto = 'pendiente',
@@ -354,40 +354,49 @@
         const totalUd = lista.reduce((acc, p) => acc + (p.cantidad ? Number(p.cantidad) : 0), 0);
 
         cont.innerHTML = `
-      <div class="mt-2 border rounded overflow-auto max-h-56">
-        <table class="w-full text-xs">
-          <thead class="bg-gray-50 sticky top-0 z-10">
-            <tr>
-              <th class="text-left px-2 py-1 border-b">Código</th>
-              <th class="text-right px-2 py-1 border-b">${totalKg > 0 ? 'Asignado (kg)' : 'Asignado (ud)'}</th>
-              <th class="text-left px-2 py-1 border-b">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${lista.map((p, i) => `
-              <tr class="${i % 2 ? 'bg-gray-50/30' : ''}">
-                <td class="px-2 py-1 border-b">${p.codigo}</td>
-                <td class="px-2 py-1 border-b text-right">
-                  ${typeof p.peso_kg === 'number' && p.peso_kg > 0 ? p.peso_kg.toLocaleString() : (p.cantidad ?? 0)}
-                </td>
-                <td class="px-2 py-1 border-b">
-                  <button class="text-red-600 hover:underline" onclick="eliminarEscaneado('${p.codigo}', ${pbId})">Quitar</button>
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-          <tfoot class="bg-gray-50">
-            <tr>
-              <td class="px-2 py-1 border-t font-semibold">Total</td>
-              <td class="px-2 py-1 border-t text-right font-semibold">
-                ${totalKg > 0 ? totalKg.toLocaleString() + ' kg' : (totalUd + ' ud')}
+  <div class="mt-2 border rounded overflow-auto max-h-56">
+    <table class="w-full text-xs">
+      <thead class="bg-gray-50 sticky top-0 z-10">
+        <tr>
+          <th class="text-left px-2 py-1 border-b">Código</th>
+          <th class="text-right px-2 py-1 border-b">Stock</th> <!-- NUEVA COLUMNA -->
+          <th class="text-right px-2 py-1 border-b">${totalKg > 0 ? 'Asignado (kg)' : 'Asignado (ud)'}</th>
+          <th class="text-left px-2 py-1 border-b">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${lista.map((p, i) => {
+          const stockTxt = typeof p.peso_stock === 'number' ? `${p.peso_stock.toLocaleString()} kg` : '0 kg';
+          const asignadoTxt = (typeof p.peso_kg === 'number' && p.peso_kg > 0)
+            ? p.peso_kg.toLocaleString()
+            : (p.cantidad ?? 0);
+
+          return `
+            <tr class="${i % 2 ? 'bg-gray-50/30' : ''}">
+              <td class="px-2 py-1 border-b">${p.codigo}</td>
+              <td class="px-2 py-1 border-b text-right">${stockTxt}</td>        <!-- 👈 p.peso_stock -->
+              <td class="px-2 py-1 border-b text-right">${asignadoTxt}</td>
+              <td class="px-2 py-1 border-b">
+                <button class="text-red-600 hover:underline" onclick="eliminarEscaneado('${p.codigo}', ${pbId})">Quitar</button>
               </td>
-              <td class="px-2 py-1 border-t"></td>
             </tr>
-          </tfoot>
-        </table>
-      </div>
-    `;
+          `;
+        }).join('')}
+      </tbody>
+      <tfoot class="bg-gray-50">
+        <tr>
+          <td class="px-2 py-1 border-t font-semibold">Total</td>
+          <td class="px-2 py-1 border-t text-right"></td> <!-- celda vacía para la columna Stock -->
+          <td class="px-2 py-1 border-t text-right font-semibold">
+            ${totalKg > 0 ? totalKg.toLocaleString() + ' kg' : (totalUd + ' ud')}
+          </td>
+          <td class="px-2 py-1 border-t"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+`;
+
 
         if (metaPB[pbId]?.objetivoKg != null) metaPB[pbId].asignadoKg = totalKg;
         if (metaPB[pbId]?.objetivoUd != null) metaPB[pbId].asignadoUd = totalUd;
@@ -487,8 +496,8 @@
         window._salidaActualId = salidaId; // 🔑 guardar para eliminar
 
         let html = `
-      <p class="mb-3 text-sm text-gray-600">Escanea productos para completar la salida:</p>
-      <div class="space-y-2">
+    <p class="mb-3 text-sm text-red-600">${data.observaciones || 'Escanea productos para completar la salida:'}</p>
+
     `;
         productosBase.forEach(pb => {
             const key = pb.producto_base_id; // clave por producto_base_id
@@ -525,7 +534,7 @@
         html += '</div>';
 
         await Swal.fire({
-            title: '📦 Ejecutar Salida Almacén',
+            title: 'Salida Almacén',
             html,
             showCancelButton: true,
             confirmButtonText: 'Finalizar salida',

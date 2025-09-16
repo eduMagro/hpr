@@ -54,12 +54,7 @@
                             </svg>
                         </button>
                     </div>
-
-
-
                 </div>
-
-
             </div>
 
             <template x-if="consultado">
@@ -196,7 +191,7 @@
 
     <script>
         function crearSalidaAlmacen() {
-            const DISP_URL = @json(route('salidas-almacen.disponibilidad'));
+            const DISP_URL = @json(route('salidas-almacen.verDisponibilidad'));
             const STORAGE_KEY = 'salidasAlmacenState';
             const TIPO_FIJO = 'barra';
 

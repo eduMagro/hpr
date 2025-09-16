@@ -259,7 +259,10 @@ class SalidaAlmacenController extends Controller
         $diametros = ProductoBase::select('diametro')
             ->distinct()->orderBy('diametro')->pluck('diametro');
         $longitudes = ProductoBase::select('longitud')
-            ->distinct()->orderBy('longitud')->pluck('longitud');
+            ->whereBetween('longitud', [6, 12]) // 👈 solo longitudes 6–12
+            ->distinct()
+            ->orderBy('longitud')
+            ->pluck('longitud');
 
         $empresas = EmpresaTransporte::with('camiones:id,empresa_id,modelo')
             ->orderBy('nombre')->get();
@@ -272,11 +275,13 @@ class SalidaAlmacenController extends Controller
         $productosBase = Cache::rememberForever('productos_base_lista_barras', function () {
             return ProductoBase::select('id', 'tipo', 'diametro', 'longitud')
                 ->where('tipo', 'barra') // 👈 solo tipo barra
+                ->whereBetween('longitud', [6, 12]) // 👈 longitud entre 6 y 12 metros
                 ->orderBy('tipo')
                 ->orderBy('diametro')
                 ->orderBy('longitud')
                 ->get();
         });
+
         return view('salidasAlmacen.create', compact(
             'tipos',
             'diametros',
@@ -309,9 +314,26 @@ class SalidaAlmacenController extends Controller
         }
 
         try {
+            // 0) Nave Almacén del cliente HPR (obligatoria)
+            $naveAlmacen = Obra::whereHas('cliente', function ($q) {
+                $q->where('empresa', 'like', '%Hierros Paco Reyes%');
+            })
+                ->where('obra', 'like', '%Almacén%')
+                ->first();
+
+            if (!$naveAlmacen) {
+                return response()->json([
+                    'message' => 'No se encontró la nave "Almacén" del cliente "Hierros Paco Reyes".',
+                    'total_peso_kg'     => 0.0,
+                    'total_productos'   => 0,
+                    'bases'             => [],
+                    'productos_preview' => [],
+                ], 404);
+            }
+
             $tipo     = $request->input('tipo');
             $diametro = (float) $request->input('diametro');
-            $longitud = $request->input('longitud'); // puede venir null o "": no usar empty()
+            $longitud = $request->input('longitud'); // puede venir null o ""
 
             // 2) Bases compatibles
             $basesQuery = ProductoBase::query()
@@ -336,22 +358,24 @@ class SalidaAlmacenController extends Controller
 
             $baseIds = $bases->pluck('id');
 
-            // 3) Agregados por base (eficiente, sin traer todos los productos)
+            // 3) Agregados por base (SOLO en nave almacén)
             $agregados = Producto::query()
                 ->selectRaw('producto_base_id, COUNT(*) as productos, COALESCE(SUM(peso_stock),0) as peso_total')
+                ->where('obra_id', $naveAlmacen->id)
                 ->whereIn('producto_base_id', $baseIds)
                 ->where('peso_stock', '>', 0)
                 ->groupBy('producto_base_id')
                 ->get()
                 ->keyBy('producto_base_id');
 
-            // Totales globales a partir de los agregados
+            // Totales globales (ya filtrados por nave)
             $totalProductos = (int) $agregados->sum('productos');
             $totalPeso      = (float) $agregados->sum('peso_total');
 
-            // 4) Preview FIFO (primeros 8 productos más antiguos)
+            // 4) Preview FIFO (primeros 8 más antiguos, en nave almacén)
             $preview = Producto::query()
                 ->select('id', 'codigo', 'producto_base_id', 'peso_stock', 'created_at')
+                ->where('obra_id', $naveAlmacen->id)
                 ->whereIn('producto_base_id', $baseIds)
                 ->where('peso_stock', '>', 0)
                 ->orderBy('created_at', 'asc')
@@ -368,7 +392,7 @@ class SalidaAlmacenController extends Controller
                 })
                 ->values();
 
-            // 5) Montar respuesta de bases con su resumen
+            // 5) Resumen por base
             $basesSalida = $bases->map(function ($b) use ($agregados) {
                 $res = $agregados->get($b->id);
                 return [
@@ -397,6 +421,7 @@ class SalidaAlmacenController extends Controller
         }
     }
 
+
     /**
      * Crea la salida de almacén consumiendo productos por FIFO,
      * ya sea por "peso_objetivo_kg" o "unidades_objetivo".
@@ -404,6 +429,7 @@ class SalidaAlmacenController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
+            'observaciones' => ['nullable', 'string', 'max:1000'],
             'productos' => ['required', 'array', 'min:1'],
             'productos.*.producto_base_id'  => ['required', 'exists:productos_base,id'],
             'productos.*.peso_objetivo_kg'  => ['nullable', 'numeric', 'min:0.01'],
@@ -428,6 +454,7 @@ class SalidaAlmacenController extends Controller
                 'fecha_salida' => now(),
                 'estado'       => 'pendiente',
                 'user_id'      => auth()->id(),
+                'observaciones' => $data['observaciones'] ?? null,
             ]);
 
             // Insertar líneas de productos
@@ -451,6 +478,7 @@ class SalidaAlmacenController extends Controller
             return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
     }
+
     public function productosAsignados($salidaId)
     {
         $asignados = DB::table('salidas_almacen_productos as sap')
@@ -516,6 +544,7 @@ class SalidaAlmacenController extends Controller
                 'p.producto_base_id',
                 'p.id as producto_id',
                 'p.codigo',
+                'p.peso_stock',
                 'sap.peso_kg',
                 'sap.cantidad'
             )
@@ -548,6 +577,7 @@ class SalidaAlmacenController extends Controller
                         'codigo'      => $i->codigo,
                         'peso_kg'     => (float) $i->peso_kg,
                         'cantidad'    => (int) $i->cantidad,
+                        'peso_stock'  => (float) $i->peso_stock,
                     ];
                 })->values();
                 $row->asignados = $lista; // ← array con los productos ya añadidos
@@ -557,6 +587,7 @@ class SalidaAlmacenController extends Controller
         return response()->json([
             'success' => true,
             'salida_id' => $salidaId,
+            'observaciones'   => $movimiento->salidaAlmacen->observaciones,
             'productos_base' => $productosBase,
         ]);
     }
@@ -575,7 +606,7 @@ class SalidaAlmacenController extends Controller
 
             Log::info('✅ Validación del request completada');
 
-            // 2) Prefijo obligatorio MP (si mantienes esta norma)
+            // 2) Prefijo MP
             $codigo = strtoupper(trim($request->codigo));
             if (!str_starts_with($codigo, 'MP')) {
                 $msg = 'El código debe comenzar por "MP".';
@@ -586,7 +617,7 @@ class SalidaAlmacenController extends Controller
                 ], 400);
             }
 
-            // 3) Localizar producto por código
+            // 3) Localizar producto por código (sin lock aún)
             /** @var \App\Models\Producto|null $producto */
             $producto = Producto::where('codigo', $request->codigo)->first();
             if (!$producto) {
@@ -598,34 +629,28 @@ class SalidaAlmacenController extends Controller
                 ], 404);
             }
 
-            // 4) (Muy importante) Si el frontend indicó el PB esperado, debe coincidir
+            // 4) Verificación PB esperado
             if ($request->filled('producto_base_id_esperado')) {
                 $esperado = (int) $request->input('producto_base_id_esperado');
                 if ((int) $producto->producto_base_id !== $esperado) {
                     $msg = 'El producto no es correcto.';
                     Log::warning("❌ {$msg} | Código: {$producto->codigo} | PB encontrado: {$producto->producto_base_id} | PB esperado: {$esperado}");
                     return response()->json([
-                        'success' => false,
-                        'message' => $msg, // error inline
-                        'producto' => [
-                            'producto_base_id' => (int) $producto->producto_base_id,
-                        ],
+                        'success'  => false,
+                        'message'  => $msg,
+                        'producto' => ['producto_base_id' => (int) $producto->producto_base_id],
                     ], 422);
                 }
             }
 
-            // 5) Si marcas reserva por producto completo, esto bloquearía parciales.
-            //    Mantienes parciales → no marques salida_almacen_id en producto.
+            // 5) Reserva previa (si la usas)
             if (!is_null($producto->salida_almacen_id) && (int)$producto->salida_almacen_id !== (int)$request->salida_almacen_id) {
                 $msg = 'Este producto ya está reservado para otra salida de almacén.';
                 Log::warning("❌ {$msg} | Código: {$producto->codigo}, salida_almacen_id: {$producto->salida_almacen_id}");
-                return response()->json([
-                    'success' => false,
-                    'message' => $msg,
-                ], 422);
+                return response()->json(['success' => false, 'message' => $msg], 422);
             }
 
-            // 6) Comprobar que el PB del producto está en la DEMANDA (sapb)
+            // 6) Demanda (sapb)
             $demanda = DB::table('salidas_almacen_productos_base')
                 ->where('salida_almacen_id', $request->salida_almacen_id)
                 ->where('producto_base_id', $producto->producto_base_id)
@@ -634,13 +659,10 @@ class SalidaAlmacenController extends Controller
             if (!$demanda) {
                 $msg = 'El producto escaneado es incorrecto para esta salida.';
                 Log::warning("❌ {$msg} | Código: {$producto->codigo}, producto_base_id: {$producto->producto_base_id}");
-                return response()->json([
-                    'success' => false,
-                    'message' => $msg,
-                ], 422);
+                return response()->json(['success' => false, 'message' => $msg], 422);
             }
 
-            // 7) Calcular asignado actual para este PB en esta salida
+            // 7) Asignado actual
             $asignado = DB::table('salidas_almacen_productos as sap')
                 ->join('productos as p', 'p.id', '=', 'sap.producto_id')
                 ->where('sap.salida_almacen_id', $request->salida_almacen_id)
@@ -648,20 +670,27 @@ class SalidaAlmacenController extends Controller
                 ->selectRaw('COALESCE(SUM(sap.peso_kg),0) as kg, COALESCE(SUM(sap.cantidad),0) as ud')
                 ->first();
 
-            $porPeso      = !is_null($demanda->peso_objetivo_kg);
-            $porUnidades  = !is_null($demanda->unidades_objetivo);
+            $porPeso     = !is_null($demanda->peso_objetivo_kg);
+            $porUnidades = !is_null($demanda->unidades_objetivo);
+            if ($porUnidades) {
+                $pesoInicial = (float) ($producto->peso_inicial ?? 0);
+                $pesoActual  = (float) ($producto->peso_stock ?? 0);
+
+                if ($pesoInicial > 0 && $pesoActual < $pesoInicial * 0.85) {
+                    $msg = 'El producto no tiene suficiente peso para ser considerado una unidad válida.';
+                    Log::warning("❌ {$msg} | Código: {$producto->codigo} | Inicial: {$pesoInicial} | Actual: {$pesoActual}");
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+            }
 
             $pesoProducto = (float) ($producto->peso_stock ?? $producto->peso_inicial ?? 0);
             if ($porPeso && $pesoProducto <= 0) {
                 $msg = 'El producto no tiene peso disponible.';
                 Log::warning("❌ {$msg} | Código: {$producto->codigo}");
-                return response()->json([
-                    'success' => false,
-                    'message' => $msg,
-                ], 422);
+                return response()->json(['success' => false, 'message' => $msg], 422);
             }
 
-            // 8) Restos por cubrir
+            // 8) Restantes
             $kgRestantes = $porPeso     ? max(0.0, (float)$demanda->peso_objetivo_kg - (float)$asignado->kg) : 0.0;
             $udRestantes = $porUnidades ? max(0,   (int)$demanda->unidades_objetivo - (int)$asignado->ud)      : 0;
 
@@ -670,30 +699,30 @@ class SalidaAlmacenController extends Controller
             if (($porPeso && $kgRestantes <= 0.0) || ($porUnidades && $udRestantes <= 0)) {
                 $msg = 'Este tipo ya está cubierto. No es necesario más material.';
                 Log::info("ℹ️ {$msg} | PB: {$producto->producto_base_id}");
-                return response()->json([
-                    'success' => false,
-                    'message' => $msg,
-                ], 422);
+                return response()->json(['success' => false, 'message' => $msg], 422);
             }
 
-            // 9) Aportación asignable (sin pasarse)
+            // 9) Aportación calculada
             $aportacionKg = $porPeso     ? (float) min($kgRestantes, $pesoProducto) : 0.0;
             $aportacionUd = $porUnidades ? min(1, $udRestantes)                     : 0;
 
             if (($porPeso && $aportacionKg <= 0.0) || ($porUnidades && $aportacionUd <= 0)) {
                 $msg = 'No hay margen para asignar más en este tipo.';
                 Log::info("ℹ️ {$msg} | PB: {$producto->producto_base_id}");
-                return response()->json([
-                    'success' => false,
-                    'message' => $msg,
-                ], 422);
+                return response()->json(['success' => false, 'message' => $msg], 422);
             }
 
-            // 10) Persistencia (suma si ya hay fila de este producto; si no, inserta)
+            // 10) Persistencia + DESCUENTO DE STOCK (todo atómico)
             DB::transaction(function () use ($request, $producto, $aportacionKg, $aportacionUd, $porPeso) {
+
+                // 🔒 Bloqueos
+                /** @var \App\Models\Producto $prodLock */
+                $prodLock = Producto::where('id', $producto->id)->lockForUpdate()->firstOrFail();
+
+                // Detalle (1 fila por producto → acumulamos)
                 $detalle = DB::table('salidas_almacen_productos')
                     ->where('salida_almacen_id', $request->salida_almacen_id)
-                    ->where('producto_id', $producto->id)
+                    ->where('producto_id', $prodLock->id)
                     ->lockForUpdate()
                     ->first();
 
@@ -708,7 +737,7 @@ class SalidaAlmacenController extends Controller
                 } else {
                     DB::table('salidas_almacen_productos')->insert([
                         'salida_almacen_id' => (int) $request->salida_almacen_id,
-                        'producto_id'       => (int) $producto->id,
+                        'producto_id'       => (int) $prodLock->id,
                         'cantidad'          => $porPeso ? 0 : $aportacionUd,
                         'peso_kg'           => $porPeso ? $aportacionKg : 0.0,
                         'observaciones'     => null,
@@ -717,11 +746,29 @@ class SalidaAlmacenController extends Controller
                     ]);
                 }
 
-                // 🔁 Si quisieras descontar stock aquí, hazlo con cuidado (comentado en tu versión).
+                // ➖ Descuento de stock
+                if ($porPeso) {
+                    $nuevo = max(0, (float)$prodLock->peso_stock - $aportacionKg);
+                    $prodLock->peso_stock = $nuevo;
+                    if ($nuevo <= 0 && $prodLock->estado !== 'consumido') {
+                        $prodLock->estado = 'consumido';
+                    }
+                } else {
+                    // Si manejas unidades_stock
+                    if (property_exists($prodLock, 'unidades_stock')) {
+                        $nuevoUd = max(0, (int)$prodLock->unidades_stock - $aportacionUd);
+                        $prodLock->unidades_stock = $nuevoUd;
+                        if ($nuevoUd <= 0 && $prodLock->estado === 'disponible') {
+                            $prodLock->estado = 'agotado';
+                        }
+                    }
+                }
+
+                $prodLock->save();
             });
 
             Log::info("✅ Producto asignado: ID {$producto->id}, Código {$producto->codigo}, " .
-                ($porPeso ? ("+{$aportacionKg} kg") : ("+{$aportacionUd} ud")));
+                ($porPeso ? ("-{$aportacionKg} kg stock") : ("-{$aportacionUd} ud stock")));
 
             // 11) Respuesta OK
             return response()->json([
@@ -729,7 +776,7 @@ class SalidaAlmacenController extends Controller
                 'producto' => [
                     'id'               => (int) $producto->id,
                     'codigo'           => $producto->codigo,
-                    'peso_stock'       => $producto->peso_stock, // si no descuentas aquí, seguirá igual
+                    // ojo: aquí es el valor anterior; la UI refresca desde /asignados
                     'producto_base_id' => (int) $producto->producto_base_id,
                     'aportado_kg'      => $aportacionKg,
                     'aportado_ud'      => $aportacionUd,
@@ -759,97 +806,214 @@ class SalidaAlmacenController extends Controller
     public function eliminarProductoEscaneado(SalidaAlmacen $salida, $codigo)
     {
         try {
-            // 1) Localiza producto por código
-            $producto = Producto::where('codigo', $codigo)->first();
+            return DB::transaction(function () use ($salida, $codigo) {
+                // 1) Producto con lock
+                $producto = Producto::where('codigo', $codigo)->lockForUpdate()->first();
 
-            if (!$producto) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Producto no encontrado.',
-                ], 404);
-            }
+                if (!$producto) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Producto no encontrado.',
+                    ], 404);
+                }
 
-            // 2) Comprueba si hay registro en detalle para esta salida
-            $registro = DB::table('salidas_almacen_productos')
-                ->where('salida_almacen_id', $salida->id)
+                // 2) Detalle con lock
+                $registro = DB::table('salidas_almacen_productos')
+                    ->where('salida_almacen_id', $salida->id)
+                    ->where('producto_id', $producto->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$registro) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El producto no está asignado a esta salida.',
+                    ], 404);
+                }
+
+                // 3) Revertir stock según lo asignado en el detalle
+                $devKg = (float) ($registro->peso_kg ?? 0);
+                $devUd = (int)   ($registro->cantidad ?? 0);
+
+                if ($devKg > 0) {
+                    $producto->peso_stock = (float)$producto->peso_stock + $devKg;
+                    // si estaba "agotado" y ahora tiene stock, lo devolvemos a "disponible" (opcional)
+                    if ($producto->estado === 'agotado' && $producto->peso_stock > 0) {
+                        $producto->estado = 'disponible';
+                    }
+                } elseif ($devUd > 0 && property_exists($producto, 'unidades_stock')) {
+                    $producto->unidades_stock = (int)$producto->unidades_stock + $devUd;
+                    if ($producto->estado === 'agotado' && $producto->unidades_stock > 0) {
+                        $producto->estado = 'disponible';
+                    }
+                }
+
+                $producto->save();
+
+                // 4) Eliminar el detalle
+                DB::table('salidas_almacen_productos')
+                    ->where('id', $registro->id)
+                    ->delete();
+
+                // 5) (Opcional) limpiar reserva si no queda ninguna asignación de ese producto
+                /*
+            $sigueAsignado = DB::table('salidas_almacen_productos')
                 ->where('producto_id', $producto->id)
-                ->first();
+                ->exists();
 
-            if (!$registro) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'El producto no está asignado a esta salida.',
-                ], 404);
+            if (!$sigueAsignado) {
+                $producto->salida_almacen_id = null;
+                if ($producto->peso_stock > 0) $producto->estado = 'disponible';
+                $producto->save();
             }
+            */
 
-            // 3) Elimina el detalle (si has diseñado 1 fila por producto, basta con borrar esa fila)
-            DB::table('salidas_almacen_productos')
-                ->where('salida_almacen_id', $salida->id)
-                ->where('producto_id', $producto->id)
-                ->delete();
-
-            // 4) (Opcional) NO tocamos producto->salida_almacen_id porque en asignación parcial no lo usamos.
-            //    Si en tu flujo lo hubieras marcado, podrías limpiarlo SOLO si ya no queda ningún detalle
-            //    de ese producto asignado a ninguna salida:
-            /*
-        $sigueAsignado = DB::table('salidas_almacen_productos')
-            ->where('producto_id', $producto->id)
-            ->exists();
-
-        if (!$sigueAsignado) {
-            $producto->update([
-                'salida_almacen_id' => null,
-                'estado' => 'disponible',
-            ]);
-        }
-        */
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Producto eliminado de la salida correctamente.',
-                'producto_id' => $producto->id,
-            ]);
+                return response()->json([
+                    'success'     => true,
+                    'message'     => 'Producto eliminado de la salida correctamente.',
+                    'producto_id' => $producto->id,
+                    'devuelto_kg' => $devKg ?: null,
+                    'devuelto_ud' => $devUd ?: null,
+                ]);
+            });
         } catch (\Throwable $e) {
             Log::error('Error al eliminar producto escaneado: ' . $e->getMessage(), ['exception' => $e]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Error inesperado al eliminar el producto.',
             ], 500);
         }
     }
+
     public function completarDesdeMovimiento($movimientoId)
     {
+        // ✅ Tolerancias (ajusta a tu gusto)
+        $TOL_KG = 0.1; // 100 gramos
+        $TOL_UD = 0;   // exacto en unidades
+
         try {
-            // Buscar el movimiento
-            $movimiento = Movimiento::findOrFail($movimientoId);
+            return DB::transaction(function () use ($movimientoId, $TOL_KG, $TOL_UD) {
 
-            if (strtolower($movimiento->tipo) !== 'salida almacén') {
+                /** @var \App\Models\Movimiento $movimiento */
+                $movimiento = \App\Models\Movimiento::lockForUpdate()->findOrFail($movimientoId);
+
+                if (strtolower($movimiento->tipo) !== 'salida almacén') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'El movimiento no corresponde a una salida de almacén.'
+                    ], 422);
+                }
+
+                /** @var \App\Models\SalidaAlmacen $salida */
+                $salida = \App\Models\SalidaAlmacen::lockForUpdate()->findOrFail($movimiento->salida_almacen_id);
+
+                // 🔎 1) Objetivos por producto base
+                $objetivos = DB::table('salidas_almacen_productos_base as sapb')
+                    ->join('productos_base as pb', 'pb.id', '=', 'sapb.producto_base_id')
+                    ->where('sapb.salida_almacen_id', $salida->id)
+                    ->get([
+                        'sapb.producto_base_id',
+                        'sapb.peso_objetivo_kg',
+                        'sapb.unidades_objetivo',
+                        'pb.diametro',
+                        'pb.longitud',
+                        'pb.tipo',
+                    ]);
+
+                if ($objetivos->isEmpty()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Esta salida no tiene objetivos definidos.'
+                    ], 422);
+                }
+
+                // 🔎 2) Asignado real por producto base
+                $asignados = DB::table('salidas_almacen_productos as sap')
+                    ->join('productos as p', 'p.id', '=', 'sap.producto_id')
+                    ->where('sap.salida_almacen_id', $salida->id)
+                    ->groupBy('p.producto_base_id')
+                    ->select([
+                        'p.producto_base_id',
+                        DB::raw('COALESCE(SUM(sap.peso_kg),0)  as asignado_kg'),
+                        DB::raw('COALESCE(SUM(sap.cantidad),0) as asignado_ud'),
+                    ])
+                    ->get()
+                    ->keyBy('producto_base_id');
+
+                // 🔎 3) Comprobación de objetivos
+                $pendientes = [];
+
+                Log::info('Comprobando objetivos para completar salida', [
+                    'salida_id' => $salida->id,
+                    'objetivos' => $objetivos->toArray(),
+                    'asignados' => $asignados->toArray(),
+                ]);
+
+                foreach ($objetivos as $obj) {
+                    $pbId = (int) $obj->producto_base_id;
+                    $asig = $asignados->get($pbId);
+
+                    $objetivoKg = $obj->peso_objetivo_kg !== null ? (float)$obj->peso_objetivo_kg : null;
+                    $objetivoUd = $obj->unidades_objetivo !== null ? (int)$obj->unidades_objetivo : null;
+
+                    $asigKg = $asig ? (float)$asig->asignado_kg : 0.0;
+                    $asigUd = $asig ? (int)$asig->asignado_ud : 0;
+
+                    $faltaKg = $objetivoKg !== null ? max(0.0, $objetivoKg - $asigKg) : null;
+                    $faltaUd = $objetivoUd !== null ? max(0,   $objetivoUd - $asigUd) : null;
+
+                    // ✅ Solo exigimos el cumplimiento de los objetivos definidos
+                    $incompleto = false;
+
+                    if ($objetivoKg !== null && $faltaKg > $TOL_KG) {
+                        $incompleto = true;
+                    }
+
+                    if ($objetivoUd !== null && $faltaUd > $TOL_UD) {
+                        $incompleto = true;
+                    }
+
+                    if ($incompleto) {
+                        $pendientes[] = [
+                            'producto_base_id' => $pbId,
+                            'diametro'         => $obj->diametro,
+                            'longitud'         => $obj->longitud,
+                            'tipo'             => $obj->tipo,
+                            'objetivo_kg'      => $objetivoKg,
+                            'asignado_kg'      => $asigKg,
+                            'falta_kg'         => $faltaKg,
+                            'objetivo_ud'      => $objetivoUd,
+                            'asignado_ud'      => $asigUd,
+                            'falta_ud'         => $faltaUd,
+                        ];
+                    }
+                }
+
+                if (!empty($pendientes)) {
+                    return response()->json([
+                        'success'    => false,
+                        'message'    => 'No se puede completar: faltan objetivos por cubrir.',
+                        'pendientes' => $pendientes,
+                    ], 422);
+                }
+
+                // ✅ 4) Marcar como completado
+                $salida->estado = 'completada';
+                $salida->fecha_salida = $salida->fecha_salida ?? now();
+                $salida->save();
+
+                $movimiento->estado = 'ejecutado';
+                $movimiento->ejecutado_por = auth()->id();
+                $movimiento->fecha_ejecucion = now();
+                $movimiento->save();
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'El movimiento no corresponde a una salida de almacén.'
-                ], 422);
-            }
-
-            // Buscar la salida asociada
-            $salida = SalidaAlmacen::findOrFail($movimiento->salida_almacen_id);
-
-            // Marcar salida como completada
-            $salida->estado = 'completado';
-            $salida->save();
-
-            // Actualizar movimiento como ejecutado
-            $movimiento->estado = 'ejecutado';
-            $movimiento->ejecutado_por = auth()->id();
-            $movimiento->fecha_ejecucion = now(); // 👈 aquí guardamos la fecha y hora
-            $movimiento->save();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Salida de almacén completada correctamente.'
-            ]);
+                    'success' => true,
+                    'message' => 'Salida de almacén completada correctamente.'
+                ]);
+            });
         } catch (\Throwable $e) {
-            \Log::error("Error completando salida desde movimiento {$movimientoId}: " . $e->getMessage());
+            Log::error("Error completando salida desde movimiento {$movimientoId}: " . $e->getMessage(), ['ex' => $e]);
             return response()->json([
                 'success' => false,
                 'message' => 'Error inesperado al completar la salida.'

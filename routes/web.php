@@ -103,6 +103,11 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])->name('productos.editarConsumir');
     Route::post('productos/generar-exportar', [ProductoController::class, 'GenerarYExportar'])->name('productos.generar.crearExportar');
 
+    // 📦 Vistas por nave
+    Route::get('/ubicaciones/nave-a', [UbicacionController::class, 'naveA'])->name('ubicaciones.verNave-a');
+    Route::get('/ubicaciones/nave-b', [UbicacionController::class, 'naveB'])->name('ubicaciones.verNave-b');
+    Route::get('/ubicaciones/almacen', [UbicacionController::class, 'almacen'])->name('ubicaciones.verAlmacen');
+
     Route::get('/ubicaciones/inventario', [UbicacionController::class, 'inventario'])->name('ubicaciones.verInventario');
     Route::resource('ubicaciones', UbicacionController::class);
     Route::get('/ubicaciones/{ubicacion}', [UbicacionController::class, 'show'])->name('ubicaciones.show');
@@ -244,7 +249,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     // === SALIDAS ALMACEN ===
     Route::get('salidas-almacen/disponibilidad', [SalidaAlmacenController::class, 'disponibilidad'])
-        ->name('salidas-almacen.disponibilidad');
+        ->name('salidas-almacen.verDisponibilidad');
 
     Route::resource('salidas-almacen', SalidaAlmacenController::class);
 
@@ -253,19 +258,35 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::put('/salidas/{salida}/codigo-sage', [SalidaAlmacenController::class, 'actualizarCodigoSage'])
         ->name('salidas.editarCodigoSage');
-    Route::post('/salidas-almacen/{salida}/activar', [SalidaAlmacenController::class, 'activar'])->name('salidas-almacen.activar');
-    Route::post('/salidas-almacen/{salida}/cancelar', [SalidaAlmacenController::class, 'cancelar'])->name('salidas-almacen.cancelar');
-    Route::post('/salidas-almacen/{salida}/desactivar', [SalidaAlmacenController::class, 'desactivar'])->name('salidas-almacen.desactivar');
+    Route::post('/salidas-almacen/{salida}/activar', [SalidaAlmacenController::class, 'activar'])->name('salidas-almacen.editarActivar');
+    Route::post('/salidas-almacen/{salida}/cancelar', [SalidaAlmacenController::class, 'cancelar'])->name('salidas-almacen.editarCancelar');
+    Route::post('/salidas-almacen/{salida}/desactivar', [SalidaAlmacenController::class, 'desactivar'])->name('salidas-almacen.editarDesactivar');
 
-    Route::get('/salidas-almacen/{salida}/asignados', [SalidaAlmacenController::class, 'productosAsignados']);
-    Route::get('/salidas-almacen/{movimiento}/productos', [SalidaAlmacenController::class, 'productosPorMovimiento']);
-    Route::post('/productos/validar-para-salida', [SalidaAlmacenController::class, 'validarProductoEscaneado']);
-    Route::delete('/salidas-almacen/{salida}/detalle/{codigo}', [SalidaAlmacenController::class, 'eliminarProductoEscaneado']);
+    // Rutas con name bien formado (ver/editar en el name, no en el método)
+    Route::get(
+        '/salidas-almacen/{salida}/asignados',
+        [SalidaAlmacenController::class, 'productosAsignados']
+    )->name('salidas-almacen.verAsignados');
+
+    Route::get(
+        '/salidas-almacen/{movimiento}/productos',
+        [SalidaAlmacenController::class, 'productosPorMovimiento']
+    )->name('salidas-almacen.verProductosPorMovimiento');
+
+    Route::post(
+        '/productos/validar-para-salida',
+        [SalidaAlmacenController::class, 'validarProductoEscaneado']
+    )->name('productos.verValidarParaSalida');
+
+    Route::delete(
+        '/salidas-almacen/{salida}/detalle/{codigo}',
+        [SalidaAlmacenController::class, 'eliminarProductoEscaneado']
+    )->name('salidas-almacen.editarEliminarProductoEscaneado');
 
     Route::put(
         '/salidas-almacen/completar-desde-movimiento/{movimiento}',
         [SalidaAlmacenController::class, 'completarDesdeMovimiento']
-    )->name('salidas-almacen.completar-desde-movimiento');
+    )->name('salidas-almacen.editarCompletarDesdeMovimiento');
 
 
 

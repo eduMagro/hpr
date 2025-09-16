@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Ubicacion extends Model
 {
@@ -46,5 +47,14 @@ class Ubicacion extends Model
     public function paquetes()
     {
         return $this->hasMany(Paquete::class, 'ubicacion_id');
+    }
+    public static function codigoDesdeNombreNave(string|null $nave): ?string
+    {
+        return match (Str::lower($nave)) {
+            'nave a'   => '0A',
+            'nave b'   => '0B',
+            'almacén'  => 'AL',
+            default    => null,
+        };
     }
 }

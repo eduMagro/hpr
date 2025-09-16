@@ -360,7 +360,16 @@ class PedidoController extends Controller
     public function recepcion($id, $producto_base_id)
     {
         // 🔹 Cargar pedido con relaciones
-        $pedido = Pedido::with(['productos', 'entradas.productos'])->findOrFail($id);
+        $pedido = Pedido::with(['productos', 'entradas.productos', 'obra'])->findOrFail($id);
+        $nave = $pedido->obra?->obra; // "Nave A", "Nave B", etc.
+        $codigoAlmacen = Ubicacion::codigoDesdeNombreNave($nave);
+        $ubicaciones = Ubicacion::where('almacen', $codigoAlmacen)
+            ->orderBy('nombre')
+            ->get()
+            ->map(function ($ubicacion) {
+                $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
+                return $ubicacion;
+            });
 
         // 🔹 Comprobar si se debe mostrar el campo de fabricante manual
         $requiereFabricanteManual = $pedido->distribuidor_id !== null && $pedido->fabricante_id === null;
@@ -400,12 +409,6 @@ class PedidoController extends Controller
 
         // 🔹 Buscar solo el producto_base que nos interesa
         $productoBase = $pedido->productos->firstWhere('id', $producto_base_id);
-
-        // 🔹 Ubicaciones
-        $ubicaciones = Ubicacion::all()->map(function ($ubicacion) {
-            $ubicacion->nombre_sin_prefijo = Str::after($ubicacion->nombre, 'Almacén ');
-            return $ubicacion;
-        });
 
         // 🔹 Últimas coladas usadas por este usuario
         $ultimos = Producto::select('producto_base_id', 'n_colada', 'productos.ubicacion_id')
@@ -834,6 +837,7 @@ class PedidoController extends Controller
 
         return redirect()->back()->with('success');
     }
+
     public function cancelarLinea($pedidoId, $lineaId)
     {
         $pedido = Pedido::findOrFail($pedidoId);

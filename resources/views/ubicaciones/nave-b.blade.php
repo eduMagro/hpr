@@ -24,7 +24,7 @@
                         @csrf
 
                         {{-- Campo oculto con el valor de la nave --}}
-                        <input type="hidden" name="almacen" value="0A">
+                        <input type="hidden" name="almacen" value="0B">
 
                         {{-- Sector --}}
                         <x-tabla.select name="sector" label="📍 Sector" :options="collect(range(1, 20))

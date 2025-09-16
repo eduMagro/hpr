@@ -29,7 +29,7 @@ class VerificarAccesoSeccion
             'manuel.reyes@pacoreyes.com',
             'alvarofaces@gruporeyestejero.com',
             'pabloperez@gruporeyestejero.com',
-            'edumagrolemus@hotmail.com',
+
         ];
 
         // ✅ Atajo: si tiene acceso total por email, permitir todo sin más
@@ -102,7 +102,8 @@ class VerificarAccesoSeccion
                 'maquinas.fabricarLote',
                 'maquinas.completarLote',
                 'vacaciones.solicitar',
-                'salidas.editarActualizarEstado',
+                'salidas-ferralla.',
+                'salidas-almacen.',
                 'usuarios.editarSubirImagen',
                 'usuarios.imagen',
                 'nominas.crearDescargarMes',

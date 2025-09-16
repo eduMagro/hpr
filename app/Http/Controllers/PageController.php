@@ -27,7 +27,7 @@ class PageController extends Controller
             'manuel.reyes@pacoreyes.com',
             'alvarofaces@gruporeyestejero.com',
             'pabloperez@gruporeyestejero.com',
-            'edumagrolemus@hotmail.com',
+
         ];
         $esOperario = $user->rol === 'operario';
         $esTransportista = $user->rol === 'transportista';

@@ -234,7 +234,7 @@
                                                                 Desactivar
                                                             </button>
                                                         </form>
-                                                    @elseif ($estado === 'pendiente' && $pedido->obra?->es_nave_paco_reyes)
+                                                    @elseif ($estado === 'pendiente' || ($estado === 'parcial' && $pedido->obra?->es_nave_paco_reyes))
                                                         {{-- activar SOLO si es nave Paco Reyes --}}
                                                         <form method="POST"
                                                             action="{{ route('pedidos.lineas.editarActivar', [$pedido->id, $linea['id']]) }}">
