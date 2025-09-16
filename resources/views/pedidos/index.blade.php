@@ -121,12 +121,7 @@
                                     {{ $pedido->pedidoGlobal?->precio_referencia_euro ?? 'N/A' }}
                                     |
                                     <span class="text-blue-600">Estado: </span>{{ $pedido->estado }}
-                                    |
-                                    <span class="text-blue-600">Fecha Pedido:</span>
-                                    {{ $pedido->fecha_pedido_formateada }}
-                                    |
-                                    <span class="text-blue-600">Lugar de Entrega:</span>
-                                    {{ $pedido->obra->obra ?? ($pedido->obra_manual ?? 'No especificado') }}
+
 
                                     <span class="float-right">
                                         <x-tabla.boton-eliminar :action="route('pedidos.destroy', $pedido->id)" />

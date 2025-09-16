@@ -51,7 +51,7 @@
         'productos.index' => '🧱 Productos',
         'movimientos.index' => '🔄 Movimientos',
         'entradas.index' => '⬅️ Entradas',
-        'salidas.index' => '➡️ Salidas',
+        'salidas-ferralla.index' => '➡️ Salidas',
     ] as $ruta => $texto)
             <a href="{{ route($ruta) }}"
                 class="flex-1 text-center px-4 py-2 font-semibold transition
