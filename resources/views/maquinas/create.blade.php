@@ -42,8 +42,8 @@
                                 'estribadora' => 'Estribadora',
                                 'ensambladora' => 'Ensambladora',
                                 'soldadora' => 'Soldadora',
-                                'cortadora manual' => 'Cortadora Manual',
-                                'dobladora manual' => 'Dobladora Manual',
+                                'cortadora_manual' => 'Cortadora Manual',
+                                'dobladora_manual' => 'Dobladora Manual',
                             ]" empty="Selecciona su función" />
                         </div>
 

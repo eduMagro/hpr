@@ -62,7 +62,9 @@ class PedidoController extends Controller
                 $filtros[] = 'Distribuidor: <strong>' . $distribuidor->nombre . '</strong>';
             }
         }
-
+        if ($request->filled('obra_id')) {
+            $filtrosActivos['Obra'] = optional(Obra::find($request->obra_id))->obra ?? '—';
+        }
         if ($request->filled('fecha_pedido')) {
             $filtros[] = 'Fecha pedido: <strong>' . $request->fecha_pedido . '</strong>';
         }
@@ -157,7 +159,10 @@ class PedidoController extends Controller
         if ($request->filled('distribuidor_id')) {
             $query->where('distribuidor_id', $request->distribuidor_id);
         }
-
+        // 🔎 Filtro por obra_id (del pedido)
+        if ($request->filled('obra_id')) {
+            $query->where('obra_id', $request->integer('obra_id'));
+        }
         if ($request->filled('fecha_pedido')) {
             $query->whereDate('fecha_pedido', $request->fecha_pedido);
         }
@@ -223,6 +228,9 @@ class PedidoController extends Controller
         if (auth()->user()->rol === 'operario') {
             $query->whereIn('estado', ['pendiente', 'parcial']);
         }
+        $obras = Obra::whereIn('id', Pedido::select('obra_id')->distinct())
+            ->orderBy('obra')
+            ->pluck('obra', 'id');
 
         $this->aplicarFiltrosPedidos($query, $request);
 
@@ -298,6 +306,7 @@ class PedidoController extends Controller
             'codigo'         => $this->getOrdenamientoPedidos('codigo', 'Código'),
             'fabricante'     => $this->getOrdenamientoPedidos('fabricante', 'Fabricante'),
             'distribuidor'   => $this->getOrdenamientoPedidos('distribuidor', 'Distribuidor'),
+            'obra'           => $this->getOrdenamientoPedidos('obra', 'Lugar de entrega'),
             'peso_total'     => $this->getOrdenamientoPedidos('peso_total', 'Peso total'),
             'fecha_pedido'   => $this->getOrdenamientoPedidos('fecha_pedido', 'F. Pedido'),
             'fecha_entrega'  => $this->getOrdenamientoPedidos('fecha_entrega', 'F. Entrega'),
@@ -354,6 +363,7 @@ class PedidoController extends Controller
             'idClienteHpr'   => $idClienteHpr,
             'solo_hpr'       => $soloHpr,
             'obra_id_hpr'    => $obraIdSeleccionada,
+            'obras'    => $obras,
         ], $datosStock));
     }
 

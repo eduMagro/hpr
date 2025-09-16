@@ -16,6 +16,7 @@
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['obra_id'] ?? 'Obra' !!}</th>
                             <th class="px-2 py-2 border">Producto</th>
                             <th class="p-2 border">Cantidad Pedida</th>
                             <th class="p-2 border">Cantidad Recepcionada</th>
@@ -51,6 +52,10 @@
                                 <th class="p-1 border">
                                     <x-tabla.select name="distribuidor_id" :options="$distribuidores->pluck('nombre', 'id')" :selected="request('distribuidor_id')"
                                         empty="Todos" class="w-full text-xs" />
+                                </th>
+                                <th class="p-1 border">
+                                    <x-tabla.select name="obra_id" :options="$obras" :selected="request('obra_id')" empty="Todas"
+                                        class="w-full text-xs" />
                                 </th>
 
                                 <th class="py-1 px-0 border">
@@ -107,7 +112,7 @@
                         @forelse ($pedidos as $pedido)
                             {{-- Fila principal del pedido --}}
                             <tr class="bg-gray-100 text-xs font-bold uppercase">
-                                <td colspan="13" class="text-left px-3 py-2">
+                                <td colspan="14" class="text-left px-3 py-2">
                                     <span class="text-blue-600">Pedido:</span> {{ $pedido->codigo }}
                                     |
                                     <span class="text-blue-600">Peso Total: </span> {{ $pedido->peso_total_formateado }}
@@ -168,6 +173,10 @@
                                     <td class="border px-2 py-1">{{ $pedido->pedidoGlobal?->codigo ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
+                                    <td class="border px-2 py-1">
+                                        {{ $pedido->obra->obra ?? ($pedido->obra_manual ?? '—') }}
+                                    </td>
+
                                     <td class="border px-2 py-1 text-center">
                                         {{ ucfirst($linea['tipo']) }}
                                         Ø{{ $linea['diametro'] }}
@@ -272,7 +281,7 @@
 
                         @empty
                             <tr>
-                                <td colspan="13" class="py-4 text-gray-500">No hay pedidos registrados.</td>
+                                <td colspan="14" class="py-4 text-gray-500">No hay pedidos registrados.</td>
                             </tr>
                         @endforelse
                     </tbody>
