@@ -5,10 +5,13 @@
     <div class="w-full px-6 py-4">
         <!-- Botón para crear una nueva entrada con estilo Bootstrap -->
         <div class="mb-4 flex justify-center space-x-2">
-            {{-- <x-tabla.boton-azul :href="route('entradas.create')">
-                ➕ Crear Nueva Entrada
-            </x-tabla.boton-azul> --}}
+            @if (auth()->check() && auth()->id() === 1)
+                <x-tabla.boton-azul :href="route('entradas.create')">
+                    ➕ Crear Nueva Entrada
+                </x-tabla.boton-azul>
+            @endif
         </div>
+
         <!-- 🖥️ Tabla solo en pantallas medianas o grandes -->
         <div class="hidden md:block">
             <button onclick="abrirModal()"
