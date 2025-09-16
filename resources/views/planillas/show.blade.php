@@ -99,7 +99,7 @@
                         @if ($bloque->isEmpty())
                             <p class="text-sm text-gray-500">No hay etiquetas en esta máquina.</p>
                         @else
-                            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 @foreach ($bloque as $item)
                                     @php $etiqueta = $item['etiqueta'] ?? null; @endphp
                                     @continue(!$etiqueta || !$etiqueta->id) {{-- si no hay id, saltamos --}}
