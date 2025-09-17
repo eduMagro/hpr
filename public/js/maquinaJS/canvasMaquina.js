@@ -827,9 +827,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         var numElementos = grupo.elementos.length;
         var legendEntries = [];
-        // Reset reservas por grupo
+        // ✅ Reset reservas por grupo
         window.__placedLetterBoxes = [];
         window.__figBoxesGroup = [];
+        window.__dimBoxesGroup = []; // 👈 cajas de cotas del grupo
 
         // Precalcular nº segmentos
         var segCounts = grupo.elementos.map(function (el) {
@@ -1089,132 +1090,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
 
-            // Reservas + texto (solo letra por figura, leyenda abajo-izquierda)
+            // Reservas locales para este elemento
             var placedBoxes = [];
-            (function placeLetter() {
-                var letterSize = 14;
-                var tb = approxTextBox(letter, letterSize);
 
-                // Colocar SIEMPRE a la derecha de la figura, evitando solapes
-                function makeBoxAt(lx, ly) {
-                    return {
-                        left: lx,
-                        right: lx + tb.w,
-                        top: ly - tb.h / 2,
-                        bottom: ly + tb.h / 2,
-                    };
-                }
-
-                var chosen = null;
-                var baseX = clampXInside(
-                    figBox.right + 10,
-                    tb.w,
-                    safeLeft,
-                    safeRight
-                );
-                var centerYFig = (figBox.top + figBox.bottom) / 2;
-                var baseY = Math.max(
-                    safeTop + tb.h / 2,
-                    Math.min(centerYFig, safeBottom - tb.h / 2)
-                );
-
-                function tryColumn(xPos) {
-                    var maxSpread = Math.max(40, (safeBottom - safeTop) * 0.5);
-                    for (var off = 0; off <= maxSpread; off += LABEL_STEP) {
-                        var dir = off % 2 === 0 ? 1 : -1;
-                        var mult = Math.ceil(off / 2);
-                        var dy = dir * mult * LABEL_STEP;
-                        var ly = Math.max(
-                            safeTop + tb.h / 2,
-                            Math.min(safeBottom - tb.h / 2, baseY + dy)
-                        );
-                        var lx = xPos;
-                        var box = makeBoxAt(lx, ly);
-
-                        var collideFig = window.__figBoxesGroup.some(function (
-                            b
-                        ) {
-                            return rectsOverlap(b, box, LABEL_CLEARANCE);
-                        });
-                        if (collideFig) continue;
-
-                        var collidePrev = window.__placedLetterBoxes.some(
-                            function (b) {
-                                return rectsOverlap(b, box, LABEL_CLEARANCE);
-                            }
-                        );
-                        if (collidePrev) continue;
-
-                        var collideLocal = placedBoxes.some(function (b) {
-                            return rectsOverlap(b, box, LABEL_CLEARANCE);
-                        });
-                        if (collideLocal) continue;
-
-                        var out =
-                            box.top < 0 ||
-                            box.bottom > alto ||
-                            box.left < 0 ||
-                            box.right > ancho;
-                        if (out) continue;
-
-                        chosen = { x: lx, y: ly, box: box };
-                        return true;
-                    }
-                    return false;
-                }
-
-                // Probar columna base y algunas columnas más a la derecha
-                var columnsTried = 0;
-                var xStep = 8;
-                while (!chosen && columnsTried < 6) {
-                    var xCol = clampXInside(
-                        baseX + columnsTried * xStep,
-                        tb.w,
-                        safeLeft,
-                        safeRight
-                    );
-                    if (tryColumn(xCol)) break;
-                    columnsTried++;
-                }
-
-                // Fallback extremo: última columna disponible
-                if (!chosen) {
-                    var lxFallback = clampXInside(
-                        safeRight - tb.w,
-                        tb.w,
-                        safeLeft,
-                        safeRight
-                    );
-                    var lyFallback = baseY;
-                    chosen = {
-                        x: lxFallback,
-                        y: lyFallback,
-                        box: makeBoxAt(lxFallback, lyFallback),
-                    };
-                }
-
-                window.__placedLetterBoxes.push(chosen.box);
-                // También registrar en reservas locales para que otras etiquetas/cotas lo respeten
-                placedBoxes.push(chosen.box);
-
-                // Dibujar letra
-                var t = document.createElementNS(
-                    "http://www.w3.org/2000/svg",
-                    "text"
-                );
-                t.setAttribute("x", chosen.x);
-                t.setAttribute("y", chosen.y);
-                t.setAttribute("fill", BARS_TEXT_COLOR);
-                t.setAttribute("font-size", letterSize);
-                t.setAttribute("text-anchor", "start");
-                t.setAttribute("alignment-baseline", "middle");
-                t.style.fontWeight = "600";
-                t.style.pointerEvents = "none";
-                t.textContent = letter;
-                svg.appendChild(t);
-            })();
-
-            // Cotas
+            // ===================
+            // Cotas (con registro)
+            // ===================
             var segsAdj = computeLineSegments(dims);
             var segsOrig = computeLineSegments(dimsNoZero);
             var segsUnicos = agruparPorDireccionYEtiquetaRobusto(
@@ -1312,6 +1193,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         bestLX = lx;
                         bestLY = ly;
                         placedBoxes.push(labelBox);
+                        // 👇 registrar la caja de esta cota a nivel de grupo
+                        window.__dimBoxesGroup.push(labelBox);
                         break;
                     }
                 }
@@ -1359,6 +1242,157 @@ document.addEventListener("DOMContentLoaded", function () {
                 txt.addEventListener("focus", onEnter);
                 txt.addEventListener("blur", onLeave);
             });
+
+            // =========================
+            // Letra (después de cotas)
+            // =========================
+            (function placeLetter() {
+                var letterSize = 14;
+                var tb = approxTextBox(letter, letterSize);
+
+                function makeBoxAt(lx, ly) {
+                    return {
+                        left: lx,
+                        right: lx + tb.w,
+                        top: ly - tb.h / 2,
+                        bottom: ly + tb.h / 2,
+                    };
+                }
+
+                var chosen = null;
+                var centerYFig = (figBox.top + figBox.bottom) / 2;
+                var baseY = Math.max(
+                    safeTop + tb.h / 2,
+                    Math.min(centerYFig, safeBottom - tb.h / 2)
+                );
+
+                function tryColumn(xPos) {
+                    var maxSpread = Math.max(60, (safeBottom - safeTop) * 0.6);
+                    for (var off = 0; off <= maxSpread; off += LABEL_STEP) {
+                        var dir = off % 2 === 0 ? 1 : -1;
+                        var mult = Math.ceil(off / 2);
+                        var dy = dir * mult * LABEL_STEP;
+                        var ly = Math.max(
+                            safeTop + tb.h / 2,
+                            Math.min(safeBottom - tb.h / 2, baseY + dy)
+                        );
+                        var lx = xPos;
+                        var box = makeBoxAt(lx, ly);
+
+                        var collideFig = window.__figBoxesGroup.some(function (
+                            b
+                        ) {
+                            return rectsOverlap(b, box, LABEL_CLEARANCE);
+                        });
+                        if (collideFig) continue;
+
+                        var collideDims = (window.__dimBoxesGroup || []).some(
+                            function (b) {
+                                return rectsOverlap(b, box, LABEL_CLEARANCE);
+                            }
+                        );
+                        if (collideDims) continue;
+
+                        var collidePrev = (
+                            window.__placedLetterBoxes || []
+                        ).some(function (b) {
+                            return rectsOverlap(b, box, LABEL_CLEARANCE);
+                        });
+                        if (collidePrev) continue;
+
+                        var collideLocal = placedBoxes.some(function (b) {
+                            return rectsOverlap(b, box, LABEL_CLEARANCE);
+                        });
+                        if (collideLocal) continue;
+
+                        var out =
+                            box.top < 0 ||
+                            box.bottom > alto ||
+                            box.left < 0 ||
+                            box.right > ancho;
+                        if (out) continue;
+
+                        chosen = { x: lx, y: ly, box: box };
+                        return true;
+                    }
+                    return false;
+                }
+
+                // derecha → izquierda como estrategia
+                var baseRight = clampXInside(
+                    figBox.right + 10,
+                    tb.w,
+                    safeLeft,
+                    safeRight
+                );
+                var baseLeft = clampXInside(
+                    figBox.left - 10 - tb.w,
+                    tb.w,
+                    safeLeft,
+                    safeRight
+                );
+
+                var columnsTried = 0;
+                var xStep = 8;
+                // probar varias columnas a la derecha
+                while (!chosen && columnsTried < 8) {
+                    var xCol = clampXInside(
+                        baseRight + columnsTried * xStep,
+                        tb.w,
+                        safeLeft,
+                        safeRight
+                    );
+                    if (tryColumn(xCol)) break;
+                    columnsTried++;
+                }
+                // si no cabe, probar a la izquierda
+                columnsTried = 0;
+                while (!chosen && columnsTried < 8) {
+                    var xColL = clampXInside(
+                        baseLeft - columnsTried * xStep,
+                        tb.w,
+                        safeLeft,
+                        safeRight
+                    );
+                    if (tryColumn(xColL)) break;
+                    columnsTried++;
+                }
+
+                // Fallback extremo: arrinconar en el borde derecho
+                if (!chosen) {
+                    var lxFallback = clampXInside(
+                        safeRight - tb.w,
+                        tb.w,
+                        safeLeft,
+                        safeRight
+                    );
+                    var lyFallback = baseY;
+                    chosen = {
+                        x: lxFallback,
+                        y: lyFallback,
+                        box: makeBoxAt(lxFallback, lyFallback),
+                    };
+                }
+
+                window.__placedLetterBoxes.push(chosen.box);
+                placedBoxes.push(chosen.box);
+
+                // Dibujar letra
+                var t = document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    "text"
+                );
+                t.setAttribute("x", chosen.x);
+                t.setAttribute("y", chosen.y);
+                t.setAttribute("fill", BARS_TEXT_COLOR);
+                t.setAttribute("font-size", letterSize);
+                t.setAttribute("text-anchor", "start");
+                t.setAttribute("alignment-baseline", "middle");
+                t.style.fontWeight = "600";
+                t.style.pointerEvents = "none";
+                t.textContent = letter;
+                svg.appendChild(t);
+            })();
         });
 
         contenedor.innerHTML = "";
