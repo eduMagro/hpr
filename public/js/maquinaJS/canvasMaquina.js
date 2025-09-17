@@ -88,13 +88,15 @@ function crearSVG(width, height, bgColor) {
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.style.width = "100%";
-    svg.style.height = "70%";
+    svg.style.height = "100%"; // antes era 70%
     svg.style.display = "block";
     svg.style.background = bgColor || "#ffffff";
     svg.style.shapeRendering = "geometricPrecision";
     svg.style.textRendering = "optimizeLegibility";
+    svg.style.boxSizing = "border-box"; // 🔥 igual que la etiqueta
     return svg;
 }
+
 function agregarTexto(svg, x, y, texto, color, size, anchor) {
     const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
     txt.setAttribute("x", x);
@@ -135,22 +137,30 @@ function indexToLetters(n) {
 /** Dibuja la leyenda compacta y registra sus cajas para evitar solapes */
 function drawLegendBottomLeft(svg, entries, width, height) {
     if (!entries || !entries.length) return;
-    const pad = 8,
-        gap = 4,
-        size = 12;
+
+    const gap = 2; // separación mínima entre líneas
+    const size = 12; // tamaño del texto
+
     const lines = entries.map(
         (e) => (e.letter ? e.letter + " " : "") + (e.text || "")
     );
-    const boxH = pad * 2 + lines.length * size + (lines.length - 1) * gap;
-    const x = marginX,
-        y = Math.max(marginY, height - boxH - marginY);
+
+    // altura total de la caja (sin padding extra)
+    const boxH = lines.length * size + (lines.length - 1) * gap;
+
+    // posición: esquina inferior izquierda
+    const x = marginX;
+    const y = height - boxH - marginY;
+
     window.__legendBoxesGroup = window.__legendBoxesGroup || [];
-    let cy = y + pad + size / 2;
+
+    let cy = y + size / 2; // primera línea
     for (let i = 0; i < lines.length; i++) {
         const text = lines[i];
         const w = approxTextBox(text, size).w;
-        const left = x + pad,
-            right = left + w;
+        const left = x;
+        const right = left + w;
+
         const t = document.createElementNS(
             "http://www.w3.org/2000/svg",
             "text"
@@ -164,12 +174,14 @@ function drawLegendBottomLeft(svg, entries, width, height) {
         t.style.pointerEvents = "none";
         t.textContent = text;
         svg.appendChild(t);
+
         window.__legendBoxesGroup.push({
             left,
             right,
             top: cy - size / 2,
             bottom: cy + size / 2,
         });
+
         cy += size + gap;
     }
 }
