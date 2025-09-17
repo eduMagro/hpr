@@ -101,28 +101,6 @@
 
             <!-- QR oculto -->
             <div id="qrContainer-{{ $etiqueta->id }}" style="display: none;"></div>
-
-            <!-- Datos de estado y fechas -->
-            <div class="p-2 no-print">
-                <p>
-                    <strong>Estado:</strong>
-                    <span id="estado-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id) }}">
-                        {{ $etiqueta->estado ?? 'N/A' }}
-                    </span>
-                    <strong>Fecha Inicio:</strong>
-                    <span id="inicio-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id) }}">
-                        {{ $maquinaTipo === 'ensambladora'
-                            ? $etiqueta->fecha_inicio_ensamblado ?? 'No asignada'
-                            : $etiqueta->fecha_inicio ?? 'No asignada' }}
-                    </span>
-                    <strong>Fecha Finalización:</strong>
-                    <span id="final-{{ str_replace('.', '-', $etiqueta->etiqueta_sub_id) }}">
-                        {{ $maquinaTipo === 'ensambladora'
-                            ? $etiqueta->fecha_finalizacion_ensamblado ?? 'No asignada'
-                            : $etiqueta->fecha_finalizacion ?? 'No asignada' }}
-                    </span>
-                </p>
-            </div>
         </div>
 
         <!-- Canvas -->

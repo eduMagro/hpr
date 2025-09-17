@@ -15,42 +15,74 @@ const OVERLAP_GROW_UNITS = 0.6;
 const SIZE_MAIN_TEXT = 18;
 const SIZE_DIM_TEXT = 14;
 const DIM_LINE_OFFSET = 16;
-const DIM_LABEL_LIFT = 10; // px vertical (o horizontal) extra para separar la etiqueta de la línea
-// separación de la cota respecto a la línea y cómo se desplaza si choca
+const DIM_LABEL_LIFT = 10; // px extra para separar etiqueta de la línea
 const DIM_OFFSET = 10; // px perpendicular a la línea
 const DIM_TANG_STEP = 6; // px por intento a lo largo de la línea
-const DIM_TANG_MAX_FRAC = 0.45; // % de la longitud del tramo (desde el centro) como límite
+const DIM_TANG_MAX_FRAC = 0.45; // % longitud del tramo desde el centro
 
 // separación mínima del texto respecto a la figura y paso de alejamiento
-const LABEL_CLEARANCE = 3; // px
+const LABEL_CLEARANCE = 6; // px
 const LABEL_STEP = 4; // px
 
-// Reserva para layout (bandas)
-const TOP_BAND_HEIGHT = 26; // alto de franja lógica arriba
-const TOP_BAND_GAP = 14; // separación figura-banda arriba
-const TOP_BAND_PAD_X = 6; // padding horizontal del texto
+// Reserva para layout / leyenda
+const TOP_BAND_HEIGHT = 26;
+const TOP_BAND_GAP = 14;
+const TOP_BAND_PAD_X = 6;
 
-const SIDE_BAND_GAP = 12; // separación figura-banda lateral
-const SIDE_BAND_PAD = 6; // padding interno lateral
+const SIDE_BAND_GAP = 12;
+const SIDE_BAND_PAD = 6;
 
 // Reserva mínima para “anillo de cotas”
 const DIM_RING_MARGIN = DIM_LINE_OFFSET + SIZE_DIM_TEXT + DIM_LABEL_LIFT + 6;
 
+// === NUEVO: auto-escala para piezas pequeñas ===
+const SMALL_DIM_THRESHOLD = 50; // umbral "pieza pequeña"
+const SMALL_DIM_SCALE = 2; // factor de escala para mejorar visibilidad
+function scaleDims(dims, factor) {
+    if (!factor || factor === 1) return dims.map((d) => ({ ...d }));
+    return dims.map((d) => {
+        if (d.type === "line")
+            return { ...d, length: (d.length || 0) * factor };
+        if (d.type === "arc") return { ...d, radius: (d.radius || 0) * factor };
+        return { ...d }; // giros sin cambios
+    });
+}
+
+// =======================
+// Helpers SVG / Ángulos
+// =======================
+const ANGLE_TOL_DEG = 0.75;
+const ANGLE_LABEL_OFFSET = 14;
+const ANGLE_LABEL_MAX_OFFSET = 60;
+const ANGLE_LABEL_SWEEP_DEG = [0, 10, -10, 20, -20, 30, -30];
+
+function normalizeDeg180(a) {
+    return ((a % 180) + 180) % 180;
+}
+function computeSegmentAngleDeg(p1, p2) {
+    const dx = p2.x - p1.x,
+        dy = p2.y - p1.y;
+    const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+    return normalizeDeg180(deg);
+}
+function rad(deg) {
+    return (deg * Math.PI) / 180;
+}
+function deg(rad) {
+    return (rad * 180) / Math.PI;
+}
+
 // =======================
 // Helpers SVG
 // =======================
-
 function getEstadoColorFromCSSVar(contenedor) {
     const proceso = contenedor.closest(".proceso");
-
     if (!proceso) return "#e5e7eb";
     const color = getComputedStyle(proceso)
         .getPropertyValue("--bg-estado")
         .trim();
-
     return color || "#e5e7eb";
 }
-
 function crearSVG(width, height, bgColor) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", "0 0 " + width + " " + height);
@@ -63,7 +95,6 @@ function crearSVG(width, height, bgColor) {
     svg.style.textRendering = "optimizeLegibility";
     return svg;
 }
-
 function agregarTexto(svg, x, y, texto, color, size, anchor) {
     const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
     txt.setAttribute("x", x);
@@ -91,9 +122,8 @@ function agregarPathD(svg, d, color, ancho) {
 // Letras y leyenda
 // =======================
 function indexToLetters(n) {
-    // 0 -> A, 25 -> Z, 26 -> AA, etc.
-    let s = "";
-    let i = Number(n) || 0;
+    let s = "",
+        i = Number(n) || 0;
     while (i >= 0) {
         const r = i % 26;
         s = String.fromCharCode(65 + r) + s;
@@ -101,49 +131,45 @@ function indexToLetters(n) {
     }
     return s;
 }
+
+/** Dibuja la leyenda compacta y registra sus cajas para evitar solapes */
 function drawLegendBottomLeft(svg, entries, width, height) {
     if (!entries || !entries.length) return;
-    const pad = 8;
-    const gap = 4;
-    const size = 12;
-
-    // Sin título: solo líneas A — Ø... | ... | xN
+    const pad = 8,
+        gap = 4,
+        size = 12;
     const lines = entries.map(
-        (e) => (e.letter ? e.letter + " — " : "") + (e.text || "")
-    );
-
-    // Medición para colocar bloque dentro del área inferior
-    let maxW = 0;
-    for (let i = 0; i < lines.length; i++) {
-        const w = approxTextBox(lines[i], size).w;
-        if (w > maxW) maxW = w;
-    }
-    const boxW = Math.min(
-        Math.max(120, maxW + pad * 2),
-        Math.max(140, width * 0.6)
+        (e) => (e.letter ? e.letter + " " : "") + (e.text || "")
     );
     const boxH = pad * 2 + lines.length * size + (lines.length - 1) * gap;
-
-    const x = marginX;
-    const y = Math.max(marginY, height - boxH - marginY);
-
-    // Solo texto, sin fondo ni borde
+    const x = marginX,
+        y = Math.max(marginY, height - boxH - marginY);
+    window.__legendBoxesGroup = window.__legendBoxesGroup || [];
     let cy = y + pad + size / 2;
     for (let i = 0; i < lines.length; i++) {
-        const anchorX = x + pad;
+        const text = lines[i];
+        const w = approxTextBox(text, size).w;
+        const left = x + pad,
+            right = left + w;
         const t = document.createElementNS(
             "http://www.w3.org/2000/svg",
             "text"
         );
-        t.setAttribute("x", anchorX);
+        t.setAttribute("x", left);
         t.setAttribute("y", cy);
         t.setAttribute("fill", BARS_TEXT_COLOR);
         t.setAttribute("font-size", size);
         t.setAttribute("text-anchor", "start");
         t.setAttribute("alignment-baseline", "middle");
         t.style.pointerEvents = "none";
-        t.textContent = lines[i];
+        t.textContent = text;
         svg.appendChild(t);
+        window.__legendBoxesGroup.push({
+            left,
+            right,
+            top: cy - size / 2,
+            bottom: cy + size / 2,
+        });
         cy += size + gap;
     }
 }
@@ -159,9 +185,8 @@ function extraerDimensiones(dimensiones) {
         if (t.endsWith("r")) {
             const radius = parseFloat(t.slice(0, -1));
             let arcAngle = 360;
-            if (i + 1 < tokens.length && tokens[i + 1].endsWith("d")) {
+            if (i + 1 < tokens.length && tokens[i + 1].endsWith("d"))
                 arcAngle = parseFloat(tokens[++i].slice(0, -1));
-            }
             dims.push({ type: "arc", radius, arcAngle });
         } else if (t.endsWith("d")) {
             dims.push({ type: "turn", angle: parseFloat(t.slice(0, -1)) });
@@ -169,7 +194,6 @@ function extraerDimensiones(dimensiones) {
             dims.push({ type: "line", length: parseFloat(t) });
         }
     }
-    console.log("Dims:", dims);
     return dims;
 }
 function computePathPoints(dims) {
@@ -181,16 +205,16 @@ function computePathPoints(dims) {
     for (let k = 0; k < dims.length; k++) {
         const d = dims[k];
         if (d.type === "line") {
-            x += d.length * Math.cos((a * Math.PI) / 180);
-            y += d.length * Math.sin((a * Math.PI) / 180);
+            x += d.length * Math.cos(rad(a));
+            y += d.length * Math.sin(rad(a));
             pts.push({ x, y });
         } else if (d.type === "turn") {
             a += d.angle;
         } else if (d.type === "arc") {
-            const cx = x + d.radius * Math.cos(((a + 90) * Math.PI) / 180);
-            const cy = y + d.radius * Math.sin(((a + 90) * Math.PI) / 180);
-            const start = Math.atan2(y - cy, x - cx);
-            const end = start + (d.arcAngle * Math.PI) / 180;
+            const cx = x + d.radius * Math.cos(rad(a + 90));
+            const cy = y + d.radius * Math.sin(rad(a + 90));
+            const start = Math.atan2(y - cy, x - cx),
+                end = start + rad(d.arcAngle);
             x = cx + d.radius * Math.cos(end);
             y = cy + d.radius * Math.sin(end);
             a += d.arcAngle;
@@ -209,8 +233,8 @@ function computeLineSegments(dims) {
         if (d.type === "line") {
             const start = { x, y };
             const end = {
-                x: x + d.length * Math.cos((a * Math.PI) / 180),
-                y: y + d.length * Math.sin((a * Math.PI) / 180),
+                x: x + d.length * Math.cos(rad(a)),
+                y: y + d.length * Math.sin(rad(a)),
             };
             segs.push({ start, end, length: d.length });
             x = end.x;
@@ -218,10 +242,10 @@ function computeLineSegments(dims) {
         } else if (d.type === "turn") {
             a += d.angle;
         } else if (d.type === "arc") {
-            const cx = x + d.radius * Math.cos(((a + 90) * Math.PI) / 180);
-            const cy = y + d.radius * Math.sin(((a + 90) * Math.PI) / 180);
-            const start = Math.atan2(y - cy, x - cx);
-            const end = start + (d.arcAngle * Math.PI) / 180;
+            const cx = x + d.radius * Math.cos(rad(a + 90));
+            const cy = y + d.radius * Math.sin(rad(a + 90));
+            const start = Math.atan2(y - cy, x - cx),
+                end = start + rad(d.arcAngle);
             x = cx + d.radius * Math.cos(end);
             y = cy + d.radius * Math.sin(end);
             a += d.arcAngle;
@@ -231,7 +255,7 @@ function computeLineSegments(dims) {
 }
 
 // =======================
-// Helpers (evitar solapes de textos)
+// Helpers (evitar solapes)
 // =======================
 function approxTextBox(text, size) {
     const s = size || 12;
@@ -285,7 +309,7 @@ function combinarRectasConCeros(dims, tol) {
 }
 
 // =======================
-// Formateo + agrupado robusto por dirección
+// Formateo + agrupado
 // =======================
 function formatDimLabel(value, opt) {
     const decimals = (opt && opt.decimals) || 0;
@@ -314,8 +338,7 @@ function dirKey(dx, dy, prec) {
 function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
     const dirPrecision = (opt && opt.dirPrecision) || 1e-2;
     const labelFormat = (opt && opt.labelFormat) || { decimals: 0, step: null };
-
-    const buckets = new Map(); // dirección -> longitudes ORIGINALES
+    const buckets = new Map();
     for (let i = 0; i < segsOrig.length; i++) {
         const s = segsOrig[i];
         const dx = s.end.x - s.start.x,
@@ -325,7 +348,6 @@ function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
         arr.push(s.length || Math.hypot(dx, dy));
         buckets.set(key, arr);
     }
-
     const seen = new Set();
     const res = [];
     for (let i = 0; i < segsAdj.length; i++) {
@@ -364,200 +386,11 @@ function agruparPorDireccionYEtiquetaRobusto(segsAdj, segsOrig, opt) {
 }
 
 // =======================
-// Texto principal – bandas (arriba o lateral)
-// =======================
-function placeMainLabelTopBand(params) {
-    const svg = params.svg,
-        text = params.text,
-        figBox = params.figBox,
-        centerX = params.centerX;
-    const placedBoxes = params.placedBoxes;
-    const safeLeft = params.safeLeft,
-        safeRight = params.safeRight,
-        safeTop = params.safeTop,
-        safeBottom = params.safeBottom;
-    const baseSize = params.baseSize || SIZE_MAIN_TEXT,
-        minSize = params.minSize || 10;
-    const bandHeight = params.bandHeight || TOP_BAND_HEIGHT,
-        bandGap = params.bandGap || TOP_BAND_GAP,
-        bandPadX = params.bandPadX || TOP_BAND_PAD_X;
-
-    const tryTopY = figBox.top - bandGap - bandHeight;
-    const tryBotY = figBox.bottom + bandGap;
-    let bandTop,
-        bandLeft = safeLeft,
-        bandRight = safeRight;
-    if (tryTopY >= safeTop) bandTop = Math.max(safeTop, tryTopY);
-    else {
-        bandTop = Math.min(tryBotY, safeBottom - bandHeight);
-        if (bandTop < safeTop) bandTop = safeTop;
-    }
-    const bandBottom = Math.min(bandTop + bandHeight, safeBottom);
-    const bandRect = {
-        left: bandLeft,
-        right: bandRight,
-        top: bandTop,
-        bottom: bandBottom,
-    };
-    placedBoxes.push(bandRect);
-
-    const bandWidth = Math.max(0, bandRight - bandLeft - 2 * bandPadX);
-    const estimateWidth = function (t, size) {
-        return t.length * size * 0.55;
-    };
-    let size = baseSize;
-    while (size >= minSize && estimateWidth(text, size) > bandWidth) size--;
-
-    const cx = clampXInside(
-        centerX,
-        bandWidth,
-        bandLeft + bandPadX,
-        bandRight - bandPadX
-    );
-    const cy = bandTop + bandHeight / 2;
-
-    if (size >= minSize) {
-        agregarTexto(svg, cx, cy, text, BARS_TEXT_COLOR, size, "middle");
-        return;
-    }
-
-    // Fallback: 2 líneas
-    const parts = text.split("|");
-    let line1, line2;
-    if (parts.length >= 2) {
-        line1 = parts[0].trim();
-        line2 = parts.slice(1).join(" | ").trim();
-    } else {
-        const mid = Math.max(1, Math.floor(text.length / 2));
-        line1 = text.slice(0, mid);
-        line2 = text.slice(mid);
-    }
-    let size1 = baseSize,
-        size2 = baseSize;
-    while (size1 > minSize && estimateWidth(line1, size1) > bandWidth) size1--;
-    while (size2 > minSize && estimateWidth(line2, size2) > bandWidth) size2--;
-    size1 = Math.max(size1, minSize);
-    size2 = Math.max(size2, minSize);
-
-    agregarTexto(svg, cx, cy - 6, line1, BARS_TEXT_COLOR, size1, "middle");
-    agregarTexto(
-        svg,
-        cx,
-        cy - 6 + size2 + 4,
-        line2,
-        BARS_TEXT_COLOR,
-        size2,
-        "middle"
-    );
-}
-
-function placeMainLabelSideBand(params) {
-    const svg = params.svg,
-        text = params.text,
-        figBox = params.figBox,
-        centerY = params.centerY;
-    const placedBoxes = params.placedBoxes;
-    const safeLeft = params.safeLeft,
-        safeRight = params.safeRight,
-        safeTop = params.safeTop,
-        safeBottom = params.safeBottom;
-    const side = params.side || "right";
-    const baseSize = params.baseSize || SIZE_MAIN_TEXT,
-        minSize = params.minSize || 10;
-    const bandWidth = params.bandWidth,
-        bandGap = params.bandGap || SIDE_BAND_GAP,
-        bandPad = params.bandPad || SIDE_BAND_PAD;
-
-    const bandLeft =
-        side === "left"
-            ? Math.max(safeLeft, figBox.left - bandGap - bandWidth)
-            : Math.min(figBox.right + bandGap, safeRight - bandWidth);
-
-    const bandTop = safeTop;
-    const bandRight = bandLeft + bandWidth;
-    const bandBottom = safeBottom;
-
-    const bandRect = {
-        left: bandLeft,
-        right: bandRight,
-        top: bandTop,
-        bottom: bandBottom,
-    };
-    placedBoxes.push(bandRect);
-
-    // Zona prohibida exterior: evita que cotas se vayan fuera de la banda
-    const outerRect =
-        side === "left"
-            ? {
-                  left: safeLeft,
-                  right: bandLeft,
-                  top: safeTop,
-                  bottom: safeBottom,
-              }
-            : {
-                  left: bandRight,
-                  right: safeRight,
-                  top: safeTop,
-                  bottom: safeBottom,
-              };
-    placedBoxes.push(outerRect);
-
-    const usableW = Math.max(0, bandWidth - 2 * bandPad);
-    const estimateWidth = function (t, size) {
-        return t.length * size * 0.55;
-    };
-    let size = baseSize;
-    while (size >= minSize && estimateWidth(text, size) > usableW) size--;
-
-    const cx = bandLeft + bandWidth / 2;
-    const cy = Math.max(
-        safeTop + SIZE_MAIN_TEXT,
-        Math.min(centerY, safeBottom - SIZE_MAIN_TEXT)
-    );
-
-    if (size >= minSize) {
-        agregarTexto(svg, cx, cy, text, BARS_TEXT_COLOR, size, "middle");
-        return;
-    }
-
-    // Fallback 2 líneas vertical
-    const parts = text.split("|");
-    let line1, line2;
-    if (parts.length >= 2) {
-        line1 = parts[0].trim();
-        line2 = parts.slice(1).join(" | ").trim();
-    } else {
-        const mid = Math.max(1, Math.floor(text.length / 2));
-        line1 = text.slice(0, mid);
-        line2 = text.slice(mid);
-    }
-    let size1 = baseSize,
-        size2 = baseSize;
-    while (size1 > minSize && estimateWidth(line1, size1) > usableW) size1--;
-    while (size2 > minSize && estimateWidth(line2, size2) > usableW) size2--;
-    size1 = Math.max(size1, minSize);
-    size2 = Math.max(size2, minSize);
-
-    agregarTexto(svg, cx, cy - 6, line1, BARS_TEXT_COLOR, size1, "middle");
-    agregarTexto(
-        svg,
-        cx,
-        cy - 6 + size2 + 4,
-        line2,
-        BARS_TEXT_COLOR,
-        size2,
-        "middle"
-    );
-}
-
-// =======================
-// Preproceso solapes (alarga tramo anterior)
+// Preproceso solapes (recrecer tramo anterior)
 // =======================
 function ajustarLongitudesParaEvitarSolapes(dims, grow) {
     const G = typeof grow === "number" ? grow : OVERLAP_GROW_UNITS;
-    const out = dims.map(function (d) {
-        return Object.assign({}, d);
-    });
+    const out = dims.map((d) => Object.assign({}, d));
     let cx = 0,
         cy = 0,
         ang = 0;
@@ -575,7 +408,6 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow) {
     function overlap(a1, b1, a2, b2) {
         return Math.min(b1, b2) - Math.max(a1, a2) > EPS;
     }
-
     for (let i = 0; i < out.length; i++) {
         const d = out[i];
         if (d.type === "turn") {
@@ -585,8 +417,8 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow) {
         if (d.type === "arc") {
             const cx0 = cx + d.radius * Math.cos(deg2rad(ang + 90));
             const cy0 = cy + d.radius * Math.sin(deg2rad(ang + 90));
-            const start = Math.atan2(cy - cy0, cx - cx0);
-            const end = start + deg2rad(d.arcAngle);
+            const start = Math.atan2(cy - cy0, cx - cx0),
+                end = start + deg2rad(d.arcAngle);
             cx = cx0 + d.radius * Math.cos(end);
             cy = cy0 + d.radius * Math.sin(end);
             ang += d.arcAngle;
@@ -616,9 +448,8 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow) {
                             out[lastIdxDims].length += G;
                             cx += lastDir.x * G;
                             cy += lastDir.y * G;
-                            const ps = prev[lastIdxPrev];
-                            ps.x2 += lastDir.x * G;
-                            ps.y2 += lastDir.y * G;
+                            prev[lastIdxPrev].x2 += lastDir.x * G;
+                            prev[lastIdxPrev].y2 += lastDir.y * G;
                             return true;
                         }
                     }
@@ -635,9 +466,8 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow) {
                             out[lastIdxDims].length += G;
                             cx += lastDir.x * G;
                             cy += lastDir.y * G;
-                            const ps = prev[lastIdxPrev];
-                            ps.x2 += lastDir.x * G;
-                            ps.y2 += lastDir.y * G;
+                            prev[lastIdxPrev].x2 += lastDir.x * G;
+                            prev[lastIdxPrev].y2 += lastDir.y * G;
                             return true;
                         }
                     }
@@ -646,20 +476,11 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow) {
             return false;
         }
         while (tryResolve()) {}
-
         const dir = { x: Math.cos(deg2rad(ang)), y: Math.sin(deg2rad(ang)) };
         const nx = cx + out[i].length * dir.x,
             ny = cy + out[i].length * dir.y;
         const horiz = isH(ang);
-        prev.push({
-            x1: cx,
-            y1: cy,
-            x2: nx,
-            y2: ny,
-            horiz: horiz,
-            y: cy,
-            x: cx,
-        });
+        prev.push({ x1: cx, y1: cy, x2: nx, y2: ny, horiz, y: cy, x: cx });
         lastDir = dir;
         lastIdxPrev = prev.length - 1;
         lastIdxDims = i;
@@ -672,8 +493,8 @@ function ajustarLongitudesParaEvitarSolapes(dims, grow) {
 // =======================
 // Rotación y path
 // =======================
-function rotatePoint(p, cx, cy, deg) {
-    const r = (deg * Math.PI) / 180,
+function rotatePoint(p, cx, cy, degAng) {
+    const r = rad(degAng),
         c = Math.cos(r),
         s = Math.sin(r);
     const dx = p.x - cx,
@@ -717,8 +538,8 @@ function buildSvgPathFromDims(
             continue;
         }
         if (d.type === "line") {
-            const nx = x + d.length * Math.cos((ang * Math.PI) / 180);
-            const ny = y + d.length * Math.sin((ang * Math.PI) / 180);
+            const nx = x + d.length * Math.cos(rad(ang)),
+                ny = y + d.length * Math.sin(rad(ang));
             move();
             const p = map(nx, ny);
             dStr += " L " + p.x + " " + p.y;
@@ -727,18 +548,18 @@ function buildSvgPathFromDims(
             continue;
         }
         if (d.type === "arc") {
-            const cx = x + d.radius * Math.cos(((ang + 90) * Math.PI) / 180);
-            const cy = y + d.radius * Math.sin(((ang + 90) * Math.PI) / 180);
-            const start = Math.atan2(y - cy, x - cx);
-            const end = start + (d.arcAngle * Math.PI) / 180;
-            const ex = cx + d.radius * Math.cos(end);
-            const ey = cy + d.radius * Math.sin(end);
+            const cx = x + d.radius * Math.cos(rad(ang + 90)),
+                cy = y + d.radius * Math.sin(rad(ang + 90));
+            const start = Math.atan2(y - cy, x - cx),
+                end = start + rad(d.arcAngle);
+            const ex = cx + d.radius * Math.cos(end),
+                ey = cy + d.radius * Math.sin(end);
             const absAng = Math.abs(d.arcAngle) % 360;
             move();
             if (absAng < 1e-6 || Math.abs(d.arcAngle) >= 359.9) {
                 const midAng = start + Math.sign(d.arcAngle) * Math.PI;
-                const mx = cx + d.radius * Math.cos(midAng);
-                const my = cy + d.radius * Math.sin(midAng);
+                const mx = cx + d.radius * Math.cos(midAng),
+                    my = cy + d.radius * Math.sin(midAng);
                 const pMid = map(mx, my),
                     pEnd = map(x, y);
                 const R = d.radius * scale,
@@ -794,243 +615,454 @@ function buildSvgPathFromDims(
 }
 
 // =======================
+// Layout "masonry"
+// =======================
+function medirFiguraEnModelo(dims) {
+    const pts = computePathPoints(dims);
+    let minX = Math.min(...pts.map((p) => p.x)),
+        maxX = Math.max(...pts.map((p) => p.x));
+    let minY = Math.min(...pts.map((p) => p.y)),
+        maxY = Math.max(...pts.map((p) => p.y));
+    const cx = (minX + maxX) / 2,
+        cy = (minY + maxY) / 2;
+    const needsRotate = maxY - minY > maxX - minX;
+    const rotDeg = needsRotate ? -90 : 0;
+    const rot = pts.map((p) => rotatePoint(p, cx, cy, rotDeg));
+    minX = Math.min(...rot.map((p) => p.x));
+    maxX = Math.max(...rot.map((p) => p.x));
+    minY = Math.min(...rot.map((p) => p.y));
+    maxY = Math.max(...rot.map((p) => p.y));
+    const w = Math.max(1, maxX - minX),
+        h = Math.max(1, maxY - minY);
+    const midX = (minX + maxX) / 2,
+        midY = (minY + maxY) / 2;
+    return { rotDeg, w, h, cxModel: cx, cyModel: cy, midX, midY, ptsRot: rot };
+}
+function getTurnVertices(dims) {
+    const out = [];
+    let x = 0,
+        y = 0,
+        a = 0;
+    function dirFromAng(deg) {
+        const r = rad(deg);
+        return { x: Math.cos(r), y: Math.sin(r) };
+    }
+    for (let i = 0; i < dims.length; i++) {
+        const d = dims[i];
+        if (d.type === "line") {
+            x += d.length * Math.cos(rad(a));
+            y += d.length * Math.sin(rad(a));
+        } else if (d.type === "turn") {
+            const prevDir = dirFromAng(a);
+            const turnDeg = d.angle;
+            a += turnDeg;
+            const nextDir = dirFromAng(a);
+            out.push({ x, y, angleDeg: turnDeg, prevDir, nextDir });
+        } else if (d.type === "arc") {
+            const cx0 = x + d.radius * Math.cos(rad(a + 90)),
+                cy0 = y + d.radius * Math.sin(rad(a + 90));
+            const start = Math.atan2(y - cy0, x - cx0),
+                end = start + rad(d.arcAngle);
+            x = cx0 + d.radius * Math.cos(end);
+            y = cy0 + d.radius * Math.sin(end);
+            a += d.arcAngle;
+        }
+    }
+    return out;
+}
+function assignColumnsFFD(items, k, gapRow) {
+    const cols = Array.from({ length: k }, () => ({
+        sumH: 0,
+        maxW: 0,
+        items: [],
+    }));
+    const order = [...items.keys()].sort((a, b) => items[b].h - items[a].h);
+    for (const idx of order) {
+        let best = 0,
+            bestVal = Infinity;
+        for (let c = 0; c < k; c++) {
+            const col = cols[c];
+            const val =
+                col.sumH + (col.items.length > 0 ? gapRow : 0) + items[idx].h;
+            if (val < bestVal) {
+                bestVal = val;
+                best = c;
+            }
+        }
+        const col = cols[best];
+        col.sumH =
+            col.items.length > 0
+                ? col.sumH + gapRow + items[idx].h
+                : col.sumH + items[idx].h;
+        col.maxW = Math.max(col.maxW, items[idx].w);
+        col.items.push(idx);
+    }
+    return cols;
+}
+function planMasonryOptimal(medidas, svgW, svgH, opts = {}) {
+    const padding = opts.padding ?? 10,
+        gapCol = opts.gapCol ?? 10,
+        gapRow = opts.gapRow ?? 8,
+        kMax = Math.max(1, Math.min(medidas.length, opts.kMax ?? 4));
+    const anchoUsable = Math.max(10, svgW - 2 * padding);
+    const altoUsable = Math.max(10, svgH - 2 * padding - DIM_RING_MARGIN);
+    let best = { S: 0, k: 1, cols: null };
+    for (let k = 1; k <= kMax; k++) {
+        const cols = assignColumnsFFD(medidas, k, gapRow);
+        const sumWCols =
+            cols.reduce((a, c) => a + c.maxW, 0) + gapCol * (k - 1);
+        const maxHCols = Math.max(...cols.map((c) => c.sumH));
+        if (sumWCols <= 0 || maxHCols <= 0) continue;
+        const S = Math.max(
+            0.01,
+            Math.min(anchoUsable / sumWCols, altoUsable / maxHCols)
+        );
+        if (S > best.S) best = { S, k, cols };
+    }
+    const widthsEsc = best.cols.map((c) => c.maxW * best.S);
+    const totalW =
+        widthsEsc.reduce((a, w) => a + w, 0) +
+        (best.k - 1) * (opts.gapCol ?? 10);
+    let xStart = (svgW - totalW) / 2;
+    const centersX = [];
+    for (let c = 0; c < best.k; c++) {
+        const w = widthsEsc[c];
+        centersX[c] = xStart + w / 2;
+        xStart += w + (opts.gapCol ?? 10);
+    }
+    const centersYByCol = [];
+    for (let c = 0; c < best.k; c++) {
+        const col = best.cols[c];
+        const hEscTotal =
+            col.items.reduce((a, idx) => a + medidas[idx].h * best.S, 0) +
+            (col.items.length - 1) * (opts.gapRow ?? 8);
+        let y = (svgH - hEscTotal) / 2;
+        centersYByCol[c] = [];
+        for (let i = 0; i < col.items.length; i++) {
+            const idx = col.items[i];
+            const hEsc = medidas[idx].h * best.S;
+            centersYByCol[c].push(y + hEsc / 2);
+            y += hEsc + (opts.gapRow ?? 8);
+        }
+    }
+    return {
+        S: best.S,
+        k: best.k,
+        cols: best.cols,
+        centersX,
+        centersYByCol,
+        padding,
+        gapRow,
+        gapCol,
+    };
+}
+
+// =======================
 // Script principal
 // =======================
 document.addEventListener("DOMContentLoaded", function () {
-    // 👉 Conectar el panel informativo (global)
     if (window.setDataSources) {
         window.setDataSources({
             sugerencias: window.SUGERENCIAS || {},
             elementosAgrupados: window.elementosAgrupadosScript || [],
         });
     }
-    var elementos = window.elementosAgrupadosScript;
-    if (!elementos) return;
+    const grupos = window.elementosAgrupadosScript;
+    if (!grupos) return;
 
-    elementos.forEach(function (grupo, gidx) {
-        var groupId =
+    grupos.forEach(function (grupo, gidx) {
+        const groupId =
             grupo && grupo.etiqueta && grupo.etiqueta.id != null
                 ? grupo.etiqueta.id
                 : grupo && grupo.id != null
                 ? grupo.id
                 : gidx;
-
-        var contenedor = document.getElementById("contenedor-svg-" + groupId);
+        const contenedor = document.getElementById("contenedor-svg-" + groupId);
         if (!contenedor) return;
 
-        var ancho = 600,
+        const ancho = 600,
             alto = 150;
-
-        // ✅ lee el color UNA VEZ por contenedor y pásalo al crear el SVG
         const svgBg = getEstadoColorFromCSSVar(contenedor);
-        var svg = crearSVG(ancho, alto, svgBg);
+        const svg = crearSVG(ancho, alto, svgBg);
 
-        var numElementos = grupo.elementos.length;
-        var legendEntries = [];
-        // ✅ Reset reservas por grupo
+        // Reset reservas por grupo
         window.__placedLetterBoxes = [];
         window.__figBoxesGroup = [];
-        window.__dimBoxesGroup = []; // 👈 cajas de cotas del grupo
+        window.__dimBoxesGroup = [];
+        window.__angleBoxesGroup = [];
+        window.__legendBoxesGroup = [];
 
-        // Precalcular nº segmentos
-        var segCounts = grupo.elementos.map(function (el) {
-            var dimsRaw = extraerDimensiones(el.dimensiones || "");
-            var dimsNoZero = combinarRectasConCeros(dimsRaw);
-            var segsOrig = computeLineSegments(dimsNoZero);
-            return segsOrig.length;
-        });
-        var allFewDims = segCounts.every(function (n) {
-            return n <= 5;
-        });
-
-        // Distribución
-        var columnas =
-            numElementos > 1 && allFewDims
-                ? 1
-                : Math.ceil(Math.sqrt(numElementos));
-        var filas =
-            numElementos > 1 && allFewDims
-                ? numElementos
-                : Math.ceil(numElementos / columnas);
-
-        var cellWidth = (ancho - marginX) / columnas;
-        var cellHeight = (alto - marginY) / filas;
-
-        grupo.elementos.forEach(function (elemento, idx) {
-            var fila = Math.floor(idx / columnas);
-            var col = idx % columnas;
-
-            var centerX = marginX + col * cellWidth + cellWidth / 2;
-            var centerY = marginY + fila * cellHeight + cellHeight / 2;
-
-            var safeLeft = 0,
-                safeRight = ancho,
-                safeTop = 0,
-                safeBottom = alto;
-
-            // dims normalizadas + anti-solape
-            var dimsRaw = extraerDimensiones(elemento.dimensiones || "");
-            var dimsNoZero = combinarRectasConCeros(dimsRaw);
-            var dims = ajustarLongitudesParaEvitarSolapes(
-                dimsNoZero,
-                OVERLAP_GROW_UNITS
-            );
-
-            var barras = elemento.barras != null ? elemento.barras : 0;
-            // Formatear diámetro: quitar unidad y redondear (sin decimales)
-            var diametro = "N/A";
+        // ===== leyenda: preparar entradas primero, dibujarla YA para reservar espacio =====
+        const legendEntries = (grupo.elementos || []).map((elemento, idx) => {
+            const barras = elemento.barras != null ? elemento.barras : 0;
+            let diametro = "N/A";
             if (elemento.diametro != null && elemento.diametro !== "") {
-                var dstr = String(elemento.diametro).replace(",", ".");
-                var m = dstr.match(/-?\d+(?:\.\d+)?/);
-                if (m) {
-                    var dn = parseFloat(m[0]);
+                const dstr = String(elemento.diametro).replace(",", ".");
+                const mtch = dstr.match(/-?\d+(?:\.\d+)?/);
+                if (mtch) {
+                    const dn = parseFloat(mtch[0]);
                     if (isFinite(dn)) diametro = String(Math.round(dn));
                 }
             }
-            var peso = elemento.peso != null ? elemento.peso : "N/A";
-            var mainText = "Ø" + diametro + " | " + peso + " | x" + barras;
+            return {
+                letter: indexToLetters(idx),
+                text: `Ø${diametro} x${barras}`,
+            };
+        });
+        drawLegendBottomLeft(svg, legendEntries, ancho, alto); // ← primero, para evitar solapes con todo lo demás
 
-            // Letra de la figura y recoger en leyenda
-            var letter = indexToLetters(idx);
-            legendEntries.push({ letter: letter, text: mainText });
-
-            // Figura (bbox modelo)
-            var ptsModel = computePathPoints(dims);
-            var minX = Math.min.apply(
-                null,
-                ptsModel.map((p) => p.x)
-            );
-            var maxX = Math.max.apply(
-                null,
-                ptsModel.map((p) => p.x)
-            );
-            var minY = Math.min.apply(
-                null,
-                ptsModel.map((p) => p.y)
-            );
-            var maxY = Math.max.apply(
-                null,
-                ptsModel.map((p) => p.y)
-            );
-            var cxModel = (minX + maxX) / 2,
-                cyModel = (minY + maxY) / 2;
-
-            // Rotación por forma
-            var needsRotate = maxY - minY > maxX - minX;
-            var rotDeg = needsRotate ? -90 : 0;
-
-            var ptsRot = ptsModel.map((p) =>
-                rotatePoint(p, cxModel, cyModel, rotDeg)
-            );
-            minX = Math.min.apply(
-                null,
-                ptsRot.map((p) => p.x)
-            );
-            maxX = Math.max.apply(
-                null,
-                ptsRot.map((p) => p.x)
-            );
-            minY = Math.min.apply(
-                null,
-                ptsRot.map((p) => p.y)
-            );
-            maxY = Math.max.apply(
-                null,
-                ptsRot.map((p) => p.y)
-            );
-            var figW = Math.max(1, maxX - minX),
-                figH = Math.max(1, maxY - minY);
-            var midX = (minX + maxX) / 2,
-                midY = (minY + maxY) / 2;
-
-            // Colocación del texto (según reglas)
-            var segCount = segCounts[idx];
-            var textPlacement =
-                numElementos === 1 ? (segCount > 5 ? "side" : "top") : "top";
-
-            // Banda lateral estimada
-            var estSideW =
-                mainText.length * SIZE_MAIN_TEXT * 0.55 + 2 * SIDE_BAND_PAD;
-            var sideBandWidth = Math.max(80, Math.min(estSideW, 160));
-
-            // Escala
-            var scale;
-            if (textPlacement === "top") {
-                var usableHeight = Math.max(
-                    10,
-                    cellHeight * 0.95 -
-                        TOP_BAND_HEIGHT -
-                        TOP_BAND_GAP -
-                        DIM_RING_MARGIN
-                );
-                scale = Math.min((cellWidth * 0.8) / figW, usableHeight / figH);
-            } else {
-                var usableWidth = Math.max(
-                    10,
-                    cellWidth * 0.95 -
-                        sideBandWidth -
-                        SIDE_BAND_GAP -
-                        DIM_RING_MARGIN
-                );
-                scale = Math.min(usableWidth / figW, (cellHeight * 0.8) / figH);
+        // ====== medir piezas y decidir escala por elemento ======
+        const preproc = grupo.elementos.map((el) => {
+            const dimsRaw = extraerDimensiones(el.dimensiones || "");
+            const dimsNoZero = combinarRectasConCeros(dimsRaw);
+            let maxLinear = 0;
+            for (const d of dimsNoZero) {
+                if (d.type === "line")
+                    maxLinear = Math.max(maxLinear, Math.abs(d.length || 0));
+                if (d.type === "arc")
+                    maxLinear = Math.max(maxLinear, Math.abs(d.radius || 0));
             }
+            const isSmall = maxLinear <= SMALL_DIM_THRESHOLD;
+            const geomScale = isSmall ? SMALL_DIM_SCALE : 1;
+            const dimsScaled = scaleDims(dimsNoZero, geomScale);
+            const medida = medirFiguraEnModelo(dimsScaled);
+            return { dimsRaw, dimsNoZero, dimsScaled, geomScale, medida };
+        });
 
-            // Bbox figura
-            var ptsSvg = ptsRot.map((pt) => ({
-                x: centerX + (pt.x - midX) * scale,
-                y: centerY + (pt.y - midY) * scale,
+        const medidas = preproc.map((p) => p.medida);
+        const plan = planMasonryOptimal(medidas, ancho, alto, {
+            padding: 15,
+            gapCol: 10,
+            gapRow: 20,
+            kMax: 4,
+        });
+
+        const indexInCol = new Map();
+        for (let c = 0; c < plan.k; c++) {
+            plan.cols[c].items.forEach((idx, j) =>
+                indexInCol.set(idx, { c, j })
+            );
+        }
+
+        // ====== bucle de pintado ======
+        grupo.elementos.forEach(function (elemento, idx) {
+            const { dimsNoZero, dimsScaled, medida: m } = preproc[idx];
+
+            const loc = indexInCol.get(idx);
+            const cx = plan.centersX[loc.c],
+                cy = plan.centersYByCol[loc.c][loc.j],
+                scale = plan.S;
+
+            // BBox figura
+            const ptsSvg = m.ptsRot.map((pt) => ({
+                x: cx + (pt.x - m.midX) * scale,
+                y: cy + (pt.y - m.midY) * scale,
             }));
-            var figMinX = Math.min.apply(
-                null,
-                ptsSvg.map((p) => p.x)
-            );
-            var figMaxX = Math.max.apply(
-                null,
-                ptsSvg.map((p) => p.x)
-            );
-            var figMinY = Math.min.apply(
-                null,
-                ptsSvg.map((p) => p.y)
-            );
-            var figMaxY = Math.max.apply(
-                null,
-                ptsSvg.map((p) => p.y)
-            );
-            var figBox = {
+            const figMinX = Math.min(...ptsSvg.map((p) => p.x)),
+                figMaxX = Math.max(...ptsSvg.map((p) => p.x));
+            const figMinY = Math.min(...ptsSvg.map((p) => p.y)),
+                figMaxY = Math.max(...ptsSvg.map((p) => p.y));
+            const figBox = {
                 left: figMinX,
                 right: figMaxX,
                 top: figMinY,
                 bottom: figMaxY,
             };
-            // Guarda caja de figura para evitar invadir con letras
-            window.__figBoxesGroup.push({
-                left: figMinX,
-                right: figMaxX,
-                top: figMinY,
-                bottom: figMaxY,
-            });
+            window.__figBoxesGroup.push({ ...figBox });
 
-            // Path principal
-            var dPath = buildSvgPathFromDims(
-                dims,
-                cxModel,
-                cyModel,
-                rotDeg,
-                scale,
-                midX,
-                midY,
-                centerX,
-                centerY
+            // Path visible (con recrecimiento) usando dimsScaled
+            const dimsAdjForDraw = ajustarLongitudesParaEvitarSolapes(
+                dimsScaled,
+                OVERLAP_GROW_UNITS
             );
-            var pathEl = agregarPathD(svg, dPath, FIGURE_LINE_COLOR, 2);
-            // Crear un path invisible más gordo como zona clicable
-            var hitbox = pathEl.cloneNode(false);
-            hitbox.setAttribute("stroke-width", "50"); // mucho más ancho
+            const dPath = buildSvgPathFromDims(
+                dimsAdjForDraw,
+                m.cxModel,
+                m.cyModel,
+                m.rotDeg,
+                scale,
+                m.midX,
+                m.midY,
+                cx,
+                cy
+            );
+            const pathEl = agregarPathD(svg, dPath, FIGURE_LINE_COLOR, 2);
+
+            // ======== ÁNGULOS (usa dimsScaled para posiciones) ========
+            (function drawTurnAngles() {
+                const turns = getTurnVertices(dimsScaled); // ← corregido (coincide con lo dibujado)
+                function shouldShow(deg) {
+                    return Math.abs(Math.abs(deg) - 90) >= ANGLE_TOL_DEG;
+                }
+                const rotVec = (v, degAng) =>
+                    rotatePoint({ x: v.x, y: v.y }, 0, 0, degAng);
+                const mapToSvg = (px, py) => {
+                    const pr = rotatePoint(
+                        { x: px, y: py },
+                        m.cxModel,
+                        m.cyModel,
+                        m.rotDeg
+                    );
+                    return {
+                        x: cx + (pr.x - m.midX) * scale,
+                        y: cy + (pr.y - m.midY) * scale,
+                    };
+                };
+                const clampR = (R) => Math.max(10, Math.min(28, R));
+
+                turns.forEach((t) => {
+                    if (!shouldShow(t.angleDeg)) return;
+                    const P = mapToSvg(t.x, t.y);
+                    const vPrev = rotVec(t.prevDir, m.rotDeg),
+                        vNext = rotVec(t.nextDir, m.rotDeg);
+                    const aStart = Math.atan2(vPrev.y, vPrev.x),
+                        aEnd = aStart + rad(t.angleDeg);
+                    const figSpan = Math.min(
+                        figBox.right - figBox.left,
+                        figBox.bottom - figBox.top
+                    );
+                    let R = clampR(0.12 * figSpan);
+                    const x1 = P.x + R * Math.cos(aStart),
+                        y1 = P.y + R * Math.sin(aStart);
+                    const x2 = P.x + R * Math.cos(aEnd),
+                        y2 = P.y + R * Math.sin(aEnd);
+                    const absAng = Math.abs(t.angleDeg),
+                        largeArc = absAng > 180 ? 1 : 0,
+                        sweep = t.angleDeg >= 0 ? 1 : 0;
+
+                    const arc = document.createElementNS(
+                        "http://www.w3.org/2000/svg",
+                        "path"
+                    );
+                    arc.setAttribute(
+                        "d",
+                        `M ${x1} ${y1} A ${R} ${R} 0 ${largeArc} ${sweep} ${x2} ${y2}`
+                    );
+                    arc.setAttribute("stroke", "rgba(255,99,71,0.7)");
+                    arc.setAttribute("stroke-width", "2");
+                    arc.setAttribute("fill", "none");
+                    arc.style.pointerEvents = "none";
+                    svg.appendChild(arc);
+
+                    // bisectriz interior
+                    let bx = vPrev.x + vNext.x,
+                        by = vPrev.y + vNext.y;
+                    if (absAng > 180) {
+                        bx = -bx;
+                        by = -by;
+                    }
+                    let bl = Math.hypot(bx, by);
+                    if (bl < 1e-6) {
+                        const sgn = t.angleDeg >= 0 ? 1 : -1;
+                        bx = -vPrev.y * sgn;
+                        by = vPrev.x * sgn;
+                        bl = Math.hypot(bx, by) || 1;
+                    }
+                    bx /= bl;
+                    by /= bl;
+
+                    const label =
+                        (Math.round(t.angleDeg * 100) / 100)
+                            .toString()
+                            .replace(/\.0+$/, "") + "°";
+                    const tb = approxTextBox(label, SIZE_DIM_TEXT);
+                    function makeBox(cx0, cy0) {
+                        return {
+                            left: cx0 - tb.w / 2,
+                            right: cx0 + tb.w / 2,
+                            top: cy0 - tb.h / 2,
+                            bottom: cy0 + tb.h / 2,
+                        };
+                    }
+
+                    let placed = null;
+                    for (
+                        let off = ANGLE_LABEL_OFFSET;
+                        off <= ANGLE_LABEL_MAX_OFFSET && !placed;
+                        off += LABEL_STEP
+                    ) {
+                        for (
+                            let k = 0;
+                            k < ANGLE_LABEL_SWEEP_DEG.length && !placed;
+                            k++
+                        ) {
+                            const dAng = ANGLE_LABEL_SWEEP_DEG[k];
+                            const dir = rotVec({ x: bx, y: by }, dAng);
+                            const lx = P.x + dir.x * (R + off),
+                                ly = P.y + dir.y * (R + off);
+                            const box = makeBox(lx, ly);
+                            const out =
+                                box.top < 0 ||
+                                box.bottom > alto ||
+                                box.left < 0 ||
+                                box.right > ancho;
+                            if (out) continue;
+                            const collideFig = window.__figBoxesGroup.some(
+                                (b) => rectsOverlap(b, box, LABEL_CLEARANCE)
+                            );
+                            if (collideFig) continue;
+                            const collideDims = (
+                                window.__dimBoxesGroup || []
+                            ).some((b) =>
+                                rectsOverlap(b, box, LABEL_CLEARANCE)
+                            );
+                            if (collideDims) continue;
+                            const collideAngles = (
+                                window.__angleBoxesGroup || []
+                            ).some((b) =>
+                                rectsOverlap(b, box, LABEL_CLEARANCE)
+                            );
+                            if (collideAngles) continue;
+                            const collideLetters = (
+                                window.__placedLetterBoxes || []
+                            ).some((b) =>
+                                rectsOverlap(b, box, LABEL_CLEARANCE)
+                            );
+                            if (collideLetters) continue;
+                            const collideLegend = (
+                                window.__legendBoxesGroup || []
+                            ).some((b) =>
+                                rectsOverlap(b, box, LABEL_CLEARANCE)
+                            );
+                            if (collideLegend) continue;
+                            placed = { x: lx, y: ly, box };
+                        }
+                    }
+                    if (!placed) return;
+                    window.__angleBoxesGroup.push(placed.box);
+                    const txt = document.createElementNS(
+                        "http://www.w3.org/2000/svg",
+                        "text"
+                    );
+                    txt.setAttribute("x", placed.x);
+                    txt.setAttribute("y", placed.y);
+                    txt.setAttribute("fill", VALOR_COTA_COLOR);
+                    txt.setAttribute("font-size", SIZE_DIM_TEXT);
+                    txt.setAttribute("text-anchor", "middle");
+                    txt.setAttribute("alignment-baseline", "middle");
+                    txt.style.cursor = "pointer";
+                    txt.textContent = label;
+                    svg.appendChild(txt);
+                    txt.addEventListener("mouseenter", () => {
+                        arc.setAttribute("stroke", "rgba(255,69,0,1)");
+                        arc.setAttribute("stroke-width", "3");
+                        arc.style.filter =
+                            "drop-shadow(0 0 2px rgba(255,69,0,0.7))";
+                    });
+                    txt.addEventListener("mouseleave", () => {
+                        arc.setAttribute("stroke", "rgba(255,99,71,0.7)");
+                        arc.setAttribute("stroke-width", "2");
+                        arc.style.filter = "none";
+                    });
+                });
+            })();
+
+            // Hitbox de interacción
+            const hitbox = pathEl.cloneNode(false);
+            hitbox.setAttribute("stroke-width", "50");
             hitbox.setAttribute("stroke", "transparent");
             hitbox.setAttribute("fill", "none");
             hitbox.style.cursor = "pointer";
-
-            // Reenvía los eventos al path original
             [
                 "click",
                 "contextmenu",
@@ -1042,21 +1074,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     pathEl.dispatchEvent(new e.constructor(e.type, e))
                 );
             });
-
-            // Insertar hitbox ANTES del path visible, así no tapa la figura
             svg.insertBefore(hitbox, pathEl);
 
-            // Interacción
-            var etiquetaClick =
+            const etiquetaClick =
                 (elemento.codigo != null ? elemento.codigo : elemento.id) + "";
             pathEl.style.cursor = "pointer";
-            // 🆕 tooltip accesible para el operario
             pathEl.setAttribute(
                 "title",
                 "Click: dividir · Ctrl/Shift/⌘+Click o botón derecho: info"
             );
-
-            // 🆕 Click normal -> dividir. Con modificadores -> info
             pathEl.addEventListener("click", function (e) {
                 if (e.ctrlKey || e.metaKey || e.shiftKey) {
                     e.preventDefault();
@@ -1066,111 +1092,79 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 abrirModalDividirElemento(elemento.id, etiquetaClick);
             });
-
-            // 🆕 Botón derecho -> info
             pathEl.addEventListener("contextmenu", function (e) {
                 e.preventDefault();
                 if (window.mostrarPanelInfoElemento)
                     window.mostrarPanelInfoElemento(elemento.id);
             });
 
-            // 🆕 Teclado: Enter/Espacio = dividir. Ctrl+Enter = info
-            pathEl.addEventListener("keydown", function (e) {
-                if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    abrirModalDividirElemento(elemento.id, etiquetaClick);
-                }
-                if (
-                    (e.ctrlKey || e.metaKey) &&
-                    e.key.toLowerCase() === "enter"
-                ) {
-                    e.preventDefault();
-                    if (window.mostrarPanelInfoElemento)
-                        window.mostrarPanelInfoElemento(elemento.id);
-                }
-            });
-
-            // Reservas locales para este elemento
-            var placedBoxes = [];
-
             // ===================
-            // Cotas (con registro)
+            // Cotas (longitudes)
             // ===================
-            var segsAdj = computeLineSegments(dims);
-            var segsOrig = computeLineSegments(dimsNoZero);
-            var segsUnicos = agruparPorDireccionYEtiquetaRobusto(
+            const placedBoxes = [];
+            const segsAdj = computeLineSegments(dimsAdjForDraw); // ← CORREGIDO (antes usaba 'dims' inexistente)
+            const segsOrig = computeLineSegments(dimsNoZero);
+            const segsUnicos = agruparPorDireccionYEtiquetaRobusto(
                 segsAdj,
                 segsOrig,
-                {
-                    dirPrecision: 1e-2,
-                    labelFormat: { decimals: 0, step: null },
-                }
+                { dirPrecision: 1e-2, labelFormat: { decimals: 0, step: null } }
             );
 
-            var MAX_OFF = Math.max(ancho, alto) * 0.6;
-
             segsUnicos.forEach(function (s) {
-                var s1 = rotatePoint(s.start, cxModel, cyModel, rotDeg);
-                var s2 = rotatePoint(s.end, cxModel, cyModel, rotDeg);
-                var p1 = {
-                    x: centerX + (s1.x - midX) * scale,
-                    y: centerY + (s1.y - midY) * scale,
+                const s1 = rotatePoint(s.start, m.cxModel, m.cyModel, m.rotDeg);
+                const s2 = rotatePoint(s.end, m.cxModel, m.cyModel, m.rotDeg);
+                const p1 = {
+                    x: cx + (s1.x - m.midX) * scale,
+                    y: cy + (s1.y - m.midY) * scale,
                 };
-                var p2 = {
-                    x: centerX + (s2.x - midX) * scale,
-                    y: centerY + (s2.y - midY) * scale,
+                const p2 = {
+                    x: cx + (s2.x - m.midX) * scale,
+                    y: cy + (s2.y - m.midY) * scale,
                 };
+                const label = s._label;
 
-                var dx = p2.x - p1.x,
+                const dx = p2.x - p1.x,
                     dy = p2.y - p1.y;
-                var L = Math.hypot(dx, dy) || 1;
-                var tx = dx / L,
+                const L = Math.hypot(dx, dy) || 1;
+                const tx = dx / L,
                     ty = dy / L;
-                var nx = dy / L,
+                const nx = dy / L,
                     ny = -dx / L;
-                var mx = (p1.x + p2.x) / 2,
+                const mx = (p1.x + p2.x) / 2,
                     my = (p1.y + p2.y) / 2;
+                const baseLX = mx + nx * DIM_OFFSET,
+                    baseLY = my + ny * DIM_OFFSET;
 
-                var baseLX = mx + nx * DIM_OFFSET;
-                var baseLY = my + ny * DIM_OFFSET;
-
-                var label = s._label;
-                var tb = approxTextBox(label, SIZE_DIM_TEXT);
-                var tw = tb.w,
+                const tb = approxTextBox(label, SIZE_DIM_TEXT);
+                const tw = tb.w,
                     th = tb.h;
-
-                function makeBox(cx, cy) {
+                function makeBox(cx0, cy0) {
                     return {
-                        left: cx - tw / 2,
-                        right: cx + tw / 2,
-                        top: cy - th / 2,
-                        bottom: cy + th / 2,
+                        left: cx0 - tw / 2,
+                        right: cx0 + tw / 2,
+                        top: cy0 - th / 2,
+                        bottom: cy0 + th / 2,
                     };
                 }
 
-                var maxShift = L * DIM_TANG_MAX_FRAC;
-                var bestLX = baseLX,
+                const maxShift = L * DIM_TANG_MAX_FRAC;
+                let bestLX = baseLX,
                     bestLY = baseLY;
-
                 for (
-                    var step = 0;
+                    let step = 0;
                     step <= Math.ceil(maxShift / DIM_TANG_STEP);
                     step++
                 ) {
-                    var dir = step % 2 === 0 ? 1 : -1;
-                    var mult = Math.ceil(step / 2);
-                    var shift = dir * mult * DIM_TANG_STEP;
+                    const dir = step % 2 === 0 ? 1 : -1;
+                    const mult = Math.ceil(step / 2);
+                    const shift = dir * mult * DIM_TANG_STEP;
                     if (Math.abs(shift) > maxShift) continue;
-
-                    var lx = baseLX + tx * shift;
-                    var ly = baseLY + ty * shift;
-
-                    var tProj = (lx - p1.x) * tx + (ly - p1.y) * ty;
+                    const lx = baseLX + tx * shift,
+                        ly = baseLY + ty * shift;
+                    const tProj = (lx - p1.x) * tx + (ly - p1.y) * ty;
                     if (tProj < 0 + tw * 0.3 || tProj > L - tw * 0.3) continue;
-
-                    var labelBox = makeBox(lx, ly);
-
-                    var collideFig = rectsOverlap(
+                    const labelBox = makeBox(lx, ly);
+                    const collideFig = rectsOverlap(
                         {
                             left: Math.min(p1.x, p2.x),
                             right: Math.max(p1.x, p2.x),
@@ -1180,26 +1174,33 @@ document.addEventListener("DOMContentLoaded", function () {
                         labelBox,
                         0
                     );
-                    var collideOth = placedBoxes.some((b) =>
+                    if (collideFig) continue;
+                    const collideAngles = (window.__angleBoxesGroup || []).some(
+                        (b) => rectsOverlap(b, labelBox, LABEL_CLEARANCE)
+                    );
+                    if (collideAngles) continue;
+                    const collideLegend = (
+                        window.__legendBoxesGroup || []
+                    ).some((b) => rectsOverlap(b, labelBox, LABEL_CLEARANCE));
+                    if (collideLegend) continue;
+                    const collideOth = placedBoxes.some((b) =>
                         rectsOverlap(b, labelBox, LABEL_CLEARANCE)
                     );
-                    var outOfBounds =
+                    if (collideOth) continue;
+                    const outOfBounds =
                         labelBox.top < 0 ||
                         labelBox.bottom > alto ||
                         labelBox.left < 0 ||
                         labelBox.right > ancho;
-
-                    if (!collideFig && !collideOth && !outOfBounds) {
-                        bestLX = lx;
-                        bestLY = ly;
-                        placedBoxes.push(labelBox);
-                        // 👇 registrar la caja de esta cota a nivel de grupo
-                        window.__dimBoxesGroup.push(labelBox);
-                        break;
-                    }
+                    if (outOfBounds) continue;
+                    bestLX = lx;
+                    bestLY = ly;
+                    placedBoxes.push(labelBox);
+                    window.__dimBoxesGroup.push(labelBox);
+                    break;
                 }
 
-                var hl = document.createElementNS(
+                const hl = document.createElementNS(
                     "http://www.w3.org/2000/svg",
                     "line"
                 );
@@ -1216,7 +1217,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 hl.style.transition = "opacity 120ms ease";
                 svg.appendChild(hl);
 
-                var txt = document.createElementNS(
+                const txt = document.createElementNS(
                     "http://www.w3.org/2000/svg",
                     "text"
                 );
@@ -1230,7 +1231,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 txt.style.cursor = "pointer";
                 txt.textContent = label;
                 svg.appendChild(txt);
-
                 function onEnter() {
                     hl.style.opacity = 1;
                 }
@@ -1247,9 +1247,9 @@ document.addEventListener("DOMContentLoaded", function () {
             // Letra (después de cotas)
             // =========================
             (function placeLetter() {
-                var letterSize = 14;
-                var tb = approxTextBox(letter, letterSize);
-
+                const letter = indexToLetters(idx);
+                const letterSize = 14;
+                const tb = approxTextBox(letter, letterSize);
                 function makeBoxAt(lx, ly) {
                     return {
                         left: lx,
@@ -1258,127 +1258,97 @@ document.addEventListener("DOMContentLoaded", function () {
                         bottom: ly + tb.h / 2,
                     };
                 }
-
-                var chosen = null;
-                var centerYFig = (figBox.top + figBox.bottom) / 2;
-                var baseY = Math.max(
-                    safeTop + tb.h / 2,
-                    Math.min(centerYFig, safeBottom - tb.h / 2)
+                let chosen = null;
+                const centerYFig = (figBox.top + figBox.bottom) / 2;
+                const baseY = Math.max(
+                    tb.h / 2,
+                    Math.min(centerYFig, alto - tb.h / 2)
                 );
-
                 function tryColumn(xPos) {
-                    var maxSpread = Math.max(60, (safeBottom - safeTop) * 0.6);
-                    for (var off = 0; off <= maxSpread; off += LABEL_STEP) {
-                        var dir = off % 2 === 0 ? 1 : -1;
-                        var mult = Math.ceil(off / 2);
-                        var dy = dir * mult * LABEL_STEP;
-                        var ly = Math.max(
-                            safeTop + tb.h / 2,
-                            Math.min(safeBottom - tb.h / 2, baseY + dy)
+                    const maxSpread = Math.max(60, alto * 0.6);
+                    for (let off = 0; off <= maxSpread; off += LABEL_STEP) {
+                        const dir = off % 2 === 0 ? 1 : -1,
+                            mult = Math.ceil(off / 2),
+                            dy = dir * mult * LABEL_STEP;
+                        const ly = Math.max(
+                            tb.h / 2,
+                            Math.min(alto - tb.h / 2, baseY + dy)
                         );
-                        var lx = xPos;
-                        var box = makeBoxAt(lx, ly);
-
-                        var collideFig = window.__figBoxesGroup.some(function (
-                            b
-                        ) {
-                            return rectsOverlap(b, box, LABEL_CLEARANCE);
-                        });
+                        const lx = xPos;
+                        const box = makeBoxAt(lx, ly);
+                        const collideFig = window.__figBoxesGroup.some((b) =>
+                            rectsOverlap(b, box, LABEL_CLEARANCE)
+                        );
                         if (collideFig) continue;
-
-                        var collideDims = (window.__dimBoxesGroup || []).some(
-                            function (b) {
-                                return rectsOverlap(b, box, LABEL_CLEARANCE);
-                            }
+                        const collideDims = (window.__dimBoxesGroup || []).some(
+                            (b) => rectsOverlap(b, box, LABEL_CLEARANCE)
                         );
                         if (collideDims) continue;
-
-                        var collidePrev = (
+                        const collideAngles = (
+                            window.__angleBoxesGroup || []
+                        ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
+                        if (collideAngles) continue;
+                        const collideLegend = (
+                            window.__legendBoxesGroup || []
+                        ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
+                        if (collideLegend) continue;
+                        const collidePrev = (
                             window.__placedLetterBoxes || []
-                        ).some(function (b) {
-                            return rectsOverlap(b, box, LABEL_CLEARANCE);
-                        });
+                        ).some((b) => rectsOverlap(b, box, LABEL_CLEARANCE));
                         if (collidePrev) continue;
-
-                        var collideLocal = placedBoxes.some(function (b) {
-                            return rectsOverlap(b, box, LABEL_CLEARANCE);
-                        });
-                        if (collideLocal) continue;
-
-                        var out =
+                        const out =
                             box.top < 0 ||
                             box.bottom > alto ||
                             box.left < 0 ||
                             box.right > ancho;
                         if (out) continue;
-
-                        chosen = { x: lx, y: ly, box: box };
+                        chosen = { x: lx, y: ly, box };
                         return true;
                     }
                     return false;
                 }
-
-                // derecha → izquierda como estrategia
-                var baseRight = clampXInside(
+                const baseRight = clampXInside(
                     figBox.right + 10,
                     tb.w,
-                    safeLeft,
-                    safeRight
+                    0,
+                    ancho
                 );
-                var baseLeft = clampXInside(
+                const baseLeft = clampXInside(
                     figBox.left - 10 - tb.w,
                     tb.w,
-                    safeLeft,
-                    safeRight
+                    0,
+                    ancho
                 );
-
-                var columnsTried = 0;
-                var xStep = 8;
-                // probar varias columnas a la derecha
+                let columnsTried = 0,
+                    xStep = 8;
                 while (!chosen && columnsTried < 8) {
-                    var xCol = clampXInside(
+                    const xCol = clampXInside(
                         baseRight + columnsTried * xStep,
                         tb.w,
-                        safeLeft,
-                        safeRight
+                        0,
+                        ancho
                     );
                     if (tryColumn(xCol)) break;
                     columnsTried++;
                 }
-                // si no cabe, probar a la izquierda
                 columnsTried = 0;
                 while (!chosen && columnsTried < 8) {
-                    var xColL = clampXInside(
+                    const xColL = clampXInside(
                         baseLeft - columnsTried * xStep,
                         tb.w,
-                        safeLeft,
-                        safeRight
+                        0,
+                        ancho
                     );
                     if (tryColumn(xColL)) break;
                     columnsTried++;
                 }
-
-                // Fallback extremo: arrinconar en el borde derecho
                 if (!chosen) {
-                    var lxFallback = clampXInside(
-                        safeRight - tb.w,
-                        tb.w,
-                        safeLeft,
-                        safeRight
-                    );
-                    var lyFallback = baseY;
-                    chosen = {
-                        x: lxFallback,
-                        y: lyFallback,
-                        box: makeBoxAt(lxFallback, lyFallback),
-                    };
+                    const lx = clampXInside(ancho - tb.w, tb.w, 0, ancho);
+                    const ly = baseY;
+                    chosen = { x: lx, y: ly, box: makeBoxAt(lx, ly) };
                 }
-
                 window.__placedLetterBoxes.push(chosen.box);
-                placedBoxes.push(chosen.box);
-
-                // Dibujar letra
-                var t = document.createElementNS(
+                const t = document.createElementNS(
                     "http://www.w3.org/2000/svg",
                     "text"
                 );
@@ -1396,8 +1366,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         contenedor.innerHTML = "";
-        // Dibuja la leyenda en la esquina inferior izquierda del SVG
-        drawLegendBottomLeft(svg, legendEntries, ancho, alto);
         contenedor.appendChild(svg);
     });
 });
@@ -1406,9 +1374,9 @@ document.addEventListener("DOMContentLoaded", function () {
 // Modal dividir elemento
 // =======================
 function abrirModalDividirElemento(elementoId) {
-    var modal = document.getElementById("modalDividirElemento");
-    var input = document.getElementById("dividir_elemento_id");
-    var form = document.getElementById("formDividirElemento");
+    const modal = document.getElementById("modalDividirElemento");
+    const input = document.getElementById("dividir_elemento_id");
+    const form = document.getElementById("formDividirElemento");
     if (!modal || !input || !form) return;
     input.value = elementoId;
     if (window.rutaDividirElemento)
@@ -1416,25 +1384,21 @@ function abrirModalDividirElemento(elementoId) {
     modal.classList.remove("hidden");
 }
 async function enviarDivision() {
-    var form = document.getElementById("formDividirElemento");
-    var url = form.getAttribute("action") || window.rutaDividirElemento;
-    var fd = new FormData(form);
+    const form = document.getElementById("formDividirElemento");
+    const url = form.getAttribute("action") || window.rutaDividirElemento;
+    const fd = new FormData(form);
     try {
-        var tokenMeta = document.querySelector('meta[name="csrf-token"]');
-        var token =
+        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const token =
             fd.get("_token") ||
             (tokenMeta ? tokenMeta.getAttribute("content") : null);
-        var headers = token ? { "X-CSRF-TOKEN": token } : {};
-        var res = await fetch(url, {
-            method: "POST",
-            headers: headers,
-            body: fd,
-        });
-        var data = await res.json();
+        const headers = token ? { "X-CSRF-TOKEN": token } : {};
+        const res = await fetch(url, { method: "POST", headers, body: fd });
+        const data = await res.json();
         if (!res.ok || !data.success)
             throw new Error(data.message || "Error al dividir");
         form.reset();
-        var modalEl = document.getElementById("modalDividirElemento");
+        const modalEl = document.getElementById("modalDividirElemento");
         if (modalEl) modalEl.classList.add("hidden");
         if (window.Swal) window.Swal.fire("Hecho", data.message, "success");
         else alert(data.message);
