@@ -263,59 +263,40 @@ class MaquinaController extends Controller
             ->pluck('producto_base_id')
             ->unique() ?? collect();
 
-        $sugeridor = app(SugeridorProductoBaseService::class);
-        // 1) Saca la colección desde $base (debe venir de cargarContextoBase)
-        $productosBaseCompatibles = collect($base['productosBaseCompatibles'] ?? []);
-
-        // 2) Filtro “barra” adaptado a tu modelo
-        $productosBarra = $productosBaseCompatibles->filter(function ($pb) {
-            $tipo = strtolower((string)($pb->tipo ?? ''));
-            // si viene “barra”, “varilla”, etc.
-            if (str_contains($tipo, 'barra') || str_contains($tipo, 'varilla') || str_contains($tipo, 'corrug')) {
-                return true;
-            }
-            // si tiene una longitud de barra razonable (≥ 1000 mm)
-            $L = (float)($pb->longitud ?? 0);
-            return $L >= 1000;
-        })->values();
-
-        // 3) Fallback si quedó vacío (para no romper mientras afinamos datos)
-        if ($productosBarra->isEmpty() && $productosBaseCompatibles->isNotEmpty()) {
-            // \Log::warning('[SugeridorPB] productosBarra vacío; usando todos los compatibles como fallback');
-            $productosBarra = $productosBaseCompatibles;
-        }
-
-        // 4) Log rápido para verificar
-        // \Log::debug('[SugeridorPB][PB-snapshot]', [
-        //     'compatibles_total' => $productosBaseCompatibles->count(),
-        //     'barra_total'       => $productosBarra->count(),
-        //     'ejemplo_attrs'     => $productosBarra->take(3)->map(fn($pb) => [
-        //         'id'        => $pb->id,
-        //         'tipo'      => $pb->tipo,
-        //         'diametro'  => $pb->diametro,
-        //         'longitud'  => $pb->longitud,
-        //     ]),
-        // ]);
-
-        // 5) Calcular sugerencias (pásale productosBarra al service)
-        $sugerenciasPorElemento = [];
-        $debug = true; // mientras pruebas
+        // ============================
+        // Sugerencias de corte por elemento
+        // ============================
         $sugeridor = app(\App\Services\SugeridorProductoBaseService::class);
 
-        foreach ($elementosFiltrados as $el) {
-            $colegas = $elementosFiltrados->where('planilla_id', $el->planilla_id);
-            $res = $sugeridor->sugerirParaElemento($el, $productosBarra, $colegas, $debug);
-            $sugerenciasPorElemento[$el->id] = $res;
+        // 1) Filtrar PB de tipo barra (o longitud razonable en m)
+        $productosBaseCompatibles = collect($base['productosBaseCompatibles'] ?? []);
+        $productosBarra = $productosBaseCompatibles->filter(function ($pb) {
+            $tipo = strtolower((string)($pb->tipo ?? ''));
+            if (str_contains($tipo, 'barra') || str_contains($tipo, 'varilla') || str_contains($tipo, 'corrug')) return true;
+            $v = (float)str_replace(',', '.', (string)($pb->longitud ?? 0));
+            return $v > 1 && $v < 50; // rango en metros
+        })->values();
+        if ($productosBarra->isEmpty()) $productosBarra = $productosBaseCompatibles;
 
-            // \Log::debug('[SugeridorPB][Controller]', [
-            //     'elemento_id' => $el->id,
-            //     'ok'          => $res['ok'] ?? false,
-            //     'reason'      => $res['reason'] ?? null,
-            //     'pb'          => $res['sugerencia']['producto_base_id'] ?? null,
-            //     'n_por_barra' => $res['sugerencia']['n_por_barra'] ?? null,
-            //     'pareja'      => $res['sugerencia']['pareja']['elemento_id'] ?? null,
-            // ]);
+        // 2) Ordenar planillas presentes (posición > fecha > id)
+        $planillasOrden = $elementosFiltrados->pluck('planilla_id')->unique()->values();
+        $idxPlanilla = $planillasOrden->flip();
+
+        // helper: colegas = planilla actual + 2 siguientes
+        $colegasDe = function ($el) use ($elementosFiltrados, $planillasOrden, $idxPlanilla) {
+            $i = (int)($idxPlanilla[$el->planilla_id] ?? 0);
+            $ids = $planillasOrden->slice($i, 3); // actual + 2 siguientes
+            return $elementosFiltrados->whereIn('planilla_id', $ids)->values();
+        };
+
+        // 3) Calcular sugerencias
+        $sugerenciasPorElemento = [];
+        foreach ($elementosFiltrados as $el) {
+            $colegas = $colegasDe($el);
+            $sugerenciasPorElemento[$el->id] = $sugeridor->sugerirParaElemento($el, $productosBarra, $colegas);
         }
+
+        // ============================
         // ✅ PASO CORRECTO DE VARIABLES A LA VISTA
         return view('maquinas.show', array_merge($base, compact(
             // base

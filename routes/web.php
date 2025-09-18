@@ -198,8 +198,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/subetiquetas/mover-todo', [ElementoController::class, 'moverTodoANuevaSubEtiqueta'])->name('subetiquetas.moverTodo');
     Route::get('/planillas/{planilla}/etiquetas', [ElementoController::class, 'showByEtiquetas'])->name('elementosEtiquetas');
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*');
-    Route::post('/elementos/{elemento}/actualizar-campo', [ElementoController::class, 'actualizarMaquina'])
-        ->name('elementos.editarMaquina');
+    Route::post('/etiquetas/fabricacion-optimizada', [EtiquetaController::class, 'fabricacionOptimizada'])->name('etiquetas.fabricacion-optimizada');
+    Route::post('/elementos/{elemento}/actualizar-campo', [ElementoController::class, 'actualizarMaquina'])->name('elementos.editarMaquina');
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');

@@ -1239,7 +1239,7 @@ class PedidoController extends Controller
 
                 // Guardamos el PG antes de borrar
                 $pedidoGlobalId = $pedido->pedido_global_id;
-
+                log::info('Borrando pedido ' . $pedido->codigo . ' con pedido global id ' . $pedidoGlobalId . ' por el usuario ' . auth()->user()->nombre_completo ?? null . ' ');
                 // Si usas cascadas a líneas, el FK debe encargarse; si no, elimina manualmente:
                 // $pedido->productosPivot()->delete(); // si tu relación pivot se llama así
 

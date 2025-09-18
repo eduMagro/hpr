@@ -218,7 +218,91 @@ class EtiquetaController extends Controller
 
         return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
     }
+    public function fabricacionOptimizada(Request $request)
+    {
+        $data = $request->validate([
+            'producto_base' => ['required', 'array'],
+            'producto_base.longitud_barra_cm' => ['required', 'numeric', 'min:1'],
+            'repeticiones' => ['required', 'integer', 'min:1'],
+            'etiquetas' => ['required', 'array', 'min:1'],
 
+            'etiquetas.*.etiqueta_sub_id' => ['required', 'string'], // ¡no int!
+            'etiquetas.*.elementos' => ['required', 'array', 'min:1'],
+            'etiquetas.*.elementos.*' => ['integer'],
+
+            // opcional: si en el diálogo eliges máquina por subetiqueta
+            'etiquetas.*.maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
+        ]);
+
+        $longitudSeleccionada = (int) ($data['producto_base']['longitud_barra_cm'] ?? 0);
+        $userId        = Auth::id();
+        $companeroId   = auth()->user()->compañeroDeTurno()?->id;
+
+        $resultados = [];
+
+        DB::beginTransaction();
+        try {
+            /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
+            $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
+
+            foreach ($data['etiquetas'] as $item) {
+                $subId = (string) $item['etiqueta_sub_id'];
+
+                // 1) localizar etiqueta
+                $etiqueta = Etiqueta::where('etiqueta_sub_id', $subId)->firstOrFail();
+
+                // 2) resolver máquina: payload -> etiqueta -> (si quieres, tu heurística)
+                $maquinaId = $item['maquina_id'] ?? $etiqueta->maquina_id;
+                if (!$maquinaId) {
+                    throw new \RuntimeException("No se pudo determinar la máquina para {$subId}");
+                }
+                $maquina = Maquina::findOrFail($maquinaId);
+
+                // 3) construir DTO igual que en actualizarEtiqueta()
+                $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
+                    etiquetaSubId: $subId,                      // string, respeta ".01"
+                    maquinaId: (int) $maquina->id,
+                    longitudSeleccionada: $longitudSeleccionada,
+                    operario1Id: $userId,
+                    operario2Id: $companeroId,
+                    opciones: ['origen' => 'optimizada']        // flag opcional
+                );
+
+                // 4) llamar al mismo servicio/factoría
+                $servicio  = $fabrica->porMaquina($maquina);
+                $resultado = $servicio->actualizar($dto);
+
+                $resultados[] = [
+                    'etiqueta_sub_id' => $subId,
+                    'estado'          => $resultado->etiqueta->estado ?? null,
+                    'warnings'        => $resultado->warnings ?? [],
+                ];
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success'   => true,
+                'message'   => 'Se han puesto en fabricación las subetiquetas implicadas.',
+                'resultados' => $resultados,
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            \Log::error('Error en EtiquetaController@fabricacionOptimizada', [
+                'error'     => $e->getMessage(),
+                'exception' => get_class($e),
+                'payload'   => $data,
+                'user_id'   => $userId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo lanzar la fabricación optimizada.',
+                'error'   => $e->getMessage(),
+            ], 422);
+        }
+    }
 
     public function actualizarEtiqueta(Request $request, $id, $maquina_id)
     {
@@ -253,9 +337,9 @@ class EtiquetaController extends Controller
         } catch (\Throwable $e) {
             try {
                 $servicioClass = isset($servicio) ? get_class($servicio) : null;
-                $maquinaLocal = isset($maquina) ? $maquina : \App\Models\Maquina::find($maquina_id);
-                $etq = \App\Models\Etiqueta::where('etiqueta_sub_id', (int) $id)->first();
-                \Log::error('Error en actualizarEtiqueta (delegado a servicio)', [
+                $maquinaLocal = isset($maquina) ? $maquina : Maquina::find($maquina_id);
+                $etq = Etiqueta::where('etiqueta_sub_id', (int) $id)->first();
+                Log::error('Error en actualizarEtiqueta (delegado a servicio)', [
                     'error' => $e->getMessage(),
                     'exception' => get_class($e),
                     'etiqueta_sub_id' => (int) $id,
@@ -269,7 +353,7 @@ class EtiquetaController extends Controller
                     'request_longitud' => $request->input('longitud'),
                 ]);
             } catch (\Throwable $logEx) {
-                \Log::error('Fallo al registrar contexto de error en actualizarEtiqueta', [
+                Log::error('Fallo al registrar contexto de error en actualizarEtiqueta', [
                     'error_original' => $e->getMessage(),
                     'error_log' => $logEx->getMessage(),
                 ]);
@@ -1518,46 +1602,6 @@ class EtiquetaController extends Controller
                 'success' => false,
                 'message' => 'Error al eliminar la etiqueta. Intente nuevamente. ' . $e->getMessage()
             ], 500);
-        }
-    }
-
-    public function actualizarEtiquetaViaServicio(Request $request, $id, $maquina_id)
-    {
-        try {
-            $maquina = Maquina::findOrFail($maquina_id);
-
-            $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
-                etiquetaSubId: (string) $id, // no castear a int: puede ser alfanumérico con puntos
-                maquinaId: (int) $maquina_id,
-                longitudSeleccionada: $request->input('longitud'),
-                operario1Id: Auth::id(),
-                operario2Id: auth()->user()->compañeroDeTurno()?->id,
-                opciones: []
-            );
-            log::info('ActualizarEtiquetaViaServicio');
-            /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
-            $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
-            $servicio = $fabrica->porMaquina($maquina);
-
-            $resultado = $servicio->actualizar($dto);
-            $etiqueta = $resultado->etiqueta;
-
-            return response()->json([
-                'success' => true,
-                'estado' => $etiqueta->estado,
-                'productos_afectados' => $resultado->productosAfectados,
-                'warnings' => $resultado->warnings,
-                'fecha_inicio' => optional($etiqueta->fecha_inicio)->format('Y-m-d H:i:s'),
-                'fecha_finalizacion' => optional($etiqueta->fecha_finalizacion)->format('Y-m-d H:i:s'),
-            ], 200);
-        } catch (\Throwable $e) {
-            \Log::error('Error en actualizarEtiquetaViaServicio', [
-                'error' => $e->getMessage(),
-            ]);
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 400);
         }
     }
 
