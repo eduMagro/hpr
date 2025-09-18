@@ -306,6 +306,7 @@ class ClienteController extends Controller
 
     public function destroy(Cliente $cliente)
     {
+        \Log::info('Borrando cliente ' . ($cliente->empresa ?? ('ID ' . $cliente->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
         $cliente->delete();
         return redirect()->route('clientes.index')->with('success', 'Cliente eliminado correctamente.');
     }

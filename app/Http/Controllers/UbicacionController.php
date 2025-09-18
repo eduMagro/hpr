@@ -358,6 +358,7 @@ class UbicacionController extends Controller
                 return redirect()->route('ubicaciones.index')->with('error', 'No se puede eliminar la ubicación porque tiene productos asociados.');
             }
 
+            \Log::info('Borrando ubicación ' . ($ubicacion->codigo ?? ('ID ' . $ubicacion->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
             // Si no tiene productos, proceder a eliminarla
             $ubicacion->delete();
 

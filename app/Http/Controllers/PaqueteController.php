@@ -505,6 +505,7 @@ class PaqueteController extends Controller
             DB::beginTransaction();
 
             $paquete = Paquete::findOrFail($id);
+            \Log::info('Borrando paquete ' . ($paquete->codigo ?? ('ID ' . $paquete->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
 
             // 🔸 Eliminar movimientos pendientes asociados al paquete
             \App\Models\Movimiento::where('paquete_id', $paquete->id)

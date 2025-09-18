@@ -146,6 +146,7 @@ class DistribuidorController extends Controller
     public function destroy($id)
     {
         $distribuidor = Distribuidor::findOrFail($id);
+        \Log::info('Borrando distribuidor ' . ($distribuidor->nombre ?? ('ID ' . $distribuidor->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
         $distribuidor->delete();
 
         return redirect()->route('fabricantes.index')->with('success', 'Distribuidor eliminado correctamente.');

@@ -624,12 +624,12 @@ class MovimientoController extends Controller
                             ->latest('updated_at')
                             ->first();
 
-                        // if ($productoAnterior) {
-                        //     $productoAnterior->update([
-                        //         'maquina_id' => null,
-                        //         'estado' => 'consumido',
-                        //     ]);
-                        // }
+                        if ($productoAnterior) {
+                            $productoAnterior->update([
+                                'maquina_id' => null,
+                                'estado' => 'consumido',
+                            ]);
+                        }
                     } else {
                         // Movimiento normal a ubicación
                         Movimiento::create([

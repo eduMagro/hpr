@@ -510,6 +510,7 @@ class ProductoController extends Controller
         if (auth()->user()->rol !== 'oficina') {
             return redirect()->route('productos.index')->with('abort', 'No tienes los permisos necesarios.');
         }
+        \Log::info('Borrando producto ' . ($producto->codigo ?? ('ID ' . $producto->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
         $producto->delete();
 
         return redirect()->route('productos.index')->with('success', 'Producto eliminado exitosamente.');

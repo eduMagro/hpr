@@ -142,6 +142,7 @@ class FabricanteController extends Controller
     public function destroy($id)
     {
         $fabricante = Fabricante::findOrFail($id);
+        \Log::info('Borrando fabricante ' . ($fabricante->nombre ?? ('ID ' . $fabricante->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
         $fabricante->delete();
 
         return redirect()->route('fabricantes.index')->with('success', 'Fabricante eliminado correctamente.');

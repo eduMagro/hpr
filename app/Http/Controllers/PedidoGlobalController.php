@@ -295,6 +295,7 @@ class PedidoGlobalController extends Controller
     public function destroy($id)
     {
         $pedidoGlobal = PedidoGlobal::findOrFail($id);
+        \Log::info('Borrando pedido global ' . ($pedidoGlobal->codigo ?? ('ID ' . $pedidoGlobal->id)) . ' por el usuario ' . (auth()->user()->nombre_completo ?? 'desconocido'));
         $pedidoGlobal->delete();
 
         return redirect()->route('pedidos_globales.index')
