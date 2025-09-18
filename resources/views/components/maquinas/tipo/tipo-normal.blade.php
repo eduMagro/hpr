@@ -3,20 +3,7 @@
             display: none !important
         }
     </style>
-    @props([
-        'maquina',
-        'maquinas' => collect(),
-        'elementosAgrupados' => collect(),
-        'productosBaseCompatibles' => collect(),
-        'productoBaseSolicitados' => collect(),
-    
-        // nuevas
-        'planillasActivas' => [],
-        'elementosPorPlanilla' => collect(),
-        'mostrarDos' => false,
-    
-        'sugerenciasPorElemento' => [],
-    ])
+
     <div x-data="{
         showLeft: JSON.parse(localStorage.getItem('showLeft') ?? 'true'),
         showRight: JSON.parse(localStorage.getItem('showRight') ?? 'true'),
@@ -251,7 +238,7 @@
                                 Planilla
                                 <span class="text-gray-500">— {{ $planilla->codigo_limpio ?? 'sin código' }}</span>
                             </div>
-                            <div class="text-xs text-gray-500">
+                            {{-- <div class="text-xs text-gray-500">
                                 Tiempo estimado:
                                 @php
                                     // Sumar tiempos de elementos (segundos) + 10 min por etiqueta (cambio de trabajo)
@@ -285,7 +272,7 @@
                                 @else
                                     N/A
                                 @endif
-                            </div>
+                            </div> 
                             @php $rawInicio = $planilla->getRawOriginal('fecha_inicio'); @endphp
                             @if ($rawInicio)
                                 <div class="text-xs text-green-700 mt-1" x-data="{
@@ -311,7 +298,7 @@
                                     x-init="setInterval(() => { now = Date.now() }, 1000)">
                                     Llevamos: <span x-text="elapsed"></span>
                                 </div>
-                            @endif
+                            @endif --}}
                         </header>
 
                         {{-- contenido con scroll independiente --}}
@@ -532,11 +519,11 @@
                                     html: data.errors?.length ?
                                         `<ul style="text-align:left;max-height:200px;overflow:auto;padding:0 0.5em">
               ${data.errors.map(err => `
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <b>#${err.id}</b>: ${err.error}<br>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </li>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      `).join('')}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      <li>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <b>#${err.id}</b>: ${err.error}<br>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          <small class="text-gray-600">🧭 ${err.file}:${err.line}</small>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      </li>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  `).join('')}
            </ul>` : '',
                                 }).then(() => {
                                     if (data.success) location.reload();
@@ -581,3 +568,22 @@
             });
         });
     </script>
+    @once
+        <script>
+            // tipo de material para la lógica de fabricación
+            window.MAQUINA_TIPO = @json(strtolower($maquina->tipo_material));
+
+            // mapa etiqueta->diámetro (si el backend lo pasó vacío, caemos a calcularlo del agrupado)
+            window.DIAMETRO_POR_ETIQUETA = @json(
+                $diametroPorEtiqueta ?:
+                $elementosAgrupados->map(function ($els) {
+                    $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int) $d);
+                    return (int) $c->countBy()->sortDesc()->keys()->first();
+                }));
+
+            // solo si es barra, pasamos longitudes por diámetro
+            @if ($esBarra)
+                window.LONGITUDES_POR_DIAMETRO = @json($longitudesPorDiametro);
+            @endif
+        </script>
+    @endonce

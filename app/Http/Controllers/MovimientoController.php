@@ -524,6 +524,7 @@ class MovimientoController extends Controller
         $naveId = auth()->user()?->lugarActualTrabajador();
 
         if (!$naveId) {
+
             $mensaje = 'No se puede determinar tu nave de trabajo actual. ¿Has fichado entrada?.';
 
             if ($request->expectsJson()) {

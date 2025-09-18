@@ -135,7 +135,7 @@ class MaquinaController extends Controller
 
     public function show($id)
     {
-        // 0) Cargar la máquina y activar tareas auxiliares
+        // 0) Máquina + relaciones base
         $maquina = Maquina::with([
             'elementos.planilla',
             'elementos.etiquetaRelacion',
@@ -143,63 +143,50 @@ class MaquinaController extends Controller
             'elementos.maquina',
             'elementos.maquina_2',
             'elementos.maquina_3',
-            'productos'
+            'productos',
         ])->findOrFail($id);
 
         $this->activarMovimientosSalidasHoy();
 
-        // 1) Contexto base común (ubicación, usuarios, combos, etc.)
+        // 1) Contexto común (incluye productosBaseCompatibles en $base)
         $base = $this->cargarContextoBase($maquina);
 
-        // 2) Branch por tipo de máquina
+        // 2) Rama GRÚA: devolver pronto con variables neutras de máquina
         if ($this->esGrua($maquina)) {
-            // ------- MÁQUINA TIPO GRÚA -------
             $grua = $this->cargarContextoGrua($maquina);
 
-            // variables neutras para la vista
-            $elementosMaquina          = collect();
-            $pesosElementos            = [];
-            $etiquetasData             = collect();
-            $elementosReempaquetados   = session('elementos_reempaquetados', []);
-            $elementosAgrupados        = collect();
-            $elementosAgrupadosScript  = collect();
-
-            return view('maquinas.show', array_merge($base, $grua, compact(
-                'maquina',
-                'elementosMaquina',
-                'pesosElementos',
-                'etiquetasData',
-                'elementosReempaquetados',
-                'elementosAgrupados',
-                'elementosAgrupadosScript',
-            )));
+            return view('maquinas.show', array_merge(
+                $base,
+                [
+                    'maquina'          => $maquina,
+                    'elementosMaquina' => collect(),
+                    'pesosElementos'   => [],
+                    'etiquetasData'    => collect(),
+                ],
+                $grua // ← prioridad para movimientos* y demás de la grúa
+            ));
         }
 
-        // ------- MÁQUINA NORMAL (PRIMERA) O SEGUNDA -------
+        // 3) Elementos de la máquina (primera o segunda)
         if ($this->esSegundaMaquina($maquina)) {
-            // SEGUNDA: elementos con maquina_id_2 = esta máquina
             $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina', 'maquina_2'])
                 ->where('maquina_id_2', $maquina->id)
                 ->get();
         } else {
-            // PRIMERA: elementos con maquina_id = esta máquina
-            // (si tienes relation $maquina->elementos ya lo filtra; lo dejo explícito para claridad)
             $elementosMaquina = Elemento::with(['planilla', 'etiquetaRelacion', 'subetiquetas', 'maquina'])
                 ->where('maquina_id', $maquina->id)
                 ->get();
         }
 
-        // 3) Seleccionar planilla activa según orden manual (OrdenPlanilla)
-        // Leer preferencia (URL o sesión). Si viene en la query ?mostrar_dos=1, activa dos.
-        // 3) Seleccionar planilla(s) activa(s)
+        // 4) Cola de planillas (1 o 2)
         $mostrarDos = request()->boolean('mostrar_dos');
-        $cuantas = $mostrarDos ? 2 : 1;
+        $cuantas    = $mostrarDos ? 2 : 1;
         [$planillasActivas, $elementosFiltrados] = $this->aplicarColaPlanillas($maquina, $elementosMaquina, $cuantas);
 
-        // datasets por planilla
+        // 5) Datasets filtrados por planilla
         $elementosPorPlanilla = $elementosFiltrados->groupBy('planilla_id');
 
-        // 4) Datasets para canvas/tabla (USANDO FILTRADOS)
+        // 6) Datasets para UI (canvas/tabla)
         $pesosElementos = $elementosFiltrados
             ->map(fn($e) => ['id' => $e->id, 'peso' => $e->peso])
             ->values()
@@ -207,7 +194,7 @@ class MaquinaController extends Controller
 
         $ordenSub = function ($grupo, $subId) {
             if (preg_match('/^(.*?)[\.\-](\d+)$/', $subId, $m)) {
-                return sprintf('%s-%010d', $m[1], (int) $m[2]);
+                return sprintf('%s-%010d', $m[1], (int)$m[2]);
             }
             return $subId . '-0000000000';
         };
@@ -217,9 +204,9 @@ class MaquinaController extends Controller
             ->groupBy('etiqueta_sub_id')
             ->sortBy($ordenSub)
             ->map(fn($grupo, $subId) => [
-                'codigo'     => (string) $subId,
-                'elementos'  => $grupo->pluck('id')->toArray(),
-                'pesoTotal'  => $grupo->sum('peso'),
+                'codigo'    => (string)$subId,
+                'elementos' => $grupo->pluck('id')->toArray(),
+                'pesoTotal' => $grupo->sum('peso'),
             ])
             ->values();
 
@@ -230,28 +217,27 @@ class MaquinaController extends Controller
             ->sortBy($ordenSub);
 
         $elementosAgrupadosScript = $elementosAgrupados->map(fn($grupo) => [
-            'etiqueta'   => $grupo->first()->etiquetaRelacion,
-            'planilla'   => $grupo->first()->planilla,
-            'elementos'  => $grupo->map(fn($e) => [
-                'id'         => $e->id,
-                'codigo'     => $e->codigo,
+            'etiqueta'  => $grupo->first()->etiquetaRelacion,
+            'planilla'  => $grupo->first()->planilla,
+            'elementos' => $grupo->map(fn($e) => [
+                'id'          => $e->id,
+                'codigo'      => $e->codigo,
                 'dimensiones' => $e->dimensiones,
-                'estado'     => $e->estado,
-                'peso'       => $e->peso_kg,
-                'diametro'   => $e->diametro_mm,
-                'longitud'   => $e->longitud_cm,
-                'barras'     => $e->barras,
-                'figura'     => $e->figura,
+                'estado'      => $e->estado,
+                'peso'        => $e->peso_kg,
+                'diametro'    => $e->diametro_mm,
+                'longitud'    => $e->longitud_cm,
+                'barras'      => $e->barras,
+                'figura'      => $e->figura,
             ])->values(),
         ])->values();
 
-        // 5) Turno hoy del usuario
+        // 7) Turno, movimientos y otros contextos
         $turnoHoy = AsignacionTurno::where('user_id', auth()->id())
             ->whereDate('fecha', now())
             ->with('maquina')
             ->first();
 
-        // 6) variables “grúa” vacías para mantener la vista estable
         $movimientosPendientes = collect();
         $movimientosCompletados = collect();
         $ubicacionesDisponiblesPorProductoBase = [];
@@ -263,67 +249,98 @@ class MaquinaController extends Controller
             ->pluck('producto_base_id')
             ->unique() ?? collect();
 
-        // ============================
-        // Sugerencias de corte por elemento
-        // ============================
-        $sugeridor = app(\App\Services\SugeridorProductoBaseService::class);
-
-        // 1) Filtrar PB de tipo barra (o longitud razonable en m)
+        // 8) Sugerencias de corte (sobre elementos filtrados y PB barra)
         $productosBaseCompatibles = collect($base['productosBaseCompatibles'] ?? []);
         $productosBarra = $productosBaseCompatibles->filter(function ($pb) {
             $tipo = strtolower((string)($pb->tipo ?? ''));
-            if (str_contains($tipo, 'barra') || str_contains($tipo, 'varilla') || str_contains($tipo, 'corrug')) return true;
+            if (str_contains($tipo, 'barra') || str_contains($tipo, 'varilla') || str_contains($tipo, 'corrug')) {
+                return true;
+            }
             $v = (float)str_replace(',', '.', (string)($pb->longitud ?? 0));
-            return $v > 1 && $v < 50; // rango en metros
+            return $v > 1 && $v < 50; // metros razonables
         })->values();
-        if ($productosBarra->isEmpty()) $productosBarra = $productosBaseCompatibles;
+        if ($productosBarra->isEmpty()) {
+            $productosBarra = $productosBaseCompatibles;
+        }
 
-        // 2) Ordenar planillas presentes (posición > fecha > id)
         $planillasOrden = $elementosFiltrados->pluck('planilla_id')->unique()->values();
-        $idxPlanilla = $planillasOrden->flip();
-
-        // helper: colegas = planilla actual + 2 siguientes
+        $idxPlanilla    = $planillasOrden->flip();
         $colegasDe = function ($el) use ($elementosFiltrados, $planillasOrden, $idxPlanilla) {
-            $i = (int)($idxPlanilla[$el->planilla_id] ?? 0);
+            $i   = (int)($idxPlanilla[$el->planilla_id] ?? 0);
             $ids = $planillasOrden->slice($i, 3); // actual + 2 siguientes
             return $elementosFiltrados->whereIn('planilla_id', $ids)->values();
         };
 
-        // 3) Calcular sugerencias
+        $sugeridor = app(\App\Services\SugeridorProductoBaseService::class);
         $sugerenciasPorElemento = [];
         foreach ($elementosFiltrados as $el) {
             $colegas = $colegasDe($el);
             $sugerenciasPorElemento[$el->id] = $sugeridor->sugerirParaElemento($el, $productosBarra, $colegas);
         }
 
-        // ============================
-        // ✅ PASO CORRECTO DE VARIABLES A LA VISTA
-        return view('maquinas.show', array_merge($base, compact(
+        // 9) Longitudes por diámetro (solo si la máquina es de barras)
+        $esBarra = strcasecmp($maquina->tipo_material, 'barra') === 0;
+
+        $longitudesPorDiametro = $esBarra
+            ? $productosBaseCompatibles
+            ->filter(fn($pb) => strtoupper($pb->tipo) === 'BARRA')
+            ->groupBy(fn($pb) => (int)$pb->diametro)
+            ->map(
+                fn($g) => $g->pluck('longitud')
+                    ->filter(fn($L) => is_numeric($L) && $L > 0)
+                    ->map(fn($L) => (float)$L)
+                    ->unique()
+                    ->sort()
+                    ->values()
+                    ->all()
+            )
+            ->toArray()
+            : [];
+
+        // 10) Diámetro por subetiqueta (desde elementos FILTRADOS)
+        //     (usamos la moda por si existieran mezclas)
+        $diametroPorEtiqueta = $elementosFiltrados
+            ->filter(fn($e) => !empty($e->etiqueta_sub_id))
+            ->groupBy('etiqueta_sub_id')
+            ->map(function ($els) {
+                $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int)$d);
+                return (int) $c->countBy()->sortDesc()->keys()->first();
+            })
+            ->toArray();
+
+        // 11) Devolver vista
+        return view('maquinas.show', array_merge($base, [
             // base
-            'maquina',
+            'maquina' => $maquina,
 
-            // cola y filtrados
-            'planillasActivas',
-            'elementosFiltrados',
-            'elementosPorPlanilla',
-            'mostrarDos',
+            // cola / filtrados
+            'planillasActivas'   => $planillasActivas,
+            'elementosFiltrados' => $elementosFiltrados,
+            'elementosPorPlanilla' => $elementosPorPlanilla,
+            'mostrarDos'         => $mostrarDos,
 
-            // datasets para la vista
-            'elementosMaquina',          // si aún lo usas en alguna parte
-            'pesosElementos',
-            'etiquetasData',
-            'elementosReempaquetados',
-            'elementosAgrupados',
-            'elementosAgrupadosScript',
-            'sugerenciasPorElemento',
+            // datasets UI
+            'elementosMaquina'         => $elementosMaquina,
+            'pesosElementos'           => $pesosElementos,
+            'etiquetasData'            => $etiquetasData,
+            'elementosReempaquetados'  => $elementosReempaquetados,
+            'elementosAgrupados'       => $elementosAgrupados,
+            'elementosAgrupadosScript' => $elementosAgrupadosScript,
+            'sugerenciasPorElemento'   => $sugerenciasPorElemento,
+
             // extra contexto
-            'turnoHoy',
-            'movimientosPendientes',
-            'movimientosCompletados',
-            'ubicacionesDisponiblesPorProductoBase',
-            'pedidosActivos',
-            'productoBaseSolicitados'
-        )));
+            'turnoHoy'                             => $turnoHoy,
+            'movimientosPendientes'                => $movimientosPendientes,
+            'movimientosCompletados'               => $movimientosCompletados,
+            'ubicacionesDisponiblesPorProductoBase' => $ubicacionesDisponiblesPorProductoBase,
+            'pedidosActivos'                       => $pedidosActivos,
+            'productoBaseSolicitados'              => $productoBaseSolicitados,
+
+            // barra
+            'esBarra'               => $esBarra,
+            'longitudesPorDiametro' => $longitudesPorDiametro,
+            'diametroPorEtiqueta'   => $diametroPorEtiqueta,
+        ]));
     }
 
     /* =========================
@@ -406,6 +423,7 @@ class MaquinaController extends Controller
             ->where('nave_id', $obraId)              // ⬅️ solo movimientos de la misma nave
             ->orderBy('prioridad', 'asc')
             ->get();
+
 
         // COMPLETADOS (últimos 20 ejecutados por mí) + misma nave
         $movimientosCompletados = Movimiento::with([

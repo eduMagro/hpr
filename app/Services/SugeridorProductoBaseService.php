@@ -128,9 +128,6 @@ class SugeridorProductoBaseService
                 'run' => spl_object_id($elemento), // o un contador propio
             ];
             $mejor = $this->elegirMejor($mejor, $candidato, $ctx);
-
-            Log::info("Sugerido para {$elemento->codigo}:");
-            Log::debug(json_encode($candidato));
         }
 
         if (!$mejor) {
@@ -307,10 +304,7 @@ class SugeridorProductoBaseService
 
     private function elegirMejor(?array $best, array $cand): array
     {
-        log::info('Evaluando candidato');
-        log::debug(json_encode($cand));
-        log::info('Contra best');
-        log::debug(json_encode($best));
+
         if (!$best) return $cand;
 
         // mismo criterio que en patrón, con barra_totales como factor final

@@ -2,21 +2,29 @@
 
 namespace App\Servicios\Exceptions;
 
-use RuntimeException;
-use Throwable;
+use Exception;
+use Illuminate\Http\Request;
 
-class ServicioEtiquetaException extends RuntimeException
+class ServicioEtiquetaException extends Exception
 {
-    /** Contexto extra para la UI/logs */
-    public array $context;
+    protected array $context;
+    protected int $status;
 
-    public function __construct(
-        string $message,
-        array $context = [],
-        int $code = 0,
-        ?Throwable $previous = null
-    ) {
-        parent::__construct($message, $code, $previous);
+    public function __construct(string $message, array $context = [], int $status = 400)
+    {
+        parent::__construct($message, $status);
         $this->context = $context;
+        $this->status  = $status;
+    }
+
+    public function render(Request $request)
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => $this->getMessage(), // 👈 clave unificada
+                'details' => $this->context,
+            ], $this->status);
+        }
     }
 }

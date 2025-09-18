@@ -14,11 +14,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("click", async (ev) => {
         const btn = ev.target.closest(".btn-fabricar");
         if (!btn) return;
-
         ev.preventDefault();
 
         const etiquetaId = String(btn.dataset.etiquetaId || "").trim();
-        console.log("Botón fabricar clicado para etiqueta ID:", etiquetaId);
+        const diametro = Number(
+            window.DIAMETRO_POR_ETIQUETA?.[etiquetaId] ?? 0
+        );
+
         if (!etiquetaId) {
             Swal.fire({
                 icon: "error",
@@ -27,62 +29,82 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             return;
         }
+        if (
+            !diametro &&
+            (window.MAQUINA_TIPO || "").toLowerCase() === "barra"
+        ) {
+            Swal.fire({
+                icon: "error",
+                title: "Diámetro desconocido",
+                text: "No se pudo determinar el diámetro de la subetiqueta.",
+            });
+            return;
+        }
 
-        // (Opcional) anti doble clic
         const prevDisabled = btn.disabled;
         btn.disabled = true;
         try {
-            await actualizarEtiqueta(etiquetaId, maquinaId);
+            await actualizarEtiqueta(etiquetaId, maquinaId, diametro);
         } finally {
             btn.disabled = prevDisabled;
         }
     });
 
-    function validarYObtenerLongitudSeleccionada() {
-        const checkboxesBarra = document.querySelectorAll(
-            "input.checkbox-longitud"
-        );
-        const longitudesMarcadas = new Set();
-
-        checkboxesBarra.forEach((checkbox) => {
-            if (checkbox.dataset.diametro && checkbox.checked) {
-                longitudesMarcadas.add(checkbox.value);
-            }
-        });
-
-        if (longitudesMarcadas.size === 0) {
-            Swal.fire({
-                icon: "warning",
-                title: "Longitud no seleccionada",
-                text: "Debes seleccionar una longitud de barra antes de continuar.",
-            });
-            return null;
-        }
-
-        if (longitudesMarcadas.size > 1) {
-            Swal.fire({
-                icon: "error",
-                title: "Demasiadas longitudes seleccionadas",
-                text: "Solo puedes seleccionar una única longitud de barra. Revisa tu selección.",
-            });
-            return null;
-        }
-
-        return parseFloat([...longitudesMarcadas][0]);
-    }
-
-    async function actualizarEtiqueta(id, maquinaId) {
+    async function actualizarEtiqueta(id, maquinaId, diametro = null) {
         const url = `/actualizar-etiqueta/${id}/maquina/${maquinaId}`;
         const csrfToken = document
             .querySelector('meta[name="csrf-token"]')
             ?.getAttribute("content");
 
         let longitudSeleccionada = null;
-        if (window.tipoMaquina === "barra") {
-            longitudSeleccionada = validarYObtenerLongitudSeleccionada();
-            if (longitudSeleccionada === null) return; // ⛔ DETIENE el flujo
+
+        // Solo para máquinas tipo barra: loop controlado hasta que el usuario fabrique o cancele
+        if ((window.MAQUINA_TIPO || "").toLowerCase() === "barra") {
+            while (true) {
+                let decision;
+                try {
+                    decision = await mejorCorte(id, diametro, csrfToken);
+                } catch (err) {
+                    showErrorAlert(err);
+                    return; // error irrecuperable
+                }
+
+                // Canceló el selector
+                if (!decision) return;
+
+                if (decision.accion === "optimizar") {
+                    // Mostrar sugerencia y actuar según botón
+                    let outcome;
+                    try {
+                        outcome = await mejorCorteHermano(
+                            id,
+                            diametro,
+                            decision.patrones,
+                            csrfToken
+                        );
+                    } catch (err) {
+                        showErrorAlert(err);
+                        return;
+                    }
+
+                    if (outcome === "fabricado") {
+                        // el flujo terminó fabricando vía optimización
+                        return;
+                    } else if (outcome === "volver") {
+                        // volver al selector -> iteración del while
+                        continue;
+                    } else {
+                        // outcome === null => cancelar
+                        return;
+                    }
+                } else if (decision.accion === "fabricar") {
+                    longitudSeleccionada = decision.longitud_m;
+                    break; // salir del bucle para hacer el PUT de fabricación
+                }
+            }
         }
 
+        // PUT: fabricar (para barra con longitudSeleccionada o para otras máquinas sin longitud)
         try {
             const response = await fetch(url, {
                 method: "PUT",
@@ -91,45 +113,238 @@ document.addEventListener("DOMContentLoaded", () => {
                     Accept: "application/json",
                     "X-CSRF-TOKEN": csrfToken,
                 },
-                body: JSON.stringify({ id, longitud: longitudSeleccionada }),
+                body: JSON.stringify({ longitudSeleccionada }),
             });
 
-            let data;
-            try {
-                data = await response.json();
-            } catch {
-                throw new Error(
-                    "Respuesta del servidor no es JSON válido. Posible error HTML: sesión caducada o ruta incorrecta."
-                );
+            const data = await response.json();
+
+            if (!response.ok || data.success === false) {
+                await Swal.fire({
+                    icon: "error",
+                    title: "Error al fabricar",
+                    text: data?.message || "Ha ocurrido un error.",
+                });
+                return; // 👈 salimos aquí, no seguimos con actualizarDOMEtiqueta
             }
 
-            if (!response.ok) {
-                console.error("Respuesta no OK:", response.status, data);
-                showErrorAlert(
-                    data?.error ||
-                        `Error ${response.status}: ${
-                            data?.message || "respuesta no válida"
-                        }`
-                );
-                return;
-            }
-
+            // ✅ flujo normal
             if (data.success) {
-                if (data.warnings?.length) {
+                if (Array.isArray(data.warnings) && data.warnings.length) {
                     await Swal.fire({
                         icon: "warning",
                         title: "Atención",
                         html: data.warnings.join("<br>"),
                         confirmButtonText: "OK",
+                        allowOutsideClick: false,
                     });
                 }
                 actualizarDOMEtiqueta(id, data);
-            } else {
-                showErrorAlert(data?.message || "Error desconocido");
             }
         } catch (error) {
-            showErrorAlert(error);
+            await Swal.fire({
+                icon: "error",
+                title: "Error inesperado",
+                text: error.message || String(error),
+            });
         }
+    }
+
+    /** Selector de longitudes con botones + “Buscar compañero de corte” */
+    async function mejorCorte(id, diametro, csrfToken) {
+        const res = await fetch(`/etiquetas/${id}/patron-corte`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify({ diametro }),
+        });
+
+        const data = await res.json();
+        if (!res.ok)
+            throw new Error(
+                data?.message || "No se pudieron calcular los patrones."
+            );
+        if (!data?.patrones?.length)
+            throw new Error("No hay longitudes válidas para este diámetro.");
+
+        const cards = data.patrones
+            .map((p) => {
+                const color =
+                    p.aprovechamiento >= 98
+                        ? "text-green-600"
+                        : p.aprovechamiento >= 90
+                        ? "text-yellow-500"
+                        : "text-red-600";
+                return `
+      <button type="button"
+        class="opcion-longitud w-full text-left border rounded p-4 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500 transition"
+        data-longitud="${p.longitud_m}">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold">${p.longitud_m} m</span>
+        </div>
+        <div class="mt-1">🧩 <em>${p.patron}</em></div>
+        <div>🪵 Sobra: <span class="font-medium">${p.sobra_cm} cm</span></div>
+        <div>📈 <span class="font-bold ${color}">${p.aprovechamiento}%</span></div>
+      </button>`;
+            })
+            .join("");
+
+        const html = `
+    <div class="space-y-3">
+      ${cards}
+      <div class="pt-2">
+        <button id="btn-optimizar-corte" type="button"
+          class="w-full md:w-auto inline-flex items-center gap-2 rounded px-4 py-2 border text-sm font-medium hover:bg-gray-50">
+          🤝 Buscar compañero de corte
+        </button>
+      </div>
+    </div>`;
+
+        return new Promise(async (resolve) => {
+            const dlg = await Swal.fire({
+                title: "Elige longitud de barra",
+                html,
+                width: "48rem",
+                showConfirmButton: false,
+                showCancelButton: true,
+                cancelButtonText: "Cancelar",
+                allowOutsideClick: false,
+                didOpen: () => {
+                    // click en una longitud -> fabricar
+                    document
+                        .querySelectorAll(".opcion-longitud")
+                        .forEach((btn) => {
+                            btn.addEventListener("click", () => {
+                                resolve({
+                                    accion: "fabricar",
+                                    longitud_m: parseFloat(
+                                        btn.dataset.longitud
+                                    ),
+                                });
+                                Swal.close();
+                            });
+                        });
+                    // click en optimizar -> buscar compañero
+                    document
+                        .getElementById("btn-optimizar-corte")
+                        ?.addEventListener("click", () => {
+                            resolve({
+                                accion: "optimizar",
+                                patrones: data.patrones,
+                            });
+                            Swal.close();
+                        });
+                },
+            });
+
+            // si llega aquí es que pulsó Cancelar o cerró con ESC (pero outsideClick está bloqueado)
+            if (dlg.isDismissed) resolve(null);
+        });
+    }
+
+    /** Corte optimizado: el modal devuelve estado, no abre otros selectores */
+    async function mejorCorteHermano(id, diametro, patrones, csrfToken) {
+        const mejor =
+            Array.isArray(patrones) && patrones.length
+                ? [...patrones].sort(
+                      (a, b) => b.aprovechamiento - a.aprovechamiento
+                  )[0]
+                : null;
+
+        const longitudElegida = Number(mejor?.longitud_m || 0);
+        if (!longitudElegida) return null;
+
+        const resp = await fetch(`/etiquetas/${id}/optimizar-corte`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify({ longitud_barra: longitudElegida }), // metros
+        });
+
+        const data = await resp.json();
+        if (!resp.ok)
+            throw new Error(data?.message || "No se pudo optimizar el corte.");
+
+        const dlg = await Swal.fire({
+            icon: "question",
+            title: "Corte optimizado sugerido",
+            html:
+                data?.html ||
+                "<em>No se encontraron combinaciones mejores.</em>",
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonText: "Fabricar todos",
+            denyButtonText: "Volver",
+            cancelButtonText: "Cancelar",
+            allowOutsideClick: false,
+        });
+
+        if (dlg.isConfirmed) {
+            if (!data?.etiqueta_sugerida_id) {
+                await Swal.fire({
+                    icon: "warning",
+                    title: "Falta información",
+                    text: "El servidor no indicó la etiqueta compañera (etiqueta_sugerida_id).",
+                    allowOutsideClick: false,
+                });
+                return null;
+            }
+
+            const body = {
+                producto_base: {
+                    longitud_barra_cm: Math.round(longitudElegida * 100),
+                },
+                repeticiones: 1,
+                etiquetas: [
+                    { etiqueta_sub_id: id, elementos: [] },
+                    {
+                        etiqueta_sub_id: data.etiqueta_sugerida_id,
+                        elementos: [],
+                    },
+                ],
+            };
+
+            const fabricarResp = await fetch(
+                `/etiquetas/fabricacion-optimizada`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                        "X-CSRF-TOKEN": csrfToken,
+                    },
+                    body: JSON.stringify(body),
+                }
+            );
+
+            const res = await fabricarResp.json();
+            if (!fabricarResp.ok)
+                throw new Error(res?.message || "Error al fabricar.");
+
+            await Swal.fire({
+                icon: "success",
+                title: "Fabricación iniciada",
+                text: res?.message || "Todo en marcha.",
+                allowOutsideClick: false,
+            });
+
+            // Terminamos el flujo aquí
+            window.location.reload();
+            return "fabricado";
+        }
+
+        if (dlg.isDenied) {
+            // Solo señalamos “volver” y que el llamador decida
+            return "volver";
+        }
+
+        // Cancelado o cerrado con ESC
+        return null;
     }
 
     function actualizarDOMEtiqueta(id, data) {

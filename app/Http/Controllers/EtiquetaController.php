@@ -20,6 +20,8 @@ use App\Models\Maquina;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Http\Exceptions\HttpResponseException;
+
 use Exception;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
@@ -218,6 +220,163 @@ class EtiquetaController extends Controller
 
         return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
     }
+    public function calcularPatronCorte(Request $request, $etiqueta)
+    {
+        $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiqueta)
+            ->with('elementos')
+            ->firstOrFail();
+
+        $elemento = $etiqueta->elementos->first();
+        if (!$elemento) {
+            return response()->json([
+                'message' => 'No hay elementos en la etiqueta.',
+            ], 400);
+        }
+
+        $diametro = $request->input('diametro', $elemento->diametro);
+        $longitudesDisponibles = ProductoBase::query()
+            ->where('diametro', $diametro)
+            ->where('tipo', 'barra')
+            ->distinct()
+            ->pluck('longitud') // ya viene en metros
+            ->unique()
+            ->sort()
+            ->values();
+
+
+        if (empty($longitudesDisponibles)) {
+            return response()->json([
+                'message' => "No hay longitudes disponibles para Ø{$diametro} mm",
+            ], 400);
+        }
+
+        $longitudElementoM = $elemento->longitud / 100;
+        if ($longitudElementoM <= 0) {
+            return response()->json([
+                'message' => 'Longitud del elemento no válida.',
+            ], 400);
+        }
+
+        $patrones = [];
+
+        foreach ($longitudesDisponibles as $longitudM) {
+            $porBarra = floor($longitudM / $longitudElementoM);
+            $sobraCm  = round(($longitudM - ($porBarra * $longitudElementoM)) * 100, 2);
+            $aprovechamiento = $porBarra > 0
+                ? round(100 * ($porBarra * $longitudElementoM) / $longitudM, 2)
+                : 0;
+
+            $patron = $porBarra > 0
+                ? implode(' + ', array_fill(0, $porBarra, number_format($elemento->longitud, 2))) . " = {$porBarra} piezas"
+                : "No caben piezas";
+
+            $patrones[] = [
+                'longitud_m'      => $longitudM,
+                'longitud_cm'     => $longitudM * 100,
+                'por_barra'       => $porBarra,
+                'sobra_cm'        => $sobraCm,
+                'aprovechamiento' => $aprovechamiento,
+                'patron'          => $patron,
+            ];
+        }
+
+        // Generar HTML si lo necesitas para un SweetAlert o modal
+        $html = "<ul class='text-left space-y-4'>";
+        foreach ($patrones as $p) {
+            $color = $p['aprovechamiento'] >= 98 ? 'text-green-600'
+                : ($p['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
+
+            $html .= "<li class='leading-snug'>";
+            $html .= "<div class='font-bold text-sm text-gray-800'>Elemento {$elemento->longitud} cm</div>";
+            $html .= "<div>📏 <strong>{$p['longitud_m']} m</strong></div>";
+            $html .= "<div>🧩 <span class='font-semibold text-gray-700'>Patrón:</span> {$p['patron']}</div>";
+            $html .= "<div>🪵 <span class='font-semibold text-gray-700'>Sobra:</span> {$p['sobra_cm']} cm</div>";
+            $html .= "<div>📈 <span class='font-semibold {$color}'>Aprovechamiento:</span> ";
+            $html .= "<span class='{$color} font-bold'>{$p['aprovechamiento']}%</span></div>";
+            $html .= "</li>";
+        }
+        $html .= "</ul>";
+
+        return response()->json([
+            'success'  => true,
+            'patrones' => $patrones,
+            'html'     => $html,
+        ]);
+    }
+
+    public function optimizarCorte(Request $request, $etiquetaSubId)
+    {
+        $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)
+            ->with('elementos', 'planilla.etiquetas.elementos')
+            ->firstOrFail();
+
+        $longitudBarraCm = floatval($request->longitud_barra ?? 0) * 100;
+        if ($longitudBarraCm <= 0) {
+            return response()->json(['message' => 'Longitud de barra no válida.'], 400);
+        }
+
+        $elementoA = $etiqueta->elementos->first();
+        if (!$elementoA) {
+            return response()->json(['message' => 'No hay elementos en la etiqueta actual.'], 400);
+        }
+
+        $longitudA = (float) $elementoA->longitud;
+        $diametro  = (int) $elementoA->diametro;
+
+        $mejor = null;
+
+        foreach ($etiqueta->planilla->etiquetas as $otra) {
+            if ($otra->etiqueta_sub_id === $etiqueta->etiqueta_sub_id) continue;
+            if ($otra->estado !== 'pendiente') continue;
+
+            $elementoB = $otra->elementos->first();
+            if (!$elementoB) continue;
+            if ((int) $elementoB->diametro !== $diametro) continue;
+
+            $longitudB = (float) $elementoB->longitud;
+            $total     = $longitudA + $longitudB;
+
+            if ($total > $longitudBarraCm) continue; // ❌ no cabe en la barra
+
+            $sobra = $longitudBarraCm - $total;
+            $aprov = round(($total / $longitudBarraCm) * 100, 2);
+
+            if (!$mejor || $aprov > $mejor['aprovechamiento']) {
+                $mejor = [
+                    'etiqueta'        => $otra->etiqueta_sub_id,
+                    'longitud_actual' => $longitudA,
+                    'longitud_extra'  => $longitudB,
+                    'patron'          => "{$longitudA} + {$longitudB} = {$total}",
+                    'sobra_cm'        => $sobra,
+                    'aprovechamiento' => $aprov,
+                ];
+            }
+        }
+
+        if (!$mejor) {
+            return response()->json([
+                'success' => true,
+                'html' => "<p>No se encontraron combinaciones óptimas.</p>",
+            ]);
+        }
+
+        $color = $mejor['aprovechamiento'] >= 98 ? 'text-green-600'
+            : ($mejor['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
+
+        $html = "<ul class='text-left space-y-2'>";
+        $html .= "<li>🧠 Sugerencia: combinar con <strong class='text-blue-600'>{$mejor['etiqueta']}</strong></li>";
+        $html .= "<li>🔹 Patrón: <strong>{$mejor['patron']} cm</strong></li>";
+        $html .= "<li>🪵 Sobra: <strong>{$mejor['sobra_cm']} cm</strong></li>";
+        $html .= "<li>📈 Aprovechamiento: <span class='font-bold {$color}'>{$mejor['aprovechamiento']}%</span></li>";
+        $html .= "</ul>";
+
+        return response()->json([
+            'success' => true,
+            'html'    => $html,
+        ]);
+    }
+
+
     public function fabricacionOptimizada(Request $request)
     {
         $data = $request->validate([
@@ -308,16 +467,22 @@ class EtiquetaController extends Controller
     {
         // Delegación a servicios (nuevo flujo)
         try {
+
+            $request->validate([
+                'longitudSeleccionada' => ['required', 'integer', 'min:1'],
+            ]);
+            log::info('actualizar etiqueta {$id} en máquina {$maquina_id} con longitud seleccionada ' . $request->input('longitudSeleccionada') . '');
             $maquina = Maquina::findOrFail($maquina_id);
 
             $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
                 etiquetaSubId: $id,
                 maquinaId: (int) $maquina_id,
-                longitudSeleccionada: $request->input('longitud'),
+                longitudSeleccionada: (int) $request->input('longitudSeleccionada'),
                 operario1Id: Auth::id(),
                 operario2Id: auth()->user()->compañeroDeTurno()?->id,
                 opciones: []
             );
+
             log::info("Delegando actualización de etiqueta {$dto->etiquetaSubId} a servicio para máquina {$maquina->id} ({$maquina->tipo}, operario1Id={$dto->operario1Id}, operario2Id={$dto->operario2Id})");
             /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
             $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
@@ -334,11 +499,16 @@ class EtiquetaController extends Controller
                 'fecha_inicio' => optional($etiqueta->fecha_inicio)->format('d-m-Y H:i:s'),
                 'fecha_finalizacion' => optional($etiqueta->fecha_finalizacion)->format('d-m-Y H:i:s'),
             ], 200);
+        } catch (HttpResponseException $e) {
+            // ⚡️ devolvemos la response que ya trae el servicio
+            return $e->getResponse();
         } catch (\Throwable $e) {
+            // cualquier otra excepción sí la tratamos aquí
             try {
                 $servicioClass = isset($servicio) ? get_class($servicio) : null;
                 $maquinaLocal = isset($maquina) ? $maquina : Maquina::find($maquina_id);
                 $etq = Etiqueta::where('etiqueta_sub_id', (int) $id)->first();
+
                 Log::error('Error en actualizarEtiqueta (delegado a servicio)', [
                     'error' => $e->getMessage(),
                     'exception' => get_class($e),
@@ -361,7 +531,7 @@ class EtiquetaController extends Controller
 
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'message' => $e->getMessage() ?: 'Error inesperado',
                 'etiqueta_sub_id' => (int) $id,
             ], 400);
         }

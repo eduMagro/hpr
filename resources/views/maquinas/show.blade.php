@@ -38,26 +38,27 @@
             @if ($maquina->tipo === 'grua')
                 <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
                     {{-- <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :ubicaciones="$ubicaciones" :paquetes="$paquetes" /> --}}
-                    <x-maquinas.tipo.tipo-grua :movimientosPendientes="$movimientosPendientes" :movimientosCompletados="$movimientosCompletados" :ubicacionesDisponiblesPorProductoBase="$ubicacionesDisponiblesPorProductoBase" />
-                </div>
-                @include('components.maquinas.modales.grua.modales-grua')
-            @elseif ($maquina->tipo === 'dobladora manual')
-                <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
-                    <x-maquinas.tipo.tipo-dobladora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
-                        :productosBaseCompatibles="$productosBaseCompatibles" />
-                </div>
-            @elseif ($maquina->tipo === 'cortadora manual')
-                <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
-                    <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
-                        :productosBaseCompatibles="$productosBaseCompatibles" />
-                </div>
-            @else
-                <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados" :productosBaseCompatibles="$productosBaseCompatibles"
-                    :productoBaseSolicitados="$productoBaseSolicitados" {{-- nuevas props --}} :planillasActivas="$planillasActivas" :elementosPorPlanilla="$elementosPorPlanilla" :mostrarDos="$mostrarDos"
-                    :sugerenciasPorElemento="$sugerenciasPorElemento" />
+                    <x-maquinas.tipo.tipo-grua :movimientos-pendientes="$movimientosPendientes" :movimientos-completados="$movimientosCompletados" :ubicaciones-disponibles-por-producto-base="$ubicacionesDisponiblesPorProductoBase" />
+
+                    @include('components.maquinas.modales.grua.modales-grua')
+                @elseif ($maquina->tipo === 'dobladora manual')
+                    <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
+                        <x-maquinas.tipo.tipo-dobladora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
+                            :productosBaseCompatibles="$productosBaseCompatibles" />
+                    </div>
+                @elseif ($maquina->tipo === 'cortadora manual')
+                    <div class="grid grid-cols-1 sm:grid-cols-8 gap-6">
+                        <x-maquinas.tipo.tipo-cortadora-manual :maquina="$maquina" :maquinas="$maquinas" :elementosAgrupados="$elementosAgrupados"
+                            :productosBaseCompatibles="$productosBaseCompatibles" />
+                    </div>
+                @else
+                    <x-maquinas.tipo.tipo-normal :maquina="$maquina" :maquinas="$maquinas" :elementos-agrupados="$elementosAgrupados"
+                        :productos-base-compatibles="$productosBaseCompatibles" :producto-base-solicitados="$productoBaseSolicitados" :planillas-activas="$planillasActivas" :elementos-por-planilla="$elementosPorPlanilla" :mostrar-dos="$mostrarDos"
+                        :sugerencias-por-elemento="$sugerenciasPorElemento" {{-- NUEVO: todo lo de barras va por props --}} :es-barra="$esBarra" :longitudes-por-diametro="$longitudesPorDiametro"
+                        :diametro-por-etiqueta="$diametroPorEtiqueta" />
 
 
-                @include('components.maquinas.modales.normal.modales-normal')
+                    @include('components.maquinas.modales.normal.modales-normal')
             @endif
 
         </div>
@@ -77,8 +78,6 @@
             window.ubicacionId = @json(optional($ubicacion)->id);
             console.log('etiquetasData', window.etiquetasData);
         </script>
-
-
 
         <script src="{{ asset('js/maquinaJS/canvasMaquina.js') }}"></script>
         <script src="{{ asset('js/maquinaJS/elementInfoPanel.js') }}"></script>

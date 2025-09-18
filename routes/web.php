@@ -187,7 +187,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('movimientos', MovimientoController::class);
     Route::post('/movimientos/crear', [MovimientoController::class, 'crearMovimiento'])->name('movimientos.crear');
 
-    // === PAQUETES Y ELEMENTOS ===
+    // === PAQUETES ETIQUETAS Y ELEMENTOS ===
     Route::resource('paquetes', PaqueteController::class);
     Route::resource('etiquetas', EtiquetaController::class);
     Route::resource('elementos', ElementoController::class);
@@ -200,6 +200,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/actualizar-etiqueta/{id}/maquina/{maquina_id}', [EtiquetaController::class, 'actualizarEtiqueta'])->where('id', '.*');
     Route::post('/etiquetas/fabricacion-optimizada', [EtiquetaController::class, 'fabricacionOptimizada'])->name('etiquetas.fabricacion-optimizada');
     Route::post('/elementos/{elemento}/actualizar-campo', [ElementoController::class, 'actualizarMaquina'])->name('elementos.editarMaquina');
+
+    Route::post('/etiquetas/{etiqueta}/patron-corte', [EtiquetaController::class, 'calcularPatronCorte'])->name('etiquetas.calculqarPatronCorte');
+    Route::post('/etiquetas/{etiqueta}/optimizar-corte', [EtiquetaController::class, 'optimizarCorte'])->name('etiquetas.optimizarCorte');
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');
