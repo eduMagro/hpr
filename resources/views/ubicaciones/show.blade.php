@@ -19,11 +19,33 @@
                 $descripcion = json_encode($ubicacion->descripcion);
             @endphp
 
+            <div class="mb-6">
+                <form id="qrConfigForm" class="flex flex-col md:flex-row items-center gap-4 justify-center">
+                    <!-- Flechas -->
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="qrConFlechas" class="rounded border-gray-300">
+                        <span>Incluir flechas izquierda/derecha</span>
+                    </label>
+
+                    <!-- Datos a mostrar -->
+                    <label>
+                        <span class="mr-2">Datos a mostrar:</span>
+                        <select id="qrDatos" class="border rounded px-2 py-1">
+                            <option value="id">Solo ID</option>
+                            <option value="id_codigo">ID + Código</option>
+                            <option value="id_descripcion">ID + Descripción</option>
+                            <option value="id_nombre">ID + Nombre</option>
+                        </select>
+                    </label>
+                </form>
+            </div>
+
             <button
-                onclick="generateAndPrintQR({{ $id }}, {{ $nombre }}, {{ $descripcion }}, 'UBICACIÓN')"
+                onclick="imprimirQR({{ $id }}, {{ $nombre }}, {{ $descripcion }}, '{{ $ubicacion->codigo }}')"
                 class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-                QR
+                Imprimir QR
             </button>
+
 
             <div id="qrCanvas" style="display:none;"></div>
 
