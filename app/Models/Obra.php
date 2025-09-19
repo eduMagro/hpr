@@ -74,4 +74,16 @@ class Obra extends Model
             $q->where('empresa', 'like', '%PACO REYES%');
         })->get();
     }
+
+    public function scopeDeClienteYObra($query, string $clienteNombre, string $obraNombre)
+    {
+        return $query->whereHas('cliente', function ($q) use ($clienteNombre) {
+            $q->where('empresa', 'like', "%{$clienteNombre}%");
+        })
+            ->where('obra', 'like', "%{$obraNombre}%");
+    }
+    public static function buscarDeCliente(string $clienteNombre, string $obraNombre): ?self
+    {
+        return self::deClienteYObra($clienteNombre, $obraNombre)->first();
+    }
 }

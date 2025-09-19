@@ -21,4 +21,10 @@ class ProductoBase extends Model
             ->withPivot('cantidad', 'observaciones')
             ->withTimestamps();
     }
+    public function pedidosAlmacen()
+    {
+        return $this->belongsToMany(PedidoAlmacen::class, 'pedido_almacen_producto_base')
+            ->withPivot(['cantidad_kg', 'cantidad_bultos', 'estado'])
+            ->withTimestamps();
+    }
 }

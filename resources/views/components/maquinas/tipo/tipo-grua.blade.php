@@ -196,36 +196,16 @@
 </script>
 <script>
     /* =========================================================
-  Salidas de almacén – UI de ejecución (rutas WEB)
-  ---------------------------------------------------------
-  Rutas esperadas (ajústalas si usas otras):
-  - GET  /salidas-almacen/{movimientoId}/productos
-      -> { success, salida_id, productos_base:[{
-           id (sapb.id),
-           producto_base_id,
-           peso_objetivo_kg?, unidades_objetivo?,
-           diametro?, longitud?,
-           asignado_kg?, asignado_ud?,
-           asignados?: [{ codigo, peso_kg, cantidad }]
-         }] }
-  - POST /productos/validar-para-salida
-      body: { codigo, salida_almacen_id, producto_base_id_esperado }
-      -> { success, message?, producto:{ codigo, producto_base_id, aportado_kg?, aportado_ud? } }
-  - GET  /salidas-almacen/{salidaId}/asignados
-      -> { success, asignados: { [producto_base_id]: [{ codigo, peso_kg, cantidad }] } }
-  - PUT  /salidas-almacen/completar-desde-movimiento/{movimientoId}
-      -> { success, message }
-  - DELETE /salidas-almacen/{salidaId}/detalle/{codigo}
-      -> { success, message }
-  ========================================================= */
+ Salidas de almacén – UI de ejecución (rutas WEB)
+ Ahora trabajamos con líneas de albarán (albaranes_venta_lineas)
+========================================================= */
 
-    // ====== Estado global ======
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const codigosEscaneados = new Set(); // evita dobles lecturas en la sesión del modal
-    const productosEscaneadosPorTipo = {}; // { [producto_base_id]: Array<{codigo, peso_kg, cantidad}> }
+    const codigosEscaneados = new Set();
+    const productosEscaneadosPorLinea = {}; // { [linea_id]: Array<{codigo, peso_kg, cantidad}> }
     const
-        metaPB = {}; // { [producto_base_id]: { objetivoKg, objetivoUd, asignadoKg, asignadoUd, label, diametro, longitud } }
-    window._salidaActualId = null; // id de la salida actual (para eliminar)
+        metaLineas = {}; // { [linea_id]: { objetivoKg, objetivoUd, asignadoKg, asignadoUd, label, diametro, longitud, cliente, pedido } }
+    window._salidaActualId = null;
 
     // ====== Utilidad fetch ======
     async function fetchJSON(url, options = {}) {
@@ -233,9 +213,7 @@
         let data = null;
         try {
             data = await res.json();
-        } catch {
-            data = null;
-        }
+        } catch {}
         return {
             ok: res.ok,
             status: res.status,
@@ -244,13 +222,12 @@
     }
 
     // ====== Helpers UI ======
-    function mostrarErrorInline(pbId, mensaje) {
-        const box = document.getElementById(`error-pb-${pbId}`);
+    function mostrarErrorInline(lineaId, mensaje) {
+        const box = document.getElementById(`error-ln-${lineaId}`);
         if (!box) return;
         box.textContent = mensaje || 'Ha ocurrido un error.';
         box.classList.remove('hidden');
-
-        const input = document.querySelector(`input[data-pb="${pbId}"]`);
+        const input = document.querySelector(`input[data-ln="${lineaId}"]`);
         if (input) {
             const clear = () => {
                 box.classList.add('hidden');
@@ -261,20 +238,20 @@
         }
     }
 
-    function limpiarErrorInline(pbId) {
-        const box = document.getElementById(`error-pb-${pbId}`);
+    function limpiarErrorInline(lineaId) {
+        const box = document.getElementById(`error-ln-${lineaId}`);
         if (!box) return;
         box.classList.add('hidden');
         box.textContent = '';
     }
 
-    function mostrarOkPequenyo(pbId) {
-        const input = document.querySelector(`input[data-pb="${pbId}"]`);
+    function mostrarOkPequenyo(lineaId) {
+        const input = document.querySelector(`input[data-ln="${lineaId}"]`);
         if (!input) return;
-        let badge = document.getElementById(`ok-pb-${pbId}`);
+        let badge = document.getElementById(`ok-ln-${lineaId}`);
         if (!badge) {
             badge = document.createElement('div');
-            badge.id = `ok-pb-${pbId}`;
+            badge.id = `ok-ln-${lineaId}`;
             badge.className = 'text-xs text-green-600 mt-1';
             input.insertAdjacentElement('afterend', badge);
         }
@@ -291,22 +268,19 @@
         return `Ø${d || '—'}${l ? ` · ${l}m` : ''}`;
     }
 
-    // ====== Progreso por PB ======
-    function actualizarProgresoPB(pbId) {
-        const meta = metaPB[pbId] || {};
+    // ====== Progreso por línea ======
+    function actualizarProgresoLinea(lineaId) {
+        const meta = metaLineas[lineaId] || {};
         const asign = meta.objetivoKg != null ? (meta.asignadoKg || 0) : (meta.asignadoUd || 0);
         const obj = meta.objetivoKg != null ? meta.objetivoKg : meta.objetivoUd;
-
         const pct = obj && obj > 0 ? Math.min(100, Math.round((asign / obj) * 100)) : 0;
-        const bar = document.getElementById(`bar-${pbId}`);
-        const chip = document.getElementById(`estado-chip-${pbId}`);
-        const head = document.getElementById(`asignado-head-${pbId}`);
 
-        if (bar) {
-            bar.style.width = pct + '%';
-            bar.style.backgroundColor = pct >= 100 ? '#10B981' : (pct > 0 ? '#FBBF24' :
-                '#E5E7EB'); // verde / ámbar / gris
-        }
+        const bar = document.getElementById(`bar-${lineaId}`);
+        const chip = document.getElementById(`estado-chip-${lineaId}`);
+        const head = document.getElementById(`asignado-head-${lineaId}`);
+
+        if (bar) bar.style.width = pct + '%', bar.style.backgroundColor = pct >= 100 ? '#10B981' : (pct > 0 ?
+            '#FBBF24' : '#E5E7EB');
         if (chip) {
             let texto = 'pendiente',
                 cls = 'bg-gray-100 text-gray-700';
@@ -323,215 +297,151 @@
         if (head) head.textContent = meta.objetivoKg != null ? `${asign} kg` : `${asign} ud`;
     }
 
-    function recomputarTotalesPBDesdeLista(pbId) {
-        const meta = metaPB[pbId] || {};
-        const lista = productosEscaneadosPorTipo[pbId] || [];
+    function recomputarTotalesLinea(lineaId) {
+        const meta = metaLineas[lineaId] || {};
+        const lista = productosEscaneadosPorLinea[lineaId] || [];
         let sumKg = 0,
             sumUd = 0;
         for (const it of lista) {
             if (typeof it.peso_kg === 'number' && it.peso_kg > 0) sumKg += it.peso_kg;
             else if (typeof it.cantidad === 'number' && it.cantidad > 0) sumUd += it.cantidad;
         }
-        if (meta.objetivoKg != null) metaPB[pbId].asignadoKg = sumKg;
-        if (meta.objetivoUd != null) metaPB[pbId].asignadoUd = sumUd;
+        if (meta.objetivoKg != null) metaLineas[lineaId].asignadoKg = sumKg;
+        if (meta.objetivoUd != null) metaLineas[lineaId].asignadoUd = sumUd;
     }
 
-    // ====== Lista de asignados por PB ======
-    function renderizarListaPorTipo(pbId) {
-        const cont = document.getElementById(`productos-escaneados-${pbId}`);
-        const lista = productosEscaneadosPorTipo[pbId] || [];
+    // ====== Lista escaneados ======
+    function renderizarListaPorLinea(lineaId) {
+        const cont = document.getElementById(`productos-escaneados-${lineaId}`);
+        const lista = productosEscaneadosPorLinea[lineaId] || [];
         if (!cont) return;
-
         if (!lista.length) {
             cont.innerHTML = `<span class="text-gray-500">Sin productos escaneados.</span>`;
-            recomputarTotalesPBDesdeLista(pbId);
-            actualizarProgresoPB(pbId);
+            recomputarTotalesLinea(lineaId);
+            actualizarProgresoLinea(lineaId);
             return;
         }
-
         lista.sort((a, b) => String(a.codigo).localeCompare(String(b.codigo)));
         const totalKg = lista.reduce((acc, p) => acc + (p.peso_kg ? Number(p.peso_kg) : 0), 0);
         const totalUd = lista.reduce((acc, p) => acc + (p.cantidad ? Number(p.cantidad) : 0), 0);
 
         cont.innerHTML = `
-  <div class="mt-2 border rounded overflow-auto max-h-56">
-    <table class="w-full text-xs">
-      <thead class="bg-gray-50 sticky top-0 z-10">
-        <tr>
-          <th class="text-left px-2 py-1 border-b">Código</th>
-          <th class="text-right px-2 py-1 border-b">Stock</th> <!-- NUEVA COLUMNA -->
-          <th class="text-right px-2 py-1 border-b">${totalKg > 0 ? 'Asignado (kg)' : 'Asignado (ud)'}</th>
-          <th class="text-left px-2 py-1 border-b">Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${lista.map((p, i) => {
-          const stockTxt = typeof p.peso_stock === 'number' ? `${p.peso_stock.toLocaleString()} kg` : '0 kg';
-          const asignadoTxt = (typeof p.peso_kg === 'number' && p.peso_kg > 0)
-            ? p.peso_kg.toLocaleString()
-            : (p.cantidad ?? 0);
-
-          return `
-            <tr class="${i % 2 ? 'bg-gray-50/30' : ''}">
-              <td class="px-2 py-1 border-b">${p.codigo}</td>
-              <td class="px-2 py-1 border-b text-right">${stockTxt}</td>        <!-- 👈 p.peso_stock -->
-              <td class="px-2 py-1 border-b text-right">${asignadoTxt}</td>
-              <td class="px-2 py-1 border-b">
-                <button class="text-red-600 hover:underline" onclick="eliminarEscaneado('${p.codigo}', ${pbId})">Quitar</button>
-              </td>
+      <div class="mt-2 border rounded overflow-auto max-h-56">
+        <table class="w-full text-xs">
+          <thead class="bg-gray-50 sticky top-0 z-10">
+            <tr>
+              <th class="text-left px-2 py-1 border-b">Código</th>
+              <th class="text-right px-2 py-1 border-b">Stock</th>
+              <th class="text-right px-2 py-1 border-b">${totalKg > 0 ? 'Asignado (kg)' : 'Asignado (ud)'}</th>
+              <th class="text-left px-2 py-1 border-b">Acciones</th>
             </tr>
-          `;
-        }).join('')}
-      </tbody>
-      <tfoot class="bg-gray-50">
-        <tr>
-          <td class="px-2 py-1 border-t font-semibold">Total</td>
-          <td class="px-2 py-1 border-t text-right"></td> <!-- celda vacía para la columna Stock -->
-          <td class="px-2 py-1 border-t text-right font-semibold">
-            ${totalKg > 0 ? totalKg.toLocaleString() + ' kg' : (totalUd + ' ud')}
-          </td>
-          <td class="px-2 py-1 border-t"></td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-`;
-
-
-        if (metaPB[pbId]?.objetivoKg != null) metaPB[pbId].asignadoKg = totalKg;
-        if (metaPB[pbId]?.objetivoUd != null) metaPB[pbId].asignadoUd = totalUd;
-        actualizarProgresoPB(pbId);
+          </thead>
+          <tbody>
+            ${lista.map((p, i) => `
+              <tr class="${i % 2 ? 'bg-gray-50/30' : ''}">
+                <td class="px-2 py-1 border-b">${p.codigo}</td>
+                <td class="px-2 py-1 border-b text-right">${(p.peso_stock ?? 0).toLocaleString()} kg</td>
+                <td class="px-2 py-1 border-b text-right">${p.peso_kg ?? p.cantidad}</td>
+                <td class="px-2 py-1 border-b">
+                  <button class="text-red-600 hover:underline" onclick="eliminarEscaneado('${p.codigo}', ${lineaId})">Quitar</button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+          <tfoot class="bg-gray-50">
+            <tr>
+              <td class="px-2 py-1 border-t font-semibold">Total</td>
+              <td></td>
+              <td class="px-2 py-1 border-t text-right font-semibold">${totalKg > 0 ? totalKg + ' kg' : totalUd + ' ud'}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+        recomputarTotalesLinea(lineaId);
+        actualizarProgresoLinea(lineaId);
     }
 
-    // ====== Refrescar desde backend (rutas web) ======
-    async function refrescarAsignadosDesdeBackend(salidaId, pbIdParaRepintar = null) {
+    // ====== Refrescar desde backend ======
+    async function refrescarAsignadosDesdeBackend(salidaId, lineaId = null) {
         const {
             ok,
             data
         } = await fetchJSON(`/salidas-almacen/${salidaId}/asignados`);
         if (!ok || !data?.success) return;
-
-        const mapa = data.asignados || {}; // { [producto_base_id]: [...] }
-
-        // 1) Reconstruye caches globales desde backend
+        const mapa = data.asignados || {};
         codigosEscaneados.clear();
-        Object.keys(productosEscaneadosPorTipo).forEach(k => delete productosEscaneadosPorTipo[k]);
-
-        // 2) Vuelca lo que venga del server
-        Object.entries(mapa).forEach(([pb, arr]) => {
-            const id = Number(pb);
-            productosEscaneadosPorTipo[id] = Array.isArray(arr) ? arr : [];
-            (productosEscaneadosPorTipo[id]).forEach(it => codigosEscaneados.add(it.codigo));
+        Object.keys(productosEscaneadosPorLinea).forEach(k => delete productosEscaneadosPorLinea[k]);
+        Object.entries(mapa).forEach(([ln, arr]) => {
+            const id = Number(ln);
+            productosEscaneadosPorLinea[id] = Array.isArray(arr) ? arr : [];
+            (productosEscaneadosPorLinea[id]).forEach(it => codigosEscaneados.add(it.codigo));
         });
-
-        // 3) Repintar
-        if (pbIdParaRepintar != null) {
-            if (!productosEscaneadosPorTipo[pbIdParaRepintar]) {
-                productosEscaneadosPorTipo[pbIdParaRepintar] = []; // fuerza vacío
-            }
-            recomputarTotalesPBDesdeLista(pbIdParaRepintar);
-            actualizarProgresoPB(pbIdParaRepintar);
-            renderizarListaPorTipo(pbIdParaRepintar);
+        if (lineaId != null) {
+            renderizarListaPorLinea(lineaId);
         } else {
-            Object.keys(productosEscaneadosPorTipo).forEach(key => {
-                const id = Number(key);
-                recomputarTotalesPBDesdeLista(id);
-                actualizarProgresoPB(id);
-                renderizarListaPorTipo(id);
-            });
+            Object.keys(productosEscaneadosPorLinea).forEach(id => renderizarListaPorLinea(Number(id)));
         }
     }
 
     // ====== Eliminar escaneado ======
-    async function eliminarEscaneado(codigo, pbId) {
+    async function eliminarEscaneado(codigo, lineaId) {
         const salidaId = window._salidaActualId;
         if (!salidaId) {
-            mostrarErrorInline(pbId, 'No se reconoce la salida actual.');
+            mostrarErrorInline(lineaId, 'No se reconoce la salida actual.');
             return;
         }
-
-        // feedback sutil: deshabilita temporalmente el botón "Quitar"
-        const btns = Array.from(document.querySelectorAll(`#productos-escaneados-${pbId} button`));
-        btns.forEach(b => b.disabled = true);
-
-        const res = await fetch(
-            `/salidas-almacen/${encodeURIComponent(salidaId)}/detalle/${encodeURIComponent(codigo)}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                }
+        const res = await fetch(`/salidas-almacen/${salidaId}/detalle/${encodeURIComponent(codigo)}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
             }
-        );
-
-        let data = null;
-        try {
-            data = await res.json();
-        } catch {}
-
+        });
+        const data = await res.json().catch(() => null);
         if (!res.ok || !data?.success) {
-            const msg = data?.message || 'No se pudo eliminar el producto de la salida.';
-            mostrarErrorInline(pbId, msg);
-            btns.forEach(b => b.disabled = false);
+            mostrarErrorInline(lineaId, data?.message || 'No se pudo eliminar.');
             return;
         }
-
-        await refrescarAsignadosDesdeBackend(salidaId, pbId);
-        btns.forEach(b => b.disabled = false);
+        await refrescarAsignadosDesdeBackend(salidaId, lineaId);
     }
 
-    // ====== Abrir modal de ejecución (rutas web) ======
+    // ====== Abrir modal ======
     async function ejecutarSalidaAlmacen(movimientoId) {
         const {
             ok,
             data
         } = await fetchJSON(`/salidas-almacen/${movimientoId}/productos`);
         if (!ok || !data?.success) {
-            Swal.fire('⚠️ Error', data?.message || 'No se pudo obtener la información de la salida.', 'warning');
+            Swal.fire('⚠️ Error', data?.message || 'No se pudo obtener info', 'warning');
             return;
         }
-
-        const productosBase = data.productos_base || [];
+        const lineas = data.lineas || [];
         const salidaId = data.salida_id;
-        window._salidaActualId = salidaId; // 🔑 guardar para eliminar
+        window._salidaActualId = salidaId;
 
-        let html = `
-    <p class="mb-3 text-sm text-red-600">${data.observaciones || 'Escanea productos para completar la salida:'}</p>
-
-    `;
-        productosBase.forEach(pb => {
-            const key = pb.producto_base_id; // clave por producto_base_id
+        let html =
+            `<p class="mb-3 text-sm text-red-600">${data.observaciones || 'Escanea productos para completar la salida:'}</p>`;
+        lineas.forEach(ln => {
+            const key = ln.id;
             html += `
-        <div class="p-2 border rounded bg-white">
-          <div class="flex items-center justify-between">
-            <div>
-              <strong>Ø${pb.diametro ?? '—'} ${pb.longitud ? '· ' + pb.longitud + 'm' : ''}</strong>
-              <div class="text-xs text-gray-600">
-                Objetivo: ${pb.peso_objetivo_kg ? `${pb.peso_objetivo_kg} kg` : `${pb.unidades_objetivo} ud`}
-                · Asignado: <span id="asignado-head-${key}">
-                  ${pb.peso_objetivo_kg ? (pb.asignado_kg || 0) + ' kg' : (pb.asignado_ud || 0) + ' ud'}
-                </span>
+          <div class="p-2 border rounded bg-white mb-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <strong>Ø${ln.diametro ?? '—'} ${ln.longitud ? '· ' + ln.longitud + 'm' : ''}</strong>
+                <div class="text-xs text-gray-600">Pedido: ${ln.pedido_codigo || '—'} · Cliente: ${ln.cliente || '—'}</div>
+                <div class="text-xs text-gray-600">
+                  Objetivo: ${ln.peso_objetivo_kg ? ln.peso_objetivo_kg+' kg' : ln.unidades_objetivo+' ud'}
+                  · Asignado: <span id="asignado-head-${key}">${ln.asignado_kg || ln.asignado_ud || 0}</span>
+                </div>
               </div>
+              <span id="estado-chip-${key}" class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">pendiente</span>
             </div>
-            <span id="estado-chip-${key}" class="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">pendiente</span>
-          </div>
-
-          <div class="w-full h-1.5 bg-gray-200 rounded mt-2">
-            <div id="bar-${key}" class="h-1.5 rounded" style="width:0%"></div>
-          </div>
-
-          <input type="text"
-            class="w-full mt-2 border px-2 py-1 rounded text-sm"
-            placeholder="Escanea producto para este tipo..."
-            data-pb="${key}"
-            onkeydown="if(event.key==='Enter'){event.preventDefault(); agregarProductoEscaneado(this, ${key}, ${salidaId});}">
-
-          <div id="error-pb-${key}" class="text-xs text-red-600 mt-1 hidden"></div>
-          <div id="productos-escaneados-${key}" class="text-xs text-gray-700 mt-1"></div>
-        </div>
-      `;
+            <div class="w-full h-1.5 bg-gray-200 rounded mt-2"><div id="bar-${key}" class="h-1.5 rounded" style="width:0%"></div></div>
+            <input type="text" class="w-full mt-2 border px-2 py-1 rounded text-sm" placeholder="Escanea producto..." data-ln="${key}" onkeydown="if(event.key==='Enter'){event.preventDefault(); agregarProductoEscaneado(this, ${key}, ${salidaId});}">
+            <div id="error-ln-${key}" class="text-xs text-red-600 mt-1 hidden"></div>
+            <div id="productos-escaneados-${key}" class="text-xs text-gray-700 mt-1"></div>
+          </div>`;
         });
-        html += '</div>';
 
         await Swal.fire({
             title: 'Salida Almacén',
@@ -541,31 +451,23 @@
             confirmButtonColor: '#38a169',
             cancelButtonText: 'Cancelar',
             width: '50rem',
-            focusConfirm: false,
             didOpen: () => {
-                // Inicializar metas y listas visibles por producto_base_id
-                productosBase.forEach(pb => {
-                    const key = pb.producto_base_id;
-                    metaPB[key] = {
-                        objetivoKg: pb.peso_objetivo_kg ?? null,
-                        objetivoUd: pb.unidades_objetivo ?? null,
-                        asignadoKg: pb.asignado_kg ?? 0,
-                        asignadoUd: pb.asignado_ud ?? 0,
-                        label: etiquetaPB(pb.diametro, pb.longitud),
-                        diametro: pb.diametro ?? null,
-                        longitud: pb.longitud ?? null,
+                lineas.forEach(ln => {
+                    const key = ln.id;
+                    metaLineas[key] = {
+                        objetivoKg: ln.peso_objetivo_kg ?? null,
+                        objetivoUd: ln.unidades_objetivo ?? null,
+                        asignadoKg: ln.asignado_kg ?? 0,
+                        asignadoUd: ln.asignado_ud ?? 0,
+                        label: etiquetaPB(ln.diametro, ln.longitud),
+                        diametro: ln.diametro ?? null,
+                        longitud: ln.longitud ?? null
                     };
-                    if (Array.isArray(pb.asignados)) {
-                        productosEscaneadosPorTipo[key] = pb.asignados;
-                        pb.asignados.forEach(it => codigosEscaneados.add(it.codigo));
-                    } else if (!productosEscaneadosPorTipo[key]) {
-                        productosEscaneadosPorTipo[key] = [];
-                    }
-                    actualizarProgresoPB(key);
-                    renderizarListaPorTipo(key);
+                    productosEscaneadosPorLinea[key] = ln.asignados || [];
+                    (ln.asignados || []).forEach(it => codigosEscaneados.add(it.codigo));
+                    actualizarProgresoLinea(key);
+                    renderizarListaPorLinea(key);
                 });
-
-                // Sincroniza con backend (persistencia/multioperario)
                 refrescarAsignadosDesdeBackend(salidaId);
             },
             preConfirm: async () => {
@@ -577,35 +479,31 @@
                             'X-CSRF-TOKEN': csrfToken
                         },
                         body: JSON.stringify({})
-                    }
-                );
+                    });
                 if (!resp.ok || !resp.data?.success) {
-                    Swal.showValidationMessage(resp.data?.message || 'No se pudo completar la salida.');
+                    Swal.showValidationMessage(resp.data?.message || 'No se pudo completar.');
                     return false;
                 }
                 return resp.data;
             }
-        }).then(result => {
-            if (result.isConfirmed) {
-                Swal.fire('', result.value.message || 'Salida ejecutada correctamente.', 'success');
+        }).then(r => {
+            if (r.isConfirmed) {
+                Swal.fire('', r.value.message || 'Salida completada.', 'success');
                 setTimeout(() => location.reload(), 1000);
             }
-        }).catch(() => {});
+        });
     }
 
-    // ====== Escaneo / Validación (rutas web) ======
-    async function agregarProductoEscaneado(input, pbId, salidaId) {
+    // ====== Escaneo / Validación ======
+    async function agregarProductoEscaneado(input, lineaId, salidaId) {
         const codigoQR = input.value.trim();
         if (!codigoQR) return;
-
-        limpiarErrorInline(pbId);
-
+        limpiarErrorInline(lineaId);
         if (codigosEscaneados.has(codigoQR)) {
-            mostrarErrorInline(pbId, 'Este producto ya ha sido escaneado.');
+            mostrarErrorInline(lineaId, 'Este producto ya ha sido escaneado.');
             input.select();
             return;
         }
-
         const {
             ok,
             data,
@@ -619,41 +517,22 @@
             body: JSON.stringify({
                 codigo: codigoQR,
                 salida_almacen_id: salidaId,
-                // 🔒 Muy importante para que el backend no acepte PBs cruzados:
-                producto_base_id_esperado: pbId
+                albaran_linea_id: lineaId
             })
         });
-
         if (!ok || !data?.success || !data.producto) {
-            const msg = data?.message || data?.swal?.text ||
-                (status === 422 ? 'No se pudo validar el producto.' : 'Error validando el producto.');
-            mostrarErrorInline(pbId, msg);
+            mostrarErrorInline(lineaId, data?.message || 'Error validando.');
             input.select();
             return;
         }
-
-        // ✅ Verificación local de PB devuelto por el backend
-        const producto = data.producto; // { codigo, producto_base_id, ... }
-        const actualPbId = Number(producto.producto_base_id);
-
-        if (actualPbId !== Number(pbId)) {
-            const esperado = metaPB[pbId]?.label || `PB ${pbId}`;
-            const encontrado = metaPB[actualPbId]?.label || `PB ${actualPbId}`;
-            mostrarErrorInline(pbId, `Este código pertenece a ${encontrado}, no a ${esperado}.`);
-            input.select();
-            return; // no añadimos nada ni refrescamos este PB
-        }
-
-        // ✅ Coincide el PB → añadimos y refrescamos SOLO ese PB
         codigosEscaneados.add(codigoQR);
-        await refrescarAsignadosDesdeBackend(salidaId, pbId);
-
+        await refrescarAsignadosDesdeBackend(salidaId, lineaId);
         input.value = '';
         input.focus();
-        mostrarOkPequenyo(pbId);
+        mostrarOkPequenyo(lineaId);
     }
 
-    // ====== Exponer a window ======
+    // ====== Exponer ======
     window.ejecutarSalidaAlmacen = ejecutarSalidaAlmacen;
     window.agregarProductoEscaneado = agregarProductoEscaneado;
     window.eliminarEscaneado = eliminarEscaneado;

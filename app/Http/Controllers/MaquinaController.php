@@ -147,6 +147,7 @@ class MaquinaController extends Controller
         ])->findOrFail($id);
 
         $this->activarMovimientosSalidasHoy();
+        $this->activarMovimientosSalidasAlmacenHoy();
 
         // 1) Contexto común (incluye productosBaseCompatibles en $base)
         $base = $this->cargarContextoBase($maquina);
@@ -616,7 +617,7 @@ class MaquinaController extends Controller
 
         // 🔎 Buscar todas las salidas programadas para hoy
         $salidasHoy = Salida::whereDate('fecha_salida', $hoy)->get();
-
+        $naveA = Obra::buscarDeCliente('Paco Reyes', 'Nave A');
         foreach ($salidasHoy as $salida) {
             // 🔎 Comprobar si ya existe un movimiento asociado a esta salida
             $existeMovimiento = Movimiento::where('salida_id', $salida->id)
@@ -645,6 +646,7 @@ class MaquinaController extends Controller
                 Movimiento::create([
                     'tipo' => 'salida',
                     'salida_id' => $salida->id,
+                    'nave_id'         => $naveA?->id,
                     'estado' => 'pendiente',
                     'fecha_solicitud' => now(),
                     'solicitado_por' => null,
@@ -655,6 +657,57 @@ class MaquinaController extends Controller
             }
         }
     }
+
+    private function activarMovimientosSalidasAlmacenHoy(): void
+    {
+        // 👉 Fecha actual (sin hora)
+        $hoy = \Carbon\Carbon::today();
+
+        // 🔎 Buscar todas las salidas de almacén programadas para hoy
+        $salidasHoy = \App\Models\SalidaAlmacen::with(['camionero', 'albaranes.cliente'])
+            ->whereDate('fecha', $hoy)
+            ->get();
+
+        $almacen = Obra::buscarDeCliente('Paco Reyes', 'Almacén');
+        foreach ($salidasHoy as $salida) {
+            // 🔎 Comprobar si ya existe un movimiento asociado a esta salida
+            $existeMovimiento = Movimiento::where('salida_almacen_id', $salida->id)
+                ->where('tipo', 'Salida Almacén')
+                ->exists();
+
+            if (!$existeMovimiento) {
+                // 👉 Datos básicos
+                $camionero = optional($salida->camionero)->name ?? 'Sin camionero';
+                $horaSalida = $salida->fecha->format('H:i');
+                $codigoSalida = $salida->codigo;
+
+                // 👉 Clientes relacionados desde los albaranes
+                $clientes = $salida->albaranes
+                    ->map(fn($av) => optional($av->cliente)->nombre ?? 'Sin cliente')
+                    ->filter()
+                    ->unique()
+                    ->implode(', ');
+
+                // 👉 Construir descripción
+                $descripcion = "$codigoSalida. Se solicita carga de almacén (camionero: $camionero) "
+                    . "para [$clientes], tiene que estar listo a las $horaSalida";
+
+                // ⚡ Crear movimiento nuevo
+                Movimiento::create([
+                    'tipo'            => 'Salida Almacén',
+                    'salida_almacen_id' => $salida->id,
+                    'nave_id'         => $almacen?->id,
+                    'estado'          => 'pendiente',
+                    'fecha_solicitud' => now(),
+                    'solicitado_por'  => null,
+                    'prioridad'       => 2,
+                    'descripcion'     => $descripcion,
+                ]);
+            }
+        }
+    }
+
+
     public function create()
     {
         if (auth()->user()->rol !== 'oficina') {

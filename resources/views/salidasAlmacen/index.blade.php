@@ -1,214 +1,244 @@
 <x-app-layout>
     <x-slot name="title">Salidas de Almacén - {{ config('app.name') }}</x-slot>
-    <x-menu.salidas />
-    <x-menu.salidas2 />
-    <x-menu.salidasAlmacen />
-    <div class="px-4 py-6">
-        @if (auth()->user()->rol === 'oficina')
-            <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
 
-            <div class="overflow-x-auto bg-white shadow rounded-lg">
-                <table class="w-full border-collapse text-sm text-center">
-                    <thead class="bg-blue-500 text-white text-10">
-                        <tr class="text-center text-xs uppercase">
-                            <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['codigo_sage'] ?? 'SAGE' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['matricula_texto'] ?? 'Matrícula' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['conductor'] ?? 'Conductor' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['fecha_salida'] ?? 'Fecha' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
-                            <th class="p-2 border">Acciones</th>
+    <x-menu.salidas.salidas />
+    <x-menu.salidas.salidas2 />
+    <x-menu.salidas.salidasAlmacen />
 
+    <div class="w-full px-6 py-6">
+        <h1 class="text-xl font-semibold text-gray-800 mb-4">🚛 Salidas de Almacén</h1>
+        <x-tabla.filtros-aplicados :filtros="$filtrosActivos" />
+        <div class="overflow-x-auto bg-white shadow rounded-lg">
+
+            <table class="w-full border-collapse text-sm text-center">
+                <thead class="bg-blue-500 text-white text-10">
+                    <!-- Títulos -->
+                    <tr class="text-xs uppercase">
+                        <th class="p-2 border">ID Línea</th>
+                        <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código Salida' !!}</th>
+                        <th class="p-2 border">Código Albarán</th>
+                        <th class="p-2 border">{!! $ordenables['cliente'] ?? 'Cliente' !!}</th>
+                        <th class="p-2 border">Producto Base</th>
+                        <th class="p-2 border">Cantidad (kg)</th>
+                        <th class="p-2 border">Precio Unitario</th>
+                        <th class="p-2 border">{!! $ordenables['estado'] ?? 'Estado' !!}</th>
+                        <th class="p-2 border">Acciones</th>
+                    </tr>
+
+                    <!-- Filtros -->
+                    <tr class="text-xs uppercase bg-blue-100 text-gray-800">
+                        <form method="GET" action="{{ route('salidas-almacen.index') }}">
+                            <th class="p-1 border">
+                                <x-tabla.input name="linea_id" type="text" :value="request('linea_id')" class="w-full text-xs"
+                                    placeholder="ID" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="codigo" type="text" :value="request('codigo')" class="w-full text-xs"
+                                    placeholder="Salida" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="albaran" type="text" :value="request('albaran')" class="w-full text-xs"
+                                    placeholder="Albarán" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.select name="cliente_id" :options="$clientes->pluck('nombre', 'id')" :selected="request('cliente_id')" empty="Todos"
+                                    class="w-full text-xs" />
+                            </th>
+                            <th class="py-1 px-0 border">
+                                <div class="flex gap-1 justify-center">
+                                    <input type="text" name="producto_tipo" value="{{ request('producto_tipo') }}"
+                                        placeholder="Tipo"
+                                        class="bg-white text-gray-800 border border-gray-300 rounded-sm text-[10px] text-center w-10 h-5 leading-tight" />
+
+                                    <input type="text" name="producto_diametro"
+                                        value="{{ request('producto_diametro') }}" placeholder="Ø"
+                                        class="bg-white text-gray-800 border border-gray-300 rounded-sm text-[10px] text-center w-10 h-5 leading-tight" />
+
+                                    <input type="text" name="producto_longitud"
+                                        value="{{ request('producto_longitud') }}" placeholder="L"
+                                        class="bg-white text-gray-800 border border-gray-300 rounded-sm text-[10px] text-center w-12 h-5 leading-tight" />
+                                </div>
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="cantidad_min" type="number" step="0.01" :value="request('cantidad_min')"
+                                    class="w-full text-xs" placeholder="≥ kg" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="precio_min" type="number" step="0.01" :value="request('precio_min')"
+                                    class="w-full text-xs" placeholder="≥ €" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.select name="estado" :options="[
+                                    'pendiente' => 'Pendiente',
+                                    'confirmado' => 'Confirmado',
+                                    'cerrado' => 'Cerrado',
+                                ]" :selected="request('estado')" empty="Todos"
+                                    class="w-full text-xs" />
+                            </th>
+
+                            <x-tabla.botones-filtro ruta="salidas-almacen.index" />
+                        </form>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @forelse ($salidas as $salida)
+                        {{-- 🔹 Cabecera de la salida --}}
+                        <tr class="bg-gray-100 text-xs font-bold uppercase">
+                            <td colspan="9" class="text-left px-3 py-2">
+                                <span class="text-blue-600">Salida:</span> {{ $salida->codigo }} |
+                                <span class="text-blue-600">Peso Total:</span> {{ $salida->peso_total }} Kg |
+                                <span class="text-blue-600">Fecha:</span>
+                                {{ \Carbon\Carbon::parse($salida->fecha)->format('d/m/Y') }} |
+                                <span class="text-blue-600">Camionero:</span> {{ $salida->camionero->name ?? '—' }} |
+                                <span class="text-blue-600">Estado:</span> {{ ucfirst($salida->estado) }}
+
+                                <span class="float-right flex items-center gap-2">
+                                    <a href="{{ route('salidas-almacen.show', $salida) }}"
+                                        class="text-blue-600 hover:underline text-xs">Ver</a>
+                                    <x-tabla.boton-eliminar :action="route('salidas-almacen.destroy', $salida->id)" />
+                                </span>
+                            </td>
                         </tr>
-                        <tr class="text-center text-xs uppercase">
-                            <form method="GET" action="{{ route('salidas-almacen.index') }}">
-                                <th class="p-1 border"><x-tabla.input name="codigo" :value="request('codigo')" /></th>
-                                <th class="p-1 border"><x-tabla.input name="codigo_sage" :value="request('codigo_sage')" /></th>
-                                <th class="p-1 border"><x-tabla.input name="matricula_texto" :value="request('matricula_texto')" /></th>
-                                <th class="p-1 border"><x-tabla.input name="conductor" :value="request('conductor')" /></th>
-                                <th class="p-1 border"><x-tabla.input name="fecha_salida" type="date"
-                                        :value="request('fecha_salida')" /></th>
-                                <th class="p-1 border">
-                                    <x-tabla.select name="estado" :options="[
-                                        'borrador' => 'Borrador',
-                                        'activa' => 'Activa',
-                                        'completada' => 'Completada',
-                                        'cancelada' => 'Cancelada',
-                                    ]" :selected="request('estado')" empty="Todos" />
-                                </th>
-                                <x-tabla.botones-filtro ruta="salidas-almacen.index" />
-                            </form>
+
+
+                        {{-- 🔹 Albaranes y sus líneas --}}
+                        @foreach ($salida->albaranes as $albaran)
+                            @foreach ($albaran->lineas as $linea)
+                                @php
+                                    $estadoLinea = strtolower(trim($linea['estado']));
+                                    $claseFondo = match ($estadoLinea) {
+                                        'facturado' => 'bg-green-500',
+                                        'completado' => 'bg-green-100',
+                                        'activo' => 'bg-yellow-100',
+                                        'cancelado' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
+                                        default => 'even:bg-gray-50 odd:bg-white',
+                                    };
+                                    $esCancelado = $estadoLinea === 'cancelado';
+                                    $esCompletado = $estadoLinea === 'completado';
+                                    $esFacturado = $estadoLinea === 'facturado';
+                                @endphp
+
+
+                                <tr class="text-xs {{ $claseFondo }}">
+                                    <td class="border px-2 py-1">{{ $linea->id }}</td>
+                                    <td class="border px-2 py-1 font-mono">{{ $salida->codigo }}</td>
+                                    <td class="border px-2 py-1 font-mono">{{ $albaran->codigo }}</td>
+                                    <td class="border px-2 py-1">{{ $albaran->cliente->nombre ?? '—' }}</td>
+                                    <td class="border px-2 py-1">
+                                        {{ $linea->productoBase->tipo ?? '—' }} |
+                                        Ø{{ $linea->productoBase->diametro ?? '—' }} |
+                                        {{ $linea->productoBase->longitud ?? '—' }}m
+                                    </td>
+                                    <td class="border px-2 py-1 text-right">
+                                        {{ number_format($linea->cantidad_kg, 2, ',', '.') }}
+                                    </td>
+                                    <td class="border px-2 py-1 text-right">
+                                        {{ $linea->precio_unitario !== null ? number_format($linea->precio_unitario, 2, ',', '.') . ' €' : '—' }}
+                                    </td>
+                                    <td class="border px-2 py-1">{{ ucfirst($salida->estado) }}</td>
+                                    <td class="border px-2 py-1 text-center">
+
+
+                                    </td>
+
+
+
+                                </tr>
+                            @endforeach
+                        @endforeach
+                    @empty
+                        <tr>
+                            <td colspan="9" class="py-4 text-gray-500">No hay salidas registradas.</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($salidas as $salida)
-                            @php
-                                $estadoSalida = strtolower(trim($salida['estado']));
-                                $claseFondo = match ($estadoSalida) {
-                                    'facturada' => 'bg-green-500',
-                                    'completada' => 'bg-green-100',
-                                    'activa' => 'bg-yellow-100',
-                                    'cancelada' => 'bg-gray-300 text-gray-500 opacity-70 cursor-not-allowed',
-                                    default => 'even:bg-gray-50 odd:bg-white',
-                                };
-                                $esCancelado = $estadoSalida === 'cancelado';
-                                $esCompletado = $estadoSalida === 'completado';
-                                $esFacturado = $estadoSalida === 'facturado';
-                            @endphp
+                    @endforelse
+                </tbody>
+            </table>
 
-                            <tr class="text-xs {{ $claseFondo }}">
-                                <td class="border px-2 py-1">{{ $salida->codigo }}</td>
-                                <td class="border px-2 py-1">{{ $salida->codigo_sage ?? '—' }}</td>
-                                <td class="border px-2 py-1">{{ $salida->matricula_texto ?? '—' }}</td>
-                                <td class="border px-2 py-1">{{ $salida->conductor ?? '—' }}</td>
-                                <td class="border px-2 py-1">{{ $salida->fecha_salida ?? '—' }}</td>
-                                <td class="border px-2 py-1 capitalize">{{ $salida->estado }}</td>
-                                <td class="border px-2 py-1">
-                                    <div class="flex items-center justify-center gap-1">
-                                        @if ($salida->estado !== 'completada')
-                                            @if ($salida->estado === 'activa')
-                                                <form method="POST"
-                                                    action="{{ route('salidas-almacen.editarDesactivar', $salida->id) }}"
-                                                    onsubmit="return confirmarDesactivacion(event)" class="inline">
-                                                    @csrf
-                                                    <button type="submit"
-                                                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-2 py-1 text-xs">
-                                                        Desactivar
-                                                    </button>
-                                                </form>
-                                            @else
-                                                <form method="POST"
-                                                    action="{{ route('salidas-almacen.editarActivar', $salida->id) }}"
-                                                    onsubmit="return confirmarActivacion(event)" class="inline">
-                                                    @csrf
-                                                    <button type="submit"
-                                                        class="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded px-2 py-1 text-xs">
-                                                        Activar
-                                                    </button>
-                                                </form>
 
-                                                <form method="POST"
-                                                    action="{{ route('salidas-almacen.editarCancelar', $salida->id) }}"
-                                                    onsubmit="return confirmarCancelacion(event)" class="inline">
-                                                    @csrf
-                                                    <button type="submit"
-                                                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-2 py-1 text-xs">
-                                                        Cancelar
-                                                    </button>
-                                                </form>
+        </div>
 
-                                                <form method="POST"
-                                                    action="{{ route('salidas-almacen.destroy', $salida->id) }}"
-                                                    onsubmit="return confirmarEliminacion(event)" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit"
-                                                        class="bg-red-100 hover:bg-red-200 text-red-700 rounded px-2 py-1 text-xs">
-                                                        Eliminar
-                                                    </button>
-                                                </form>
-                                            @endif
-                                        @endif
-                                    </div>
+        <x-tabla.paginacion :paginador="$salidas" />
 
-                                </td>
+        <div class="mt-10 bg-white shadow rounded-lg p-4">
+            <h2 class="text-lg font-semibold mb-3">📅 Calendario de Salidas</h2>
+            <div id="calendar"></div>
+        </div>
 
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="py-4 text-gray-500 italic">No hay salidas registradas.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <x-tabla.paginacion :paginador="$salidas" />
-        @endif
     </div>
+
+    <!-- ✅ FullCalendar Scheduler completo con vista resourceTimelineWeek -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar-scheduler@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+    {{-- TOOLTIP --}}
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css" />
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/themes/light.css" />
+
     <script>
-        function confirmarActivacion(e) {
-            e.preventDefault();
-            Swal.fire({
-                title: '¿Activar salida?',
-                text: 'La salida quedará activa y ya no se podrán modificar los datos.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, activar',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#facc15',
-                cancelButtonColor: '#e5e7eb',
-                customClass: {
-                    confirmButton: 'text-black',
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    e.target.closest('form').submit();
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
 
-                }
-            });
-            return false;
-        }
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'es',
+                timeZone: 'local',
+                schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
+                height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'resourceTimelineDay,resourceTimelineWeek,resourceTimelineMonth'
+                },
+                buttonText: {
+                    today: 'Hoy',
+                    week: 'Semana',
+                    month: 'Mes',
+                    day: 'Día'
+                },
+                editable: true, // 🔹 permite arrastrar/mover
+                events: {
+                    url: "{{ route('api.salidas.eventos') }}",
+                    method: 'GET',
+                    failure: () => {
+                        alert('No se pudieron cargar las salidas.');
+                    }
+                },
+                eventClick: function(info) {
+                    window.location.href = `/salidas-almacen/${info.event.id}`;
+                },
+                eventDrop: function(info) {
+                    const nuevaFecha = info.event.startStr.slice(0, 10);
 
-        function confirmarDesactivacion(e) {
-            e.preventDefault();
-            Swal.fire({
-                title: '¿Desactivar salida?',
-                text: 'Se permitirá modificar los datos de nuevo.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, desactivar',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#9ca3af',
-                cancelButtonColor: '#e5e7eb',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    e.target.closest('form').submit();
-
-                }
-            });
-            return false;
-        }
-
-        function confirmarCancelacion(e) {
-            e.preventDefault();
-            Swal.fire({
-                title: '¿Cancelar salida?',
-                text: 'Esta acción marcará la salida como cancelada y no se podrá completar.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, cancelar',
-                cancelButtonText: 'No',
-                confirmButtonColor: '#9ca3af',
-                cancelButtonColor: '#e5e7eb',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    e.target.closest('form').submit();
-
+                    fetch(`/salidas-eventos/${info.event.id}`, {
+                            method: "PUT",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]')
+                                    .content
+                            },
+                            body: JSON.stringify({
+                                fecha: nuevaFecha
+                            })
+                        })
+                        .then(resp => {
+                            if (!resp.ok) throw new Error("Error al actualizar la fecha");
+                            return resp.json();
+                        })
+                        .then(data => {
+                            console.log("Salida actualizada", data);
+                        })
+                        .catch(err => {
+                            alert("No se pudo actualizar la fecha");
+                            info.revert(); // 🔹 vuelve al sitio original si falla
+                        });
                 }
             });
-            return false;
-        }
 
-        function confirmarEliminacion(e) {
-            e.preventDefault();
-            Swal.fire({
-                title: '¿Eliminar salida?',
-                text: 'Esta acción es irreversible. Se borrará la salida y sus relaciones.',
-                icon: 'error',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'No',
-                confirmButtonColor: '#ef4444',
-                cancelButtonColor: '#e5e7eb',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    e.target.closest('form').submit();
-
-                }
-            });
-            return false;
-        }
+            calendar.render();
+        });
     </script>
 
 </x-app-layout>

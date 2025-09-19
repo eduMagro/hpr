@@ -46,6 +46,8 @@ use App\Http\Controllers\SeccionController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\TurnoController;
 use App\Http\Controllers\ClaveSeccionController;
+use App\Http\Controllers\PedidoAlmacenVentaController;
+use App\Http\Controllers\ClienteAlmacenController;
 use App\Services\PlanillaService;
 use Illuminate\Support\Facades\Log;
 
@@ -251,20 +253,27 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::put('/salidas/{salida}/codigo-sage', [SalidaFerrallaController::class, 'actualizarCodigoSage'])->name('salidas.editarCodigoSage');
 
     // === SALIDAS ALMACEN ===
+
+
     Route::get('salidas-almacen/disponibilidad', [SalidaAlmacenController::class, 'disponibilidad'])
         ->name('salidas-almacen.verDisponibilidad');
 
     Route::resource('salidas-almacen', SalidaAlmacenController::class);
-
+    Route::post('/salidas-almacen/crear-desde-lineas', [SalidaAlmacenController::class, 'crearDesdeLineas'])
+        ->name('salidas-almacen.crear-desde-lineas');
     Route::put('/salidas/{salida}/actualizar-estado', [SalidaAlmacenController::class, 'editarActualizarEstado'])
         ->name('salidas.editarActualizarEstado');
 
     Route::put('/salidas/{salida}/codigo-sage', [SalidaAlmacenController::class, 'actualizarCodigoSage'])
         ->name('salidas.editarCodigoSage');
-    Route::post('/salidas-almacen/{salida}/activar', [SalidaAlmacenController::class, 'activar'])->name('salidas-almacen.editarActivar');
-    Route::post('/salidas-almacen/{salida}/cancelar', [SalidaAlmacenController::class, 'cancelar'])->name('salidas-almacen.editarCancelar');
-    Route::post('/salidas-almacen/{salida}/desactivar', [SalidaAlmacenController::class, 'desactivar'])->name('salidas-almacen.editarDesactivar');
+    Route::post('/salidas-almacen/{salida}/lineas/{linea}/activar', [SalidaAlmacenController::class, 'activarLinea'])->name('salidas-almacen.linea.editarActivar');
+    Route::post('/salidas-almacen/{salida}/lineas/{linea}/cancelar', [SalidaAlmacenController::class, 'cancelarLinea'])->name('salidas-almacen.linea.editarCancelar');
+    Route::post('/salidas-almacen/{salida}/lineas/{linea}/desactivar', [SalidaAlmacenController::class, 'desactivarLinea'])->name('salidas-almacen.linea.editarDesactivar');
 
+    Route::get('/salidas-eventos', [SalidaAlmacenController::class, 'eventos'])
+        ->name('api.salidas.eventos');
+    Route::put('/salidas-eventos/{salida}', [SalidaAlmacenController::class, 'actualizarFecha'])
+        ->name('salidas-eventos.update');
     // Rutas con name bien formado (ver/editar en el name, no en el método)
     Route::get(
         '/salidas-almacen/{salida}/asignados',
@@ -290,6 +299,23 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
         '/salidas-almacen/completar-desde-movimiento/{movimiento}',
         [SalidaAlmacenController::class, 'completarDesdeMovimiento']
     )->name('salidas-almacen.editarCompletarDesdeMovimiento');
+
+
+    // === PEDIDOS ALMACEN ===
+    Route::resource('pedidos-almacen-venta', PedidoAlmacenVentaController::class);
+    Route::post('pedidos-almacen-venta/{id}/confirmar', [PedidoAlmacenVentaController::class, 'confirmar'])->name('pedidos-almacen-venta.confirmar');
+    Route::put(
+        'pedidos-almacen-venta/{pedido}/lineas/{linea}/cancelar',
+        [PedidoAlmacenVentaController::class, 'cancelarLinea']
+    )
+        ->name('pedidos-almacen-venta.lineas.cancelar');
+    Route::post('/pedidos-almacen-venta/lineas/detalles', [PedidoAlmacenVentaController::class, 'detallesLineas'])
+        ->name('pedidos-almacen-venta.lineas.detalles');
+    // === CLIENTES ALMACEN ===
+    Route::resource('clientes-almacen', ClienteAlmacenController::class);
+    Route::get('/clientes-almacen/buscar', [ClienteAlmacenController::class, 'buscar'])
+        ->name('clientes-almacen.verBuscar');
+
 
 
 

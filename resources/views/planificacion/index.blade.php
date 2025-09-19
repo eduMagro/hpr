@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="title">Planificación Salidas</x-slot>
 
-    <x-menu.salidas />
+    <x-menu.salidas.salidas />
 
     <div class="py-6">
         <!-- Contenedor del Calendario -->
