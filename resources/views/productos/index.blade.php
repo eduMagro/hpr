@@ -464,32 +464,65 @@
         <x-tabla.paginacion :paginador="$registrosProductos" />
         <script>
             document.addEventListener('DOMContentLoaded', function() {
-                // Confirmar consumir
-                // Use a single delegated listener on <body>
-                document.body.addEventListener('click', (e) => {
+                // Delegación de eventos para botones "Consumir"
+                document.body.addEventListener('click', async (e) => {
                     const btn = e.target.closest('.btn-consumir');
-                    if (!btn) return; // Click wasn’t on a consumir button
+                    if (!btn) return;
 
                     e.preventDefault();
 
-                    // Prefer data-consumir; fall back to href
                     const url = btn.dataset.consumir || btn.getAttribute('href');
 
-                    Swal.fire({
-                        title: '¿Estás seguro?',
-                        text: 'Esta materia prima se marcará como consumida.',
-                        icon: 'warning',
+                    const {
+                        value: opcion
+                    } = await Swal.fire({
+                        title: '¿Cómo deseas consumir el material?',
+                        text: 'Selecciona si quieres consumirlo completo o solo unos kilos.',
+                        icon: 'question',
                         showCancelButton: true,
-                        confirmButtonColor: '#d33',
-                        cancelButtonColor: '#3085d6',
-                        confirmButtonText: 'Sí, consumir',
-                        cancelButtonText: 'Cancelar'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = url;
-                        }
+                        confirmButtonText: 'Consumir completo',
+                        cancelButtonText: 'Cancelar',
+                        showDenyButton: true,
+                        denyButtonText: 'Consumir por kilos'
                     });
+
+                    if (opcion) {
+                        // ✅ Consumir completo
+                        if (opcion === true) {
+                            window.location.href = url + '?modo=total';
+                        }
+                    } else if (opcion === false) {
+                        // ✅ Consumir por kilos
+                        const {
+                            value: kilos
+                        } = await Swal.fire({
+                            title: 'Introduce los kilos a consumir',
+                            input: 'number',
+                            inputAttributes: {
+                                min: 1,
+                                step: 0.01
+                            },
+                            inputPlaceholder: 'Ejemplo: 250',
+                            showCancelButton: true,
+                            confirmButtonText: 'Consumir',
+                            cancelButtonText: 'Cancelar',
+                            preConfirm: (value) => {
+                                if (!value || value <= 0) {
+                                    Swal.showValidationMessage(
+                                        'Debes indicar un número válido mayor que 0');
+                                    return false;
+                                }
+                                return value;
+                            }
+                        });
+
+                        if (kilos) {
+                            // Redirigimos con cantidad en la URL (ejemplo GET)
+                            window.location.href = url + '?modo=parcial&kgs=' + kilos;
+                        }
+                    }
                 });
+
                 // Confirmar eliminación
                 document.querySelectorAll('.form-eliminar').forEach(form => {
                     form.addEventListener('submit', function(e) {
@@ -513,5 +546,6 @@
                 });
             });
         </script>
+
 
 </x-app-layout>

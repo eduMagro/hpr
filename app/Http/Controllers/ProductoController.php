@@ -485,14 +485,45 @@ class ProductoController extends Controller
         return redirect()->back()->with('exito', 'La solicitud ha sido registrada exitosamente.');
     }
 
-    public function consumir($id)
+    public function consumir(Request $request, $id)
     {
         $producto = Producto::findOrFail($id);
-        $this->marcarComoConsumido($producto);
+
+        $modo = $request->get('modo'); // 'total' o 'parcial'
+
+        if ($modo === 'total') {
+            // ✅ Consumir todo
+            $producto->peso_stock = 0;
+            $producto->estado = 'consumido';
+        } elseif ($modo === 'parcial') {
+            // ✅ Validar entrada
+            $request->validate([
+                'kgs' => ['required', 'numeric', 'min:1'],
+            ]);
+
+            $kgs = (float) $request->get('kgs');
+
+            if ($kgs > $producto->peso_stock) {
+                return back()->with('error', '❌ No puedes consumir más de lo disponible en stock.');
+            }
+
+            // Restar kilos
+            $producto->peso_stock -= $kgs;
+
+            // Si llega a 0, marcar como consumido
+            if ($producto->peso_stock <= 0) {
+                $producto->peso_stock = 0;
+                $producto->estado = 'consumido';
+            }
+        } else {
+            return back()->with('error', '❌ Modo de consumo no válido.');
+        }
+
         $producto->save();
 
-        return back()->with('success', 'Producto marcado como consumido.');
+        return back()->with('success', '✅ Producto actualizado correctamente.');
     }
+
 
     private function marcarComoConsumido(Producto $producto)
     {

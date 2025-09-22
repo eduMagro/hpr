@@ -199,12 +199,6 @@ class PedidoAlmacenVentaController extends Controller
         return response()->json(['lineas' => $lineas]);
     }
 
-
-
-
-
-
-
     public function store(Request $request)
     {
         $request->validate([

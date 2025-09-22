@@ -342,26 +342,71 @@ class SalidaAlmacenController extends Controller
     }
 
 
-    public function activarLinea($salidaId, $lineaId)
+    public function activar($id)
     {
-        $salida = SalidaAlmacen::findOrFail($salidaId);
-        $linea = AlbaranVentaLinea::findOrFail($lineaId);
+        $salida = SalidaAlmacen::findOrFail($id);
+        Log::info('Activando salida ' . $salida->codigo);
 
-        $linea->estado = 'activo';
-        $linea->save();
+        try {
+            DB::transaction(function () use ($salida) {
+                // 1) Cambiar estado
+                $salida->estado = 'activa';
+                $salida->save();
 
-        return back()->with('success', "Línea {$linea->id} activada en salida {$salida->codigo}");
+                // 2) Crear movimiento si no existe
+                $existe = Movimiento::where('salida_almacen_id', $salida->id)
+                    ->where('tipo', 'salida_almacen')
+                    ->where('estado', 'pendiente')
+                    ->exists();
+
+                if (!$existe) {
+                    Movimiento::create([
+                        'tipo' => 'salida_almacen',
+                        'salida_almacen_id' => $salida->id,
+                        'user_id' => auth()->id(),
+                        'estado' => 'pendiente',
+                        'fecha' => now(),
+                    ]);
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => "🚛 Salida {$salida->codigo} activada y movimiento generado",
+                'salida' => [
+                    'id' => $salida->id,
+                    'codigo' => $salida->codigo,
+                    'estado' => $salida->estado,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("Error al activar salida {$salida->codigo}: " . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => "❌ Error al activar la salida {$salida->codigo}",
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    public function desactivarLinea($salidaId, $lineaId)
+    public function desactivar($id)
     {
-        $salida = SalidaAlmacen::findOrFail($salidaId);
-        $linea = AlbaranVentaLinea::findOrFail($lineaId);
+        $salida = SalidaAlmacen::findOrFail($id);
 
-        $linea->estado = 'pendiente';
-        $linea->save();
+        DB::transaction(function () use ($salida) {
+            // 1) Volver estado a pendiente
+            $salida->estado = 'pendiente';
+            $salida->save();
 
-        return back()->with('success', "Línea {$linea->id} desactivada en salida {$salida->codigo}");
+            // 2) Eliminar movimiento asociado
+            Movimiento::where('salida_almacen_id', $salida->id)
+                ->where('tipo', 'salida_almacen')
+                ->where('estado', 'pendiente') // solo si sigue pendiente
+                ->delete();
+        });
+
+        return back()->with('success', "⏸ Salida {$salida->codigo} desactivada y movimiento eliminado");
     }
 
     public function cancelarLinea($salidaId, $lineaId)
@@ -709,7 +754,6 @@ class SalidaAlmacenController extends Controller
         ]);
     }
 
-
     public function productosPorMovimiento($movimientoId)
     {
         $movimiento = Movimiento::with('salidaAlmacen')->find($movimientoId);
@@ -835,8 +879,6 @@ class SalidaAlmacenController extends Controller
             ]
         ]);
     }
-
-
 
     public function eliminarProductoEscaneado(SalidaAlmacen $salida, $codigo)
     {
@@ -1040,7 +1082,6 @@ class SalidaAlmacenController extends Controller
             ], 500);
         }
     }
-
 
     public function update(Request $request, $id)
     {
