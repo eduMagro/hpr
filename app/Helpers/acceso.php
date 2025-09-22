@@ -4,52 +4,86 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\Seccion;
 
-// ✅ Rutas permitidas para operarios (pueden ser exactas o prefijos)
-if (!function_exists('rutasPermitidasOperario')) {
-    function rutasPermitidasOperario(): array
+/**
+ * 📌 Devuelve el prefijo base de una ruta Laravel (antes del primer punto).
+ * Ejemplo: 'usuarios.index' → 'usuarios.'
+ */
+if (!function_exists('obtenerPrefijoBaseDeRuta')) {
+    function obtenerPrefijoBaseDeRuta(string $nombreRutaActual): string
     {
-        return [
-            'produccion.trabajadores',
-            'users.',
-            'alertas.',
-            'productos.',
-            'pedidos.',
-            'ayuda.',
-            'maquinas.',
-            'entradas.',
-        ];
+        $prefijoBase = Str::before($nombreRutaActual, '.');
+        return $prefijoBase !== '' ? strtolower($prefijoBase) . '.' : '';
     }
 }
 
-// ✅ Función principal de validación de acceso
+/**
+ * 📌 Comprueba si el usuario autenticado tiene acceso a una ruta.
+ * - Usa la configuración en config/acceso.php
+ * - Deniega por defecto para roles no reconocidos
+ */
 if (!function_exists('usuarioTieneAcceso')) {
-    function usuarioTieneAcceso(string $ruta): bool
+    function usuarioTieneAcceso(?string $nombreRutaActual): bool
     {
-        $user = Auth::user();
-        if (!$user) return false;
-
-        // 🔒 Operario: solo acceso a rutas permitidas
-        if ($user->rol === 'operario') {
-            return collect(rutasPermitidasOperario())
-                ->contains(fn($permitida) => Str::startsWith($ruta, $permitida));
+        $usuarioAutenticado = Auth::user();
+        if (!$usuarioAutenticado || !$nombreRutaActual) {
+            return false;
         }
 
-        // 🧾 Oficina: validar con secciones asignadas a sus departamentos
-        if ($user->rol === 'oficina') {
-            $departamentosUsuario = $user->departamentos->pluck('id')->toArray();
+        $rolUsuario = strtolower((string) $usuarioAutenticado->rol);
 
-            $seccion = Seccion::where('ruta', $ruta)
-                ->with('departamentos')
+        // === Admin: acceso total
+        if (in_array($rolUsuario, ['admin', 'administrador'], true)) {
+            return true;
+        }
+
+        // === Operario: por prefijos configurados
+        if ($rolUsuario === 'operario') {
+            $prefijosPermitidosOperario = config('acceso.prefijos_operario', []);
+
+            return collect($prefijosPermitidosOperario)->contains(
+                fn(string $prefijoPermitido) =>
+                $nombreRutaActual === $prefijoPermitido
+                    || Str::startsWith($nombreRutaActual, $prefijoPermitido)
+            );
+        }
+
+        // === Transportista: por prefijos configurados
+        if ($rolUsuario === 'transportista') {
+            $prefijosPermitidosTransportista = config('acceso.prefijos_transportista', []);
+
+            return collect($prefijosPermitidosTransportista)->contains(
+                fn(string $prefijoPermitido) =>
+                $nombreRutaActual === $prefijoPermitido
+                    || Str::startsWith($nombreRutaActual, $prefijoPermitido)
+            );
+        }
+
+        // === Oficina: validación por departamentos ↔ secciones
+        if ($rolUsuario === 'oficina') {
+            $prefijoBaseRuta = obtenerPrefijoBaseDeRuta($nombreRutaActual);
+            if ($prefijoBaseRuta === '') {
+                return false;
+            }
+
+            $seccion = Seccion::with('departamentos')
+                ->whereRaw('LOWER(ruta) = ?', [strtolower($prefijoBaseRuta)])
                 ->first();
 
-            if (!$seccion) return false;
+            if (!$seccion) {
+                return false;
+            }
+
+            $departamentosUsuario = $usuarioAutenticado->departamentos()->pluck('id')->toArray();
+            if (empty($departamentosUsuario)) {
+                return false;
+            }
 
             $departamentosSeccion = $seccion->departamentos->pluck('id')->toArray();
 
             return count(array_intersect($departamentosUsuario, $departamentosSeccion)) > 0;
         }
 
-        // ✅ Otros roles (admin, etc.) tienen acceso total
-        return true;
+        // === Cualquier otro rol → denegar por defecto
+        return false;
     }
 }

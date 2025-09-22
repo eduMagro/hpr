@@ -5,184 +5,107 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Models\Seccion;
-use App\Models\Departamento;
 use App\Models\PermisoAcceso;
-use Illuminate\Support\Facades\Log;
 use App\Models\Empresa;
 
 class VerificarAccesoSeccion
 {
     public function handle(Request $request, Closure $next): mixed
     {
-        $user = Auth::user();
-        if (!$user) abort(403, 'No autenticado.');
+        $usuarioAutenticado = Auth::user();
+        if (!$usuarioAutenticado) {
+            abort(403, 'No autenticado.');
+        }
 
-        $email = strtolower(trim($user->email));
-        $emailsAccesoTotal = [
-            'eduardo.magro@pacoreyes.com',
-            'sebastian.duran@pacoreyes.com',
-            'juanjose.dorado@pacoreyes.com',
-            'josemanuel.amuedo@pacoreyes.com',
-            'jose.amuedo@pacoreyes.com', // ← Añade esta variante también por si acaso
-            'manuel.reyes@pacoreyes.com',
-            'alvarofaces@gruporeyestejero.com',
-            'pabloperez@gruporeyestejero.com',
+        $correoUsuario = strtolower(trim($usuarioAutenticado->email));
+        $nombreRutaActual = $request->route()?->getName() ?? '';
+        $empresaUsuarioId = $usuarioAutenticado->empresa_id;
+        $rolUsuario = strtolower((string) $usuarioAutenticado->rol);
 
-        ];
-
-        // ✅ Atajo: si tiene acceso total por email, permitir todo sin más
-        if (in_array($email, $emailsAccesoTotal)) {
-            // Log::debug('✅ Acceso total concedido por email', ['email' => $email, 'ruta' => $request->route()?->getName()]);
+        // === 1) Acceso total por correo (desde config/acceso.php) ===
+        $correosAccesoTotal = config('acceso.correos_acceso_total', []);
+        if (in_array($correoUsuario, $correosAccesoTotal, true)) {
             return $next($request);
         }
 
+        // === 2) Cachear IDs de empresas clave ===
+        $empresaReyesTejeroId = Cache::remember('empresa_id_reyes_tejero', 86400, function () {
+            return Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%reyes tejero%'])->value('id');
+        });
+        $empresaHPRId = Cache::remember('empresa_id_hpr', 86400, function () {
+            return Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hierros paco reyes%'])->value('id');
+        });
+        $empresaServiciosId = Cache::remember('empresa_id_hpr_servicios', 86400, function () {
+            return Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hpr servicios%'])->value('id');
+        });
 
-        // ============================
-        // 🔎 DATOS DEL USUARIO
-        // ============================
-        $rutaActual = $request->route()?->getName() ?? '';
-        $userEmpresaId = $user->empresa_id;
-        $esOperario = $user->rol === 'operario';
-        $esTransportista = $user->rol === 'transportista';
-        $esOficina  = $user->rol === 'oficina';
-
-
-        // 🏢 Empresas
-        $empresaReyesTejeroId = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%reyes tejero%'])->value('id');
-        $empresaHPRId         = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hierros paco reyes%'])->value('id');
-        $empresaServiciosId   = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hpr servicios%'])->value('id');
-
-        // ============================
-        // 🟢 EMPRESAS: HPR, HPR Servicios y G.E RT
-        // ============================
         $empresasConAccesoCompleto = [$empresaHPRId, $empresaServiciosId];
 
-        // 🔓 Rutas públicas para estas empresas
-        $rutasLibres = [
-            'politica.privacidad',
-            'politica.cookies',
-            'politicas.aceptar',
-            'ayuda.index',
-            'usuarios.show',
-            'usuarios.index',
-            'nominas.crearDescargarMes',
-            'turno.cambiarMaquina',
-            'salida.completarDesdeMovimiento',
-            'alertas.index',
-            'alertas.store',
-            'alertas.update',
-            'alertas.destroy',
-            'alertas.verMarcarLeidas',
-            'alertas.verSinLeer',
-        ];
-
+        // === 3) Rutas libres (desde config/acceso.php) ===
+        $rutasLibres = config('acceso.rutas_libres', []);
         if (
-            (in_array($userEmpresaId, $empresasConAccesoCompleto) && in_array($rutaActual, $rutasLibres)) ||
-            ($userEmpresaId === $empresaReyesTejeroId && in_array($rutaActual, $rutasLibres))
+            (in_array($empresaUsuarioId, $empresasConAccesoCompleto, true) && in_array($nombreRutaActual, $rutasLibres, true)) ||
+            ($empresaUsuarioId === $empresaReyesTejeroId && in_array($nombreRutaActual, $rutasLibres, true))
         ) {
             return $next($request);
         }
 
-
-        // ============================
-        // 🔧 OPERARIOS (HPR y Servicios)
-        // ============================
-        if ($esOperario) {
-            $rutasPermitidas = [
-                'maquinas.',
-                'etiquetas.',
-                'productos.',
-                'users.',
-                'alertas.',
-                'entradas.',
-                'pedidos.',
-                'movimientos.',
-                'maquinas.fabricarLote',
-                'maquinas.completarLote',
-                'vacaciones.solicitar',
-                'salidas-ferralla.',
-                'salidas-almacen.',
-                'usuarios.editarSubirImagen',
-                'usuarios.imagen',
-                'nominas.crearDescargarMes',
-            ];
-
-            $permitido = collect($rutasPermitidas)->contains(function ($ruta) use ($rutaActual) {
-                return Str::startsWith($rutaActual, $ruta) || $rutaActual === $ruta;
-            });
+        // === 4) Roles y permisos ===
+        if ($rolUsuario === 'operario') {
+            $prefijosOperario = config('acceso.prefijos_operario', []);
+            $permitido = collect($prefijosOperario)->contains(
+                fn($prefijo) => $nombreRutaActual === $prefijo || Str::startsWith($nombreRutaActual, $prefijo)
+            );
 
             if (!$permitido) {
                 Log::info('🚫 Ruta denegada para operario', [
-                    'user' => $user->email,
-                    'ruta' => $rutaActual,
+                    'usuario' => $usuarioAutenticado->email,
+                    'ruta' => $nombreRutaActual,
                 ]);
                 abort(403, 'Operario sin acceso.');
             }
-
-
-
             return $next($request);
         }
-        // ============================
-        // 🔧 Transportistas (HPR y Servicios)
-        // ============================
-        if ($esTransportista) {
-            $rutasPermitidas = [
-                'users.',
-                'alertas.',
-                'vacaciones.solicitar',
-                'planificacion.index',
-                'usuarios.editarSubirImagen',
-                'usuarios.imagen',
-                'nominas.crearDescargarMes',
-            ];
 
-            $permitido = collect($rutasPermitidas)->contains(function ($ruta) use ($rutaActual) {
-                return Str::startsWith($rutaActual, $ruta) || $rutaActual === $ruta;
-            });
+        if ($rolUsuario === 'transportista') {
+            $prefijosTransportista = config('acceso.prefijos_transportista', []);
+            $permitido = collect($prefijosTransportista)->contains(
+                fn($prefijo) => $nombreRutaActual === $prefijo || Str::startsWith($nombreRutaActual, $prefijo)
+            );
 
             if (!$permitido) {
-                Log::info('🚫 Ruta denegada para operario', [
-                    'user' => $user->email,
-                    'ruta' => $rutaActual,
+                Log::info('🚫 Ruta denegada para transportista', [
+                    'usuario' => $usuarioAutenticado->email,
+                    'ruta' => $nombreRutaActual,
                 ]);
-                abort(403, 'Operario sin acceso.');
+                abort(403, 'Transportista sin acceso.');
             }
-
-            // Log::debug('✅ Ruta permitida para operario', [
-            //     'user' => $user->email,
-            //     'ruta' => $rutaActual,
-            // ]);
-
             return $next($request);
         }
 
-        // ============================
-        // 🧩 OFICINA (HPR y Servicios)
-        // ============================
-        if ($esOficina && in_array($userEmpresaId, $empresasConAccesoCompleto)) {
-            $accion = Str::afterLast($rutaActual, '.');
-            $accion = strtolower($accion);
-
-            $seccionBase = Str::before($rutaActual, '.');
+        if ($rolUsuario === 'oficina' && in_array($empresaUsuarioId, $empresasConAccesoCompleto, true)) {
+            $accionRuta = strtolower(Str::afterLast($nombreRutaActual, '.'));
+            $seccionBase = Str::before($nombreRutaActual, '.');
 
             $seccion = Seccion::whereRaw('LOWER(ruta) LIKE ?', [strtolower($seccionBase) . '.%'])->first();
             if (!$seccion) {
-                Log::warning('❌ Ruta sin sección registrada', ['ruta' => $rutaActual]);
+                Log::warning('❌ Ruta sin sección registrada', ['ruta' => $nombreRutaActual]);
                 abort(403, 'Sección no registrada.');
             }
 
-            $permisos = PermisoAcceso::where('user_id', $user->id)
+            $permisos = PermisoAcceso::where('user_id', $usuarioAutenticado->id)
                 ->where('seccion_id', $seccion->id)
                 ->get();
 
             if ($permisos->isEmpty()) {
                 Log::debug('❌ Sin permisos para sección', [
-                    'user' => $user->email,
+                    'usuario' => $usuarioAutenticado->email,
                     'seccion' => $seccion->ruta,
-                    'ruta' => $rutaActual,
+                    'ruta' => $nombreRutaActual,
                 ]);
                 abort(403, 'No tienes permisos asignados para esta sección.');
             }
@@ -190,9 +113,9 @@ class VerificarAccesoSeccion
             $autorizado = false;
             foreach ($permisos as $permiso) {
                 if (
-                    (in_array($accion, ['index', 'show']) || Str::startsWith($accion, 'ver')) && $permiso->puede_ver
-                    || (in_array($accion, ['create', 'store']) || Str::startsWith($accion, 'crear')) && $permiso->puede_crear
-                    || (in_array($accion, ['edit', 'update', 'destroy']) || Str::startsWith($accion, 'editar')) && $permiso->puede_editar
+                    (in_array($accionRuta, ['index', 'show']) || Str::startsWith($accionRuta, 'ver')) && $permiso->puede_ver
+                    || (in_array($accionRuta, ['create', 'store']) || Str::startsWith($accionRuta, 'crear')) && $permiso->puede_crear
+                    || (in_array($accionRuta, ['edit', 'update', 'destroy']) || Str::startsWith($accionRuta, 'editar')) && $permiso->puede_editar
                 ) {
                     $autorizado = true;
                     break;
@@ -201,27 +124,24 @@ class VerificarAccesoSeccion
 
             if (!$autorizado) {
                 Log::warning('❌ Acción no autorizada', [
-                    'user' => $user->email,
-                    'ruta' => $rutaActual,
-                    'accion' => $accion,
-                    'seccion' => $seccionBase
+                    'usuario' => $usuarioAutenticado->email,
+                    'ruta' => $nombreRutaActual,
+                    'accion' => $accionRuta,
+                    'seccion' => $seccionBase,
                 ]);
                 abort(403, 'No tienes permisos suficientes para esta acción.');
             }
 
-            // Log::debug('✅ Acción autorizada por permisos', [
-            //     'user' => $user->email,
-            //     'ruta' => $rutaActual,
-            // ]);
-
             return $next($request);
         }
 
-        // // 🚨 Si llegó hasta aquí, denegamos por defecto
-        // Log::warning('🚫 Ruta denegada por defecto (sin coincidencias)', [
-        //     'user' => $user->email,
-        //     'ruta' => $rutaActual,
-        // ]);
+        // === 5) Denegación por defecto ===
+        Log::warning('🚫 Ruta denegada por configuración (sin coincidencias)', [
+            'usuario' => $usuarioAutenticado->email,
+            'empresa_id' => $empresaUsuarioId,
+            'ruta' => $nombreRutaActual,
+            'rol' => $rolUsuario,
+        ]);
         abort(403, 'Acceso denegado por configuración.');
     }
 }
