@@ -524,7 +524,6 @@ class ProductoController extends Controller
         return back()->with('success', '✅ Producto actualizado correctamente.');
     }
 
-
     private function marcarComoConsumido(Producto $producto)
     {
         $producto->peso_stock = 0;
