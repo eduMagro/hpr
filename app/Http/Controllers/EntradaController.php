@@ -43,6 +43,10 @@ class EntradaController extends Controller
         if ($request->filled('codigo_sage')) {
             $query->where('codigo_sage', 'like', '%' . $request->codigo_sage . '%');
         }
+        if ($request->filled('obra')) {
+            $texto = $request->obra;
+            $query->whereHas('nave', fn($q) => $q->where('obra', 'like', "%{$texto}%"));
+        }
 
         if ($request->filled('pedido_codigo')) {
             $codigo = $request->pedido_codigo;
@@ -64,6 +68,9 @@ class EntradaController extends Controller
         switch ($sort) {
             case 'pedido_producto_id':
             case 'albaran':
+            case 'nave_id':   // 👈 añadido
+                $query->orderBy($sort, $order);
+                break;
             case 'created_at':
                 $query->orderBy($sort, $order);
                 break;
@@ -104,6 +111,10 @@ class EntradaController extends Controller
         if ($request->filled('codigo_sage')) {
             $f[] = 'Código SAGE: <strong>' . $request->codigo_sage . '</strong>';
         }
+        if ($request->filled('obra')) {
+            $f[] = 'Nave: <strong>' . e($request->obra) . '</strong>';
+        }
+
         if ($request->filled('pedido_codigo')) {
             $f[] = 'Pedido compra: <strong>' . $request->pedido_codigo . '</strong>';
         }
@@ -168,6 +179,7 @@ class EntradaController extends Controller
             $ordenables = [
                 'pedido_producto_id' => $this->getOrdenamientoEntradas('pedido_producto_id', 'ID Línea Pedido'),
                 'albaran'            => $this->getOrdenamientoEntradas('albaran', 'Albarán'),
+                'nave_id'            => $this->getOrdenamientoEntradas('nave_id', 'Nave'),
                 'pedido_codigo'      => $this->getOrdenamientoEntradas('pedido_codigo', 'Pedido Compra'),
                 'usuario'            => $this->getOrdenamientoEntradas('usuario', 'Usuario'),
                 'created_at'         => $this->getOrdenamientoEntradas('created_at', 'Fecha'),

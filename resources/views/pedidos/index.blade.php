@@ -16,7 +16,7 @@
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['obra_id'] ?? 'Obra' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['obra_id'] ?? 'Lugar de entrega' !!}</th>
                             <th class="px-2 py-2 border">Producto</th>
                             <th class="p-2 border">Cantidad Pedida</th>
                             <th class="p-2 border">Cantidad Recepcionada</th>

@@ -10,7 +10,9 @@
                     <tr class="text-center text-xs uppercase">
                         <th class="p-2 border">{!! $ordenables['id'] ?? 'ID' !!}</th>
                         <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
+
                         <th class="p-2 border">{!! $ordenables['planilla'] ?? 'Planilla' !!}</th>
+                        <th class="p-2 border">{!! $ordenables['nave'] ?? 'Nave' !!}</th>
                         <th class="p-2 border">{!! $ordenables['ubicacion'] ?? 'Ubicación' !!}</th>
                         <th class="p-2 border">{!! $ordenables['elementos'] ?? 'Elementos' !!}</th>
                         <th class="p-2 border">{!! $ordenables['peso'] ?? 'Peso (Kg)' !!}</th>
@@ -26,6 +28,9 @@
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.input name="codigo" value="{{ request('codigo') }}" />
+                            </th>
+                            <th class="p-1 border">
+                                <x-tabla.input name="nave" value="{{ request('nave') }}" />
                             </th>
                             <th class="p-1 border">
                                 <x-tabla.input name="planilla" value="{{ request('planilla') }}" />
@@ -110,7 +115,12 @@
                                 </a>
                             </td>
                             <td class="p-2 text-center border">
-                                {{ $paquete->ubicacion->nombre ?? 'Sin ubicación' }}</td>
+
+                                {{ $paquete->nave->obra ?? '-' }}
+
+                            </td>
+                            <td class="p-2 text-center border">
+                                {{ $paquete->ubicacion->nombre ?? '-' }}</td>
                             <td class="p-2 text-center border">
                                 @if ($paquete->etiquetas->isNotEmpty())
                                     @foreach ($paquete->etiquetas as $etiqueta)

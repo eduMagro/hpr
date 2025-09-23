@@ -17,6 +17,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Termwind\Components\Dd;
+use Illuminate\Validation\ValidationException;
 
 class MovimientoController extends Controller
 {
@@ -520,15 +521,27 @@ class MovimientoController extends Controller
         $tipoMovimiento = $request->tipo;
 
         // ------------------ 1) Validación rápida  ------------------
-        $validated = $request->validate([
-            'codigo_general'    => 'required|string|max:50',
-            'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
-            'maquina_destino'   => 'nullable|exists:maquinas,id',
-        ], [
-            'codigo_general.required' => 'Debes escanear un código.',
-            'ubicacion_destino.exists' => 'Ubicación no válida.',
-            'maquina_destino.exists'   => 'Máquina no válida.',
-        ]);
+        try {
+            $validated = $request->validate([
+                'codigo_general'    => 'required|string|max:50',
+                'ubicacion_destino' => 'nullable|exists:ubicaciones,id',
+                'maquina_destino'   => 'nullable|exists:maquinas,id',
+            ], [
+                'codigo_general.required' => 'Debes escanear un código.',
+                'ubicacion_destino.exists' => 'Ubicación no válida.',
+                'maquina_destino.exists'   => 'Máquina no válida.',
+            ]);
+        } catch (ValidationException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Errores de validación',
+                    'errors'  => $e->errors(), // 👉 aquí tienes todos los mensajes
+                ], 422);
+            }
+
+            throw $e; // deja que Laravel maneje la redirección normal si no es JSON
+        }
 
         // ------------------ 2) Variables base  ------------------
         $codigo      = strtoupper($validated['codigo_general']);
@@ -636,6 +649,7 @@ class MovimientoController extends Controller
                         // Cambiar estado del producto actual
                         $producto->update([
                             'ubicacion_id' => null,
+                            'obra_id'      => $naveId,
                             'maquina_id'   => $maquinaDetectada->id,
                             'estado'       => 'fabricando',
                         ]);
@@ -673,6 +687,7 @@ class MovimientoController extends Controller
 
                         $producto->update([
                             'ubicacion_id' => $ubicacion->id,
+                            'obra_id'      => $naveId,
                             'maquina_id'   => null,
                             'estado'       => 'almacenado',
                         ]);
@@ -722,6 +737,7 @@ class MovimientoController extends Controller
                     // 📦 Actualizar ubicación y máquina del paquete
                     $paquete->update([
                         'ubicacion_id' => $ubicacion->id,
+                        'obra_id'      => $naveId,
                         'maquina_id'   => $maquinaDetectada?->id,
                     ]);
                 }

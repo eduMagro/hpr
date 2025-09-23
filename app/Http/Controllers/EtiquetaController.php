@@ -468,11 +468,15 @@ class EtiquetaController extends Controller
         // Delegación a servicios (nuevo flujo)
         try {
 
-            $request->validate([
-                'longitudSeleccionada' => ['required', 'integer', 'min:1'],
-            ]);
-            log::info('actualizar etiqueta {$id} en máquina {$maquina_id} con longitud seleccionada ' . $request->input('longitudSeleccionada') . '');
             $maquina = Maquina::findOrFail($maquina_id);
+
+            $rules = [];
+
+            if ($maquina->tipo_material === 'barra') {
+                $rules['longitudSeleccionada'] = ['required', 'integer', 'min:1'];
+            }
+
+            $request->validate($rules);
 
             $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
                 etiquetaSubId: $id,

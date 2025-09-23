@@ -11,6 +11,8 @@
                         <th class="px-3 py-2 border">{!! $ordenables['pedido_producto_id'] ?? 'Línea de pedido' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['albaran'] ?? 'Albarán' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['codigo_sage'] ?? 'Código SAGE' !!}</th>
+                        <th class="px-3 py-2 border">{!! $ordenables['nave_id'] ?? 'Nave' !!}</th>
+
                         <th class="px-3 py-2 border">{!! $ordenables['pedido_codigo'] ?? 'Pedido Compra' !!}</th>
                         <th class="px-3 py-2 border">{!! $ordenables['created_at'] ?? 'Fecha' !!}</th>
                         <th class="px-3 py-2 border">Nº Productos</th>
@@ -35,6 +37,11 @@
                             <th class="border p-1">
                                 <x-tabla.input name="codigo_sage" :value="request('codigo_sage')" class="text-xs w-full" />
                             </th>
+                            <th class="border p-1">
+                                <x-tabla.input name="obra" :value="request('obra')" class="text-xs w-full"
+                                    placeholder="Nave" />
+                            </th>
+
 
                             <th class="border p-1">
                                 <x-tabla.input name="pedido_codigo" :value="request('pedido_codigo')" class="text-xs w-full" />
@@ -97,6 +104,10 @@
                                 </template>
                                 <input x-show="editando" type="text" x-model="fila.codigo_sage"
                                     class="w-full border rounded px-2 py-1 text-xs" maxlength="50">
+                            </td>
+                            <!-- Nave -->
+                            <td class="px-3 py-2">
+                                {{ $entrada->nave->obra ?? 'N/A' }}
                             </td>
 
                             <!-- Pedido Compra (no editable) -->
@@ -183,8 +194,9 @@
                                                 class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded hover:bg-yellow-200 flex items-center justify-center"
                                                 title="Editar">
                                                 <!-- ícono lápiz -->
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                                                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4"
+                                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                    stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round"
                                                         d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                                                 </svg>

@@ -13,7 +13,9 @@ class Paquete extends Model
 
     protected $fillable = [
         'codigo',
+        'nave_id',
         'planilla_id',
+        'ubicacion_id',
         'peso'
     ];
 
@@ -121,5 +123,10 @@ class Paquete extends Model
         }
 
         return $max; // en cm
+    }
+
+    public function nave()
+    {
+        return $this->belongsTo(Obra::class, 'nave_id');
     }
 }

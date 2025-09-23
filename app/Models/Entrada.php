@@ -16,6 +16,7 @@ class Entrada extends Model
     protected $fillable = [
         'albaran',
         'codigo_sage',
+        'nave_id',
         'pedido_id',
         'pedido_producto_id',
         'peso_total',
@@ -66,5 +67,9 @@ class Entrada extends Model
     public function pedidoProducto()
     {
         return $this->belongsTo(PedidoProducto::class, 'pedido_producto_id');
+    }
+    public function nave()
+    {
+        return $this->belongsTo(Obra::class, 'nave_id');
     }
 }

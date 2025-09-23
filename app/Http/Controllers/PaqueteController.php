@@ -33,6 +33,13 @@ class PaqueteController extends Controller
                 $q->where('codigo', 'like', "%{$input}%");
             });
         }
+        /* ── Nave (obra) ───────────────────────────── */
+        if ($request->filled('nave')) {
+            $texto = $request->nave;
+            $query->whereHas('nave', function ($q) use ($texto) {
+                $q->where('obra', 'like', '%' . $texto . '%');
+            });
+        }
 
         /* ── Ubicación ─────────────────────────────────── */
         if ($request->filled('ubicacion')) {
@@ -89,6 +96,7 @@ class PaqueteController extends Controller
             'peso',
             'created_at',
             'fecha_limite_reparto',
+            'nave', // 👈 añadimos para ordenar por obra
         ];
 
         $sort  = $request->input('sort', 'created_at');
@@ -106,8 +114,17 @@ class PaqueteController extends Controller
                 ->select('paquetes.*');
         }
 
+        // Caso especial: obra (en obras)
+        if ($sort === 'nave') {
+            return $query
+                ->leftJoin('obras', 'paquetes.nave_id', '=', 'obras.id')
+                ->orderBy('obras.obra', $order)
+                ->select('paquetes.*');
+        }
+
         return $query->orderBy($sort, $order);
     }
+
     private function filtrosActivos(Request $request): array
     {
         $filtros = [];
@@ -118,6 +135,9 @@ class PaqueteController extends Controller
 
         if ($request->filled('planilla')) {
             $filtros[] = 'Planilla: <strong>' . e($request->planilla) . '</strong>';
+        }
+        if ($request->filled('nave')) {
+            $filtros[] = 'Nave: <strong>' . e($request->nave) . '</strong>';
         }
 
         if ($request->filled('ubicacion')) {
@@ -207,7 +227,9 @@ class PaqueteController extends Controller
             'peso'                 => $this->getOrdenamiento('peso', 'Peso (Kg)'),
             'created_at'           => $this->getOrdenamiento('created_at', 'Fecha Creación'),
             'fecha_limite_reparto' => $this->getOrdenamiento('fecha_limite_reparto', 'Fecha Límite Reparto'),
+            'nave'                 => $this->getOrdenamiento('nave', 'Nave'), // 👈 nuevo
         ];
+
 
         return view('paquetes.index', [
             'paquetes'                => $paquetesPage,
@@ -315,7 +337,7 @@ class PaqueteController extends Controller
 
             // 8) Crear paquete NUEVO
             $codigo  = Paquete::generarCodigo();
-            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal, $codigo);
+            $paquete = $this->crearPaquete($planilla->id, $ubicacion->id, $pesoTotal, $codigo, $maquina->obra_id);
 
             // 9) Reasignar etiquetas al NUEVO paquete
             $this->asignarEtiquetasAPaquete($etiquetasSubIds, $paquete->id);
@@ -462,7 +484,7 @@ class PaqueteController extends Controller
         return !empty($warnings) ? $warnings : null;
     }
 
-    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $codigo)
+    private function crearPaquete($planillaId, $ubicacionId, $pesoTotal, $codigo, $obraId)
     {
         try {
             return Paquete::create([
@@ -470,6 +492,7 @@ class PaqueteController extends Controller
                 'ubicacion_id'  => $ubicacionId,
                 'peso'          => $pesoTotal ?? 0,
                 'codigo'        => $codigo,
+                'nave_id'     => $obraId,
             ]);
         } catch (Exception $e) {
             Log::error('Error al crear paquete: ' . $e->getMessage());

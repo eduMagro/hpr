@@ -86,4 +86,13 @@ class Obra extends Model
     {
         return self::deClienteYObra($clienteNombre, $obraNombre)->first();
     }
+
+    public function paquetes()
+    {
+        return $this->hasMany(Paquete::class, 'nave_id');
+    }
+    public function entradas()
+    {
+        return $this->hasMany(Entrada::class, 'nave_id');
+    }
 }

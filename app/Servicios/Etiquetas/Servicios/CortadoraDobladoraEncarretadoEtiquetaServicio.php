@@ -83,43 +83,22 @@ class CortadoraDobladoraEncarretadoEtiquetaServicio extends ServicioEtiquetaBase
                     //      no ha elegido ninguna, paramos y pedimos que seleccione.
                     //    - Si eligió longitud, filtramos por esa longitud.
                     // ─────────────────────────────────────────────────────────────────────
-                    if ($maquina->tipo_material === 'barra') {
-                        // Cargamos una primera muestra para explorar longitudes existentes
-                        $productosPrevios = $productosQuery->get();
 
-                        // Obtenemos las longitudes disponibles en producto_base (únicas)
-                        $longitudes = $productosPrevios->pluck('productoBase.longitud')->unique();
+                    // Si no trabajamos con barras, ejecutamos tal cual
+                    $productos = $productosQuery->orderBy('peso_stock')->get();
 
-                        // Si hay varias longitudes y no nos han dicho cuál usar, paramos
-                        if ($longitudes->count() > 1 && !$longitudSeleccionada) {
-                            return response()->json([
-                                'success' => false,
-                                'error'   => "Hay varias longitudes disponibles para barras (" . $longitudes->implode(', ') . " m). Selecciona una longitud para continuar.",
-                            ], 400);
-                        }
-
-                        // Si sí nos han indicado una longitud, la aplicamos al filtrado
-                        if ($longitudSeleccionada) {
-                            $productosQuery->whereHas('productoBase', function ($query) use ($longitudSeleccionada) {
-                                $query->where('longitud', $longitudSeleccionada);
-                            });
-                        }
-
-                        // Re-ejecutamos la query con los filtros definitivos
-                        $productos = $productosQuery->orderBy('peso_stock')->get();
-                    } else {
-                        // Si no trabajamos con barras, ejecutamos tal cual
-                        $productos = $productosQuery->orderBy('peso_stock')->get();
-                    }
 
                     // ─────────────────────────────────────────────────────────────────────
                     // 4) SI TRAS FILTRAR NO QUEDA NADA, NO PODEMOS FABRICAR
                     // ─────────────────────────────────────────────────────────────────────
                     if ($productos->isEmpty()) {
-                        return response()->json([
-                            'success' => false,
-                            'error'   => 'No se encontraron productos en la máquina con los diámetros especificados y la longitud indicada.',
-                        ], 400);
+                        throw new ServicioEtiquetaException(
+                            'No se encontraron productos en la máquina con los diámetros especificados y la longitud indicada.',
+                            [
+                                'etiqueta_sub_id' => $datos->etiquetaSubId,
+                                'maquina_id'      => $maquina->id,
+                            ]
+                        );
                     }
 
                     // ─────────────────────────────────────────────────────────────────────

@@ -85,8 +85,37 @@
                                 "Accept": "application/json"
                             }
                         })
-                        .then(response => response.json())
-                        .then(data => {
+                        .then(async res => {
+                            const data = await res.json();
+
+                            if (!res.ok) {
+                                // ⚠️ Errores de validación
+                                if (data.errors) {
+                                    let mensajes = Object.values(data.errors)
+                                        .flat()
+                                        .map(m => `<li>${m}</li>`)
+                                        .join("");
+
+                                    Swal.fire({
+                                        icon: "error",
+                                        title: "Errores de validación",
+                                        html: `<ul style="text-align:left">${mensajes}</ul>`,
+                                        confirmButtonText: "Aceptar"
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        icon: "error",
+                                        title: "Error",
+                                        text: data.message ||
+                                            "Ocurrió un error inesperado.",
+                                        confirmButtonText: "Aceptar"
+                                    });
+                                }
+                                submitBtn.disabled = false;
+                                return; // 👈 no sigas al bloque de éxito
+                            }
+
+                            // ✅ Éxito
                             if (data.success) {
                                 Swal.fire({
                                     title: "¡Éxito!",
@@ -94,28 +123,14 @@
                                     icon: "success",
                                     confirmButtonText: "Aceptar"
                                 }).then(() => {
-                                    window.location.href = "{{ route('movimientos.index') }}";
-                                });
-                            } else if (data.errors) {
-                                let errorMessages = Object.values(data.errors).flat().join("\n");
-                                Swal.fire({
-                                    icon: "error",
-                                    title: "Errores de validación",
-                                    text: errorMessages,
-                                    confirmButtonText: "Aceptar"
-                                });
-                            } else if (data.error) {
-                                Swal.fire({
-                                    icon: "error",
-                                    title: "Error",
-                                    text: data.error,
-                                    confirmButtonText: "Aceptar"
+                                    window.location.href =
+                                        "{{ route('movimientos.index') }}";
                                 });
                             }
                             submitBtn.disabled = false;
                         })
                         .catch(error => {
-                            console.error("Error:", error);
+                            console.error("Error en fetch:", error);
                             Swal.fire({
                                 icon: "error",
                                 title: "Error",
@@ -124,6 +139,7 @@
                             });
                             submitBtn.disabled = false;
                         });
+
                 });
             }
         });
