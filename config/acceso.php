@@ -13,6 +13,7 @@ return [
         'maquinas.',
         'entradas.',
         'movimientos.',
+        'ubicaciones.',
     ],
 
     // 📌 Prefijos permitidos para TRANSPORTISTAS
