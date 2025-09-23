@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\Seccion;
+use App\Models\Departamento;
 
 /**
  * 📌 Devuelve el prefijo base de una ruta Laravel (antes del primer punto).

@@ -5,160 +5,132 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Seccion;
 use App\Models\Empresa;
+use App\Models\PermisoAcceso;
+use Illuminate\Support\Facades\Log;
 
 class PageController extends Controller
 {
-    /**
-     * Handle the root route.
-     *
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function index()
     {
-
-
         $user = auth()->user();
         $email = strtolower(trim($user->email));
-        $emailsAccesoTotal = [
-            'eduardo.magro@pacoreyes.com',
-            'sebastian.duran@pacoreyes.com',
-            'juanjose.dorado@pacoreyes.com',
-            'josemanuel.amuedo@pacoreyes.com',
-            'manuel.reyes@pacoreyes.com',
-            'alvarofaces@gruporeyestejero.com',
-            'pabloperez@gruporeyestejero.com',
 
-        ];
         $esOperario = $user->rol === 'operario';
         $esTransportista = $user->rol === 'transportista';
-        $esOficina  = $user->rol === 'oficina';
+        $esOficina = $user->rol === 'oficina';
+
+        // 📌 Correos con acceso total (ven todas las secciones visibles)
+        $emailsAccesoTotal = config('acceso.correos_acceso_total', []);
 
         // 🏢 Empresas
         $empresaReyesTejeroId = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%reyes tejero%'])->value('id');
         $empresaHPRId         = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hierros paco reyes%'])->value('id');
         $empresaServiciosId   = Empresa::whereRaw("LOWER(nombre) LIKE ?", ['%hpr servicios%'])->value('id');
-
         $empresaId = $user->empresa_id;
 
-        // 📌 Departamentos del usuario
-        $departamentosUsuario = $esOficina ? $user->departamentos->pluck('id')->toArray() : [];
-
-        // 📌 Ítems permitidos para operarios
-        $permitidosOperario = [
-            'maquinas.index',
-            'productos.index',
-            'pedidos.index',
-            'users.index',
-            'alertas.index',
-            'entradas.index',
-            'ayuda.index',
-        ];
-        $permitidosTransportista = [
-            'users.index',
-            'planificacion.index',
-            'alertas.index',
-            'ayuda.index',
-        ];
-
-        // 📌 Cargar todas las secciones visibles
+        // 📌 Secciones visibles
         $secciones = Seccion::with('departamentos')
             ->where('mostrar_en_dashboard', true)
             ->get();
-        // ✅ Acceso total → ver todas las secciones visibles
+
+        // ✅ Caso 1: Acceso total → todas las secciones visibles
         if (in_array($email, $emailsAccesoTotal)) {
-            $items = $secciones->map(fn($s) => [
-                'route' => $s->ruta,
-                'label' => $s->nombre,
-                'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
-                'departamentos' => $s->departamentos->pluck('id')->toArray(),
-            ]);
-
-            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina', 'departamentosUsuario', 'permitidosOperario', 'permitidosTransportista'));
+            $items = $this->mapSecciones($secciones);
+            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
 
-        // 🟣 Caso 1: G.E Reyes Tejero + Oficina → solo ayuda y mensajes
+        // 🟣 Caso 2: Reyes Tejero + Oficina → solo ayuda y alertas
         if ($empresaId === $empresaReyesTejeroId && $esOficina) {
-            $items = $secciones->filter(
-                fn($s) =>
-                in_array($s->ruta, ['ayuda.index', 'alertas.index'])
-            )->map(fn($s) => [
-                'route' => $s->ruta,
-                'label' => $s->nombre,
-                'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
-                'departamentos' => $s->departamentos->pluck('id')->toArray(),
-            ]);
-
-            return view('dashboard', compact('items', 'esOperario', 'esOficina', 'departamentosUsuario', 'permitidosOperario'));
+            $items = $this->mapSecciones(
+                $secciones->whereIn('ruta', ['ayuda.index', 'alertas.index'])
+            );
+            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
-        // 🟣 Caso 2: G.E Reyes Tejero + Oficina → solo ayuda y mensajes
+
+        // 🟣 Caso 3: Reyes Tejero + Operario → solo ayuda y alertas
         if ($empresaId === $empresaReyesTejeroId && $esOperario) {
-            $items = $secciones->filter(
-                fn($s) =>
-                in_array($s->ruta, ['ayuda.index', 'alertas.index'])
-            )->map(fn($s) => [
-                'route' => $s->ruta,
-                'label' => $s->nombre,
-                'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
-                'departamentos' => $s->departamentos->pluck('id')->toArray(),
-            ]);
-
-            return view('dashboard', compact('items', 'esOperario', 'esOficina', 'departamentosUsuario', 'permitidosOperario'));
+            $items = $this->mapSecciones(
+                $secciones->whereIn('ruta', ['ayuda.index', 'alertas.index'])
+            );
+            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
 
-        // 🟢 Caso 3: HPR / HPR Servicios + Oficina → según permisos reales
+        // 🟢 Caso 4: HPR / HPR Servicios + Oficina → permisos de usuario y departamentos
         if (in_array($empresaId, [$empresaHPRId, $empresaServiciosId]) && $esOficina) {
-            $items = $secciones->filter(
-                fn($s) =>
-                usuarioTieneAcceso($s->ruta)
-            )->map(fn($s) => [
-                'route' => $s->ruta,
-                'label' => $s->nombre,
-                'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
-                'departamentos' => $s->departamentos->pluck('id')->toArray(),
-            ]);
-
-            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina', 'departamentosUsuario', 'permitidosOperario', 'permitidosTransportista'));
+            $items = $this->mapSecciones(
+                $secciones->filter(fn($s) => $this->usuarioTieneAcceso($user, $s->id, $s->ruta))
+            );
+            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
 
-        // 🔧 Caso 4: HPR / HPR Servicios + Operario → ítems permitidos operario
+        // 🔧 Caso 5: HPR / HPR Servicios + Operario → prefijos/permitidos operario
         if (in_array($empresaId, [$empresaHPRId, $empresaServiciosId]) && $esOperario) {
-            $items = $secciones->filter(
-                fn($s) =>
-                in_array($s->ruta, $permitidosOperario)
-            )->map(fn($s) => [
-                'route' => $s->ruta,
-                'label' => $s->nombre,
-                'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
-                'departamentos' => $s->departamentos->pluck('id')->toArray(),
-            ]);
-
-            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina', 'departamentosUsuario', 'permitidosOperario', 'permitidosTransportista'));
+            $prefijosOperario = config('acceso.prefijos_operario', []);
+            $items = $this->mapSecciones(
+                $secciones->filter(
+                    fn($s) =>
+                    in_array($s->ruta, $prefijosOperario, true)
+                )
+            );
+            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
 
-        // 🚛 Caso 5: HPR / HPR Servicios + Transportista → ítems permitidos transportista
+        // 🚛 Caso 6: HPR / HPR Servicios + Transportista → prefijos transportista
         if (in_array($empresaId, [$empresaHPRId, $empresaServiciosId]) && $esTransportista) {
-            $items = $secciones->filter(
-                fn($s) =>
-                in_array($s->ruta, $permitidosTransportista)
-            )->map(fn($s) => [
-                'route' => $s->ruta,
-                'label' => $s->nombre,
-                'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
-                'departamentos' => $s->departamentos->pluck('id')->toArray(),
-            ]);
-
-            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina', 'departamentosUsuario', 'permitidosOperario', 'permitidosTransportista'));
+            $prefijosTransportista = config('acceso.prefijos_transportista', []);
+            $items = $this->mapSecciones(
+                $secciones->filter(
+                    fn($s) =>
+                    in_array($s->ruta, $prefijosTransportista, true)
+                )
+            );
+            return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
-        \Log::debug('🧪 DEBUG DASHBOARD', [
+
+        Log::warning('❌ Usuario sin acceso al dashboard', [
             'user' => $user->email,
             'empresa_id' => $empresaId,
-            'empresa_reyes_tejero_id' => $empresaReyesTejeroId,
-            'empresa_hpr_id' => $empresaHPRId,
-            'empresa_servicios_id' => $empresaServiciosId,
             'rol' => $user->rol,
         ]);
 
-        // ❌ Cualquier otro caso (no autorizado)
         abort(403, 'No tienes acceso. Contacta con administración');
+    }
+
+    /**
+     * Mapear secciones a formato de item
+     */
+    private function mapSecciones($secciones)
+    {
+        return $secciones->map(fn($s) => [
+            'route' => $s->ruta,
+            'label' => $s->nombre,
+            'icon' => asset($s->icono ?? 'imagenes/iconos/default.png'),
+            'departamentos' => $s->departamentos->pluck('id')->toArray(),
+        ]);
+    }
+
+    /**
+     * Determina si un usuario tiene acceso a una sección
+     * considerando permisos directos y de departamentos
+     */
+    private function usuarioTieneAcceso($user, $seccionId, $ruta)
+    {
+        // Permisos directos
+        $tienePermisoDirecto = PermisoAcceso::where('user_id', $user->id)
+            ->where('seccion_id', $seccionId)
+            ->exists();
+
+        if ($tienePermisoDirecto) {
+            return true;
+        }
+
+        // Permisos heredados de departamentos
+        $departamentosUsuario = $user->departamentos->pluck('id')->toArray();
+        $tienePermisoPorDept = \DB::table('departamento_seccion')
+            ->whereIn('departamento_id', $departamentosUsuario)
+            ->where('seccion_id', $seccionId)
+            ->exists();
+
+        return $tienePermisoPorDept;
     }
 }
