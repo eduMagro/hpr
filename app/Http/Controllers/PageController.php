@@ -68,10 +68,12 @@ class PageController extends Controller
             $prefijosOperario = config('acceso.prefijos_operario', []);
             $items = $this->mapSecciones(
                 $secciones->filter(
-                    fn($s) =>
-                    in_array($s->ruta, $prefijosOperario, true)
+                    fn($s) => collect($prefijosOperario)->contains(
+                        fn($prefijo) => $s->ruta === $prefijo || str_starts_with($s->ruta, $prefijo)
+                    )
                 )
             );
+
             return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
 
