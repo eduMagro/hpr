@@ -34,6 +34,20 @@ class MovimientoController extends Controller
         if ($request->filled('tipo')) {
             $query->where('tipo', 'like', '%' . $request->tipo . '%');
         }
+        // Producto Base: filtrar por tipo, diámetro o longitud
+        if ($request->filled('producto_tipo') || $request->filled('producto_diametro') || $request->filled('producto_longitud')) {
+            $query->whereHas('productoBase', function ($q) use ($request) {
+                if ($request->filled('producto_tipo')) {
+                    $q->where('tipo', 'like', '%' . $request->producto_tipo . '%');
+                }
+                if ($request->filled('producto_diametro')) {
+                    $q->where('diametro', 'like', '%' . $request->producto_diametro . '%');
+                }
+                if ($request->filled('producto_longitud')) {
+                    $q->where('longitud', 'like', '%' . $request->producto_longitud . '%');
+                }
+            });
+        }
 
         // Descripción
         if ($request->filled('descripcion')) {
@@ -144,6 +158,15 @@ class MovimientoController extends Controller
 
         if ($request->filled('tipo')) {
             $filtros[] = 'Tipo: <strong>' . ucfirst($request->tipo) . '</strong>';
+        }
+        if ($request->filled('producto_tipo')) {
+            $filtros[] = 'Tipo: <strong>' . $request->producto_tipo . '</strong>';
+        }
+        if ($request->filled('producto_diametro')) {
+            $filtros[] = 'Ø: <strong>' . $request->producto_diametro . '</strong>';
+        }
+        if ($request->filled('producto_longitud')) {
+            $filtros[] = 'Longitud: <strong>' . $request->producto_longitud . '</strong>';
         }
 
         if ($request->filled('descripcion')) {
