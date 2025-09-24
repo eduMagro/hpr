@@ -35,6 +35,8 @@ return [
         'ayuda.index',
         'usuarios.show',
         'usuarios.index',
+        'usuarios.imagen',
+        'usuarios.editarSubirImagen',
         'nominas.crearDescargarMes',
         'turno.cambiarMaquina',
         'salida.completarDesdeMovimiento',
