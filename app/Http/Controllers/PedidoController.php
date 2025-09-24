@@ -559,27 +559,27 @@ class PedidoController extends Controller
                 $entradaRecienCreada = true;
             }
 
-            // 🔔 alertas si se creó ahora (como ya tenías)
-            if ($entradaRecienCreada) {
-                $alertaService = app(AlertaService::class);
-                $emisorId = auth()->id();
+            // // 🔔 alertas si se creó ahora (como ya tenías)
+            // if ($entradaRecienCreada) {
+            //     $alertaService = app(AlertaService::class);
+            //     $emisorId = auth()->id();
 
-                $fabricante = $entrada->pedido->fabricante->nombre ?? 'Desconocido';
-                $pedidoCodigo = $entrada->pedido->codigo ?? $entrada->pedido->id ?? '—';
+            //     $fabricante = $entrada->pedido->fabricante->nombre ?? 'Desconocido';
+            //     $pedidoCodigo = $entrada->pedido->codigo ?? $entrada->pedido->id ?? '—';
 
-                $usuariosAdmin = User::whereHas('departamentos', function ($q) {
-                    $q->where('nombre', 'Administración');
-                })->get();
+            //     $usuariosAdmin = User::whereHas('departamentos', function ($q) {
+            //         $q->where('nombre', 'Administración');
+            //     })->get();
 
-                foreach ($usuariosAdmin as $usuario) {
-                    $alertaService->crearAlerta(
-                        emisorId: $emisorId,
-                        destinatarioId: $usuario->id,
-                        mensaje: "Camión de ($fabricante) recibido. Pedido $pedidoCodigo. Línea de pedido ({$pedidoProducto->id})",
-                        tipo: 'Entrada material',
-                    );
-                }
-            }
+            //     foreach ($usuariosAdmin as $usuario) {
+            //         $alertaService->crearAlerta(
+            //             emisorId: $emisorId,
+            //             destinatarioId: $usuario->id,
+            //             mensaje: "Camión de ($fabricante) recibido. Pedido $pedidoCodigo. Línea de pedido ({$pedidoProducto->id})",
+            //             tipo: 'Entrada material',
+            //         );
+            //     }
+            // }
 
             // Fabricante final como ya tenías
             $fabricanteFinal = $pedido->fabricante_id ?? $request->fabricante_id;
@@ -807,6 +807,7 @@ class PedidoController extends Controller
                 'prioridad'          => 2,
                 'nave_id'          => $pedido->obra_id,
             ]);
+            log::info('Movimiento creado para activar línea de pedido: ' . $lineaId);
 
             DB::commit();
             return redirect()->back()->with('success');
