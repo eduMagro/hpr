@@ -2,7 +2,7 @@
 
 return [
 
-    // 📌 Prefijos permitidos para OPERARIOS
+    // 📌 Prefijos que los operarios pueden usar en rutas (middleware)
     'prefijos_operario' => [
         'produccion.trabajadores',
         'users.',
@@ -11,10 +11,24 @@ return [
         'pedidos.',
         'ayuda.',
         'maquinas.',
-        'entradas.',
-        'movimientos.',
+        'entradas.',   // ✅ acceso permitido
+        'movimientos.', // ✅ acceso permitido
         'ubicaciones.',
     ],
+
+    // 📌 Prefijos que deben salir en el dashboard para operarios
+    'prefijos_operario_dashboard' => [
+        'produccion.trabajadores',
+        'users.',
+        'alertas.',
+        'productos.',
+        'pedidos.',
+        'ayuda.',
+        'maquinas.',
+        'ubicaciones.',
+        // 👀 aquí NO ponemos movimientos ni entradas
+    ],
+
 
     // 📌 Prefijos permitidos para TRANSPORTISTAS
     'prefijos_transportista' => [

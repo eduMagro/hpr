@@ -63,12 +63,12 @@ class PageController extends Controller
             return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
 
-        // 🔧 Caso 5: HPR / HPR Servicios + Operario → prefijos/permitidos operario
+        // 🔧 Caso 5: HPR / HPR Servicios + Operario → visibilidad en dashboard
         if (in_array($empresaId, [$empresaHPRId, $empresaServiciosId]) && $esOperario) {
-            $prefijosOperario = config('acceso.prefijos_operario', []);
+            $prefijosOperarioDashboard = config('acceso.prefijos_operario_dashboard', []);
             $items = $this->mapSecciones(
                 $secciones->filter(
-                    fn($s) => collect($prefijosOperario)->contains(
+                    fn($s) => collect($prefijosOperarioDashboard)->contains(
                         fn($prefijo) => $s->ruta === $prefijo || str_starts_with($s->ruta, $prefijo)
                     )
                 )
@@ -76,6 +76,7 @@ class PageController extends Controller
 
             return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
+
 
         // 🚛 Caso 6: HPR / HPR Servicios + Transportista → prefijos transportista
         if (in_array($empresaId, [$empresaHPRId, $empresaServiciosId]) && $esTransportista) {
