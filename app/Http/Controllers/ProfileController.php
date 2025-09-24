@@ -68,6 +68,9 @@ class ProfileController extends Controller
         if ($request->filled('movil_empresa')) {
             $filtros[] = 'Móvil Empresa: <strong>' . $request->movil_empresa . '</strong>';
         }
+        if ($request->filled('numero_corto')) {
+            $filtros[] = 'Nº Corporativo: <strong>' . $request->numero_corto . '</strong>';
+        }
 
         if ($request->filled('dni')) {
             $filtros[] = 'DNI: <strong>' . $request->dni . '</strong>';
@@ -182,6 +185,10 @@ class ProfileController extends Controller
         if ($request->filled('movil_empresa')) {
             $query->where('users.movil_empresa', 'like', '%' . $request->input('movil_empresa') . '%');
         }
+
+        if ($request->filled('numero_corto')) {
+            $query->where('users.numero_corto', 'like', '%' . $request->input('numero_corto') . '%');
+        }
         if ($request->filled('dni')) {
             $query->where('users.dni', 'like', '%' . $request->input('dni') . '%');
         }
@@ -250,6 +257,7 @@ class ProfileController extends Controller
             'id' => $this->getOrdenamiento('id', 'ID'),
             'nombre_completo' => $this->getOrdenamiento('nombre_completo', 'Nombre'),
             'email' => $this->getOrdenamiento('email', 'Email'),
+            'numero_corto' => $this->getOrdenamiento('numero_corto', 'Nº Corporativo'),
             'dni' => $this->getOrdenamiento('dni', 'DNI'),
             'empresa' => $this->getOrdenamiento('empresa', 'Empresa'),
             'rol' => $this->getOrdenamiento('rol', 'Rol'),
@@ -682,18 +690,23 @@ class ProfileController extends Controller
 
         return back()->with('success', 'Foto de perfil actualizada correctamente.');
     }
+
     public function actualizarUsuario(Request $request, $id)
     {
-
         try {
-            // Validar los datos con mensajes personalizados
+            // ✅ Validar los datos con mensajes personalizados
             $request->validate([
-                'name' => 'required|string|max:50',
-                'primer_apellido' => 'nullable|string|max:100',
+                'name'             => 'required|string|max:50',
+                'primer_apellido'  => 'nullable|string|max:100',
                 'segundo_apellido' => 'nullable|string|max:100',
-                'email' => 'required|email|max:255|unique:users,email,' . $id,
-                'movil_personal' => 'nullable|string|max:255',
-                'movil_empresa' => 'nullable|string|max:255',
+                'email'            => 'required|email|max:255|unique:users,email,' . $id,
+                'movil_personal'   => 'nullable|string|max:255',
+                'movil_empresa'    => 'nullable|string|max:255',
+                'numero_corto'     => [
+                    'nullable',
+                    'digits:4', // exactamente 4 dígitos
+                    'unique:users,numero_corto,' . $id,
+                ],
                 'dni' => [
                     'nullable',
                     'string',
@@ -701,93 +714,74 @@ class ProfileController extends Controller
                     'regex:/^([0-9]{8}[A-Z]|[XYZ][0-9]{7}[A-Z])$/',
                     'unique:users,dni,' . $id,
                 ],
-                'empresa_id' => 'nullable|exists:empresas,id',
-                'rol' => 'required|string|max:50',
+                'empresa_id'   => 'nullable|exists:empresas,id',
+                'rol'          => 'required|string|max:50',
                 'categoria_id' => 'nullable|exists:categorias,id',
-                'maquina_id' => 'nullable|exists:maquinas,id',
-                'turno' => 'nullable|string|in:nocturno,diurno,mañana,flexible',
+                'maquina_id'   => 'nullable|exists:maquinas,id',
+                'turno'        => 'nullable|string|in:nocturno,diurno,mañana,flexible',
             ], [
-                'name.required' => 'El nombre es obligatorio.',
-                'name.string' => 'El nombre debe ser un texto válido.',
-                'name.max' => 'El nombre no puede superar los 50 caracteres.',
-
-                'primer_apellido.string' => 'El primer apellido debe ser texto.',
-                'primer_apellido.max' => 'El primer apellido no puede superar los 100 caracteres.',
-                'segundo_apellido.string' => 'El segundo apellido debe ser texto.',
-                'segundo_apellido.max' => 'El segundo apellido no puede superar los 100 caracteres.',
-
-                'email.required' => 'El correo electrónico es obligatorio.',
-                'email.email' => 'Debe ingresar un correo electrónico válido.',
-                'email.max' => 'El correo no puede superar los 50 caracteres.',
-                'email.unique' => 'Este correo ya está registrado en otro usuario.',
-
-                'empresa_id.exists' => 'La empresa seleccionada no existe.',
-
-                'rol.required' => 'El rol es obligatorio.',
-                'rol.string' => 'El rol debe ser un texto válido.',
-                'rol.max' => 'El rol no puede superar los 50 caracteres.',
-
-                'categoria_id.exists' => 'La categoría no existe.',
-
-                'turno.string' => 'El turno debe ser un texto válido.',
-                'turno.in' => 'El turno debe ser "mañana", "tarde", "noche" o "flexible".',
+                'numero_corto.digits' => 'El número corporativo debe tener exactamente 4 cifras.',
+                'numero_corto.unique' => 'Este número corporativo ya está asignado a otro usuario.',
             ]);
 
-            // Buscar el usuario
+            // 🔎 Buscar el usuario
             $usuario = User::find($id);
             if (!$usuario) {
                 return response()->json(['error' => 'Usuario no encontrado.'], 404);
             }
-            // 💡 Normalización
-            $nombre = ucfirst(mb_strtolower($request->name));
-            $apellido1 = $request->primer_apellido ? ucfirst(mb_strtolower($request->primer_apellido)) : null;
-            $apellido2 = $request->segundo_apellido ? ucfirst(mb_strtolower($request->segundo_apellido)) : null;
-            $email = strtolower($request->email);
-            $movil_personal = $request->movil_personal ? str_replace(' ', '', $request->movil_personal) : null;
-            $movil_empresa = $request->movil_empresa ? str_replace(' ', '', $request->movil_empresa) : null;
-            $dni = $request->dni ? strtoupper($request->dni) : null;
 
+            // 💡 Normalización
+            $nombre          = ucfirst(mb_strtolower($request->name));
+            $apellido1       = $request->primer_apellido ? ucfirst(mb_strtolower($request->primer_apellido)) : null;
+            $apellido2       = $request->segundo_apellido ? ucfirst(mb_strtolower($request->segundo_apellido)) : null;
+            $email           = strtolower($request->email);
+            $movil_personal  = $request->movil_personal ? str_replace(' ', '', $request->movil_personal) : null;
+            $movil_empresa   = $request->movil_empresa ? str_replace(' ', '', $request->movil_empresa) : null;
+            $numero_corto    = $request->numero_corto ? str_pad(preg_replace('/\D/', '', $request->numero_corto), 4, '0', STR_PAD_LEFT) : null;
+            $dni             = $request->dni ? strtoupper($request->dni) : null;
+
+            // ✅ Actualización
             $resultado = $usuario->update([
-                'name' => $nombre,
+                'name'            => $nombre,
                 'primer_apellido' => $apellido1,
                 'segundo_apellido' => $apellido2,
-                'email' => $email,
-                'movil_personal' => $movil_personal,
-                'movil_empresa' => $movil_empresa,
-                'dni' => $dni,
-                'empresa_id' => $request->empresa_id,
-                'rol' => $request->rol,
-                'categoria_id' => $request->categoria_id,
-                'maquina_id' => $request->maquina_id,
-                'turno' => $request->turno,
-                'updated_by' => auth()->id(),
+                'email'           => $email,
+                'movil_personal'  => $movil_personal,
+                'movil_empresa'   => $movil_empresa,
+                'numero_corto'    => $numero_corto,
+                'dni'             => $dni,
+                'empresa_id'      => $request->empresa_id,
+                'rol'             => $request->rol,
+                'categoria_id'    => $request->categoria_id,
+                'maquina_id'      => $request->maquina_id,
+                'turno'           => $request->turno,
+                'updated_by'      => auth()->id(),
             ]);
-
 
             if (!$resultado) {
                 return response()->json(['error' => 'No se pudo actualizar el usuario.'], 500);
             }
-            // Actualizar asignaciones_turno desde hoy hasta fin de año
+
+            // 🔄 Actualizar asignaciones_turno desde hoy hasta fin de año
             AsignacionTurno::where('user_id', $usuario->id)
                 ->whereDate('fecha', '>=', Carbon::today())
                 ->whereDate('fecha', '<=', Carbon::createFromDate(null, 12, 31))
                 ->where('turno_id', '!=', 10)
                 ->update(['maquina_id' => $usuario->maquina_id]);
 
-
             return response()->json(['success' => 'Usuario actualizado correctamente.']);
         } catch (ValidationException $e) {
             Log::error('Error de validación al actualizar usuario ID ' . $id, [
                 'errores' => $e->errors(),
-                'input' => $request->all()
+                'input'   => $request->all()
             ]);
             return response()->json(['error' => $e->errors()], 422);
         } catch (Exception $e) {
             Log::error('Excepción al actualizar usuario ID ' . $id, [
                 'mensaje' => $e->getMessage(),
-                'linea' => $e->getLine(),
+                'linea'   => $e->getLine(),
                 'archivo' => $e->getFile(),
-                'trace' => $e->getTraceAsString()
+                'trace'   => $e->getTraceAsString()
             ]);
             return response()->json(['error' => 'Error inesperado: ' . $e->getMessage()], 500);
         }
@@ -1012,6 +1006,7 @@ class ProfileController extends Controller
 
         return back()->with('success', "🛑 Se han cerrado $cerradas sesión(es) activas del usuario {$user->nombre_completo}.");
     }
+
     public function despedirUsuario(Request $request, User $user)
     {
         DB::transaction(function () use ($user) {
@@ -1041,6 +1036,7 @@ class ProfileController extends Controller
 
         return redirect()->route('users.index')->with('success', '👋 Usuario despedido correctamente.');
     }
+
     private function getResumenAsistencia(User $user): array
     {
         $inicioAño = Carbon::now()->startOfYear();

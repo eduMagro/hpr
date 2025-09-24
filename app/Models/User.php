@@ -36,6 +36,7 @@ class User extends Authenticatable
         'imagen',
         'movil_personal',
         'movil_empresa',
+        'numero_corto',
         'empresa_id',
         'password',
         'dni',

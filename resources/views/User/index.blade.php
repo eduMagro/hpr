@@ -21,6 +21,7 @@
                         <th class="p-2 border">{!! $ordenables['email'] !!}</th>
                         <th class="p-2 border">Móvil Personal</th>
                         <th class="p-2 border">Móvil Empresa</th>
+                        <th class="p-2 border">{!! $ordenables['numero_corto'] ?? 'Nº Corporativo' !!}</th>
                         <th class="p-2 border">{!! $ordenables['dni'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['empresa'] !!}</th>
                         <th class="p-2 border">{!! $ordenables['rol'] !!}</th>
@@ -50,6 +51,10 @@
 
                             <th class="p-1 border">
                                 <x-tabla.input name="movil_empresa" :value="request('movil_empresa')" />
+                            </th>
+
+                            <th class="p-1 border">
+                                <x-tabla.input name="numero_corto" :value="request('numero_corto')" />
                             </th>
 
                             <th class="p-1 border">
@@ -150,6 +155,14 @@
                                 </template>
                                 <x-tabla.input x-show="editando" x-model="usuario.movil_empresa"
                                     @keydown.enter.stop="guardarCambios(usuario)" />
+                            </td>
+
+                            <td class="px-2 py-3 text-center border">
+                                <template x-if="!editando">
+                                    <span x-text="usuario.numero_corto ?? '-'"></span>
+                                </template>
+                                <x-tabla.input x-show="editando" x-model="usuario.numero_corto" maxlength="4"
+                                    placeholder="0000" @keydown.enter.stop="guardarCambios(usuario)" />
                             </td>
 
                             <td class="px-2 py-3 text-center border">
