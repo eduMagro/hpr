@@ -420,6 +420,8 @@
             });
 
             calendar.render();
+            // 🔹 Guardar en window para usarlo fuera
+            window.calendar = calendar;
         });
         // ---------------------------------------------------- REGISTRAR FICHAJE
         function registrarFichaje(tipo) {
