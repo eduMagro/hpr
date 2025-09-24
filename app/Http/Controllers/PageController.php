@@ -39,10 +39,10 @@ class PageController extends Controller
             return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
 
-        // 🟣 Caso 2: Reyes Tejero + Oficina → solo ayuda y alertas
+        // 🟣 Caso 2: Reyes Tejero + Oficina → permisos de usuario y departamentos
         if ($empresaId === $empresaReyesTejeroId && $esOficina) {
             $items = $this->mapSecciones(
-                $secciones->whereIn('ruta', ['ayuda.index', 'alertas.index'])
+                $secciones->filter(fn($s) => $this->usuarioTieneAcceso($user, $s->id, $s->ruta))
             );
             return view('dashboard', compact('items', 'esOperario', 'esTransportista', 'esOficina'));
         }
