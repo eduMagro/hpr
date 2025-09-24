@@ -470,6 +470,10 @@
                                             showConfirmButton: false,
                                             timer: 3000
                                         });
+
+                                        if (window.calendar) {
+                                            window.calendar.refetchEvents();
+                                        }
                                     } else {
                                         Swal.fire({
                                             icon: 'error',
