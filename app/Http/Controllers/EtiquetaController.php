@@ -165,15 +165,14 @@ class EtiquetaController extends Controller
     public function index(Request $request)
     {
         $query = Etiqueta::with([
-            'planilla',
-            'elementos',
-            'paquete',
-            'producto',
-            'producto2',
-            'soldador1',
-            'soldador2',
-            'ensamblador1',
-            'ensamblador2',
+            'planilla:id,codigo',
+            'paquete:id,codigo',
+            'producto:id,codigo,nombre',
+            'producto2:id,codigo,nombre',
+            'soldador1:id,name,primer_apellido',
+            'soldador2:id,name,primer_apellido',
+            'ensamblador1:id,name,primer_apellido',
+            'ensamblador2:id,name,primer_apellido',
         ])->whereNotNull('etiqueta_sub_id');
 
         // Aplicar filtros y ordenamiento seguros
@@ -184,17 +183,34 @@ class EtiquetaController extends Controller
         $etiquetas = $query->paginate($request->input('per_page', 10))->appends($request->except('page'));
 
         // JSON para scripts
-        $etiquetasJson = Etiqueta::select('id', 'etiqueta_sub_id', 'nombre', 'peso', 'estado', 'fecha_inicio', 'fecha_finalizacion', 'planilla_id')
+        $etiquetasJson = Etiqueta::select(
+            'id',
+            'etiqueta_sub_id',
+            'nombre',
+            'peso',
+            'estado',
+            'fecha_inicio',
+            'fecha_finalizacion',
+            'planilla_id',
+            'paquete_id'
+        )
             ->whereNotNull('etiqueta_sub_id')
             ->with([
-                'planilla' => function ($q) {
-                    $q->select('id', 'obra_id', 'cliente_id', 'codigo', 'seccion')
-                        ->with(['obra:id,obra', 'cliente:id,empresa']);
-                },
-                'elementos' => function ($q) {
-                    $q->select('id', 'etiqueta_id', 'dimensiones', 'barras', 'diametro', 'peso');
-                }
-            ])->get()->keyBy('id');
+                'planilla:id,codigo,codigo,obra_id,cliente_id,seccion',
+                'planilla.obra:id,obra',
+                'planilla.cliente:id,empresa',
+                'paquete:id,codigo',
+                'producto:id,codigo,nombre',
+                'producto2:id,codigo,nombre',
+                'soldador1:id,name,primer_apellido',
+                'soldador2:id,name,primer_apellido',
+                'ensamblador1:id,name,primer_apellido',
+                'ensamblador2:id,name,primer_apellido',
+                'elementos:id,etiqueta_id,dimensiones,barras,diametro,peso',
+            ])
+            ->get()
+            ->keyBy('id');
+
 
         $filtrosActivos = $this->filtrosActivos($request);
 
