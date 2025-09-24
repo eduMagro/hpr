@@ -154,7 +154,7 @@ class ProfileController extends Controller
             'id' => 'users.id',
             'nombre_completo' => DB::raw("CONCAT_WS(' ', name, primer_apellido, segundo_apellido)"),
             'email' => 'users.email',
-            'numero_corto' => 'users.numero_corto',
+            'numero_corto' => DB::raw('CAST(users.numero_corto AS UNSIGNED)'),
             'dni' => 'users.dni',
             'empresa' => 'empresa_id',
             'rol' => 'users.rol',
