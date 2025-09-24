@@ -326,7 +326,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('calendario');
-
+            let calendar;
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'es',
@@ -470,6 +470,11 @@
                                             showConfirmButton: false,
                                             timer: 3000
                                         });
+
+                                        if (calendar) {
+                                            calendar
+                                        .refetchEvents(); // 🔁 volver a cargar todos los eventos
+                                        }
                                     } else {
                                         Swal.fire({
                                             icon: 'error',
