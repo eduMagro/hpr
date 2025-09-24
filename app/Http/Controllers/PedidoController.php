@@ -807,7 +807,14 @@ class PedidoController extends Controller
                 'prioridad'          => 2,
                 'nave_id'          => $pedido->obra_id,
             ]);
-            log::info('Movimiento creado para activar línea de pedido: ' . $lineaId);
+            Log::info('Movimiento creado para activar línea de pedido', [
+                'linea_id'          => $lineaId,
+                'pedido_id'         => $pedidoId,
+                'producto_base_id'  => $productoBase->id,
+                'nave_id'           => $pedido->obra_id,
+                'usuario'           => auth()->id(),
+            ]);
+
 
             DB::commit();
             return redirect()->back()->with('success');
@@ -836,7 +843,11 @@ class PedidoController extends Controller
                 ->where('producto_base_id', $linea->producto_base_id)
                 ->where('estado', 'pendiente')
                 ->delete();
-
+            Log::info('Movimiento eliminado para desactivar línea de pedido', [
+                'linea_id'         => $lineaId,
+                'pedido_id'        => $pedidoId,
+                'producto_base_id' => $linea->producto_base_id,
+            ]);
             // Marcar la línea como pendiente
             DB::table('pedido_productos')
                 ->where('id', $lineaId)
