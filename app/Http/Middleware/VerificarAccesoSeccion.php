@@ -87,7 +87,12 @@ class VerificarAccesoSeccion
             return $next($request);
         }
 
-        if ($rolUsuario === 'oficina' && in_array($empresaUsuarioId, $empresasConAccesoCompleto, true)) {
+        if (
+            $rolUsuario === 'oficina' && (
+                in_array($empresaUsuarioId, $empresasConAccesoCompleto, true)
+                || $empresaUsuarioId === $empresaReyesTejeroId
+            )
+        ) {
             $accionRuta = strtolower(Str::afterLast($nombreRutaActual, '.'));
             $seccionBase = Str::before($nombreRutaActual, '.');
 
