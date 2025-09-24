@@ -165,7 +165,7 @@ class EtiquetaController extends Controller
     public function index(Request $request)
     {
         $query = Etiqueta::with([
-            'planilla:id,codigo',
+            'planilla:id,codigo,obra_id,cliente_id,seccion',
             'paquete:id,codigo',
             'producto:id,codigo,nombre',
             'producto2:id,codigo,nombre',
@@ -175,42 +175,20 @@ class EtiquetaController extends Controller
             'ensamblador2:id,name,primer_apellido',
         ])->whereNotNull('etiqueta_sub_id');
 
-        // Aplicar filtros y ordenamiento seguros
+        // aplicar filtros y ordenamiento
         $query = $this->aplicarFiltros($query, $request);
         $query = $this->aplicarOrdenamiento($query, $request);
 
-        // Paginación
-        $etiquetas = $query->paginate($request->input('per_page', 10))->appends($request->except('page'));
+        // paginación
+        $etiquetas = $query->paginate($request->input('per_page', 10))
+            ->appends($request->except('page'));
 
-        // JSON para scripts
-        $etiquetasJson = Etiqueta::select(
-            'id',
-            'etiqueta_sub_id',
-            'nombre',
-            'peso',
-            'estado',
-            'fecha_inicio',
-            'fecha_finalizacion',
-            'planilla_id',
-            'paquete_id'
-        )
-            ->whereNotNull('etiqueta_sub_id')
-            ->with([
-                'planilla:id,codigo,codigo,obra_id,cliente_id,seccion',
-                'planilla.obra:id,obra',
-                'planilla.cliente:id,empresa',
-                'paquete:id,codigo',
-                'producto:id,codigo,nombre',
-                'producto2:id,codigo,nombre',
-                'soldador1:id,name,primer_apellido',
-                'soldador2:id,name,primer_apellido',
-                'ensamblador1:id,name,primer_apellido',
-                'ensamblador2:id,name,primer_apellido',
-                'elementos:id,etiqueta_id,dimensiones,barras,diametro,peso',
-            ])
-            ->get()
-            ->keyBy('id');
-
+        // 🔥 en lugar de otra query con get(), cargamos solo para la página actual
+        $etiquetasJson = $etiquetas->load([
+            'planilla.obra:id,obra',
+            'planilla.cliente:id,empresa',
+            'elementos:id,etiqueta_id,dimensiones,barras,diametro,peso',
+        ])->keyBy('id');
 
         $filtrosActivos = $this->filtrosActivos($request);
 
@@ -236,6 +214,7 @@ class EtiquetaController extends Controller
 
         return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
     }
+
     public function calcularPatronCorte(Request $request, $etiqueta)
     {
         $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiqueta)
