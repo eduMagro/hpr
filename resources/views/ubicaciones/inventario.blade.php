@@ -1,5 +1,24 @@
+@php
+    $detalles = \App\Models\Producto::with('productoBase')
+        ->get()
+        ->mapWithKeys(function ($p) {
+            return [
+                $p->codigo => [
+                    'codigo' => $p->codigo,
+                    'nombre' => $p->nombre,
+                    'tipo' => optional($p->productoBase)->tipo,
+                    'diametro' => optional($p->productoBase)->diametro,
+                    'longitud' => optional($p->productoBase)->longitud,
+                    'peso_inicial' => $p->peso_inicial,
+                ],
+            ];
+        });
+@endphp
+
 <script>
+    /* Mapas globales base (no reactivos) */
     window.productosAsignados = @json(\App\Models\Producto::whereNotNull('ubicacion_id')->pluck('ubicacion_id', 'codigo'));
+    window.detallesProductos = @json($detalles);
 </script>
 
 <script>
@@ -15,27 +34,70 @@
             /* props ---------------------------------------------------------------- */
             productosEsperados,
             nombreUbicacion,
+            originalEsperados: [],
 
             escaneados: [], // códigos OK
             sospechosos: [], // códigos inesperados
             ultimoCodigo: null, // para el flash visual
 
+            /* copia REACTIVA del mapa global para x-show */
+            asignados: {},
+
             /* audio */
             audioOk: null,
             audioError: null,
             audioPedo: null,
+            audioEstaEnOtraUbi: null,
+            audioNoTieneUbicacion: null,
 
             /* lifecycle ----------------------------------------------------------- */
             init() {
+                /* snapshot inicial para diferenciar “servidos por Blade” vs. añadidos dinámicos */
+                this.originalEsperados = [...this.productosEsperados];
+
                 /* 1️⃣ recuperar progreso previo */
                 this.escaneados = JSON.parse(localStorage.getItem(claveLS) || '[]');
                 this.sospechosos = JSON.parse(localStorage.getItem(`sospechosos-${nombreUbicacion}`) || '[]');
                 this.$nextTick(() => this.$refs.inputQR?.focus());
+
+                /* audio */
                 this.audioOk = document.getElementById('sonido-ok');
                 this.audioError = document.getElementById('sonido-error');
                 this.audioPedo = document.getElementById('sonido-pedo');
                 this.audioEstaEnOtraUbi = document.getElementById('sonido-estaEnOtraUbi');
                 this.audioNoTieneUbicacion = document.getElementById('sonido-noTieneUbicacion');
+
+                /* copia REACTIVA del mapa global actual */
+                this.asignados = {
+                    ...(window.productosAsignados || {})
+                };
+
+                /* Escuchar reasignaciones globales */
+                window.addEventListener('producto-reasignado', (e) => {
+                    const {
+                        codigo,
+                        nuevaUbicacion
+                    } = e.detail;
+
+                    // limpiar en esta instancia
+                    this.sospechosos = this.sospechosos.filter(c => c !== codigo);
+                    this.escaneados = this.escaneados.filter(c => c !== codigo);
+                    this.productosEsperados = this.productosEsperados.filter(c => c !== codigo);
+
+                    // actualizar mapa reactivo local (clave para x-show)
+                    this.asignados[codigo] = nuevaUbicacion;
+
+                    // si la nueva ubicación es esta, añadirlo
+                    if (this.nombreUbicacion.toString() === nuevaUbicacion.toString()) {
+                        if (!this.productosEsperados.includes(codigo)) this.productosEsperados.push(codigo);
+                        if (!this.escaneados.includes(codigo)) this.escaneados.push(codigo);
+                    }
+
+                    // persistir
+                    localStorage.setItem(`inv-${this.nombreUbicacion}`, JSON.stringify(this.escaneados));
+                    localStorage.setItem(`sospechosos-${this.nombreUbicacion}`, JSON.stringify(this
+                        .sospechosos));
+                });
             },
 
             /* helpers ------------------------------------------------------------- */
@@ -66,7 +128,7 @@
             },
 
             progreso() {
-                /* 0–1 decimal for width % bar */
+                if (!this.productosEsperados.length) return 0;
                 return (this.escaneados.length / this.productosEsperados.length) * 100;
             },
 
@@ -88,7 +150,6 @@
                     if (!this.escaneados.includes(codigo)) {
                         this.escaneados.push(codigo);
                         localStorage.setItem(claveLS, JSON.stringify(this.escaneados)); // 2️⃣ persist
-
                         this.reproducirOk();
                     }
 
@@ -106,20 +167,12 @@
                     }
 
                     // Reproducimos sonido según caso
-                    const ubicacionAsignada = (window.productosAsignados || {})[codigo];
-                    // console.log('➡️ Código escaneado:', codigo);
-                    // console.log('➡️ Ubicación asignada:', ubicacionAsignada, typeof ubicacionAsignada);
-                    // console.log('➡️ Esta ubicación actual:', this.nombreUbicacion, typeof this.nombreUbicacion);
-
                     if (ubicacionAsignada !== undefined && ubicacionAsignada.toString() !== this.nombreUbicacion
                         .toString()) {
-                        console.log('🔁 Está en otra ubicación');
                         this.reproducirEstaEnOtraUbi();
                     } else if (ubicacionAsignada === undefined) {
-                        console.log('🚫 No tiene ubicación asignada');
                         this.reproducirNoTieneUbicacion();
                     } else {
-                        console.log('❌ Producto inesperado');
                         this.reproducirError();
                     }
                 }
@@ -153,15 +206,67 @@
                 return this.escaneados.includes(codigo);
             },
 
+            productosAnadidos() {
+                return this.productosEsperados.filter(c => !this.originalEsperados.includes(c));
+            },
+
             reportarErrores() {
                 const faltantes = this.productosEsperados.filter(c => !this.escaneados.includes(c));
                 const inesperados = [...this.sospechosos];
-
                 window.notificarProgramadorInventario({
                     ubicacion: this.nombreUbicacion,
                     faltantes,
                     inesperados
                 });
+            },
+
+            // ⬇️ Reasignar producto
+            reasignarProducto(codigo) {
+                fetch("{{ route('productos.editarUbicacionInventario', ['codigo' => '___CODIGO___']) }}".replace(
+                        '___CODIGO___', codigo), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({
+                            ubicacion_id: this.nombreUbicacion
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            // actualizar global y local reactivo
+                            window.productosAsignados[codigo] = this.nombreUbicacion;
+                            this.asignados[codigo] = this.nombreUbicacion;
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Reasignado',
+                                text: `El producto ${codigo} fue reasignado a esta ubicación.`,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+
+                            // 🚀 Emitimos evento global para que todas las ubicaciones se actualicen
+                            window.dispatchEvent(new CustomEvent('producto-reasignado', {
+                                detail: {
+                                    codigo,
+                                    nuevaUbicacion: this.nombreUbicacion
+                                }
+                            }));
+                        } else {
+                            throw new Error(data.message || 'Error desconocido');
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: err.message
+                        });
+                    });
             }
         };
     };
@@ -193,7 +298,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Accept': 'application/json', // 🔐 importante para que Laravel devuelva JSON
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                         },
                         body: JSON.stringify({
@@ -208,12 +313,10 @@ Inesperados: ${inesperados.join(', ') || '—'}
                     })
                     .then(async res => {
                         const data = await res.json();
-
                         if (!res.ok || data.success === false) {
                             throw new Error(data.message ||
                                 'Error desconocido al enviar la alerta.');
                         }
-
                         Swal.fire({
                             icon: 'success',
                             title: 'Reporte enviado',
@@ -260,12 +363,12 @@ Inesperados: ${inesperados.join(', ') || '—'}
 
                 <!-- Contenido del sector -->
                 <div x-show="abierto" x-transition>
-
                     @foreach ($ubicaciones as $ubicacion)
                         <!-- Componente Alpine independiente por ubicación -->
                         <div x-data='inventarioUbicacion(@json($ubicacion->productos->pluck('codigo')), "{{ $ubicacion->id }}")'
                             :key="{{ json_encode($ubicacion->id) }}"
                             class="bg-white shadow rounded-2xl overflow-hidden mt-4">
+
                             <!-- Cabecera -->
                             <div
                                 class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-gray-800 text-white px-4 py-3 gap-3">
@@ -284,16 +387,16 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     x-on:keydown.enter.prevent="procesarQR($event.target.value); $event.target.value = ''"
                                     x-ref="inputQR" inputmode="none" autocomplete="off">
                             </div>
+
                             <div class="h-2 bg-gray-200">
                                 <div class="h-full bg-blue-500 transition-all duration-300"
-                                    :style="`width: ${progreso()}%`">
-                                </div>
+                                    :style="`width: ${progreso()}%`"></div>
                                 <div class="text-xs text-right px-4 py-1 text-gray-500">
                                     <span
                                         x-text="`${escaneados.length} / ${productosEsperados.length} escaneados`"></span>
                                 </div>
-
                             </div>
+
                             <!-- Tabla de productos (visible >= sm) -->
                             <div class="hidden sm:block overflow-x-auto">
                                 <table class="min-w-full text-xs md:text-sm divide-y divide-gray-200">
@@ -309,17 +412,16 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
                                         @foreach ($ubicacion->productos as $idx => $producto)
-                                            <tr
+                                            <tr x-show="(asignados['{{ $producto->codigo }}']?.toString() || '{{ $ubicacion->id }}') === nombreUbicacion.toString()"
                                                 :class="{
                                                     'bg-green-50': productoEscaneado('{{ $producto->codigo }}'),
                                                     'ring-2 ring-green-500 shadow-md scale-[1.01] transition-all duration-300 ease-out': ultimoCodigo === '{{ $producto->codigo }}'
                                                 }">
-
                                                 <td class="px-2 py-1 text-center">{{ $idx + 1 }}</td>
                                                 <td class="px-2 py-1 text-xs text-center">{{ $producto->codigo }}</td>
-
                                                 <td class="px-2 py-1 capitalize text-center">
-                                                    {{ $producto->productoBase->tipo }}</td>
+                                                    {{ $producto->productoBase->tipo }}
+                                                </td>
                                                 <td class="px-2 py-1 text-center">
                                                     @if ($producto->productoBase->tipo === 'encarretado')
                                                         Ø {{ $producto->productoBase->diametro }} mm
@@ -329,7 +431,8 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                     @endif
                                                 </td>
                                                 <td class="px-2 py-1 text-center">
-                                                    {{ number_format($producto->peso_inicial, 1, ',', '.') }}</td>
+                                                    {{ number_format($producto->peso_inicial, 1, ',', '.') }}
+                                                </td>
                                                 <td class="px-2 py-1 text-center">
                                                     <span x-show="productoEscaneado('{{ $producto->codigo }}')"
                                                         class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">OK</span>
@@ -338,6 +441,45 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                                 </td>
                                             </tr>
                                         @endforeach
+
+                                        <!-- Filas dinámicas añadidas tras reasignar -->
+                                        <template x-for="codigo in productosAnadidos()" :key="codigo">
+                                            <tr class="bg-white">
+                                                <td class="px-2 py-1 text-center">+</td>
+                                                <td class="px-2 py-1 text-xs text-center" x-text="codigo"></td>
+                                                <td class="px-2 py-1 capitalize text-center"
+                                                    x-text="window.detallesProductos[codigo]?.tipo || '—'"></td>
+                                                <td class="px-2 py-1 text-center">
+                                                    <template
+                                                        x-if="(window.detallesProductos[codigo]?.tipo || '') === 'encarretado'">
+                                                        <span>
+                                                            Ø <span
+                                                                x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
+                                                            mm
+                                                        </span>
+                                                    </template>
+                                                    <template
+                                                        x-if="(window.detallesProductos[codigo]?.tipo || '') !== 'encarretado'">
+                                                        <span>
+                                                            Ø <span
+                                                                x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
+                                                            mm /
+                                                            <span
+                                                                x-text="window.detallesProductos[codigo]?.longitud ?? '—'"></span>
+                                                            m
+                                                        </span>
+                                                    </template>
+                                                </td>
+                                                <td class="px-2 py-1 text-center">
+                                                    <span
+                                                        x-text="(window.detallesProductos[codigo]?.peso_inicial ?? 0).toLocaleString('es-ES', {minimumFractionDigits:1, maximumFractionDigits:1})"></span>
+                                                </td>
+                                                <td class="px-2 py-1 text-center">
+                                                    <span
+                                                        class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">OK</span>
+                                                </td>
+                                            </tr>
+                                        </template>
                                     </tbody>
                                 </table>
                             </div>
@@ -345,7 +487,8 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             <!-- Vista mobile (cards) -->
                             <div class="sm:hidden divide-y divide-gray-100 text-xs">
                                 @foreach ($ubicacion->productos as $producto)
-                                    <div class="flex justify-between items-center py-2 px-3"
+                                    <div x-show="(asignados['{{ $producto->codigo }}']?.toString() || '{{ $ubicacion->id }}') === nombreUbicacion.toString()"
+                                        class="flex justify-between items-center py-2 px-3"
                                         :class="productoEscaneado('{{ $producto->codigo }}') ? 'bg-green-50' : ''">
                                         <div class="flex-1">
                                             <p class="font-semibold">{{ $producto->codigo }}</p>
@@ -369,6 +512,40 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                         </div>
                                     </div>
                                 @endforeach
+
+                                <!-- Cards dinámicas añadidas tras reasignar (móvil) -->
+                                <template x-for="codigo in productosAnadidos()" :key="codigo">
+                                    <div class="flex justify-between items-center py-2 px-3 bg-green-50">
+                                        <div class="flex-1">
+                                            <p class="font-semibold" x-text="codigo"></p>
+                                            <p class="text-gray-600"
+                                                x-text="window.detallesProductos[codigo]?.nombre || ''"></p>
+                                            <p class="text-gray-500">
+                                                <span
+                                                    x-text="(window.detallesProductos[codigo]?.tipo || '—').charAt(0).toUpperCase() + (window.detallesProductos[codigo]?.tipo || '—').slice(1)"></span>
+                                                —
+                                                Ø <span
+                                                    x-text="window.detallesProductos[codigo]?.diametro ?? '—'"></span>
+                                                mm
+                                                <template
+                                                    x-if="(window.detallesProductos[codigo]?.tipo || '') !== 'encarretado'">
+                                                    <span>/ <span
+                                                            x-text="window.detallesProductos[codigo]?.longitud ?? '—'"></span>
+                                                        m</span>
+                                                </template>
+                                            </p>
+                                            <p class="text-gray-500">
+                                                <span
+                                                    x-text="(window.detallesProductos[codigo]?.peso_inicial ?? 0).toLocaleString('es-ES', {minimumFractionDigits:1, maximumFractionDigits:1})"></span>
+                                                kg
+                                            </p>
+                                        </div>
+                                        <div class="text-right ml-2">
+                                            <span
+                                                class="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-semibold">OK</span>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
 
                             <!-- Productos inesperados -->
@@ -379,10 +556,10 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                         <li class="flex items-center justify-between">
                                             <div>
                                                 <span x-text="codigo"></span>
-                                                <template x-if="window.productosAsignados[codigo]">
+                                                <template x-if="asignados[codigo]">
                                                     <span class="text-xs text-gray-500">
                                                         → asignado a ubicación con ID =
-                                                        <strong x-text="window.productosAsignados[codigo]"></strong>
+                                                        <strong x-text="asignados[codigo]"></strong>
                                                     </span>
                                                 </template>
                                             </div>
@@ -393,7 +570,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                             </button>
                                         </li>
                                     </template>
-
                                 </ul>
                             </div>
 
@@ -403,7 +579,6 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                     class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
                                     Limpiar escaneos
                                 </button>
-
                                 <button @click="reportarErrores()"
                                     class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1.5 rounded-md text-xs shadow">
                                     Reportar errores
@@ -415,6 +590,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 </div>
             </div>
         @endforeach
+
         <div
             class="mt-10 flex flex-col sm:flex-row items-stretch sm:items-center justify-start sm:justify-between gap-4">
             <button onclick="limpiarTodos()"
@@ -449,9 +625,7 @@ Inesperados: ${inesperados.join(', ') || '—'}
                             clavesABorrar.push(key);
                         }
                     }
-
                     clavesABorrar.forEach(key => localStorage.removeItem(key));
-
                     Swal.fire({
                         icon: 'success',
                         title: 'Escaneos eliminados',
@@ -459,58 +633,9 @@ Inesperados: ${inesperados.join(', ') || '—'}
                         timer: 3000,
                         showConfirmButton: false
                     });
-
                     setTimeout(() => location.reload(), 800);
                 }
             });
         };
-    </script>
-    <script>
-        reasignarProducto(codigo) {
-            fetch("{{ route('productos.editarUbicacionInventario', ['codigo' => '___CODIGO___']) }}".replace(
-                    '___CODIGO___', codigo), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        ubicacion_id: this.nombreUbicacion
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        // ✅ Actualizar arrays en Alpine
-                        this.escaneados.push(codigo);
-                        this.sospechosos = this.sospechosos.filter(c => c !== codigo);
-
-                        localStorage.setItem(`inv-${this.nombreUbicacion}`, JSON.stringify(this.escaneados));
-                        localStorage.setItem(`sospechosos-${this.nombreUbicacion}`, JSON.stringify(this
-                            .sospechosos));
-
-                        // Actualizar mapa global de asignados
-                        window.productosAsignados[codigo] = this.nombreUbicacion;
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Reasignado',
-                            text: `El producto ${codigo} fue reasignado a esta ubicación.`,
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        throw new Error(data.message || 'Error desconocido');
-                    }
-                })
-                .catch(err => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: err.message
-                    });
-                });
-        }
     </script>
 </x-app-layout>
