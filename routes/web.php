@@ -104,6 +104,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     // Route::post('/solicitar-stock', [ProductoController::class, 'solicitarStock'])->name('solicitar.stock');
     Route::get('productos/{id}/consumir', [ProductoController::class, 'consumir'])->name('productos.editarConsumir');
     Route::post('productos/generar-exportar', [ProductoController::class, 'GenerarYExportar'])->name('productos.generar.crearExportar');
+    Route::post('/productos/{codigo}/reasignar', [ProductoController::class, 'editarUbicacionInventario'])
+        ->name('productos.editarUbicacionInventario');
 
     // 📦 Vistas por nave
     Route::get('/ubicaciones/nave-a', [UbicacionController::class, 'naveA'])->name('ubicaciones.verNave-a');

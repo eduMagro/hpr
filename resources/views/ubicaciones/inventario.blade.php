@@ -376,17 +376,23 @@ Inesperados: ${inesperados.join(', ') || '—'}
                                 <h3 class="text-sm font-semibold text-red-600 mb-1">Productos inesperados:</h3>
                                 <ul class="list-disc list-inside text-xs text-red-700 space-y-0.5">
                                     <template x-for="codigo in sospechosos" :key="codigo">
-                                        <li>
-                                            <span x-text="codigo"></span>
-                                            <template x-if="window.productosAsignados[codigo]">
-                                                <span class="text-xs text-gray-500">
-                                                    → asignado a ubicacion con ID =
-                                                    <strong x-text="window.productosAsignados[codigo]"></strong>
-                                                </span>
-                                            </template>
+                                        <li class="flex items-center justify-between">
+                                            <div>
+                                                <span x-text="codigo"></span>
+                                                <template x-if="window.productosAsignados[codigo]">
+                                                    <span class="text-xs text-gray-500">
+                                                        → asignado a ubicación con ID =
+                                                        <strong x-text="window.productosAsignados[codigo]"></strong>
+                                                    </span>
+                                                </template>
+                                            </div>
+                                            <button
+                                                class="ml-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded"
+                                                @click="reasignarProducto(codigo)">
+                                                Asignar a esta ubicación
+                                            </button>
                                         </li>
                                     </template>
-
 
                                 </ul>
                             </div>
@@ -458,5 +464,53 @@ Inesperados: ${inesperados.join(', ') || '—'}
                 }
             });
         };
+    </script>
+    <script>
+        reasignarProducto(codigo) {
+            fetch("{{ route('productos.editarUbicacionInventario', ['codigo' => '___CODIGO___']) }}".replace(
+                    '___CODIGO___', codigo), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        ubicacion_id: this.nombreUbicacion
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // ✅ Actualizar arrays en Alpine
+                        this.escaneados.push(codigo);
+                        this.sospechosos = this.sospechosos.filter(c => c !== codigo);
+
+                        localStorage.setItem(`inv-${this.nombreUbicacion}`, JSON.stringify(this.escaneados));
+                        localStorage.setItem(`sospechosos-${this.nombreUbicacion}`, JSON.stringify(this
+                            .sospechosos));
+
+                        // Actualizar mapa global de asignados
+                        window.productosAsignados[codigo] = this.nombreUbicacion;
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Reasignado',
+                            text: `El producto ${codigo} fue reasignado a esta ubicación.`,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        throw new Error(data.message || 'Error desconocido');
+                    }
+                })
+                .catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: err.message
+                    });
+                });
+        }
     </script>
 </x-app-layout>

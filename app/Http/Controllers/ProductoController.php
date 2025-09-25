@@ -471,6 +471,41 @@ class ProductoController extends Controller
                 ->withInput();
         }
     }
+    public function editarUbicacionInventario(Request $request, $codigo)
+    {
+        try {
+            // 1️⃣ Validación
+            $validated = $request->validate([
+                'ubicacion_id' => 'required|exists:ubicaciones,id',
+            ], [
+                'ubicacion_id.required' => 'Debes indicar una ubicación.',
+                'ubicacion_id.exists'   => 'La ubicación seleccionada no existe.',
+            ]);
+
+            // 2️⃣ Buscar producto por código
+            $producto = Producto::where('codigo', $codigo)->firstOrFail();
+
+            // 3️⃣ Actualizar ubicación
+            $producto->ubicacion_id = $validated['ubicacion_id'];
+            $producto->save();
+
+            // 4️⃣ Respuesta JSON
+            return response()->json([
+                'success'  => true,
+                'message'  => "Producto {$producto->codigo} reasignado correctamente a la ubicación {$producto->ubicacion_id}.",
+                'producto' => [
+                    'id'           => $producto->id,
+                    'codigo'       => $producto->codigo,
+                    'ubicacion_id' => $producto->ubicacion_id,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al reasignar producto: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 
     public function solicitarStock(Request $request)
     {
