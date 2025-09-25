@@ -138,10 +138,6 @@ class UbicacionController extends Controller
         }
     }
 
-    use Illuminate\Support\Str;
-    use Illuminate\Support\Facades\Log;
-    use Exception;
-
     public function inventario(Request $request)
     {
         try {
