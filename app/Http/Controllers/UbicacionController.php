@@ -138,37 +138,48 @@ class UbicacionController extends Controller
         }
     }
 
+    use Illuminate\Support\Str;
+    use Illuminate\Support\Facades\Log;
+    use Exception;
+
     public function inventario(Request $request)
     {
         try {
-            // 1. Recoger el ID de la obra desde la URL
-            $obraId = $request->input('almacen'); // sigue llamándose 'almacen' en la URL, pero es el ID de la obra
+            // 1) ID de obra desde la URL (parámetro 'almacen' = obra_id)
+            $obraId = $request->input('almacen');
 
-            // 2. Buscar la obra
+            // 2) Buscar la obra (con cliente)
             $obra = Obra::with('cliente')->find($obraId);
             if (!$obra) {
                 return redirect()->back()->with('error', 'Obra no encontrada.');
             }
 
-            // 3. Comprobación de seguridad
-            if (!Str::contains(Str::lower($obra->cliente->empresa), 'hierros paco reyes')) {
+            // 3) Seguridad: comprobar que pertenece a HPR
+            $empresaCliente = Str::lower((string) optional($obra->cliente)->empresa);
+            if (!Str::contains($empresaCliente, 'hierros paco reyes')) {
                 return redirect()->back()->with('error', 'Acceso no autorizado a esta obra.');
             }
 
-            // 4. Traducir el nombre de la obra a código de almacén
-            $almacen = match (Str::lower($obra->obra)) {
-                'nave a'   => '0A',
-                'nave b'   => '0B',
-                'almacén'  => 'AL',
-                default    => null,
+            // 4) Traducir obra → código de almacén
+            $almacen = match (Str::lower((string) $obra->obra)) {
+                'nave a'  => '0A',
+                'nave b'  => '0B',
+                'almacén' => 'AL',
+                default   => null,
             };
 
             if (!$almacen) {
                 return redirect()->back()->with('error', 'No se pudo determinar el almacén asociado a la obra.');
             }
 
-            // 5. Obtener ubicaciones de ese almacén
-            $ubicaciones = Ubicacion::with(['productos.productoBase', 'paquetes'])
+            // 5) Ubicaciones del almacén con productos SOLO 'almacenado'
+            $ubicaciones = Ubicacion::with([
+                'paquetes',
+                'productos' => function ($q) {
+                    $q->where('estado', 'almacenado')
+                        ->with('productoBase');
+                },
+            ])
                 ->where('almacen', $almacen)
                 ->orderBy('sector', 'desc')
                 ->orderBy('ubicacion', 'asc')
@@ -176,13 +187,13 @@ class UbicacionController extends Controller
 
             $ubicacionesPorSector = $ubicaciones->groupBy('sector');
 
-            // 6. Obtener todas las obras válidas
+            // 6) Listado de obras válidas (HPR)
             $obras = Obra::with('cliente')
                 ->whereHas('cliente', fn($q) => $q->where('empresa', 'like', '%hierros paco reyes%'))
                 ->orderBy('obra')
                 ->get();
 
-            // 7. Mostrar vista
+            // 7) Vista
             return view('ubicaciones.inventario', [
                 'ubicacionesPorSector' => $ubicacionesPorSector,
                 'almacen'              => $almacen,
