@@ -557,12 +557,19 @@ class MovimientoController extends Controller
             $maquinaDetectada = Maquina::where('codigo', $ubicacion->descripcion)->first();
         }
 
-        $naveId = auth()->user()?->lugarActualTrabajador();
-        $usuario = auth()->user();
+        // 🚨 Determinar nave según campo "almacen" de la ubicación destino
+        $naveId = null;
+        if ($ubicacion && $ubicacion->almacen) {
+            $mapaAlmacenes = [
+                '0A' => 1,
+                '0B' => 2,
+                'AL' => 3,
+            ];
+            $naveId = $mapaAlmacenes[$ubicacion->almacen] ?? null;
+        }
 
-        // 🚨 Solo comprobamos nave si NO es oficina
-        if (!$naveId && $usuario->rol !== 'oficina') {
-            $mensaje = 'No se puede determinar tu nave de trabajo actual. ¿Has fichado entrada?.';
+        if (!$naveId) {
+            $mensaje = 'No se puede determinar la nave de trabajo a partir de la ubicación destino.';
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -573,7 +580,6 @@ class MovimientoController extends Controller
 
             return back()->with('error', $mensaje);
         }
-
 
         try {
             DB::transaction(function () use ($codigo, $ubicacion, $maquinaDetectada, $naveId) {
