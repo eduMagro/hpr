@@ -558,9 +558,10 @@ class MovimientoController extends Controller
         }
 
         $naveId = auth()->user()?->lugarActualTrabajador();
+        $usuario = auth()->user();
 
-        if (!$naveId) {
-
+        // 🚨 Solo comprobamos nave si NO es oficina
+        if (!$naveId && $usuario->rol !== 'oficina') {
             $mensaje = 'No se puede determinar tu nave de trabajo actual. ¿Has fichado entrada?.';
 
             if ($request->expectsJson()) {
@@ -572,6 +573,7 @@ class MovimientoController extends Controller
 
             return back()->with('error', $mensaje);
         }
+
 
         try {
             DB::transaction(function () use ($codigo, $ubicacion, $maquinaDetectada, $naveId) {
