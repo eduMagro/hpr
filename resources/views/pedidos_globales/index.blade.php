@@ -354,7 +354,7 @@
             </table>
         </div>
 
-        <x-tabla.paginacion :paginador="$pedidosMaquila" />
+
     </div>
 
     {{-- =========================
