@@ -189,7 +189,7 @@
                 <tfoot class="bg-gray-100 text-xs uppercase">
                     {{-- Totales del filtrado (excluye maquila) --}}
                     <tr>
-                        <td class="p-2 border text-right font-semibold" colspan="4">Totales (filtrado, sin maquila)
+                        <td class="p-2 border text-right font-semibold" colspan="4">Totales
                         </td>
                         <td class="p-2 border font-semibold">
                             {{ number_format($totalesPrincipal['cantidad_total'] ?? 0, 2, ',', '.') }} kg
@@ -209,7 +209,7 @@
            ========================= --}}
         <div class="mt-8 overflow-x-auto bg-white shadow rounded-lg">
             <div class="px-3 pt-3 text-left text-sm">
-                <strong>Pedido Global para maquilar</strong>
+                <strong>Pedido Global</strong>
             </div>
             <table class="w-full border-collapse text-sm text-center">
                 <thead class="bg-purple-600 text-white">
@@ -330,7 +330,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="py-4 text-gray-500 text-center">No hay pedidos de maquila para
+                            <td colspan="10" class="py-4 text-gray-500 text-center">No hay pedidos Globales para
                                 mostrar.</td>
                         </tr>
                     @endforelse
