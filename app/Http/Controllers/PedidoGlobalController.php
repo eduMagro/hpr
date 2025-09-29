@@ -97,54 +97,47 @@ class PedidoGlobalController extends Controller
 
     public function index(Request $request)
     {
-        $query = PedidoGlobal::with(['fabricante', 'distribuidor', 'pedidos']);
+        $codigosPedidosMaquila = ['PCG25/0005'];
 
-        // Filtros
+        // Tabla principal (excluye maquila)
+        $query = PedidoGlobal::with(['fabricante', 'distribuidor', 'pedidos'])
+            ->whereNotIn('codigo', $codigosPedidosMaquila);
+
         $this->aplicarFiltrosPedidosGlobales($query, $request);
 
-        // 👉 Clon para totales filtrados (sin paginar)
         $queryFiltrado = (clone $query);
 
-        // Paginación
         $perPage = $request->input('per_page', 10);
         $pedidosGlobales = $query->paginate($perPage)->appends($request->all());
 
-        // Filtros activos y ordenables
+        // Tabla maquila (incluye SOLO esos códigos). La paginamos también.
+        $queryMaquila = PedidoGlobal::with(['fabricante', 'distribuidor', 'pedidos'])
+            ->whereIn('codigo', $codigosPedidosMaquila);
+
+        // OJO: usa un nombre distinto para el select de “por página” de esta tabla
+        $perPageMaquila = $request->input('per_page_maquila', 50);
+        $pedidosMaquila = $queryMaquila->paginate($perPageMaquila)->appends($request->all());
+
+        // Filtros activos / ordenables (principal)
         $filtrosActivos = $this->filtrosActivosPedidosGlobales($request);
         $ordenables = [
-            'codigo' => $this->getOrdenamientoPedidosGlobales('codigo', 'Código'),
-            'fabricante' => $this->getOrdenamientoPedidosGlobales('fabricante', 'Fabricante'),
-            'distribuidor' => $this->getOrdenamientoPedidosGlobales('distribuidor', 'Distribuidor'),
+            'codigo'            => $this->getOrdenamientoPedidosGlobales('codigo', 'Código'),
+            'fabricante'        => $this->getOrdenamientoPedidosGlobales('fabricante', 'Fabricante'),
+            'distribuidor'      => $this->getOrdenamientoPedidosGlobales('distribuidor', 'Distribuidor'),
             'precio_referencia' => $this->getOrdenamientoPedidosGlobales('precio_referencia', 'Precio Ref.'),
-            'cantidad_total' => $this->getOrdenamientoPedidosGlobales('cantidad_total', 'Cantidad total'),
-            'estado' => $this->getOrdenamientoPedidosGlobales('estado', 'Estado'),
+            'cantidad_total'    => $this->getOrdenamientoPedidosGlobales('cantidad_total', 'Cantidad total'),
+            'estado'            => $this->getOrdenamientoPedidosGlobales('estado', 'Estado'),
         ];
 
         $fabricantes = Fabricante::select('id', 'nombre')->get();
         $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
-        /* ─────────────────────────────────────────────────────────
-     |  TOTALES (Página y Filtrado)
-     |  Nota: asumo que $pedido->cantidad_restante es un accessor.
-     |  Si es columna real, puedes usar sum('cantidad_restante') directamente.
-     ───────────────────────────────────────────────────────── */
-
-        // // Totales de la página actual (colección paginada)
-        // $totalesPagina = [
-        //     'cantidad_total'     => $pedidosGlobales->getCollection()->sum('cantidad_total'),
-        //     'cantidad_restante'  => $pedidosGlobales->getCollection()->sum(function ($p) {
-        //         return (float) ($p->cantidad_restante ?? 0);
-        //     }),
-        // ];
-
-        // Totales del conjunto filtrado (sin paginar)
-        // cantidad_total se puede sumar en SQL directamente
+        // Totales filtrados (principal)
         $totalFiltradoCantidadTotal = (clone $queryFiltrado)->sum('cantidad_total');
 
-        // cantidad_restante (si es accessor) lo sumamos en PHP de forma eficiente
         $totalFiltradoCantidadRestante = 0.0;
         (clone $queryFiltrado)
-            ->select('pedidos_globales.*') // ajusta el nombre real de la tabla si es distinto
+            ->select('pedidos_globales.*')
             ->orderBy('id')
             ->lazyById(1000, 'id')
             ->each(function ($p) use (&$totalFiltradoCantidadRestante) {
@@ -156,16 +149,27 @@ class PedidoGlobalController extends Controller
             'cantidad_restante' => $totalFiltradoCantidadRestante,
         ];
 
+        // Totales maquila (del conjunto completo, NO solo de la página)
+        $totalesMaquila = [
+            'cantidad_total'    => (clone $queryMaquila)->sum('cantidad_total'),
+            'cantidad_restante' => (clone $queryMaquila)->get()->sum(function ($p) {
+                return (float) ($p->cantidad_restante ?? 0);
+            }),
+        ];
+
         return view('pedidos_globales.index', compact(
             'pedidosGlobales',
+            'pedidosMaquila',
+            'totalesMaquila',
             'filtrosActivos',
             'ordenables',
             'fabricantes',
             'distribuidores',
-            // 'totalesPagina',
             'totalesFiltrados'
         ));
     }
+
+
 
 
     // Mostrar formulario de creación
