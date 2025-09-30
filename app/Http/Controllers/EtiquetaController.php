@@ -27,6 +27,9 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use App\Services\CompletarLoteService;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 
 class EtiquetaController extends Controller
@@ -298,163 +301,730 @@ class EtiquetaController extends Controller
             'html'     => $html,
         ]);
     }
-
-    public function optimizarCorte(Request $request, $etiquetaSubId)
+    /**
+     * Devuelve un array de IDs de planilla empezando por la actual
+     * y continuando con las siguientes en la cola de la MISMA máquina,
+     * según la tabla orden_planillas (posicion ASC).
+     */
+    private function obtenerPlanillasMismaMaquinaEnOrden(Etiqueta $etiquetaA): array
     {
-        $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiquetaSubId)
-            ->with('elementos', 'planilla.etiquetas.elementos')
-            ->firstOrFail();
-
-        $longitudBarraCm = floatval($request->longitud_barra ?? 0) * 100;
-        if ($longitudBarraCm <= 0) {
-            return response()->json(['message' => 'Longitud de barra no válida.'], 400);
+        $planillaActual = $etiquetaA->planilla;
+        if (!$planillaActual) {
+            return [$etiquetaA->planilla_id]; // fallback
         }
 
-        $elementoA = $etiqueta->elementos->first();
+        // 1) Averiguar la máquina de esta planilla consultando orden_planillas
+        $filaActual = OrdenPlanilla::where('planilla_id', $planillaActual->id)->first();
+        if (!$filaActual) {
+            // Si no hay fila en orden_planillas, devolvemos solo la actual
+            return [$planillaActual->id];
+        }
+
+        $maquinaId = (int) $filaActual->maquina_id;
+        $posActual = (int) $filaActual->posicion;
+
+        // 2) Traer TODA la cola de esa máquina, ordenada
+        $todaCola = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->orderBy('posicion', 'asc')
+            ->pluck('planilla_id')
+            ->toArray();
+
+        // 3) Reordena la lista poniendo primero la actual y luego las siguientes
+        // (sin repetir), manteniendo el orden de 'posicion'
+        $lista = [];
+        $ya = [];
+        // primero la actual (si está)
+        if (!in_array($planillaActual->id, $lista, true)) {
+            $lista[] = $planillaActual->id;
+            $ya[$planillaActual->id] = true;
+        }
+        // luego las que vengan después de la actual
+        foreach ($todaCola as $pid) {
+            if (isset($ya[$pid])) continue;
+            $lista[] = $pid;
+            $ya[$pid] = true;
+        }
+        // por si hubiera alguna anterior que no queremos perder (opcional)
+        // foreach ($todaCola as $pid) { if (!isset($ya[$pid])) { $lista[] = $pid; $ya[$pid]=true; } }
+
+        return $lista;
+    }
+    /**
+     * Candidatos de UNA planilla dada: mismo Ø, estado pendiente y stock.
+     * Devuelve array de ['id' => subid, 'L' => longitud_cm, 'disponibles' => barras]
+     */
+    private function construirCandidatosEnPlanilla(int $planillaId, int $diametroMm, string $excluirSubId): array
+    {
+        $planilla = Planilla::with('etiquetas.elementos')->find($planillaId);
+        if (!$planilla) return [];
+
+        $candidatos = [];
+        foreach ($planilla->etiquetas as $otra) {
+            $subId = $otra->etiqueta_sub_id;
+            if ($subId === $excluirSubId) continue;
+
+            $estado = strtolower(trim((string) ($otra->estado ?? '')));
+            if ($estado !== 'pendiente') continue;
+
+            $e = $otra->elementos->first();
+            if (!$e) continue;
+            if ((int) ($e->diametro ?? 0) !== $diametroMm) continue;
+
+            $longitudCm  = (float) ($e->longitud ?? 0);       // 👈 recuerda: en tu BD longitud viene en cm para elementos
+            $disponibles = (int)   max(0, (int) ($e->barras ?? 0));
+            if ($longitudCm <= 0 || $disponibles <= 0) continue;
+
+            $candidatos[] = [
+                'id'          => $subId,
+                'L'           => $longitudCm,
+                'disponibles' => $disponibles,
+            ];
+        }
+
+        return $candidatos;
+    }
+    public function optimizarCorte(Request $request, string $etiquetaSubId)
+    {
+        /* ─────────────────────────────
+     |  0) Parámetros / constantes
+     ───────────────────────────── */
+        $Kmax                   = (int) ($request->input('kmax') ?? 5);   // cortes máx por barra (incluye A)
+        $EPS                    = 0.01;                                   // tolerancia numérica
+        $UMBRAL_OK              = 99.0;                                   // % objetivo
+        $permitirRepeticiones   = true;                                   // permitir repetir (incluido A) para k>=3
+        $kMinimo                = 2;                                      // empezamos por parejas (A+B)
+
+        /* ─────────────────────────────
+     |  1) Cargar contexto + validar
+     ───────────────────────────── */
+        $etiquetaA = Etiqueta::with(['elementos', 'planilla.etiquetas.elementos'])->where('etiqueta_sub_id', $etiquetaSubId)->firstOrFail();
+
+        $elementoA = $etiquetaA->elementos->first();
         if (!$elementoA) {
-            return response()->json(['message' => 'No hay elementos en la etiqueta actual.'], 400);
+            return response()->json(['success' => false, 'message' => 'La subetiqueta A no tiene elementos.'], 400);
         }
 
-        $longitudA = (float) $elementoA->longitud;
-        $diametro  = (int) $elementoA->diametro;
+        $longitudAcm = (float) ($elementoA->longitud ?? 0);   // cm
+        $diametro    = (int)   ($elementoA->diametro ?? 0);
+        $barrasA     = (int)   max(1, ($elementoA->barras ?? 1)); // piezas pendientes (A consume 1 fijo)
+        if ($longitudAcm <= 0 || $diametro <= 0) {
+            return response()->json(['success' => false, 'message' => 'Datos de A inválidos (longitud/diámetro).'], 400);
+        }
 
-        $mejor = null;
+        /* 2) Construir lista de planillas a explorar: actual + siguientes de la MISMA máquina */
+        $planillasEnOrden = $this->obtenerPlanillasMismaMaquinaEnOrden($etiquetaA);
 
-        foreach ($etiqueta->planilla->etiquetas as $otra) {
-            if ($otra->etiqueta_sub_id === $etiqueta->etiqueta_sub_id) continue;
-            if ($otra->estado !== 'pendiente') continue;
+        /* 3) Longitudes de producto base (orden asc, en cm; ProductoBase.longitud viene en METROS) */
+        $longitudesBarraCm = $this->recogerLongitudesProductosBaseEnCm($diametro);
+        if (empty($longitudesBarraCm)) {
+            return response()->json(['success' => false, 'message' => 'No hay longitudes de barra disponibles en productos base para este diámetro.'], 400);
+        }
 
-            $elementoB = $otra->elementos->first();
-            if (!$elementoB) continue;
-            if ((int) $elementoB->diametro !== $diametro) continue;
+        /* 4) Preparativos comunes */
+        $repeticionesA = $permitirRepeticiones ? max(0, $barrasA - 1) : 0;
 
-            $longitudB = (float) $elementoB->longitud;
-            $total     = $longitudA + $longitudB;
+        $comparador = function (array $x, array $y) use ($EPS) {
+            if ($x['aprovechamiento'] > $y['aprovechamiento'] + $EPS) return -1;
+            if ($y['aprovechamiento'] > $x['aprovechamiento'] + $EPS) return 1;
+            if ($x['sobra_cm'] + $EPS < $y['sobra_cm']) return -1;
+            if ($y['sobra_cm'] + $EPS < $x['sobra_cm']) return 1;
+            if (($x['max_long_cm'] ?? 0) > ($y['max_long_cm'] ?? 0) + $EPS) return -1;
+            if (($y['max_long_cm'] ?? 0) > ($x['max_long_cm'] ?? 0) + $EPS) return 1;
+            return strcmp($x['clave_estable'], $y['clave_estable']);
+        };
 
-            if ($total > $longitudBarraCm) continue; // ❌ no cabe en la barra
+        $topGlobal98           = [];
+        $combinacionesYaVistas = [];
+        $progresoPorLongitud   = []; // guardará bloques por planilla y por longitud (diagnóstico opcional)
 
-            $sobra = $longitudBarraCm - $total;
-            $aprov = round(($total / $longitudBarraCm) * 100, 2);
+        /* 5) Iterar planillas mientras falten patrones para el Top 3 */
+        foreach ($planillasEnOrden as $planillaId) {
+            if (count($topGlobal98) >= 3) break; // ya están los 3 mejores ≥98
 
-            if (!$mejor || $aprov > $mejor['aprovechamiento']) {
-                $mejor = [
-                    'etiqueta'        => $otra->etiqueta_sub_id,
-                    'longitud_actual' => $longitudA,
-                    'longitud_extra'  => $longitudB,
-                    'patron'          => "{$longitudA} + {$longitudB} = {$total}",
-                    'sobra_cm'        => $sobra,
-                    'aprovechamiento' => $aprov,
+            // 5.1) Candidatos SOLO de esta planilla
+            $candidatos = $this->construirCandidatosEnPlanilla($planillaId, $diametro, $etiquetaSubId);
+
+            // Si no hay candidatos en esta planilla, pasa a la siguiente
+            if (empty($candidatos)) continue;
+
+            // 5.2) Pre-carga de etiquetas para ESTA planilla (y A) → evita N+1
+            $subIdsNecesarios = collect($candidatos)->pluck('id')->push($etiquetaSubId)->unique()->values();
+            $mapaEtiquetas    = Etiqueta::with(['elementos', 'planilla'])
+                ->whereIn('etiqueta_sub_id', $subIdsNecesarios)
+                ->get()
+                ->keyBy('etiqueta_sub_id');
+
+            // 5.3) Ordenar candidatos por L desc (poda más efectiva)
+            usort($candidatos, fn($a, $b) => $b['L'] <=> $a['L']);
+
+            // 5.4) Explorar por longitudes (de menor a mayor)
+            foreach ($longitudesBarraCm as $longitudBarraCmActual) {
+                if (count($topGlobal98) >= 3) break;
+
+                $topLocal98    = [];
+                $mejorLocal    = null;
+                $kMaxExplorado = $kMinimo;
+
+                // k=2: SOLO A+B (B≠A)
+                [$encontradosLocal98, $mejorLocal] = $this->explorarParejasAB(
+                    $etiquetaSubId,
+                    $longitudAcm,
+                    $longitudBarraCmActual,
+                    $candidatos,
+                    $UMBRAL_OK,
+                    $comparador
+                );
+                $this->acumularPatrones($encontradosLocal98, $topLocal98, $topGlobal98, $combinacionesYaVistas, $comparador);
+
+                // k≥3 si aún falta para completar Top 3 global
+                if (count($topGlobal98) < 3) {
+                    for ($k = 3; $k <= $Kmax && count($topGlobal98) < 3; $k++) {
+                        $encontrados = $this->explorarK(
+                            $k,
+                            $etiquetaSubId,
+                            $longitudAcm,
+                            $longitudBarraCmActual,
+                            $candidatos,
+                            $repeticionesA,
+                            $UMBRAL_OK,
+                            $comparador
+                        );
+
+                        $this->acumularPatrones($encontrados, $topLocal98, $topGlobal98, $combinacionesYaVistas, $comparador);
+
+                        if (!$mejorLocal) {
+                            $mejorLocal = $this->mejorPatron($encontrados, $comparador);
+                        } else {
+                            $mejorK = $this->mejorPatron($encontrados, $comparador);
+                            if ($mejorK && $comparador($mejorK, $mejorLocal) < 0) {
+                                $mejorLocal = $mejorK;
+                            }
+                        }
+
+                        $kMaxExplorado = $k;
+                    }
+                }
+
+                // (opcional) diagnóstico con etiqueta de planilla
+                $progresoPorLongitud[] = [
+                    'planilla_id'       => $planillaId,
+                    'longitud_barra_cm' => (int) $longitudBarraCmActual,
+                    'top_local_98'      => array_slice($topLocal98, 0, 3),
+                    'mejor_local'       => $mejorLocal,
+                    'k_max_explorado'   => $kMaxExplorado,
                 ];
             }
+
+            // 5.5) Si después de esta planilla ya tenemos Top 3, salimos del bucle
+            if (count($topGlobal98) >= 3) break;
         }
 
-        if (!$mejor) {
-            return response()->json([
-                'success' => true,
-                'html' => "<p>No se encontraron combinaciones óptimas.</p>",
-            ]);
+        /* 6) Ordenar y completar grupos para canvas como antes */
+        usort($topGlobal98, $comparador);
+        $topGlobal98 = array_slice($topGlobal98, 0, 3);
+
+        // Para cada patrón del top, construir grupos con el mapa de SU planilla cargado en su iteración.
+        // Sencillo: si quieres tener los grupos siempre, puedes reconstruir usando un mapa general:
+        if (!empty($topGlobal98)) {
+            // Prepara un mapa global con todos los subids implicados en el top
+            $todosSubIdsTop = collect($topGlobal98)->flatMap(fn($p) => array_keys($p['conteo_por_subid']))->unique()->values();
+            $mapaGlobal = Etiqueta::with(['elementos', 'planilla'])
+                ->whereIn('etiqueta_sub_id', $todosSubIdsTop)
+                ->get()
+                ->keyBy('etiqueta_sub_id');
+
+            foreach ($topGlobal98 as &$pat) {
+                $pat['grupos'] = $this->construirGruposParaCanvas($pat['conteo_por_subid'], $mapaGlobal);
+            }
+            unset($pat);
         }
 
-        $color = $mejor['aprovechamiento'] >= 98 ? 'text-green-600'
-            : ($mejor['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
+        $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
 
-        $html = "<ul class='text-left space-y-2'>";
-        $html .= "<li>🧠 Sugerencia: combinar con <strong class='text-blue-600'>{$mejor['etiqueta']}</strong></li>";
-        $html .= "<li>🔹 Patrón: <strong>{$mejor['patron']} cm</strong></li>";
-        $html .= "<li>🪵 Sobra: <strong>{$mejor['sobra_cm']} cm</strong></li>";
-        $html .= "<li>📈 Aprovechamiento: <span class='font-bold {$color}'>{$mejor['aprovechamiento']}%</span></li>";
-        $html .= "</ul>";
-
+        /* ─────────────────────────────
+     |  7) Responder
+     ───────────────────────────── */
         return response()->json([
-            'success' => true,
-            'html'    => $html,
+            'success'                 => true,
+            'longitudes_barra_cm'     => array_values($longitudesBarraCm),
+            'top_global'              => $topGlobal98,
+            'progreso_por_longitud'   => $progresoPorLongitud,
+            'kmax'                    => $Kmax,
+            'umbral_ok'               => $UMBRAL_OK,
+            'permitio_repeticion'     => $permitirRepeticiones,
+            'html_resumen'            => $htmlResumen,
+            // por consistencia con tu front previo:
+            'longitud_barra_m'        => null, // ahora probamos múltiples longitudes (si quieres, puedes repetir por cada top)
+            'longitud_barra_cm'       => null,
         ]);
     }
 
+    /* ============================================================
+   =              HELPERS PRIVADOS / UTILIDADES               =
+   ============================================================ */
+
+    /**
+     * Construye candidatos (subetiquetas) con mismo Ø, estado pendiente y stock.
+     * Devuelve array de ['id' => subid, 'L' => longitud_cm, 'disponibles' => barras]
+     */
+    private function construirCandidatosMismoDiametro(Etiqueta $etiquetaA, int $diametroMm, string $etiquetaSubIdA): array
+    {
+        $candidatos = [];
+
+        foreach ($etiquetaA->planilla->etiquetas as $otra) {
+            $subId = $otra->etiqueta_sub_id;
+            if ($subId === $etiquetaSubIdA) continue;
+
+            $estado = strtolower(trim((string) ($otra->estado ?? '')));
+            if ($estado !== 'pendiente') continue;
+
+            $e = $otra->elementos->first();
+            if (!$e) continue;
+            if ((int) ($e->diametro ?? 0) !== $diametroMm) continue;
+
+            $longitudCm  = (float) ($e->longitud ?? 0);
+            $disponibles = (int)   max(0, (int) ($e->barras ?? 0));
+            if ($longitudCm <= 0 || $disponibles <= 0) continue;
+
+            $candidatos[] = [
+                'id'          => $subId,
+                'L'           => $longitudCm,
+                'disponibles' => $disponibles,
+            ];
+        }
+
+        return $candidatos;
+    }
+
+    /**
+     * Recoge longitudes de productos base **en cm**, deduplicadas y orden asc.
+     * Tu tabla tiene el campo `longitud` EN METROS (float/decimal).
+     */
+    private function recogerLongitudesProductosBaseEnCm(int $diametroMm): array
+    {
+        // Si NO tienes columna `activo`, elimina ese where.
+        $productos = ProductoBase::query()
+            ->where('diametro', $diametroMm)
+            ->pluck('longitud')        // longitud en METROS
+            ->filter(fn($m) => is_numeric($m) && (float)$m > 0)
+            ->map(function ($m) {
+                // Convertimos a cm y normalizamos a entero (evita flotantes raros)
+                $cm = (float)$m * 100.0;
+                return (int) round($cm);
+            })
+            ->unique()
+            ->sort()                   // ascendente
+            ->values()
+            ->all();
+
+        return $productos; // array<int cm>
+    }
+
+
+    /**
+     * Explora parejas A+B (B≠A) para una longitud concreta.
+     * Retorna [patrones_98, mejor_patron_encontrado (aunque <98 o null)]
+     */
+    private function explorarParejasAB(
+        string $subIdA,
+        float $longitudAcm,
+        int $longitudBarraCm,
+        array $candidatos,
+        float $UMBRAL_OK,
+        callable $comparador
+    ): array {
+        $patrones98   = [];
+        $mejorLocal   = null;
+
+        foreach ($candidatos as $cand) {
+            $suma = $longitudAcm + $cand['L'];
+            if ($suma > $longitudBarraCm) continue;
+
+            $aprov = round(($suma / $longitudBarraCm) * 100, 2);
+            $sobra = round($longitudBarraCm - $suma, 2);
+
+            $patron = [
+                'longitud_barra_cm'  => (int) $longitudBarraCm,
+                'k'                  => 2,
+                'etiquetas'          => [$subIdA, $cand['id']],
+                'conteo_por_subid'   => $this->contarMultiset([$subIdA, $cand['id']]),
+                'longitudes_cm'      => [$longitudAcm, $cand['L']],
+                'total_cm'           => $suma,
+                'sobra_cm'           => $sobra,
+                'aprovechamiento'    => $aprov,
+                'max_long_cm'        => max($longitudAcm, $cand['L']),
+                'patron_humano'      => number_format($longitudAcm, 2, ',', '.') . ' + ' . number_format($cand['L'], 2, ',', '.') . ' = ' . number_format($suma, 2, ',', '.'),
+                'tipo_schema'        => 'A+B',
+                'clave_estable'      => $this->claveCombinacion([$subIdA, $cand['id']]),
+            ];
+
+            if ($aprov >= $UMBRAL_OK) {
+                $patrones98[] = $patron;
+            }
+
+            if (!$mejorLocal || $comparador($patron, $mejorLocal) < 0) {
+                $mejorLocal = $patron;
+            }
+        }
+
+        // ordenar los >=98 y recortar a 3
+        usort($patrones98, $comparador);
+        $patrones98 = array_slice($patrones98, 0, 3);
+
+        return [$patrones98, $mejorLocal];
+    }
+
+    /**
+     * Explora combinaciones de tamaño k (k>=3) permitiendo repeticiones por stock.
+     * Devuelve lista de patrones con % ≥ UMBRAL_OK.
+     */
+    private function explorarK(
+        int $kObjetivo,
+        string $subIdA,
+        float $longitudAcm,
+        int $longitudBarraCm,
+        array $candidatos,
+        int $repeticionesA,
+        float $UMBRAL_OK,
+        callable $comparador
+    ): array {
+        $resultados = [];
+
+        // mapa stock por subid (para candidatos)
+        $stock = [];
+        foreach ($candidatos as $c) {
+            $stock[$c['id']] = $c['disponibles'];
+        }
+
+        // vector longitudes por subid
+        $LporSub = [];
+        foreach ($candidatos as $c) {
+            $LporSub[$c['id']] = $c['L'];
+        }
+        $LporSub[$subIdA] = $longitudAcm;
+
+        $seleccion = [];               // lista de subids (sin A fijo)
+        $usos      = [];               // subid => usados
+        $sumaSel   = 0.0;
+
+        // DFS: debemos elegir (kObjetivo-1) acompañantes, pudiendo usar A hasta repeticionesA
+        $subidsOrdenados = array_keys($LporSub);
+        // orden descendente por longitud para podar antes
+        usort($subidsOrdenados, fn($x, $y) => ($LporSub[$y] <=> $LporSub[$x]));
+
+        $dfs = function () use (
+            &$dfs,
+            $kObjetivo,
+            $subIdA,
+            $longitudAcm,
+            $longitudBarraCm,
+            &$seleccion,
+            &$usos,
+            &$sumaSel,
+            $LporSub,
+            $stock,
+            $repeticionesA,
+            $UMBRAL_OK,
+            &$resultados,
+            $subidsOrdenados
+        ) {
+            $kActual = 1 + count($seleccion); // +1 por A fijo
+            $sumaActual = $longitudAcm + $sumaSel;
+            if ($sumaActual > $longitudBarraCm) {
+                return; // poda por suma
+            }
+
+            if ($kActual === $kObjetivo) {
+                // construir patrón final: [A] + seleccion
+                $ids = array_merge([$subIdA], $seleccion);
+                $total = $sumaActual;
+                $aprov = round(($total / $longitudBarraCm) * 100, 2);
+                $sobra = round($longitudBarraCm - $total, 2);
+
+                if ($aprov >= $UMBRAL_OK) {
+                    $longitudes = array_map(fn($sid) => $LporSub[$sid], $ids);
+                    $resultados[] = [
+                        'longitud_barra_cm'  => (int) $longitudBarraCm,
+                        'k'                  => $kObjetivo,
+                        'etiquetas'          => $ids,
+                        'conteo_por_subid'   => $this->contarMultiset($ids),
+                        'longitudes_cm'      => $longitudes,
+                        'total_cm'           => $total,
+                        'sobra_cm'           => $sobra,
+                        'aprovechamiento'    => $aprov,
+                        'max_long_cm'        => max($longitudes),
+                        'patron_humano'      => implode(' + ', array_map(fn($x) => number_format($x, 2, ',', '.'), $longitudes)) . ' = ' . number_format($total, 2, ',', '.'),
+                        'tipo_schema'        => $this->schemaDesdeIds($ids, $subIdA),
+                        'clave_estable'      => $this->claveCombinacion($ids),
+                    ];
+                }
+                return;
+            }
+
+            foreach ($subidsOrdenados as $sid) {
+                // reglas de stock:
+                if ($sid === $subIdA) {
+                    $usadosA = $usos[$sid] ?? 0;
+                    if ($usadosA >= $repeticionesA) continue; // A solo extra hasta repeticionesA
+                } else {
+                    $usados = $usos[$sid] ?? 0;
+                    $disp = $stock[$sid] ?? 0;
+                    if ($usados >= $disp) continue;
+                }
+
+                // elegir
+                $seleccion[]   = $sid;
+                $usos[$sid]    = ($usos[$sid] ?? 0) + 1;
+                $sumaSel      += $LporSub[$sid];
+
+                // poda rápida por suma
+                if ($longitudAcm + $sumaSel <= $longitudBarraCm) {
+                    $dfs();
+                }
+
+                // deshacer
+                array_pop($seleccion);
+                $usos[$sid] -= 1;
+                if ($usos[$sid] <= 0) unset($usos[$sid]);
+                $sumaSel -= $LporSub[$sid];
+            }
+        };
+
+        $dfs();
+
+        // ordenar y devolver (sin recorte aquí; se recorta al acumular)
+        usort($resultados, $comparador);
+
+        // deduplicación aquí no es estrictamente necesaria; se hace al acumular en top global/local
+        return $resultados;
+    }
+
+    /**
+     * Inserta patrones en TopLocal y TopGlobal con deduplicación por combinación multiset.
+     */
+    private function acumularPatrones(array $encontrados, array &$topLocal98, array &$topGlobal98, array &$combinacionesYaVistas, callable $comparador): void
+    {
+        foreach ($encontrados as $p) {
+            $clave = $p['clave_estable']; // ids ordenados, con repeticiones
+            if (isset($combinacionesYaVistas[$clave])) continue;
+            $combinacionesYaVistas[$clave] = true;
+
+            $topLocal98[]  = $p;
+            $topGlobal98[] = $p;
+        }
+
+        // ordenar y recortar a 3 en ambos
+        usort($topLocal98, $comparador);
+        $topLocal98  = array_slice($topLocal98, 0, 3);
+
+        usort($topGlobal98, $comparador);
+        $topGlobal98 = array_slice($topGlobal98, 0, 3);
+    }
+
+    /** Devuelve el mejor patrón de una lista según comparador (o null). */
+    private function mejorPatron(array $lista, callable $comparador): ?array
+    {
+        if (empty($lista)) return null;
+        $mejor = $lista[0];
+        foreach ($lista as $p) {
+            if ($comparador($p, $mejor) < 0) $mejor = $p;
+        }
+        return $mejor;
+    }
+
+    /** Cuenta multiplicidades de subids en una combinación (multiset). */
+    private function contarMultiset(array $ids): array
+    {
+        $conteo = [];
+        foreach ($ids as $id) {
+            $conteo[$id] = ($conteo[$id] ?? 0) + 1;
+        }
+        ksort($conteo);
+        return $conteo;
+    }
+
+    /** Clave estable de combinación: ids ordenados con repeticiones, unidos por '|'. */
+    private function claveCombinacion(array $ids): string
+    {
+        sort($ids, SORT_NATURAL);
+        return implode('|', $ids);
+    }
+
+    /** Deducción de schema tipo "A+B", "A+A+B", "A+B+B+B", etc. */
+    private function schemaDesdeIds(array $ids, string $subIdA): string
+    {
+        $conteo = $this->contarMultiset($ids);
+        $partes = [];
+        foreach ($conteo as $sid => $n) {
+            $letra = ($sid === $subIdA) ? 'A' : 'B';
+            // si quieres distinguir C,D por subetiqueta diferente, puedes extenderlo
+            if ($letra === 'B' && $n > 1) $partes[] = str_repeat('B', 1) . str_repeat('+B', $n - 1);
+            else $partes[] = $letra . ($n > 1 ? str_repeat('+' . $letra, $n - 1) : '');
+        }
+        // Orden canónico: A primero, luego resto
+        usort($partes, function ($x, $y) {
+            if (str_starts_with($x, 'A') && !str_starts_with($y, 'A')) return -1;
+            if (!str_starts_with($x, 'A') && str_starts_with($y, 'A')) return 1;
+            return strcmp($x, $y);
+        });
+        return implode('+', $partes);
+    }
+
+    /** Mapea a la estructura esperada por el canvas, SIN N+1. */
+    private function construirGruposParaCanvas(array $conteoPorSubid, Collection $mapaEtiquetas): array
+    {
+        $grupos = [];
+        foreach ($conteoPorSubid as $subId => $veces) {
+            $etq = $mapaEtiquetas->get($subId);
+            if (!$etq) continue;
+
+            $grupos[] = [
+                'etiqueta' => [
+                    'id'              => $etq->id,
+                    'etiqueta_sub_id' => $etq->etiqueta_sub_id,
+                ],
+                'elementos' => $etq->elementos->map(function ($el) {
+                    return [
+                        'id'          => $el->id,
+                        'codigo'      => $el->codigo,
+                        'barras'      => (int) ($el->barras ?? 0),
+                        'diametro'    => (int) ($el->diametro ?? 0),
+                        'dimensiones' => (string) ($el->dimensiones ?? ''),
+                        'peso'        => (float) ($el->peso ?? 0),
+                        'longitud'    => (float) ($el->longitud ?? 0),
+                    ];
+                })->values(),
+            ];
+        }
+        return $grupos;
+    }
+
+    /** HTML de resumen por longitud con top local (≥98) y mejor local si aplica. */
+    private function construirHtmlResumenMultiLongitudes(array $longitudesBarraCm, array $progresoPorLongitud): string
+    {
+        $html = "<div class='space-y-4'>";
+        foreach ($progresoPorLongitud as $bloque) {
+            $Lcm = (int) $bloque['longitud_barra_cm'];
+            $html .= "<div class='p-3 border rounded-md'>";
+            $html .= "<div class='text-sm text-gray-700 mb-2'>Barra: <strong>" . number_format($Lcm, 0, ',', '.') . " cm</strong></div>";
+
+            $topLocal = $bloque['top_local_98'] ?? [];
+            if (empty($topLocal)) {
+                $html .= "<div class='text-xs text-gray-500'>Sin patrones ≥ 98% para esta longitud.</div>";
+            } else {
+                $html .= "<div class='font-semibold text-sm mb-1'>Top (≥98%)</div><ul class='space-y-1'>";
+                foreach ($topLocal as $p) {
+                    $cls = $p['aprovechamiento'] >= 98 ? 'text-green-600' : ($p['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
+                    $html .= "<li class='text-sm leading-snug'>
+                    <div>🔹 Patrón: <strong>{$p['patron_humano']} cm</strong></div>
+                    <div>🪵 Sobra: <strong>" . number_format($p['sobra_cm'], 2, ',', '.') . " cm</strong></div>
+                    <div>📈 Aprovechamiento: <span class='font-bold {$cls}'>" . number_format($p['aprovechamiento'], 2, ',', '.') . "%</span></div>
+                    <div class='text-[11px] text-gray-500'>k={$p['k']}, esquema: {$p['tipo_schema']}</div>
+                </li>";
+                }
+                $html .= "</ul>";
+            }
+
+            if (!empty($bloque['mejor_local'])) {
+                $p = $bloque['mejor_local'];
+                $cls = $p['aprovechamiento'] >= 98 ? 'text-green-600' : ($p['aprovechamiento'] >= 90 ? 'text-yellow-500' : 'text-red-600');
+                $html .= "<div class='mt-2 text-xs text-gray-600'>Mejor local (diagnóstico): ";
+                $html .= "<span class='font-semibold'>{$p['patron_humano']} cm</span> — sobra <strong>" . number_format($p['sobra_cm'], 2, ',', '.') . " cm</strong>, ";
+                $html .= "aprov <span class='font-bold {$cls}'>" . number_format($p['aprovechamiento'], 2, ',', '.') . "%</span>, k={$p['k']}</div>";
+            }
+
+            $html .= "</div>";
+        }
+        $html .= "</div>";
+        return $html;
+    }
+
+    // public function render(Request $request)
+    // {
+    //     $etiqueta = \App\Models\Etiqueta::with(['planilla', 'elementos']) // 👈 añadimos relación elementos
+    //         ->findOrFail($request->id);
+
+    //     $maquinaTipo = $request->maquina_tipo ?? 'barra';
+
+    //     // devolvemos el HTML del componente blade
+    //     $html = view('components.etiqueta.etiqueta', [
+    //         'etiqueta' => $etiqueta,
+    //         'planilla' => $etiqueta->planilla,
+    //         'maquinaTipo' => $maquinaTipo,
+    //     ])->render();
+
+    //     // 👇 devolvemos también los elementos (en array plano)
+    //     return response()->json([
+    //         'html' => $html,
+    //         'elementos' => $etiqueta->elementos->toArray(), // todos los datos que necesitas en JS
+    //     ]);
+    // }
 
     public function fabricacionOptimizada(Request $request)
     {
-        $data = $request->validate([
-            'producto_base' => ['required', 'array'],
-            'producto_base.longitud_barra_cm' => ['required', 'numeric', 'min:1'],
-            'repeticiones' => ['required', 'integer', 'min:1'],
-            'etiquetas' => ['required', 'array', 'min:1'],
+        try {
+            $data = $request->validate([
+                'producto_base.longitud_barra_cm' => ['required', 'numeric', 'min:1'],
+                'repeticiones' => ['required', 'integer', 'min:1'],
+                'etiquetas' => ['required', 'array', 'min:1'],
+                'etiquetas.*.etiqueta_sub_id' => ['required', 'string'],
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errores de validación',
+                'errors' => $e->errors()
+            ], 422);
+        }
 
-            'etiquetas.*.etiqueta_sub_id' => ['required', 'string'], // ¡no int!
-            'etiquetas.*.elementos' => ['required', 'array', 'min:1'],
-            'etiquetas.*.elementos.*' => ['integer'],
-
-            // opcional: si en el diálogo eliges máquina por subetiqueta
-            'etiquetas.*.maquina_id' => ['nullable', 'integer', Rule::exists('maquinas', 'id')],
-        ]);
-
-        $longitudSeleccionada = (int) ($data['producto_base']['longitud_barra_cm'] ?? 0);
-        $userId        = Auth::id();
-        $companeroId   = auth()->user()->compañeroDeTurno()?->id;
-
+        $longitud = (int) $data['producto_base']['longitud_barra_cm'];
+        $userId = Auth::id();
+        $compaId = auth()->user()->compañeroDeTurno()?->id;
         $resultados = [];
 
         DB::beginTransaction();
         try {
-            /** @var \App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio $fabrica */
             $fabrica = app(\App\Servicios\Etiquetas\Fabrica\FabricaEtiquetaServicio::class);
 
             foreach ($data['etiquetas'] as $item) {
-                $subId = (string) $item['etiqueta_sub_id'];
+                $subId = $item['etiqueta_sub_id'];
 
-                // 1) localizar etiqueta
-                $etiqueta = Etiqueta::where('etiqueta_sub_id', $subId)->firstOrFail();
+                $maquinaId = Elemento::where('etiqueta_sub_id', $subId)->value('maquina_id');
+                if (!$maquinaId) throw new \RuntimeException("Sin máquina para {$subId}");
 
-                // 2) resolver máquina: payload -> etiqueta -> (si quieres, tu heurística)
-                $maquinaId = $item['maquina_id'] ?? $etiqueta->maquina_id;
-                if (!$maquinaId) {
-                    throw new \RuntimeException("No se pudo determinar la máquina para {$subId}");
-                }
                 $maquina = Maquina::findOrFail($maquinaId);
 
-                // 3) construir DTO igual que en actualizarEtiqueta()
                 $dto = new \App\Servicios\Etiquetas\DTOs\ActualizarEtiquetaDatos(
-                    etiquetaSubId: $subId,                      // string, respeta ".01"
-                    maquinaId: (int) $maquina->id,
-                    longitudSeleccionada: $longitudSeleccionada,
+                    etiquetaSubId: $subId,
+                    maquinaId: $maquinaId,
+                    longitudSeleccionada: $longitud,
                     operario1Id: $userId,
-                    operario2Id: $companeroId,
-                    opciones: ['origen' => 'optimizada']        // flag opcional
+                    operario2Id: $compaId,
+                    opciones: ['origen' => 'optimizada']
                 );
 
-                // 4) llamar al mismo servicio/factoría
-                $servicio  = $fabrica->porMaquina($maquina);
-                $resultado = $servicio->actualizar($dto);
+                $resultado = $fabrica->porMaquina($maquina)->actualizar($dto);
 
                 $resultados[] = [
                     'etiqueta_sub_id' => $subId,
-                    'estado'          => $resultado->etiqueta->estado ?? null,
-                    'warnings'        => $resultado->warnings ?? [],
+                    'estado' => $resultado->etiqueta->estado ?? null,
+                    'warnings' => $resultado->warnings ?? [],
                 ];
             }
 
             DB::commit();
-
-            return response()->json([
-                'success'   => true,
-                'message'   => 'Se han puesto en fabricación las subetiquetas implicadas.',
-                'resultados' => $resultados,
-            ]);
+            return response()->json(['success' => true, 'resultados' => $resultados]);
+        } catch (\Illuminate\Http\Exceptions\HttpResponseException $e) {
+            DB::rollBack();
+            return $e->getResponse(); // devolvemos la response real de Laravel
         } catch (\Throwable $e) {
             DB::rollBack();
-
-            \Log::error('Error en EtiquetaController@fabricacionOptimizada', [
-                'error'     => $e->getMessage(),
-                'exception' => get_class($e),
-                'payload'   => $data,
-                'user_id'   => $userId,
+            Log::error('Error en fabricacionOptimizada', [
+                'error' => $e->getMessage(),
+                'payload' => $data,
+                'user' => $userId
             ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'No se pudo lanzar la fabricación optimizada.',
-                'error'   => $e->getMessage(),
-            ], 422);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 422);
         }
     }
 

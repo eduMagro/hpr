@@ -212,7 +212,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 cancelButtonText: "Cancelar",
                 allowOutsideClick: false,
                 didOpen: () => {
-                    // click en una longitud -> fabricar
+                    // ✅ seguir pudiendo scrollear el fondo
+                    document.documentElement.style.overflowY = "auto";
+                    document.body.style.overflowY = "auto";
+
+                    // ✅ tu lógica existente: click en una longitud -> fabricar
                     document
                         .querySelectorAll(".opcion-longitud")
                         .forEach((btn) => {
@@ -226,7 +230,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 Swal.close();
                             });
                         });
-                    // click en optimizar -> buscar compañero
+
+                    // ✅ tu lógica existente: click en optimizar -> buscar compañero
                     document
                         .getElementById("btn-optimizar-corte")
                         ?.addEventListener("click", () => {
@@ -236,6 +241,13 @@ document.addEventListener("DOMContentLoaded", () => {
                             });
                             Swal.close();
                         });
+
+                    // ✅ NUEVO: hacer el modal arrastrable por el título
+                    makeSwalDraggable(".swal2-title");
+                },
+                didClose: () => {
+                    // restaurar por si el drag deshabilitó selección del texto
+                    document.body.style.userSelect = "";
                 },
             });
 
@@ -244,18 +256,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /** Corte optimizado: el modal devuelve estado, no abre otros selectores */
+    /** Corte optimizado: soporta patrones de 2..K cortes y resalta en la vista */
+    /** Corte optimizado: soporta patrones de 2..K cortes y resalta en la vista */
     async function mejorCorteHermano(id, diametro, patrones, csrfToken) {
-        const mejor =
-            Array.isArray(patrones) && patrones.length
-                ? [...patrones].sort(
-                      (a, b) => b.aprovechamiento - a.aprovechamiento
-                  )[0]
-                : null;
-
-        const longitudElegida = Number(mejor?.longitud_m || 0);
-        if (!longitudElegida) return null;
-
         const resp = await fetch(`/etiquetas/${id}/optimizar-corte`, {
             method: "POST",
             headers: {
@@ -263,50 +266,139 @@ document.addEventListener("DOMContentLoaded", () => {
                 Accept: "application/json",
                 "X-CSRF-TOKEN": csrfToken,
             },
-            body: JSON.stringify({ longitud_barra: longitudElegida }), // metros
+            body: JSON.stringify({ kmax: 5 }),
         });
 
         const data = await resp.json();
         if (!resp.ok)
             throw new Error(data?.message || "No se pudo optimizar el corte.");
 
+        const top = Array.isArray(data.top_global) ? data.top_global : [];
+        const tieneTop = top.length > 0;
+
+        let html = "";
+        if (tieneTop) {
+            html += `<div class="mb-2 text-sm text-gray-600">Se muestran los mejores patrones (≥98%) entre todas las longitudes disponibles.</div>`;
+            html += `<div class="space-y-2">`;
+
+            top.forEach((p, idx) => {
+                const cls =
+                    p.aprovechamiento >= 98
+                        ? "text-green-600"
+                        : p.aprovechamiento >= 90
+                        ? "text-yellow-500"
+                        : "text-red-600";
+
+                // 🔹 Etiquetas (secuencia completa)
+                const etiquetasSecuencia = Array.isArray(p.etiquetas)
+                    ? p.etiquetas.join(" + ")
+                    : "";
+
+                // 🔹 Etiquetas (resumen por conteo: subid × n)
+                const conteo = p.conteo_por_subid || {};
+                const etiquetasResumen = Object.keys(conteo)
+                    .sort() // orden alfabético estable
+                    .map((sid) => {
+                        const n = parseInt(conteo[sid] || 0, 10);
+                        return n > 1 ? `${sid} × ${n}` : sid;
+                    })
+                    .join(" + ");
+
+                html += `
+<label class="flex items-start gap-2 p-2 border rounded-md cursor-pointer hover:bg-gray-50">
+  <input type="radio" name="patronElegido" value="${idx}" ${
+                    idx === 0 ? "checked" : ""
+                } />
+  <div class="text-sm leading-snug">
+      <div class="font-semibold">Barra: ${p.longitud_barra_cm} cm · k=${
+                    p.k
+                } · esquema: ${p.tipo_schema}</div>
+      <div>🔹 <strong>${p.patron_humano} cm</strong></div>
+      <div>🪵 Sobra: <strong>${Number(p.sobra_cm).toFixed(2)} cm</strong></div>
+      <div>📈 Aprovechamiento: <span class="font-bold ${cls}">${Number(
+                    p.aprovechamiento
+                ).toFixed(2)}%</span></div>
+      <div class="mt-1 text-xs text-gray-700">
+          <div><span class="font-semibold">Etiquetas (secuencia):</span> ${etiquetasSecuencia}</div>
+          <div><span class="font-semibold">Etiquetas (resumen):</span> ${etiquetasResumen}</div>
+      </div>
+      <button type="button"
+          class="btn-ver-elementos px-2 py-1 mt-2 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs"
+          data-idx="${idx}">
+          👀 Ver elementos
+      </button>
+  </div>
+</label>`;
+            });
+
+            html += `</div>`;
+        } else {
+            html +=
+                data?.html_resumen ||
+                "<em>No hay patrones ≥98%. Revisa el resumen por longitudes.</em>";
+        }
+
         const dlg = await Swal.fire({
-            icon: "question",
-            title: "Corte optimizado sugerido",
-            html:
-                data?.html ||
-                "<em>No se encontraron combinaciones mejores.</em>",
+            icon: tieneTop ? "question" : "info",
+            title: tieneTop ? "Corte Optimizado" : "Sin Top ≥98%",
+            html,
             showCancelButton: true,
             showDenyButton: true,
-            confirmButtonText: "Fabricar todos",
+            confirmButtonText: tieneTop ? "Fabricar patrón" : "Cerrar",
             denyButtonText: "Volver",
             cancelButtonText: "Cancelar",
             allowOutsideClick: false,
+            backdrop: false,
+            scrollbarPadding: false,
+            heightAuto: false,
+            didOpen: () => {
+                document.documentElement.style.overflowY = "auto";
+                document.body.style.overflowY = "auto";
+                if (typeof makeSwalDraggable === "function") {
+                    makeSwalDraggable(".swal2-title");
+                }
+
+                document
+                    .querySelectorAll(".btn-ver-elementos")
+                    .forEach((btn) => {
+                        btn.addEventListener("click", () => {
+                            const idx = parseInt(btn.dataset.idx, 10);
+                            const patron = top[idx];
+                            if (patron && Array.isArray(patron.grupos)) {
+                                mostrarModalPatron(patron.grupos);
+                            }
+                        });
+                    });
+            },
         });
 
-        if (dlg.isConfirmed) {
-            if (!data?.etiqueta_sugerida_id) {
-                await Swal.fire({
-                    icon: "warning",
-                    title: "Falta información",
-                    text: "El servidor no indicó la etiqueta compañera (etiqueta_sugerida_id).",
-                    allowOutsideClick: false,
-                });
-                return null;
-            }
+        if (dlg.isConfirmed && tieneTop) {
+            const seleccionado =
+                document.querySelector('input[name="patronElegido"]:checked')
+                    ?.value ?? "0";
+            const patron = top[parseInt(seleccionado, 10)] ?? top[0];
+
+            const longitudBarraCm = Number(patron.longitud_barra_cm || 0);
+            if (!longitudBarraCm)
+                throw new Error(
+                    "Longitud de barra no válida en el patrón seleccionado."
+                );
+
+            const etiquetas = [];
+            const conteo = patron.conteo_por_subid || {};
+            Object.keys(conteo).forEach((subid) => {
+                const n = parseInt(conteo[subid] || 0, 10);
+                for (let i = 0; i < n; i++) {
+                    etiquetas.push({ etiqueta_sub_id: subid, elementos: [] });
+                }
+            });
+            if (!etiquetas.length)
+                etiquetas.push({ etiqueta_sub_id: id, elementos: [] });
 
             const body = {
-                producto_base: {
-                    longitud_barra_cm: Math.round(longitudElegida * 100),
-                },
+                producto_base: { longitud_barra_cm: longitudBarraCm },
                 repeticiones: 1,
-                etiquetas: [
-                    { etiqueta_sub_id: id, elementos: [] },
-                    {
-                        etiqueta_sub_id: data.etiqueta_sugerida_id,
-                        elementos: [],
-                    },
-                ],
+                etiquetas,
             };
 
             const fabricarResp = await fetch(
@@ -333,18 +425,86 @@ document.addEventListener("DOMContentLoaded", () => {
                 allowOutsideClick: false,
             });
 
-            // Terminamos el flujo aquí
             window.location.reload();
             return "fabricado";
         }
 
-        if (dlg.isDenied) {
-            // Solo señalamos “volver” y que el llamador decida
-            return "volver";
-        }
-
-        // Cancelado o cerrado con ESC
+        if (dlg.isDenied) return "volver";
         return null;
+    }
+
+    // ---- Drag para SweetAlert2 ----
+    function makeSwalDraggable(handleSelector = ".swal2-title") {
+        const popup = Swal.getPopup?.();
+        const container = Swal.getContainer?.();
+        if (!popup || !container) return;
+
+        const handle = popup.querySelector(handleSelector) || popup;
+        popup.style.position = "fixed"; // importante para moverlo
+        popup.style.margin = 0; // evita recentrados
+        popup.style.transform = "none"; // quita translate(-50%, -50%)
+        popup.style.left = "50%"; // posición inicial centrada
+        popup.style.top = "25%"; // un poco arriba
+        handle.style.cursor = "move";
+
+        let startX,
+            startY,
+            startLeft,
+            startTop,
+            dragging = false;
+
+        const onPointerDown = (e) => {
+            const evt = e.touches?.[0] || e;
+            dragging = true;
+            const rect = popup.getBoundingClientRect();
+            startX = evt.clientX;
+            startY = evt.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+
+            // desactivar selección mientras arrastras
+            document.body.style.userSelect = "none";
+            window.addEventListener("mousemove", onPointerMove);
+            window.addEventListener("mouseup", onPointerUp);
+            window.addEventListener("touchmove", onPointerMove, {
+                passive: false,
+            });
+            window.addEventListener("touchend", onPointerUp);
+        };
+
+        const onPointerMove = (e) => {
+            if (!dragging) return;
+            const evt = e.touches?.[0] || e;
+            if (e.cancelable) e.preventDefault();
+
+            const dx = evt.clientX - startX;
+            const dy = evt.clientY - startY;
+
+            // límites dentro del viewport
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const rect = popup.getBoundingClientRect();
+            let left = startLeft + dx;
+            let top = startTop + dy;
+
+            left = Math.max(8, Math.min(left, vw - rect.width - 8));
+            top = Math.max(8, Math.min(top, vh - rect.height - 8));
+
+            popup.style.left = left + "px";
+            popup.style.top = top + "px";
+        };
+
+        const onPointerUp = () => {
+            dragging = false;
+            document.body.style.userSelect = "";
+            window.removeEventListener("mousemove", onPointerMove);
+            window.removeEventListener("mouseup", onPointerUp);
+            window.removeEventListener("touchmove", onPointerMove);
+            window.removeEventListener("touchend", onPointerUp);
+        };
+
+        handle.addEventListener("mousedown", onPointerDown);
+        handle.addEventListener("touchstart", onPointerDown, { passive: true });
     }
 
     function actualizarDOMEtiqueta(id, data) {
@@ -588,13 +748,9 @@ document.addEventListener("DOMContentLoaded", () => {
             cancelButtonText: "Cerrar",
             showDenyButton: true,
             denyButtonText: "Reportar Error",
-        })
-            .then((result) => {
-                if (result.isDenied) notificarProgramador(mensaje);
-            })
-            .then(() => {
-                window.location.reload();
-            });
+        }).then((result) => {
+            if (result.isDenied) notificarProgramador(mensaje);
+        });
     }
     // Actualiza la función para recibir el id conocido de la etiqueta
     function agregarItemEtiqueta(etiquetaId, data) {

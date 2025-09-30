@@ -528,7 +528,7 @@ class CortadoraDobladoraBarraEtiquetaServicio extends ServicioEtiquetaBase imple
         if (!$producto) {
             response()->json([
                 'success' => false,
-                'message' => "No se encontró producto en la máquina con Ø{$diametroMm} mm y longitud {$longitudM} m.",
+                'message' => "No se encontró producto en la máquina con Ø{$diametroMm} mm y longitud {$longitudM} cm.",
             ], 404)->throwResponse();
         }
 

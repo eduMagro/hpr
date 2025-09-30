@@ -114,7 +114,6 @@ class PedidoGlobalController extends Controller
         $queryMaquila = PedidoGlobal::with(['fabricante', 'distribuidor', 'pedidos'])
             ->whereIn('codigo', $codigosPedidosMaquila);
 
-        // OJO: usa un nombre distinto para el select de “por página” de esta tabla
         $perPageMaquila = $request->input('per_page_maquila', 50);
         $pedidosMaquila = $queryMaquila->paginate($perPageMaquila)->appends($request->all());
 
@@ -132,28 +131,19 @@ class PedidoGlobalController extends Controller
         $fabricantes = Fabricante::select('id', 'nombre')->get();
         $distribuidores = Distribuidor::select('id', 'nombre')->get();
 
-        // Totales filtrados (principal)
-        $totalFiltradoCantidadTotal = (clone $queryFiltrado)->sum('cantidad_total');
-
-        $totalFiltradoCantidadRestante = 0.0;
-        (clone $queryFiltrado)
-            ->select('pedidos_globales.*')
-            ->orderBy('id')
-            ->lazyById(1000, 'id')
-            ->each(function ($p) use (&$totalFiltradoCantidadRestante) {
-                $totalFiltradoCantidadRestante += (float) ($p->cantidad_restante ?? 0);
-            });
-
-        $totalesFiltrados = [
-            'cantidad_total'    => $totalFiltradoCantidadTotal,
-            'cantidad_restante' => $totalFiltradoCantidadRestante,
+        // Totales filtrados (principal) — cantidad_restante con get()->sum(...) como hacías antes
+        $totalesPrincipal = [
+            'cantidad_total'    => (clone $queryFiltrado)->sum('cantidad_total'),
+            'cantidad_restante' => (clone $queryFiltrado)->get()->sum(function ($p) {
+                return (float) ($p->cantidad_restante ?? 0); // accesor
+            }),
         ];
 
-        // Totales maquila (del conjunto completo, NO solo de la página)
+        // Totales maquila (del conjunto completo, NO solo de la página) — mismo patrón
         $totalesMaquila = [
             'cantidad_total'    => (clone $queryMaquila)->sum('cantidad_total'),
             'cantidad_restante' => (clone $queryMaquila)->get()->sum(function ($p) {
-                return (float) ($p->cantidad_restante ?? 0);
+                return (float) ($p->cantidad_restante ?? 0); // accesor
             }),
         ];
 
@@ -165,9 +155,10 @@ class PedidoGlobalController extends Controller
             'ordenables',
             'fabricantes',
             'distribuidores',
-            'totalesFiltrados'
+            'totalesPrincipal'
         ));
     }
+
 
 
 

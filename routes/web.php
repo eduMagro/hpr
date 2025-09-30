@@ -207,6 +207,9 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
 
     Route::post('/etiquetas/{etiqueta}/patron-corte', [EtiquetaController::class, 'calcularPatronCorte'])->name('etiquetas.calculqarPatronCorte');
     Route::post('/etiquetas/{etiqueta}/optimizar-corte', [EtiquetaController::class, 'optimizarCorte'])->name('etiquetas.optimizarCorte');
+    // ruta para renderizar una etiqueta en HTML
+    Route::post('/etiquetas/render', [App\Http\Controllers\EtiquetaController::class, 'render'])
+        ->name('etiquetas.render');
 
     // RUTAS PROVISIONALES
     Route::post('/etiquetas/fabricar-lote', [EtiquetaController::class, 'fabricarLote'])->name('maquinas.fabricarLote');

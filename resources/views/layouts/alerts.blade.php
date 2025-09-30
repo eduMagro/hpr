@@ -100,7 +100,7 @@
 @endif
 
 
-<!-- Función para reportar errores a programadores -->
+<!-- Función para es a programadores -->
 <script>
     function notificarProgramador(mensaje) {
         const urlActual = window.location.href;
