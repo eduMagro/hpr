@@ -301,7 +301,7 @@ Promise.resolve(imprimirEtiquetas(lote))
 <!-- --------------------------------------------------------------- MODALES --------------------------------------------------------------- -->
 <x-maquinas.modales.cambio-maquina :maquina="$maquina" :maquinas="$maquinas" />
 <x-maquinas.modales.dividir-elemento />
-<!-- --------------------------------------------------------------- MODAL PATRÓN --------------------------------------------------------------- -->
+
 <!-- --------------------------------------------------------------- MODAL PATRÓN --------------------------------------------------------------- -->
 <div id="modalPatron" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-lg p-4 w-auto max-w-full h-[85vh] overflow-y-auto">
@@ -324,27 +324,50 @@ Promise.resolve(imprimirEtiquetas(lote))
             const wrap = document.createElement("div");
             wrap.className = "border rounded-md p-2 bg-gray-50";
             wrap.innerHTML = "<p class='text-sm text-gray-400'>Cargando etiqueta…</p>";
-
-            fetch('/etiquetas/render', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        id: grupo.etiqueta.id,
-                        maquina_tipo: window.MAQUINA_TIPO
-                    })
-                })
-                .then(resp => resp.json())
-                .then(data => {
-                    wrap.innerHTML = data.html;
-                })
-                .catch(err => {
-                    wrap.innerHTML = `<p class="text-red-500">Error cargando etiqueta: ${err}</p>`;
-                });
-
             contenedor.appendChild(wrap);
+
+            const csrf =
+                document.querySelector('meta[name="csrf-token"]')?.content || "";
+
+            fetch("/etiquetas/render", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json", // 👈 pide JSON si hay
+                        "X-Requested-With": "XMLHttpRequest",
+                        "X-CSRF-TOKEN": csrf,
+                    },
+                    credentials: "same-origin",
+                    body: JSON.stringify({
+                        id: grupo?.etiqueta?.id ?? null, // por si la ruta espera ID
+                        etiqueta_sub_id: grupo?.etiqueta?.etiqueta_sub_id ?? null, // …o subid
+                        maquina_tipo: window.MAQUINA_TIPO,
+                    }),
+                })
+                .then(async (resp) => {
+                    const ct = resp.headers.get("content-type") || "";
+                    const isJson = ct.includes("application/json");
+
+                    // Soporta ambas respuestas: {html: "..."} o HTML plano
+                    const payload = isJson ? await resp.json() : {
+                        html: await resp.text()
+                    };
+
+                    if (!resp.ok || payload.success === false) {
+                        const msg = (payload.message || (isJson ? JSON.stringify(payload) : payload
+                            .html)).slice(0, 500);
+                        throw new Error(`HTTP ${resp.status} - ${msg}`);
+                    }
+
+                    // payload.html existe si el back devuelve JSON; si no, payload es el HTML
+                    wrap.innerHTML = payload.html ?? "";
+                    if (!payload.html && !isJson) wrap.innerHTML = (payload.html || "");
+                })
+                .catch((err) => {
+                    // Escapa '<' para no romper el DOM si el mensaje trae HTML
+                    const safe = String(err).replace(/</g, "&lt;");
+                    wrap.innerHTML = `<p class="text-red-500">Error cargando etiqueta: ${safe}</p>`;
+                });
         });
 
         document.getElementById("modalPatron").classList.remove("hidden");
@@ -354,6 +377,7 @@ Promise.resolve(imprimirEtiquetas(lote))
         document.getElementById("modalPatron").classList.add("hidden");
     }
 </script>
+
 
 
 

@@ -275,10 +275,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const top = Array.isArray(data.top_global) ? data.top_global : [];
         const tieneTop = top.length > 0;
-
         let html = "";
         if (tieneTop) {
-            html += `<div class="mb-2 text-sm text-gray-600">Se muestran los mejores patrones (≥98%) entre todas las longitudes disponibles.</div>`;
             html += `<div class="space-y-2">`;
 
             top.forEach((p, idx) => {
@@ -289,53 +287,44 @@ document.addEventListener("DOMContentLoaded", () => {
                         ? "text-yellow-500"
                         : "text-red-600";
 
-                // 🔹 Etiquetas (secuencia completa)
-                const etiquetasSecuencia = Array.isArray(p.etiquetas)
+                const secuencia = Array.isArray(p.etiquetas)
                     ? p.etiquetas.join(" + ")
                     : "";
 
-                // 🔹 Etiquetas (resumen por conteo: subid × n)
-                const conteo = p.conteo_por_subid || {};
-                const etiquetasResumen = Object.keys(conteo)
-                    .sort() // orden alfabético estable
-                    .map((sid) => {
-                        const n = parseInt(conteo[sid] || 0, 10);
-                        return n > 1 ? `${sid} × ${n}` : sid;
-                    })
-                    .join(" + ");
+                const esquema =
+                    p.esquema ||
+                    (() => {
+                        const map = { [id]: "A" };
+                        let code = "B".charCodeAt(0);
+                        return (Array.isArray(p.etiquetas) ? p.etiquetas : [])
+                            .map((sid) => {
+                                if (!map[sid])
+                                    map[sid] = String.fromCharCode(code++);
+                                return map[sid];
+                            })
+                            .join(" + ");
+                    })();
 
                 html += `
-<label class="flex items-start gap-2 p-2 border rounded-md cursor-pointer hover:bg-gray-50">
+<label class="opcion-patron flex items-start gap-2 p-2 border rounded-md cursor-pointer hover:bg-gray-50"
+       data-idx="${idx}">
   <input type="radio" name="patronElegido" value="${idx}" ${
                     idx === 0 ? "checked" : ""
-                } />
-  <div class="text-sm leading-snug">
-      <div class="font-semibold">Barra: ${p.longitud_barra_cm} cm · k=${
-                    p.k
-                } · esquema: ${p.tipo_schema}</div>
-      <div>🔹 <strong>${p.patron_humano} cm</strong></div>
-      <div>🪵 Sobra: <strong>${Number(p.sobra_cm).toFixed(2)} cm</strong></div>
-      <div>📈 Aprovechamiento: <span class="font-bold ${cls}">${Number(
+                }/>
+  <div class="text-sm leading-snug w-full">
+    <div class="font-semibold">Barra: ${p.longitud_barra_cm} cm</div>
+    <div class="mt-1">🧩 Esquema: <strong>${esquema}</strong></div>
+    <div>🔗 Secuencia: ${secuencia}</div>
+    <div>📈 Aprovechamiento: <span class="font-bold ${cls}">${Number(
                     p.aprovechamiento
                 ).toFixed(2)}%</span></div>
-      <div class="mt-1 text-xs text-gray-700">
-          <div><span class="font-semibold">Etiquetas (secuencia):</span> ${etiquetasSecuencia}</div>
-          <div><span class="font-semibold">Etiquetas (resumen):</span> ${etiquetasResumen}</div>
-      </div>
-      <button type="button"
-          class="btn-ver-elementos px-2 py-1 mt-2 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs"
-          data-idx="${idx}">
-          👀 Ver elementos
-      </button>
   </div>
 </label>`;
             });
 
             html += `</div>`;
         } else {
-            html +=
-                data?.html_resumen ||
-                "<em>No hay patrones ≥98%. Revisa el resumen por longitudes.</em>";
+            html += data?.html_resumen || "<em>No hay patrones ≥98%.</em>";
         }
 
         const dlg = await Swal.fire({
@@ -354,21 +343,36 @@ document.addEventListener("DOMContentLoaded", () => {
             didOpen: () => {
                 document.documentElement.style.overflowY = "auto";
                 document.body.style.overflowY = "auto";
-                if (typeof makeSwalDraggable === "function") {
+                if (typeof makeSwalDraggable === "function")
                     makeSwalDraggable(".swal2-title");
-                }
 
-                document
-                    .querySelectorAll(".btn-ver-elementos")
-                    .forEach((btn) => {
-                        btn.addEventListener("click", () => {
-                            const idx = parseInt(btn.dataset.idx, 10);
-                            const patron = top[idx];
-                            if (patron && Array.isArray(patron.grupos)) {
-                                mostrarModalPatron(patron.grupos);
-                            }
-                        });
+                // Cada card es clicable: abre elementos (como ya dejaste) y también notifica al canvas
+                document.querySelectorAll(".opcion-patron").forEach((card) => {
+                    card.addEventListener("click", () => {
+                        const idx = parseInt(card.dataset.idx, 10);
+                        const patron = top[idx];
+                        if (!patron) return;
+
+                        // A) ver elementos (lo que sustituye al antiguo botón)
+                        if (
+                            Array.isArray(patron.grupos) &&
+                            patron.grupos.length
+                        ) {
+                            mostrarModalPatron(patron.grupos);
+                        }
+
+                        // B) opcional: notifica a quien pinte la barra completa, si lo usas
+                        // notificarCanvasPatron?.(patron);
                     });
+                });
+
+                // // Notifica de inicio con el seleccionado por defecto
+                // const seleccionado =
+                //     document.querySelector(
+                //         'input[name="patronElegido"]:checked'
+                //     )?.value ?? "0";
+                // const patron0 = top[parseInt(seleccionado, 10)] ?? top[0];
+                // if (patron0) notificarCanvasPatron(patron0);
             },
         });
 
@@ -384,16 +388,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Longitud de barra no válida en el patrón seleccionado."
                 );
 
-            const etiquetas = [];
-            const conteo = patron.conteo_por_subid || {};
-            Object.keys(conteo).forEach((subid) => {
-                const n = parseInt(conteo[subid] || 0, 10);
-                for (let i = 0; i < n; i++) {
-                    etiquetas.push({ etiqueta_sub_id: subid, elementos: [] });
-                }
-            });
-            if (!etiquetas.length)
-                etiquetas.push({ etiqueta_sub_id: id, elementos: [] });
+            // ✅ Ahora: usa la SECUENCIA real
+            const etiquetas =
+                Array.isArray(patron.etiquetas) && patron.etiquetas.length
+                    ? patron.etiquetas.map((subid) => ({
+                          etiqueta_sub_id: subid,
+                          elementos: [],
+                      }))
+                    : [{ etiqueta_sub_id: id, elementos: [] }];
 
             const body = {
                 producto_base: { longitud_barra_cm: longitudBarraCm },
@@ -432,6 +434,114 @@ document.addEventListener("DOMContentLoaded", () => {
         if (dlg.isDenied) return "volver";
         return null;
     }
+    function mostrarModalPatron(grupos) {
+        const contenedor = document.getElementById("contenedorPatron");
+        contenedor.innerHTML = "";
+
+        // cola temporal para todos los grupos del patrón
+        const cola = [];
+
+        (grupos || []).forEach((grupo) => {
+            const wrap = document.createElement("div");
+            wrap.className = "border rounded-md p-2 bg-gray-50";
+            wrap.innerHTML =
+                "<p class='text-sm text-gray-400'>Cargando etiqueta…</p>";
+            contenedor.appendChild(wrap);
+
+            fetch("/etiquetas/render", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "application/json", // 👈 evita que el backend devuelva HTML
+                    "X-CSRF-TOKEN": document.querySelector(
+                        'meta[name="csrf-token"]'
+                    ).content,
+                },
+                body: JSON.stringify({
+                    id: grupo.etiqueta.id,
+                    maquina_tipo: window.MAQUINA_TIPO,
+                }),
+            })
+                .then((resp) => resp.json())
+                .then((data) => {
+                    // 1) Inserta el HTML de la tarjeta de la etiqueta
+                    wrap.innerHTML = data.html;
+
+                    // 2) Mete los datos del grupo (lo que necesita el canvas) en la cola
+                    cola.push({
+                        etiqueta: { id: grupo.etiqueta.id }, // <-- el canvas usa este id para el contenedor
+                        elementos: grupo.elementos, // <-- cada elemento trae dimensiones, barras, diámetro, etc.
+                    });
+
+                    // 3) Cuando todas las tarjetas estén en el DOM, pintamos
+                    if (cola.length === grupos.length) {
+                        window.elementosAgrupadosScript = cola;
+                        // Borra un posible repaint anterior en curso
+                        if (window.__repaintTimer)
+                            clearTimeout(window.__repaintTimer);
+                        window.__repaintTimer = setTimeout(() => {
+                            document.dispatchEvent(
+                                new Event("DOMContentLoaded")
+                            );
+                        }, 0);
+                    }
+                })
+                .catch((err) => {
+                    wrap.innerHTML = `<p class="text-red-500">Error cargando etiqueta: ${err}</p>`;
+                });
+        });
+
+        document.getElementById("modalPatron").classList.remove("hidden");
+    }
+
+    // ---------- Helpers para el canvas ----------
+    function patronToCanvasData(patron) {
+        const Lbarra = Number(patron.longitud_barra_cm || 0);
+        const longs = Array.isArray(patron.longitudes_cm)
+            ? patron.longitudes_cm.map(Number)
+            : [];
+        const ids = Array.isArray(patron.etiquetas) ? patron.etiquetas : [];
+        const letras = Array.isArray(patron.secuencia_letras)
+            ? patron.secuencia_letras
+            : [];
+
+        // cortes acumulados (en cm)
+        let acum = 0;
+        const cortes = longs.map((len) => (acum += len));
+
+        // segmentos con subid, letra y longitud
+        const segmentos = longs.map((len, i) => ({
+            subid: ids[i] || null,
+            letra:
+                letras[i] ||
+                (i === 0 ? "A" : String.fromCharCode(66 + (i - 1))), // fallback
+            cm: len,
+        }));
+
+        return {
+            barra_cm: Lbarra,
+            sobra_cm: Number(patron.sobra_cm || 0),
+            aprovechamiento: Number(patron.aprovechamiento || 0),
+            esquema: patron.esquema || "",
+            segmentos, // [{subid, letra, cm}, ...]
+            cortes_cm: cortes, // [L1, L1+L2, ...]
+        };
+    }
+
+    // Notifica al sistema de canvas (deja dos vías por si ya tienes inicializado algo)
+    // function notificarCanvasPatron(patron) {
+    //     const data = patronToCanvasData(patron);
+
+    //     // 1) Si tu bundle expone un método, úsalo:
+    //     if (typeof window.renderPatronEnCanvas === "function") {
+    //         window.renderPatronEnCanvas(data);
+    //     }
+
+    //     // 2) Además emite un evento por si prefieres suscribirte desde initCanvasMaquinas
+    //     window.dispatchEvent(
+    //         new CustomEvent("patron:seleccionado", { detail: data })
+    //     );
+    // }
 
     // ---- Drag para SweetAlert2 ----
     function makeSwalDraggable(handleSelector = ".swal2-title") {

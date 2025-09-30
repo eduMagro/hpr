@@ -323,29 +323,15 @@ class EtiquetaController extends Controller
         $maquinaId = (int) $filaActual->maquina_id;
         $posActual = (int) $filaActual->posicion;
 
-        // 2) Traer TODA la cola de esa máquina, ordenada
-        $todaCola = OrdenPlanilla::where('maquina_id', $maquinaId)
+        // 2) Traer la cola de ESA máquina, SOLO posiciones posteriores
+        $posteriores = OrdenPlanilla::where('maquina_id', $maquinaId)
+            ->where('posicion', '>', $posActual)
             ->orderBy('posicion', 'asc')
             ->pluck('planilla_id')
             ->toArray();
 
-        // 3) Reordena la lista poniendo primero la actual y luego las siguientes
-        // (sin repetir), manteniendo el orden de 'posicion'
-        $lista = [];
-        $ya = [];
-        // primero la actual (si está)
-        if (!in_array($planillaActual->id, $lista, true)) {
-            $lista[] = $planillaActual->id;
-            $ya[$planillaActual->id] = true;
-        }
-        // luego las que vengan después de la actual
-        foreach ($todaCola as $pid) {
-            if (isset($ya[$pid])) continue;
-            $lista[] = $pid;
-            $ya[$pid] = true;
-        }
-        // por si hubiera alguna anterior que no queremos perder (opcional)
-        // foreach ($todaCola as $pid) { if (!isset($ya[$pid])) { $lista[] = $pid; $ya[$pid]=true; } }
+        // 3) Lista: primero la actual, luego posteriores (sin repetir)
+        $lista = array_values(array_unique(array_merge([$planillaActual->id], $posteriores)));
 
         return $lista;
     }
@@ -386,18 +372,20 @@ class EtiquetaController extends Controller
     public function optimizarCorte(Request $request, string $etiquetaSubId)
     {
         /* ─────────────────────────────
-     |  0) Parámetros / constantes
-     ───────────────────────────── */
-        $Kmax                   = (int) ($request->input('kmax') ?? 5);   // cortes máx por barra (incluye A)
-        $EPS                    = 0.01;                                   // tolerancia numérica
-        $UMBRAL_OK              = 99.0;                                   // % objetivo
-        $permitirRepeticiones   = true;                                   // permitir repetir (incluido A) para k>=3
-        $kMinimo                = 2;                                      // empezamos por parejas (A+B)
+ |  0) Parámetros / constantes
+ ───────────────────────────── */
+        $Kmax                 = (int) ($request->input('kmax') ?? 5);
+        $EPS                  = 0.01;
+        $UMBRAL_OK            = 99.0;
+        $permitirRepeticiones = true;
+        $kMinimo              = 2;
 
         /* ─────────────────────────────
-     |  1) Cargar contexto + validar
-     ───────────────────────────── */
-        $etiquetaA = Etiqueta::with(['elementos', 'planilla.etiquetas.elementos'])->where('etiqueta_sub_id', $etiquetaSubId)->firstOrFail();
+ |  1) Cargar contexto + validar
+ ───────────────────────────── */
+        $etiquetaA = Etiqueta::with(['elementos', 'planilla.etiquetas.elementos'])
+            ->where('etiqueta_sub_id', $etiquetaSubId)
+            ->firstOrFail();
 
         $elementoA = $etiquetaA->elementos->first();
         if (!$elementoA) {
@@ -406,7 +394,7 @@ class EtiquetaController extends Controller
 
         $longitudAcm = (float) ($elementoA->longitud ?? 0);   // cm
         $diametro    = (int)   ($elementoA->diametro ?? 0);
-        $barrasA     = (int)   max(1, ($elementoA->barras ?? 1)); // piezas pendientes (A consume 1 fijo)
+        $barrasA     = (int)   max(1, ($elementoA->barras ?? 1));
         if ($longitudAcm <= 0 || $diametro <= 0) {
             return response()->json(['success' => false, 'message' => 'Datos de A inválidos (longitud/diámetro).'], 400);
         }
@@ -414,10 +402,29 @@ class EtiquetaController extends Controller
         /* 2) Construir lista de planillas a explorar: actual + siguientes de la MISMA máquina */
         $planillasEnOrden = $this->obtenerPlanillasMismaMaquinaEnOrden($etiquetaA);
 
-        /* 3) Longitudes de producto base (orden asc, en cm; ProductoBase.longitud viene en METROS) */
-        $longitudesBarraCm = $this->recogerLongitudesProductosBaseEnCm($diametro);
+        /* 3) Longitudes de producto base (en cm), filtradas por MÁSCARA oficial */
+        $longitudesCatalogoCm = $this->recogerLongitudesProductosBaseEnCm($diametro); // p. ej. [1200,1400,1500,1600]
+        $mascara              = $this->mascaraDisponibilidadBarraCm();                 // p. ej. Ø10 => [1200,1400]
+        $permitidasCm         = $mascara[$diametro] ?? [];
+
+        // Intersección: solo probamos lo que existe en catálogo Y está permitido por la máscara
+        $longitudesBarraCm = array_values(array_intersect(
+            array_map('intval', $longitudesCatalogoCm),
+            array_map('intval', $permitidasCm)
+        ));
+        sort($longitudesBarraCm, SORT_NUMERIC);
+
         if (empty($longitudesBarraCm)) {
-            return response()->json(['success' => false, 'message' => 'No hay longitudes de barra disponibles en productos base para este diámetro.'], 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay longitudes de barra permitidas por la máscara para este diámetro.',
+                'detalle' => [
+                    'diametro'              => $diametro,
+                    'catalogo_cm'           => $longitudesCatalogoCm,
+                    'mascara_cm'            => $permitidasCm,
+                    'interseccion_resultado' => $longitudesBarraCm,
+                ],
+            ], 400);
         }
 
         /* 4) Preparativos comunes */
@@ -435,16 +442,14 @@ class EtiquetaController extends Controller
 
         $topGlobal98           = [];
         $combinacionesYaVistas = [];
-        $progresoPorLongitud   = []; // guardará bloques por planilla y por longitud (diagnóstico opcional)
+        $progresoPorLongitud   = [];
 
         /* 5) Iterar planillas mientras falten patrones para el Top 3 */
         foreach ($planillasEnOrden as $planillaId) {
-            if (count($topGlobal98) >= 3) break; // ya están los 3 mejores ≥98
+            if (count($topGlobal98) >= 3) break;
 
             // 5.1) Candidatos SOLO de esta planilla
             $candidatos = $this->construirCandidatosEnPlanilla($planillaId, $diametro, $etiquetaSubId);
-
-            // Si no hay candidatos en esta planilla, pasa a la siguiente
             if (empty($candidatos)) continue;
 
             // 5.2) Pre-carga de etiquetas para ESTA planilla (y A) → evita N+1
@@ -457,7 +462,7 @@ class EtiquetaController extends Controller
             // 5.3) Ordenar candidatos por L desc (poda más efectiva)
             usort($candidatos, fn($a, $b) => $b['L'] <=> $a['L']);
 
-            // 5.4) Explorar por longitudes (de menor a mayor)
+            // 5.4) Explorar por longitudes (de menor a mayor) – YA filtradas por máscara
             foreach ($longitudesBarraCm as $longitudBarraCmActual) {
                 if (count($topGlobal98) >= 3) break;
 
@@ -515,18 +520,14 @@ class EtiquetaController extends Controller
                 ];
             }
 
-            // 5.5) Si después de esta planilla ya tenemos Top 3, salimos del bucle
             if (count($topGlobal98) >= 3) break;
         }
 
-        /* 6) Ordenar y completar grupos para canvas como antes */
+        /* 6) Ordenar y completar grupos para canvas */
         usort($topGlobal98, $comparador);
         $topGlobal98 = array_slice($topGlobal98, 0, 3);
 
-        // Para cada patrón del top, construir grupos con el mapa de SU planilla cargado en su iteración.
-        // Sencillo: si quieres tener los grupos siempre, puedes reconstruir usando un mapa general:
         if (!empty($topGlobal98)) {
-            // Prepara un mapa global con todos los subids implicados en el top
             $todosSubIdsTop = collect($topGlobal98)->flatMap(fn($p) => array_keys($p['conteo_por_subid']))->unique()->values();
             $mapaGlobal = Etiqueta::with(['elementos', 'planilla'])
                 ->whereIn('etiqueta_sub_id', $todosSubIdsTop)
@@ -542,59 +543,27 @@ class EtiquetaController extends Controller
         $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
 
         /* ─────────────────────────────
-     |  7) Responder
-     ───────────────────────────── */
+ |  7) Responder
+ ───────────────────────────── */
         return response()->json([
-            'success'                 => true,
-            'longitudes_barra_cm'     => array_values($longitudesBarraCm),
-            'top_global'              => $topGlobal98,
-            'progreso_por_longitud'   => $progresoPorLongitud,
-            'kmax'                    => $Kmax,
-            'umbral_ok'               => $UMBRAL_OK,
-            'permitio_repeticion'     => $permitirRepeticiones,
-            'html_resumen'            => $htmlResumen,
-            // por consistencia con tu front previo:
-            'longitud_barra_m'        => null, // ahora probamos múltiples longitudes (si quieres, puedes repetir por cada top)
-            'longitud_barra_cm'       => null,
+            'success'               => true,
+            'longitudes_barra_cm'   => array_values($longitudesBarraCm),
+            'top_global'            => $topGlobal98,
+            'progreso_por_longitud' => $progresoPorLongitud,
+            'kmax'                  => $Kmax,
+            'umbral_ok'             => $UMBRAL_OK,
+            'permitio_repeticion'   => $permitirRepeticiones,
+            'html_resumen'          => $htmlResumen,
+            'longitud_barra_m'      => null,
+            'longitud_barra_cm'     => null,
         ]);
     }
+
 
     /* ============================================================
    =              HELPERS PRIVADOS / UTILIDADES               =
    ============================================================ */
 
-    /**
-     * Construye candidatos (subetiquetas) con mismo Ø, estado pendiente y stock.
-     * Devuelve array de ['id' => subid, 'L' => longitud_cm, 'disponibles' => barras]
-     */
-    private function construirCandidatosMismoDiametro(Etiqueta $etiquetaA, int $diametroMm, string $etiquetaSubIdA): array
-    {
-        $candidatos = [];
-
-        foreach ($etiquetaA->planilla->etiquetas as $otra) {
-            $subId = $otra->etiqueta_sub_id;
-            if ($subId === $etiquetaSubIdA) continue;
-
-            $estado = strtolower(trim((string) ($otra->estado ?? '')));
-            if ($estado !== 'pendiente') continue;
-
-            $e = $otra->elementos->first();
-            if (!$e) continue;
-            if ((int) ($e->diametro ?? 0) !== $diametroMm) continue;
-
-            $longitudCm  = (float) ($e->longitud ?? 0);
-            $disponibles = (int)   max(0, (int) ($e->barras ?? 0));
-            if ($longitudCm <= 0 || $disponibles <= 0) continue;
-
-            $candidatos[] = [
-                'id'          => $subId,
-                'L'           => $longitudCm,
-                'disponibles' => $disponibles,
-            ];
-        }
-
-        return $candidatos;
-    }
 
     /**
      * Recoge longitudes de productos base **en cm**, deduplicadas y orden asc.
@@ -620,6 +589,93 @@ class EtiquetaController extends Controller
         return $productos; // array<int cm>
     }
 
+    /**
+     * Máscara oficial de disponibilidad para tipo "barra".
+     * Devuelve longitudes PERMITIDAS en **centímetros** por diámetro.
+     * Úsala para filtrar/validar antes de optimizar el corte.
+     */
+    private function mascaraDisponibilidadBarraCm(): array
+    {
+        return [
+            8  => [],                          // Ø8 → no disponible en ninguna longitud
+            10 => [1200, 1400],                // Ø10 → solo 12 m y 14 m
+            12 => [1200, 1400, 1500, 1600],    // Ø12 → 12/14/15/16 m
+            16 => [1200, 1400, 1500, 1600],    // Ø16 → 12/14/15/16 m
+            20 => [1200, 1400, 1500, 1600],    // Ø20 → 12/14/15/16 m
+            25 => [1200, 1400, 1500, 1600],    // Ø25 → 12/14/15/16 m
+            32 => [1200, 1400, 1500, 1600],    // Ø32 → 12/14/15/16 m
+        ];
+    }
+    /**
+     * Construye letras por subid respetando el orden de aparición en la SECUENCIA.
+     * - A está reservado para $subIdA
+     * - El resto: B, C, D... según vayan apareciendo en $secuenciaSubIds.
+     * Devuelve:
+     *   - mapa_letras       [subid => 'A'|'B'|'C'...]
+     *   - secuencia_letras  ['A','B','B','C']
+     *   - esquema           "A+B+B+C"
+     *   - resumen_letras    "A + B×2 + C"
+     */
+    private function esquemaDesdeSecuencia(array $secuenciaSubIds, string $subIdA): array
+    {
+        // 1) mapa de letras
+        $mapa = [$subIdA => 'A'];
+        $next = 'B';
+        foreach ($secuenciaSubIds as $sid) {
+            if (!isset($mapa[$sid])) {
+                $mapa[$sid] = $next;
+                $next = chr(ord($next) + 1); // B->C->D...
+            }
+        }
+
+        // 2) secuencia de letras fiel al orden
+        $seqLetras = array_map(fn($sid) => $mapa[$sid], $secuenciaSubIds);
+
+        // 3) esquema "A+B+B+C"
+        $esquema = implode('+', $seqLetras);
+
+        // 4) resumen "A + B×2 + C"
+        $conteo = [];
+        foreach ($seqLetras as $L) $conteo[$L] = ($conteo[$L] ?? 0) + 1;
+        ksort($conteo);
+        $trozos = [];
+        foreach ($conteo as $L => $n) {
+            $trozos[] = $n > 1 ? "{$L}×{$n}" : $L;
+        }
+        $resumen = implode(' + ', $trozos);
+
+        return [
+            'mapa_letras'      => $mapa,
+            'secuencia_letras' => $seqLetras,
+            'esquema'          => $esquema,
+            'resumen_letras'   => $resumen,
+        ];
+    }
+
+    /**
+     * Formatea la secuencia de subids para mostrar tanto secuencia como resumen.
+     *  - "ETQ... + ETQ... + ETQ..."
+     *  - "ETQ... × 2 + ETQ..."
+     */
+    private function formatearSecuenciaEtiquetas(array $secuenciaSubIds): array
+    {
+        $secuenciaHumana = implode(' + ', $secuenciaSubIds);
+
+        $conteo = [];
+        foreach ($secuenciaSubIds as $sid) {
+            $conteo[$sid] = ($conteo[$sid] ?? 0) + 1;
+        }
+        $trozos = [];
+        foreach ($conteo as $sid => $n) {
+            $trozos[] = $n > 1 ? "{$sid} × {$n}" : $sid;
+        }
+        $resumenHumano = implode(' + ', $trozos);
+
+        return [
+            'secuencia_humana' => $secuenciaHumana,
+            'resumen_humano'   => $resumenHumano,
+        ];
+    }
 
     /**
      * Explora parejas A+B (B≠A) para una longitud concreta.
@@ -633,8 +689,8 @@ class EtiquetaController extends Controller
         float $UMBRAL_OK,
         callable $comparador
     ): array {
-        $patrones98   = [];
-        $mejorLocal   = null;
+        $patrones98 = [];
+        $mejorLocal = null;
 
         foreach ($candidatos as $cand) {
             $suma = $longitudAcm + $cand['L'];
@@ -643,36 +699,47 @@ class EtiquetaController extends Controller
             $aprov = round(($suma / $longitudBarraCm) * 100, 2);
             $sobra = round($longitudBarraCm - $suma, 2);
 
+            // SECUENCIA real en orden (A, B)
+            $secuenciaIds = [$subIdA, $cand['id']];
+            $infoEsq      = $this->esquemaDesdeSecuencia($secuenciaIds, $subIdA);
+            $infoEtiq     = $this->formatearSecuenciaEtiquetas($secuenciaIds);
+
             $patron = [
-                'longitud_barra_cm'  => (int) $longitudBarraCm,
-                'k'                  => 2,
-                'etiquetas'          => [$subIdA, $cand['id']],
-                'conteo_por_subid'   => $this->contarMultiset([$subIdA, $cand['id']]),
-                'longitudes_cm'      => [$longitudAcm, $cand['L']],
-                'total_cm'           => $suma,
-                'sobra_cm'           => $sobra,
-                'aprovechamiento'    => $aprov,
-                'max_long_cm'        => max($longitudAcm, $cand['L']),
-                'patron_humano'      => number_format($longitudAcm, 2, ',', '.') . ' + ' . number_format($cand['L'], 2, ',', '.') . ' = ' . number_format($suma, 2, ',', '.'),
-                'tipo_schema'        => 'A+B',
-                'clave_estable'      => $this->claveCombinacion([$subIdA, $cand['id']]),
+                'longitud_barra_cm'   => (int) $longitudBarraCm,
+                'k'                   => 2,
+                'etiquetas'           => $secuenciaIds,                // orden real
+                'conteo_por_subid'    => $this->contarMultiset($secuenciaIds),
+                'longitudes_cm'       => [$longitudAcm, $cand['L']],
+                'total_cm'            => $suma,
+                'sobra_cm'            => $sobra,
+                'aprovechamiento'     => $aprov,
+                'max_long_cm'         => max($longitudAcm, $cand['L']),
+                'patron_humano'       => number_format($longitudAcm, 2, ',', '.') . ' + ' . number_format($cand['L'], 2, ',', '.') . ' = ' . number_format($suma, 2, ',', '.'),
+                // NUEVO: campos de esquema/etiquetas
+                'mapa_letras'         => $infoEsq['mapa_letras'],
+                'secuencia_letras'    => $infoEsq['secuencia_letras'],
+                'esquema'             => $infoEsq['esquema'],          // "A+B"
+                'resumen_letras'      => $infoEsq['resumen_letras'],   // "A + B"
+                'etiquetas_secuencia' => $infoEtiq['secuencia_humana'],
+                'etiquetas_resumen'   => $infoEtiq['resumen_humano'],
+                // clave (multiset) para deduplicar combinaciones, no el orden
+                'clave_estable'       => $this->claveCombinacion($secuenciaIds),
             ];
 
             if ($aprov >= $UMBRAL_OK) {
                 $patrones98[] = $patron;
             }
-
             if (!$mejorLocal || $comparador($patron, $mejorLocal) < 0) {
                 $mejorLocal = $patron;
             }
         }
 
-        // ordenar los >=98 y recortar a 3
         usort($patrones98, $comparador);
         $patrones98 = array_slice($patrones98, 0, 3);
 
         return [$patrones98, $mejorLocal];
     }
+
 
     /**
      * Explora combinaciones de tamaño k (k>=3) permitiendo repeticiones por stock.
@@ -690,26 +757,25 @@ class EtiquetaController extends Controller
     ): array {
         $resultados = [];
 
-        // mapa stock por subid (para candidatos)
+        // stock por subid (candidatos)
         $stock = [];
         foreach ($candidatos as $c) {
             $stock[$c['id']] = $c['disponibles'];
         }
 
-        // vector longitudes por subid
+        // longitudes por subid
         $LporSub = [];
         foreach ($candidatos as $c) {
             $LporSub[$c['id']] = $c['L'];
         }
         $LporSub[$subIdA] = $longitudAcm;
 
-        $seleccion = [];               // lista de subids (sin A fijo)
-        $usos      = [];               // subid => usados
+        $seleccion = []; // subids (sin A)
+        $usos      = [];
         $sumaSel   = 0.0;
 
-        // DFS: debemos elegir (kObjetivo-1) acompañantes, pudiendo usar A hasta repeticionesA
+        // orden por L desc para podar
         $subidsOrdenados = array_keys($LporSub);
-        // orden descendente por longitud para podar antes
         usort($subidsOrdenados, fn($x, $y) => ($LporSub[$y] <=> $LporSub[$x]));
 
         $dfs = function () use (
@@ -726,16 +792,15 @@ class EtiquetaController extends Controller
             $repeticionesA,
             $UMBRAL_OK,
             &$resultados,
-            $subidsOrdenados
+            $subidsOrdenados,
+            $comparador
         ) {
-            $kActual = 1 + count($seleccion); // +1 por A fijo
+            $kActual = 1 + count($seleccion); // +A
             $sumaActual = $longitudAcm + $sumaSel;
-            if ($sumaActual > $longitudBarraCm) {
-                return; // poda por suma
-            }
+            if ($sumaActual > $longitudBarraCm) return;
 
             if ($kActual === $kObjetivo) {
-                // construir patrón final: [A] + seleccion
+                // secuencia real: A seguido de selección en ese orden
                 $ids = array_merge([$subIdA], $seleccion);
                 $total = $sumaActual;
                 $aprov = round(($total / $longitudBarraCm) * 100, 2);
@@ -743,41 +808,52 @@ class EtiquetaController extends Controller
 
                 if ($aprov >= $UMBRAL_OK) {
                     $longitudes = array_map(fn($sid) => $LporSub[$sid], $ids);
+
+                    // NUEVO: esquema y textos fieles a la secuencia
+                    $infoEsq  = $this->esquemaDesdeSecuencia($ids, $subIdA);
+                    $infoEtiq = $this->formatearSecuenciaEtiquetas($ids);
+
                     $resultados[] = [
-                        'longitud_barra_cm'  => (int) $longitudBarraCm,
-                        'k'                  => $kObjetivo,
-                        'etiquetas'          => $ids,
-                        'conteo_por_subid'   => $this->contarMultiset($ids),
-                        'longitudes_cm'      => $longitudes,
-                        'total_cm'           => $total,
-                        'sobra_cm'           => $sobra,
-                        'aprovechamiento'    => $aprov,
-                        'max_long_cm'        => max($longitudes),
-                        'patron_humano'      => implode(' + ', array_map(fn($x) => number_format($x, 2, ',', '.'), $longitudes)) . ' = ' . number_format($total, 2, ',', '.'),
-                        'tipo_schema'        => $this->schemaDesdeIds($ids, $subIdA),
-                        'clave_estable'      => $this->claveCombinacion($ids),
+                        'longitud_barra_cm'   => (int) $longitudBarraCm,
+                        'k'                   => $kObjetivo,
+                        'etiquetas'           => $ids,                         // orden real
+                        'conteo_por_subid'    => $this->contarMultiset($ids),  // para canvas
+                        'longitudes_cm'       => $longitudes,
+                        'total_cm'            => $total,
+                        'sobra_cm'            => $sobra,
+                        'aprovechamiento'     => $aprov,
+                        'max_long_cm'         => max($longitudes),
+                        'patron_humano'       => implode(' + ', array_map(fn($x) => number_format($x, 2, ',', '.'), $longitudes)) . ' = ' . number_format($total, 2, ',', '.'),
+                        'mapa_letras'         => $infoEsq['mapa_letras'],
+                        'secuencia_letras'    => $infoEsq['secuencia_letras'],
+                        'esquema'             => $infoEsq['esquema'],          // "A+B+B+C"
+                        'resumen_letras'      => $infoEsq['resumen_letras'],   // "A + B×2 + C"
+                        'etiquetas_secuencia' => $infoEtiq['secuencia_humana'],
+                        'etiquetas_resumen'   => $infoEtiq['resumen_humano'],
+                        // dedupe por multiset (orden-insensible)
+                        'clave_estable'       => $this->claveCombinacion($ids),
                     ];
                 }
                 return;
             }
 
             foreach ($subidsOrdenados as $sid) {
-                // reglas de stock:
+                // reglas de stock (A limitado por $repeticionesA)
                 if ($sid === $subIdA) {
                     $usadosA = $usos[$sid] ?? 0;
-                    if ($usadosA >= $repeticionesA) continue; // A solo extra hasta repeticionesA
+                    if ($usadosA >= $repeticionesA) continue;
                 } else {
                     $usados = $usos[$sid] ?? 0;
-                    $disp = $stock[$sid] ?? 0;
+                    $disp   = $stock[$sid] ?? 0;
                     if ($usados >= $disp) continue;
                 }
 
                 // elegir
-                $seleccion[]   = $sid;
-                $usos[$sid]    = ($usos[$sid] ?? 0) + 1;
-                $sumaSel      += $LporSub[$sid];
+                $seleccion[] = $sid;
+                $usos[$sid]  = ($usos[$sid] ?? 0) + 1;
+                $sumaSel    += $LporSub[$sid];
 
-                // poda rápida por suma
+                // poda por suma
                 if ($longitudAcm + $sumaSel <= $longitudBarraCm) {
                     $dfs();
                 }
@@ -792,12 +868,10 @@ class EtiquetaController extends Controller
 
         $dfs();
 
-        // ordenar y devolver (sin recorte aquí; se recorta al acumular)
         usort($resultados, $comparador);
-
-        // deduplicación aquí no es estrictamente necesaria; se hace al acumular en top global/local
         return $resultados;
     }
+
 
     /**
      * Inserta patrones en TopLocal y TopGlobal con deduplicación por combinación multiset.
@@ -850,25 +924,6 @@ class EtiquetaController extends Controller
         return implode('|', $ids);
     }
 
-    /** Deducción de schema tipo "A+B", "A+A+B", "A+B+B+B", etc. */
-    private function schemaDesdeIds(array $ids, string $subIdA): string
-    {
-        $conteo = $this->contarMultiset($ids);
-        $partes = [];
-        foreach ($conteo as $sid => $n) {
-            $letra = ($sid === $subIdA) ? 'A' : 'B';
-            // si quieres distinguir C,D por subetiqueta diferente, puedes extenderlo
-            if ($letra === 'B' && $n > 1) $partes[] = str_repeat('B', 1) . str_repeat('+B', $n - 1);
-            else $partes[] = $letra . ($n > 1 ? str_repeat('+' . $letra, $n - 1) : '');
-        }
-        // Orden canónico: A primero, luego resto
-        usort($partes, function ($x, $y) {
-            if (str_starts_with($x, 'A') && !str_starts_with($y, 'A')) return -1;
-            if (!str_starts_with($x, 'A') && str_starts_with($y, 'A')) return 1;
-            return strcmp($x, $y);
-        });
-        return implode('+', $partes);
-    }
 
     /** Mapea a la estructura esperada por el canvas, SIN N+1. */
     private function construirGruposParaCanvas(array $conteoPorSubid, Collection $mapaEtiquetas): array
@@ -919,7 +974,11 @@ class EtiquetaController extends Controller
                     <div>🔹 Patrón: <strong>{$p['patron_humano']} cm</strong></div>
                     <div>🪵 Sobra: <strong>" . number_format($p['sobra_cm'], 2, ',', '.') . " cm</strong></div>
                     <div>📈 Aprovechamiento: <span class='font-bold {$cls}'>" . number_format($p['aprovechamiento'], 2, ',', '.') . "%</span></div>
-                    <div class='text-[11px] text-gray-500'>k={$p['k']}, esquema: {$p['tipo_schema']}</div>
+                  <div class='text-[11px] text-gray-500'>
+  k={$p['k']}, esquema: {$p['esquema']}" . (!empty($p['resumen_letras']) ? " ({$p['resumen_letras']})" : "") . "
+</div>
+
+
                 </li>";
                 }
                 $html .= "</ul>";
@@ -959,6 +1018,17 @@ class EtiquetaController extends Controller
     //         'elementos' => $etiqueta->elementos->toArray(), // todos los datos que necesitas en JS
     //     ]);
     // }
+    public function render(Request $r)
+    {
+        $etiqueta = Etiqueta::with('elementos')->findOrFail($r->input('id'));
+        $html = view('components.etiqueta.etiqueta', [
+            'etiqueta' => $etiqueta,
+            'planilla' => $etiqueta->planilla,
+            'maquina_tipo' => $r->input('maquina_tipo'),
+        ])->render();
+
+        return response()->json(['success' => true, 'html' => $html]);
+    }
 
     public function fabricacionOptimizada(Request $request)
     {
