@@ -339,8 +339,17 @@ class EtiquetaController extends Controller
      * Candidatos de UNA planilla dada: mismo Ø, estado pendiente y stock.
      * Devuelve array de ['id' => subid, 'L' => longitud_cm, 'disponibles' => barras]
      */
-    private function construirCandidatosEnPlanilla(int $planillaId, int $diametroMm, string $excluirSubId): array
-    {
+    /**
+     * Candidatos de UNA planilla dada: mismo Ø, estado pendiente, stock
+     * y (opcionalmente) MISMA máquina.
+     * Devuelve array de ['id' => subid, 'L' => longitud_cm, 'disponibles' => barras]
+     */
+    private function construirCandidatosEnPlanilla(
+        int $planillaId,
+        int $diametroMm,
+        string $excluirSubId,
+        ?int $maquinaIdObjetivo = null
+    ): array {
         $planilla = Planilla::with('etiquetas.elementos')->find($planillaId);
         if (!$planilla) return [];
 
@@ -354,9 +363,25 @@ class EtiquetaController extends Controller
 
             $e = $otra->elementos->first();
             if (!$e) continue;
+
+            // ⬇️ NUEVO: filtrar por MISMA máquina si se indicó
+            if ($maquinaIdObjetivo !== null) {
+                // intentamos en este orden: etiqueta.maquina_id, luego elemento.maquina_id
+                $maquinaEtiquetaId = isset($otra->maquina_id) ? (int) $otra->maquina_id : null;
+                $maquinaElementoId = isset($e->maquina_id)    ? (int) $e->maquina_id    : null;
+
+                // si hay dato de máquina, debe coincidir con la objetivo
+                $maquinaDetectada = $maquinaEtiquetaId ?? $maquinaElementoId;
+
+                // si no se pudo detectar o no coincide, descartamos
+                if ($maquinaDetectada === null || $maquinaDetectada !== $maquinaIdObjetivo) {
+                    continue;
+                }
+            }
+
             if ((int) ($e->diametro ?? 0) !== $diametroMm) continue;
 
-            $longitudCm  = (float) ($e->longitud ?? 0);       // 👈 recuerda: en tu BD longitud viene en cm para elementos
+            $longitudCm  = (float) ($e->longitud ?? 0);       // en BD: cm
             $disponibles = (int)   max(0, (int) ($e->barras ?? 0));
             if ($longitudCm <= 0 || $disponibles <= 0) continue;
 
@@ -383,6 +408,7 @@ class EtiquetaController extends Controller
         /* ─────────────────────────────
  |  1) Cargar contexto + validar
  ───────────────────────────── */
+        // 1) Cargar contexto + validar
         $etiquetaA = Etiqueta::with(['elementos', 'planilla.etiquetas.elementos'])
             ->where('etiqueta_sub_id', $etiquetaSubId)
             ->firstOrFail();
@@ -391,6 +417,12 @@ class EtiquetaController extends Controller
         if (!$elementoA) {
             return response()->json(['success' => false, 'message' => 'La subetiqueta A no tiene elementos.'], 400);
         }
+
+        // 👉 nueva: máquina objetivo (cola donde está esta planilla)
+        $maquinaObjetivoId = optional(
+            OrdenPlanilla::where('planilla_id', $etiquetaA->planilla_id)->first()
+        )->maquina_id;
+        $maquinaObjetivoId = $maquinaObjetivoId ? (int) $maquinaObjetivoId : null;
 
         $longitudAcm = (float) ($elementoA->longitud ?? 0);   // cm
         $diametro    = (int)   ($elementoA->diametro ?? 0);
@@ -448,10 +480,14 @@ class EtiquetaController extends Controller
         foreach ($planillasEnOrden as $planillaId) {
             if (count($topGlobal98) >= 3) break;
 
-            // 5.1) Candidatos SOLO de esta planilla
-            $candidatos = $this->construirCandidatosEnPlanilla($planillaId, $diametro, $etiquetaSubId);
+            // ⬇️ ahora filtrará por máquina
+            $candidatos = $this->construirCandidatosEnPlanilla(
+                $planillaId,
+                $diametro,
+                $etiquetaSubId,
+                $maquinaObjetivoId
+            );
             if (empty($candidatos)) continue;
-
             // 5.2) Pre-carga de etiquetas para ESTA planilla (y A) → evita N+1
             $subIdsNecesarios = collect($candidatos)->pluck('id')->push($etiquetaSubId)->unique()->values();
             $mapaEtiquetas    = Etiqueta::with(['elementos', 'planilla'])

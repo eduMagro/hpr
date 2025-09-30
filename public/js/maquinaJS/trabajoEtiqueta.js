@@ -2,6 +2,8 @@
 let etiquetaTimers = {};
 
 document.addEventListener("DOMContentLoaded", () => {
+    if (window.__trabajoEtiquetaInit) return; // 👈 guard
+    window.__trabajoEtiquetaInit = true;
     const maquinaInfo = document.getElementById("maquina-info");
     const maquinaId = maquinaInfo?.dataset?.maquinaId;
 
@@ -216,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.documentElement.style.overflowY = "auto";
                     document.body.style.overflowY = "auto";
 
-                    // ✅ tu lógica existente: click en una longitud -> fabricar
+                    // ✅ click en una longitud -> fabricar
                     document
                         .querySelectorAll(".opcion-longitud")
                         .forEach((btn) => {
@@ -231,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             });
                         });
 
-                    // ✅ tu lógica existente: click en optimizar -> buscar compañero
+                    // ✅ click en optimizar -> buscar compañero
                     document
                         .getElementById("btn-optimizar-corte")
                         ?.addEventListener("click", () => {
@@ -242,21 +244,19 @@ document.addEventListener("DOMContentLoaded", () => {
                             Swal.close();
                         });
 
-                    // ✅ NUEVO: hacer el modal arrastrable por el título
+                    // ✅ modal arrastrable
                     makeSwalDraggable(".swal2-title");
                 },
                 didClose: () => {
-                    // restaurar por si el drag deshabilitó selección del texto
                     document.body.style.userSelect = "";
                 },
             });
 
-            // si llega aquí es que pulsó Cancelar o cerró con ESC (pero outsideClick está bloqueado)
+            // si llega aquí es que pulsó Cancelar o cerró con ESC
             if (dlg.isDismissed) resolve(null);
         });
     }
 
-    /** Corte optimizado: soporta patrones de 2..K cortes y resalta en la vista */
     /** Corte optimizado: soporta patrones de 2..K cortes y resalta en la vista */
     async function mejorCorteHermano(id, diametro, patrones, csrfToken) {
         const resp = await fetch(`/etiquetas/${id}/optimizar-corte`, {
@@ -275,6 +275,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const top = Array.isArray(data.top_global) ? data.top_global : [];
         const tieneTop = top.length > 0;
+
         let html = "";
         if (tieneTop) {
             html += `<div class="space-y-2">`;
@@ -346,33 +347,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (typeof makeSwalDraggable === "function")
                     makeSwalDraggable(".swal2-title");
 
-                // Cada card es clicable: abre elementos (como ya dejaste) y también notifica al canvas
+                // Cada card es clicable: abre elementos (sustituyendo al antiguo botón)
                 document.querySelectorAll(".opcion-patron").forEach((card) => {
                     card.addEventListener("click", () => {
                         const idx = parseInt(card.dataset.idx, 10);
                         const patron = top[idx];
                         if (!patron) return;
 
-                        // A) ver elementos (lo que sustituye al antiguo botón)
                         if (
                             Array.isArray(patron.grupos) &&
                             patron.grupos.length
                         ) {
                             mostrarModalPatron(patron.grupos);
                         }
-
-                        // B) opcional: notifica a quien pinte la barra completa, si lo usas
-                        // notificarCanvasPatron?.(patron);
                     });
                 });
-
-                // // Notifica de inicio con el seleccionado por defecto
-                // const seleccionado =
-                //     document.querySelector(
-                //         'input[name="patronElegido"]:checked'
-                //     )?.value ?? "0";
-                // const patron0 = top[parseInt(seleccionado, 10)] ?? top[0];
-                // if (patron0) notificarCanvasPatron(patron0);
             },
         });
 
@@ -388,7 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Longitud de barra no válida en el patrón seleccionado."
                 );
 
-            // ✅ Ahora: usa la SECUENCIA real
+            // ✅ Usa la secuencia real
             const etiquetas =
                 Array.isArray(patron.etiquetas) && patron.etiquetas.length
                     ? patron.etiquetas.map((subid) => ({
@@ -434,12 +423,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (dlg.isDenied) return "volver";
         return null;
     }
+
     function mostrarModalPatron(grupos) {
         const contenedor = document.getElementById("contenedorPatron");
         contenedor.innerHTML = "";
 
-        // cola temporal para todos los grupos del patrón
         const cola = [];
+        let finalizado = false; // 👈 guard para evitar doble “finalización”
 
         (grupos || []).forEach((grupo) => {
             const wrap = document.createElement("div");
@@ -452,7 +442,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Accept: "application/json", // 👈 evita que el backend devuelva HTML
+                    Accept: "application/json",
                     "X-CSRF-TOKEN": document.querySelector(
                         'meta[name="csrf-token"]'
                     ).content,
@@ -464,19 +454,35 @@ document.addEventListener("DOMContentLoaded", () => {
             })
                 .then((resp) => resp.json())
                 .then((data) => {
-                    // 1) Inserta el HTML de la tarjeta de la etiqueta
                     wrap.innerHTML = data.html;
 
-                    // 2) Mete los datos del grupo (lo que necesita el canvas) en la cola
+                    // Normaliza por si falta `dimensiones` (opcional)
+                    const elementosNormalizados = (grupo.elementos || []).map(
+                        (el) => {
+                            const e = { ...el };
+                            let dims = (e.dimensiones ?? "").trim();
+                            if (!dims) {
+                                const L = Number(
+                                    e.longitud_cm ?? e.longitud ?? e.cm ?? 0
+                                );
+                                if (L > 0) dims = String(L);
+                            }
+                            e.dimensiones = dims;
+                            return e;
+                        }
+                    );
+
                     cola.push({
-                        etiqueta: { id: grupo.etiqueta.id }, // <-- el canvas usa este id para el contenedor
-                        elementos: grupo.elementos, // <-- cada elemento trae dimensiones, barras, diámetro, etc.
+                        etiqueta: { id: grupo.etiqueta.id },
+                        elementos: elementosNormalizados,
                     });
 
-                    // 3) Cuando todas las tarjetas estén en el DOM, pintamos
-                    if (cola.length === grupos.length) {
+                    // ⚠️ Ejecuta la “finalización” SOLO UNA VEZ
+                    if (!finalizado && cola.length === (grupos?.length || 0)) {
+                        finalizado = true; // 👈 marca
                         window.elementosAgrupadosScript = cola;
-                        // Borra un posible repaint anterior en curso
+
+                        // Repaint del canvas (siempre una sola vez)
                         if (window.__repaintTimer)
                             clearTimeout(window.__repaintTimer);
                         window.__repaintTimer = setTimeout(() => {
@@ -494,55 +500,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("modalPatron").classList.remove("hidden");
     }
 
-    // ---------- Helpers para el canvas ----------
-    function patronToCanvasData(patron) {
-        const Lbarra = Number(patron.longitud_barra_cm || 0);
-        const longs = Array.isArray(patron.longitudes_cm)
-            ? patron.longitudes_cm.map(Number)
-            : [];
-        const ids = Array.isArray(patron.etiquetas) ? patron.etiquetas : [];
-        const letras = Array.isArray(patron.secuencia_letras)
-            ? patron.secuencia_letras
-            : [];
-
-        // cortes acumulados (en cm)
-        let acum = 0;
-        const cortes = longs.map((len) => (acum += len));
-
-        // segmentos con subid, letra y longitud
-        const segmentos = longs.map((len, i) => ({
-            subid: ids[i] || null,
-            letra:
-                letras[i] ||
-                (i === 0 ? "A" : String.fromCharCode(66 + (i - 1))), // fallback
-            cm: len,
-        }));
-
-        return {
-            barra_cm: Lbarra,
-            sobra_cm: Number(patron.sobra_cm || 0),
-            aprovechamiento: Number(patron.aprovechamiento || 0),
-            esquema: patron.esquema || "",
-            segmentos, // [{subid, letra, cm}, ...]
-            cortes_cm: cortes, // [L1, L1+L2, ...]
-        };
-    }
-
-    // Notifica al sistema de canvas (deja dos vías por si ya tienes inicializado algo)
-    // function notificarCanvasPatron(patron) {
-    //     const data = patronToCanvasData(patron);
-
-    //     // 1) Si tu bundle expone un método, úsalo:
-    //     if (typeof window.renderPatronEnCanvas === "function") {
-    //         window.renderPatronEnCanvas(data);
-    //     }
-
-    //     // 2) Además emite un evento por si prefieres suscribirte desde initCanvasMaquinas
-    //     window.dispatchEvent(
-    //         new CustomEvent("patron:seleccionado", { detail: data })
-    //     );
-    // }
-
     // ---- Drag para SweetAlert2 ----
     function makeSwalDraggable(handleSelector = ".swal2-title") {
         const popup = Swal.getPopup?.();
@@ -550,11 +507,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!popup || !container) return;
 
         const handle = popup.querySelector(handleSelector) || popup;
-        popup.style.position = "fixed"; // importante para moverlo
-        popup.style.margin = 0; // evita recentrados
-        popup.style.transform = "none"; // quita translate(-50%, -50%)
-        popup.style.left = "50%"; // posición inicial centrada
-        popup.style.top = "25%"; // un poco arriba
+        popup.style.position = "fixed";
+        popup.style.margin = 0;
+        popup.style.transform = "none";
+        popup.style.left = "50%";
+        popup.style.top = "25%";
         handle.style.cursor = "move";
 
         let startX,
@@ -572,7 +529,6 @@ document.addEventListener("DOMContentLoaded", () => {
             startLeft = rect.left;
             startTop = rect.top;
 
-            // desactivar selección mientras arrastras
             document.body.style.userSelect = "none";
             window.addEventListener("mousemove", onPointerMove);
             window.addEventListener("mouseup", onPointerUp);
@@ -590,7 +546,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const dx = evt.clientX - startX;
             const dy = evt.clientY - startY;
 
-            // límites dentro del viewport
             const vw = window.innerWidth;
             const vh = window.innerHeight;
             const rect = popup.getBoundingClientRect();
@@ -618,7 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function actualizarDOMEtiqueta(id, data) {
-        const safeId = id.replace(/\./g, "-"); // ✅ declarar una sola vez
+        const safeId = id.replace(/\./g, "-");
         const estadoEtiqueta = document.getElementById(`estado-${safeId}`);
         const inicioEtiqueta = document.getElementById(`inicio-${safeId}`);
         const finalEtiqueta = document.getElementById(`final-${safeId}`);
@@ -659,7 +614,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         "Hemos completado la etiqueta."
                     );
                 }
-                scrollToNextDiv(safeId); // ✅ usa safeId ya declarado
+                scrollToNextDiv(safeId);
                 break;
 
             case "fabricando":
@@ -766,20 +721,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const proceso = document.getElementById("etiqueta-" + safe);
         if (!proceso) return;
 
-        // actualiza data-estado para lectores lógicos
         proceso.dataset.estado = String(estado || "").toLowerCase();
 
-        // quita clases estado-*
         proceso.className = proceso.className
             .split(" ")
             .filter((c) => !c.startsWith("estado-"))
             .join(" ")
             .trim();
 
-        // añade clase estado-<estado>
         proceso.classList.add("estado-" + proceso.dataset.estado);
 
-        // refresca el fondo del svg con la CSS var centralizada
         const contenedor = proceso.querySelector('[id^="contenedor-svg-"]');
         const svg = contenedor?.querySelector("svg");
         if (svg) {
@@ -862,16 +813,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (result.isDenied) notificarProgramador(mensaje);
         });
     }
+
     // Actualiza la función para recibir el id conocido de la etiqueta
     function agregarItemEtiqueta(etiquetaId, data) {
-        // Si data.id no está definido, usamos el id pasado como argumento (etiquetaId)
         const id = data.id || etiquetaId;
         const safeId = id.replace(/\./g, "-");
         if (items.some((item) => item.id === safeId)) {
             console.warn("Etiqueta ya agregada:", safeId);
             return;
         }
-        // Se agrega también el peso, que se extrae de data (o se asigna 0 si no existe)
         const newItem = { id: id, type: "etiqueta", peso: data.peso || 0 };
         items.push(newItem);
         console.log("Etiqueta agregada automáticamente a la lista:", newItem);
@@ -885,9 +835,8 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error("No se encontró el elemento con id 'itemsList'");
             return;
         }
-        itemsList.innerHTML = ""; // Limpiar la lista
+        itemsList.innerHTML = "";
 
-        // Mostrar cada item en la lista
         items.forEach((item) => {
             const listItem = document.createElement("li");
             listItem.textContent = `${item.type}: ${item.id} - Peso: ${item.peso} kg`;
@@ -902,14 +851,12 @@ document.addEventListener("DOMContentLoaded", () => {
             itemsList.appendChild(listItem);
         });
 
-        // Calcular sumatorio de pesos de todas las etiquetas en la lista
         const sumatorio = items.reduce(
             (acc, item) => acc + (parseFloat(item.peso) || 0),
             0
         );
-        const sumatorioFormateado = sumatorio.toFixed(2); // Ajusta a dos decimales
+        const sumatorioFormateado = sumatorio.toFixed(2);
 
-        // Mostrar el peso total de los elementos en la lista
         const sumatorioItem = document.createElement("li");
         sumatorioItem.textContent = `Total de peso: ${sumatorioFormateado} kg`;
         sumatorioItem.style.fontWeight = "bold";
