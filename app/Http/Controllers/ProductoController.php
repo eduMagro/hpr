@@ -527,9 +527,8 @@ class ProductoController extends Controller
         $modo = $request->get('modo'); // 'total' o 'parcial'
 
         if ($modo === 'total') {
-            // ✅ Consumir todo
-            $producto->peso_stock = 0;
-            $producto->estado = 'consumido';
+            // ✅ Consumir todo y limpiar ubicación/máquina
+            $this->marcarComoConsumido($producto);
         } elseif ($modo === 'parcial') {
             // ✅ Validar entrada
             $request->validate([
@@ -545,10 +544,9 @@ class ProductoController extends Controller
             // Restar kilos
             $producto->peso_stock -= $kgs;
 
-            // Si llega a 0, marcar como consumido
+            // Si llega a 0, marcar como consumido (también limpia ubicación/máquina)
             if ($producto->peso_stock <= 0) {
-                $producto->peso_stock = 0;
-                $producto->estado = 'consumido';
+                $this->marcarComoConsumido($producto);
             }
         } else {
             return back()->with('error', '❌ Modo de consumo no válido.');
@@ -558,15 +556,17 @@ class ProductoController extends Controller
 
         return back()->with('success', '✅ Producto actualizado correctamente.');
     }
+
     private function marcarComoConsumido(Producto $producto)
     {
-        $producto->peso_stock = 0;
-        $producto->estado = 'consumido';
+        $producto->peso_stock     = 0;
+        $producto->estado         = 'consumido';
         $producto->fecha_consumido = now();
-        $producto->consumido_by = auth()->id();
-        $producto->ubicacion_id = null;
-        $producto->maquina_id = null;
+        $producto->consumido_by    = auth()->id();
+        $producto->ubicacion_id    = null; // 👈 limpiar ubicación
+        $producto->maquina_id      = null; // (si aplica)
     }
+
 
     //------------------------------------------------------------------------------------ DESTROY
     public function destroy(Producto $producto)
