@@ -394,7 +394,7 @@ class EtiquetaController extends Controller
 
         return $candidatos;
     }
-    public function optimizarCorte(Request $request, string $etiquetaSubId)
+    public function calcularPatronCorteOptimizado(Request $request, string $etiquetaSubId)
     {
         /* ─────────────────────────────
         |  0) Parámetros / constantes
@@ -1066,7 +1066,7 @@ class EtiquetaController extends Controller
         return response()->json(['success' => true, 'html' => $html]);
     }
 
-    public function fabricacionOptimizada(Request $request)
+    public function fabricacionSyntaxLine28(Request $request)
     {
         try {
             $data = $request->validate([

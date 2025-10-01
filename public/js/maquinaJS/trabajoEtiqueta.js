@@ -4,19 +4,25 @@ let etiquetaTimers = {};
 document.addEventListener("DOMContentLoaded", () => {
     if (window.__trabajoEtiquetaInit) return; // 👈 guard
     window.__trabajoEtiquetaInit = true;
-    const maquinaInfo = document.getElementById("maquina-info");
-    const maquinaId = maquinaInfo?.dataset?.maquinaId;
-
-    if (!maquinaId) {
-        console.error("Error: No se encontró la información de la máquina.");
-        return;
-    }
 
     // --- CLICK EN BOTÓN FABRICAR: hace lo mismo que escanear + Enter ---
     document.addEventListener("click", async (ev) => {
         const btn = ev.target.closest(".btn-fabricar");
         if (!btn) return;
         ev.preventDefault();
+
+        // ✅ leer maquinaId en el momento del click (evita cortar el bootstrap)
+        const maquinaId =
+            document.getElementById("maquina-info")?.dataset?.maquinaId;
+        if (!maquinaId) {
+            console.error("No se encontró #maquina-info o data-maquina-id.");
+            await Swal.fire({
+                icon: "error",
+                title: "Falta la máquina",
+                text: "No se pudo determinar la máquina de trabajo.",
+            });
+            return;
+        }
 
         const etiquetaId = String(btn.dataset.etiquetaId || "").trim();
         const diametro = Number(
@@ -78,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!decision) return;
 
                 if (decision.accion === "optimizar") {
-                    // multi-etiqueta (k≥2) → ya fabrica por /etiquetas/fabricacion-optimizada
+                    // multi-etiqueta (k≥2) → selecciona patrón y devolvemos payload unificado
                     let outcome;
                     try {
                         outcome = await mejorCorteOptimizado(
@@ -92,9 +98,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         return;
                     }
 
-                    if (outcome === "fabricado") {
-                        // ya fabricado: el propio flujo hace reload
-                        return;
+                    if (outcome?.accion === "fabricar") {
+                        await enviarAFabricacionOptimizada({
+                            longitudBarraCm: outcome.longitudBarraCm,
+                            etiquetas: outcome.etiquetas,
+                            csrfToken,
+                        });
+                        return; // fin del flujo barra
                     } else if (outcome === "volver") {
                         // regresar al selector de longitudes
                         continue;
@@ -114,15 +124,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         return;
                     }
 
-                    try {
-                        await fabricarPatronSimple(
-                            id,
-                            longitudBarraCm,
-                            csrfToken
-                        );
-                    } catch (err) {
-                        showErrorAlert(err);
-                    }
+                    await enviarAFabricacionOptimizada({
+                        longitudBarraCm,
+                        etiquetas: [{ etiqueta_sub_id: id, elementos: [] }],
+                        csrfToken,
+                    });
                     return; // fin del flujo barra
                 }
             }
@@ -173,6 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     }
+
     /** Selector de longitudes con botones + “Buscar compañero de corte” */
     async function mejorCorteSimple(id, diametro, csrfToken) {
         const res = await fetch(`/etiquetas/${id}/patron-corte-simple`, {
@@ -246,7 +253,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         .forEach((btn) => {
                             btn.addEventListener("click", () => {
                                 resolve({
-                                    accion: "fabricar",
+                                    accion: "fabricar_patron_simple",
                                     longitud_m: parseFloat(
                                         btn.dataset.longitud
                                     ),
@@ -279,7 +286,46 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /** Corte optimizado: soporta patrones de 2..K cortes y resalta en la vista */
+    // ✅ ÚNICO: unifica el envío al backend para cualquier caso (k=1 o k>1)
+    async function enviarAFabricacionOptimizada({
+        longitudBarraCm,
+        etiquetas,
+        csrfToken,
+    }) {
+        const cuerpoPeticion = {
+            producto_base: { longitud_barra_cm: Number(longitudBarraCm) },
+            repeticiones: 1,
+            etiquetas: etiquetas, // [{ etiqueta_sub_id, elementos: [] }, ...]
+        };
+
+        const resp = await fetch(`/etiquetas/fabricacion-optimizada`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+                "X-CSRF-TOKEN": csrfToken,
+            },
+            body: JSON.stringify(cuerpoPeticion),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.message || "Error al fabricar.");
+
+        await Swal.fire({
+            icon: "success",
+            title: "Fabricación iniciada",
+            text: data?.message || "Todo en marcha.",
+            allowOutsideClick: false,
+        });
+
+        window.location.reload();
+    }
+
+    /** Corte optimizado: soporta patrones de 2..K cortes.
+     *  Devuelve:
+     *   - { accion: "fabricar", longitudBarraCm, etiquetas }  -> payload para enviarAFabricacionOptimizada
+     *   - "volver" | null                                      -> control de flujo
+     */
     async function mejorCorteOptimizado(id, diametro, patrones, csrfToken) {
         const resp = await fetch(`/etiquetas/${id}/patron-corte-optimizado`, {
             method: "POST",
@@ -408,38 +454,8 @@ document.addEventListener("DOMContentLoaded", () => {
                       }))
                     : [{ etiqueta_sub_id: id, elementos: [] }];
 
-            const body = {
-                producto_base: { longitud_barra_cm: longitudBarraCm },
-                repeticiones: 1,
-                etiquetas,
-            };
-
-            const fabricarResp = await fetch(
-                `/etiquetas/fabricacion-optimizada`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Accept: "application/json",
-                        "X-CSRF-TOKEN": csrfToken,
-                    },
-                    body: JSON.stringify(body),
-                }
-            );
-
-            const res = await fabricarResp.json();
-            if (!fabricarResp.ok)
-                throw new Error(res?.message || "Error al fabricar.");
-
-            await Swal.fire({
-                icon: "success",
-                title: "Fabricación iniciada",
-                text: res?.message || "Todo en marcha.",
-                allowOutsideClick: false,
-            });
-
-            window.location.reload();
-            return "fabricado";
+            // 👉 devolvemos el payload; la petición se hace en actualizarEtiqueta()
+            return { accion: "fabricar", longitudBarraCm, etiquetas };
         }
 
         if (dlg.isDenied) return "volver";
