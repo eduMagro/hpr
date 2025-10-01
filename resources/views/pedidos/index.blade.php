@@ -13,7 +13,7 @@
 
                             <th class="p-2 border">ID LINEA</th>
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
-                            <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
+
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global Linea' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
@@ -40,10 +40,6 @@
                                         class="w-full text-xs" />
                                 </th>
 
-                                <th class="p-1 border">
-                                    <x-tabla.select name="pedido_global_id" :options="$pedidosGlobales->pluck('codigo', 'id')" :selected="request('pedido_global_id')"
-                                        empty="Todos" class="w-full text-xs" />
-                                </th>
                                 <th class="p-1 border">
                                     <x-tabla.select name="pedido_global_id" :options="$pedidosGlobales->pluck('codigo', 'id')" :selected="request('pedido_global_id')"
                                         empty="Todos" class="w-full text-xs" />
@@ -168,8 +164,6 @@
                                         </div>
                                     </td>
 
-                                    {{-- pedido global de la cabecera --}}
-                                    <td class="border px-2 py-1">{{ $pedido->pedidoGlobal?->codigo ?? '—' }}</td>
                                     {{-- pedido global de la línea --}}
                                     <td class="border px-2 py-1">{{ $linea->pedidoGlobal?->codigo ?? '—' }}</td>
 
@@ -324,23 +318,19 @@
                 <x-estadisticas.stock :nombre-meses="$nombreMeses" :stock-data="$stockData" :pedidos-por-diametro="$pedidosPorDiametro" :necesario-por-diametro="$necesarioPorDiametro"
                     :total-general="$totalGeneral" :consumo-origen="$consumoOrigen" :consumos-por-mes="$consumosPorMes" :producto-base-info="$productoBaseInfo" :stock-por-producto-base="$stockPorProductoBase"
                     :kg-pedidos-por-producto-base="$kgPedidosPorProductoBase" :resumen-reposicion="$resumenReposicion" :recomendacion-reposicion="$recomendacionReposicion" :configuracion_vista_stock="$configuracion_vista_stock" />
-
                 <div id="modalConfirmacion"
                     class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
                     <div class="bg-white p-6 rounded-lg w-full max-w-5xl shadow-xl">
-
-                        {{-- Título alineado a la izquierda --}}
                         <h3 class="text-lg font-semibold mb-4 text-gray-800 text-left">Confirmar pedido</h3>
 
                         <form id="formularioPedido" action="{{ route('pedidos.store') }}" method="POST"
                             class="space-y-4">
                             @csrf
 
-                            {{-- Selector de fabricante alineado a la izquierda --}}
                             <div class="text-left">
-                                <label for="fabricante"
-                                    class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
-                                    fabricante:</label>
+                                <label for="fabricante" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Seleccionar fabricante:
+                                </label>
                                 <select name="fabricante_id" id="fabricante"
                                     class="w-full border border-gray-300 rounded px-3 py-2">
                                     <option value="">-- Elige un fabricante --</option>
@@ -349,34 +339,29 @@
                                     @endforeach
                                 </select>
                             </div>
-                            {{-- Selector de distribuidor --}}
+
                             <div class="text-left mt-4">
-                                <label for="distribuidor"
-                                    class="block text-sm font-medium text-gray-700 mb-1">Seleccionar
-                                    distribuidor:</label>
+                                <label for="distribuidor" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Seleccionar distribuidor:
+                                </label>
                                 <select name="distribuidor_id" id="distribuidor"
                                     class="w-full border border-gray-300 rounded px-3 py-2">
                                     <option value="">-- Elige un distribuidor --</option>
                                     @foreach ($distribuidores as $distribuidor)
-                                        <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}
-                                        </option>
+                                        <option value="{{ $distribuidor->id }}">{{ $distribuidor->nombre }}</option>
                                     @endforeach
                                 </select>
                             </div>
 
-                            {{-- Campo de lugar de entrega --}}
-                            {{-- Campo de lugar de entrega: solo se puede seleccionar uno --}}
+                            {{-- Lugar de entrega --}}
                             <div class="text-left">
-                                <label class="block text-sm font-medium text-gray-700 mb-1">
-                                    Lugar de Entrega:
-                                </label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Lugar de Entrega:</label>
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {{-- Select para naves HPR --}}
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">Naves de Hierros Paco
                                             Reyes</label>
-                                        <select name="obra_id_hpr" id="obra_id_hpr"
+                                        <select name="obra_id_hpr" id="obra_id_hpr_modal"
                                             class="w-full border border-gray-300 rounded px-3 py-2"
                                             onchange="limpiarObraManual()">
                                             <option value="">Seleccionar nave</option>
@@ -386,11 +371,10 @@
                                         </select>
                                     </div>
 
-                                    {{-- Select para obras externas --}}
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">Obras Externas
                                             (activas)</label>
-                                        <select name="obra_id_externa" id="obra_id_externa"
+                                        <select name="obra_id_externa" id="obra_id_externa_modal"
                                             class="w-full border border-gray-300 rounded px-3 py-2"
                                             onchange="limpiarObraManual()">
                                             <option value="">Seleccionar obra externa</option>
@@ -400,18 +384,16 @@
                                         </select>
                                     </div>
 
-                                    {{-- Input de obra manual --}}
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">Otra ubicación (texto
                                             libre)</label>
-                                        <input type="text" name="obra_manual" id="obra_manual"
+                                        <input type="text" name="obra_manual" id="obra_manual_modal"
                                             class="w-full border border-gray-300 rounded px-3 py-2"
                                             placeholder="Escribir dirección manualmente"
                                             oninput="limpiarSelectsObra()" value="{{ old('obra_manual') }}">
                                     </div>
                                 </div>
                             </div>
-
 
                             <table
                                 class="w-full border-collapse text-sm text-center shadow-xl overflow-hidden rounded-lg border border-gray-300">
@@ -420,14 +402,14 @@
                                         <th class="border px-2 py-1">Tipo</th>
                                         <th class="border px-2 py-1">Diámetro</th>
                                         <th class="border px-2 py-1">Peso a pedir (kg)</th>
-
+                                        <th class="border px-2 py-1">Pedido Global sugerido</th>
                                     </tr>
                                 </thead>
                                 <tbody id="tablaConfirmacionBody">
                                     {{-- JavaScript agregará filas con inputs aquí --}}
                                 </tbody>
                             </table>
-
+                            <div id="mensajesGlobales" class="mt-2 text-sm space-y-1"></div>
 
 
                             <div class="text-right pt-4">
@@ -443,6 +425,7 @@
                         </form>
                     </div>
                 </div>
+
             </div>
     </div>
 
@@ -581,14 +564,247 @@
 
     <script>
         function limpiarObraManual() {
-            document.getElementById('obra_manual').value = '';
+            document.getElementById('obra_manual_modal').value = '';
         }
 
         function limpiarSelectsObra() {
-            document.getElementById('obra_id_hpr').selectedIndex = 0;
-            document.getElementById('obra_id_externa').selectedIndex = 0;
+            document.getElementById('obra_id_hpr_modal').selectedIndex = 0;
+            document.getElementById('obra_id_externa_modal').selectedIndex = 0;
         }
     </script>
+    <script>
+        function debounce(fn, delay) {
+            let timer;
+            return function() {
+                clearTimeout(timer);
+                const args = arguments;
+                const context = this;
+                timer = setTimeout(() => fn.apply(context, args), delay);
+            }
+        }
+
+        // 🔹 Devuelve [{index, cantidad}, ...] con todas las líneas del modal
+        function recolectarLineas() {
+            const filas = document.querySelectorAll('#tablaConfirmacionBody tr');
+            const lineas = [];
+            filas.forEach((tr, index) => {
+                const peso = parseFloat(tr.querySelector('.peso-total').value || 0);
+                if (peso > 0) {
+                    lineas.push({
+                        index: index,
+                        cantidad: peso
+                    });
+                }
+            });
+            return lineas;
+        }
+
+        // 🔹 Llama al backend y pinta las sugerencias en cada fila
+        function dispararSugerirMultiple() {
+            const fabricante = document.getElementById('fabricante').value;
+            const distribuidor = document.getElementById('distribuidor').value;
+            if (!fabricante && !distribuidor) return;
+
+            const lineas = recolectarLineas();
+            if (lineas.length === 0) return;
+
+            fetch('{{ route('pedidos.sugerir-pedido-global') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        fabricante_id: fabricante,
+                        distribuidor_id: distribuidor,
+                        lineas: lineas
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    const mensajesGlobales = document.getElementById('mensajesGlobales');
+                    mensajesGlobales.innerHTML = '';
+
+                    if (data.mensaje) {
+                        const div = document.createElement('div');
+                        div.className = 'text-yellow-700 font-medium';
+                        div.textContent = data.mensaje;
+                        mensajesGlobales.appendChild(div);
+                    }
+                    data.asignaciones.forEach(asig => {
+                        if (asig.linea_index !== null) {
+                            // Mensajes por línea
+                            const tr = document.querySelector(
+                                `#tablaConfirmacionBody tr:nth-child(${asig.linea_index + 1})`
+                            );
+                            if (tr) {
+                                const td = tr.querySelector('.pg-sugerido');
+                                const clave = td?.dataset?.clave; // 👈 clave real que espera el backend
+
+                                if (!clave) return; // por seguridad
+
+                                if (asig.codigo) {
+                                    td.innerHTML = `
+                                        <div class="font-bold text-green-700">${asig.codigo}</div>
+                                        <div class="text-xs text-gray-600">${asig.mensaje}</div>
+                                        <div class="text-xs text-blue-600">Quedan ${asig.cantidad_restante} kg</div>
+                                        <input type="hidden" 
+                                                name="detalles[${clave}][pedido_global_id]" 
+                                                value="${asig.pedido_global_id}">
+                                        `;
+                                } else {
+                                    td.innerHTML = `
+                                        <div class="text-red-600">${asig.mensaje}</div>
+                                        <input type="hidden" 
+                                                name="detalles[${clave}][pedido_global_id]" 
+                                                value="">
+                                        `;
+                                }
+                            }
+
+                        } else {
+                            // Mensajes globales (sin línea asociada)
+                            const div = document.createElement('div');
+                            div.className = 'text-yellow-700 font-medium';
+                            div.textContent = asig.mensaje;
+                            mensajesGlobales.appendChild(div);
+                        }
+                    });
+
+                });
+
+
+        }
+
+        // recalcular cuando el usuario cambie peso en cualquier fila
+        document.addEventListener('input', debounce((ev) => {
+            if (!ev.target.closest('.peso-total')) return;
+            dispararSugerirMultiple();
+        }, 300));
+
+        // recalcular cuando cambie fabricante/distribuidor
+        document.getElementById('fabricante').addEventListener('change', dispararSugerirMultiple);
+        document.getElementById('distribuidor').addEventListener('change', dispararSugerirMultiple);
+
+        // dentro de mostrarConfirmacion(), tras crear todas las filas:
+        dispararSugerirMultiple();
+    </script>
+    <script>
+        document.getElementById('formularioPedido').addEventListener('submit', function(ev) {
+            ev.preventDefault(); // siempre bloquear de primeras
+            const errores = [];
+
+            // 1) Hay productos seleccionados
+            const seleccionados = document.querySelectorAll('#tablaConfirmacionBody input[name="seleccionados[]"]');
+            if (seleccionados.length === 0) {
+                errores.push('Selecciona al menos un producto para generar el pedido.');
+            }
+
+            // 2) Validar proveedor (uno y solo uno)
+            const fabricante = document.getElementById('fabricante').value;
+            const distribuidor = document.getElementById('distribuidor').value;
+            if (!fabricante && !distribuidor) {
+                errores.push('Debes seleccionar un fabricante o un distribuidor.');
+            }
+            if (fabricante && distribuidor) {
+                errores.push('Solo puedes seleccionar uno: fabricante o distribuidor.');
+            }
+
+            // 3) Validar lugar de entrega (exactamente uno)
+            const obraHpr = document.getElementById('obra_id_hpr_modal').value;
+            const obraExterna = document.getElementById('obra_id_externa_modal').value;
+            const obraManual = document.getElementById('obra_manual_modal').value.trim();
+            const totalObras = [obraHpr, obraExterna, obraManual].filter(v => v && v !== '').length;
+            if (totalObras === 0) {
+                errores.push('Debes seleccionar una nave, obra externa o escribir un lugar de entrega.');
+            }
+            if (totalObras > 1) {
+                errores.push('Solo puedes seleccionar una opción: nave, obra externa o introducirla manualmente.');
+            }
+
+            // 4) Validar pesos y fechas de cada línea
+            const resumenLineas = [];
+            document.querySelectorAll('#tablaConfirmacionBody tr').forEach(tr => {
+                const tipo = tr.querySelector('td:nth-child(1)').textContent.trim();
+                const diametro = tr.querySelector('td:nth-child(2)').textContent.trim();
+                const peso = parseFloat(tr.querySelector('.peso-total').value || 0);
+                if (peso <= 0) {
+                    errores.push(`El peso de la línea ${tipo} ${diametro} debe ser mayor a 0.`);
+                }
+                // comprobar fechas requeridas
+                const fechas = [];
+                tr.querySelectorAll('.fechas-camion input[type="date"]').forEach(input => {
+                    if (!input.value) {
+                        errores.push(
+                            `Completa todas las fechas de entrega para ${tipo} ${diametro}.`);
+                    }
+                    fechas.push(input.value || '—');
+                });
+
+                resumenLineas.push({
+                    tipo: tipo,
+                    diametro: diametro,
+                    peso: peso,
+                    fechas: fechas
+                });
+            });
+
+            if (errores.length > 0) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Revisa los datos',
+                    html: '<ul style="text-align:left;">' + errores.map(e => `<li>• ${e}</li>`).join('') +
+                        '</ul>'
+                });
+                return false;
+            }
+
+            // ✅ Si no hay errores → mostrar confirmación con resumen
+            let proveedorTexto = fabricante ?
+                `Fabricante: ${document.querySelector('#fabricante option:checked').textContent}` :
+                `Distribuidor: ${document.querySelector('#distribuidor option:checked').textContent}`;
+
+            let obraTexto = obraHpr ?
+                `Nave: ${document.querySelector('#obra_id_hpr_modal option:checked').textContent}` :
+                obraExterna ?
+                `Obra externa: ${document.querySelector('#obra_id_externa_modal option:checked').textContent}` :
+                `Lugar manual: ${obraManual}`;
+
+            let htmlResumen = `
+        <p><b>${proveedorTexto}</b></p>
+        <p><b>${obraTexto}</b></p>
+        <hr>
+        <ul style="text-align:left;">
+    `;
+            resumenLineas.forEach(l => {
+                htmlResumen += `<li>• ${l.tipo} ${l.diametro} → ${l.peso} kg<br>
+        Fechas: ${l.fechas.join(', ')}</li>`;
+            });
+            htmlResumen += '</ul>';
+
+            Swal.fire({
+                title: '¿Crear pedido de compra?',
+                html: htmlResumen,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, crear pedido',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#16a34a',
+                focusCancel: true,
+                width: 600,
+                allowOutsideClick: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const fd = new FormData(document.getElementById('formularioPedido'));
+                    console.log('PG de cada clave:', [...fd.entries()].filter(([k]) => k.includes(
+                        'pedido_global_id')));
+
+                    ev.target.submit();
+                }
+            });
+        });
+    </script>
+
 
     <script>
         function mostrarConfirmacion() {
@@ -616,35 +832,38 @@
                 const fechasId = `fechas-camion-${clave}`;
 
                 fila.innerHTML = `
-            <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
-            <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
-            <td class="border px-2 py-1">
-                <div class="flex flex-col gap-2">
-                    <input type="number" class="peso-total w-full px-2 py-1 border rounded"
-                           name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500"
-                           onchange="generarFechasPorPeso(this, '${clave}')">
-                    <div class="fechas-camion flex flex-col gap-1" id="${fechasId}" data-producto-id="${clave}">
-                        <!-- Fechas se insertarán aquí -->
-                    </div>
-                </div>
-            </td>
-             <input type="hidden" name="seleccionados[]" value="${clave}">
-            <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
-            <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
-            ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
-        `;
+  <td class="border px-2 py-1">${tipo.charAt(0).toUpperCase() + tipo.slice(1)}</td>
+  <td class="border px-2 py-1">${diametro} mm${longitud ? ` / ${longitud} m` : ''}</td>
+  <td class="border px-2 py-1">
+    <div class="flex flex-col gap-2">
+      <input type="number" class="peso-total w-full px-2 py-1 border rounded"
+             name="detalles[${clave}][cantidad]" value="${cantidad}" step="2500" min="2500">
+      <div class="fechas-camion flex flex-col gap-1" id="fechas-camion-${clave}"></div>
+    </div>
+  </td>
+  <td class="border px-2 py-1 font-semibold text-green-700 pg-sugerido" data-clave="${clave}">—</td>
+  <input type="hidden" name="seleccionados[]" value="${clave}">
+  <input type="hidden" name="detalles[${clave}][tipo]" value="${tipo}">
+  <input type="hidden" name="detalles[${clave}][diametro]" value="${diametro}">
+  ${longitud ? `<input type="hidden" name="detalles[${clave}][longitud]" value="${longitud}">` : ''}
+`;
+
 
                 tbody.appendChild(fila);
 
                 // Generar fechas al cargar
                 const inputPeso = fila.querySelector('.peso-total');
                 generarFechasPorPeso(inputPeso, clave);
+
             });
+
+            // al final de mostrarConfirmacion(), justo antes de abrir el modal:
+            dispararSugerirMultiple();
 
             document.getElementById('modalConfirmacion').classList.remove('hidden');
             document.getElementById('modalConfirmacion').classList.add('flex');
-        }
 
+        }
 
         function generarFechasPorPeso(input, clave) {
             const peso = parseFloat(input.value || 0);
@@ -670,25 +889,42 @@
             }
         }
 
+        // cada vez que el usuario cambia el peso en una fila:
+        document.addEventListener('input', debounce((ev) => {
+            const inputPeso = ev.target.closest('.peso-total');
+            if (!inputPeso) return;
+
+            // 🔹 regenerar fechas para esa fila
+            const clave = inputPeso
+                .closest('tr')
+                .querySelector('.pg-sugerido')
+                .dataset.clave;
+            generarFechasPorPeso(inputPeso, clave);
+
+            // 🔹 recalcular pedido global sugerido
+            dispararSugerirMultiple();
+        }, 300));
+
+
         function cerrarModalConfirmacion() {
             document.getElementById('modalConfirmacion').classList.remove('flex');
             document.getElementById('modalConfirmacion').classList.add('hidden');
         }
 
         //-----------------------------------------------------------------------------------------------------------
-        function confirmarActivacion(pedidoId, productoId) {
-            if (!confirm('¿Estás seguro de activar esta línea?')) return;
+        // function confirmarActivacion(pedidoId, productoId) {
+        //     if (!confirm('¿Estás seguro de activar esta línea?')) return;
 
-            enviarFormularioDinamico('pedidos.lineas.editarActivar', 'PUT', pedidoId,
-                productoId);
-        }
+        //     enviarFormularioDinamico('pedidos.lineas.editarActivar', 'PUT', pedidoId,
+        //         productoId);
+        // }
 
-        function confirmarDesactivacion(pedidoId, productoId) {
-            if (!confirm('¿Estás seguro de desactivar esta línea?')) return;
+        // function confirmarDesactivacion(pedidoId, productoId) {
+        //     if (!confirm('¿Estás seguro de desactivar esta línea?')) return;
 
-            enviarFormularioDinamico('pedidos.lineas.editarDesactivar', 'DELETE', pedidoId,
-                productoId);
-        }
+        //     enviarFormularioDinamico('pedidos.lineas.editarDesactivar', 'DELETE', pedidoId,
+        //         productoId);
+        // }
 
         function enviarFormularioDinamico(nombreRuta, metodo, pedidoId, lineaId) {
             const form = document.createElement('form');

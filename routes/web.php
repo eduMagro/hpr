@@ -76,6 +76,7 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::resource('pedidos_globales', PedidoGlobalController::class);
     Route::resource('pedidos', PedidoController::class);
     Route::get('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'recepcion'])->name('pedidos.recepcion');
+    Route::post('/pedidos/sugerir-pedido-global', [PedidoController::class, 'sugerirPedidoGlobal'])->name('pedidos.sugerir-pedido-global');
 
     // Procesar la recepción del producto base
     Route::post('pedidos/{pedido}/recepcion/{producto_base}', [PedidoController::class, 'procesarRecepcion'])->name('pedidos.recepcion.guardar');

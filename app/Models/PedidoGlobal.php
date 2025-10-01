@@ -22,7 +22,7 @@ class PedidoGlobal extends Model
         'estado',
 
     ];
-    protected $appends = ['precio_referencia_euro'];
+    protected $appends = ['precio_referencia_euro', 'cantidad_restante', 'progreso'];
 
     protected $casts = [
 
@@ -70,9 +70,13 @@ class PedidoGlobal extends Model
 
     public function actualizarEstadoSegunProgreso(): void
     {
-        $sum = (float) $this->pedidos()
-            // ->whereRaw('LOWER(estado) != ?', ['cancelado']) // si te interesa
-            ->sum('peso_total');
+        // Sumar sólo las cantidades de líneas activas asociadas a este PedidoGlobal
+        $sum = (float) PedidoProducto::where('pedido_global_id', $this->id)
+            ->where(function ($q) {
+                $q->whereNull('estado')
+                    ->orWhereNotIn('estado', ['cancelado']); // excluir cancelados
+            })
+            ->sum('cantidad');
 
         $objetivo = (float) ($this->cantidad_total ?? 0);
         $epsilon  = 0.001;
@@ -96,6 +100,7 @@ class PedidoGlobal extends Model
             $this->save();
         }
     }
+
 
     public function pedidoProductos()
     {
