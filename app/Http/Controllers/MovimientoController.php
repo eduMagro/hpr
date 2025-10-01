@@ -557,19 +557,25 @@ class MovimientoController extends Controller
             $maquinaDetectada = Maquina::where('codigo', $ubicacion->descripcion)->first();
         }
 
-        // 🚨 Determinar nave según campo "almacen" de la ubicación destino
+        // 🚨 Determinar nave (obra) según ubicación física o máquina de destino
         $naveId = null;
-        if ($ubicacion && $ubicacion->almacen) {
+
+        if ($ubicacion) {
+            // Caso 1: Si hay ubicación física, usar su campo 'almacen'
             $mapaAlmacenes = [
                 '0A' => 1,
                 '0B' => 2,
                 'AL' => 3,
             ];
+
             $naveId = $mapaAlmacenes[$ubicacion->almacen] ?? null;
+        } elseif ($maquinaDetectada) {
+            // Caso 2: Si no hay ubicación, pero hay máquina, usar su obra_id
+            $naveId = $maquinaDetectada->obra_id ?? null;
         }
 
         if (!$naveId) {
-            $mensaje = 'No se puede determinar la nave de trabajo a partir de la ubicación destino.';
+            $mensaje = 'No se puede determinar la nave de trabajo a partir de la ubicación o máquina de destino.';
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -580,6 +586,7 @@ class MovimientoController extends Controller
 
             return back()->with('error', $mensaje);
         }
+
 
         try {
             DB::transaction(function () use ($codigo, $ubicacion, $maquinaDetectada, $naveId) {

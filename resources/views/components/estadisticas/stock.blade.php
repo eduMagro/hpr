@@ -45,7 +45,7 @@
                 return 'bg-red-200';
             }
             if ($tipo === 'barra') {
-                if (in_array($diametro, [8, 10])) {
+                if (in_array($diametro, [6, 8, 10])) {
                     return 'bg-red-200';
                 }
                 if ($diametro == 12 && in_array($longitud, [15, 16])) {

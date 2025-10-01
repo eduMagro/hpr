@@ -290,32 +290,153 @@ Promise.resolve(imprimirEtiquetas(lote))
 
     <!-- --------------------------------------------------------------- COLUMNA DERECHA --------------------------------------------------------------- -->
 
+    <!-- --------------------------------------------------------------- COLUMNA DERECHA --------------------------------------------------------------- -->
+
     <div x-show="showRight" x-cloak
         class="bg-white border p-4 shadow-md rounded-lg self-start sm:col-span-3 md:sticky md:top-4">
         <div class="flex flex-col gap-4">
+            <!-- Input de lectura de QR -->
+            {{-- <div x-data="accionesLote()" class="mt-2 space-y-2">
+                    <button @click="procesar('fabricar')" :disabled="cargando"
+                        class="w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50">
+                        <span x-show="!cargando">Empezar a Fabricar</span>
+                        <span x-show="cargando">Procesando…</span>
+                    </button>
+
+                    <button @click="procesar('completar')" :disabled="cargando"
+                        class="w-full inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-semibold text-white shadow bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50">
+                        <span x-show="!cargando">Completar Fabricación</span>
+                        <span x-show="cargando">Procesando…</span>
+                    </button>
+                </div>
+
+                <input type="text" id="procesoEtiqueta" placeholder="ESCANEA ETIQUETA" autofocus
+                    class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style="height:2cm; padding:0.75rem 1rem; font-size:1.5rem;" /> --}}
+
             <div id="maquina-info" data-maquina-id="{{ $maquina->id }}"></div>
+            {{-- cabecera con toggle opcional (si lo usas) --}}
+            <div class="flex items-center justify-between p-3 border-b">
+                <h2 class="font-semibold text-base">Cola de trabajo</h2>
+
+                {{-- ejemplo de toggle GET para mostrar dos planillas --}}
+                <form method="GET" class="text-sm">
+                    @foreach (request()->except('mostrar_dos') as $k => $v)
+                        <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+                    @endforeach
+                    <label class="inline-flex items-center gap-2">
+                        <input type="checkbox" name="mostrar_dos" value="1" @checked($mostrarDos)
+                            onchange="this.form.submit()">
+                        Ver también la siguiente planilla
+                    </label>
+                </form>
+            </div>
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    const input = document.getElementById("procesoEtiqueta");
+                    if (input) {
+                        input.focus();
+                    }
+                });
+            </script>
+
+            <!-- Sistema de inputs para crear paquetes -->
+            <div class="bg-gray-100 border p-2 mb-2 shadow-md rounded-lg">
+                <h3 class="font-bold text-xl">Crear Paquete</h3>
+
+                <div class="mb-2">
+
+                    <input type="text" id="qrItem"
+                        class="w-full border border-gray-300 rounded text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        style="height:1cm; padding:0.75rem 1rem; font-size:1rem;"
+                        placeholder="AÑADIR ETIQUETA AL CARRO">
+                </div>
+
+                <!-- Listado dinámico de etiquetas -->
+                <div class="mb-4">
+                    <h4 class="font-semibold text-gray-700 mb-2">Etiquetas en el carro:</h4>
+                    <ul id="itemsList" class="list-disc pl-6 space-y-2">
+                        <!-- Se rellenan dinámicamente -->
+                    </ul>
+                </div>
+
+
+                <!-- Botón para crear el paquete -->
+                <button id="crearPaqueteBtn"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md w-full">
+                    📦 Crear Paquete
+                </button>
+
+            </div>
+        </div>
+        <!-- ---------------------------------------- ELIMINAR ------------------------------- -->
+        <form id="deleteForm" method="POST">
+            @csrf
+            @method('DELETE')
+            <label for="paquete_id" class="block text-gray-700 font-semibold mb-2">
+                ID del Paquete a Eliminar:
+            </label>
+            <input type="number" name="paquete_id" id="paquete_id" required class="w-full border p-2 rounded mb-2"
+                placeholder="Ingrese ID del paquete">
+            <button type="submit"
+                class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-md mt-2">
+                🗑️ Eliminar Paquete
+            </button>
+        </form>
+
+        <script>
+            document.getElementById('deleteForm').addEventListener('submit', function(event) {
+                event.preventDefault(); // Evita el envío inmediato
+
+                const paqueteId = document.getElementById('paquete_id').value;
+
+                if (!paqueteId) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Campo vacío",
+                        text: "Por favor, ingrese un ID válido.",
+                        confirmButtonColor: "#3085d6",
+                    });
+                    return;
+                }
+
+                Swal.fire({
+                    title: "¿Estás seguro?",
+                    text: "Esta acción no se puede deshacer.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Sí, eliminar",
+                    cancelButtonText: "Cancelar"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        this.action = "/paquetes/" + paqueteId; // Modifica la acción con el ID
+                        this.submit(); // Envía el formulario
+                    }
+                });
+            });
+        </script>
+    </div>
+
+    <!-- --------------------------------------------------------------- MODALES --------------------------------------------------------------- -->
+    <x-maquinas.modales.cambio-maquina :maquina="$maquina" :maquinas="$maquinas" />
+    <x-maquinas.modales.dividir-elemento />
+
+    <!-- --------------------------------------------------------------- MODAL PATRÓN --------------------------------------------------------------- -->
+    <div id="modalPatron" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg p-4 w-auto max-w-full h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-lg font-semibold">Elementos del patrón</h2>
+                <button onclick="cerrarModalPatron()" class="text-gray-600 hover:text-black">✖</button>
+            </div>
+
+            <!-- contenedor dinámico -->
+            <div id="contenedorPatron" class="flex flex-col gap-4"></div>
         </div>
     </div>
-</div>
 
-<!-- --------------------------------------------------------------- MODALES --------------------------------------------------------------- -->
-<x-maquinas.modales.cambio-maquina :maquina="$maquina" :maquinas="$maquinas" />
-<x-maquinas.modales.dividir-elemento />
-
-<!-- --------------------------------------------------------------- MODAL PATRÓN --------------------------------------------------------------- -->
-<div id="modalPatron" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-lg p-4 w-auto max-w-full h-[85vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-3">
-            <h2 class="text-lg font-semibold">Elementos del patrón</h2>
-            <button onclick="cerrarModalPatron()" class="text-gray-600 hover:text-black">✖</button>
-        </div>
-
-        <!-- contenedor dinámico -->
-        <div id="contenedorPatron" class="flex flex-col gap-4"></div>
-    </div>
-</div>
-
-<script>
+    {{-- <script>
     function mostrarModalPatron(grupos) {
         const contenedor = document.getElementById("contenedorPatron");
         contenedor.innerHTML = "";
@@ -377,48 +498,49 @@ Promise.resolve(imprimirEtiquetas(lote))
         document.getElementById("modalPatron").classList.add("hidden");
     }
 </script>
+ --}}
 
 
 
-
-{{-- Sugerencias por elemento (id => datos) --}}
-<script>
-    window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
-    window.ELEMENTOS_AGRUPADOS = @json($elementosAgrupadosScript ?? []);
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const canvas = document.getElementById('miCanvasMaquina');
-        const ctx = canvas.getContext('2d');
-
-        // La función viene de tu bundle (Vite/Mix)
-        window.initCanvasMaquinas?.({
-            canvas,
-            ctx,
-            sugerencias: window.SUGERENCIAS,
-            elementosAgrupados: window.ELEMENTOS_AGRUPADOS,
-            panelIds: {
-                panelId: 'element-info-panel',
-                panelBodyId: 'element-info-body'
-            }
-        });
-    });
-</script>
-@once
+    {{-- Sugerencias por elemento (id => datos) --}}
     <script>
-        // tipo de material para la lógica de fabricación
-        window.MAQUINA_TIPO = @json(strtolower($maquina->tipo_material));
+        window.SUGERENCIAS = @json($sugerenciasPorElemento ?? []);
+        window.ELEMENTOS_AGRUPADOS = @json($elementosAgrupadosScript ?? []);
 
-        // mapa etiqueta->diámetro (si el backend lo pasó vacío, caemos a calcularlo del agrupado)
-        window.DIAMETRO_POR_ETIQUETA = @json(
-            $diametroPorEtiqueta ?:
-            $elementosAgrupados->map(function ($els) {
-                $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int) $d);
-                return (int) $c->countBy()->sortDesc()->keys()->first();
-            }));
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('miCanvasMaquina');
+            const ctx = canvas.getContext('2d');
 
-        // solo si es barra, pasamos longitudes por diámetro
-        @if ($esBarra)
-            window.LONGITUDES_POR_DIAMETRO = @json($longitudesPorDiametro);
-        @endif
+            // La función viene de tu bundle (Vite/Mix)
+            window.initCanvasMaquinas?.({
+                canvas,
+                ctx,
+                sugerencias: window.SUGERENCIAS,
+                elementosAgrupados: window.ELEMENTOS_AGRUPADOS,
+                panelIds: {
+                    panelId: 'element-info-panel',
+                    panelBodyId: 'element-info-body'
+                }
+            });
+        });
     </script>
-@endonce
+    @once
+        <script>
+            // tipo de material para la lógica de fabricación
+            window.MAQUINA_TIPO = @json(strtolower($maquina->tipo_material));
+            window.MAQUINA_NOMBRE = "{{ $maquina->nombre }}"; // p.ej., "SyntaxLine28"
+
+            // mapa etiqueta->diámetro (si el backend lo pasó vacío, caemos a calcularlo del agrupado)
+            window.DIAMETRO_POR_ETIQUETA = @json(
+                $diametroPorEtiqueta ?:
+                $elementosAgrupados->map(function ($els) {
+                    $c = collect($els)->pluck('diametro')->filter()->map(fn($d) => (int) $d);
+                    return (int) $c->countBy()->sortDesc()->keys()->first();
+                }));
+
+            // solo si es barra, pasamos longitudes por diámetro
+            @if ($esBarra)
+                window.LONGITUDES_POR_DIAMETRO = @json($longitudesPorDiametro);
+            @endif
+        </script>
+    @endonce

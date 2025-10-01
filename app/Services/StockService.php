@@ -118,7 +118,7 @@ class StockService
 
         return [
             'es_nave_almacen'          => false,
-            'diametros_considerados'   => [8, 10, 12, 16, 20, 25, 32],
+            'diametros_considerados'   => [6, 8, 10, 12, 16, 20, 25, 32],
             'longitudes_barras'        => [12, 14, 15, 16],
             'incluir_encarretado'      => true,
         ];

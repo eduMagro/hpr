@@ -58,27 +58,30 @@ document.addEventListener("DOMContentLoaded", () => {
             .querySelector('meta[name="csrf-token"]')
             ?.getAttribute("content");
 
-        let longitudSeleccionada = null;
+        const esMaquinaBarra =
+            (window.MAQUINA_TIPO || "").toLowerCase() === "barra";
 
-        // Solo para máquinas tipo barra: loop controlado hasta que el usuario fabrique o cancele
-        if ((window.MAQUINA_TIPO || "").toLowerCase() === "barra") {
+        // ─────────────────────────────────────────────
+        //  A) MÁQUINAS DE BARRA → SIEMPRE VÍA PATRONES
+        // ─────────────────────────────────────────────
+        if (esMaquinaBarra) {
             while (true) {
                 let decision;
                 try {
-                    decision = await mejorCorte(id, diametro, csrfToken);
+                    decision = await mejorCorteSimple(id, diametro, csrfToken);
                 } catch (err) {
                     showErrorAlert(err);
-                    return; // error irrecuperable
+                    return;
                 }
 
-                // Canceló el selector
+                // canceló el selector
                 if (!decision) return;
 
                 if (decision.accion === "optimizar") {
-                    // Mostrar sugerencia y actuar según botón
+                    // multi-etiqueta (k≥2) → ya fabrica por /etiquetas/fabricacion-optimizada
                     let outcome;
                     try {
-                        outcome = await mejorCorteHermano(
+                        outcome = await mejorCorteOptimizado(
                             id,
                             diametro,
                             decision.patrones,
@@ -90,23 +93,44 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
 
                     if (outcome === "fabricado") {
-                        // el flujo terminó fabricando vía optimización
+                        // ya fabricado: el propio flujo hace reload
                         return;
                     } else if (outcome === "volver") {
-                        // volver al selector -> iteración del while
+                        // regresar al selector de longitudes
                         continue;
                     } else {
-                        // outcome === null => cancelar
+                        // cancelar
                         return;
                     }
-                } else if (decision.accion === "fabricar") {
-                    longitudSeleccionada = decision.longitud_m;
-                    break; // salir del bucle para hacer el PUT de fabricación
+                }
+
+                if (decision.accion === "fabricar_patron_simple") {
+                    // k=1 → fabricar SIEMPRE vía /etiquetas/fabricacion-optimizada
+                    const longitudBarraCm = Math.round(
+                        Number(decision.longitud_m || 0) * 100
+                    );
+                    if (!longitudBarraCm) {
+                        showErrorAlert("Longitud de barra no válida.");
+                        return;
+                    }
+
+                    try {
+                        await fabricarPatronSimple(
+                            id,
+                            longitudBarraCm,
+                            csrfToken
+                        );
+                    } catch (err) {
+                        showErrorAlert(err);
+                    }
+                    return; // fin del flujo barra
                 }
             }
         }
 
-        // PUT: fabricar (para barra con longitudSeleccionada o para otras máquinas sin longitud)
+        // ─────────────────────────────────────────────
+        //  B) MÁQUINAS NO BARRA → flujo clásico (PUT)
+        // ─────────────────────────────────────────────
         try {
             const response = await fetch(url, {
                 method: "PUT",
@@ -115,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     Accept: "application/json",
                     "X-CSRF-TOKEN": csrfToken,
                 },
-                body: JSON.stringify({ longitudSeleccionada }),
+                body: JSON.stringify({}), // ← ya no enviamos longitudSeleccionada
             });
 
             const data = await response.json();
@@ -126,10 +150,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     title: "Error al fabricar",
                     text: data?.message || "Ha ocurrido un error.",
                 });
-                return; // 👈 salimos aquí, no seguimos con actualizarDOMEtiqueta
+                return;
             }
 
-            // ✅ flujo normal
             if (data.success) {
                 if (Array.isArray(data.warnings) && data.warnings.length) {
                     await Swal.fire({
@@ -150,10 +173,9 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
     }
-
     /** Selector de longitudes con botones + “Buscar compañero de corte” */
-    async function mejorCorte(id, diametro, csrfToken) {
-        const res = await fetch(`/etiquetas/${id}/patron-corte`, {
+    async function mejorCorteSimple(id, diametro, csrfToken) {
+        const res = await fetch(`/etiquetas/${id}/patron-corte-simple`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -197,7 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <div class="space-y-3">
       ${cards}
       <div class="pt-2">
-        <button id="btn-optimizar-corte" type="button"
+        <button id="btn-patron-corte-optimizado" type="button"
           class="w-full md:w-auto inline-flex items-center gap-2 rounded px-4 py-2 border text-sm font-medium hover:bg-gray-50">
           🤝 Buscar compañero de corte
         </button>
@@ -235,7 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // ✅ click en optimizar -> buscar compañero
                     document
-                        .getElementById("btn-optimizar-corte")
+                        .getElementById("btn-patron-corte-optimizado")
                         ?.addEventListener("click", () => {
                             resolve({
                                 accion: "optimizar",
@@ -258,8 +280,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /** Corte optimizado: soporta patrones de 2..K cortes y resalta en la vista */
-    async function mejorCorteHermano(id, diametro, patrones, csrfToken) {
-        const resp = await fetch(`/etiquetas/${id}/optimizar-corte`, {
+    async function mejorCorteOptimizado(id, diametro, patrones, csrfToken) {
+        const resp = await fetch(`/etiquetas/${id}/patron-corte-optimizado`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

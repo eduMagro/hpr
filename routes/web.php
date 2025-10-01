@@ -205,8 +205,8 @@ Route::middleware(['auth', 'acceso.seccion'])->group(function () {
     Route::post('/etiquetas/fabricacion-optimizada', [EtiquetaController::class, 'fabricacionOptimizada'])->name('etiquetas.fabricacion-optimizada');
     Route::post('/elementos/{elemento}/actualizar-campo', [ElementoController::class, 'actualizarMaquina'])->name('elementos.editarMaquina');
 
-    Route::post('/etiquetas/{etiqueta}/patron-corte', [EtiquetaController::class, 'calcularPatronCorte'])->name('etiquetas.calculqarPatronCorte');
-    Route::post('/etiquetas/{etiqueta}/optimizar-corte', [EtiquetaController::class, 'optimizarCorte'])->name('etiquetas.optimizarCorte');
+    Route::post('/etiquetas/{etiqueta}/patron-corte-simple', [EtiquetaController::class, 'calcularPatronCorteSimple'])->name('etiquetas.calcularPatronCorteSimple');
+    Route::post('/etiquetas/{etiqueta}/patron-corte-optimizado', [EtiquetaController::class, 'calcularPatronCorteOptimizado'])->name('etiquetas.calcularPatronCorteOptimizado');
     // ruta para renderizar una etiqueta en HTML
     Route::post('/etiquetas/render', [App\Http\Controllers\EtiquetaController::class, 'render'])
         ->name('etiquetas.render');

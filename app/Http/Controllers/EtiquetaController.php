@@ -218,7 +218,7 @@ class EtiquetaController extends Controller
         return view('etiquetas.index', compact('etiquetas', 'etiquetasJson', 'ordenables', 'filtrosActivos'));
     }
 
-    public function calcularPatronCorte(Request $request, $etiqueta)
+    public function calcularPatronCorteSimple(Request $request, $etiqueta)
     {
         $etiqueta = Etiqueta::where('etiqueta_sub_id', $etiqueta)
             ->with('elementos')
@@ -397,8 +397,8 @@ class EtiquetaController extends Controller
     public function optimizarCorte(Request $request, string $etiquetaSubId)
     {
         /* ─────────────────────────────
- |  0) Parámetros / constantes
- ───────────────────────────── */
+        |  0) Parámetros / constantes
+        ───────────────────────────── */
         $Kmax                 = (int) ($request->input('kmax') ?? 5);
         $EPS                  = 0.01;
         $UMBRAL_OK            = 99.0;
@@ -406,8 +406,8 @@ class EtiquetaController extends Controller
         $kMinimo              = 2;
 
         /* ─────────────────────────────
- |  1) Cargar contexto + validar
- ───────────────────────────── */
+            |  1) Cargar contexto + validar
+            ───────────────────────────── */
         // 1) Cargar contexto + validar
         $etiquetaA = Etiqueta::with(['elementos', 'planilla.etiquetas.elementos'])
             ->where('etiqueta_sub_id', $etiquetaSubId)
@@ -579,8 +579,8 @@ class EtiquetaController extends Controller
         $htmlResumen = $this->construirHtmlResumenMultiLongitudes($longitudesBarraCm, $progresoPorLongitud);
 
         /* ─────────────────────────────
- |  7) Responder
- ───────────────────────────── */
+        |  7) Responder
+        ───────────────────────────── */
         return response()->json([
             'success'               => true,
             'longitudes_barra_cm'   => array_values($longitudesBarraCm),
@@ -2448,226 +2448,5 @@ class EtiquetaController extends Controller
                 'message' => 'Error al eliminar la etiqueta. Intente nuevamente. ' . $e->getMessage()
             ], 500);
         }
-    }
-
-    //METODOS PROVISIONALES
-
-    public function fabricarLote(Request $request)
-    {
-        try {
-            $etiquetaSubIds = $request->input('etiquetas');
-            $maquinaId = $request->input('maquina_id');
-
-            if (!is_array($etiquetaSubIds) || empty($etiquetaSubIds)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se proporcionaron etiquetas válidas.',
-                    'errors' => [
-                        ['id' => null, 'error' => 'El parámetro "etiquetas" debe ser un array no vacío.']
-                    ],
-                ], 422);
-            }
-
-            if (!$maquinaId || !is_numeric($maquinaId)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No se proporcionó una máquina válida.',
-                    'errors' => [
-                        ['id' => null, 'error' => 'El parámetro "maquina_id" es obligatorio y debe ser numérico.']
-                    ],
-                ], 422);
-            }
-
-            $maquina = Maquina::findOrFail($maquinaId);
-            $fabricadas = 0;
-            $warnings = [];
-            $errors = [];
-
-            foreach ($etiquetaSubIds as $subId) {
-                try {
-                    $etiqueta = Etiqueta::where('etiqueta_sub_id', $subId)->firstOrFail();
-
-                    if (in_array($etiqueta->estado, ['completada', 'fabricada'])) {
-                        throw new \Exception("La etiqueta {$etiqueta->codigo} ya está completada.");
-                    }
-
-                    $resultado = $this->verificarYPrepararFabricacion($etiqueta, $maquina);
-
-                    if ($resultado === true) {
-                        $fabricadas++;
-                    } else {
-                        // No se detiene el flujo
-                        $fabricadas++;
-                        $warnings[] = [
-                            'id'    => $subId,
-                            'error' => $resultado['error'] ?? 'Error desconocido.',
-                        ];
-                    }
-                } catch (\Throwable $e) {
-                    $errors[] = [
-                        'id' => $subId,
-                        'error' => $e->getMessage(),
-                        'line' => $e->getLine(),
-                    ];
-                }
-            }
-
-            $mensaje = $fabricadas > 0
-                ? "Empezamos a fabricar {$fabricadas} etiqueta(s)."
-                : "No se pudo preparar ninguna etiqueta.";
-
-            return response()->json([
-                'success' => $fabricadas > 0,
-                'message' => $mensaje,
-                'errors'  => $errors,
-                'warnings' => $warnings,
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Ocurrió un error inesperado al fabricar las etiquetas.',
-                'errors' => [
-                    ['id' => null, 'error' => $e->getMessage(), 'line' => $e->getLine()]
-                ],
-            ], 500);
-        }
-    }
-
-
-    public function verificarYPrepararFabricacion(Etiqueta $etiqueta, Maquina $maquina): bool|array
-    {
-        DB::beginTransaction();
-
-        try {
-            $elementosEnMaquina = $etiqueta->elementos->where('maquina_id', $maquina->id);
-
-            if ($elementosEnMaquina->isEmpty()) {
-                throw new \Exception("La etiqueta no tiene elementos asignados a la máquina {$maquina->nombre}.");
-            }
-
-            $operario1 = Auth::id();
-            $operario2 = auth()->user()->compañeroDeTurno()?->id;
-
-            foreach ($elementosEnMaquina as $elemento) {
-                $elemento->update([
-                    'estado'       => 'fabricando',
-                    'fecha_inicio' => $elemento->fecha_inicio ?? now(),
-                    'users_id'     => $operario1,
-                    'users_id_2'   => $operario2,
-                ]);
-            }
-
-            $diametrosConPesos = $elementosEnMaquina
-                ->groupBy(fn($e) => (float) $e->diametro)
-                ->map(fn($grupo) => $grupo->sum('peso'));
-
-            $faltantes = [];
-
-            foreach ($diametrosConPesos as $diametro => $pesoNecesarioTotal) {
-                $productos = $maquina->productos()
-                    ->whereHas(
-                        'productoBase',
-                        fn($q) => $q
-                            ->where('diametro', $diametro)
-                            ->where('tipo', $maquina->tipo_material)
-                    )
-                    ->with('productoBase')
-                    ->orderBy('peso_stock')
-                    ->get();
-
-                $stockDisponible = $productos->sum('peso_stock');
-
-                if ($stockDisponible < $pesoNecesarioTotal) {
-                    $faltantes[] = $diametro;
-                    $this->avisarGruistaRecarga($diametro, $maquina, $etiqueta->codigo);
-                }
-            }
-
-            // Estado planilla y etiqueta
-            $planilla = $etiqueta->planilla;
-
-            if (!$planilla) {
-                throw new \Exception("La etiqueta no tiene una planilla asociada.");
-            }
-
-            if (is_null($planilla->fecha_inicio)) {
-                $planilla->update([
-                    'fecha_inicio' => now(),
-                    'estado'       => 'fabricando',
-                ]);
-            }
-
-            $etiqueta->update([
-                'estado'        => 'fabricando',
-                'operario1_id'  => $operario1,
-                'operario2_id'  => $operario2,
-                'fecha_inicio'  => $etiqueta->fecha_inicio ?? now(),
-            ]);
-
-            DB::commit();
-
-            if (!empty($faltantes)) {
-                return [
-                    'success' => false,
-                    'error'   => 'Falta stock para Ø' . implode(', Ø', $faltantes)
-                        . ". Se han solicitado recargas automáticamente.",
-                ];
-            }
-
-            return true;
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return [
-                'success' => false,
-                'error'   => $e->getMessage(),
-            ];
-        }
-    }
-
-    private function avisarGruistaRecarga(float $diametro, Maquina $maquina, string $codigoEtiqueta): void
-    {
-        $productoBase = ProductoBase::where('diametro', $diametro)
-            ->where('tipo', $maquina->tipo_material)
-            ->first();
-
-        if (!$productoBase) {
-            Log::warning("ProductoBase no encontrado para Ø{$diametro} y tipo {$maquina->tipo_material}");
-            return;
-        }
-
-        $yaExiste = Movimiento::where('tipo', 'Recarga materia prima')
-            ->where('producto_base_id', $productoBase->id)
-            ->where('maquina_destino', $maquina->id)
-            ->where('estado', 'pendiente')
-            ->exists();
-
-        if (!$yaExiste) {
-            Movimiento::create([
-                'tipo'               => 'Recarga materia prima',
-                'producto_base_id'   => $productoBase->id,
-                'maquina_destino'    => $maquina->id,
-                'estado'             => 'pendiente',
-                'prioridad'          => 1,
-                'descripcion'        => "Recarga solicitada automática",
-                'fecha_solicitud'    => now(),
-                'solicitado_por'     => Auth::id(),
-            ]);
-
-            Log::info("✅ Movimiento de recarga creado para Ø{$diametro} en {$maquina->nombre}");
-        } else {
-            Log::info("⏭️ Movimiento ya existente para Ø{$diametro} en {$maquina->nombre}");
-        }
-    }
-
-
-    public function completarLote(Request $request, CompletarLoteService $service)
-    {
-        $etiquetas = (array) $request->input('etiquetas', []);
-
-        $maquinaId = (int) $request->input('maquina_id');
-
-        $res = $service->completarLote($etiquetas, $maquinaId);
-
-        return response()->json($res);
     }
 }
