@@ -60,6 +60,7 @@ return [
         'alertas.destroy',
         'alertas.verMarcarLeidas',
         'alertas.verSinLeer',
+        'vacaciones.solicitar',
     ],
 
     // 📌 Correos con acceso total
