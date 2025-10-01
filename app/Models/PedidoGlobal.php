@@ -97,12 +97,21 @@ class PedidoGlobal extends Model
         }
     }
 
+    public function pedidoProductos()
+    {
+        return $this->hasMany(PedidoProducto::class, 'pedido_global_id');
+    }
 
-
-    // Relación con pedidos individuales
     public function pedidos()
     {
-        return $this->hasMany(Pedido::class, 'pedido_global_id');
+        return $this->hasManyThrough(
+            Pedido::class,
+            PedidoProducto::class,
+            'pedido_global_id', // FK en pedido_productos
+            'id',               // FK en pedidos
+            'id',               // local key en pedido_global
+            'pedido_id'         // local key en pedido_productos
+        )->distinct();
     }
 
     // Relación con fabricante

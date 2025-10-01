@@ -10,6 +10,7 @@ class PedidoProducto extends Model
 
     protected $fillable = [
         'pedido_id',
+        'pedido_global_id',
         'producto_base_id',
         'cantidad',
         'fecha_estimada_entrega',
@@ -25,6 +26,15 @@ class PedidoProducto extends Model
         return $this->belongsTo(Pedido::class);
     }
 
+    public function productoBase()
+    {
+        return $this->belongsTo(ProductoBase::class);
+    }
+
+    public function pedidoGlobal()
+    {
+        return $this->belongsTo(PedidoGlobal::class, 'pedido_global_id');
+    }
     public function movimientos()
     {
         return $this->hasMany(Movimiento::class, 'pedido_producto_id');
@@ -35,15 +45,25 @@ class PedidoProducto extends Model
         return $this->hasMany(Entrada::class, 'pedido_producto_id');
     }
 
-    public function productoBase()
+    public function getTipoAttribute()
     {
-        return $this->belongsTo(ProductoBase::class, 'producto_base_id');
+        return $this->productoBase?->tipo ?? '—';
+    }
+
+    public function getDiametroAttribute()
+    {
+        return $this->productoBase?->diametro ?? '—';
+    }
+
+    public function getLongitudAttribute()
+    {
+        return $this->productoBase?->longitud ?? '—';
     }
 
     public function getFechaEstimadaEntregaFormateadaAttribute(): ?string
     {
         return $this->fecha_estimada_entrega
-            ? \Carbon\Carbon::parse($this->fecha_estimada_entrega)->format('d-m-Y')
+            ? $this->fecha_estimada_entrega->format('d-m-Y')
             : null;
     }
 }

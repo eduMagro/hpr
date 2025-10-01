@@ -14,6 +14,7 @@
                             <th class="p-2 border">ID LINEA</th>
                             <th class="p-2 border">{!! $ordenables['codigo'] ?? 'Código' !!}</th>
                             <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global' !!}</th>
+                            <th class="p-2 border">{!! $ordenables['pedido_global'] ?? 'Pedido Global Linea' !!}</th>
                             <th class="p-2 border">{!! $ordenables['fabricante'] ?? 'Fabricante' !!}</th>
                             <th class="p-2 border">{!! $ordenables['distribuidor'] ?? 'Distribuidor' !!}</th>
                             <th class="p-2 border">{!! $ordenables['obra_id'] ?? 'Lugar de entrega' !!}</th>
@@ -39,6 +40,10 @@
                                         class="w-full text-xs" />
                                 </th>
 
+                                <th class="p-1 border">
+                                    <x-tabla.select name="pedido_global_id" :options="$pedidosGlobales->pluck('codigo', 'id')" :selected="request('pedido_global_id')"
+                                        empty="Todos" class="w-full text-xs" />
+                                </th>
                                 <th class="p-1 border">
                                     <x-tabla.select name="pedido_global_id" :options="$pedidosGlobales->pluck('codigo', 'id')" :selected="request('pedido_global_id')"
                                         empty="Todos" class="w-full text-xs" />
@@ -132,7 +137,7 @@
                             {{-- Filas de las líneas del pedido --}}
                             @foreach ($pedido->lineas as $linea)
                                 @php
-                                    $estadoLinea = strtolower(trim($linea['estado']));
+                                    $estadoLinea = strtolower(trim($linea->estado));
                                     $claseFondo = match ($estadoLinea) {
                                         'facturado' => 'bg-green-500',
                                         'completado' => 'bg-green-100',
@@ -145,27 +150,29 @@
                                     $esFacturado = $estadoLinea === 'facturado';
                                 @endphp
 
-
                                 <tr class="text-xs {{ $claseFondo }}">
-
                                     <td class="border px-2 py-1 text-center">
-
-                                        <span class="font-semibold"> {{ $linea['id'] }}</span>
+                                        <span class="font-semibold">{{ $linea->id }}</span>
                                     </td>
 
                                     <td class="border px-2 py-1 text-center align-middle">
                                         <div class="inline-flex flex-col items-center gap-1">
                                             <span class="font-semibold">{{ $pedido->codigo }}</span>
 
-                                            @if (!empty($linea['id']))
-                                                <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea['id']]) }}"
+                                            @if (!empty($linea->id))
+                                                <a href="{{ route('entradas.index', ['pedido_producto_id' => $linea->id]) }}"
                                                     class="text-blue-600 hover:underline text-[11px]">
                                                     Ver entradas
                                                 </a>
                                             @endif
                                         </div>
                                     </td>
+
+                                    {{-- pedido global de la cabecera --}}
                                     <td class="border px-2 py-1">{{ $pedido->pedidoGlobal?->codigo ?? '—' }}</td>
+                                    {{-- pedido global de la línea --}}
+                                    <td class="border px-2 py-1">{{ $linea->pedidoGlobal?->codigo ?? '—' }}</td>
+
                                     <td class="border px-2 py-1">{{ $pedido->fabricante?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">{{ $pedido->distribuidor?->nombre ?? '—' }}</td>
                                     <td class="border px-2 py-1">
@@ -173,23 +180,24 @@
                                     </td>
 
                                     <td class="border px-2 py-1 text-center">
-                                        {{ ucfirst($linea['tipo']) }}
-                                        Ø{{ $linea['diametro'] }}
-                                        @if ($linea['tipo'] === 'barra' && $linea['longitud'] !== '—')
-                                            x {{ $linea['longitud'] }} m
+                                        {{ ucfirst($linea->tipo) }}
+                                        Ø{{ $linea->diametro }}
+                                        @if ($linea->tipo === 'barra' && $linea->longitud !== '—')
+                                            x {{ $linea->longitud }} m
                                         @endif
                                     </td>
                                     <td class="border px-2 py-1">
-                                        {{ number_format($linea['cantidad'] ?? 0, 2, ',', '.') }} kg
+                                        {{ number_format($linea->cantidad ?? 0, 2, ',', '.') }} kg
                                     </td>
                                     <td class="border px-2 py-1">
-                                        {{ number_format($linea['cantidad_recepcionada'] ?? 0, 2, ',', '.') }} kg
+                                        {{ number_format($linea->cantidad_recepcionada ?? 0, 2, ',', '.') }} kg
                                     </td>
                                     <td class="border px-2 py-1">{{ $pedido->fecha_pedido_formateada ?? '—' }}</td>
-                                    <td class="border px-2 py-1">{{ $linea['fecha_estimada_entrega'] }}</td>
-                                    <td class="border px-2 py-1 capitalize">{{ $linea['estado'] }}</td>
-                                    <td class="border px-2 py-1 capitalize">{{ $pedido->creador->name ?? '—' }}
-                                    </td>
+                                    <td class="border px-2 py-1">
+                                        {{ $linea->fecha_estimada_entrega_formateada ?? '—' }}</td>
+                                    <td class="border px-2 py-1 capitalize">{{ $linea->estado }}</td>
+                                    <td class="border px-2 py-1 capitalize">{{ $pedido->creador->name ?? '—' }}</td>
+
                                     <td class="border px-2 py-1 text-center">
                                         <div class="flex flex-col items-center gap-1">
                                             @php

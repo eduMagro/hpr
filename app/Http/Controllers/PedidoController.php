@@ -222,12 +222,20 @@ class PedidoController extends Controller
 
     public function index(Request $request, StockService $stockService)
     {
-        $query = Pedido::with(['fabricante', 'distribuidor', 'productos', 'pedidoGlobal', 'pedidoProductos.productoBase']);
-
+        // Cargamos todos los modelos y relaciones necesarios
+        $query = Pedido::with([
+            'fabricante',
+            'distribuidor',
+            'productos',
+            'pedidoGlobal',
+            'pedidoProductos.productoBase',
+            'pedidoProductos.pedidoGlobal', // ⚠️ importante cargar esta relación
+        ]);
 
         if (auth()->user()->rol === 'operario') {
             $query->whereIn('estado', ['pendiente', 'parcial']);
         }
+
         $obras = Obra::whereIn('id', Pedido::select('obra_id')->distinct())
             ->orderBy('obra')
             ->pluck('obra', 'id');
@@ -238,12 +246,12 @@ class PedidoController extends Controller
         $pedidos = $query->paginate($perPage)->appends($request->all());
         $pedidosGlobales = PedidoGlobal::orderBy('codigo')->get();
 
+        // transform sin map a array: devolvemos modelos PedidoProducto filtrados
         $pedidos->getCollection()->transform(function ($pedido) use ($request) {
             $pedido->lineas = $pedido->pedidoProductos
                 ->filter(function ($linea) use ($request) {
                     $pb = $linea->productoBase;
 
-                    // Si no hay ningún filtro activo
                     if (
                         !$request->filled('producto_tipo') &&
                         !$request->filled('producto_diametro') &&
@@ -274,27 +282,15 @@ class PedidoController extends Controller
                             return false;
                         }
                     }
+
                     if ($request->filled('estado') && $linea->estado !== $request->estado) {
                         return false;
                     }
+
                     return true;
                 })
-                ->map(function ($linea) {
-                    return [
-                        'id'                     => $linea->id,
-                        'tipo'                   => $linea->productoBase?->tipo ?? '—',
-                        'diametro'               => $linea->productoBase?->diametro ?? '—',
-                        'longitud'               => $linea->productoBase?->longitud ?? '—',
-                        'cantidad'               => $linea->cantidad,
-                        'cantidad_recepcionada'  => $linea->cantidad_recepcionada,
-                        'estado'                 => $linea->estado ?? 'pendiente',
-                        'fecha_estimada_entrega' => $linea->fecha_estimada_entrega
-                            ? \Carbon\Carbon::parse($linea->fecha_estimada_entrega)->format('d-m-Y')
-                            : '—',
-                        'created_at'             => $linea->created_at,
-                        'codigo_sage'            => $linea->codigo_sage ?? '',
-                    ];
-                });
+                ->values(); // devolvemos colección de modelos PedidoProducto
+
             return $pedido;
         });
 
@@ -321,33 +317,28 @@ class PedidoController extends Controller
             ->orderByRaw("CASE WHEN empresa = ? THEN 0 ELSE 1 END", [$nombreCliente])
             ->value('id');
 
-        // 🔹 Obras de HPR
         $obrasHpr = $idClienteHpr
             ? Obra::where('cliente_id', $idClienteHpr)->orderBy('obra')->get()
             : collect();
 
-        // 🔹 Naves (igual que obrasHpr pero filtrando por nombre de cliente)
         $navesHpr = Obra::whereHas('cliente', function ($q) {
             $q->where('empresa', 'like', '%HIERROS PACO REYES%');
         })
             ->orderBy('obra')
             ->get();
 
-        // 🔹 Obras activas que NO sean del cliente HPR
         $obrasExternas = Obra::where('estado', 'activa')
             ->where('cliente_id', '!=', $idClienteHpr)
             ->orderBy('obra')
             ->get();
 
         // ===== Filtro para el cálculo del StockService =====
-        $obraIdSeleccionada = $request->input('obra_id_hpr');        // id concreto (string o null)
-        $soloHpr            = $request->boolean('solo_hpr');         // toggle opcional
+        $obraIdSeleccionada = $request->input('obra_id_hpr');
+        $soloHpr            = $request->boolean('solo_hpr');
 
         $obraIds     = $obraIdSeleccionada ? [(int)$obraIdSeleccionada] : null;
         $clienteLike = (!$obraIds && $soloHpr) ? '%Hierros Paco Reyes%' : null;
 
-
-        // ✅ Llamada correcta al service (primero obraIds[], luego clienteLike)
         $datosStock = $stockService->obtenerDatosStock($obraIds, $clienteLike);
 
         return view('pedidos.index', array_merge([
@@ -359,11 +350,11 @@ class PedidoController extends Controller
             'distribuidores' => $distribuidores,
             'pedidosGlobales' => $pedidosGlobales,
             'obrasHpr'       => $obrasHpr,
-            'obrasExternas'       => $obrasExternas,
+            'obrasExternas'  => $obrasExternas,
             'idClienteHpr'   => $idClienteHpr,
             'solo_hpr'       => $soloHpr,
             'obra_id_hpr'    => $obraIdSeleccionada,
-            'obras'    => $obras,
+            'obras'          => $obras,
         ], $datosStock));
     }
 
