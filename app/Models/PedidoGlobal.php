@@ -126,19 +126,15 @@ class PedidoGlobal extends Model
 
     public function getCantidadRestanteAttribute(): float
     {
-        // Suma solo líneas ACTIVAS de pedidos ACTIVOS del mismo PedidoGlobal
-        $cantidadPedida = (float) PedidoProducto::whereHas('pedido', function ($q) {
-            $q->where('pedido_global_id', $this->id)
-                ->where(function ($q2) {
-                    $q2->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
-                });
-        })
+        // Suma de cantidades en pedido_productos con este pedido_global_id (no canceladas)
+        $cantidadPedida = (float) PedidoProducto::where('pedido_global_id', $this->id)
             ->where(function ($q) {
                 $q->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
             })
             ->sum('cantidad');
 
         $objetivo = (float) ($this->cantidad_total ?? 0);
+
         return max(0.0, $objetivo - $cantidadPedida);
     }
 
@@ -149,12 +145,7 @@ class PedidoGlobal extends Model
             return 0.0;
         }
 
-        $acumulado = (float) PedidoProducto::whereHas('pedido', function ($q) {
-            $q->where('pedido_global_id', $this->id)
-                ->where(function ($q2) {
-                    $q2->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
-                });
-        })
+        $acumulado = (float) PedidoProducto::where('pedido_global_id', $this->id)
             ->where(function ($q) {
                 $q->whereNull('estado')->orWhere('estado', '!=', 'cancelado');
             })
@@ -162,6 +153,7 @@ class PedidoGlobal extends Model
 
         return round(($acumulado / $objetivo) * 100, 2);
     }
+
 
 
 

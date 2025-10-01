@@ -370,7 +370,7 @@
                 <div class="mb-3">
                     <label for="cantidad_total" class="block text-sm font-medium text-gray-700">Cantidad Total
                         (kg)</label>
-                    <input type="number" name="cantidad_total" step="10000"
+                    <input type="number" name="cantidad_total" step="5000"
                         class="w-full border border-gray-300 rounded px-3 py-2" required>
                 </div>
 

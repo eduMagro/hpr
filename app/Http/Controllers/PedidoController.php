@@ -971,42 +971,46 @@ class PedidoController extends Controller
                 return back()->withErrors(['fabricante_id' => 'Solo puedes seleccionar uno: fabricante o distribuidor.'])->withInput();
             }
 
-            // Buscar pedido global relacionado
-            $pedidoGlobal = null;
+            // Cargar todos los pedidos globales abiertos (más antiguos primero)
+            $pedidosGlobales = PedidoGlobal::where(function ($q) use ($request) {
+                if ($request->fabricante_id) {
+                    $q->where('fabricante_id', $request->fabricante_id);
+                } elseif ($request->distribuidor_id) {
+                    $q->where('distribuidor_id', $request->distribuidor_id);
+                }
+            })
+                ->whereIn('estado', ['pendiente', 'en curso'])
+                ->orderBy('created_at')
+                ->get();
 
-            if ($request->fabricante_id) {
-                $pedidoGlobal = PedidoGlobal::where('fabricante_id', $request->fabricante_id)
-                    ->whereIn('estado', ['pendiente', 'en curso'])
-                    ->orderByRaw("FIELD(estado, 'en curso', 'pendiente')")
-                    ->first();
-            } elseif ($request->distribuidor_id) {
-                $pedidoGlobal = PedidoGlobal::where('distribuidor_id', $request->distribuidor_id)
-                    ->whereIn('estado', ['pendiente', 'en curso'])
-                    ->orderByRaw("FIELD(estado, 'en curso', 'pendiente')")
-                    ->first();
+            // Inicializar cantidades restantes de cada PG
+            $restantes = $pedidosGlobales->mapWithKeys(function ($pg) {
+                return [$pg->id => $pg->cantidad_restante];
+            })->toArray();
+
+            // Cambiar estado de "pendiente" a "en curso" si corresponde
+            foreach ($pedidosGlobales as $pg) {
+                if ($pg->estado === 'pendiente') {
+                    $pg->estado = 'en curso';
+                    $pg->save();
+                }
             }
 
-            if ($pedidoGlobal && $pedidoGlobal->estado === 'pendiente') {
-                $pedidoGlobal->estado = 'en curso';
-                $pedidoGlobal->save();
-            }
-
-            // 📝 Crear pedido principal
+            // Crear pedido principal (sin pedido_global_id)
             $obraId = $request->obra_id_hpr ?: $request->obra_id_externa;
 
             $pedido = Pedido::create([
                 'codigo'           => Pedido::generarCodigo(),
-                'pedido_global_id' => $pedidoGlobal->id ?? null,
                 'estado'           => 'pendiente',
                 'fabricante_id'    => $request->fabricante_id,
                 'distribuidor_id'  => $request->distribuidor_id,
                 'obra_id'          => $obraId,
                 'obra_manual'      => $request->obra_manual,
                 'fecha_pedido'     => now(),
-                'created_by'     => auth()->id(),
+                'created_by'       => auth()->id(),
             ]);
 
-            // 🔄 Procesar productos
+            // Procesar productos (líneas)
             $pesoTotal = 0;
 
             foreach ($request->seleccionados as $clave) {
@@ -1029,21 +1033,60 @@ class PedidoController extends Controller
 
                     if ($peso <= 0 || !$fecha) continue;
 
-                    $pedido->productos()->attach($productoBase->id, [
-                        'cantidad' => $peso,
-                        'fecha_estimada_entrega' => $fecha,
-                        'observaciones' => "Camión #$index desde comparativa automática",
-                    ]);
+                    // Asignar a PedidoGlobal más antiguo
+                    foreach ($restantes as $pgId => $restante) {
+                        if ($restante <= 0) continue;
 
-                    $pesoTotal += $peso;
+                        if ($peso <= $restante) {
+                            // Cabe entero en este pedido global
+                            $pedido->productos()->attach($productoBase->id, [
+                                'pedido_global_id'       => $pgId,
+                                'cantidad'               => $peso,
+                                'fecha_estimada_entrega' => $fecha,
+                                'observaciones'          => "Camión #$index",
+                            ]);
+                            $restantes[$pgId] -= $peso;
+                            $pesoTotal += $peso;
+                            $peso = 0;
+                            break;
+                        } else {
+                            // Solo cabe una parte en este pedido global
+                            $pedido->productos()->attach($productoBase->id, [
+                                'pedido_global_id'       => $pgId,
+                                'cantidad'               => $restante,
+                                'fecha_estimada_entrega' => $fecha,
+                                'observaciones'          => "Camión #$index (parcial)",
+                            ]);
+                            $pesoTotal += $restante;
+                            $peso -= $restante;
+                            $restantes[$pgId] = 0;
+                            // continúa el foreach para meter el sobrante en el siguiente PedidoGlobal
+                        }
+                    }
+
+                    // Si sobra peso y no hay PedidoGlobal con hueco, asignar sin pedido_global_id
+                    if ($peso > 0) {
+                        $pedido->productos()->attach($productoBase->id, [
+                            'pedido_global_id'       => null,
+                            'cantidad'               => $peso,
+                            'fecha_estimada_entrega' => $fecha,
+                            'observaciones'          => "Camión #$index (sin PG disponible)",
+                        ]);
+                        $pesoTotal += $peso;
+                        $peso = 0;
+                    }
                 }
             }
 
             $pedido->peso_total = $pesoTotal;
             $pedido->save();
 
-            if ($pedidoGlobal) {
-                $pedidoGlobal->actualizarEstadoSegunProgreso();
+            // Actualizar estados de todos los PedidoGlobal implicados
+            foreach (array_keys($restantes) as $pgId) {
+                if ($pgId) {
+                    $pg = PedidoGlobal::find($pgId);
+                    if ($pg) $pg->actualizarEstadoSegunProgreso();
+                }
             }
 
             return redirect()->route('pedidos.show', $pedido->id)
@@ -1060,6 +1103,7 @@ class PedidoController extends Controller
             return back()->withInput()->with('error', $msg);
         }
     }
+
 
 
     public function show($id)
