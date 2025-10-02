@@ -401,7 +401,7 @@ class EtiquetaController extends Controller
         ───────────────────────────── */
         $Kmax                 = (int) ($request->input('kmax') ?? 5);
         $EPS                  = 0.01;
-        $UMBRAL_OK            = 99.0;
+        $UMBRAL_OK            = 95.0;
         $permitirRepeticiones = true;
         $kMinimo              = 2;
 
